@@ -144,7 +144,7 @@ router.get('/:id', isAuthenticated, async (req, res, next) => {
  *   put:
  *     summary: Update a grouped workout session
  *     tags: [Fitness & Workouts]
- *     description: Updates grouped workout header fields and, for manual or sparky workouts, can replace the child exercises array in one request. Returns the full nested grouped session payload.
+ *     description: Updates grouped workout header fields and, for manual, sparky, or workout plan sessions, can replace the child exercises array in one request. Returns the full nested grouped session payload.
  *     security:
  *       - cookieAuth: []
  *     responses:

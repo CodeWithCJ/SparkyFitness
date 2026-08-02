@@ -20,6 +20,8 @@ import { Exercise } from '@/types/exercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '../use-toast';
 import { useTranslation } from 'react-i18next';
+import { resolveExerciseModality } from '@workspace/shared';
+import { defaultSetForModality } from '@/constants/exercises';
 
 interface WorkoutPresetFormProps {
   onSave: (
@@ -47,7 +49,8 @@ export function useWorkoutPresetForm({
         sets: ex.sets.map((set) => ({
           ...set,
           id: set.id ? String(set.id) : generateClientId(),
-          weight: Number(set.weight) || 0, // Keep metric (kg)
+          // Keep metric (kg); null means no weight (e.g. a time-only set).
+          weight: set.weight != null ? Number(set.weight) : null,
         })),
       })) || []
     );
@@ -56,6 +59,10 @@ export function useWorkoutPresetForm({
 
   const handleAddExercise = (exercise: Exercise | undefined) => {
     if (exercise) {
+      const modality = resolveExerciseModality(
+        exercise.modality,
+        exercise.category
+      );
       const newExercise: WorkoutPresetExercise = {
         id: generateClientId(), // Stable ID for DND
         exercise_id: exercise.id,
@@ -65,16 +72,9 @@ export function useWorkoutPresetForm({
             ? exercise.images[0]
             : '',
         exercise: exercise,
-        sets: [
-          {
-            id: generateClientId(),
-            set_number: 1,
-            set_type: 'Working Set',
-            reps: 10,
-            weight: 0,
-          },
-        ],
+        sets: [{ ...defaultSetForModality(modality), id: generateClientId() }],
         category: exercise.category ?? '',
+        modality,
       };
       setExercises((prev) => [...prev, newExercise]);
     }
@@ -280,7 +280,7 @@ export function useWorkoutPresetForm({
         sort_order: index,
         sets: ex.sets.map((set) => ({
           ...set,
-          weight: set.weight ?? 0, // already metric (kg) from UnitInput
+          weight: set.weight ?? null, // already metric (kg) from UnitInput
         })),
       })),
     });

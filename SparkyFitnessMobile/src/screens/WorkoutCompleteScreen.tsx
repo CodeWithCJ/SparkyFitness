@@ -1,6 +1,8 @@
-import { useEffect, useMemo, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 import { useQuery } from '@tanstack/react-query';
 import Animated, {
   cancelAnimation,
@@ -24,25 +26,38 @@ import { workoutSessionQueryKey } from '../hooks/queryKeys';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { usePreferences } from '../hooks/usePreferences';
+import { useProfile } from '../hooks/useProfile';
+import { useUpdateWorkoutPreset } from '../hooks/useWorkoutPresetMutations';
 import { getWorkout } from '../services/api/exerciseApi';
+import { getWorkoutPresetById } from '../services/api/workoutPresetsApi';
+import { getActiveServerConfig } from '../services/storage';
 import { fireSuccessHaptic } from '../services/haptics';
 import { withAlpha } from '../utils/colors';
-import { weightFromKg } from '../utils/unitConversions';
+import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
+import { setsDurationMinutes } from '@workspace/shared';
 import {
+  buildPresetUpdateExercises,
+  buildSessionDurationMinutes,
   buildWorkoutCompletionSummary,
   formatDuration,
   formatSetLoad,
   formatVolume,
   getRpeTone,
   getSessionCalories,
+  isCardioModality,
   normalizeWeightUnit,
+  resolveSnapshotModality,
   summarizeWorkoutSpan,
   SUPERSET_PALETTE_VARS,
   type RpeTone,
 } from '../utils/workoutSession';
 import type { RootStackScreenProps } from '../types/navigation';
+import type { WorkoutPreset } from '../types/workoutPresets';
 
 type Props = RootStackScreenProps<'WorkoutComplete'>;
+
+/** Keeps the update-preset alert off the confetti burst and success haptic. */
+const UPDATE_PRESET_PROMPT_DELAY_MS = 800;
 
 const RPE_TONE_LABELS: Record<RpeTone, string> = {
   easy: 'Easy',
@@ -246,10 +261,20 @@ function DockedActionButton({
 
 function WorkoutCompleteScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const { session, completedSetIds, prSetIds, startedAt, finishedAt } = route.params;
+  const {
+    session,
+    completedSetIds,
+    prSetIds,
+    startedAt,
+    finishedAt,
+    sourcePresetId,
+    sourceServerConfigId,
+    plannedSetValues,
+  } = route.params;
 
   const { preferences } = usePreferences();
   const weightUnit = normalizeWeightUnit(preferences?.default_weight_unit);
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
 
@@ -261,10 +286,29 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
   );
   const hasRecords = summary.prRows.length > 0;
 
-  // The final flush stamped per-exercise durations server-side and folded the
-  // response back into the snapshot; the span fallback covers a resumed
-  // session whose completions all predate this start.
+  // Recomputed with the same construction the final flush stamps — cardio
+  // entries are their set sums, strength entries their wall-clock split
+  // share — so the number can't disagree with the diary even when the flush
+  // response never folded back into this snapshot (or an entry carries a
+  // stale duration). The stamped/span fallbacks cover sessions the split
+  // can't price: no startedAt, or a resumed session whose completions all
+  // predate this start.
   const durationMinutes = useMemo(() => {
+    // A non-null split means this session priced itself (something completed
+    // after start); null means it didn't, and the server-stamped durations
+    // are the better truth.
+    const split = buildSessionDurationMinutes(session, completedSetIds, startedAt);
+    if (split != null) {
+      const derived = session.exercises.reduce(
+        (sum, e) =>
+          sum +
+          (isCardioModality(resolveSnapshotModality(e.exercise_snapshot))
+            ? setsDurationMinutes(e.sets)
+            : (split.get(e.id) ?? 0)),
+        0,
+      );
+      if (derived > 0) return derived;
+    }
     const stamped = session.exercises.reduce((sum, e) => sum + (e.duration_minutes ?? 0), 0);
     if (stamped > 0) return stamped;
     return summarizeWorkoutSpan(completedSetIds, startedAt)?.totalMinutes ?? 0;
@@ -290,6 +334,83 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (hasRecords) fireSuccessHaptic();
   }, [hasRecords]);
+
+  // --- Update-preset prompt ---
+  //
+  // A workout started from a preset offers to fold today's values and
+  // structure back into it when they deviate. The diff baseline is a fresh
+  // one-shot fetch (deliberately uncached — a same-preset re-finish must not
+  // see pre-update data), so presets edited or deleted mid-workout are
+  // handled; any fetch error just suppresses the prompt.
+  const { profile } = useProfile();
+  const isFocused = useIsFocused();
+  const { updatePresetAsync } = useUpdateWorkoutPreset();
+  const [sourcePreset, setSourcePreset] = useState<WorkoutPreset | null>(null);
+  const promptedRef = useRef(false);
+
+  useEffect(() => {
+    if (sourcePresetId == null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        // Preset ids are per-server; a config switched since the workout
+        // started would resolve the id against the wrong server.
+        const config = await getActiveServerConfig();
+        if (cancelled || config?.id !== sourceServerConfigId) return;
+        const preset = await getWorkoutPresetById(sourcePresetId);
+        if (!cancelled) setSourcePreset(preset);
+      } catch {
+        // Deleted mid-workout (404) or unreachable — no prompt.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sourcePresetId, sourceServerConfigId]);
+
+  const presetUpdateExercises = useMemo(
+    () =>
+      sourcePreset == null
+        ? null
+        : buildPresetUpdateExercises(session, sourcePreset, { completedSetIds, plannedSetValues }),
+    [sourcePreset, session, completedSetIds, plannedSetValues],
+  );
+
+  useEffect(() => {
+    if (promptedRef.current || !isFocused) return;
+    if (sourcePreset == null || presetUpdateExercises == null) return;
+    // The server 403s non-owner updates (shared/public presets) — don't offer.
+    if (!sourcePreset.user_id || profile?.id !== sourcePreset.user_id) return;
+    const presetId = sourcePreset.id;
+    const exercises = presetUpdateExercises;
+    const timer = setTimeout(() => {
+      // Marked only when the alert actually shows, so an unfocused pass (a
+      // pushed screen covering this one) doesn't burn the one shot; refocus
+      // re-runs the effect and fires it then.
+      promptedRef.current = true;
+      Alert.alert(
+        'Update preset?',
+        `Today's workout differs from "${sourcePreset.name}". Update the preset to match?`,
+        [
+          { text: 'Keep Preset', style: 'cancel' },
+          {
+            text: 'Update',
+            onPress: () => {
+              void (async () => {
+                try {
+                  await updatePresetAsync({ id: presetId, payload: { exercises } });
+                  Toast.show({ type: 'success', text1: 'Preset updated' });
+                } catch {
+                  // useUpdateWorkoutPreset already showed the failure toast.
+                }
+              })();
+            },
+          },
+        ],
+      );
+    }, UPDATE_PRESET_PROMPT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [isFocused, sourcePreset, presetUpdateExercises, profile?.id, updatePresetAsync]);
 
   const rpeTone = summary.averageRpe != null ? getRpeTone(summary.averageRpe) : null;
   const rpeToneColor = String(
@@ -395,6 +516,21 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             </StatTile>
           </View>
 
+          {summary.totalDistanceKm > 0 && (
+            <View className="flex-row gap-2 mt-2">
+              <StatTile icon="exercise-running" label="Distance">
+                <StatValue
+                  value={String(
+                    parseFloat(
+                      distanceFromKm(summary.totalDistanceKm, distanceUnit).toFixed(2),
+                    ),
+                  )}
+                  unit={distanceUnit === 'miles' ? 'mi' : 'km'}
+                />
+              </StatTile>
+            </View>
+          )}
+
           {summary.averageRpe != null && rpeTone != null && (
             <View className="flex-row items-center bg-surface rounded-xl shadow-sm px-3.5 py-3 mt-2">
               <Text
@@ -445,7 +581,10 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                     className="text-sm font-medium"
                     style={{ color: prColor, fontVariant: ['tabular-nums'] }}
                   >
-                    {formatSetLoad({ weightKg: pr.weightKg, reps: pr.reps }, weightUnit) ?? ''}
+                    {formatSetLoad(
+                      { weightKg: pr.weightKg, reps: pr.reps, durationSec: pr.durationSec },
+                      weightUnit,
+                    ) ?? ''}
                   </Text>
                 </View>
               ))}
@@ -472,7 +611,14 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             const entry = session.exercises.find((e) => e.id === row.entryId);
             const topText =
               row.topSet != null
-                ? formatSetLoad({ weightKg: row.topSet.weightKg, reps: row.topSet.reps }, weightUnit)
+                ? formatSetLoad(
+                    {
+                      weightKg: row.topSet.weightKg,
+                      reps: row.topSet.reps,
+                      durationSec: row.topSet.durationSec,
+                    },
+                    weightUnit,
+                  )
                 : null;
             return (
               <View

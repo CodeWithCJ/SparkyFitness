@@ -1,4 +1,11 @@
+import { useEffect } from 'react';
 import { Platform, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -66,5 +73,30 @@ export default function CompletionCheck({
         <Icon name="checkmark" size={glyphSize} color={CHECK_COLOR} weight="bold" />
       )}
     </View>
+  );
+}
+
+/**
+ * Pulsing accent ring — the tap-to-log target on the cursor's set. Shared by
+ * the set rows and the cardio effort form so every log affordance reads the
+ * same. Lives here with the done badge so the workout completion affordances
+ * stay one set.
+ */
+export function LogCircle({ color }: { color: string }) {
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(0.45, { duration: 800 }), -1, true);
+    return () => {
+      pulse.value = 1;
+    };
+  }, [pulse]);
+  const style = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  return (
+    <Animated.View
+      style={[style, { borderColor: color }]}
+      className="h-7 w-7 rounded-full border-2 items-center justify-center"
+    >
+      <View className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+    </Animated.View>
   );
 }

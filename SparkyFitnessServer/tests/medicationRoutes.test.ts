@@ -36,6 +36,10 @@ vi.mock('../middleware/onBehalfOfMiddleware.js', () => ({
     next: express.NextFunction
   ) => next(),
 }));
+vi.mock('../utils/timezoneLoader.js', () => ({
+  loadUserTimezone: vi.fn(async () => 'America/New_York'),
+  resolveTemplateStartDay: vi.fn(async () => '2026-07-28'),
+}));
 
 const app = express();
 app.use(express.json());
@@ -187,6 +191,78 @@ describe('Medication Routes V2', () => {
         .send({ site: 'left_thigh' });
       expect(res.statusCode).toBe(400);
     });
+
+    it('files a backdated entry under the day it was administered, not today', async () => {
+      vi.mocked(injectionRepository.createInjection).mockResolvedValue({
+        id: 'inj-1',
+      });
+      await request(app)
+        .post('/api/v2/medications/injections')
+        .set('Cookie', cookie)
+        .send({
+          medication_id: UID,
+          injected_at: '2026-06-24T15:45:00.000Z',
+        });
+      expect(injectionRepository.createInjection).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({ entry_date: '2026-06-24' })
+      );
+    });
+
+    it('resolves the day in the user timezone, not UTC', async () => {
+      vi.mocked(injectionRepository.createInjection).mockResolvedValue({
+        id: 'inj-1',
+      });
+      await request(app)
+        .post('/api/v2/medications/injections')
+        .set('Cookie', cookie)
+        .send({
+          medication_id: UID,
+          injected_at: '2026-06-25T02:00:00.000Z',
+        });
+      expect(injectionRepository.createInjection).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({ entry_date: '2026-06-24' })
+      );
+    });
+
+    it('honors an explicit entry_date over the administration time', async () => {
+      vi.mocked(injectionRepository.createInjection).mockResolvedValue({
+        id: 'inj-1',
+      });
+      await request(app)
+        .post('/api/v2/medications/injections')
+        .set('Cookie', cookie)
+        .send({
+          medication_id: UID,
+          injected_at: '2026-06-24T15:45:00.000Z',
+          entry_date: '2026-06-30',
+        });
+      expect(injectionRepository.createInjection).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({ entry_date: '2026-06-30' })
+      );
+    });
+
+    it('falls back to today when no administration time is supplied', async () => {
+      vi.mocked(injectionRepository.createInjection).mockResolvedValue({
+        id: 'inj-1',
+      });
+      await request(app)
+        .post('/api/v2/medications/injections')
+        .set('Cookie', cookie)
+        .send({ medication_id: UID });
+      const today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+      expect(injectionRepository.createInjection).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({ entry_date: today })
+      );
+    });
   });
 
   describe('PUT /api/v2/medications/injections/:id', () => {
@@ -203,6 +279,52 @@ describe('Medication Routes V2', () => {
         'testUser',
         UID,
         expect.objectContaining({ site: 'right_thigh', dose_mg: 0.5 })
+      );
+    });
+
+    it('moves entry_date when the administration time is corrected', async () => {
+      vi.mocked(injectionRepository.updateInjection).mockResolvedValue({
+        id: UID,
+      });
+      await request(app)
+        .put(`/api/v2/medications/injections/${UID}`)
+        .set('Cookie', cookie)
+        .send({ injected_at: '2026-07-01T22:00:00.000Z' });
+      expect(injectionRepository.updateInjection).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ entry_date: '2026-07-01' })
+      );
+    });
+
+    it('leaves entry_date alone when the administration time is unchanged', async () => {
+      vi.mocked(injectionRepository.updateInjection).mockResolvedValue({
+        id: UID,
+      });
+      await request(app)
+        .put(`/api/v2/medications/injections/${UID}`)
+        .set('Cookie', cookie)
+        .send({ site: 'right_thigh' });
+      const arg = vi.mocked(injectionRepository.updateInjection).mock
+        .calls[0][2];
+      expect(arg).not.toHaveProperty('entry_date');
+    });
+
+    it('honors an explicit entry_date alongside a corrected time', async () => {
+      vi.mocked(injectionRepository.updateInjection).mockResolvedValue({
+        id: UID,
+      });
+      await request(app)
+        .put(`/api/v2/medications/injections/${UID}`)
+        .set('Cookie', cookie)
+        .send({
+          injected_at: '2026-07-01T22:00:00.000Z',
+          entry_date: '2026-07-05',
+        });
+      expect(injectionRepository.updateInjection).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ entry_date: '2026-07-05' })
       );
     });
 
@@ -239,6 +361,124 @@ describe('Medication Routes V2', () => {
         });
       expect(res.statusCode).toBe(201);
       expect(res.body).toEqual(pen);
+    });
+  });
+
+  describe('Schedules', () => {
+    it('adds a schedule', async () => {
+      const schedule = { id: 'sched-1', schedule_type_id: 'daily' };
+      vi.mocked(medicationRepository.addSchedule).mockResolvedValue(schedule);
+      const res = await request(app)
+        .post(`/api/v2/medications/${UID}/schedules`)
+        .set('Cookie', cookie)
+        .send({ schedule_type_id: 'daily', time_of_day: '08:00' });
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toEqual(schedule);
+      expect(medicationRepository.addSchedule).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ schedule_type_id: 'daily' })
+      );
+    });
+
+    it('returns 400 when schedule_type_id is missing on create', async () => {
+      const res = await request(app)
+        .post(`/api/v2/medications/${UID}/schedules`)
+        .set('Cookie', cookie)
+        .send({ time_of_day: '08:00' });
+      expect(res.statusCode).toBe(400);
+      expect(medicationRepository.addSchedule).not.toHaveBeenCalled();
+    });
+
+    it('updates a schedule, passing explicit-null discriminators through', async () => {
+      const updated = { id: UID, schedule_type_id: 'daily' };
+      vi.mocked(medicationRepository.updateSchedule).mockResolvedValue(updated);
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({
+          schedule_type_id: 'daily',
+          time_of_day: '09:00',
+          dose_amount: 2,
+          days_of_week: null,
+          interval_days: null,
+          day_of_month: null,
+          cycle_on_days: null,
+          cycle_off_days: null,
+          with_meal: null,
+          prn_reason: null,
+          prn_max_per_day: null,
+          start_date: null,
+          end_date: null,
+          active: true,
+        });
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(updated);
+      expect(medicationRepository.updateSchedule).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({
+          schedule_type_id: 'daily',
+          time_of_day: '09:00',
+          dose_amount: 2,
+          days_of_week: null,
+          interval_days: null,
+          day_of_month: null,
+          cycle_on_days: null,
+          cycle_off_days: null,
+          with_meal: null,
+          prn_reason: null,
+          prn_max_per_day: null,
+          start_date: null,
+          end_date: null,
+          active: true,
+        })
+      );
+    });
+
+    it('returns 200 with the current row on an empty update', async () => {
+      const current = { id: UID, schedule_type_id: 'weekly' };
+      vi.mocked(medicationRepository.updateSchedule).mockResolvedValue(current);
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({});
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual(current);
+    });
+
+    it('returns 404 when the schedule to update is missing', async () => {
+      vi.mocked(medicationRepository.updateSchedule).mockResolvedValue(null);
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({ time_of_day: '09:00' });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('returns 400 when updating with an out-of-range weekday', async () => {
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({ days_of_week: [9] });
+      expect(res.statusCode).toBe(400);
+      expect(medicationRepository.updateSchedule).not.toHaveBeenCalled();
+    });
+
+    it('deletes a schedule', async () => {
+      vi.mocked(medicationRepository.deleteSchedule).mockResolvedValue(true);
+      const res = await request(app)
+        .delete(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(204);
+    });
+
+    it('returns 404 when the schedule to delete is missing', async () => {
+      vi.mocked(medicationRepository.deleteSchedule).mockResolvedValue(false);
+      const res = await request(app)
+        .delete(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(404);
     });
   });
 
@@ -308,6 +548,7 @@ describe('Medication Routes V2', () => {
         curve: [{ day: 0, level: 1, fraction: 1 }],
         currentLevelFraction: 0.7,
         doseDays: [0],
+        anchorDate: '2026-01-01T09:00:00.000Z',
         disclaimer: 'Modeled estimate',
       };
       vi.mocked(glp1Service.getSerumCurve).mockResolvedValue(payload);

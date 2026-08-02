@@ -99,7 +99,8 @@ describe('Health Data Routes - POST /api/health-data', () => {
     expect(measurementService.processHealthData).toHaveBeenCalledWith(
       payload,
       'test-user-id',
-      'test-user-id'
+      'test-user-id',
+      { legacyWorkoutSetMinutes: true }
     );
   });
 
@@ -127,7 +128,71 @@ describe('Health Data Routes - POST /api/health-data', () => {
     expect(measurementService.processHealthData).toHaveBeenCalledWith(
       [payload],
       'test-user-id',
-      'test-user-id'
+      'test-user-id',
+      { legacyWorkoutSetMinutes: true }
+    );
+  });
+
+  it('treats X-Workout-Model-Version >= 2 as the seconds-based set model', async () => {
+    const payload = [
+      {
+        type: 'Workout',
+        timestamp: '2026-05-05T10:00:00Z',
+        activityType: 'Plank',
+        sets: [{ set_number: 1, set_type: 'Working Set', duration: 300 }],
+      },
+    ];
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist
+    measurementService.processHealthData.mockResolvedValue({
+      message: 'All health data successfully processed.',
+      processed: [],
+      errors: [],
+      skipped: [],
+    });
+
+    const res = await request(app)
+      .post('/api/health-data')
+      .set('Content-Type', 'application/json')
+      .set('X-Workout-Model-Version', '2')
+      .send(payload);
+
+    expect(res.statusCode).toBe(200);
+    expect(measurementService.processHealthData).toHaveBeenCalledWith(
+      payload,
+      'test-user-id',
+      'test-user-id',
+      { legacyWorkoutSetMinutes: false }
+    );
+  });
+
+  it('treats an absent X-Workout-Model-Version header as legacy minutes', async () => {
+    const payload = [
+      {
+        type: 'Workout',
+        timestamp: '2026-05-05T10:00:00Z',
+        activityType: 'Plank',
+        sets: [{ set_number: 1, set_type: 'Working Set', duration: 5 }],
+      },
+    ];
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist
+    measurementService.processHealthData.mockResolvedValue({
+      message: 'All health data successfully processed.',
+      processed: [],
+      errors: [],
+      skipped: [],
+    });
+
+    const res = await request(app)
+      .post('/api/health-data')
+      .set('Content-Type', 'application/json')
+      .send(payload);
+
+    expect(res.statusCode).toBe(200);
+    expect(measurementService.processHealthData).toHaveBeenCalledWith(
+      payload,
+      'test-user-id',
+      'test-user-id',
+      { legacyWorkoutSetMinutes: true }
     );
   });
 

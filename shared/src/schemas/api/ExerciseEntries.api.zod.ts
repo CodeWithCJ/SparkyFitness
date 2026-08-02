@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { paginationSchema } from "./Pagination.api.zod.ts";
+import { exerciseModalitySchema } from "./Exercises.api.zod.ts";
 
 // --- Query contracts ---
 
@@ -39,6 +40,7 @@ export const exerciseSnapshotResponseSchema = z
     id: z.string(),
     name: z.string(),
     category: z.string().nullable(),
+    modality: exerciseModalitySchema.nullable().optional(),
     images: z.array(z.string()).nullable(),
     primary_muscles: z.array(z.string()).nullable(),
     secondary_muscles: z.array(z.string()).nullable(),
@@ -69,12 +71,15 @@ export const exerciseEntrySetResponseSchema = z
     set_type: z.string().nullable(),
     reps: z.number().nullable(),
     weight: z.number().nullable(),
-    duration: z.number().nullable(),
+    // Per-set duration is integer SECONDS.
+    duration: z.number().int().nullable(),
     rest_time: z.number().nullable(),
     notes: z.string().nullable(),
     rpe: z.number().nullable(),
     completed_at: z.string().nullable(),
     is_pr: z.boolean(),
+    // Km. Optional: pre-distance servers omit it.
+    distance: z.number().nullable().optional(),
   })
   .strict();
 
@@ -97,12 +102,15 @@ export const exerciseEntrySetRequestSchema = z
     set_type: z.string().nullable().optional(),
     reps: z.number().nullable().optional(),
     weight: z.number().nullable().optional(),
-    duration: z.number().nullable().optional(),
+    // Per-set duration is integer SECONDS.
+    duration: z.number().int().nullable().optional(),
     rest_time: z.number().nullable().optional(),
     notes: z.string().nullable().optional(),
     rpe: z.number().nullable().optional(),
     completed_at: z.iso.datetime().nullable().optional(),
     is_pr: z.boolean().optional(),
+    // Km; only meaningful on duration_distance sets.
+    distance: z.number().nullable().optional(),
   })
   .strict();
 
@@ -333,11 +341,19 @@ export const exerciseRecentSessionSetSchema = z
     setType: z.string().nullable(),
     weight: z.number().nullable(),
     reps: z.number().int().nullable(),
+    // Integer SECONDS. Optional: pre-modality servers omit it.
+    duration: z.number().int().nullable().optional(),
+    // Km. Optional: pre-distance servers omit it.
+    distance: z.number().nullable().optional(),
   })
   .strict()
-  .refine((s) => s.weight != null || s.reps != null, {
-    message: "Recent-session sets must have weight or reps",
-  });
+  .refine(
+    (s) =>
+      s.weight != null || s.reps != null || s.duration != null || s.distance != null,
+    {
+      message: "Recent-session sets must have weight, reps, duration, or distance",
+    },
+  );
 
 export const exerciseRecentSessionSchema = z
   .object({

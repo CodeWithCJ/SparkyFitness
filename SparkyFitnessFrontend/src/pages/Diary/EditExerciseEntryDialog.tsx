@@ -45,10 +45,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ActivityDetailKeyValuePair, ExerciseEntry } from '@/types/exercises';
 import { SortableSetItem } from '../Exercises/SortableWorkoutSet';
 import { SetColumnHeaders } from '../Exercises/SetHeader';
+import {
+  defaultSetForModality,
+  toSetTableModality,
+} from '@/constants/exercises';
 import { CardioLog } from '../Exercises/CardioLog';
 import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
-import { toHourMinute, userHourMinute } from '@workspace/shared';
+import {
+  resolveExerciseModality,
+  setsDurationMinutes,
+  toHourMinute,
+  userHourMinute,
+} from '@workspace/shared';
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
   open: boolean;
@@ -66,15 +75,30 @@ const EditExerciseEntryDialog = ({
   const { loggingLevel, weightUnit, distanceUnit, convertDistance, timezone } =
     usePreferences();
 
-  const isCardio = entry.exercise_snapshot?.category === 'cardio';
-
-  const [sets, setSets] = useState<SortableSet[]>(() =>
-    ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
-      ...set,
-      weight: Number(set.weight) || 0,
-      _dndId: uuidv4(),
-    }))
+  const modality = resolveExerciseModality(
+    entry.exercise_snapshot?.modality,
+    entry.exercise_snapshot?.category
   );
+  const isCardio = modality === 'duration_distance';
+
+  const [sets, setSets] = useState<SortableSet[]>(() => {
+    const entrySets = ((entry.sets as WorkoutPresetSet[]) || []).map((set) => ({
+      ...set,
+      weight: set.weight != null ? Number(set.weight) : null,
+      _dndId: uuidv4(),
+    }));
+    // A legacy cardio entry logged before sets-backed cardio has no rows;
+    // seed one so the save below has a set to write duration/distance into.
+    if (entrySets.length === 0 && isCardio) {
+      return [{ ...defaultSetForModality(modality), _dndId: uuidv4() }];
+    }
+    return entrySets;
+  });
+
+  // Cardio renders the entry-level Duration/Distance form only while it has
+  // at most one set; a multi-set cardio entry (import, intervals) keeps the
+  // duration set table so no rows are hidden.
+  const cardioForm = isCardio && sets.length <= 1;
   const [notes, setNotes] = useState(entry.notes || '');
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(entry.entry_time) || ''
@@ -151,10 +175,7 @@ const EditExerciseEntryDialog = ({
   const handleAddSet = () => {
     setSets((prev) => {
       const lastSet = prev[prev.length - 1] ?? {
-        set_number: 0,
-        set_type: 'Working Set' as const,
-        reps: 10,
-        weight: 0,
+        ...defaultSetForModality(modality),
         _dndId: uuidv4(),
       };
       return [
@@ -218,19 +239,34 @@ const EditExerciseEntryDialog = ({
       );
       const caloriesPerHour = exerciseData?.calories_per_hour || 300;
 
-      const totalDuration = isCardio
+      const totalDuration = cardioForm
         ? durationInput === ''
           ? 0
           : Number(durationInput)
-        : sets.reduce(
-            (acc, set) => acc + (set.duration || 0) + (set.rest_time || 0) / 60,
-            0
-          );
+        : setsDurationMinutes(sets);
 
       const caloriesBurned =
         caloriesBurnedInput !== '' && caloriesBurnedInput !== 0
           ? caloriesBurnedInput
           : Math.round((caloriesPerHour / 60) * totalDuration);
+
+      // Cardio performance also lives on its single backing set (issue
+      // #1903): duration in seconds + distance in km, no between-set rest.
+      // These agree with the entry-level totals below by construction. A
+      // multi-set cardio entry keeps its rows untouched instead.
+      const cardioSetValues = cardioForm
+        ? {
+            duration:
+              durationInput === ''
+                ? null
+                : Math.round(Number(durationInput) * 60),
+            distance:
+              distanceInput === ''
+                ? null
+                : convertDistance(Number(distanceInput), distanceUnit, 'km'),
+            rest_time: 0,
+          }
+        : null;
 
       await updateExerciseEntry({
         id: entry.id,
@@ -241,7 +277,8 @@ const EditExerciseEntryDialog = ({
           entry_time: entryTime || null,
           sets: sets.map(({ _dndId, ...set }) => ({
             ...set,
-            weight: set.weight ?? 0,
+            weight: set.weight ?? null,
+            ...(cardioSetValues ?? {}),
           })),
           imageFile,
           image_url: imageUrl,
@@ -334,7 +371,7 @@ const EditExerciseEntryDialog = ({
           </div>
 
           {/* ── Cardio log or strength sets ── */}
-          {isCardio ? (
+          {cardioForm ? (
             <CardioLog
               durationMinutes={durationInput}
               distance={distanceInput}
@@ -361,9 +398,7 @@ const EditExerciseEntryDialog = ({
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <SetColumnHeaders
-                  category={entry.exercise_snapshot?.category}
-                />
+                <SetColumnHeaders modality={toSetTableModality(modality)} />
                 <SortableContext items={sets.map((set) => set._dndId)}>
                   <div className="space-y-0.5">
                     {sets.map((set, setIndex) => (
@@ -379,6 +414,7 @@ const EditExerciseEntryDialog = ({
                         onDuplicateSet={(_, sIdx) => handleDuplicateSet(sIdx)}
                         onRemoveSet={(_, sIdx) => handleRemoveSet(sIdx)}
                         weightUnit={weightUnit}
+                        modality={toSetTableModality(modality)}
                       />
                     ))}
                   </div>
@@ -482,7 +518,7 @@ const EditExerciseEntryDialog = ({
 
             <CollapsibleContent className="space-y-3 pt-2">
               {/* Calories override — strength only */}
-              {!isCardio && (
+              {!cardioForm && (
                 <div className="space-y-1.5">
                   <Label htmlFor="calories-burned" className="text-sm">
                     {t(
@@ -524,7 +560,7 @@ const EditExerciseEntryDialog = ({
               )}
 
               {/* Avg heart rate — strength only */}
-              {!isCardio && (
+              {!cardioForm && (
                 <div className="space-y-1.5">
                   <Label htmlFor="avg-heart-rate" className="text-sm">
                     {t(

@@ -111,7 +111,9 @@ export interface ExerciseSet {
   set_type?: string;
   reps?: number;
   weight?: number;
-  duration?: number;    // minutes
+  // Explicitly unit-suffixed so servers without the seconds-based set model
+  // drop the field instead of misreading it (legacy `duration` was minutes).
+  duration_seconds?: number;
   rest_time?: number;   // seconds
   notes?: string;
   rpe?: number;

@@ -18,8 +18,15 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
-
-import papa from 'papaparse';
+import {
+  deriveExerciseModality,
+  canEditGroupedWorkout,
+  setsDistanceKm,
+  setsDurationMinutes,
+  toNumber,
+  parseCsv,
+  DEFAULT_CSV_FORMAT,
+} from '@workspace/shared';
 import {
   getGroupedExerciseSessionById,
   getGroupedExerciseSessionByIdWithClient,
@@ -234,6 +241,8 @@ function mapRecentSessionRow(row: RecentSessionRow) {
       setType: normalizeSetType(s.set_type),
       weight: s.weight,
       reps: s.reps,
+      duration: s.duration,
+      distance: s.distance,
     })),
   };
 }
@@ -323,18 +332,10 @@ async function prepareExerciseEntryForCreate(
   if (!exercise) {
     throw new Error('Exercise not found for snapshot.');
   }
-  const durationFromSets = Array.isArray(entryData.sets)
-    ? entryData.sets.reduce(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (sum: any, set: any) =>
-          sum + (set.duration || 0) + (set.rest_time || 0) / 60,
-        0
-      )
-    : 0;
   const durationMinutes =
     typeof entryData.duration_minutes === 'number'
       ? entryData.duration_minutes
-      : durationFromSets;
+      : setsDurationMinutes(entryData.sets);
   let calculatedCaloriesBurned = entryData.calories_burned;
   if (
     calculatedCaloriesBurned === undefined ||
@@ -358,7 +359,9 @@ async function prepareExerciseEntryForCreate(
     duration_minutes: durationMinutes ?? 0,
     workout_plan_assignment_id: entryData.workout_plan_assignment_id || null,
     image_url: entryData.image_url || null,
-    distance: entryData.distance ?? null,
+    // Explicit client value wins; otherwise derive the total from per-set
+    // distances (null when no set carries one).
+    distance: entryData.distance ?? setsDistanceKm(entryData.sets),
     avg_heart_rate: entryData.avg_heart_rate ?? null,
   };
 }
@@ -524,7 +527,12 @@ async function updateExerciseEntry(
           updateData.image_url === undefined
             ? existingEntry.image_url
             : updateData.image_url,
-        distance: updateData.distance ?? existingEntry.distance,
+        // Explicit value (including null-to-clear) wins; omitted derives the
+        // total from per-set distances, else preserves the existing value.
+        distance:
+          updateData.distance !== undefined
+            ? updateData.distance
+            : (setsDistanceKm(updateData.sets) ?? existingEntry.distance),
         avg_heart_rate:
           updateData.avg_heart_rate ?? existingEntry.avg_heart_rate,
         steps: updateData.steps ?? existingEntry.steps,
@@ -1018,6 +1026,7 @@ async function searchExternalExercises(
           id: exercise.id.toString(),
           name: exercise.name,
           category: exercise.category?.name ?? 'Uncategorized',
+          modality: deriveExerciseModality(exercise.category?.name),
           calories_per_hour: 0,
           source: 'wger',
           description: instructions[0] ?? exercise.name,
@@ -1063,6 +1072,7 @@ async function searchExternalExercises(
         id: exercise.id,
         name: exercise.name,
         category: exercise.category,
+        modality: deriveExerciseModality(exercise.category),
         calories_per_hour: 0,
         description: exercise.description,
         source: 'free-exercise-db',
@@ -1537,15 +1547,38 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
   const failedRows = [];
   try {
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    const { data, errors } = papa.parse(fileContent, {
-      header: true,
-      skipEmptyLines: true,
+    // parseCsv (shared, not a raw papa.parse call) so delimiter detection
+    // failures and parse issues are logged and included in warnings/failedRows
+    // naming the actual problem, instead of a blanket "CSV parsing failed".
+    const {
+      rows: data,
+      resolvedDecimal,
+      warnings,
+      fatal,
+    } = parseCsv(fileContent, DEFAULT_CSV_FORMAT, {
+      numericColumns: ['calories_per_hour'],
     });
-    if (errors.length > 0) {
-      log('error', 'CSV parsing errors:', errors);
-      throw new Error('CSV parsing failed. Please check file format.');
+    if (fatal) {
+      log('error', 'CSV parsing error:', fatal);
+      throw new Error(fatal.message);
     }
-    for (const row of data as Record<string, string>[]) {
+    const warningRowIndices = new Set<number>();
+    if (warnings.length > 0) {
+      log('warn', 'CSV parsing warnings:', warnings);
+      for (const w of warnings) {
+        if (w.row !== undefined) {
+          warningRowIndices.add(w.row);
+        }
+        failedRows.push({
+          row: w.row !== undefined ? { row: w.row } : {},
+          reason: w.message,
+        });
+        failedCount++;
+      }
+    }
+    for (let i = 0; i < data.length; i++) {
+      if (warningRowIndices.has(i)) continue;
+      const row = data[i];
       try {
         const exerciseName = row.name ? row.name.trim() : null;
         if (!exerciseName) {
@@ -1583,8 +1616,11 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
             ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
               row.secondary_muscles.split(',').map((m: any) => m.trim())
             : [],
+          // toNumber (not parseFloat) so a locale-comma decimal like "300,5"
+          // parses to 300.5 instead of parseFloat's silent truncation at the
+          // comma — the same #1960 bug already fixed client-side.
           calories_per_hour: row.calories_per_hour
-            ? parseFloat(row.calories_per_hour)
+            ? (toNumber(row.calories_per_hour, resolvedDecimal) ?? null)
             : null,
           user_id: authenticatedUserId,
           is_custom: true,
@@ -1719,20 +1755,13 @@ function deriveDurationMinutes(
   exerciseData: any,
   { preserveLegacyPresetDurationFallback = false } = {}
 ) {
-  const durationFromSets =
-    exerciseData.sets?.reduce(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (sum: any, set: any) =>
-        sum + (set.duration || 0) + (set.rest_time || 0) / 60,
-      0
-    ) || 0;
   if (typeof exerciseData.duration_minutes === 'number') {
     return exerciseData.duration_minutes;
   }
-  if (preserveLegacyPresetDurationFallback && durationFromSets === 0) {
-    return 30;
-  }
-  return durationFromSets;
+  return setsDurationMinutes(
+    exerciseData.sets,
+    preserveLegacyPresetDurationFallback ? { fallbackMinutes: 30 } : undefined
+  );
 }
 
 async function createGroupedExerciseEntriesWithClient(
@@ -1938,10 +1967,10 @@ async function updateGroupedWorkoutSession(
     );
     const targetEntryDate = updateData.entry_date || existingSession.entry_date;
     if (updateData.exercises !== undefined) {
-      if (!['manual', 'sparky'].includes(existingSession.source)) {
+      if (!canEditGroupedWorkout(existingSession.source)) {
         throw createServiceError(
           409,
-          'Nested exercise editing is only supported for manual or sparky workouts.'
+          'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.'
         );
       }
 
@@ -1961,6 +1990,17 @@ async function updateGroupedWorkoutSession(
       const useReconcile =
         withId === incomingExercises.length && incomingExercises.length > 0;
 
+      // Capture the workout plan assignment before any child rows are deleted:
+      // the assignment id lives on exercise_entries, so once delete-and-recreate
+      // removes them there is nothing left to recover it from. Returns null for
+      // sessions that never came from a workout plan.
+      const workoutPlanAssignmentId =
+        await exerciseEntryDb.getWorkoutPlanAssignmentIdByPresetEntryIdWithClient(
+          client,
+          userId,
+          presetEntryId
+        );
+
       if (!useReconcile) {
         await exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient(
           client,
@@ -1977,6 +2017,7 @@ async function updateGroupedWorkoutSession(
           incomingExercises,
           {
             entrySource: existingSession.source,
+            workoutPlanAssignmentId,
           }
         );
       } else {
@@ -2019,6 +2060,7 @@ async function updateGroupedWorkoutSession(
               [ex],
               {
                 entrySource: existingSession.source,
+                workoutPlanAssignmentId,
               }
             );
             continue;
@@ -2052,7 +2094,13 @@ async function updateGroupedWorkoutSession(
               notes: preparedEntry.notes,
               sort_order: preparedEntry.sort_order ?? 0,
               superset_group: preparedEntry.superset_group ?? null,
-              distance: preparedEntry.distance,
+              // The grouped request has no entry-level distance, so
+              // preparedEntry.distance is the set-derived total; preserve the
+              // existing value when no set carries a distance.
+              distance:
+                preparedEntry.distance ??
+                existingById.get(ex.id)?.distance ??
+                null,
               avg_heart_rate: preparedEntry.avg_heart_rate,
               duration_minutes: preparedEntry.duration_minutes,
               calories_burned: preparedEntry.calories_burned,
@@ -2060,7 +2108,7 @@ async function updateGroupedWorkoutSession(
               entry_time: ex.entry_time ?? null,
             },
             actingUserId,
-            existingSession.source
+            existingById.get(ex.id)?.source ?? existingSession.source
           );
 
           await exerciseEntryDb._reconcileExerciseEntrySetsWithClient(
@@ -2231,6 +2279,7 @@ async function updateExerciseEntriesSnapshot(
     const newSnapshotData = {
       exercise_name: exercise.name,
       calories_per_hour: exercise.calories_per_hour,
+      modality: exercise.modality,
     };
     // Update all relevant exercise entries for the authenticated user
     await exerciseRepository.updateExerciseEntriesSnapshot(
@@ -2309,9 +2358,15 @@ async function importExercisesFromJson(
           ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
             exerciseData.secondary_muscles.split(',').map((m: any) => m.trim())
           : [],
-        calories_per_hour: exerciseData.calories_per_hour
-          ? parseFloat(exerciseData.calories_per_hour)
-          : null,
+        // toNumber (not parseFloat) so a locale-comma decimal parses
+        // correctly instead of silently truncating — same fix as the CSV
+        // import path above.
+        calories_per_hour:
+          exerciseData.calories_per_hour !== undefined &&
+          exerciseData.calories_per_hour !== null &&
+          exerciseData.calories_per_hour !== ''
+            ? (toNumber(String(exerciseData.calories_per_hour)) ?? null)
+            : null,
         user_id: authenticatedUserId,
         is_custom: exerciseData.is_custom === true,
         shared_with_public: exerciseData.shared_with_public === true,

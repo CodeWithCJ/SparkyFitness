@@ -48,6 +48,7 @@ export const exerciseEntriesSchema = z.object({
   exercise_preset_entry_id: exercisePresetEntriesIdSchema.nullable(),
   sort_order: z.number().nullable(),
   superset_group: z.number().nullable(),
+  modality: z.string().nullable(),
 });
 
 export const exerciseEntriesInitializerSchema = z.object({
@@ -85,6 +86,7 @@ export const exerciseEntriesInitializerSchema = z.object({
   exercise_preset_entry_id: exercisePresetEntriesIdSchema.optional().nullable(),
   sort_order: z.number().optional().nullable(),
   superset_group: z.number().optional().nullable(),
+  modality: z.string().optional().nullable(),
 });
 
 export const exerciseEntriesMutatorSchema = z.object({
@@ -122,6 +124,7 @@ export const exerciseEntriesMutatorSchema = z.object({
   exercise_preset_entry_id: exercisePresetEntriesIdSchema.optional().nullable(),
   sort_order: z.number().optional().nullable(),
   superset_group: z.number().optional().nullable(),
+  modality: z.string().optional().nullable(),
 });
 
 export type ExerciseEntries = z.infer<typeof exerciseEntriesSchema>;

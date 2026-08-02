@@ -105,7 +105,7 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   }
 
   return (
-    <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-2">
+    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-2">
       <View className="h-6 justify-center mt-1 mb-2">
         <Text className="text-text-secondary text-xs text-center">{tooltipText}</Text>
       </View>

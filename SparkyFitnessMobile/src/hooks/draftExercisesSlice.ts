@@ -36,7 +36,7 @@ export type DraftExercisesAction =
       type: 'UPDATE_SET_FIELD';
       exerciseClientId: string;
       setClientId: string;
-      field: 'weight' | 'reps';
+      field: 'weight' | 'reps' | 'duration' | 'distance';
       value: string;
     }
   | { type: 'UPDATE_SET_META'; exerciseClientId: string; setClientId: string; patch: WorkoutSetMetaPatch }
@@ -60,9 +60,16 @@ export function draftExercisesReducer(
           exerciseId: action.exercise.id,
           exerciseName: action.exercise.name,
           exerciseCategory: action.exercise.category,
+          exerciseModality: action.exercise.modality ?? null,
           images: action.exercise.images ?? [],
           sets: [
-            { clientId: action.setClientId, weight: '', reps: '', restTime: getDefaultRestSec() },
+            {
+              clientId: action.setClientId,
+              weight: '',
+              reps: '',
+              distance: '',
+              restTime: getDefaultRestSec(),
+            },
           ],
         },
       ];
@@ -87,9 +94,16 @@ export function draftExercisesReducer(
           exerciseId: action.exercise.id,
           exerciseName: action.exercise.name,
           exerciseCategory: action.exercise.category,
+          exerciseModality: action.exercise.modality ?? null,
           images: action.exercise.images ?? [],
           sets: [
-            { clientId: action.setClientId, weight: '', reps: '', restTime: getDefaultRestSec() },
+            {
+              clientId: action.setClientId,
+              weight: '',
+              reps: '',
+              distance: '',
+              restTime: getDefaultRestSec(),
+            },
           ],
         };
       });
@@ -120,6 +134,10 @@ export function draftExercisesReducer(
           clientId: action.setClientId,
           weight: lastSet?.weight ?? '',
           reps: lastSet?.reps ?? '',
+          // A distance is a recorded result, never structure — cloning it
+          // would fabricate data on the new set.
+          distance: '',
+          duration: lastSet?.duration ?? null,
           restTime: firstSet?.restTime ?? getDefaultRestSec(),
         };
         return { ...exercise, sets: [...exercise.sets, newSet] };
@@ -141,6 +159,13 @@ export function draftExercisesReducer(
           ...exercise,
           sets: exercise.sets.map(set => {
             if (set.clientId !== action.setClientId) return set;
+            // Drafts hold duration as `number | null` (not a display string),
+            // so the seconds text parses here and the persisted draft shape
+            // stays unchanged.
+            if (action.field === 'duration') {
+              const parsed = parseInt(action.value, 10);
+              return { ...set, duration: Number.isNaN(parsed) ? null : parsed };
+            }
             return { ...set, [action.field]: action.value };
           }),
         };
@@ -224,7 +249,7 @@ export function useDraftExerciseActions(
   updateSetField: (
     exerciseClientId: string,
     setClientId: string,
-    field: 'weight' | 'reps',
+    field: 'weight' | 'reps' | 'duration' | 'distance',
     value: string,
   ) => void;
   updateSetMeta: (
@@ -277,7 +302,7 @@ export function useDraftExerciseActions(
       updateSetField: (
         exerciseClientId: string,
         setClientId: string,
-        field: 'weight' | 'reps',
+        field: 'weight' | 'reps' | 'duration' | 'distance',
         value: string,
       ) => {
         exercisesModifiedRef.current = true;

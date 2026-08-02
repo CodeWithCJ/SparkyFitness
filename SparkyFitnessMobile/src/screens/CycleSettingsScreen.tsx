@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, Switch, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Switch, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
@@ -9,12 +9,13 @@ import { File, Paths } from 'expo-file-system';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCycleSettings } from '../hooks/useCycleSettings';
+import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
-import StepperInput from '../components/StepperInput';
-import Button from '../components/ui/Button';
+import StepperInput, { useStepperDraft } from '../components/StepperInput';
+import { CYCLE_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 
 import {
   BIRTH_CONTROL_METHODS,
@@ -58,7 +59,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
     settings,
     isLoading,
     updateSettings,
-    isUpdating,
   } = useCycleSettings();
 
   const handleToggleEnabled = useCallback((value: boolean) => {
@@ -141,8 +141,36 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
     }
   }, []);
 
+  const cycleLengthVal = settings?.avg_cycle_length_override || CYCLE_DEFAULTS.cycleLength;
+  const periodLengthVal = settings?.avg_period_length_override || CYCLE_DEFAULTS.periodLength;
+  const lutealLengthVal = settings?.luteal_phase_length || CYCLE_DEFAULTS.lutealLength;
+
+  const cycleLengthProps = useStepperDraft({
+    value: cycleLengthVal,
+    ...CYCLE_SETTING_LIMITS.cycleLength,
+    onCommit: (value) => updateSettings({ avg_cycle_length_override: value }),
+    onClear: () => updateSettings({ avg_cycle_length_override: null }),
+  });
+
+  const periodLengthProps = useStepperDraft({
+    value: periodLengthVal,
+    ...CYCLE_SETTING_LIMITS.periodLength,
+    onCommit: (value) => updateSettings({ avg_period_length_override: value }),
+    onClear: () => updateSettings({ avg_period_length_override: null }),
+  });
+
+  const lutealLengthProps = useStepperDraft({
+    value: lutealLengthVal,
+    ...CYCLE_SETTING_LIMITS.lutealLength,
+    onCommit: (value) => updateSettings({ luteal_phase_length: value }),
+  });
+
+  const { discreetMode } = useDiscreetMode();
+  const headerTitle = discreetMode ? 'Wellness Settings' : 'Cycle & Pregnancy';
+
   const header = useScreenHeader({
-    title: settings?.discreet_mode ? 'Wellness Settings' : 'Cycle Settings',
+    title: headerTitle,
+    nativeTitle: headerTitle,
     left: { kind: 'back' },
   });
 
@@ -153,10 +181,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
       </View>
     );
   }
-
-  const cycleLengthVal = settings.avg_cycle_length_override || CYCLE_DEFAULTS.cycleLength;
-  const periodLengthVal = settings.avg_period_length_override || CYCLE_DEFAULTS.periodLength;
-  const lutealLengthVal = settings.luteal_phase_length || CYCLE_DEFAULTS.lutealLength;
 
   return (
     <View
@@ -182,7 +206,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                 onValueChange={handleToggleEnabled}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
-                disabled={isUpdating}
               />
             }
           />
@@ -190,10 +213,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
 
         {settings.enabled && (
           <>
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Feature Configuration
-            </Text>
-            <SettingsRowGroup>
+            <SettingsRowGroup title="Feature Configuration">
               <SettingsRow
                 title="Tracking Mode"
                 rightAccessory={
@@ -220,64 +240,34 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               />
             </SettingsRowGroup>
 
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Cycle Calculations Overrides
-            </Text>
-            <SettingsRowGroup>
+            <SettingsRowGroup title="Cycle Calculations Overrides">
               <SettingsRow
                 title="Average Cycle Length"
                 subtitle={settings.avg_cycle_length_override ? 'Custom override' : 'Default/History'}
                 rightAccessory={
-                  <StepperInput
-                    value={String(cycleLengthVal)}
-                    onChangeText={(text) => {
-                      const v = parseInt(text, 10);
-                      updateSettings({ avg_cycle_length_override: isNaN(v) ? null : v });
-                    }}
-                    onIncrement={() => updateSettings({ avg_cycle_length_override: cycleLengthVal + 1 })}
-                    onDecrement={() => updateSettings({ avg_cycle_length_override: Math.max(15, cycleLengthVal - 1) })}
-                    keyboardType="number-pad"
-                  />
+                  <StepperInput {...cycleLengthProps} keyboardType="number-pad" />
                 }
               />
               <SettingsRow
                 title="Average Period Length"
                 subtitle={settings.avg_period_length_override ? 'Custom override' : 'Default/History'}
                 rightAccessory={
-                  <StepperInput
-                    value={String(periodLengthVal)}
-                    onChangeText={(text) => {
-                      const v = parseInt(text, 10);
-                      updateSettings({ avg_period_length_override: isNaN(v) ? null : v });
-                    }}
-                    onIncrement={() => updateSettings({ avg_period_length_override: periodLengthVal + 1 })}
-                    onDecrement={() => updateSettings({ avg_period_length_override: Math.max(1, periodLengthVal - 1) })}
-                    keyboardType="number-pad"
-                  />
+                  <StepperInput {...periodLengthProps} keyboardType="number-pad" />
                 }
               />
               <SettingsRow
                 title="Luteal Phase Length"
                 subtitle="Days post-ovulation (default 14)"
                 rightAccessory={
-                  <StepperInput
-                    value={String(lutealLengthVal)}
-                    onChangeText={(text) => {
-                      const v = parseInt(text, 10);
-                      updateSettings({ luteal_phase_length: isNaN(v) ? 14 : v });
-                    }}
-                    onIncrement={() => updateSettings({ luteal_phase_length: lutealLengthVal + 1 })}
-                    onDecrement={() => updateSettings({ luteal_phase_length: Math.max(8, lutealLengthVal - 1) })}
-                    keyboardType="number-pad"
-                  />
+                  <StepperInput {...lutealLengthProps} keyboardType="number-pad" />
                 }
               />
             </SettingsRowGroup>
 
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Conditions
-            </Text>
-            <SettingsRowGroup>
+            <SettingsRowGroup
+              title="Conditions"
+              subtitle="Select applicable conditions to personalize your tracking."
+            >
               {CYCLE_CONDITIONS.map((cond) => (
                 <SettingsRow
                   key={cond.value}
@@ -288,17 +278,13 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                       onValueChange={(val) => handleToggleCondition(cond.value, val)}
                       trackColor={{ false: formDisabled, true: formEnabled }}
                       thumbColor="#FFFFFF"
-                      disabled={isUpdating}
                     />
                   }
                 />
               ))}
             </SettingsRowGroup>
 
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Display & Terminology
-            </Text>
-            <SettingsRowGroup>
+            <SettingsRowGroup title="Display Options">
               <SettingsRow
                 title="Show Fertile Window"
                 subtitle="Highlight fertile days on calendar"
@@ -308,7 +294,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                     onValueChange={handleToggleFertileWindow}
                     trackColor={{ false: formDisabled, true: formEnabled }}
                     thumbColor="#FFFFFF"
-                    disabled={isUpdating}
                   />
                 }
               />
@@ -321,12 +306,11 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                     onValueChange={handleToggleDiscreetMode}
                     trackColor={{ false: formDisabled, true: formEnabled }}
                     thumbColor="#FFFFFF"
-                    disabled={isUpdating}
                   />
                 }
               />
               <SettingsRow
-                title="Language / Terminology"
+                title="Terminology"
                 rightAccessory={
                   <BottomSheetPicker
                     value={settings.terminology}
@@ -339,17 +323,18 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               />
             </SettingsRowGroup>
 
-            <Text className="text-base font-semibold text-text-primary mt-6 mb-2">
-              Actions
-            </Text>
-            <View className="gap-3 mt-2">
-              <Button variant="secondary" onPress={handleExportData}>
-                Export Cycle & Pregnancy Data
-              </Button>
-              <Button variant="outline" tone="neutral" onPress={handleResetOnboarding}>
-                Reset Onboarding Wizard
-              </Button>
-            </View>
+            <SettingsRowGroup title="Actions">
+              <SettingsRow
+                title="Export Cycle & Pregnancy Data"
+                subtitle="Download JSON data export"
+                onPress={handleExportData}
+              />
+              <SettingsRow
+                title="Reset Onboarding Wizard"
+                subtitle="Restart setup walkthrough"
+                onPress={handleResetOnboarding}
+              />
+            </SettingsRowGroup>
           </>
         )}
       </ScrollView>

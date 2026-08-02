@@ -56,6 +56,7 @@ import {
 import measurementRepository from '../models/measurementRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
 import exerciseRepository from '../models/exercise.js';
+import exerciseEntryRepository from '../models/exerciseEntry.js';
 
 const UID = 'user-1';
 const CID = 'user-1';
@@ -337,6 +338,30 @@ describe('processGoogleSleep — date anchoring', () => {
 });
 
 // ─── Exercise — null guard after createExercise ───────────────────────────────
+
+describe('processGoogleActivities — duration units', () => {
+  it('stores entry duration in minutes and set duration in integer seconds (issue #1903)', async () => {
+    const point = {
+      startTime: '2026-05-01T10:00:00Z',
+      exercise: {
+        displayName: 'Running',
+        activeDuration: '3600s',
+        metricsSummary: {},
+      },
+    };
+    await processGoogleActivities(UID, CID, dataPoints(point));
+
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledWith(
+      UID,
+      expect.objectContaining({
+        duration_minutes: 60,
+        sets: [expect.objectContaining({ duration: 3600 })],
+      }),
+      CID,
+      'Google Health'
+    );
+  });
+});
 
 describe('processGoogleActivities — exercise record null guard', () => {
   it('skips the entry when createExercise returns null', async () => {

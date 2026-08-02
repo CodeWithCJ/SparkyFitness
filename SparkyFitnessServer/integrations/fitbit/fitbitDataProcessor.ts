@@ -632,7 +632,7 @@ async function processFitbitActivities(
         {
           set_number: 1,
           set_type: 'Working Set',
-          duration: Math.round(activity.duration / 60000),
+          duration: Math.round(activity.duration / 1000),
           notes: 'Automatically created from Fitbit sync summary',
         },
       ],

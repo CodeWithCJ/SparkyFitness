@@ -72,6 +72,7 @@ interface ExerciseSetInput {
   reps?: number;
   weight?: number;
   duration?: number;
+  distance?: number;
   rest_time?: number;
   set_type?: string;
   rpe?: number;
@@ -86,7 +87,10 @@ function toRepoSets(sets: ExerciseSetInput[]) {
     set_type: s.set_type || 'Working Set',
     reps: s.reps ?? null,
     weight: s.weight ?? null,
-    duration: s.duration ?? null,
+    // Sets may arrive as a JSON string that bypasses schema validation, so
+    // round here to keep the integer-seconds duration column safe.
+    duration: typeof s.duration === 'number' ? Math.round(s.duration) : null,
+    distance: s.distance ?? null,
     rest_time: s.rest_time ?? null,
     rpe: s.rpe ?? null,
     notes: s.notes ?? null,
@@ -350,8 +354,8 @@ export function buildExerciseTools(userId: string, tz: string) {
 
 Actions:
 - search_exercises(searchTerm, muscleGroup?, equipment?, limit?, offset?)
-- create_exercise(name, category?, calories_per_hour?, description?)
-- log_exercise(entry_date, exercise_id?|exercise_name?, duration_minutes?, calories_burned?, notes?, distance?, avg_heart_rate?, steps?, sets?:JSON string or array of [{reps,weight,duration,rest_time,set_type,rpe,notes}]) — distance/avg_heart_rate/steps are for cardio
+- create_exercise(name, category?, calories_per_hour?, description?, modality?:weight_reps|reps_only|duration|duration_distance)
+- log_exercise(entry_date, exercise_id?|exercise_name?, duration_minutes?, calories_burned?, notes?, distance?, avg_heart_rate?, steps?, sets?:JSON string or array of [{reps,weight,duration,distance,rest_time,set_type,rpe,notes}]) — distance/avg_heart_rate/steps are for cardio
 - list_exercise_diary(entry_date)
 - get_workout_presets()
 - log_workout_preset(entry_date, preset_id?|preset_name?)
@@ -449,6 +453,7 @@ Actions:
                   category: args.category || 'custom',
                   calories_per_hour: args.calories_per_hour || 300,
                   description: args.description || null,
+                  modality: args.modality,
                   is_custom: true,
                   shared_with_public: false,
                   source: 'manual',
@@ -564,6 +569,7 @@ Actions:
                         if (isSet(s.reps)) parts.push(`${s.reps}r`);
                         if (isSet(s.weight)) parts.push(`${s.weight}kg`);
                         if (isSet(s.duration)) parts.push(`${s.duration}s`);
+                        if (isSet(s.distance)) parts.push(`${s.distance}km`);
                         if (isSet(s.rpe)) parts.push(`RPE ${s.rpe}`);
                         let str = parts.join('×');
                         if (isSet(s.rest_time))

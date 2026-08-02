@@ -63,7 +63,7 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 - **Garmin Connect**
 - **Withings**
 - **Polar Flow** 
-- **Hevy** (not tested)
+- **Hevy**
 - **OpenFoodFacts**
 - **USDA**
 - **Fatsecret**

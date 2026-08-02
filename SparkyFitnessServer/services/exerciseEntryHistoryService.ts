@@ -8,6 +8,7 @@ import {
   type ExerciseEntryResponse,
   type ExerciseEntrySetResponse,
   type ExerciseHistoryResponse,
+  type ExerciseModality,
   type ExerciseSessionResponse,
 } from '@workspace/shared';
 
@@ -67,7 +68,7 @@ const SETS_SUBQUERY = `COALESCE(
      SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight,
             ees.duration, ees.rest_time, ees.notes, ees.rpe,
             to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at,
-            ees.is_pr
+            ees.is_pr, ees.distance
      FROM exercise_entry_sets ees
      WHERE ees.exercise_entry_id = ee.id
    ) AS set_data
@@ -84,6 +85,7 @@ function _buildExerciseEntryWithSnapshot(
   const {
     exercise_name,
     category,
+    modality,
     source,
     images,
     primary_muscles,
@@ -122,6 +124,7 @@ function _buildExerciseEntryWithSnapshot(
       id: entryData.exercise_id as string,
       name: exercise_name as string,
       category: (category as string) ?? null,
+      modality: (modality as ExerciseModality) ?? null,
       images: _parseJsonArray(images),
       primary_muscles: _parseJsonArray(primary_muscles),
       secondary_muscles: _parseJsonArray(secondary_muscles),

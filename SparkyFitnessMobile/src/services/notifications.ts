@@ -1,17 +1,16 @@
-import { Alert, Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import { fireSuccessHaptic } from './haptics';
+import { isRestTimerSoundEnabled, playRestCompleteSound } from './sounds';
 import { ExactAlarmBridge } from './ExactAlarmBridge';
-import {
-  useAppPreferencesStore,
-  __resetAppPreferencesStoreForTests,
-} from '../stores/appPreferencesStore';
+import { useAppPreferencesStore, __resetAppPreferencesStoreForTests } from '../stores/appPreferencesStore';
 
 const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
+export const MEDICATION_REMINDER_CHANNEL_ID = 'medication-reminders';
 const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
 
 const REST_COMPLETE_CATEGORY = 'rest-complete';
@@ -22,8 +21,28 @@ const REST_COMPLETE_CATEGORY = 'rest-complete';
  */
 export const COMPLETE_SET_ACTION = 'complete-set';
 
+export const MEDICATION_REMINDER_CATEGORY = 'medication-reminder';
+export const MEDICATION_TAKEN_ACTION = 'medication-taken';
+export const MEDICATION_SKIP_ACTION = 'medication-skip';
+
+export type AppNotificationPermission = 'granted' | 'denied' | 'undetermined';
+
 let initialized = false;
 let hasShownDeniedToast = false;
+
+/**
+ * Idempotent Android channel setup. Exposed separately because reminder
+ * scheduling can run from a background task, where `initNotifications`
+ * (invoked from App startup) may not have run in the current JS context.
+ */
+export async function ensureMedicationReminderChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
+    name: 'Medication reminders',
+    importance: Notifications.AndroidImportance.HIGH,
+    enableVibrate: true,
+  });
+}
 
 /**
  * Updates the app-local notifications toggle (backed by appPreferencesStore,
@@ -38,18 +57,51 @@ export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
   }
 }
 
+/**
+ * Updates the rest-timer notification toggle. Turning it off also cancels any
+ * pending rest-complete ping so one scheduled mid-rest doesn't still fire.
+ */
+export async function setRestTimerNotificationsEnabled(enabled: boolean): Promise<void> {
+  useAppPreferencesStore.getState().setRestTimerNotificationsEnabled(enabled);
+  if (!enabled) {
+    await cancelScheduledRestNotifications();
+  }
+}
+
+async function cancelScheduledRestNotifications(): Promise<void> {
+  try {
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      pending
+        .filter((n) => n.content.categoryIdentifier === REST_COMPLETE_CATEGORY)
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    );
+  } catch (err) {
+    addLog(`cancelScheduledRestNotifications failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
 export async function initNotifications(): Promise<void> {
   if (initialized) return;
   initialized = true;
 
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: false,
-        shouldShowList: false,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
+      handleNotification: async (notification) => {
+        const category = notification.request.content.categoryIdentifier;
+        const isMedReminder = category === MEDICATION_REMINDER_CATEGORY;
+        // While the in-app chime owns the foreground rest cue, the rest ping's
+        // notification sound is muted so the two never double up; turning the
+        // chime off restores it.
+        const restPingMuted =
+          category === REST_COMPLETE_CATEGORY && isRestTimerSoundEnabled();
+        return {
+          shouldShowBanner: isMedReminder,
+          shouldShowList: isMedReminder,
+          shouldPlaySound: !restPingMuted,
+          shouldSetBadge: false,
+        };
+      },
     });
 
     if (Platform.OS === 'android') {
@@ -63,6 +115,7 @@ export async function initNotifications(): Promise<void> {
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
       });
+      await ensureMedicationReminderChannel();
     }
 
     // "Complete Set" button on the rest-complete ping. The press is handled
@@ -72,6 +125,19 @@ export async function initNotifications(): Promise<void> {
       {
         identifier: COMPLETE_SET_ACTION,
         buttonTitle: 'Complete Set',
+        options: { opensAppToForeground: false },
+      },
+    ]);
+
+    await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
+      {
+        identifier: MEDICATION_TAKEN_ACTION,
+        buttonTitle: 'Log as taken',
+        options: { opensAppToForeground: false },
+      },
+      {
+        identifier: MEDICATION_SKIP_ACTION,
+        buttonTitle: 'Skip',
         options: { opensAppToForeground: false },
       },
     ]);
@@ -104,24 +170,65 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   }
 }
 
+export async function hasNotificationPermission(): Promise<boolean> {
+  return (await getNotificationPermissionStatus()) === 'granted';
+}
+
+export async function getNotificationPermissionStatus(): Promise<AppNotificationPermission> {
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.status === 'granted') return 'granted';
+    if (current.status === 'denied') return 'denied';
+    return 'undetermined';
+  } catch (err) {
+    addLog(`getNotificationPermissionStatus failed: ${(err as Error).message}`, 'ERROR');
+    return 'undetermined';
+  }
+}
+
+export async function openSystemNotificationSettings(): Promise<void> {
+  try {
+    await Linking.openSettings();
+  } catch (err) {
+    addLog(`openSystemNotificationSettings failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
+/**
+ * Request notification permission without any interstitial UI. The OS shows
+ * its prompt only while the status is undetermined; once denied or granted
+ * this resolves with the current status silently — after a denial only system
+ * settings can change it.
+ */
+export async function requestNotificationPermission(): Promise<AppNotificationPermission> {
+  try {
+    const requested = await Notifications.requestPermissionsAsync();
+    if (requested.status === 'granted') return 'granted';
+    return requested.status === 'denied' ? 'denied' : 'undetermined';
+  } catch (err) {
+    addLog(`requestNotificationPermission failed: ${(err as Error).message}`, 'ERROR');
+    return 'undetermined';
+  }
+}
+
 /**
  * One-time Android prompt for the "Alarms & reminders" special access.
  * Without it, expo-notifications schedules inexact alarms that the OS batches
- * ~15s late, so the rest-complete ping lags the actual deadline. Denied by
- * default on Android 13+; only the user can grant it, via system settings.
+ * ~15s late, so rest-complete pings and medication reminders lag their
+ * deadline. Denied by default on Android 13+; only the user can grant it,
+ * via system settings.
  */
 export async function maybePromptForExactAlarmPermission(): Promise<void> {
   if (!ExactAlarmBridge.isAvailable) return;
   if (!useAppPreferencesStore.getState().notificationsEnabled) return;
   try {
-    const current = await Notifications.getPermissionsAsync();
-    if (current.status !== 'granted') return;
+    if (!(await hasNotificationPermission())) return;
     if (await ExactAlarmBridge.canScheduleExactAlarms()) return;
     if ((await AsyncStorage.getItem(EXACT_ALARM_PROMPT_KEY)) === 'true') return;
     await AsyncStorage.setItem(EXACT_ALARM_PROMPT_KEY, 'true');
     Alert.alert(
-      'On-time rest alerts',
-      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers ring on time.',
+      'On-time alerts',
+      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers and medication reminders ring on time.',
       [
         { text: 'Not Now', style: 'cancel' },
         {
@@ -152,7 +259,8 @@ export async function scheduleRestNotification(
   seconds: number,
   content?: { title?: string; body?: string },
 ): Promise<string | null> {
-  if (!useAppPreferencesStore.getState().notificationsEnabled) return null;
+  const prefs = useAppPreferencesStore.getState();
+  if (!prefs.notificationsEnabled || !prefs.restTimerNotificationsEnabled) return null;
 
   const granted = await ensureNotificationPermission();
   if (!granted) return null;
@@ -228,7 +336,8 @@ export function addNotificationResponseListener(
 export async function scheduleFastGoalNotification(
   targetEndTime: string,
 ): Promise<string | null> {
-  if (!useAppPreferencesStore.getState().notificationsEnabled) return null;
+  const prefs = useAppPreferencesStore.getState();
+  if (!prefs.notificationsEnabled || !prefs.fastingGoalNotificationsEnabled) return null;
 
   const target = new Date(targetEndTime);
   if (Number.isNaN(target.getTime()) || target.getTime() <= Date.now()) {
@@ -283,8 +392,10 @@ export async function cancelAllScheduledNotifications(): Promise<void> {
   }
 }
 
-export function fireRestCompleteHaptic(): void {
+/** Haptic + optional foreground chime for the resting → ready flip. */
+export function fireRestCompleteCue(): void {
   fireSuccessHaptic();
+  playRestCompleteSound();
 }
 
 /** Test-only helper — resets module-level state and the preferences store. */

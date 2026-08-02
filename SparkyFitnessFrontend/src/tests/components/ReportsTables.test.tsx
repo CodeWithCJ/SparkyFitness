@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import ReportsTables from '@/pages/Reports/ReportsTables';
+import type { DailyExerciseEntry } from '@/types/reports';
 
 let mockShowNetCarbs = false;
 
@@ -48,11 +49,29 @@ const baseEntry = {
   fat: 0,
 };
 
-const renderTable = () =>
+const durationOnlyExerciseEntry = {
+  id: 'entry-1',
+  entry_date: '2026-05-15',
+  duration_minutes: 3,
+  calories_burned: 20,
+  exercises: { id: 'exercise-1', name: 'Plank' },
+  sets: [
+    {
+      id: 'set-1',
+      set_number: 1,
+      set_type: 'Working Set',
+      reps: null,
+      weight: null,
+      duration: 45,
+    },
+  ],
+} as unknown as DailyExerciseEntry;
+
+const renderTable = (exerciseEntries: DailyExerciseEntry[] = []) =>
   render(
     <ReportsTables
       tabularData={[baseEntry]}
-      exerciseEntries={[]}
+      exerciseEntries={exerciseEntries}
       measurementData={[]}
       customCategories={[]}
       customMeasurementsData={[]}
@@ -86,5 +105,27 @@ describe('ReportsTables net carbs', () => {
     const cells = screen.getAllByRole('cell');
     const netCell = cells.find((c) => within(c).queryByText('22.0') !== null);
     expect(netCell).toBeDefined();
+  });
+});
+
+describe('ReportsTables duration-only exercise sets', () => {
+  it('renders a dash for the rep range instead of a bogus 0 - 0', () => {
+    renderTable([durationOnlyExerciseEntry]);
+
+    const cells = screen.getAllByRole('cell');
+    expect(cells.some((c) => c.textContent === '-')).toBe(true);
+    expect(cells.some((c) => c.textContent?.includes('0 - 0'))).toBe(false);
+    expect(cells.some((c) => c.textContent?.includes('NaN'))).toBe(false);
+  });
+
+  it('renders dashes for avg weight and tonnage instead of a bogus 0 lbs', () => {
+    renderTable([durationOnlyExerciseEntry]);
+
+    const cells = screen.getAllByRole('cell');
+    expect(cells.some((c) => c.textContent?.includes('lbs'))).toBe(false);
+    // Rep range, avg weight, and tonnage all fall back to the dash.
+    expect(
+      cells.filter((c) => c.textContent === '-').length
+    ).toBeGreaterThanOrEqual(3);
   });
 });

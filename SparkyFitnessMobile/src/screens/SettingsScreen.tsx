@@ -2,9 +2,9 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, type CompositeScreenProps } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
-import { useServerConnection, useServerConfigs, usePreferences, queryClient, useCycleMode } from '../hooks';
+import { useServerConnection, useServerConfigs, usePreferences, queryClient } from '../hooks';
 import DevTools from '../components/DevTools';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
@@ -16,7 +16,8 @@ import { loadLastSyncedTime } from '../services/storage';
 import { formatRelativeTime } from '../utils/dateUtils';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
-import type { CompositeScreenProps } from '@react-navigation/native';
+import { useDiscreetMode } from '../hooks/useDiscreetMode';
+
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
@@ -36,7 +37,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { isConnected } = useServerConnection();
   const { activeConfig } = useServerConfigs();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
-  const { discreetMode } = useCycleMode();
+  const { discreetMode } = useDiscreetMode();
   const [isSharing, setIsSharing] = useState<boolean>(false);
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
 
@@ -162,18 +163,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             />
 
             <SettingsRowGroup>
-              {isConnected && activeConfig?.authType === 'session' && (
-                <SettingsRow
-                  icon="fingerprint"
-                  title="Passkeys"
-                  onPress={() => navigation.navigate('PasskeySettings')}
-                  iconColor={catSlate}
-                />
-              )}
+              <SettingsRow
+                icon="app-settings"
+                title="App Settings"
+                onPress={() => navigation.navigate('AppSettings')}
+                iconColor={catViolet}
+              />
               {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"
-                  title="Calorie & BMR Settings"
+                  title="Calories & BMR"
                   onPress={() => navigation.navigate('CalorieSettings')}
                   iconColor={catCalories}
                 />
@@ -181,7 +180,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="food-search-settings"
-                  title="Food Settings"
+                  title="Food"
                   onPress={() => navigation.navigate('FoodSettings')}
                   iconColor={catOrange}
                 />
@@ -189,7 +188,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="dashboard-settings"
-                  title="Dashboard Settings"
+                  title="Dashboard"
                   onPress={() => navigation.navigate('DashboardSettings')}
                   iconColor={macroGreen}
                 />
@@ -197,7 +196,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="diary-settings"
-                  title="Diary Settings"
+                  title="Diary"
                   onPress={() => navigation.navigate('DiarySettings')}
                   iconColor={catTeal}
                 />
@@ -205,22 +204,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="wellness"
-                  title={discreetMode ? 'Wellness Settings' : 'Cycle & Pregnancy'}
+                  title={discreetMode ? 'Wellness' : 'Cycle & Pregnancy'}
                   onPress={() => navigation.navigate('CycleSettings')}
                   iconColor={catPink}
                 />
               )}
               <SettingsRow
                 icon="workout-settings"
-                title="Workout Settings"
+                title="Workout"
                 onPress={() => navigation.navigate('WorkoutSettings')}
                 iconColor={catBlue}
-              />
-              <SettingsRow
-                icon="app-settings"
-                title="App Settings"
-                onPress={() => navigation.navigate('AppSettings')}
-                iconColor={catViolet}
               />
             </SettingsRowGroup>
 

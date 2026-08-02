@@ -24,7 +24,11 @@ import {
   ExerciseCategory,
 } from '@/constants/exercises';
 import { useState } from 'react';
-import { toHourMinute } from '@workspace/shared';
+import {
+  resolveExerciseModality,
+  setsDurationMinutes,
+} from '@workspace/shared';
+import { formatTimeOfDayString } from '@/utils/timeFormatters';
 
 interface ExerciseEntryDisplayProps {
   exerciseEntry: ExerciseEntry;
@@ -74,8 +78,13 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
   convertEnergy,
   getEnergyUnitString,
 }) => {
-  const { weightUnit } = usePreferences();
+  const { weightUnit, distanceUnit, convertDistance, timeFormat } =
+    usePreferences();
   const snapshot = exerciseEntry.exercise_snapshot;
+
+  // Distances are stored in km; render in the user's display unit.
+  const formatDistance = (km: number) =>
+    `${convertDistance(km, 'km', distanceUnit).toFixed(2)} ${distanceUnit}`;
 
   const [imageError, setImageError] = useState(false);
   const sourceBadge = snapshot?.source
@@ -89,14 +98,11 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
       : null;
 
   const isActiveCalories = snapshot?.name === 'Active Calories';
+  const isTimed =
+    resolveExerciseModality(snapshot?.modality, snapshot?.category) ===
+    'duration';
 
-  const setsDuration =
-    exerciseEntry.sets && exerciseEntry.sets.length > 0
-      ? exerciseEntry.sets.reduce(
-          (sum, set) => sum + (set.duration || 0) + (set.rest_time || 0) / 60,
-          0
-        )
-      : 0;
+  const setsDuration = setsDurationMinutes(exerciseEntry.sets);
   // Sets carry their own timers (planks, holds, rest). When those sum to 0
   // (e.g. pure rep-based sets synced from Hevy), fall back to the entry-level
   // duration_minutes so the workout's session time still surfaces.
@@ -174,7 +180,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           </span>
           {exerciseEntry.entry_time && (
             <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
-              {toHourMinute(exerciseEntry.entry_time)}
+              {formatTimeOfDayString(exerciseEntry.entry_time, timeFormat)}
             </span>
           )}
           {sourceBadge && (
@@ -195,6 +201,12 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           ) : (
             <>
               <span>{durationDisplay}</span>
+              {exerciseEntry.distance != null && (
+                <>
+                  <span className="text-gray-300 dark:text-gray-600">·</span>
+                  <span>{formatDistance(exerciseEntry.distance)}</span>
+                </>
+              )}
               <span className="text-gray-300 dark:text-gray-600">·</span>
               <span className="text-orange-600 dark:text-orange-400 font-medium">
                 {caloriesDisplay}
@@ -214,9 +226,18 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           <div className="flex flex-wrap gap-1 mb-1.5">
             {exerciseEntry.sets!.map((set, index) => {
               const parts: string[] = [];
-              if (Number.isFinite(set.reps)) parts.push(`${set.reps} reps`);
+              if (Number.isFinite(set.reps))
+                parts.push(
+                  // Isometric sets predating the duration column stored their hold in `reps`.
+                  isTimed && set.duration == null
+                    ? `${set.reps}s`
+                    : `${set.reps} reps`
+                );
               if (set.weight && Number.isFinite(set.weight))
                 parts.push(formatWeight(set.weight, weightUnit));
+              if (set.duration != null) parts.push(`${set.duration}s`);
+              if (set.distance != null)
+                parts.push(formatDistance(set.distance));
               if (Number.isFinite(set.rpe)) parts.push(`RPE ${set.rpe}`);
               if (parts.length === 0) return null;
               return (

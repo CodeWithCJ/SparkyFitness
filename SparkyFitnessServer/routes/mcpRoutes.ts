@@ -147,4 +147,12 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.get('/', (_req, res) => {
+  res.set('Allow', 'POST').status(405).end();
+});
+
+router.delete('/', (_req, res) => {
+  res.set('Allow', 'POST').status(405).end();
+});
+
 export default router;

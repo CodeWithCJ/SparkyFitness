@@ -1,5 +1,6 @@
 export const backupKeys = {
   all: ['backupSettings'] as const,
+  list: () => ['backupSettings', 'files'] as const,
 };
 export const oidcKeys = {
   all: ['oidc-providers'] as const,

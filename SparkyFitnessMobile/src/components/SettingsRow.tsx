@@ -7,12 +7,16 @@ const SettingsRowGroupContext = createContext<{ grouped: boolean }>({ grouped: f
 
 interface SettingsRowGroupProps {
   children: React.ReactNode;
+  title?: string;
+  subtitle?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   className?: string;
 }
 
 export const SettingsRowGroup: React.FC<SettingsRowGroupProps> = ({
   children,
+  title,
+  subtitle,
   style,
   className = '',
 }) => {
@@ -20,6 +24,16 @@ export const SettingsRowGroup: React.FC<SettingsRowGroupProps> = ({
   return (
     <SettingsRowGroupContext.Provider value={{ grouped: true }}>
       <View className={`bg-surface rounded-xl mb-4 shadow-sm ${className}`} style={style}>
+        {title && (
+          <View className="px-4 pt-3 pb-1">
+            <Text className="text-xs font-bold text-text-secondary uppercase tracking-wider">{title}</Text>
+            {typeof subtitle === 'string' ? (
+              <Text className="text-xs text-text-secondary mt-0.5">{subtitle}</Text>
+            ) : subtitle ? (
+              <View className="mt-0.5">{subtitle}</View>
+            ) : null}
+          </View>
+        )}
         {items.map((child, i) => (
           <React.Fragment key={i}>
             {child}
@@ -35,6 +49,8 @@ interface SettingsRowProps {
   icon?: IconName;
   title: string;
   subtitle?: React.ReactNode;
+  /** Line clamp for string subtitles; 0 lets the text wrap freely. */
+  subtitleNumberOfLines?: number;
   onPress?: () => void;
   rightAccessory?: React.ReactNode;
   iconColor?: string;
@@ -48,6 +64,7 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
   icon,
   title,
   subtitle,
+  subtitleNumberOfLines = 1,
   onPress,
   rightAccessory,
   iconColor,
@@ -89,7 +106,7 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
         {typeof subtitle === 'string' ? (
           <Text
             className="text-sm text-text-secondary mt-0.5"
-            numberOfLines={1}
+            numberOfLines={subtitleNumberOfLines}
             ellipsizeMode="middle"
           >
             {subtitle}

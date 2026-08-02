@@ -11,6 +11,7 @@ import { createWorkout } from '../../src/services/api/exerciseApi';
 import { invalidateExerciseCache } from '../../src/hooks/invalidateExerciseCache';
 import { ensureNotificationPermission } from '../../src/services/notifications';
 import { flushActiveWorkoutBeforeClear } from '../../src/hooks/useActiveWorkoutAutosave';
+import { getActiveServerConfig } from '../../src/services/storage';
 import { serverConnectionQueryKey } from '../../src/hooks/queryKeys';
 import { defaultWorkoutName } from '../../src/hooks/useWorkoutForm';
 import { getTodayDate } from '../../src/utils/dateUtils';
@@ -30,11 +31,16 @@ jest.mock('../../src/services/notifications', () => ({
   maybePromptForExactAlarmPermission: jest.fn(async () => undefined),
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
   cancelScheduledNotification: jest.fn(async () => undefined),
-  fireRestCompleteHaptic: jest.fn(),
+  fireRestCompleteCue: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({
   flushActiveWorkoutBeforeClear: jest.fn(async () => true),
+}));
+
+jest.mock('../../src/services/storage', () => ({
+  ...jest.requireActual('../../src/services/storage'),
+  getActiveServerConfig: jest.fn(),
 }));
 
 const mockCreateWorkout = createWorkout as jest.MockedFunction<typeof createWorkout>;
@@ -48,8 +54,15 @@ const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 const mockFlushBeforeClear = flushActiveWorkoutBeforeClear as jest.MockedFunction<
   typeof flushActiveWorkoutBeforeClear
 >;
+const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
+  typeof getActiveServerConfig
+>;
 
-const EXERCISES = buildSingleExerciseStartPayload({ id: 'ex-1' });
+const EXERCISES = buildSingleExerciseStartPayload({
+  id: 'ex-1',
+  modality: null,
+  category: null,
+});
 
 function makeSession(): PresetSessionResponse {
   return {
@@ -150,17 +163,20 @@ describe('useStartLiveWorkout', () => {
     expect(navigation.replace).toHaveBeenCalledWith('ActiveWorkout');
   });
 
-  it('strips planned weight/reps from the create payload and seeds them as the store plan', async () => {
+  it('strips planned weight/reps/duration from the create payload and seeds them as the store plan', async () => {
     const { result } = setup();
     const plannedExercises = [
       {
         ...EXERCISES[0],
-        sets: [{ ...EXERCISES[0].sets[0], weight: 80, reps: 5 }],
+        sets: [{ ...EXERCISES[0].sets[0], weight: 80, reps: 5, duration: 90 }],
       },
     ];
 
     await act(async () => {
-      await result.current.startLiveWorkout({ name: 'Push Day', exercises: plannedExercises });
+      await result.current.startLiveWorkout({
+        name: 'Push Day',
+        exercises: plannedExercises,
+      });
     });
 
     // Sets are created empty — the plan is an assumption, not a result.
@@ -168,15 +184,55 @@ describe('useStartLiveWorkout', () => {
       expect.objectContaining({
         exercises: [
           expect.objectContaining({
-            sets: [expect.objectContaining({ weight: null, reps: null })],
+            sets: [
+              expect.objectContaining({
+                weight: null,
+                reps: null,
+                duration: null,
+                distance: null,
+              }),
+            ],
           }),
         ],
       }),
     );
     // The plan lands keyed to the created session's set ids for placeholders.
     expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
-      '101': { weight: 80, reps: 5 },
+      '101': { weight: 80, reps: 5, duration: 90, distance: null },
     });
+  });
+
+  it('forwards the source preset link with the active server config id into the store', async () => {
+    const { result } = setup();
+    mockGetActiveServerConfig.mockResolvedValue({
+      id: 'config-1',
+      url: 'https://example.com',
+      apiKey: 'key',
+    });
+
+    await act(async () => {
+      await result.current.startLiveWorkout({
+        name: 'Push Day',
+        exercises: EXERCISES,
+        sourcePresetId: 42,
+      });
+    });
+
+    const store = useActiveWorkoutStore.getState();
+    expect(store.sourcePresetId).toBe(42);
+    expect(store.sourceServerConfigId).toBe('config-1');
+  });
+
+  it('leaves the source preset link null for starts without a preset', async () => {
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
+    });
+
+    expect(mockGetActiveServerConfig).not.toHaveBeenCalled();
+    expect(useActiveWorkoutStore.getState().sourcePresetId).toBeNull();
+    expect(useActiveWorkoutStore.getState().sourceServerConfigId).toBeNull();
   });
 
   it('defaults the name to the dated workout name when omitted', async () => {

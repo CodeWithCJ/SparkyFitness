@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 2fch36TUbeX3PUGdkdRgGe8u0dKG2Unn4XZdchelSlLo04dOsNOWRB0uSPwFIfm
+\restrict urj2OAVFvPTJdH8PZAYX8q12SbkE440UOncTimowmwwqIEbZV4TD3kGkjkfAIU8
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1506,7 +1506,9 @@ CREATE TABLE public.exercise_entries (
     steps integer,
     water_estimated integer,
     superset_group integer,
-    entry_time time without time zone
+    entry_time time without time zone,
+    modality text,
+    CONSTRAINT exercise_entries_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'duration'::text, 'duration_distance'::text])))
 );
 
 
@@ -1561,14 +1563,15 @@ CREATE TABLE public.exercise_entry_sets (
     set_type text DEFAULT 'Working Set'::text,
     reps integer,
     weight numeric(10,2),
-    duration numeric,
+    duration integer,
     rest_time integer,
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     rpe numeric(3,1),
     completed_at timestamp with time zone,
-    is_pr boolean DEFAULT false NOT NULL
+    is_pr boolean DEFAULT false NOT NULL,
+    distance numeric
 );
 
 
@@ -1658,7 +1661,9 @@ CREATE TABLE public.exercises (
     secondary_muscles text,
     instructions text,
     images text,
-    is_quick_exercise boolean DEFAULT false
+    is_quick_exercise boolean DEFAULT false,
+    modality text DEFAULT 'weight_reps'::text NOT NULL,
+    CONSTRAINT exercises_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'duration'::text, 'duration_distance'::text])))
 );
 
 
@@ -1820,7 +1825,8 @@ CREATE TABLE public.food_entries (
     source character varying(50),
     source_id character varying(255),
     entry_time time without time zone,
-    CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL))))
+    CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
+    CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
 );
 
 
@@ -1909,6 +1915,7 @@ CREATE TABLE public.food_favorites (
     CONSTRAINT food_favorites_one_target CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL))))
 );
 
+
 --
 -- Name: food_variants; Type: TABLE; Schema: public; Owner: -
 --
@@ -1946,6 +1953,7 @@ CREATE TABLE public.food_variants (
     traces text[],
     CONSTRAINT food_variants_ai_confidence_check CHECK (((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL))),
     CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
+    CONSTRAINT food_variants_serving_size_positive CHECK ((serving_size > (0)::numeric)),
     CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))
 );
 
@@ -3302,9 +3310,11 @@ CREATE TABLE public.user_preferences (
     measurement_decimal_places integer DEFAULT 0 NOT NULL,
     active_vision_ai_service_id uuid,
     added_sugar_algorithm text DEFAULT 'WHO_IDEAL'::text NOT NULL,
+    time_format text DEFAULT 'h:mm A'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
-    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
+    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text))),
+    CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text])))
 );
 
 
@@ -3549,7 +3559,7 @@ CREATE TABLE public.workout_plan_assignment_sets (
     set_type text DEFAULT 'Working Set'::text,
     reps integer,
     weight numeric(10,2),
-    duration numeric,
+    duration integer,
     rest_time integer,
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
@@ -3662,11 +3672,12 @@ CREATE TABLE public.workout_preset_exercise_sets (
     set_type text DEFAULT 'Working Set'::text,
     reps integer,
     weight numeric(10,2),
-    duration numeric,
+    duration integer,
     rest_time integer,
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    distance numeric
 );
 
 
@@ -3797,6 +3808,17 @@ CREATE SEQUENCE system.schema_migrations_id_seq
 --
 
 ALTER SEQUENCE system.schema_migrations_id_seq OWNED BY system.schema_migrations.id;
+
+
+--
+-- Name: set_duration_premigration_backup; Type: TABLE; Schema: system; Owner: -
+--
+
+CREATE TABLE system.set_duration_premigration_backup (
+    table_name text NOT NULL,
+    set_id integer NOT NULL,
+    duration_old numeric NOT NULL
+);
 
 
 --
@@ -4121,6 +4143,7 @@ ALTER TABLE ONLY public.food_entry_meals
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_pkey PRIMARY KEY (id);
 
+
 --
 -- Name: food_favorites food_favorites_unique_food; Type: CONSTRAINT; Schema: public; Owner: -
 --
@@ -4128,12 +4151,14 @@ ALTER TABLE ONLY public.food_favorites
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_unique_food UNIQUE (user_id, food_id);
 
+
 --
 -- Name: food_favorites food_favorites_unique_meal; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_unique_meal UNIQUE (user_id, meal_id);
+
 
 --
 -- Name: food_variants food_variants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -4872,6 +4897,14 @@ ALTER TABLE ONLY system.schema_migrations
 
 
 --
+-- Name: set_duration_premigration_backup set_duration_premigration_backup_pkey; Type: CONSTRAINT; Schema: system; Owner: -
+--
+
+ALTER TABLE ONLY system.set_duration_premigration_backup
+    ADD CONSTRAINT set_duration_premigration_backup_pkey PRIMARY KEY (table_name, set_id);
+
+
+--
 -- Name: idx_magic_link_token; Type: INDEX; Schema: auth; Owner: -
 --
 
@@ -5156,6 +5189,7 @@ CREATE INDEX idx_food_favorites_meal_id ON public.food_favorites USING btree (me
 --
 
 CREATE INDEX idx_food_favorites_user_id ON public.food_favorites USING btree (user_id);
+
 
 --
 -- Name: idx_foods_provider_external_id_provider_type; Type: INDEX; Schema: public; Owner: -
@@ -5554,13 +5588,6 @@ CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries U
 --
 
 CREATE INDEX idx_workout_preset_exercise_sets_preset_exercise_id ON public.workout_preset_exercise_sets USING btree (workout_preset_exercise_id);
-
-
---
--- Name: one_active_meal_plan_per_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX one_active_meal_plan_per_user ON public.meal_plan_templates USING btree (user_id) WHERE (is_active = true);
 
 
 --
@@ -6329,11 +6356,20 @@ ALTER TABLE ONLY public.food_entry_meals
 
 
 --
+-- Name: food_entry_meals food_entry_meals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entry_meals
+    ADD CONSTRAINT food_entry_meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: food_favorites food_favorites_food_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_food_id_fkey FOREIGN KEY (food_id) REFERENCES public.foods(id) ON DELETE CASCADE;
+
 
 --
 -- Name: food_favorites food_favorites_meal_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -6342,19 +6378,13 @@ ALTER TABLE ONLY public.food_favorites
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_meal_id_fkey FOREIGN KEY (meal_id) REFERENCES public.meals(id) ON DELETE CASCADE;
 
+
 --
 -- Name: food_favorites food_favorites_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
-
---
--- Name: food_entry_meals food_entry_meals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.food_entry_meals
-    ADD CONSTRAINT food_entry_meals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7427,6 +7457,7 @@ ALTER TABLE public.food_entry_meals ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.food_favorites ENABLE ROW LEVEL SECURITY;
+
 --
 -- Name: food_variants; Type: ROW SECURITY; Schema: public; Owner: -
 --
@@ -7663,6 +7694,7 @@ CREATE POLICY modify_policy ON public.food_entry_meals USING (public.has_diary_a
 --
 
 CREATE POLICY modify_policy ON public.food_favorites USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
 
 --
 -- Name: food_variants modify_policy; Type: POLICY; Schema: public; Owner: -
@@ -8334,6 +8366,7 @@ CREATE POLICY select_policy ON public.food_entry_meals FOR SELECT USING (public.
 --
 
 CREATE POLICY select_policy ON public.food_favorites FOR SELECT USING (public.has_diary_read_access(user_id));
+
 
 --
 -- Name: food_variants select_policy; Type: POLICY; Schema: public; Owner: -
@@ -9543,9 +9576,9 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO "sparky ua
 -- Name: TABLE food_favorites; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO "sparky uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO "sparky-uat";
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO sparky_uat;
 
 
 --
@@ -10326,5 +10359,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 2fch36TUbeX3PUGdkdRgGe8u0dKG2Unn4XZdchelSlLo04dOsNOWRB0uSPwFIfm
+\unrestrict urj2OAVFvPTJdH8PZAYX8q12SbkE440UOncTimowmwwqIEbZV4TD3kGkjkfAIU8
 

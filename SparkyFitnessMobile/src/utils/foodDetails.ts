@@ -138,15 +138,15 @@ export function hasMeaningfulDescription(
 }
 
 /**
- * Compare two variants by value using serving_size + serving_unit.
- * The API may return the same variant in both default_variant and variants[]
- * as separate object references — reference equality (===) fails.
+ * Compare two variants by their persisted serving identity. Provider variants
+ * can share size/unit while differing by an explicit metric package weight.
  */
-export function isSameVariant(
-  a: { serving_size: number; serving_unit: string },
-  b: { serving_size: number; serving_unit: string },
-): boolean {
-  return a.serving_size === b.serving_size && a.serving_unit === b.serving_unit;
+export function isSameVariant(a: ServingIdentity, b: ServingIdentity): boolean {
+  if (servingVariantKey(a) === servingVariantKey(b)) return true;
+  if (baseServingVariantKey(a) !== baseServingVariantKey(b)) return false;
+  return !(
+    hasDistinctMetricServingContext(a) && hasDistinctMetricServingContext(b)
+  );
 }
 
 export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
@@ -523,12 +523,64 @@ export function buildExternalUnitVariants(
   );
 }
 
+export interface ServingIdentity {
+  serving_size?: number;
+  serving_unit?: string;
+  serving_description?: string | null;
+}
+
+const METRIC_SERVING_UNIT_PATTERN = /^(?:g|kg|ml|l)$/i;
+const METRIC_CONTEXT_PATTERN =
+  /\(\s*(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l)\s*\)\s*$/i;
+
+export function toPersistedServingUnit(variant: ServingIdentity): string {
+  const servingUnit = variant.serving_unit?.trim() || 'serving';
+  if (
+    METRIC_SERVING_UNIT_PATTERN.test(servingUnit) ||
+    METRIC_CONTEXT_PATTERN.test(servingUnit)
+  ) {
+    return servingUnit;
+  }
+
+  const metricContext = variant.serving_description
+    ?.trim()
+    .match(METRIC_CONTEXT_PATTERN);
+  if (!metricContext) return servingUnit;
+
+  const [, amount, unit] = metricContext;
+  return `${servingUnit} (${amount} ${unit.toLowerCase()})`;
+}
+
+function normalizeServingUnitKey(servingUnit: string): string {
+  return servingUnit.replace(/\s+/g, '').toLowerCase();
+}
+
+export function servingVariantKey(variant: ServingIdentity): string {
+  return `${variant.serving_size}:${normalizeServingUnitKey(
+    toPersistedServingUnit(variant),
+  )}`;
+}
+
+export function baseServingVariantKey(variant: ServingIdentity): string {
+  const servingUnit = toPersistedServingUnit(variant).replace(
+    /\s+\(\s*\d+(?:[.,]\d+)?\s*(?:g|kg|ml|l)\s*\)\s*$/i,
+    '',
+  );
+  return `${variant.serving_size}:${normalizeServingUnitKey(servingUnit)}`;
+}
+
+export function hasDistinctMetricServingContext(
+  variant: ServingIdentity,
+): boolean {
+  return servingVariantKey(variant) !== baseServingVariantKey(variant);
+}
+
 export function buildCreateFoodVariantInput(
   variant: FoodUnitVariant,
 ): Omit<CreateFoodVariantPayload, 'food_id'> {
   return {
     serving_size: variant.serving_size,
-    serving_unit: variant.serving_unit,
+    serving_unit: toPersistedServingUnit(variant),
     calories: variant.calories,
     protein: variant.protein,
     carbs: variant.carbs,
@@ -629,23 +681,51 @@ export interface VariantGroup<T extends FoodVariantDetail = FoodVariantDetail> {
   equivalents: EquivalentUnit[];
 }
 
-export function groupEquivalentVariants<T extends FoodVariantDetail>(
-  variants: T[] | undefined,
-): VariantGroup<T>[] {
+function hasConflictingMetricServingContext(
+  a: ServingIdentity,
+  b: ServingIdentity,
+): boolean {
+  return (
+    hasDistinctMetricServingContext(a) &&
+    hasDistinctMetricServingContext(b) &&
+    baseServingVariantKey(a) === baseServingVariantKey(b) &&
+    servingVariantKey(a) !== servingVariantKey(b)
+  );
+}
+
+export function groupEquivalentVariants<
+  T extends FoodVariantDetail & ServingIdentity = FoodVariantDetail,
+>(variants: T[] | undefined): VariantGroup<T>[] {
   const groups: VariantGroup<T>[] = [];
   for (const variant of variants ?? []) {
-    const match = groups.find(g => nutritionMatches(g.base, variant));
+    const match = groups.find(
+      g =>
+        nutritionMatches(g.base, variant) &&
+        !hasConflictingMetricServingContext(g.base, variant),
+    );
     if (match) {
-      // Promote the non-reference variant to base when a reference serving
+      // Prefer a context-rich persisted serving over its matching legacy row so
+      // variants such as package (200 g) and package (400 g) remain separate
+      // visible options even when the undecorated package row was loaded first.
+      const shouldPromoteMetricContext =
+        !hasDistinctMetricServingContext(match.base) &&
+        hasDistinctMetricServingContext(variant) &&
+        baseServingVariantKey(match.base) === baseServingVariantKey(variant);
+
+      // Also promote a non-reference variant when a reference serving
       // (100g/100ml) was matched first — the picker option should carry the
-      // user-friendly name (e.g. \"piece\") with the metric equivalent inline,
+      // user-friendly name (e.g. "piece") with the metric equivalent inline,
       // not the other way around. Without this swap, the reference variant
       // becomes the lone base option and the selected non-reference variant
-      // is pushed into a fallback, producing a duplicate \"gram entry\" in the
+      // is pushed into a fallback, producing a duplicate "gram entry" in the
       // picker alongside the correct serving.
       if (
-        isReferenceServing(match.base.serving_size, match.base.serving_unit) &&
-        !isReferenceServing(variant.serving_size, variant.serving_unit)
+        shouldPromoteMetricContext ||
+        (isReferenceServing(
+          match.base.serving_size,
+          match.base.serving_unit,
+        ) &&
+          !isReferenceServing(variant.serving_size, variant.serving_unit))
       ) {
         match.equivalents.push(toEquivalentUnit(match.base));
         match.base = variant;
@@ -653,17 +733,21 @@ export function groupEquivalentVariants<T extends FoodVariantDetail>(
         match.equivalents.push(toEquivalentUnit(variant));
       }
     } else {
-      // Fallback: same serving size/unit but different nutrition (e.g. rounding)
-      // — still treat as equivalents so they don't appear as duplicate picker
-      // entries. This handles Yazio data where \"portion (150 g)\" and \"150 g\"
-      // have identical portion size but slightly different stored nutrient values.
-      const sizeMatch = groups.find(
-        g =>
-          g.base.serving_size === variant.serving_size &&
-          g.base.serving_unit === variant.serving_unit,
-      );
+      // Fallback: the same persisted serving identity with different nutrition
+      // (for example provider rounding) is still one picker option.
+      const sizeMatch = groups.find(g => isSameVariant(g.base, variant));
       if (sizeMatch) {
-        sizeMatch.equivalents.push(toEquivalentUnit(variant));
+        const shouldPromoteMetricContext =
+          !hasDistinctMetricServingContext(sizeMatch.base) &&
+          hasDistinctMetricServingContext(variant) &&
+          baseServingVariantKey(sizeMatch.base) ===
+            baseServingVariantKey(variant);
+        if (shouldPromoteMetricContext) {
+          sizeMatch.equivalents.push(toEquivalentUnit(sizeMatch.base));
+          sizeMatch.base = variant;
+        } else {
+          sizeMatch.equivalents.push(toEquivalentUnit(variant));
+        }
       } else {
         groups.push({ base: variant, equivalents: [] });
       }

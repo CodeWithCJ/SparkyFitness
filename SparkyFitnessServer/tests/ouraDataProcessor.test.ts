@@ -346,6 +346,8 @@ describe('processOuraWorkouts', () => {
         duration_minutes: 40,
         calories_burned: 320,
         entry_date: '2026-07-15',
+        // Entry-level duration is minutes; per-set duration is integer seconds.
+        sets: [expect.objectContaining({ duration: 2400 })],
       }),
       CID,
       'Oura'

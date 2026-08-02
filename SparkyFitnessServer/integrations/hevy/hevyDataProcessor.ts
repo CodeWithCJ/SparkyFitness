@@ -337,7 +337,7 @@ async function processSingleWorkout(
         weight: set.weight_kg,
         reps: set.reps,
         duration: set.duration_seconds
-          ? Math.round(set.duration_seconds / 60)
+          ? Math.round(set.duration_seconds)
           : null,
         rpe: set.rpe,
       })),

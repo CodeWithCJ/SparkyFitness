@@ -1,7 +1,9 @@
 import { api } from '@/api/api';
 import {
+  BackupListResponse,
   BackupSettings,
   BackupSettingsMutator,
+  backupListResponseSchema,
   backupSettingsMutatorSchema,
   backupSettingsSchema,
 } from '@workspace/shared';
@@ -24,5 +26,16 @@ export const restoreBackup = async (formData: FormData) => {
   return api.post('/admin/backup/restore', {
     body: formData,
     isFormData: true,
+  });
+};
+
+export const listBackups = async (): Promise<BackupListResponse> => {
+  const response = await api.get('/admin/backup/list');
+  return backupListResponseSchema.parse(response);
+};
+
+export const downloadBackupFile = async (fileName: string): Promise<Blob> => {
+  return api.get(`/admin/backup/download/${encodeURIComponent(fileName)}`, {
+    responseType: 'blob',
   });
 };

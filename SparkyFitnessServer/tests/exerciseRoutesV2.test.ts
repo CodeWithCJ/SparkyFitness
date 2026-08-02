@@ -78,6 +78,7 @@ const SAMPLE_EXERCISE = {
   is_custom: true,
   shared_with_public: false,
   tags: ['private'],
+  modality: 'weight_reps',
 };
 
 describe('GET /v2/exercises/search', () => {
@@ -154,6 +155,22 @@ describe('GET /v2/exercises/search', () => {
       0
     );
     expect(res.body.exercises).toHaveLength(1);
+  });
+
+  // modality is `.optional()` in the shared schema so pre-modality servers
+  // still typecheck, which means only this assertion catches the projection
+  // being dropped from the search SELECT.
+  it('serves modality on search results', async () => {
+    // @ts-expect-error TS(2339): mockResolvedValue not on typ...
+    exerciseService.searchExercisesPaginated.mockResolvedValue({
+      exercises: [{ ...SAMPLE_EXERCISE, modality: 'duration_distance' }],
+      totalCount: 1,
+    });
+
+    const res = await request(app).get('/v2/exercises/search');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.exercises[0].modality).toBe('duration_distance');
   });
 
   it('computes offset for page=2 and reports hasMore correctly', async () => {

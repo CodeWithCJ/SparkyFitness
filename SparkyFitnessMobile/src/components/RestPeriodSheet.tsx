@@ -5,8 +5,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type PropsWithChildren,
 } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
@@ -14,12 +15,20 @@ import {
   BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import { FullWindowOverlay } from 'react-native-screens';
 import { useCSSVariable, useUniwind } from 'uniwind';
 import Button from './ui/Button';
 import CollapsibleSection from './CollapsibleSection';
 import StepperInput from './StepperInput';
 import { formatRestLabel } from './RestPeriodChip';
 import { getDefaultRestSec } from '../utils/workoutSession';
+
+// Render the sheet inside an iOS UIWindow so it sits above any native modal
+// presentation. No-op on Android.
+const sheetContainer =
+  Platform.OS === 'ios'
+    ? ({ children }: PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
+    : undefined;
 
 export const MIN_REST_SEC = 0;
 export const MAX_REST_SEC = 900;
@@ -128,6 +137,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustPan"
+        containerComponent={sheetContainer}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}

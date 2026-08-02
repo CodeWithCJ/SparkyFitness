@@ -19,8 +19,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { XCircle } from 'lucide-react';
-import { EXERCISE_CATEGORIES } from '@/constants/exercises';
+import {
+  EXERCISE_CATEGORIES,
+  EXERCISE_MODALITY_OPTIONS,
+} from '@/constants/exercises';
 import { useEditExerciseForm } from '@/hooks/Exercises/useEditExerciseForm';
+import { isExerciseModality } from '@workspace/shared';
 
 interface EditExerciseDialogProps {
   form: ReturnType<typeof useEditExerciseForm>;
@@ -84,6 +88,32 @@ export default function EditExerciseDialog({ form }: EditExerciseDialogProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {EXERCISE_CATEGORIES.map(
+                    ({ value, labelKey, defaultLabel }) => (
+                      <SelectItem key={value} value={value}>
+                        {t(labelKey, defaultLabel)}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tracking type */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-modality" className="text-right">
+                {t('exercise.addExerciseDialog.modalityLabel', 'Tracking type')}
+              </Label>
+              <Select
+                value={form.editExerciseModality}
+                onValueChange={(v) => {
+                  if (isExerciseModality(v)) form.setEditExerciseModality(v);
+                }}
+              >
+                <SelectTrigger id="edit-modality" className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXERCISE_MODALITY_OPTIONS.map(
                     ({ value, labelKey, defaultLabel }) => (
                       <SelectItem key={value} value={value}>
                         {t(labelKey, defaultLabel)}

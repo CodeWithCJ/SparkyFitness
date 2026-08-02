@@ -1,3 +1,9 @@
+import {
+  deriveExerciseModality,
+  isExerciseModality,
+  resolveExerciseModality,
+} from '@workspace/shared';
+
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import {
@@ -12,7 +18,7 @@ async function getExerciseById(id: any, userId: any) {
       `SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
-              created_at, updated_at
+              modality, created_at, updated_at
        FROM exercises WHERE id = $1`,
       [id]
     );
@@ -76,8 +82,8 @@ async function getOrCreateActiveCaloriesExercise(
     let newExercise;
     try {
       const result = await insertClient.query(
-        `INSERT INTO exercises (user_id, name, category, calories_per_hour, description, is_custom, shared_with_public, source)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        `INSERT INTO exercises (user_id, name, category, calories_per_hour, description, is_custom, shared_with_public, source, modality)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
         [
           userId,
           exerciseName,
@@ -87,6 +93,7 @@ async function getOrCreateActiveCaloriesExercise(
           true,
           false,
           source,
+          deriveExerciseModality('Cardio'),
         ]
       );
       newExercise = result.rows[0];
@@ -177,7 +184,7 @@ async function getExercisesWithPagination(
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
              primary_muscles, secondary_muscles, instructions, category, images,
              calories_per_hour, description, user_id, is_custom, shared_with_public,
-             created_at, updated_at
+             modality, created_at, updated_at
       FROM exercises
       WHERE ${whereClauses.join(' AND ')}
       ORDER BY ${orderClause}
@@ -397,7 +404,8 @@ async function searchExercises(
     const finalQuery = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
-              calories_per_hour, description, user_id, is_custom, shared_with_public
+              calories_per_hour, description, user_id, is_custom, shared_with_public,
+              modality
        FROM exercises
        WHERE ${whereClauses.join(' AND ')}
        ORDER BY ${orderClause}
@@ -495,7 +503,8 @@ async function searchExercisesPaginated(
     const finalQuery = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
-              calories_per_hour, description, user_id, is_custom, shared_with_public
+              calories_per_hour, description, user_id, is_custom, shared_with_public,
+              modality
        FROM exercises
        WHERE ${whereSql}
        ORDER BY ${orderClause}
@@ -545,9 +554,9 @@ async function createExercise(exerciseData: any) {
         source, source_id, name, force, level, mechanic, equipment,
         primary_muscles, secondary_muscles, instructions, category, images,
         calories_per_hour, description, is_custom, user_id, shared_with_public,
-        created_at, updated_at
+        modality, created_at, updated_at
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, now(), now())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, now(), now())
        RETURNING *`,
       [
         exerciseData.source,
@@ -573,6 +582,9 @@ async function createExercise(exerciseData: any) {
         exerciseData.is_custom,
         exerciseData.user_id,
         exerciseData.shared_with_public,
+        // Sanitized here rather than at the route so an arbitrary client string
+        // cannot reach the CHECK constraint as a 500.
+        resolveExerciseModality(exerciseData.modality, exerciseData.category),
       ]
     );
     return result.rows[0];
@@ -601,8 +613,9 @@ async function updateExercise(id: any, userId: any, updateData: any) {
         instructions = COALESCE($13, instructions),
         images = COALESCE($14, images),
         is_quick_exercise = COALESCE($15, is_quick_exercise),
+        modality = COALESCE($16, modality),
         updated_at = now()
-      WHERE id = $16
+      WHERE id = $17
       RETURNING *`,
       [
         updateData.name,
@@ -628,6 +641,9 @@ async function updateExercise(id: any, userId: any, updateData: any) {
         typeof updateData.is_quick_exercise === 'boolean'
           ? updateData.is_quick_exercise
           : null,
+        // Modality is authoritative once set: an omitted or unrecognized value
+        // preserves it, and editing `category` alone never re-derives it.
+        isExerciseModality(updateData.modality) ? updateData.modality : null,
         id,
       ]
     );
@@ -658,7 +674,7 @@ async function getRecentExercises(userId: any, limit: any) {
         e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
         e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
         e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
-        e.created_at, e.updated_at
+        e.modality, e.created_at, e.updated_at
       FROM exercise_entries ee
       JOIN exercises e ON ee.exercise_id = e.id
       WHERE ee.user_id = $1
@@ -666,7 +682,7 @@ async function getRecentExercises(userId: any, limit: any) {
       GROUP BY e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
                e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
                e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
-               e.created_at, e.updated_at
+               e.modality, e.created_at, e.updated_at
       ORDER BY MAX(ee.entry_date) DESC, MAX(ee.created_at) DESC
       LIMIT $2`,
       [userId, limit]
@@ -707,7 +723,7 @@ async function getTopExercises(userId: any, limit: any) {
         e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
         e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
         e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
-        e.created_at, e.updated_at,
+        e.modality, e.created_at, e.updated_at,
         COUNT(ee.exercise_id) AS usage_count
       FROM exercise_entries ee
       JOIN exercises e ON ee.exercise_id = e.id
@@ -716,7 +732,7 @@ async function getTopExercises(userId: any, limit: any) {
       GROUP BY e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
                e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
                e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
-               e.created_at, e.updated_at
+               e.modality, e.created_at, e.updated_at
       ORDER BY usage_count DESC
       LIMIT $2`,
       [userId, limit]
@@ -762,7 +778,7 @@ async function getExerciseBySourceAndSourceId(
       `SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
-              created_at, updated_at
+              modality, created_at, updated_at
        FROM exercises WHERE source = $1 AND source_id = $2 AND user_id = $3`,
       [source, sourceId, userId]
     );
@@ -969,7 +985,7 @@ async function findExerciseByNameAndUserId(name: any, userId: any) {
       `SELECT id, source, source_id, name, force, level, mechanic, equipment,
               primary_muscles, secondary_muscles, instructions, category, images,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
-              created_at, updated_at
+              modality, created_at, updated_at
        FROM exercises WHERE name = $1 AND (user_id = $2 OR shared_with_public = TRUE)`,
       [name, userId]
     );

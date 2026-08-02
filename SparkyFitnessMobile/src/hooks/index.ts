@@ -49,11 +49,12 @@ export {
   cycleDisplayPreferencesQueryKey,
   pregnancyCurrentQueryKey,
   pregnancyOverviewQueryKey,
-  pregnancyKicksQueryKey,
-  pregnancyContractionsQueryKey,
   pregnancyChecklistQueryKey,
-  pregnancyAppointmentsQueryKey,
   pregnancyPhotosQueryKey,
+  medicationsRootQueryKey,
+  medicationsListQueryKey,
+  medicationDetailQueryKey,
+  medicationEntriesQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useServerConfigs } from './useServerConfigs';
@@ -143,4 +144,16 @@ export { useSymptomEntries, useSymptomMutations } from './useSymptoms';
 export { useCycleHistory } from './useCycleHistory';
 export { useCycleOverview, useCycleInsights, useCycleCorrelations } from './useCycleInsights';
 export { useCycleTests, useCycleTestMutations } from './useCycleTests';
+
+// --- Medications ---
+export {
+  useMedications,
+  useMedicationDetail,
+  useMedicationEntries,
+  useCreateMedication,
+  useUpdateMedication,
+  useDeleteMedication,
+  useCreateMedicationEntry,
+  useDeleteMedicationEntry,
+} from './useMedications';
 

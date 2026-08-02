@@ -67,7 +67,8 @@ export const calculateMaxWeightTrendData = (
         }
 
         const currentMaxWeight = Math.max(
-          ...entry.sets.map((set) => set.weight ?? 0)
+          ...entry.sets.map((set) => set.weight ?? 0),
+          0
         );
         existingEntry.maxWeight = Math.max(
           existingEntry.maxWeight,
@@ -80,7 +81,8 @@ export const calculateMaxWeightTrendData = (
 
         if (comparisonEntry) {
           const compMaxWeight = Math.max(
-            ...comparisonEntry.sets.map((set) => set.weight ?? 0)
+            ...comparisonEntry.sets.map((set) => set.weight ?? 0),
+            0
           );
           existingEntry.comparisonMaxWeight = Math.max(
             existingEntry.comparisonMaxWeight,
@@ -194,7 +196,8 @@ export const calculateTimeUnderTensionData = (
   return exerciseData.map((d) => ({
     ...d,
     date: formatDateInUserTimezone(parseISO(d.entry_date), 'MMM dd, yyyy'),
-    timeUnderTension: d.sets.reduce((sum, set) => sum + (set.duration || 0), 0),
+    timeUnderTension:
+      d.sets.reduce((sum, set) => sum + (set.duration || 0), 0) / 60,
   }));
 };
 

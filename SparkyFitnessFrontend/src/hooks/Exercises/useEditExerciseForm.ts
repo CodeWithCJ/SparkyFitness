@@ -8,6 +8,10 @@ import {
 } from '@/hooks/Exercises/useExercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  resolveExerciseModality,
+  type ExerciseModality,
+} from '@workspace/shared';
 
 export function useEditExerciseForm() {
   const { user } = useAuth();
@@ -29,6 +33,8 @@ export function useEditExerciseForm() {
   // Form fields
   const [editExerciseName, setEditExerciseName] = useState('');
   const [editExerciseCategory, setEditExerciseCategory] = useState('general');
+  const [editExerciseModality, setEditExerciseModality] =
+    useState<ExerciseModality>('weight_reps');
   const [editExerciseCalories, setEditExerciseCalories] = useState(300);
   const [editExerciseDescription, setEditExerciseDescription] = useState('');
   const [editExerciseLevel, setEditExerciseLevel] = useState('');
@@ -60,6 +66,11 @@ export function useEditExerciseForm() {
     setSelectedExercise(exercise);
     setEditExerciseName(exercise.name);
     setEditExerciseCategory(exercise.category || 'general');
+    // Edit seeds a concrete modality so a later category change cannot
+    // silently retrack an exercise the user already logged against.
+    setEditExerciseModality(
+      resolveExerciseModality(exercise.modality, exercise.category)
+    );
     setEditExerciseCalories(
       Math.round(
         convertEnergy(exercise.calories_per_hour ?? 0, 'kcal', energyUnit)
@@ -98,6 +109,7 @@ export function useEditExerciseForm() {
       const updatedExerciseData: Partial<ExerciseInterface> = {
         name: editExerciseName,
         category: editExerciseCategory,
+        modality: editExerciseModality,
         calories_per_hour: convertEnergy(
           editExerciseCalories,
           energyUnit,
@@ -202,6 +214,8 @@ export function useEditExerciseForm() {
     setEditExerciseName,
     editExerciseCategory,
     setEditExerciseCategory,
+    editExerciseModality,
+    setEditExerciseModality,
     editExerciseCalories,
     setEditExerciseCalories,
     editExerciseDescription,

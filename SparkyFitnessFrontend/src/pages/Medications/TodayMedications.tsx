@@ -21,7 +21,9 @@ import {
   dayToUtcRange,
   localDateTimeToUtc,
   utcToLocalDateTimeInput,
+  formatDose,
   INJECTION_SITES,
+  type SharedScheduleRule,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,8 +50,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatTimeOfDayString } from '@/utils/timeFormatters';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   useCreateMedicationEntryMutation,
   useUpdateMedicationEntryMutation,
@@ -71,7 +74,7 @@ import MedicationLogCalendar from './MedicationLogCalendar';
 
 export interface DueDose {
   medication: MedicationDetail;
-  schedule: MedicationSchedule & { id: string };
+  schedule: SharedScheduleRule & { id: string };
 }
 
 // GLP-1 injectable doses are logged as injection entries (single source of truth with
@@ -110,7 +113,7 @@ export default function TodayMedications({
   onSelectDate,
 }: TodayMedicationsProps) {
   const { t } = useTranslation();
-  const { timezone } = usePreferences();
+  const { timezone, formatTime, timeFormat } = usePreferences();
   const { hasPermission, activeUserName } = useActiveUser();
 
   // The GLP-1 check-in stores its data as check-in custom measurements, so it
@@ -157,8 +160,8 @@ export default function TodayMedications({
   // Schedules evaluation
   const dueDoses = useMemo(() => {
     if (loadingMeds || meds.length === 0) return [];
-    return getDueDosesForDate(meds, selectedDate) as DueDose[];
-  }, [meds, selectedDate, loadingMeds]);
+    return getDueDosesForDate(meds, selectedDate, timezone);
+  }, [meds, selectedDate, timezone, loadingMeds]);
 
   const prnMeds = useMemo(() => {
     return meds.filter((m) => {
@@ -202,7 +205,7 @@ export default function TodayMedications({
     }[] = [];
     for (let i = 13; i >= 0; i--) {
       const d = addDays(selectedDate, -i);
-      const dayDue = getDueDosesForDate(meds, d);
+      const dayDue = getDueDosesForDate(meds, d, timezone);
       let dayTaken = 0;
       for (const dd of dayDue) {
         const hit = recentEntries.some(
@@ -293,7 +296,7 @@ export default function TodayMedications({
       streak,
       pct: due > 0 ? Math.round((taken / due) * 100) : 100,
     };
-  }, [meds, selectedDate, recentEntries]);
+  }, [meds, selectedDate, recentEntries, timezone]);
 
   // The next GLP-1 dose due today (if any), for the next-injection banner.
   const nextGlpDue = useMemo(() => {
@@ -489,22 +492,7 @@ export default function TodayMedications({
 
   const formatEntryTime = (timestamp: string) => {
     try {
-      const parts = Intl.DateTimeFormat('en-US', {
-        timeZone: timezone,
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      }).formatToParts(new Date(timestamp));
-
-      let hour = '';
-      let minute = '';
-      let dayPeriod = '';
-      for (const p of parts) {
-        if (p.type === 'hour') hour = p.value;
-        if (p.type === 'minute') minute = p.value;
-        if (p.type === 'dayPeriod') dayPeriod = p.value;
-      }
-      return `${hour}:${minute} ${dayPeriod}`;
+      return formatTime(timestamp);
     } catch (e) {
       return '--:--';
     }
@@ -575,7 +563,7 @@ export default function TodayMedications({
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {nextGlpDue.schedule.time_of_day
-                    ? `Scheduled ${nextGlpDue.schedule.time_of_day.substring(0, 5)}`
+                    ? `Scheduled ${formatTimeOfDayString(nextGlpDue.schedule.time_of_day, timeFormat)}`
                     : selectedDate === today
                       ? 'Any time today'
                       : 'Any time'}
@@ -843,6 +831,7 @@ export default function TodayMedications({
                       entry &&
                       (entry.status === 'taken' || entry.status === 'skipped');
                     const isSnoozed = entry && entry.status === 'snoozed';
+                    const doseLabel = formatDose(due.medication, due.schedule);
 
                     return (
                       <div
@@ -885,18 +874,19 @@ export default function TodayMedications({
                               </Badge>
                             </div>
                             <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground mt-0.5">
-                              <span>
-                                {due.schedule.dose_amount ||
-                                  due.medication.strength_value}{' '}
-                                {due.schedule.dose_amount
-                                  ? due.medication.type_id
-                                  : due.medication.strength_unit}
-                              </span>
-                              <span>•</span>
+                              {doseLabel != null && (
+                                <>
+                                  <span>{doseLabel}</span>
+                                  <span>•</span>
+                                </>
+                              )}
                               <span className="flex items-center gap-1 font-medium text-primary">
                                 <Clock className="h-3 w-3" />
                                 {due.schedule.time_of_day
-                                  ? due.schedule.time_of_day.substring(0, 5)
+                                  ? formatTimeOfDayString(
+                                      due.schedule.time_of_day,
+                                      timeFormat
+                                    )
                                   : t(
                                       'medications.schedule.anyTime',
                                       'Any time'
@@ -1022,9 +1012,7 @@ export default function TodayMedications({
                                 {med.display_name || med.name}
                               </p>
                               <p className="text-[10px] text-muted-foreground">
-                                {med.strength_value
-                                  ? `${med.strength_value} ${med.strength_unit ?? ''}`
-                                  : med.type_id}
+                                {formatDose(med) ?? med.type_id}
                               </p>
                             </div>
                           </div>

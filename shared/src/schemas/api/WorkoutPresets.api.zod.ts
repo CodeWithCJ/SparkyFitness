@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { exerciseModalitySchema } from "./Exercises.api.zod.ts";
 
 // --- Response contracts ---
 //
@@ -14,7 +15,11 @@ export const workoutPresetSetResponseSchema = z.object({
   set_type: z.string().nullable(),
   reps: z.number().nullable(),
   weight: z.number().nullable(),
-  duration: z.number().nullable(),
+  // Per-set duration is integer SECONDS.
+  duration: z.number().int().nullable(),
+  // Km, meaningful on duration_distance sets. Optional: pre-distance servers
+  // omit it.
+  distance: z.number().nullable().optional(),
   rest_time: z.number().nullable(),
   notes: z.string().nullable(),
 });
@@ -27,6 +32,7 @@ export const workoutPresetExerciseResponseSchema = z.object({
   sort_order: z.number().nullable().optional(),
   exercise_name: z.string(),
   category: z.string().nullable(),
+  modality: exerciseModalitySchema.optional(),
   superset_group: z.number().int().nullable(),
   sets: z.array(workoutPresetSetResponseSchema),
 });
@@ -61,7 +67,10 @@ export const workoutPresetSetRequestSchema = z.object({
   set_type: z.string().nullable().optional(),
   reps: z.number().nullable().optional(),
   weight: z.number().nullable().optional(),
-  duration: z.number().nullable().optional(),
+  // Per-set duration is integer SECONDS.
+  duration: z.number().int().nullable().optional(),
+  // Km, meaningful on duration_distance sets.
+  distance: z.number().nullable().optional(),
   rest_time: z.number().nullable().optional(),
   notes: z.string().nullable().optional(),
 });

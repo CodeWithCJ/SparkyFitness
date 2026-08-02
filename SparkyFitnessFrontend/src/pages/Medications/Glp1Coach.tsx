@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Syringe } from 'lucide-react';
 import {
@@ -14,6 +14,8 @@ import {
 import { useSerumCurve } from '@/hooks/useMedications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import type { Medication } from '@/types/medications';
 import FastingTimer from './FastingTimer';
 import Glp1LogInjection from './Glp1LogInjection';
@@ -25,8 +27,14 @@ interface Glp1CoachProps {
   med: Medication;
 }
 
+type PkAxisMode = 'date' | 'day';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export default function Glp1Coach({ med }: Glp1CoachProps) {
   const { t } = useTranslation();
+  const { formatDateInUserTimezone } = usePreferences();
+  const [axisMode, setAxisMode] = useState<PkAxisMode>('date');
   const medId = med.id;
   const glp1Drug = (
     med.custom_fields as { glp1_drug?: string } | null | undefined
@@ -42,12 +50,30 @@ export default function Glp1Coach({ med }: Glp1CoachProps) {
 
   const curveQ = useSerumCurve(medId);
 
+  const anchorDate = curveQ.data?.anchorDate ?? null;
+  // Day 0 is the earliest injection. Without that anchor the curve can only be
+  // expressed as offsets, so the date axis is unavailable rather than guessed at.
+  const anchorMs = useMemo(() => {
+    if (!anchorDate) return null;
+    const ms = new Date(anchorDate).getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }, [anchorDate]);
+  const canShowDates = anchorMs !== null;
+  const effectiveAxisMode: PkAxisMode = canShowDates ? axisMode : 'day';
+
   const chartData = useMemo(() => {
-    return (curveQ.data?.curve ?? []).map((p) => ({
-      day: Number(p.day.toFixed(1)),
-      pct: Math.round(p.fraction * 100),
-    }));
-  }, [curveQ.data?.curve]);
+    return (curveQ.data?.curve ?? []).map((p) => {
+      const day = Number(p.day.toFixed(1));
+      return {
+        day,
+        ts: anchorMs === null ? null : anchorMs + day * DAY_MS,
+        pct: Math.round(p.fraction * 100),
+      };
+    });
+  }, [curveQ.data?.curve, anchorMs]);
+
+  const formatAxisDate = (ms: number) =>
+    formatDateInUserTimezone(new Date(ms), 'MMM dd');
 
   return (
     <div className="space-y-4">
@@ -65,11 +91,48 @@ export default function Glp1Coach({ med }: Glp1CoachProps) {
               {t('medications.glp1.pkTitle', 'PK serum level')} —{' '}
               {curveQ.data?.drugName ?? curveQ.data?.drugId ?? med.name}
             </span>
-            {curveQ.data?.currentLevelFraction != null && (
-              <Badge variant="secondary">
-                ~{Math.round(curveQ.data.currentLevelFraction * 100)}% now
-              </Badge>
-            )}
+            <span className="flex items-center gap-2">
+              {/* Only offer the switch when there is an anchor date to switch to. */}
+              {canShowDates && chartData.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <Button
+                    variant={axisMode === 'date' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setAxisMode('date')}
+                    aria-pressed={axisMode === 'date'}
+                    className={`rounded-full px-3 h-7 transition-all ${
+                      axisMode === 'date'
+                        ? 'bg-slate-200/60 dark:bg-muted shadow-sm text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <span className="text-xs font-semibold">
+                      {t('medications.glp1.pkAxisDates', 'Dates')}
+                    </span>
+                  </Button>
+                  <Button
+                    variant={axisMode === 'day' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setAxisMode('day')}
+                    aria-pressed={axisMode === 'day'}
+                    className={`rounded-full px-3 h-7 transition-all ${
+                      axisMode === 'day'
+                        ? 'bg-slate-200/60 dark:bg-muted shadow-sm text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <span className="text-xs font-semibold">
+                      {t('medications.glp1.pkAxisDays', 'Days')}
+                    </span>
+                  </Button>
+                </span>
+              )}
+              {curveQ.data?.currentLevelFraction != null && (
+                <Badge variant="secondary">
+                  ~{Math.round(curveQ.data.currentLevelFraction * 100)}% now
+                </Badge>
+              )}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -95,19 +158,41 @@ export default function Glp1Coach({ med }: Glp1CoachProps) {
                     className="stroke-muted"
                   />
                   <XAxis
-                    dataKey="day"
+                    dataKey={effectiveAxisMode === 'date' ? 'ts' : 'day'}
                     type="number"
                     domain={['dataMin', 'dataMax']}
-                    tickFormatter={(d) => `D${Math.round(d)}`}
+                    tickFormatter={(value) =>
+                      effectiveAxisMode === 'date'
+                        ? formatAxisDate(value)
+                        : `D${Math.round(value)}`
+                    }
                     fontSize={11}
                   />
                   <YAxis domain={[0, 100]} unit="%" fontSize={11} />
-                  <Tooltip formatter={(value) => [`${value}%`, 'Level']} />
-                  {/* Injection markers (each logged shot) */}
+                  <Tooltip
+                    formatter={(value) => [`${value}%`, 'Level']}
+                    labelFormatter={(label) => {
+                      // Recharts types this as ReactNode; the axis is numeric, so
+                      // coerce and fall back to the raw label if it ever isn't.
+                      const value = Number(label);
+                      if (Number.isNaN(value)) return label;
+                      return effectiveAxisMode === 'date'
+                        ? formatDateInUserTimezone(new Date(value), 'PP')
+                        : t('medications.glp1.pkDayLabel', 'Day {{day}}', {
+                            day: Math.round(value),
+                          });
+                    }}
+                  />
+                  {/* Injection markers (each logged shot). The x value must be in the
+                      same units as the axis, or every marker lands in the wrong place. */}
                   {(curveQ.data?.doseDays ?? []).map((d, i) => (
                     <ReferenceLine
                       key={`dose-${i}`}
-                      x={d}
+                      x={
+                        effectiveAxisMode === 'date' && anchorMs !== null
+                          ? anchorMs + d * DAY_MS
+                          : d
+                      }
                       stroke="#9ca3af"
                       strokeDasharray="2 2"
                       label={

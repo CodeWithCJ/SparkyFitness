@@ -154,6 +154,67 @@ async function performBackup(isManual = false) {
     return { success: false, error: error.message };
   }
 }
+// Restricts any filename reaching the filesystem to the backup naming shape,
+// blocking path traversal (`..`, `/`) from the URL param in the download route.
+const BACKUP_FILE_PATTERN = /^sparkyfitness_full_backup_[\w.-]+\.tar\.gz$/;
+// Parses the timestamp out of the filename rather than trusting mtime, which
+// resets if a backup is copied or moved elsewhere.
+const BACKUP_TIMESTAMP_PATTERN =
+  /^sparkyfitness_full_backup_(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z\.tar\.gz$/;
+
+function parseBackupDate(fileName: string): Date | null {
+  const match = fileName.match(BACKUP_TIMESTAMP_PATTERN);
+  if (!match) {
+    return null;
+  }
+  const [, year, month, day, hour, minute, second, ms] = match;
+  const date = new Date(
+    `${year}-${month}-${day}T${hour}:${minute}:${second}.${ms}Z`
+  );
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+interface BackupFileStats {
+  fileName: string;
+  size: number;
+  createdAt: Date;
+  completedAt: Date;
+}
+
+async function listBackups(backupDir: string): Promise<BackupFileStats[]> {
+  let files: string[];
+  try {
+    files = await fsp.readdir(backupDir);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+  const backupFiles = files.filter((file) => BACKUP_FILE_PATTERN.test(file));
+
+  const backupFilesWithStats = await Promise.all(
+    backupFiles.map(async (file) => {
+      const filePath = path.join(backupDir, file);
+      const stats = await fsp.stat(filePath);
+      const createdAt = parseBackupDate(file) ?? stats.mtime;
+      // The archive's mtime is the moment its last byte was written, i.e. when
+      // the backup run finished.
+      return {
+        fileName: file,
+        size: stats.size,
+        createdAt,
+        completedAt: stats.mtime,
+      };
+    })
+  );
+
+  backupFilesWithStats.sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+  );
+  return backupFilesWithStats;
+}
+
 async function applyRetentionPolicy() {
   const settings = await backupSettingsRepository.getBackupSettings();
   const retentionDays = settings.retention_days;
@@ -171,10 +232,7 @@ async function applyRetentionPolicy() {
   const now = new Date();
   const files = await fsp.readdir(BACKUP_DIR);
   for (const file of files) {
-    if (
-      file.startsWith('sparkyfitness_full_backup_') &&
-      file.endsWith('.tar.gz')
-    ) {
+    if (BACKUP_FILE_PATTERN.test(file)) {
       const filePath = path.join(BACKUP_DIR, file);
       const stats = await fsp.stat(filePath);
       const fileAgeMs = now.getTime() - stats.mtime.getTime();
@@ -361,6 +419,9 @@ export { ensureBackupDirectory };
 export { executeCommand };
 export { BACKUP_DIR };
 export { UPLOADS_BASE_DIR };
+export { BACKUP_FILE_PATTERN };
+export { listBackups };
+export type { BackupFileStats };
 export default {
   performBackup,
   applyRetentionPolicy,
@@ -369,4 +430,6 @@ export default {
   executeCommand,
   BACKUP_DIR,
   UPLOADS_BASE_DIR,
+  BACKUP_FILE_PATTERN,
+  listBackups,
 };

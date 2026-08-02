@@ -4,6 +4,10 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useCreateExerciseMutation } from '@/hooks/Exercises/useExercises';
 import type { Exercise } from '@/types/exercises';
+import {
+  deriveExerciseModality,
+  type ExerciseModality,
+} from '@workspace/shared';
 
 export function useAddCustomExerciseForm(
   onExerciseAdded: (
@@ -18,6 +22,10 @@ export function useAddCustomExerciseForm(
 
   const [newExerciseName, setNewExerciseName] = useState('');
   const [newExerciseCategory, setNewExerciseCategory] = useState('general');
+  // null follows the category; a deliberate pick pins the modality.
+  const [pinnedModality, setPinnedModality] = useState<ExerciseModality | null>(
+    null
+  );
   const [newExerciseCalories, setNewExerciseCalories] = useState(300);
   const [manualCaloriesPerHour, setManualCaloriesPerHour] = useState<
     number | undefined
@@ -42,9 +50,13 @@ export function useAddCustomExerciseForm(
   );
   const imageUrisRef = useRef<string[]>([]);
 
+  const newExerciseModality =
+    pinnedModality ?? deriveExerciseModality(newExerciseCategory);
+
   const reset = () => {
     setNewExerciseName('');
     setNewExerciseCategory('general');
+    setPinnedModality(null);
     setNewExerciseCalories(300);
     setManualCaloriesPerHour(undefined);
     setNewExerciseDescription('');
@@ -66,6 +78,7 @@ export function useAddCustomExerciseForm(
       const newExercise = {
         name: newExerciseName,
         category: newExerciseCategory,
+        modality: newExerciseModality,
         calories_per_hour:
           manualCaloriesPerHour !== undefined
             ? manualCaloriesPerHour
@@ -180,6 +193,8 @@ export function useAddCustomExerciseForm(
     setNewExerciseName,
     newExerciseCategory,
     setNewExerciseCategory,
+    newExerciseModality,
+    setNewExerciseModality: setPinnedModality,
     newExerciseCalories,
     manualCaloriesPerHour,
     setManualCaloriesPerHour,

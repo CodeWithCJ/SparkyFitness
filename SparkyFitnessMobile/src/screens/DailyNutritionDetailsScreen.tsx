@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -8,7 +8,6 @@ import { useDailySummary } from '../hooks/useDailySummary';
 import { useNutrientDisplayPreferences } from '../hooks/useNutrientDisplayPreferences';
 import { useCustomNutrients } from '../hooks/useCustomNutrients';
 import { useServerConnection } from '../hooks/useServerConnection';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { NUTRIENT_META } from '../constants/nutrients';
 import NutritionMacroCard from '../components/NutritionMacroCard';
@@ -22,7 +21,6 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
   const { date } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { isConnected } = useServerConnection();
 
   const { summary, isLoading, isError } = useDailySummary({ date });
@@ -271,7 +269,12 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
   };
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      // iOS keeps no top inset even without the native header: this modal
+      // sheet already starts below the status bar.
+      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+    >
       {header}
       <ScrollView
         className="flex-1"

@@ -434,7 +434,7 @@ describe('MedicationForm component', () => {
 
 **What to test:** API calls, state updates, health data sync.
 
-Mobile tests use **Jest** (`jest-expo`) and **relative** imports (the `@/` alias is configured but unused in `src/`). The HTTP helper export is `apiFetch` (there is no `apiClient` export). Tests are organized by layer under `__tests__/services/`, `__tests__/hooks/`, etc. (Medications is not implemented on mobile — this uses the real `mealsApi`.)
+Mobile tests use **Jest** (`jest-expo`) and **relative** imports (the `@/` alias is configured but unused in `src/`). The HTTP helper export is `apiFetch` (there is no `apiClient` export). Tests are organized by layer under `__tests__/services/`, `__tests__/hooks/`, etc. (This example uses the real `mealsApi`.)
 
 ```typescript
 // SparkyFitnessMobile/__tests__/services/mealsApi.test.ts

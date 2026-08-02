@@ -80,8 +80,11 @@ describe('presetFormReducer', () => {
       exerciseId: 'ex-1',
       exerciseName: 'Bench Press',
       exerciseCategory: 'strength',
+      exerciseModality: null,
       images: ['bench.png'],
-      sets: [{ clientId: 's1', weight: '', reps: '', restTime: DEFAULT_REST_SEC }],
+      sets: [
+        { clientId: 's1', weight: '', reps: '', distance: '', restTime: DEFAULT_REST_SEC },
+      ],
     });
   });
 
@@ -131,7 +134,14 @@ describe('presetFormReducer', () => {
     const sets = next.exercises[0].sets;
     expect(sets).toHaveLength(3);
     // Inherits the last set's weight/reps...
-    expect(sets[2]).toEqual({ clientId: 's3', weight: '110', reps: '3', restTime: 120 });
+    expect(sets[2]).toEqual({
+      clientId: 's3',
+      weight: '110',
+      reps: '3',
+      distance: '',
+      duration: null,
+      restTime: 120,
+    });
   });
 
   it('ADD_SET falls back to empty values and the default rest when the exercise has no sets', () => {
@@ -155,7 +165,14 @@ describe('presetFormReducer', () => {
       setClientId: 's1',
     });
     expect(next.exercises[0].sets).toEqual([
-      { clientId: 's1', weight: '', reps: '', restTime: DEFAULT_REST_SEC },
+      {
+        clientId: 's1',
+        weight: '',
+        reps: '',
+        distance: '',
+        duration: null,
+        restTime: DEFAULT_REST_SEC,
+      },
     ]);
   });
 
@@ -397,6 +414,29 @@ describe('presetFormReducer', () => {
       expect(next.exercises[0].sets[1].reps).toBe('');
     });
 
+    it('preserves an explicit modality, recording null when the preset omits it', () => {
+      const mixed = preset({
+        exercises: [
+          { ...preset().exercises[0], modality: 'duration' },
+          { ...preset().exercises[0], id: 802, exercise_id: 'ex-2' },
+        ],
+      });
+      const next = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        {
+          type: 'POPULATE_FROM_PRESET',
+          preset: mixed,
+          weightUnit: 'kg',
+          clientIds: [
+            { exerciseClientId: 'e1', setClientIds: ['s1', 's2'] },
+            { exerciseClientId: 'e2', setClientIds: ['s3', 's4'] },
+          ],
+        },
+      );
+      expect(next.exercises[0].exerciseModality).toBe('duration');
+      expect(next.exercises[1].exerciseModality).toBeNull();
+    });
+
     it('maps superset_group into the draft, defaulting to null', () => {
       const grouped = preset({
         exercises: [
@@ -457,6 +497,26 @@ describe('presetFormReducer', () => {
       expect(next.description).toBe('');
       expect(next.exercises[0].images).toEqual([]);
       expect(next.exercises[0].exerciseCategory).toBeNull();
+    });
+
+    it('maps preset set distance (km) into display-unit draft text', () => {
+      const cardioPreset = preset();
+      cardioPreset.exercises[0].sets = [
+        { ...cardioPreset.exercises[0].sets[0], distance: 1.609344 },
+        cardioPreset.exercises[0].sets[1],
+      ];
+      const next = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        {
+          type: 'POPULATE_FROM_PRESET',
+          preset: cardioPreset,
+          weightUnit: 'kg',
+          distanceUnit: 'miles',
+          clientIds,
+        },
+      );
+      expect(next.exercises[0].sets[0].distance).toBe('1');
+      expect(next.exercises[0].sets[1].distance).toBe('');
     });
   });
 
@@ -598,6 +658,29 @@ describe('presetFormReducer', () => {
       expect(next.exercises[0].sets[0].weight).toBe(expected);
     });
 
+    it('copies the snapshot modality into the draft, recording null when absent', () => {
+      const base = session().exercises[0];
+      const withModality = session({
+        exercises: [
+          {
+            ...base,
+            exercise_snapshot: { ...base.exercise_snapshot!, modality: 'reps_only' },
+          },
+        ],
+      });
+      const next = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        { type: 'POPULATE_FROM_SESSION', session: withModality, weightUnit: 'kg', clientIds },
+      );
+      expect(next.exercises[0].exerciseModality).toBe('reps_only');
+
+      const bare = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        { type: 'POPULATE_FROM_SESSION', session: session(), weightUnit: 'kg', clientIds },
+      );
+      expect(bare.exercises[0].exerciseModality).toBeNull();
+    });
+
     it('falls back to Unknown/null/empty when the exercise snapshot is missing', () => {
       const bare = session({
         description: null,
@@ -614,6 +697,29 @@ describe('presetFormReducer', () => {
       expect(next.exercises[0].exerciseCategory).toBeNull();
       expect(next.exercises[0].images).toEqual([]);
       expect(next.exercises[0].supersetGroup).toBeNull();
+    });
+
+    it('maps logged cardio distance (km) into display-unit draft text', () => {
+      const base = session().exercises[0];
+      const cardio = session({
+        exercises: [
+          {
+            ...base,
+            sets: [{ ...base.sets[0], distance: 1.609344 }],
+          },
+        ],
+      });
+      const next = presetFormReducer(
+        { name: '', description: '', exercises: [] },
+        {
+          type: 'POPULATE_FROM_SESSION',
+          session: cardio,
+          weightUnit: 'kg',
+          distanceUnit: 'miles',
+          clientIds,
+        },
+      );
+      expect(next.exercises[0].sets[0].distance).toBe('1');
     });
   });
 

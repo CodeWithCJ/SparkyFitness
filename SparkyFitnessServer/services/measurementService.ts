@@ -171,7 +171,8 @@ async function processHealthData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any
+  actingUserId: any,
+  options?: { legacyWorkoutSetMinutes?: boolean }
 ) {
   const tz = await loadUserTimezone(userId);
   const processedResults = [];
@@ -217,6 +218,7 @@ async function processHealthData(
     getSleepContext,
     processSleepEntry,
     resolveCategory: createCategoryResolver(),
+    legacyWorkoutSetMinutes: options?.legacyWorkoutSetMinutes ?? false,
   };
   const pendingBatches = new Map<HandleBatchFn, PreparedHealthEntry[]>();
   for (const dataEntry of healthDataArray) {

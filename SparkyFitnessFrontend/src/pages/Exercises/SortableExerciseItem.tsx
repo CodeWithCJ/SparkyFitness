@@ -35,8 +35,12 @@ import type {
   SortableSetData,
   SortableExerciseItemData,
 } from '@/types/workout';
-import { PresetSessionResponse } from '@workspace/shared';
+import {
+  PresetSessionResponse,
+  resolveExerciseModality,
+} from '@workspace/shared';
 import { SetColumnHeaders } from './SetHeader';
+import { toSetTableModality } from '@/constants/exercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
 type PresetMetadata = WorkoutPreset | PresetSessionResponse;
@@ -92,7 +96,12 @@ export const SortableExerciseItem = ({
     transition,
   };
 
-  const isCardio = ex.category === 'cardio';
+  const modality = resolveExerciseModality(
+    'exercise_snapshot' in ex ? ex.exercise_snapshot?.modality : ex.modality,
+    ex.category
+  );
+  const isCardio = modality === 'duration_distance';
+  const setTableModality = toSetTableModality(modality);
   const hasSets = Array.isArray(ex.sets) && ex.sets.length > 0;
 
   const displayName =
@@ -120,7 +129,7 @@ export const SortableExerciseItem = ({
   const cardioSet = ex.sets?.[0];
   const cardioDuration =
     ('duration_minutes' in ex ? ex.duration_minutes : undefined) ??
-    cardioSet?.duration ??
+    (cardioSet?.duration != null ? cardioSet.duration / 60 : undefined) ??
     '';
   const cardioDistance = ('distance' in ex ? ex.distance : undefined) ?? '';
   const cardioCalories =
@@ -251,7 +260,10 @@ export const SortableExerciseItem = ({
           rpe={cardioRpe as number | ''}
           distanceUnit={distanceUnit}
           onDurationChange={(v) =>
-            handleCardioSetChange('duration', v === '' ? undefined : Number(v))
+            handleCardioSetChange(
+              'duration',
+              v === '' ? undefined : Math.round(Number(v) * 60)
+            )
           }
           onDistanceChange={(v) =>
             handleCardioSetChange(
@@ -279,7 +291,7 @@ export const SortableExerciseItem = ({
 
       {isExpanded && !isCardio && hasSets && (
         <div className="space-y-3">
-          <SetColumnHeaders category={ex?.category} />
+          <SetColumnHeaders modality={setTableModality} />
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -319,6 +331,7 @@ export const SortableExerciseItem = ({
                       onDuplicateSet={onDuplicateSet}
                       onRemoveSet={onRemoveSet}
                       weightUnit={weightUnit}
+                      modality={setTableModality}
                     />
                   );
                 })}

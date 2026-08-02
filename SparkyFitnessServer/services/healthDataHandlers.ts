@@ -422,6 +422,11 @@ export interface HealthBatchContext {
     measurementType?: string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ) => Promise<any>;
+  /**
+   * True when the client predates the seconds-based workout set model
+   * (no X-Workout-Model-Version header) and sends per-set duration in minutes.
+   */
+  legacyWorkoutSetMinutes?: boolean;
 }
 
 /** HealthBatchContext plus the per-entry resolved date values. */
@@ -1062,6 +1067,28 @@ const workoutHandler: HealthTypeHandler = {
             : 0,
         });
       }
+      // Per-set duration is stored in integer seconds. Clients send either
+      // duration_seconds (always seconds; old servers drop the unknown field
+      // instead of misreading it as minutes) or the legacy duration field,
+      // whose unit depends on X-Workout-Model-Version (absent ⇒ minutes).
+      const rawSets: Array<
+        { duration?: number | null; duration_seconds?: number | null } & Record<
+          string,
+          unknown
+        >
+      > | null = entry.sets || null;
+      const sets = rawSets
+        ? rawSets.map(({ duration_seconds, ...set }) => ({
+            ...set,
+            duration:
+              typeof duration_seconds === 'number'
+                ? Math.round(duration_seconds)
+                : typeof set.duration === 'number' &&
+                    ctx.legacyWorkoutSetMinutes
+                  ? Math.round(set.duration * 60)
+                  : set.duration,
+          }))
+        : rawSets;
       const exerciseEntry = await exerciseEntryDb.createExerciseEntry(
         ctx.userId,
         {
@@ -1071,7 +1098,7 @@ const workoutHandler: HealthTypeHandler = {
           entry_date: ctx.parsedDate,
           notes: `Source: ${source}, Activity Type: ${activityType}`,
           distance: distance,
-          sets: entry.sets || null, // Pass sets if present for mobile workout sync
+          sets, // Pass sets if present for mobile workout sync
           source_id: source_id || null,
         },
         ctx.actingUserId,

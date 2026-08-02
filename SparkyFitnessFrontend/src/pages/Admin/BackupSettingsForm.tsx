@@ -1,13 +1,14 @@
 import type React from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Save, Play, Upload } from 'lucide-react';
+import { Loader2, Save, Play, Upload, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { BackupSettings, BackupSettingsMutator } from '@workspace/shared';
 import { toast } from '@/hooks/use-toast';
 import { getLocalTimeString } from './backupTimeUtils';
+import { BackupListDialog } from './BackupListDialog';
 
 interface BackupSettingsFormProps {
   initialSettings: BackupSettings;
@@ -31,6 +32,7 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
   backupLocation,
 }) => {
   const { t } = useTranslation();
+  const [isBackupListOpen, setIsBackupListOpen] = useState(false);
 
   const getStatusText = (status?: string | null, timestamp?: Date | null) => {
     if (status && timestamp) {
@@ -115,6 +117,10 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
       onRestore(e.target.files[0]);
       e.target.value = '';
     }
+  };
+
+  const handleDownloadBackup = () => {
+    setIsBackupListOpen(true);
   };
 
   return (
@@ -234,7 +240,19 @@ export const BackupSettingsForm: React.FC<BackupSettingsFormProps> = ({
           )}
           {t('admin.backupSettings.runManualBackup', 'Run Manual Backup Now')}
         </Button>
+        <Button
+          onClick={handleDownloadBackup}
+          className="flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" />
+          {t('admin.backupSettings.downloadBackup', 'Download Backup')}
+        </Button>
       </div>
+
+      <BackupListDialog
+        open={isBackupListOpen}
+        onOpenChange={setIsBackupListOpen}
+      />
 
       {/* Restore Section */}
       <div className="mb-4 border-t pt-6 mt-6">

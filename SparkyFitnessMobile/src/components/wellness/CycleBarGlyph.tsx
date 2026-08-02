@@ -5,44 +5,40 @@ import { useWellnessTokens } from './theme/wellnessTokens';
 interface CycleBarGlyphProps {
   cycleLength: number;
   periodLength: number;
-  showFertile?: boolean;
+  /**
+   * Longest cycle in the surrounding list. Bars render at
+   * cycleLength/maxLength of the row width so lengths compare across rows.
+   */
+  maxLength: number;
 }
 
 const CycleBarGlyph: React.FC<CycleBarGlyphProps> = ({
   cycleLength,
   periodLength,
-  showFertile = true,
+  maxLength,
 }) => {
   const tokens = useWellnessTokens();
   // Normalize lengths
   const len = Math.max(15, Math.min(90, cycleLength));
   const pLen = Math.max(1, Math.min(15, periodLength));
-
-  // Percentages
-  const periodWidth = `${(pLen / len) * 100}%`;
-
-  // Fertile window: ovulation is cycleLength - 14. Fertile is ovulation - 5 to ovulation + 1
-  const fertileStartDay = len - 19;
-  const fertileEndDay = len - 13;
-
-  const showFertileBlock = showFertile && fertileStartDay > pLen && fertileEndDay < len;
-  const fertileLeft = `${(fertileStartDay / len) * 100}%`;
-  const fertileWidth = `${((fertileEndDay - fertileStartDay + 1) / len) * 100}%`;
+  const max = Math.max(len, Math.min(90, maxLength));
 
   return (
-    <View className="relative w-full h-2.5 rounded-full bg-raised overflow-hidden">
-      {/* Period segment */}
+    // Full-width rail behind the bar: without it, near-equal cycle lengths
+    // (27 vs 29 days) are indistinguishable because nothing marks 100%.
+    <View testID="cycle-bar-rail" className="h-2.5 rounded-full bg-progress-rail">
       <View
-        className="absolute top-0 left-0 h-full rounded-full"
-        style={{ width: periodWidth as any, backgroundColor: tokens.phaseMenstrual }}
-      />
-      {/* Fertile segment */}
-      {showFertileBlock && (
+        testID="cycle-bar-track"
+        className="h-full rounded-full bg-progress-track overflow-hidden"
+        style={{ width: `${(len / max) * 100}%` }}
+      >
+        {/* Period segment */}
         <View
-          className="absolute top-0 h-full rounded-full opacity-60"
-          style={{ left: fertileLeft as any, width: fertileWidth as any, backgroundColor: tokens.phaseFollicular }}
+          testID="cycle-bar-period"
+          className="h-full rounded-full"
+          style={{ width: `${(pLen / len) * 100}%`, backgroundColor: tokens.phaseMenstrual }}
         />
-      )}
+      </View>
     </View>
   );
 };

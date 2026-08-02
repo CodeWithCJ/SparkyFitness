@@ -196,6 +196,32 @@ describe('workoutPresetRoutes request validation', () => {
     expect(data.exercises[0].superset_group).toBeUndefined();
   });
 
+  it('passes per-set distance (km) through on create', async () => {
+    const body = validCreateBody();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (body.exercises[0].sets[0] as any).duration = 1500;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (body.exercises[0].sets[0] as any).distance = 5.2;
+
+    const { statusCode } = await invokeRoute('post', '/', { body });
+
+    expect(statusCode).toBe(201);
+    const [, data] = vi.mocked(workoutPresetService.createWorkoutPreset).mock
+      .calls[0];
+    expect(data.exercises[0].sets[0].distance).toBe(5.2);
+  });
+
+  it('rejects a non-numeric distance with 400', async () => {
+    const body = validCreateBody();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (body.exercises[0].sets[0] as any).distance = '5k';
+
+    const { statusCode } = await invokeRoute('post', '/', { body });
+
+    expect(statusCode).toBe(400);
+    expect(workoutPresetService.createWorkoutPreset).not.toHaveBeenCalled();
+  });
+
   it('rejects a non-integer superset_group with 400', async () => {
     const body = validCreateBody();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

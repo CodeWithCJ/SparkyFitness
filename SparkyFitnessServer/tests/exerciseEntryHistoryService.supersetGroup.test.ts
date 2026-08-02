@@ -36,6 +36,7 @@ function makeChildRow(
     created_at: '2026-03-12T10:00:00Z',
     exercise_name: 'Bench Press',
     category: 'Strength',
+    modality: 'weight_reps',
     images: null,
     primary_muscles: null,
     secondary_muscles: null,
@@ -118,5 +119,41 @@ describe('getGroupedExerciseSessionByIdWithClient superset_group', () => {
     );
 
     expect(session!.exercises[0].superset_group).toBeNull();
+  });
+});
+
+describe('getGroupedExerciseSessionByIdWithClient modality', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('lands the entry modality column in exercise_snapshot', async () => {
+    const client = makeClient([
+      makeChildRow('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 0, null),
+    ]);
+
+    const session = await getGroupedExerciseSessionByIdWithClient(
+      client,
+      USER_ID,
+      PRESET_ENTRY_ID
+    );
+
+    expect(session!.exercises[0].exercise_snapshot?.modality).toBe(
+      'weight_reps'
+    );
+  });
+
+  it('maps a null modality column to null rather than dropping it', async () => {
+    const row = makeChildRow('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 0, null);
+    row.modality = null;
+    const client = makeClient([row]);
+
+    const session = await getGroupedExerciseSessionByIdWithClient(
+      client,
+      USER_ID,
+      PRESET_ENTRY_ID
+    );
+
+    expect(session!.exercises[0].exercise_snapshot?.modality).toBeNull();
   });
 });

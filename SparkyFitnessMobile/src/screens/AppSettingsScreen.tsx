@@ -1,16 +1,16 @@
 import React from 'react';
-import { View, Text, ScrollView, Switch } from 'react-native';
+import { View, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import SettingsRow from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
   useThemePreference,
   setThemePreference,
   type ThemePreference,
 } from '../services/themeService';
-import { setNotificationsEnabled } from '../services/notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -26,7 +26,7 @@ const themeOptions: { label: string; value: ThemePreference }[] = [
   { label: 'System', value: 'System' },
 ];
 
-const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
+const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [formEnabled, formDisabled] = useCSSVariable([
@@ -39,7 +39,6 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
   const setHapticsEnabled = useAppPreferencesStore((s) => s.setHapticsEnabled);
   const soundsEnabled = useAppPreferencesStore((s) => s.soundsEnabled);
   const setSoundsEnabled = useAppPreferencesStore((s) => s.setSoundsEnabled);
-  const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
   const liquidGlassEnabled = useAppPreferencesStore((s) => s.liquidGlassTabBarEnabled);
   const setLiquidGlassTabBarEnabled = useAppPreferencesStore(
     (s) => s.setLiquidGlassTabBarEnabled,
@@ -59,10 +58,9 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Theme</Text>
+        <SettingsRow
+          title="Theme"
+          rightAccessory={
             <BottomSheetPicker
               value={appTheme}
               options={themeOptions}
@@ -70,70 +68,58 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = () => {
               title="Theme"
               containerStyle={{ flex: 1, maxWidth: 200 }}
             />
-          </View>
-        </View>
+          }
+        />
+
         {supportsLiquidGlassTabBar && (
-          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-            <View className="flex-row justify-between items-center">
-              <Text className="text-base text-text-primary">Liquid Glass navigation</Text>
+          <SettingsRow
+            title="Liquid Glass navigation"
+            subtitle="Use the iOS 26 glass tab bar and screen headers."
+            subtitleNumberOfLines={0}
+            rightAccessory={
               <Switch
                 value={liquidGlassEnabled}
                 onValueChange={setLiquidGlassTabBarEnabled}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
               />
-            </View>
-            <Text className="text-text-secondary text-sm mt-2">
-              Use the iOS 26 glass tab bar and screen headers.
-            </Text>
-          </View>
+            }
+          />
         )}
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Notifications</Text>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-          <Text className="text-text-secondary text-sm mt-2">
-            Alerts for workout rest timers and fasting goals.
-          </Text>
-        </View>
+        <SettingsRow
+          title="Notifications"
+          subtitle="Rest timers, fasting goals, and medication reminders."
+          subtitleNumberOfLines={0}
+          onPress={() => navigation.navigate('NotificationSettings')}
+        />
 
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Haptic Feedback</Text>
+        <SettingsRow
+          title="Haptic Feedback"
+          subtitle="Light vibrations for timers and confirmations."
+          subtitleNumberOfLines={0}
+          rightAccessory={
             <Switch
               value={hapticsEnabled}
               onValueChange={setHapticsEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
             />
-          </View>
-          <Text className="text-text-secondary text-sm mt-2">
-            Light vibrations for timers and confirmations.
-          </Text>
-        </View>
+          }
+        />
 
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base text-text-primary">Camera shutter</Text>
+        <SettingsRow
+          title="Camera shutter"
+          subtitle="Play a sound when capturing photos."
+          subtitleNumberOfLines={0}
+          rightAccessory={
             <Switch
               value={soundsEnabled}
               onValueChange={setSoundsEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
             />
-          </View>
-          <Text className="text-text-secondary text-sm mt-2">
-            Play a sound when capturing photos.
-          </Text>
-        </View>
-
-
+          }
+        />
       </ScrollView>
     </View>
   );

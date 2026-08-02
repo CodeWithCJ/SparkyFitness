@@ -1,5 +1,5 @@
 import type { CreatePresetSessionRequest } from '@workspace/shared';
-import { instantHourMinute } from '@workspace/shared';
+import { instantHourMinute, setsDurationMinutes } from '@workspace/shared';
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 
 export const DEFAULT_REST_SECONDS = 90;
@@ -310,6 +310,7 @@ export function createWorkoutPlaybackDraftFromPreset(
         reps: set.reps ?? null,
         weight: set.weight ?? null,
         duration: set.duration ?? null,
+        distance: set.distance ?? null,
         rest_time: set.rest_time ?? DEFAULT_REST_SECONDS,
         notes: set.notes ?? null,
         rpe: set.rpe ?? null,
@@ -511,6 +512,7 @@ export function addWorkoutSetToExercise(
     reps: lastSet?.reps ?? null,
     weight: lastSet?.weight ?? null,
     duration: lastSet?.duration ?? null,
+    distance: lastSet?.distance ?? null,
     rest_time: lastSet?.rest_time ?? DEFAULT_REST_SECONDS,
     notes: lastSet?.notes ?? null,
     rpe: lastSet?.rpe ?? null,
@@ -684,14 +686,6 @@ function toNullableNumber(value: number | null | undefined): number | null {
   return value === undefined ? null : value;
 }
 
-function deriveDurationMinutes(sets: WorkoutPlaybackSetDraft[]): number {
-  return sets.reduce((sum, set) => {
-    const duration = set.duration ?? 0;
-    const rest = (set.rest_time ?? 0) / 60;
-    return sum + duration + rest;
-  }, 0);
-}
-
 function deriveExerciseDurationMinutes(
   exercise: WorkoutPlaybackExerciseDraft,
   nowMs: number = Date.now()
@@ -704,7 +698,7 @@ function deriveExerciseDurationMinutes(
     }
   }
 
-  return deriveDurationMinutes(exercise.sets);
+  return setsDurationMinutes(exercise.sets);
 }
 
 export function buildPresetSessionCreateRequestFromDraft(
@@ -741,6 +735,7 @@ export function buildPresetSessionCreateRequestFromDraft(
           reps: toNullableNumber(set.reps),
           weight: toNullableNumber(set.weight),
           duration: toNullableNumber(set.duration),
+          distance: toNullableNumber(set.distance),
           rest_time: toNullableNumber(set.rest_time),
           notes: set.notes ?? null,
           rpe: toNullableNumber(set.rpe),

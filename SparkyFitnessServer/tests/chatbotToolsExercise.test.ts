@@ -287,10 +287,51 @@ describe('create_exercise', () => {
       category: 'Cardio',
       calories_per_hour: 550,
       description: 'Indoor rower',
+      modality: undefined,
       is_custom: true,
       shared_with_public: false,
       source: 'manual',
     });
+  });
+
+  it('passes an explicit modality through to the service', async () => {
+    vi.mocked(exerciseService.searchExercises).mockResolvedValue([]);
+    vi.mocked(exerciseService.createExercise).mockResolvedValue({
+      id: EXERCISE_ID,
+      name: 'Plank',
+    });
+
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'create_exercise',
+        name: 'Plank',
+        category: 'Isometric',
+        modality: 'duration',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Exercise "Plank" created.');
+    expect(exerciseService.createExercise).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ name: 'Plank', modality: 'duration' })
+    );
+  });
+
+  it('rejects a modality outside the enum', async () => {
+    vi.mocked(exerciseService.searchExercises).mockResolvedValue([]);
+
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'create_exercise',
+        name: 'Plank',
+        modality: 'time_only',
+      } as never,
+      opts
+    );
+
+    expect(result).toContain('modality');
+    expect(exerciseService.createExercise).not.toHaveBeenCalled();
   });
 });
 
@@ -377,6 +418,7 @@ describe('log_exercise', () => {
             reps: 10,
             weight: 60,
             duration: null,
+            distance: null,
             rest_time: null,
             rpe: null,
             notes: null,
@@ -387,6 +429,7 @@ describe('log_exercise', () => {
             reps: 8,
             weight: 65,
             duration: null,
+            distance: null,
             rest_time: null,
             rpe: null,
             notes: null,
@@ -510,11 +553,79 @@ describe('log_exercise', () => {
             reps: 5,
             weight: 100,
             duration: null,
+            distance: null,
             rest_time: null,
             rpe: null,
             notes: null,
           },
         ],
+      }),
+      { skipDuplicateCheck: true }
+    );
+  });
+
+  it('persists per-set distance for cardio sets', async () => {
+    vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        entry_date: '2026-06-10',
+        duration_minutes: 30,
+        sets: [{ duration: 1800, distance: 5.2 }],
+      },
+      opts
+    );
+
+    expect(exerciseService.createExerciseEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        sets: [expect.objectContaining({ duration: 1800, distance: 5.2 })],
+      }),
+      { skipDuplicateCheck: true }
+    );
+  });
+
+  it('rejects a fractional set duration (per-set duration is integer seconds)', async () => {
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        entry_date: '2026-06-10',
+        sets: [{ reps: 5, duration: 90.5 }],
+      },
+      opts
+    );
+
+    // The sets union collapses inner paths, so the issue is reported on 'sets'.
+    expect(result).toBe('Error [VALIDATION]: sets: Invalid input');
+    expect(exerciseService.createExerciseEntry).not.toHaveBeenCalled();
+  });
+
+  it('rounds fractional durations arriving through the JSON-string sets branch', async () => {
+    vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        entry_date: '2026-06-10',
+        sets: '[{"reps":5,"duration":90.6}]',
+      },
+      opts
+    );
+
+    expect(exerciseService.createExerciseEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        sets: [expect.objectContaining({ duration: 91 })],
       }),
       { skipDuplicateCheck: true }
     );
@@ -799,6 +910,7 @@ describe('update_exercise_entry / delete_exercise_entry', () => {
             reps: 12,
             weight: null,
             duration: null,
+            distance: null,
             rest_time: null,
             rpe: null,
             notes: null,

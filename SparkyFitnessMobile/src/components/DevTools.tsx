@@ -7,8 +7,32 @@ import { triggerManualSync } from '../services/backgroundSyncService';
 import { notifySessionExpired } from '../services/api/authService';
 import { getActiveServerConfig } from '../services/storage';
 import { resetWhatsNewBanner } from '../services/whatsNewBanner';
+import { resetAnnouncementModal } from './AnnouncementModal';
 import { FOOD_SEARCH_POPOVERS } from '../services/foodSearchPreferences';
+import { CycleCardRingContent, type CycleRingContentInfo } from './CycleCard';
 import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedPermissions } from 'react-native-health-connect';
+
+const CYCLE_GALLERY_BASE: Omit<CycleRingContentInfo, 'day' | 'phase'> = {
+  avgCycleLength: 28,
+  avgPeriodLength: 5,
+  fertileStartDay: 10,
+  fertileEndDay: 15,
+  ovulationDay: 14,
+  nextPeriodStart: '2026-08-28',
+  daysLate: 0,
+};
+
+const CYCLE_GALLERY_STATES: { label: string; info: CycleRingContentInfo }[] = [
+  { label: 'Menstrual — day 2', info: { ...CYCLE_GALLERY_BASE, day: 2, phase: 'menstrual' } },
+  { label: 'Follicular — day 8', info: { ...CYCLE_GALLERY_BASE, day: 8, phase: 'follicular' } },
+  { label: 'Fertile window — day 12', info: { ...CYCLE_GALLERY_BASE, day: 12, phase: 'fertile' } },
+  { label: 'Ovulation — day 14', info: { ...CYCLE_GALLERY_BASE, day: 14, phase: 'ovulation' } },
+  { label: 'Luteal — day 21', info: { ...CYCLE_GALLERY_BASE, day: 21, phase: 'luteal' } },
+  {
+    label: 'Period late — day 31',
+    info: { ...CYCLE_GALLERY_BASE, day: 31, phase: 'luteal', daysLate: 3 },
+  },
+];
 
 const DevTools: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
@@ -220,6 +244,37 @@ const DevTools: React.FC = () => {
       </View>
 
       <View className="mt-5">
+        <Text className="text-sm text-text-primary">System Announcement</Text>
+        <Text className="text-text-muted mb-3 text-[13px]">
+          Clear the dismissed announcement flag so active system announcements re-appear.
+        </Text>
+        <View className="flex-row gap-2 flex-wrap">
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
+            onPress={async () => {
+              try {
+                await resetAnnouncementModal();
+                Toast.show({
+                  type: 'success',
+                  text1: 'Reset',
+                  text2: 'System announcement modal will re-appear.',
+                });
+              } catch {
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'Could not reset announcement.',
+                });
+              }
+            }}
+          >
+            <Text className="text-white text-base font-bold">Reset Announcement</Text>
+          </Button>
+        </View>
+      </View>
+
+      <View className="mt-5">
         <Text className="text-sm text-text-primary">Food Search Popovers</Text>
         <Text className="text-text-muted mb-3 text-[13px]">
           Clear a seen flag so its coaching popover re-appears on the next food
@@ -232,12 +287,20 @@ const DevTools: React.FC = () => {
               variant="primary"
               className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
               onPress={async () => {
-                await popover.reset();
-                Toast.show({
-                  type: 'success',
-                  text1: 'Reset',
-                  text2: `${popover.resetLabel} popover will re-appear.`,
-                });
+                try {
+                  await popover.reset();
+                  Toast.show({
+                    type: 'success',
+                    text1: 'Reset',
+                    text2: `${popover.resetLabel} popover will re-appear.`,
+                  });
+                } catch {
+                  Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Could not reset popover.',
+                  });
+                }
               }}
             >
               <Text className="text-white text-base font-bold">
@@ -246,6 +309,23 @@ const DevTools: React.FC = () => {
             </Button>
           ))}
         </View>
+      </View>
+
+      <View className="mt-5">
+        <Text className="text-sm text-text-primary">Cycle Card Gallery</Text>
+        <Text className="text-text-muted mb-3 text-[13px]">
+          Fake-data preview of the dashboard cycle card in every phase. The
+          pregnancy and discreet layouts follow real data: switch mode in Hub
+          settings.
+        </Text>
+        {CYCLE_GALLERY_STATES.map(({ label, info }) => (
+          <View key={label} className="mb-3">
+            <Text className="text-xs text-text-muted mb-1">{label}</Text>
+            <View className="border border-border-subtle rounded-xl p-4">
+              <CycleCardRingContent title="Cycle Tracking" info={info} />
+            </View>
+          </View>
+        ))}
       </View>
 
     </View>

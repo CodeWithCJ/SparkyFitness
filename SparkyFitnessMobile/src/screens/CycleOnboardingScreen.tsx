@@ -14,14 +14,17 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import StepperInput from '../components/StepperInput';
+import StepperInput, { useStepperDraft } from '../components/StepperInput';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
+import PregnancyDueDateForm, {
+  usePregnancyDueDateForm,
+} from '../components/wellness/pregnancy/PregnancyDueDateForm';
+import { CYCLE_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 
 import {
   BIRTH_CONTROL_METHODS,
   CYCLE_CONDITIONS,
-  eddFromLmp,
   type CycleMode,
 } from '@workspace/shared';
 
@@ -62,6 +65,18 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
   const [periodLength, setPeriodLength] = useState(5);
   const [birthControl, setBirthControl] = useState('none');
   const [conditions, setConditions] = useState<string[]>([]);
+  const dueDateForm = usePregnancyDueDateForm();
+
+  const cycleLengthProps = useStepperDraft({
+    value: cycleLength,
+    ...CYCLE_SETTING_LIMITS.cycleLength,
+    onCommit: setCycleLength,
+  });
+  const periodLengthProps = useStepperDraft({
+    value: periodLength,
+    ...CYCLE_SETTING_LIMITS.periodLength,
+    onCommit: setPeriodLength,
+  });
 
   // Refs
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
@@ -75,6 +90,14 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
   };
 
   const handleComplete = async () => {
+    if (mode === 'pregnant') {
+      const dateError = dueDateForm.validate();
+      if (dateError) {
+        Toast.show({ type: 'error', text1: 'Check the dates', text2: dateError });
+        setStep(2);
+        return;
+      }
+    }
     setLoading(true);
     try {
       // 1. Save Settings
@@ -100,13 +123,9 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
           await bulkPutLogs(seedLogs);
         }
       } else if (mode === 'pregnant') {
-        const computedDueDate = eddFromLmp(lastPeriodStart);
         try {
           await createPregnancyAsync({
-            due_date: computedDueDate,
-            due_date_basis: 'lmp',
-            lmp_date: lastPeriodStart,
-            conception_date: null,
+            ...dueDateForm.dates,
             fetus_count: 1,
             status: 'active',
             notes: null,
@@ -116,9 +135,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
             await updatePregnancyAsync({
               id: currentPregnancy.id,
               body: {
-                due_date: computedDueDate,
-                due_date_basis: 'lmp',
-                lmp_date: lastPeriodStart,
+                ...dueDateForm.dates,
                 status: 'active',
               },
             });
@@ -148,11 +165,11 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
     }
   };
 
-  const backEnabled = step > 1;
-
   const header = useScreenHeader({
     title: `Setup: Step ${step} of 4`,
-    left: backEnabled ? { kind: 'primary', label: 'Back', onPress: () => setStep((s) => s - 1) } : undefined,
+    left: step > 1
+      ? { kind: 'primary', label: 'Back', onPress: () => setStep((s) => s - 1) }
+      : { kind: 'primary', label: 'Back', onPress: () => navigation.goBack() },
   });
 
   return (
@@ -202,15 +219,9 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
             {mode === 'pregnant' ? (
               <View className="gap-4">
                 <Text className="text-text-secondary text-sm">
-                  Please specify the first day of your last menstrual period (LMP).
+                  Tell us how to estimate your due date. You can change this later in settings.
                 </Text>
-                <SettingsRowGroup>
-                  <SettingsRow
-                    title="Last Period Start (LMP)"
-                    subtitle={lastPeriodStart}
-                    onPress={() => calendarSheetRef.current?.present()}
-                  />
-                </SettingsRowGroup>
+                <PregnancyDueDateForm form={dueDateForm} />
               </View>
             ) : mode === 'postpartum' || mode === 'menopause' ? (
               <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
@@ -233,23 +244,13 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
                   <SettingsRow
                     title="Average Cycle Length"
                     rightAccessory={
-                      <StepperInput
-                        value={String(cycleLength)}
-                        onChangeText={(t) => setCycleLength(parseInt(t, 10) || 28)}
-                        onIncrement={() => setCycleLength((c) => c + 1)}
-                        onDecrement={() => setCycleLength((c) => Math.max(15, c - 1))}
-                      />
+                      <StepperInput {...cycleLengthProps} keyboardType="number-pad" />
                     }
                   />
                   <SettingsRow
                     title="Average Period Length"
                     rightAccessory={
-                      <StepperInput
-                        value={String(periodLength)}
-                        onChangeText={(t) => setPeriodLength(parseInt(t, 10) || 5)}
-                        onIncrement={() => setPeriodLength((p) => p + 1)}
-                        onDecrement={() => setPeriodLength((p) => Math.max(1, p - 1))}
-                      />
+                      <StepperInput {...periodLengthProps} keyboardType="number-pad" />
                     }
                   />
                 </SettingsRowGroup>
@@ -262,7 +263,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
           <View className="gap-4">
             <Text className="text-xl font-bold text-text-primary">Profile & Conditions</Text>
             <Text className="text-text-secondary text-sm">
-              Any underlying conditions or birth control methods? This helps filter health insights.
+              Select any relevant conditions or birth control methods to personalize your tracking.
             </Text>
             <SettingsRowGroup>
               <SettingsRow
@@ -302,12 +303,12 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
         {step === 4 && (
           <View className="gap-4">
             <Text className="text-xl font-bold text-text-primary">Disclaimer & Complete</Text>
-            <View className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <View className="bg-surface border border-border-subtle rounded-xl p-4 shadow-sm">
               <View className="flex-row items-center gap-2 mb-2">
                 <Icon name="warning" size={18} color="#D97706" />
-                <Text className="text-amber-800 font-bold">Medical Disclaimer</Text>
+                <Text className="text-text-primary font-bold">Medical Disclaimer</Text>
               </View>
-              <Text className="text-amber-800 text-sm leading-5">
+              <Text className="text-text-secondary text-sm leading-5">
                 The SparkyFitness Wellness and Reproductive Health Tracker is designed to help you track predictions, symptoms, and physiological parameters. It is NOT intended to be used as a contraceptive method or as a diagnostic/treatment tool.
                 {"\n\n"}
                 Always consult with a qualified medical professional for health concerns.

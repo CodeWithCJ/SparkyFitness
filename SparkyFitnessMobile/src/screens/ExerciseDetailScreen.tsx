@@ -31,6 +31,7 @@ import {
   buildSingleExerciseStartPayload,
   formatRecentSessionSet,
   normalizeWeightUnit,
+  resolveSnapshotModality,
 } from '../utils/workoutSession';
 import { formatDateLabel } from '../utils/dateUtils';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
@@ -108,6 +109,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
   const { preferences } = usePreferences();
   const weightUnit = normalizeWeightUnit(preferences?.default_weight_unit);
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   // Same UUID guard as hydration: the stats and history routes 400 on non-UUID
   // ids (e.g. external-provider exercises), so those get no History tab.
   const historyAvailable = isConnected && UUID_REGEX.test(item.id);
@@ -169,7 +171,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
   const { startLiveWorkout, isStarting } = useStartLiveWorkout(navigation);
   const handleStartWorkout = () => {
-    void startLiveWorkout({ exercises: buildSingleExerciseStartPayload({ id: exercise.id }) });
+    void startLiveWorkout({
+      exercises: buildSingleExerciseStartPayload(exercise),
+    });
   };
 
   const imageSources = useMemo(() => {
@@ -438,6 +442,8 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             <ExerciseHistoryList
               exerciseId={item.id}
               weightUnit={weightUnit}
+              distanceUnit={distanceUnit}
+              modality={resolveSnapshotModality(exercise)}
               bestSet={bestSet}
             />
           ) : resolvedTab === 'how-to' ? (
@@ -509,6 +515,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                           reps: bestSet.reps,
                         },
                         weightUnit,
+                        resolveSnapshotModality(exercise),
                       )}
                       sub={formatDateLabel(bestSet.entryDate)}
                     />
@@ -524,6 +531,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                           reps: lastSet.reps,
                         },
                         weightUnit,
+                        resolveSnapshotModality(exercise),
                       )}
                       sub={formatDateLabel(lastSet.entryDate)}
                     />

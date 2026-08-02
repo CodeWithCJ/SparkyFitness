@@ -70,6 +70,17 @@ const options = {
               description:
                 'The category of the exercise (e.g., "Strength", "Cardio").',
             },
+            modality: {
+              type: 'string',
+              enum: [
+                'weight_reps',
+                'reps_only',
+                'duration',
+                'duration_distance',
+              ],
+              description:
+                'Which per-set editor clients render for the exercise. Derived from the category when not supplied on create.',
+            },
             equipment: {
               type: 'array',
               items: {
@@ -598,12 +609,17 @@ const options = {
                     type: 'number',
                   },
                   duration: {
+                    type: 'integer',
+                    description: 'Duration in seconds',
+                  },
+                  distance: {
                     type: 'number',
+                    description: 'Distance in km',
                   },
                 },
               },
               description:
-                'Details of sets performed (reps, weight, duration).',
+                'Details of sets performed (reps, weight, duration in seconds, distance in km).',
             },
             reps: {
               type: 'number',
@@ -807,6 +823,11 @@ const options = {
               type: 'integer',
               nullable: true,
               description: 'Duration in seconds',
+            },
+            distance: {
+              type: 'number',
+              nullable: true,
+              description: 'Distance in km (cardio sets)',
             },
             rest_time: {
               type: 'integer',

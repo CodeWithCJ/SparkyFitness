@@ -5,18 +5,18 @@ import { useCycleInsights } from '../../hooks/useCycleInsights';
 import { useCycleHistory } from '../../hooks/useCycleHistory';
 import { useCycleSettings } from '../../hooks/useCycleSettings';
 import { predictNextCycles } from '@workspace/shared';
-import { getTodayDate, formatDate } from '../../utils/dateUtils';
+import { getTodayDate, formatDate, formatShortDate } from '../../utils/dateUtils';
 
 import Icon from '../Icon';
+import CycleIcon from './CycleIcon';
 import BBTLineChart from './BBTLineChart';
 import CorrelationCards from './CorrelationCards';
 
 const CycleInsightsView: React.FC = () => {
-  const [accentColor, textMuted, dangerColor] = useCSSVariable([
+  const [accentColor, dangerColor] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-muted',
     '--color-icon-danger',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const { insights, isLoading: isInsightsLoading } = useCycleInsights();
   const { cycles, isLoading: isHistoryLoading } = useCycleHistory();
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
@@ -76,23 +76,23 @@ const CycleInsightsView: React.FC = () => {
   return (
     <View className="gap-6">
       {/* 1. Stats Summary Card */}
-      <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-4">
-        <Text className="text-text-primary text-base font-bold">Cycle Summary</Text>
+      <View className="bg-surface rounded-xl p-4 shadow-sm gap-4">
+        <Text className="text-text-secondary text-base font-semibold">Cycle Summary</Text>
         <View className="flex-row justify-between">
           <View className="flex-1 items-center border-r border-border-subtle">
-            <Text className="text-text-secondary text-xs">Avg Cycle</Text>
+            <Text className="text-text-secondary text-xs font-medium">Avg Cycle</Text>
             <Text className="text-text-primary text-lg font-bold mt-1">
               {cycleStats.avgCycleLength} days
             </Text>
           </View>
           <View className="flex-1 items-center border-r border-border-subtle">
-            <Text className="text-text-secondary text-xs">Avg Period</Text>
+            <Text className="text-text-secondary text-xs font-medium">Avg Period</Text>
             <Text className="text-text-primary text-lg font-bold mt-1">
               {cycleStats.avgPeriodLength} days
             </Text>
           </View>
           <View className="flex-1 items-center">
-            <Text className="text-text-secondary text-xs">Regularity</Text>
+            <Text className="text-text-secondary text-xs font-medium">Regularity</Text>
             <Text className="text-text-primary text-lg font-bold mt-1 capitalize">
               {settings?.avg_cycle_length_override ? 'Set' : 'Regular'}
             </Text>
@@ -102,30 +102,54 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 2. Predictions & Confidence */}
       {predictions && predictions.cycles.length > 0 && (
-        <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-text-primary text-base font-bold">Next Predictions</Text>
-            <View className="bg-blue-50 px-2 py-0.5 rounded-md">
-              <Text className="text-blue-600 text-xs font-semibold uppercase">
-                {predictions.confidence} confidence
-              </Text>
-            </View>
-          </View>
-          <View className="gap-3">
+        <View className="bg-surface rounded-xl p-4 shadow-sm gap-4">
+          <Text className="text-text-secondary text-base font-semibold">Next Predictions</Text>
+
+          <View className="gap-4">
             {predictions.cycles.slice(0, 2).map((c, index) => (
-              <View
-                key={index}
-                className="flex-row items-center justify-between py-2 border-b border-border-subtle last:border-b-0"
-              >
-                <View>
-                  <Text className="text-text-primary font-semibold text-sm">
-                    Cycle starting {c.periodStart}
+              <View key={index} className="gap-2">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider">
+                    {index === 0 ? 'Upcoming Cycle' : 'Following Cycle'}
                   </Text>
-                  <Text className="text-text-secondary text-xs mt-0.5">
-                    Period: {c.periodStart} - {c.periodEnd}
+                  <Text className="text-text-secondary text-sm font-medium">
+                    {formatShortDate(c.periodStart)} – {formatShortDate(c.periodEnd)}
                   </Text>
                 </View>
-                <Icon name="logs" size={20} color={textMuted} />
+
+                <View className="flex-row gap-2.5">
+                  {/* Next Period Tile */}
+                  <View className="flex-1 bg-surface rounded-xl p-3 flex-row items-center gap-2.5 shadow-sm">
+                    <View className="w-8 h-8 items-center justify-center">
+                      <CycleIcon id="flow-medium" size={32} />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-text-secondary text-xs font-semibold uppercase">
+                        Next Period
+                      </Text>
+                      <Text className="text-text-primary text-sm font-bold mt-0.5">
+                        {formatShortDate(c.periodStart)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Est. Ovulation Tile */}
+                  {c.ovulation && (
+                    <View className="flex-1 bg-surface rounded-xl p-3 flex-row items-center gap-2.5 shadow-sm">
+                      <View className="w-8 h-8 items-center justify-center">
+                        <CycleIcon id="ovulation" size={32} />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-text-secondary text-xs font-semibold uppercase">
+                          Est. Ovulation
+                        </Text>
+                        <Text className="text-text-primary text-sm font-bold mt-0.5">
+                          {formatShortDate(c.ovulation)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
               </View>
             ))}
           </View>
@@ -134,18 +158,18 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 3. Anomalies/Alerts */}
       {anomalies.length > 0 && (
-        <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
-          <Text className="text-text-primary text-base font-bold">Clinical Health Alerts</Text>
+        <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
+          <Text className="text-text-secondary text-base font-semibold">Patterns to Watch</Text>
           <View className="gap-2">
             {anomalies.map((anom: { message: string }, idx: number) => (
               <View
                 key={idx}
-                className="flex-row items-start p-3 bg-red-50/50 rounded-xl border border-red-200"
+                className="flex-row items-start p-2"
               >
                 <View className="mr-2.5 mt-0.5">
-                  <Icon name="warning" size={16} color={dangerColor} />
+                  <Icon name="warning" size={18} color={dangerColor} />
                 </View>
-                <Text className="flex-1 text-xs text-text-primary leading-normal">
+                <Text className="flex-1 text-sm text-text-primary leading-normal">
                   {anom.message}
                 </Text>
               </View>
@@ -156,23 +180,22 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 4. BBT Chart */}
       <View className="gap-2">
-        <Text className="text-text-primary text-base font-bold px-1">Basal Body Temperature</Text>
         <BBTLineChart data={bbtData} isLoading={isLoading} />
       </View>
 
       {/* 5. Symptom Forecasting */}
-      <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-sm gap-3">
-        <Text className="text-text-primary text-base font-bold">Symptom Forecast</Text>
+      <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
+        <Text className="text-text-secondary text-base font-semibold">Symptom Forecast</Text>
         {forecastEntries.length === 0 ? (
-          <Text className="text-text-secondary text-xs italic text-center py-4">
+          <Text className="text-text-secondary text-sm italic text-center py-4">
             Log symptoms across a couple of cycles to forecast upcoming days.
           </Text>
         ) : (
           <View className="gap-2">
             {forecastEntries.map((f) => (
               <View key={f.date} className="flex-row justify-between items-start py-1 gap-3">
-                <Text className="text-text-primary text-sm font-semibold">{formatDate(f.date)}</Text>
-                <Text className="flex-1 text-right text-text-secondary text-xs capitalize">
+                <Text className="text-text-secondary text-sm font-semibold">{formatDate(f.date)}</Text>
+                <Text className="flex-1 text-right text-text-primary text-sm capitalize">
                   {f.symptoms.join(', ')}
                 </Text>
               </View>
@@ -183,7 +206,7 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 6. Personalized Correlations */}
       <View className="gap-2">
-        <Text className="text-text-primary text-base font-bold px-1">Personal Correlations</Text>
+        <Text className="text-text-secondary text-base font-semibold px-1">Personal Correlations</Text>
         <CorrelationCards />
       </View>
     </View>

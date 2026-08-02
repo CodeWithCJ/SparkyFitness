@@ -1487,6 +1487,88 @@ describe('externalFoodSearchApi', () => {
         expect(result.variants![1].trans_fat).toBe(0);
       });
 
+      test('preserves every Yazio serving description with its gram weight', () => {
+        const food = {
+          name: 'Protein Pudding',
+          brand: 'Yazio Brand',
+          provider_external_id: 'yazio-pudding',
+          provider_type: 'yazio',
+          is_custom: false,
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            serving_description: '100 g',
+            calories: 81,
+            protein: 5,
+            carbs: 10,
+            fat: 2,
+            is_default: true,
+          },
+          variants: [
+            {
+              serving_size: 100,
+              serving_unit: 'g',
+              serving_description: '100 g',
+              calories: 81,
+              protein: 5,
+              carbs: 10,
+              fat: 2,
+              is_default: true,
+            },
+            {
+              serving_size: 1,
+              serving_unit: 'serving',
+              serving_description: '1 serving (200 g)',
+              calories: 162,
+              protein: 10,
+              carbs: 20,
+              fat: 4,
+              is_default: false,
+            },
+            {
+              serving_size: 200,
+              serving_unit: 'g',
+              serving_description: '200 g',
+              calories: 162,
+              protein: 10,
+              carbs: 20,
+              fat: 4,
+              is_default: false,
+            },
+            {
+              serving_size: 1,
+              serving_unit: 'serving',
+              serving_description: '1 serving (400 g)',
+              calories: 324,
+              protein: 20,
+              carbs: 40,
+              fat: 8,
+              is_default: false,
+            },
+            {
+              serving_size: 400,
+              serving_unit: 'g',
+              serving_description: '400 g',
+              calories: 324,
+              protein: 20,
+              carbs: 40,
+              fat: 8,
+              is_default: false,
+            },
+          ],
+        };
+
+        const result = transformNormalizedFood(food, 'yazio');
+
+        expect(result.variants?.map(variant => variant.serving_description)).toEqual([
+          '1 serving (200 g)',
+          '100 g',
+          '200 g',
+          '1 serving (400 g)',
+          '400 g',
+        ]);
+      });
+
       test('puts default_variant first in variants array', () => {
         const defaultVariant = {
           serving_size: 140, serving_unit: 'g', calories: 220,

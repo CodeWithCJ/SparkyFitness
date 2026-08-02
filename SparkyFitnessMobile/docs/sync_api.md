@@ -7,6 +7,22 @@
 - Header: `Authorization: Bearer <api_key>` or `X-API-Key: <api_key>`
 - The API key must be active and have `health_data_write` permission
 
+### Per-set duration units
+
+Workout / ExerciseSession entries may carry a `sets` array. Two fields can
+express a set's duration:
+
+- `sets[].duration_seconds` — integer seconds. Preferred; the mobile app sends
+  this. Always interpreted as seconds, and servers predating the seconds-based
+  set model drop the unknown field instead of misreading it as minutes.
+- `sets[].duration` — legacy field. With `X-Workout-Model-Version: 2` (or
+  higher) it is integer seconds; when the header is absent it is treated as
+  legacy minutes and converted (×60) on ingest. When both fields are present,
+  `duration_seconds` wins.
+
+Entry-level `duration` (session length) is always seconds and
+`duration_minutes` is always minutes, regardless of the header.
+
 ### Request Format
 
 - **Method:** POST

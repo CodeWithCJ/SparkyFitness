@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BarcodeResponseSchema,
+  FoodVariantSchema,
   PaginationSchema,
   SearchResponseSchema,
 } from '../schemas/foodSchemas.js';
@@ -7,6 +9,7 @@ import {
 const validVariant = {
   serving_size: 100,
   serving_unit: 'g',
+  serving_description: '100 g',
   calories: 50,
   protein: 1,
   carbs: 10,
@@ -14,12 +17,43 @@ const validVariant = {
   is_default: true,
 };
 
+const packageVariant = {
+  ...validVariant,
+  serving_size: 1,
+  serving_unit: 'package',
+  serving_description: '1 package (200 g)',
+  calories: 100,
+  is_default: false,
+};
+
+const metricPackageVariant = {
+  ...packageVariant,
+  serving_size: 200,
+  serving_unit: 'g',
+  serving_description: '200 g',
+};
+
 const validFood = {
   name: 'Yam',
   brand: null,
   is_custom: false,
   default_variant: validVariant,
+  variants: [validVariant, packageVariant, metricPackageVariant],
 };
+
+describe('FoodVariantSchema', () => {
+  it('accepts an explicitly null provider serving description', () => {
+    const result = FoodVariantSchema.safeParse({
+      ...validVariant,
+      serving_description: null,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.serving_description).toBeUndefined();
+    }
+  });
+});
 
 describe('PaginationSchema', () => {
   it('accepts numeric pagination fields and keeps them as numbers', () => {
@@ -94,6 +128,25 @@ describe('SearchResponseSchema', () => {
     if (result.success) {
       expect(result.data.pagination.page).toBe(1);
       expect(result.data.pagination.totalCount).toBe(1);
+      expect(
+        result.data.foods[0]?.variants?.map(
+          (variant) => variant.serving_description
+        )
+      ).toEqual(['100 g', '1 package (200 g)', '200 g']);
     }
+  });
+});
+
+describe('BarcodeResponseSchema', () => {
+  it('preserves all serving variants and their gram descriptions', () => {
+    const result = BarcodeResponseSchema.parse({
+      source: 'yazio',
+      food: validFood,
+    });
+
+    expect(result.food?.variants).toHaveLength(3);
+    expect(
+      result.food?.variants?.map((variant) => variant.serving_description)
+    ).toEqual(['100 g', '1 package (200 g)', '200 g']);
   });
 });

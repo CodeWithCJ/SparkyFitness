@@ -15,6 +15,7 @@ import {
   resolveLocalPickerVariantId,
   formatServingDescription,
   selectDisplayVariant,
+  toPersistedServingUnit,
 } from '../../src/utils/foodDetails';
 
 function makeItem(overrides: Partial<FoodInfoItem> = {}): FoodInfoItem {
@@ -109,6 +110,65 @@ describe('formatServingDescription', () => {
   });
 });
 
+describe('toPersistedServingUnit', () => {
+  it('keeps metric units compact', () => {
+    expect(
+      toPersistedServingUnit({
+        serving_size: 200,
+        serving_unit: 'g',
+        serving_description: '200 g',
+      }),
+    ).toBe('g');
+    expect(
+      toPersistedServingUnit({
+        serving_size: 250,
+        serving_unit: 'g',
+        serving_description: '1 cup (250 g)',
+      }),
+    ).toBe('g');
+  });
+
+  it('embeds metric context for otherwise ambiguous named servings', () => {
+    expect(
+      toPersistedServingUnit({
+        serving_size: 1,
+        serving_unit: 'package',
+        serving_description: '1 package (200 g)',
+      }),
+    ).toBe('package (200 g)');
+    expect(
+      toPersistedServingUnit({
+        serving_size: 1,
+        serving_unit: 'package',
+        serving_description: '1 package (400 g)',
+      }),
+    ).toBe('package (400 g)');
+  });
+
+  it('preserves a plain unit when no metric context is available', () => {
+    expect(
+      toPersistedServingUnit({ serving_size: 1, serving_unit: 'serving' }),
+    ).toBe('serving');
+    expect(
+      toPersistedServingUnit({
+        serving_size: 200,
+        serving_unit: 'glass.small',
+        serving_description: 'Small glass',
+      }),
+    ).toBe('glass.small');
+  });
+
+  it('does not append the same metric context twice', () => {
+    expect(
+      toPersistedServingUnit({
+        serving_size: 1,
+        serving_unit: 'package (200 g)',
+        serving_description: '1 package (200 g)',
+      }),
+    ).toBe('package (200 g)');
+  });
+});
+
 describe('selectDisplayVariant', () => {
   it('returns the default variant when no variants are provided', () => {
     const dv = makeDisplayVariant(100, 'g');
@@ -174,6 +234,17 @@ describe('selectDisplayVariant', () => {
     const result = selectDisplayVariant(dv, variants);
     expect(result.displayVariant).toBe(dv);
     expect(result.orderedVariants).toEqual([dv, another]);
+  });
+
+  it('keeps named servings with different metric weights distinct', () => {
+    const reference = makeDisplayVariant(100, 'g', '100 g');
+    const package200 = makeDisplayVariant(1, 'package', '1 package (200 g)');
+    const package400 = makeDisplayVariant(1, 'package', '1 package (400 g)');
+
+    expect(
+      selectDisplayVariant(reference, [reference, package200, package400])
+        .orderedVariants,
+    ).toEqual([package200, reference, package400]);
   });
 
   it('ignores variants without meaningful descriptions', () => {
@@ -336,6 +407,26 @@ describe('convertEquivalentVariantQuantity', () => {
 describe('buildExternalVariantOptions', () => {
   test('returns an empty list when variants is undefined', () => {
     expect(buildExternalVariantOptions(undefined)).toEqual([]);
+  });
+
+  test('shows named servings with different metric weights separately', () => {
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        serving_unit: 'package',
+        serving_description: '1 package (200 g)',
+        calories: 100,
+      }),
+      makeExternalVariant({
+        serving_unit: 'package',
+        serving_description: '1 package (400 g)',
+        calories: 200,
+      }),
+    ]);
+
+    expect(options.map(option => option.label)).toEqual([
+      '1 package (200 g) (100 cal)',
+      '1 package (400 g) (200 cal)',
+    ]);
   });
 
   test('uses serving_description and assigns ext-{index} ids', () => {
@@ -542,6 +633,66 @@ describe('groupEquivalentVariants', () => {
   test('returns empty array for undefined input', () => {
     expect(groupEquivalentVariants(undefined)).toEqual([]);
   });
+
+  test('does not group named servings with different metric weights', () => {
+    const package200 = {
+      ...makeLocalVariant({
+        id: 'package-200',
+        serving_size: 1,
+        serving_unit: 'package',
+        calories: 100,
+      }),
+      serving_description: '1 package (200 g)',
+    };
+    const package400 = {
+      ...makeLocalVariant({
+        id: 'package-400',
+        serving_size: 1,
+        serving_unit: 'package',
+        calories: 200,
+      }),
+      serving_description: '1 package (400 g)',
+    };
+
+    expect(groupEquivalentVariants([package200, package400])).toHaveLength(2);
+  });
+
+  test.each([
+    ['matches the 200 g variant', 100],
+    ['matches neither metric variant', 50],
+  ])(
+    'keeps persisted metric packages visible when legacy nutrition %s',
+    (_scenario, legacyCalories) => {
+      const legacy = makeLocalVariant({
+        id: 'legacy-package',
+        serving_size: 1,
+        serving_unit: 'package',
+        calories: legacyCalories,
+      });
+      const package200 = makeLocalVariant({
+        id: 'package-200',
+        serving_size: 1,
+        serving_unit: 'package (200 g)',
+        calories: 100,
+      });
+      const package400 = makeLocalVariant({
+        id: 'package-400',
+        serving_size: 1,
+        serving_unit: 'package (400 g)',
+        calories: 200,
+      });
+
+      const groups = groupEquivalentVariants([legacy, package200, package400]);
+
+      expect(groups.map(group => group.base.id)).toEqual([
+        'package-200',
+        'package-400',
+      ]);
+      expect(groups[0].equivalents.map(equivalent => equivalent.id)).toEqual([
+        'legacy-package',
+      ]);
+    },
+  );
 
   test('promotes non-reference variant to base when 100g matches first', () => {
     const reference = makeLocalVariant({

@@ -47,10 +47,14 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
 
   const fastingCardVisible = useAppPreferencesStore((s) => s.fastingCardVisible);
   const setFastingCardVisible = useAppPreferencesStore((s) => s.setFastingCardVisible);
+  const cycleCardVisible = useAppPreferencesStore((s) => s.cycleCardVisible);
+  const setCycleCardVisible = useAppPreferencesStore((s) => s.setCycleCardVisible);
   const hydrationCardVisible = useAppPreferencesStore((s) => s.hydrationCardVisible);
   const setHydrationCardVisible = useAppPreferencesStore((s) => s.setHydrationCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
   const setAskSparkyVisible = useAppPreferencesStore((s) => s.setAskSparkyVisible);
+  const medicationsCardVisible = useAppPreferencesStore((s) => s.medicationsCardVisible);
+  const setMedicationsCardVisible = useAppPreferencesStore((s) => s.setMedicationsCardVisible);
 
   const queryClient = useQueryClient();
   const { isConnected } = useServerConnection();
@@ -209,6 +213,30 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
               <Switch
                 value={fastingCardVisible}
                 onValueChange={setFastingCardVisible}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+          <SettingsRow
+            title="Cycle & Pregnancy"
+            subtitle="Show the wellness card on the Dashboard"
+            rightAccessory={
+              <Switch
+                value={cycleCardVisible}
+                onValueChange={setCycleCardVisible}
+                trackColor={{ false: formDisabled, true: formEnabled }}
+                thumbColor="#FFFFFF"
+              />
+            }
+          />
+          <SettingsRow
+            title="Medications"
+            subtitle="Show the medications card on the Dashboard"
+            rightAccessory={
+              <Switch
+                value={medicationsCardVisible}
+                onValueChange={setMedicationsCardVisible}
                 trackColor={{ false: formDisabled, true: formEnabled }}
                 thumbColor="#FFFFFF"
               />

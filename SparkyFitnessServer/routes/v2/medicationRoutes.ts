@@ -3,6 +3,7 @@ import {
   CreateMedicationBodySchema,
   UpdateMedicationBodySchema,
   CreateScheduleBodySchema,
+  UpdateScheduleBodySchema,
   CreatePenBodySchema,
   UpdatePenBodySchema,
   CreateInjectionBodySchema,
@@ -29,7 +30,7 @@ import glp1Service from '../../services/glp1Service.js';
 import medicationEntryRepository from '../../models/medicationEntryRepository.js';
 import medicationDisplayPreferenceRepository from '../../models/medicationDisplayPreferenceRepository.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
-import { todayInZone } from '@workspace/shared';
+import { instantToDay, todayInZone } from '@workspace/shared';
 
 const router = express.Router();
 
@@ -105,6 +106,12 @@ router.use(checkPermissionMiddleware('medications'));
  *     parameters: [{ in: path, name: medicationId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 201: { description: Created. }, 400: { description: Invalid request. } }
  * /v2/medications/schedules/{id}:
+ *   put:
+ *     summary: Update a schedule rule (partial)
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Updated. }, 400: { description: Invalid request. }, 404: { description: Not found. } }
  *   delete:
  *     summary: Delete a schedule rule
  *     tags: [Medications & GLP-1]
@@ -562,6 +569,27 @@ const addSchedule: RequestHandler = async (req, res, next) => {
   }
 };
 
+const updateSchedule: RequestHandler = async (req, res, next) => {
+  try {
+    const params = UuidParamSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
+    const body = UpdateScheduleBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    const schedule = await medicationRepository.updateSchedule(
+      req.userId,
+      params.data.id,
+      body.data
+    );
+    if (!schedule) {
+      res.status(404).json({ error: 'Schedule not found' });
+      return;
+    }
+    res.json(schedule);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const deleteSchedule: RequestHandler = async (req, res, next) => {
   try {
     const params = UuidParamSchema.safeParse(req.params);
@@ -581,6 +609,7 @@ const deleteSchedule: RequestHandler = async (req, res, next) => {
 };
 
 router.post('/:medicationId/schedules', addSchedule);
+router.put('/schedules/:id', updateSchedule);
 router.delete('/schedules/:id', deleteSchedule);
 
 // --- Pens / vials ---------------------------------------------------------
@@ -682,7 +711,9 @@ const createInjection: RequestHandler = async (req, res, next) => {
     // Resolve timezone-aware defaults so we don't fall back to UTC CURRENT_DATE
     if (!body.data.entry_date) {
       const tz = await loadUserTimezone(req.userId);
-      body.data.entry_date = todayInZone(tz);
+      body.data.entry_date = body.data.injected_at
+        ? instantToDay(body.data.injected_at, tz)
+        : todayInZone(tz);
     }
     if (!body.data.injected_at) {
       body.data.injected_at = new Date().toISOString();
@@ -703,6 +734,10 @@ const updateInjection: RequestHandler = async (req, res, next) => {
     if (!params.success) return badRequest(res, params.error);
     const body = UpdateInjectionBodySchema.safeParse(req.body);
     if (!body.success) return badRequest(res, body.error);
+    if (body.data.injected_at && body.data.entry_date === undefined) {
+      const tz = await loadUserTimezone(req.userId);
+      body.data.entry_date = instantToDay(body.data.injected_at, tz);
+    }
     const injection = await injectionRepository.updateInjection(
       req.userId,
       params.data.id,

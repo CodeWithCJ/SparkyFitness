@@ -63,7 +63,7 @@ const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 function buildPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
   return {
-    id: 'preset-1',
+    id: 7,
     user_id: 'user-1',
     name: 'Push Day',
     description: null,
@@ -149,7 +149,7 @@ describe('PresetSearchScreen', () => {
     expect(screen.getByText('Pick your first exercise')).toBeTruthy();
   });
 
-  it('starts a live workout from a tapped preset with the preset-built payload', () => {
+  it('starts a live workout from a tapped preset with the preset-built payload and source link', () => {
     const preset = buildPreset();
     const screen = renderScreen();
 
@@ -158,6 +158,7 @@ describe('PresetSearchScreen', () => {
     expect(startLiveWorkout).toHaveBeenCalledWith({
       name: 'Push Day',
       exercises: buildPresetStartExercisesPayload(preset),
+      sourcePresetId: 7,
     });
     expect(navigation.navigate).not.toHaveBeenCalled();
   });
@@ -168,7 +169,7 @@ describe('PresetSearchScreen', () => {
     fireEvent.press(screen.getByTestId('preset-thumbnail'));
 
     expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetDetail', {
-      preset: expect.objectContaining({ id: 'preset-1' }),
+      preset: expect.objectContaining({ id: 7 }),
     });
     expect(startLiveWorkout).not.toHaveBeenCalled();
   });
@@ -179,7 +180,7 @@ describe('PresetSearchScreen', () => {
     fireEvent.press(screen.getByLabelText('View preset details'));
 
     expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetDetail', {
-      preset: expect.objectContaining({ id: 'preset-1' }),
+      preset: expect.objectContaining({ id: 7 }),
     });
     expect(startLiveWorkout).not.toHaveBeenCalled();
   });

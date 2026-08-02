@@ -1,6 +1,7 @@
 import {
   fetchWorkoutPresets,
   fetchWorkoutPresetsPage,
+  getWorkoutPresetById,
   searchWorkoutPresets,
 } from '../../../src/services/api/workoutPresetsApi';
 import { getActiveServerConfig, type ServerConfig } from '../../../src/services/storage';
@@ -75,6 +76,36 @@ describe('workoutPresetsApi', () => {
     it('throws error when no server config exists', async () => {
       mockGetActiveServerConfig.mockResolvedValue(null);
       await expect(fetchWorkoutPresets()).rejects.toThrow('Server configuration not found.');
+    });
+  });
+
+  describe('getWorkoutPresetById', () => {
+    it('sends GET request to /api/workout-presets/:id and returns the preset', async () => {
+      const responseData = { id: 7, name: 'Push Day', exercises: [] };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await getWorkoutPresetById(7);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/workout-presets/7',
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(result).toEqual(responseData);
+    });
+
+    it('rejects when the preset is gone (404)', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: 'not found' }),
+      });
+
+      await expect(getWorkoutPresetById(7)).rejects.toThrow();
     });
   });
 

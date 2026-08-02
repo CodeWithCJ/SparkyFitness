@@ -68,11 +68,11 @@ function renderComponent() {
 }
 
 describe('CycleInsightsView', () => {
-  it('renders summary, predictions, clinical alerts, and forecast', () => {
+  it('renders summary, predictions, pattern alerts, and forecast', () => {
     const { getByText, getByTestId } = renderComponent();
 
     expect(getByText('Cycle Summary')).toBeTruthy();
-    expect(getByText('Clinical Health Alerts')).toBeTruthy();
+    expect(getByText('Patterns to Watch')).toBeTruthy();
     expect(getByText('Potential irregular cycle pattern detected.')).toBeTruthy();
     expect(getByText('Symptom Forecast')).toBeTruthy();
     expect(getByText('Cramps')).toBeTruthy();

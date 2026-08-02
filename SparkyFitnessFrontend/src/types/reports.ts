@@ -84,10 +84,10 @@ export interface DailyExerciseEntry {
     id: string;
     set_number: number;
     set_type: string;
-    reps: number;
-    weight: number;
-    duration?: number;
-    rest_time?: number;
+    reps: number | null;
+    weight: number | null;
+    duration?: number; // seconds
+    rest_time?: number; // seconds
     notes?: string;
   }[];
   [key: string]: string | number | boolean | object | undefined;

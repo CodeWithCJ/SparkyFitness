@@ -73,7 +73,7 @@ function buildSet(overrides: Partial<WorkoutPresetSet> = {}): WorkoutPresetSet {
 
 function buildPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
   return {
-    id: 'preset-1',
+    id: 7,
     user_id: 'user-1',
     name: 'Push Day',
     description: 'Chest, shoulders, triceps',
@@ -139,6 +139,7 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(startLiveWorkout).toHaveBeenCalledWith({
       name: 'Push Day',
       exercises: buildPresetStartExercisesPayload(preset),
+      sourcePresetId: 7,
     });
     expect(navigation.navigate).not.toHaveBeenCalled();
   });
@@ -376,7 +377,7 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(screen.queryByTestId('superset-rail-803')).toBeNull();
   });
 
-  it('renders time-based (duration-only) sets as a duration string', () => {
+  it('renders a duration-modality exercise with a SEC column of raw seconds', () => {
     const preset = buildPreset({
       exercises: [
         {
@@ -384,6 +385,7 @@ describe('WorkoutPresetDetailScreen', () => {
           exercise_id: 'ex-1',
           exercise_name: 'Plank',
           image_url: null,
+          modality: 'duration',
           sets: [
             buildSet({ id: 's-1', set_number: 1, duration: 45 }),
             buildSet({ id: 's-2', set_number: 2, duration: 90 }),
@@ -393,7 +395,9 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByText('45s')).toBeTruthy();
-    expect(screen.getByText('1:30')).toBeTruthy();
+    expect(screen.getByText('Sec')).toBeTruthy();
+    expect(screen.getByText('45')).toBeTruthy();
+    expect(screen.getByText('90')).toBeTruthy();
   });
+
 });

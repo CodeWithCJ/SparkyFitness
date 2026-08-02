@@ -1,6 +1,7 @@
 import {
   fetchExerciseEntries,
   fetchExerciseHistory,
+  transformExerciseRow,
 } from '../../src/services/api/exerciseApi';
 import {
   calculateCaloriesBurned,
@@ -166,6 +167,25 @@ describe('exerciseApi', () => {
       await expect(fetchExerciseEntries(testDate)).rejects.toThrow(
         'Network request failed'
       );
+    });
+  });
+
+  describe('transformExerciseRow', () => {
+    const baseRow = { id: 'ex-1', name: 'Plank', category: 'isometric' };
+
+    it('passes a valid modality through', () => {
+      expect(transformExerciseRow({ ...baseRow, modality: 'duration' }).modality).toBe(
+        'duration',
+      );
+    });
+
+    it('maps an absent modality (pre-modality server) to null', () => {
+      expect(transformExerciseRow(baseRow).modality).toBeNull();
+    });
+
+    it('sanitizes a garbage modality value to null', () => {
+      expect(transformExerciseRow({ ...baseRow, modality: 'cardio!!' }).modality).toBeNull();
+      expect(transformExerciseRow({ ...baseRow, modality: 42 }).modality).toBeNull();
     });
   });
 

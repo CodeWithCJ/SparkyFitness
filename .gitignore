@@ -73,3 +73,5 @@ dossier sans titre/
 # Nix build outputs
 /result
 /result-*
+
+.mcp.json

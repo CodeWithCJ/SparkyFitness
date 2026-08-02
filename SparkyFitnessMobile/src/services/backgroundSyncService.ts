@@ -22,6 +22,10 @@ import {
 } from './storage';
 import { queryClient } from '../hooks/queryClient';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
+import { listMedications, listEntries } from './api/medicationsApi';
+import { reconcileMedicationReminders } from './medicationReminderService';
+import { getTodayDate } from '../utils/dateUtils';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 
 const isAppActive = (): boolean => AppState.currentState === 'active';
 
@@ -184,6 +188,25 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await addLog(`[Background Sync] Writeback phase failed: ${message}`, 'ERROR');
+  }
+
+  // Reconcile medication reminders against fresh server schedules. With
+  // reminders disabled the fetches are skipped but the reconcile still runs
+  // so any pending reminders get cancelled.
+  try {
+    const prefs = useAppPreferencesStore.getState();
+    const remindersActive = prefs.medicationRemindersEnabled && prefs.notificationsEnabled;
+    const today = getTodayDate();
+    const [medications, entries] = remindersActive
+      ? await Promise.all([
+          listMedications({ activeOnly: true }),
+          listEntries({ fromDate: today, toDate: today }),
+        ])
+      : [[], []];
+    await reconcileMedicationReminders(medications, entries);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(`[Background Sync] Medication reminder reconciliation failed: ${message}`, 'ERROR');
   }
 };
 

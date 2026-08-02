@@ -1,4 +1,5 @@
 import { log } from '../../config/logging.js';
+import { altBarcode } from '../../utils/foodUtils.js';
 
 interface FatSecretServing {
   serving_id?: string;
@@ -324,7 +325,31 @@ async function searchFatSecretByBarcode(
       },
     });
     if (!response.ok) {
-      if (response.status === 404) return null;
+      if (response.status === 404) {
+        const alt = altBarcode(barcode);
+
+        if (alt) {
+          const altUrl = `${FATSECRET_API_BASE_URL}/food/barcode/find-by-id/v2?${new URLSearchParams(
+            {
+              barcode: alt,
+              format: 'json',
+            }
+          ).toString()}`;
+          const altResponse = await fetch(altUrl, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+          });
+          if (altResponse.ok) {
+            const data = await altResponse.json();
+            return data;
+          }
+        }
+        return null;
+      }
       const errorText = await response.text();
       log('error', 'FatSecret Barcode API error:', errorText);
       // If we get an error related to scope/permission, we know barcode API isn't available

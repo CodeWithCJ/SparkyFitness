@@ -16,13 +16,14 @@ import ActionSheet, { type ActionSheetItem, type ActionSheetRef } from './Action
 import { type AnchorRect } from './AnchoredMenu';
 import RestPeriodSheet, { type RestPeriodSheetRef } from './RestPeriodSheet';
 import WorkoutReorderList from './WorkoutReorderList';
-import { weightFromKg } from '../utils/unitConversions';
+import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
 import {
   draftExerciseToCardExercise,
   exerciseFromDraft,
+  rendersCardioEffortForm,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import type { SetRowAccessoryHandle } from './SetRowChrome';
+import type { SetInputField, SetRowAccessoryHandle } from './SetRowChrome';
 import type { ActiveSetPatch, CompletedSetMap } from '../stores/activeWorkoutStore';
 import { useSupersetBorders } from './ActiveWorkoutRail';
 import type { WorkoutDraftExercise, WorkoutSetMetaPatch } from '../types/drafts';
@@ -32,6 +33,13 @@ import type { GetImageSource } from '../hooks/useExerciseImageSource';
 interface WorkoutFormExerciseListProps {
   exercises: WorkoutDraftExercise[];
   weightUnit: 'kg' | 'lbs';
+  /** Defaults to km; the workout forms pass the user's preference. */
+  distanceUnit?: 'km' | 'miles';
+  /**
+   * False keeps cardio exercises on the duration-style set table — the preset
+   * form, whose sets have no distance column. See ActiveWorkoutExerciseCard.
+   */
+  cardioFormEnabled?: boolean;
   getImageSource: GetImageSource;
   /**
    * When editing a saved workout: its preset-entry id, forwarded to every card
@@ -41,8 +49,8 @@ interface WorkoutFormExerciseListProps {
   excludePresetEntryId?: string;
   /** `${exerciseClientId}:${setClientId}` from useExerciseSetEditing. */
   activeSetKey: string | null;
-  activeSetField: 'weight' | 'reps' | 'rpe';
-  onActivateSet: (setKey: string, field: 'weight' | 'reps' | 'rpe') => void;
+  activeSetField: SetInputField;
+  onActivateSet: (setKey: string, field: SetInputField) => void;
   onDeactivateSet: () => void;
   /**
    * From the screen's useSetEditAccessoryBar: rows register their handles here
@@ -53,7 +61,7 @@ interface WorkoutFormExerciseListProps {
   updateSetField: (
     exerciseClientId: string,
     setClientId: string,
-    field: 'weight' | 'reps',
+    field: 'weight' | 'reps' | 'duration' | 'distance',
     value: string,
   ) => void;
   updateSetMeta: (
@@ -85,7 +93,8 @@ interface WorkoutFormExerciseListProps {
   onReplaceExercise?: (clientId: string) => void;
   /**
    * Enables the ⋮ "Clear logged sets" item, shown only when the exercise has
-   * a completed set (workout edit). Absent for forms whose drafts never carry
+   * a completed set and renders a set table — cardio-effort-form exercises
+   * hide it (workout edit). Absent for forms whose drafts never carry
    * completions.
    */
   clearExerciseCompletions?: (clientId: string) => void;
@@ -136,6 +145,8 @@ const WorkoutFormExerciseList = forwardRef<
   {
     exercises,
     weightUnit,
+    distanceUnit = 'km',
+    cardioFormEnabled = true,
     getImageSource,
     excludePresetEntryId,
     activeSetKey,
@@ -168,8 +179,11 @@ const WorkoutFormExerciseList = forwardRef<
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const cardExercises = useMemo(
-    () => exercises.map(exercise => draftExerciseToCardExercise(exercise, weightUnit)),
-    [exercises, weightUnit],
+    () =>
+      exercises.map(exercise =>
+        draftExerciseToCardExercise(exercise, weightUnit, distanceUnit),
+      ),
+    [exercises, weightUnit, distanceUnit],
   );
 
   // Reorder overlay. The open trigger lives in the owning screen's header
@@ -225,7 +239,7 @@ const WorkoutFormExerciseList = forwardRef<
     useSupersetBorders(exercisesForBorders);
 
   const handleActivateSet = useCallback(
-    (setId: string, field: 'weight' | 'reps') => {
+    (setId: string, field: Exclude<SetInputField, 'rpe'>) => {
       const owner = setOwnerByClientId.get(setId);
       if (owner) onActivateSet(`${owner}:${setId}`, field);
     },
@@ -242,7 +256,7 @@ const WorkoutFormExerciseList = forwardRef<
   );
 
   const handleEditFieldChange = useCallback(
-    (setId: string, field: 'weight' | 'reps', text: string) => {
+    (setId: string, field: Exclude<SetInputField, 'rpe'>, text: string) => {
       const owner = setOwnerByClientId.get(setId);
       if (owner) updateSetField(owner, setId, field, text);
     },
@@ -265,6 +279,21 @@ const WorkoutFormExerciseList = forwardRef<
       if (patch.reps !== undefined) {
         updateSetField(owner, setId, 'reps', patch.reps == null ? '' : String(patch.reps));
       }
+      if (patch.duration !== undefined) {
+        updateSetField(
+          owner,
+          setId,
+          'duration',
+          patch.duration == null ? '' : String(patch.duration),
+        );
+      }
+      if (patch.distance !== undefined) {
+        const text =
+          patch.distance == null
+            ? ''
+            : String(parseFloat(distanceFromKm(patch.distance, distanceUnit).toFixed(2)));
+        updateSetField(owner, setId, 'distance', text);
+      }
       if (patch.rpe !== undefined) {
         updateSetMeta(owner, setId, { rpe: patch.rpe });
       }
@@ -272,7 +301,7 @@ const WorkoutFormExerciseList = forwardRef<
         updateSetMeta(owner, setId, { notes: patch.notes });
       }
     },
-    [setOwnerByClientId, updateSetField, updateSetMeta, weightUnit],
+    [setOwnerByClientId, updateSetField, updateSetMeta, weightUnit, distanceUnit],
   );
 
   const handleDeleteSet = useCallback(
@@ -392,10 +421,16 @@ const WorkoutFormExerciseList = forwardRef<
   const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
   const effectiveMetricColumn =
     !rpeEditable && metricColumn === 'rpe' ? 'volume' : metricColumn;
-  const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
-  const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
-    setMetricMenuAnchor(anchor);
-  }, []);
+  const [metricMenu, setMetricMenu] = useState<{
+    anchor: AnchorRect;
+    clampedToRpe: boolean;
+  } | null>(null);
+  const handlePressMetricHeader = useCallback(
+    (anchor: AnchorRect, clampedToRpe: boolean) => {
+      setMetricMenu({ anchor, clampedToRpe });
+    },
+    [],
+  );
 
   // Card ⋮ menu, presented as a bottom sheet titled with the exercise name.
   // 'main' offers grouping + remove; 'pick' swaps the candidate list
@@ -471,7 +506,14 @@ const WorkoutFormExerciseList = forwardRef<
     }
     if (clearExerciseCompletions) {
       const target = exercises.find(e => e.clientId === clientId);
-      if (target?.sets.some(s => s.completedAt != null)) {
+      // The cardio effort form shows no completion state in the forms, so a
+      // Clear item there would toggle something invisible.
+      const card = cardExercises.find(c => c.id === clientId);
+      const cardioForm =
+        cardioFormEnabled &&
+        card != null &&
+        rendersCardioEffortForm(card.exercise_snapshot, card.sets.length);
+      if (!cardioForm && target?.sets.some(s => s.completedAt != null)) {
         items.push({
           key: 'clear',
           label: 'Clear logged sets',
@@ -493,6 +535,8 @@ const WorkoutFormExerciseList = forwardRef<
   }, [
     overflowMenu,
     exercises,
+    cardExercises,
+    cardioFormEnabled,
     supersetRuns,
     supersetWith,
     ungroupExercise,
@@ -527,6 +571,8 @@ const WorkoutFormExerciseList = forwardRef<
             activeField={cardActiveSetId != null ? activeSetField : undefined}
             metricColumn={effectiveMetricColumn}
             weightUnit={weightUnit}
+            distanceUnit={distanceUnit}
+            cardioFormEnabled={cardioFormEnabled}
             getImageSource={getImageSource}
             rpeEditable={rpeEditable}
             eligibleForPrefill={isEligibleForPrefill?.(clientId) ?? false}
@@ -602,9 +648,10 @@ const WorkoutFormExerciseList = forwardRef<
       <RestPeriodSheet ref={restSheetRef} onChange={handleRestChange} />
 
       <MetricColumnMenu
-        anchor={metricMenuAnchor}
-        onClose={() => setMetricMenuAnchor(null)}
+        anchor={metricMenu?.anchor ?? null}
+        onClose={() => setMetricMenu(null)}
         includeRpe={rpeEditable}
+        includeWeightMetrics={!metricMenu?.clampedToRpe}
       />
 
       <ActionSheet

@@ -11,6 +11,7 @@ import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodRepository.js';
+import mealTypeRepository from '../models/mealType.js';
 import foodEntryService from '../services/foodEntryService.js';
 import { log } from '../config/logging.js';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -44,6 +45,12 @@ vi.mock('../models/foodRepository', () => ({
     getFoodById: vi.fn(),
     getFoodVariantById: vi.fn(),
     getFoodVariantsByFoodId: vi.fn(),
+  },
+}));
+vi.mock('../models/mealType.js', () => ({
+  default: {
+    getAllMealTypes: vi.fn(),
+    getMealTypeById: vi.fn(),
   },
 }));
 vi.mock('../services/preferenceService', () => ({
@@ -422,6 +429,32 @@ describe('chatService', () => {
       vi.mocked(measurementRepository.getCustomCategories).mockResolvedValue(
         []
       );
+      vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+        {
+          id: 'breakfast-id',
+          name: 'Breakfast',
+          sort_order: 1,
+          user_id: null,
+        },
+        {
+          id: 'lunch-id',
+          name: 'Lunch',
+          sort_order: 2,
+          user_id: null,
+        },
+        {
+          id: 'dinner-id',
+          name: 'Dinner',
+          sort_order: 3,
+          user_id: null,
+        },
+        {
+          id: 'snacks-id',
+          name: 'Snacks',
+          sort_order: 4,
+          user_id: null,
+        },
+      ]);
     });
 
     it('executes a log_food tool call in-process, derives food_added from call input, and saves history', async () => {
@@ -476,7 +509,7 @@ describe('chatService', () => {
           entry_date: '2026-06-10',
           quantity: 2,
           unit: 'serving',
-          meal_type: 'breakfast',
+          meal_type_id: 'breakfast-id',
         }
       );
       expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
@@ -610,7 +643,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 21\/37 active tools for chatbot \(profile=core/
+          /Loaded 21\/38 active tools for chatbot \(profile=core/
         )
       );
       // The core profile is the mitigation, so no context-window warning.
@@ -643,7 +676,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 37\/37 active tools for chatbot \(profile=full/
+          /Loaded 38\/38 active tools for chatbot \(profile=full/
         )
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
@@ -676,15 +709,15 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 37\/37 active tools for chatbot \(profile=full/
+          /Loaded 38\/38 active tools for chatbot \(profile=full/
         )
       );
     });
 
     it('never trims a non-Ollama service even with a stale core profile stored', async () => {
       // The profile gate keys on service_type, so a service that was Ollama+core
-      // and later switched to OpenAI still loads the full 37-tool surface
-      // (35 domain tools + sparky_enable_tools + sparky_ask_user).
+      // and later switched to OpenAI still loads the full 38-tool surface
+      // (36 domain tools + sparky_enable_tools + sparky_ask_user).
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         {
           ...aiServiceSetting,
@@ -704,7 +737,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 37\/37 active tools for chatbot \(profile=full/
+          /Loaded 38\/38 active tools for chatbot \(profile=full/
         )
       );
       // The context-window warning is Ollama-only; cloud providers never see it.

@@ -780,7 +780,7 @@ async function processOuraWorkouts(
             set_type: 'Working Set',
             reps: 1,
             weight: 0,
-            duration: durationMinutes,
+            duration: durationSeconds,
             rest_time: 0,
             notes: '',
           },

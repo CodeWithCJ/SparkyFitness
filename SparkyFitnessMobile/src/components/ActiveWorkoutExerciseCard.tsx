@@ -13,19 +13,29 @@ import SafeImage from './SafeImage';
 import CompletionCheck from './CompletionCheck';
 import FormInput from './FormInput';
 import RestPeriodChip from './RestPeriodChip';
-import ActiveWorkoutSetRow, { type SetRowAccessoryHandle } from './ActiveWorkoutSetRow';
+import ActiveWorkoutSetRow, {
+  type SetRowAccessoryHandle,
+  type SetRowState,
+} from './ActiveWorkoutSetRow';
+import type { SetInputField } from './SetRowChrome';
 import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
+import CardioEffortForm from './CardioEffortForm';
 import WorkoutNotesField from './WorkoutNotesField';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
-import { weightFromKg } from '../utils/unitConversions';
+import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
 import {
   CATEGORY_ICON_MAP,
   compareSetRecords,
+  effectiveSetDurationSec,
+  formatDurationSeconds,
   formatVolume,
   getExerciseVolumeKg,
+  isDurationModality,
+  rendersCardioEffortForm,
   resolveAssumedSetValues,
+  resolveSnapshotModality,
   setTypeLetter,
   type WorkoutCardExercise,
   type WorkoutCardSet,
@@ -58,6 +68,15 @@ interface ActiveWorkoutExerciseCardProps {
   activeSetId: string | null;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
+  distanceUnit?: 'km' | 'miles';
+  /**
+   * False keeps cardio (`duration_distance`) exercises on the duration-style
+   * set table. When true (default), a cardio exercise with at most one set
+   * renders the Duration+Distance form instead of a set table; multi-set
+   * cardio entries (imports, future intervals) still fall back to the table
+   * so no rows are hidden.
+   */
+  cardioFormEnabled?: boolean;
   getImageSource: GetImageSource;
   /**
    * 'view' renders the read-only variant (workout detail): no logging,
@@ -96,7 +115,12 @@ interface ActiveWorkoutExerciseCardProps {
   onPressThumb?: (entryId: string) => void;
   onToggleExpanded: (entryId: string) => void;
   onPressRestChip?: (entryId: string, currentSec: number | null) => void;
-  onPressMetricHeader: (anchor: AnchorRect) => void;
+  /**
+   * `clampedToRpe` is true when this card's metric column is display-clamped
+   * to RPE (duration-like tables, where the weight metrics are always empty);
+   * owners restrict the shared MetricColumnMenu accordingly.
+   */
+  onPressMetricHeader: (anchor: AnchorRect, clampedToRpe: boolean) => void;
   onPressOverflow?: (entryId: string) => void;
   onComplete?: (setId: string) => void;
   onUncomplete?: (setId: string) => void;
@@ -136,7 +160,7 @@ interface ActiveWorkoutExerciseCardProps {
    * field, seeding the tapped row before its Next chain takes over (`'rpe'` is
    * live-only, set by tapping the RPE column).
    */
-  activeField?: 'weight' | 'reps' | 'rpe';
+  activeField?: SetInputField;
   /**
    * Live only: the tap-focused render key (distinct from `activeSetId`, the
    * cursor). Marks which row renders inputs; the cursor still owns the log ring.
@@ -146,12 +170,16 @@ interface ActiveWorkoutExerciseCardProps {
   rpeEditable?: boolean;
   /** Prefill the first empty set from "last time" once stats arrive. */
   eligibleForPrefill?: boolean;
-  onActivateSet?: (setId: string, field: 'weight' | 'reps') => void;
+  onActivateSet?: (setId: string, field: Exclude<SetInputField, 'rpe'>) => void;
   /** Live only: tap the RPE column to focus the RPE input on that row. */
   onActivateRpe?: (setId: string) => void;
   /** Edit only: tap the last-column check to toggle a set's completion. */
   onToggleComplete?: (setId: string) => void;
-  onEditFieldChange?: (setId: string, field: 'weight' | 'reps', text: string) => void;
+  onEditFieldChange?: (
+    setId: string,
+    field: Exclude<SetInputField, 'rpe'>,
+    text: string,
+  ) => void;
   /** Live/edit: rows register their sticky-bar handles here (keyed by render key). */
   onRegisterAccessoryHandle?: (key: string, handle: SetRowAccessoryHandle | null) => void;
 }
@@ -198,6 +226,8 @@ function ActiveWorkoutExerciseCard({
   activeSetId,
   metricColumn,
   weightUnit,
+  distanceUnit = 'km',
+  cardioFormEnabled = true,
   getImageSource,
   mode = 'live',
   excludePresetEntryId,
@@ -241,6 +271,17 @@ function ActiveWorkoutExerciseCard({
   ]) as [string, string, string, string];
 
   const name = exercise.exercise_snapshot?.name ?? 'Exercise';
+  // Resolved once per exercise; every row and the column header derive from it.
+  const modality = resolveSnapshotModality(exercise.exercise_snapshot);
+  const durationLike = isDurationModality(modality);
+  const cardioForm =
+    cardioFormEnabled &&
+    rendersCardioEffortForm(exercise.exercise_snapshot, exercise.sets.length);
+  // Vol/1RM/10RM are weight-derived and always empty on duration-like and
+  // reps-only tables (both keep weight null); clamp the display to RPE.
+  // Never written back to the shared preference.
+  const clampedToRpe = durationLike || modality === 'reps_only';
+  const effectiveMetricColumn = clampedToRpe ? 'rpe' : metricColumn;
   // Live and edit fetch the stats baseline with the active/edited session
   // excluded so its own sets don't pollute it. View mode fetches only when the
   // owner supplies the viewed session's id to exclude — without it (e.g. the
@@ -392,7 +433,9 @@ function ActiveWorkoutExerciseCard({
 
   const metricAnchorRef = useRef<View>(null);
   const openMetricMenu = () => {
-    measureAnchoredMenuTrigger(metricAnchorRef.current, onPressMetricHeader);
+    measureAnchoredMenuTrigger(metricAnchorRef.current, (anchor) =>
+      onPressMetricHeader(anchor, clampedToRpe),
+    );
   };
 
   const openOverflowMenu = () => onPressOverflow?.(exercise.id);
@@ -415,7 +458,7 @@ function ActiveWorkoutExerciseCard({
   const onActivateSetKeyed = useMemo(
     () =>
       onActivateSet
-        ? (id: string, field: 'weight' | 'reps') =>
+        ? (id: string, field: Exclude<SetInputField, 'rpe'>) =>
             onActivateSet(translateSetKey(id), field)
         : undefined,
     [onActivateSet, translateSetKey],
@@ -447,10 +490,45 @@ function ActiveWorkoutExerciseCard({
     const volumeKg = getExerciseVolumeKg(exercise);
     // "planned" describes a live workout that hasn't reached the exercise yet;
     // historical/imported workouts (view mode) and form drafts (edit mode)
-    // never show it.
-    const subtitle =
-      readOnly || isEdit || anyComplete
-        ? `${exercise.sets.length} sets${volumeKg > 0 ? ` · ${formatVolume(volumeKg, weightUnit)}` : ''}`
+    // never show it. A cardio form card summarizes its effort instead of a
+    // set count.
+    const cardioParts: string[] = [];
+    if (cardioForm) {
+      const firstCardioSet = exercise.sets[0];
+      if (firstCardioSet?.duration != null) {
+        cardioParts.push(`${parseFloat((firstCardioSet.duration / 60).toFixed(1))} min`);
+      }
+      if (firstCardioSet?.distance != null) {
+        const dist = parseFloat(
+          distanceFromKm(firstCardioSet.distance, distanceUnit).toFixed(2),
+        );
+        cardioParts.push(`${dist} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
+      }
+    }
+    // Duration tables have no volume, so their collapsed line carries the
+    // summed set duration instead (legacy-aware via effectiveSetDurationSec).
+    const totalDurationSec = durationLike
+      ? exercise.sets.reduce(
+          (sum, s) =>
+            sum +
+            (effectiveSetDurationSec(
+              { duration: s.duration ?? null, reps: s.reps },
+              modality,
+            ) ?? 0),
+          0,
+        )
+      : 0;
+    const detail = durationLike
+      ? totalDurationSec > 0
+        ? ` · ${formatDurationSeconds(totalDurationSec)}`
+        : ''
+      : volumeKg > 0
+        ? ` · ${formatVolume(volumeKg, weightUnit)}`
+        : '';
+    const subtitle = cardioForm
+      ? cardioParts.join(' · ')
+      : readOnly || isEdit || anyComplete
+        ? `${exercise.sets.length} sets${detail}`
         : `${exercise.sets.length} sets`;
 
     // The root → header row → thumb <Pressable> wrappers mirror the expanded
@@ -585,12 +663,15 @@ function ActiveWorkoutExerciseCard({
           </View>
         )}
 
-        {(showRestChip || bestDisplay != null || caloriesField || caloriesText != null) && (
+        {((showRestChip && !cardioForm) ||
+          bestDisplay != null ||
+          caloriesField ||
+          caloriesText != null) && (
           // flex-wrap + gap-y so the rest chip and "Best" stack gracefully on
           // narrow screens instead of shifting off the edge. "Last" lives in the
           // per-set PREVIOUS column, not here.
           <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1 px-1">
-            {showRestChip && (
+            {showRestChip && !cardioForm && (
               <RestPeriodChip
                 value={exercise.sets[0]?.rest_time}
                 readOnly={readOnly}
@@ -671,22 +752,79 @@ function ActiveWorkoutExerciseCard({
           </View>
         )}
 
-        {exercise.sets.length > 0 && (
+        {cardioForm && (
+          <CardioEffortForm
+            set={exercise.sets[0] ?? null}
+            exerciseName={name}
+            mode={mode}
+            distanceUnit={distanceUnit}
+            assumed={assumedSetValues?.[0] ?? null}
+            state={((): SetRowState => {
+              // Same state derivation as the table rows, so the form's log
+              // affordance matches: done check, pulsing cursor ring, or muted
+              // upcoming ring.
+              const set = exercise.sets[0];
+              if (set == null) return 'upcoming';
+              if (completedSetIds[String(set.id)]) return 'done';
+              return String(set.id) === activeSetId ? 'current' : 'upcoming';
+            })()}
+            renderKey={
+              exercise.sets[0] != null
+                ? translateSetKey(String(exercise.sets[0].id))
+                : undefined
+            }
+            onCommitField={onCommitField}
+            onComplete={isLive ? onComplete : undefined}
+            onUncomplete={isLive ? onUncomplete : undefined}
+            onActivateSet={onActivateSetKeyed}
+            onRegisterAccessoryHandle={onRegisterAccessoryHandle}
+          />
+        )}
+
+        {!cardioForm && exercise.sets.length > 0 && (
           <View className="flex-row items-center px-1 py-1.5">
-            <Text className="w-9 text-center text-xs font-semibold uppercase text-text-muted">
+            {/* Duration tables have a single value column; against it the
+                5-column fixed Set/Prev widths read squished, so their content
+                columns share the width equally instead of aligning with
+                neighboring cards. Keep in sync with ActiveWorkoutSetRow. */}
+            <Text
+              className={`${durationLike ? 'flex-1' : 'w-9'} text-center text-xs font-semibold uppercase text-text-muted`}
+            >
               Set
             </Text>
             {!readOnly && (
-              <Text className="w-20 text-center text-xs font-semibold uppercase text-text-muted">
+              <Text
+                className={`${durationLike ? 'flex-1' : 'w-20'} text-center text-xs font-semibold uppercase text-text-muted`}
+              >
                 Prev
               </Text>
             )}
-            <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-              {weightUnit === 'kg' ? 'KG' : 'LBS'}
-            </Text>
-            <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-              Reps
-            </Text>
+            {durationLike ? (
+              <>
+                <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+                  Sec
+                </Text>
+                {/* Read-only cardio tables surface per-set distance (imports,
+                    intervals); live/edit tables keep the single editable Sec
+                    cell, so the column only exists in view mode. */}
+                {readOnly && modality === 'duration_distance' && (
+                  <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+                    {distanceUnit === 'miles' ? 'Mi' : 'Km'}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <>
+                {modality !== 'reps_only' && (
+                  <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+                    {weightUnit === 'kg' ? 'KG' : 'LBS'}
+                  </Text>
+                )}
+                <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+                  Reps
+                </Text>
+              </>
+            )}
             <View ref={metricAnchorRef} collapsable={false} className="w-14 items-center">
               <Pressable
                 onPress={openMetricMenu}
@@ -699,7 +837,7 @@ function ActiveWorkoutExerciseCard({
                   className="text-xs font-semibold uppercase"
                   style={{ color: accentPrimary }}
                 >
-                  {METRIC_COLUMN_LABELS[metricColumn]}
+                  {METRIC_COLUMN_LABELS[effectiveMetricColumn]}
                 </Text>
                 <Icon name="chevron-down" size={10} color={accentPrimary} />
               </Pressable>
@@ -708,7 +846,7 @@ function ActiveWorkoutExerciseCard({
           </View>
         )}
 
-        {exercise.sets.map((set, index) => {
+        {!cardioForm && exercise.sets.map((set, index) => {
           const setId = String(set.id);
           // Stable across an autosave id churn (view/edit: keyed by id). Used for
           // the React key + focus/expand compares so the row instance — and its
@@ -730,10 +868,12 @@ function ActiveWorkoutExerciseCard({
             <React.Fragment key={renderKey}>
               <ActiveWorkoutSetRow
                 set={set}
+                modality={modality}
+                distanceUnit={distanceUnit}
                 renderKey={renderKey}
                 displayNumber={workingSetNumbers[index]}
                 state={state}
-                metricColumn={metricColumn}
+                metricColumn={effectiveMetricColumn}
                 weightUnit={weightUnit}
                 previousSet={readOnly ? undefined : (previousSessionSets?.[index] ?? null)}
                 assumed={assumedSetValues?.[index] ?? null}
@@ -776,7 +916,7 @@ function ActiveWorkoutExerciseCard({
           );
         })}
 
-        {!readOnly && (
+        {!readOnly && !cardioForm && (
           <Pressable
             onPress={() => onAddSet?.(exercise.id)}
             accessibilityRole="button"

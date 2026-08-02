@@ -16,6 +16,7 @@ import {
   useCustomNutrients,
   useNutrientDisplayPreferences,
   fastingRootQueryKey,
+  medicationsRootQueryKey,
 } from '../hooks';
 import type { StepsRange } from '../hooks';
 import CalorieRingCard from '../components/CalorieRingCard';
@@ -36,7 +37,9 @@ import HealthTrendsPager from '../components/HealthTrendsPager';
 import ExerciseProgressCard from '../components/ExerciseProgressCard';
 import StatusView from '../components/StatusView';
 import FastingCard from '../components/FastingCard';
+import CycleCard from '../components/CycleCard';
 import FastingGoalReconciler from '../components/FastingGoalReconciler';
+import MedicationsCard from '../components/MedicationsCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { CompositeScreenProps } from '@react-navigation/native';
@@ -164,8 +167,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const fastingCardVisible = useAppPreferencesStore((s) => s.fastingCardVisible);
+  const cycleCardVisible = useAppPreferencesStore((s) => s.cycleCardVisible);
   const hydrationCardVisible = useAppPreferencesStore((s) => s.hydrationCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
+  const medicationsCardVisible = useAppPreferencesStore((s) => s.medicationsCardVisible);
 
   useLayoutEffect(() => {
     syncNativeHeaderDatePicker();
@@ -188,6 +193,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetchNutrientPrefs(),
       // FastingCard owns its own queries; nudge them on pull-to-refresh.
       queryClient.invalidateQueries({ queryKey: fastingRootQueryKey }),
+      // MedicationsCard owns its own queries.
+      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
     ]);
     setRefreshing(false);
   }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps, refetchCustomNutrients, refetchNutrientPrefs, queryClient]);
@@ -430,6 +437,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             Dashboard Settings. */}
         <FastingGoalReconciler />
         {fastingCardVisible && <FastingCard navigation={navigation} />}
+        {cycleCardVisible && <CycleCard navigation={navigation} />}
+
+        {medicationsCardVisible && <MedicationsCard navigation={navigation} />}
 
         <Text className="text-text-primary text-xl font-bold mb-2">Health Trends</Text>
         <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />

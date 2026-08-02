@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   isScheduleDueOnDate,
   getDueDosesForDate,
+  addDays,
   type SharedScheduleRule,
 } from '@workspace/shared';
+
+const TZ = 'UTC';
 
 describe('isScheduleDueOnDate helper', () => {
   it('handles inactive schedules', () => {
@@ -143,15 +146,254 @@ describe('getDueDosesForDate helper', () => {
     ];
 
     // June 25, 2026 is Thursday
-    const dosesOnThursday = getDueDosesForDate(meds, '2026-06-25');
+    const dosesOnThursday = getDueDosesForDate(meds, '2026-06-25', TZ);
     expect(dosesOnThursday).toHaveLength(1);
     expect(dosesOnThursday[0]?.medication.id).toBe('med-1');
     expect(dosesOnThursday[0]?.schedule.id).toBe('sched-1');
 
     // June 26, 2026 is Friday
-    const dosesOnFriday = getDueDosesForDate(meds, '2026-06-26');
+    const dosesOnFriday = getDueDosesForDate(meds, '2026-06-26', TZ);
     expect(dosesOnFriday).toHaveLength(2);
     expect(dosesOnFriday.map((d) => d.medication.id)).toContain('med-1');
     expect(dosesOnFriday.map((d) => d.medication.id)).toContain('med-2');
+  });
+
+  it('skips past days when a schedule was created after the queried date (issue #1915)', () => {
+    const meds = [
+      {
+        id: 'med-new',
+        is_active: true,
+        name: 'New Med',
+        schedules: [
+          {
+            id: 'sched-new',
+            schedule_type_id: 'daily',
+            active: true,
+            created_at: '2026-06-25T14:30:00.000Z',
+          },
+        ],
+      },
+    ];
+
+    // Before creation -> no due doses
+    expect(getDueDosesForDate(meds, '2026-06-24', TZ)).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-23', TZ)).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-01-01', TZ)).toHaveLength(0);
+
+    // On/after creation -> daily dose is due
+    expect(getDueDosesForDate(meds, '2026-06-25', TZ)).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-26', TZ)).toHaveLength(1);
+  });
+
+  it('isolates adherence per schedule (morning kept, night added later)', () => {
+    const meds = [
+      {
+        id: 'med-morning-night',
+        is_active: true,
+        name: 'Morning + Night Med',
+        schedules: [
+          {
+            id: 'sched-morning',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: '08:00',
+            created_at: '2026-06-20T09:00:00.000Z',
+          },
+          {
+            id: 'sched-night',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: '20:00',
+            created_at: '2026-06-25T21:00:00.000Z',
+          },
+        ],
+      },
+    ];
+
+    const beforeNight = getDueDosesForDate(meds, '2026-06-22', TZ);
+    expect(beforeNight).toHaveLength(1);
+    expect(beforeNight[0]?.schedule.id).toBe('sched-morning');
+
+    const onNight = getDueDosesForDate(meds, '2026-06-25', TZ);
+    expect(onNight).toHaveLength(2);
+    expect(onNight.map((d) => d.schedule.id)).toEqual(
+      expect.arrayContaining(['sched-morning', 'sched-night'])
+    );
+  });
+
+  it('sorts due doses by time of day with untimed slots last', () => {
+    const meds = [
+      {
+        id: 'med-evening',
+        is_active: true,
+        name: 'Evening Med',
+        schedules: [
+          {
+            id: 'sched-evening',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: '21:00',
+          },
+        ],
+      },
+      {
+        id: 'med-untimed',
+        is_active: true,
+        name: 'Untimed Med',
+        schedules: [
+          {
+            id: 'sched-untimed',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: null,
+          },
+        ],
+      },
+      {
+        id: 'med-morning',
+        is_active: true,
+        name: 'Morning Med',
+        schedules: [
+          {
+            id: 'sched-morning',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: '08:00',
+          },
+        ],
+      },
+    ];
+
+    const doses = getDueDosesForDate(meds, '2026-06-25', TZ);
+    expect(doses.map((d) => d.schedule.id)).toEqual([
+      'sched-morning',
+      'sched-evening',
+      'sched-untimed',
+    ]);
+  });
+
+  it('honors explicit schedule start_date even when set before created_at', () => {
+    // An imported schedule with start_date before the medication's created_at
+    // should still count historical doses (e.g. back-filled histories).
+    const meds = [
+      {
+        id: 'med-imported',
+        is_active: true,
+        name: 'Imported Med',
+        schedules: [
+          {
+            id: 'sched-imported',
+            schedule_type_id: 'daily',
+            start_date: '2026-06-20',
+            active: true,
+            created_at: '2026-06-25T14:30:00.000Z',
+          },
+        ],
+      },
+    ];
+
+    expect(getDueDosesForDate(meds, '2026-06-22', TZ)).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-25', TZ)).toHaveLength(1);
+  });
+
+  it('still filters out schedules before explicit start_date when start_date is after created_at', () => {
+    const meds = [
+      {
+        id: 'med-future',
+        is_active: true,
+        name: 'Future Start Med',
+        schedules: [
+          {
+            id: 'sched-future',
+            schedule_type_id: 'daily',
+            start_date: '2026-06-20',
+            active: true,
+            created_at: '2026-06-10T08:00:00.000Z',
+          },
+        ],
+      },
+    ];
+
+    expect(getDueDosesForDate(meds, '2026-06-15', TZ)).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-19', TZ)).toHaveLength(0);
+    expect(getDueDosesForDate(meds, '2026-06-20', TZ)).toHaveLength(1);
+  });
+
+  it('handles schedules without created_at (legacy data) without regressing', () => {
+    const meds = [
+      {
+        id: 'med-legacy',
+        is_active: true,
+        name: 'Legacy Med',
+        schedules: [
+          { id: 'sched-legacy', schedule_type_id: 'daily', active: true },
+        ],
+      },
+    ];
+
+    expect(getDueDosesForDate(meds, '2020-01-01', TZ)).toHaveLength(1);
+    expect(getDueDosesForDate(meds, '2026-06-25', TZ)).toHaveLength(1);
+  });
+
+  it('handles a 14-day adherence window for a schedule added today', () => {
+    const meds = [
+      {
+        id: 'med-today',
+        is_active: true,
+        name: 'Today Med',
+        schedules: [
+          {
+            id: 'sched-today',
+            schedule_type_id: 'daily',
+            active: true,
+            created_at: '2026-07-25T12:00:00.000Z',
+          },
+        ],
+      },
+    ];
+
+    // Use shared calendar-day arithmetic so the test does not derive business
+    // dates from a UTC timestamp
+    let dueAcrossWindow = 0;
+    for (let i = 13; i >= 0; i--) {
+      const dStr = addDays('2026-07-25', -i);
+      dueAcrossWindow += getDueDosesForDate(meds, dStr, TZ).length;
+    }
+
+    expect(dueAcrossWindow).toBe(1);
+  });
+
+  it('keeps older schedules counting while skipping a newer sibling schedule', () => {
+    const meds = [
+      {
+        id: 'med-staggered',
+        is_active: true,
+        name: 'Staggered Med',
+        schedules: [
+          {
+            id: 'sched-original',
+            schedule_type_id: 'daily',
+            active: true,
+            created_at: '2026-06-20T09:00:00.000Z',
+          },
+          {
+            id: 'sched-added',
+            schedule_type_id: 'daily',
+            active: true,
+            created_at: '2026-06-25T12:00:00.000Z',
+          },
+        ],
+      },
+    ];
+
+    const beforeAdded = getDueDosesForDate(meds, '2026-06-24', TZ);
+    expect(beforeAdded).toHaveLength(1);
+    expect(beforeAdded[0]?.schedule.id).toBe('sched-original');
+
+    const onAdded = getDueDosesForDate(meds, '2026-06-25', TZ);
+    expect(onAdded).toHaveLength(2);
+    expect(onAdded.map((d) => d.schedule.id)).toEqual(
+      expect.arrayContaining(['sched-original', 'sched-added'])
+    );
   });
 });

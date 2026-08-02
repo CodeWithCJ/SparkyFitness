@@ -39,6 +39,41 @@ import {
   getPrecision,
 } from '@workspace/shared';
 
+/** Timed sets carry no reps, so an entry made only of them has no range. */
+const formatRepRange = (sets: DailyExerciseEntry['sets']) => {
+  const reps = sets.map((s) => s.reps).filter((r): r is number => r != null);
+  if (reps.length === 0) return '-';
+  return `${Math.min(...reps)} - ${Math.max(...reps)}`;
+};
+
+/** Duration-only entries carry no weights, so averaging them shows a dash. */
+const formatAvgWeight = (
+  sets: DailyExerciseEntry['sets'],
+  weightUnit: string
+) => {
+  const weighted = sets.filter((s) => s.weight != null);
+  if (weighted.length === 0) return '-';
+  return formatWeight(
+    weighted.reduce((acc, s) => acc + Number(s.weight), 0) / weighted.length,
+    weightUnit
+  );
+};
+
+/** Duration-only entries carry no weights, so tonnage shows a dash. */
+const formatTonnage = (
+  sets: DailyExerciseEntry['sets'],
+  weightUnit: string
+) => {
+  if (!sets.some((s) => s.weight != null)) return '-';
+  return formatWeight(
+    sets.reduce(
+      (acc, s) => acc + Number(s.weight ?? 0) * Number(s.reps ?? 0),
+      0
+    ),
+    weightUnit
+  );
+};
+
 interface ReportsTablesProps {
   tabularData: DailyFoodEntry[];
   exerciseEntries: DailyExerciseEntry[];
@@ -541,7 +576,7 @@ const ReportsTables = ({
                   </TableHead>
                   <TableHead>{t('reportsTables.tonnage', 'Tonnage')}</TableHead>
                   <TableHead onClick={() => requestSort('duration')}>
-                    {t('reportsTables.durationMin', 'Duration (min)')}
+                    {t('reportsTables.durationSec', 'Duration (s)')}
                   </TableHead>
                   <TableHead onClick={() => requestSort('rest_time')}>
                     {t('reportsTables.restS', 'Rest (s)')}
@@ -591,32 +626,12 @@ const ReportsTables = ({
                         <TableCell>{entry.exercises.name}</TableCell>
                         <TableCell>{entry.sets.length}</TableCell>
                         <TableCell></TableCell>
+                        <TableCell>{formatRepRange(entry.sets)}</TableCell>
                         <TableCell>
-                          {Math.min(...entry.sets.map((s) => s.reps))} -{' '}
-                          {Math.max(...entry.sets.map((s) => s.reps))}
+                          {formatAvgWeight(entry.sets, weightUnit)}
                         </TableCell>
                         <TableCell>
-                          {entry.sets.length > 0
-                            ? formatWeight(
-                                entry.sets.reduce(
-                                  (acc, s) => acc + Number(s.weight),
-                                  0
-                                ) / entry.sets.length,
-                                weightUnit
-                              )
-                            : formatWeight(0, weightUnit)}
-                        </TableCell>
-                        <TableCell>
-                          {entry.sets.length > 0
-                            ? formatWeight(
-                                entry.sets.reduce(
-                                  (acc, s) =>
-                                    acc + Number(s.weight) * Number(s.reps),
-                                  0
-                                ),
-                                weightUnit
-                              )
-                            : formatWeight(0, weightUnit)}
+                          {formatTonnage(entry.sets, weightUnit)}
                         </TableCell>
                         <TableCell>
                           {entry.sets.reduce(
@@ -651,15 +666,19 @@ const ReportsTables = ({
                             <TableCell></TableCell>
                             <TableCell>{set.set_number}</TableCell>
                             <TableCell>{set.set_type}</TableCell>
-                            <TableCell>{set.reps}</TableCell>
+                            <TableCell>{set.reps ?? '-'}</TableCell>
                             <TableCell>
-                              {formatWeight(set.weight, weightUnit)}
+                              {set.weight != null
+                                ? formatWeight(set.weight, weightUnit)
+                                : '-'}
                             </TableCell>
                             <TableCell>
-                              {formatWeight(
-                                Number(set.weight) * Number(set.reps),
-                                weightUnit
-                              )}
+                              {set.weight != null
+                                ? formatWeight(
+                                    set.weight * Number(set.reps ?? 0),
+                                    weightUnit
+                                  )
+                                : '-'}
                             </TableCell>
                             <TableCell>{set.duration || '-'}</TableCell>
                             <TableCell>{set.rest_time || '-'}</TableCell>

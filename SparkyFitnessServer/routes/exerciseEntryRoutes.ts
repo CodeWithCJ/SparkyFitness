@@ -100,8 +100,9 @@ router.use(checkPermissionMiddleware('diary'));
  *               weight:
  *                 type: number
  *               duration:
- *                 type: number
- *           description: Details of sets performed (reps, weight, duration).
+ *                 type: integer
+ *                 description: Duration in seconds.
+ *           description: Details of sets performed (reps, weight, duration in seconds).
  *         reps:
  *           type: number
  *           description: Total repetitions (if not detailed in sets).
@@ -450,7 +451,8 @@ router.post(
  *                           weight:
  *                             type: number
  *                           duration:
- *                             type: number
+ *                             type: integer
+ *                             description: Duration in seconds.
  *                     reps:
  *                       type: number
  *                     weight:
@@ -732,6 +734,12 @@ router.put(
           .json({ error: 'Invalid format for activity_details.' });
       }
     }
+    if (updateData.distance === '') {
+      // FormData cannot carry null; an empty string is the client's explicit
+      // "clear distance" — without it the omitted field would fall back to
+      // derive-from-sets/preserve instead of clearing.
+      updateData.distance = null;
+    }
     // Extract new fields from updateData
     const { distance, avg_heart_rate } = updateData;
     if (updateData.entry_time === '') {
@@ -981,7 +989,8 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *                           weight:
  *                             type: number
  *                           duration:
- *                             type: number
+ *                             type: integer
+ *                             description: Duration in seconds.
  *                     reps:
  *                       type: number
  *                     weight:

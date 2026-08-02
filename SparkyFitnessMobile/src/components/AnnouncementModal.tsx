@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View, StyleSheet } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View, StyleSheet, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import MarkdownMessage from './chat/MarkdownMessage';
 import { apiFetch } from '../services/api/apiClient';
 
-const DISMISSED_ANNOUNCEMENT_KEY = 'dismissed_announcement_id';
+export const DISMISSED_ANNOUNCEMENT_KEY = 'dismissed_announcement_id';
+
+export async function resetAnnouncementModal(): Promise<void> {
+  await AsyncStorage.removeItem(DISMISSED_ANNOUNCEMENT_KEY);
+  DeviceEventEmitter.emit('RESET_ANNOUNCEMENT');
+}
 
 interface AnnouncementPayload {
   id: string;
@@ -20,11 +25,22 @@ export const AnnouncementModal: React.FC = () => {
   const [announcement, setAnnouncement] = useState<AnnouncementPayload | null>(null);
   const [visible, setVisible] = useState(false);
 
-  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
+  const [surfaceBg, textPrimary, textSecondary, borderSubtle, accentPrimary, textMuted] =
+    useCSSVariable([
+      '--color-surface',
+      '--color-text-primary',
+      '--color-text-secondary',
+      '--color-border-subtle',
+      '--color-accent-primary',
+      '--color-text-muted',
+    ]) as [string, string, string, string, string, string];
 
   useEffect(() => {
     let active = true;
+    let requestGen = 0;
+
     const fetchAnnouncement = async () => {
+      const currentGen = ++requestGen;
       try {
         const data = await apiFetch<AnnouncementPayload>({
           endpoint: '/api/announcement/current',
@@ -32,10 +48,10 @@ export const AnnouncementModal: React.FC = () => {
           operation: 'getCurrent',
         });
 
-        if (!active || !data || !data.active || !data.id) return;
+        if (!active || currentGen !== requestGen || !data || !data.active || !data.id) return;
 
         const dismissedId = await AsyncStorage.getItem(DISMISSED_ANNOUNCEMENT_KEY);
-        if (dismissedId !== data.id) {
+        if (active && currentGen === requestGen && dismissedId !== data.id) {
           setAnnouncement(data);
           setVisible(true);
         }
@@ -45,8 +61,14 @@ export const AnnouncementModal: React.FC = () => {
     };
 
     void fetchAnnouncement();
+
+    const sub = DeviceEventEmitter.addListener('RESET_ANNOUNCEMENT', () => {
+      void fetchAnnouncement();
+    });
+
     return () => {
       active = false;
+      sub.remove();
     };
   }, []);
 
@@ -71,22 +93,22 @@ export const AnnouncementModal: React.FC = () => {
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modalCard}>
-          <View style={styles.header}>
+        <View style={[styles.modalCard, { backgroundColor: surfaceBg || '#1e293b', borderColor: borderSubtle || 'rgba(255, 255, 255, 0.12)' }]}>
+          <View style={[styles.header, { borderBottomColor: borderSubtle || 'rgba(255, 255, 255, 0.1)' }]}>
             <View style={styles.titleRow}>
               <Icon name="sparkles" size={20} color={accentPrimary || '#3b82f6'} />
-              <Text style={styles.titleText}>{announcement.title || 'Announcement'}</Text>
+              <Text style={[styles.titleText, { color: textPrimary || '#f8fafc' }]}>{announcement.title || 'Announcement'}</Text>
             </View>
             <Pressable onPress={handleClose} style={styles.closeButton}>
-              <Icon name="close" size={18} color="#94a3b8" />
+              <Icon name="close" size={18} color={textMuted || '#94a3b8'} />
             </Pressable>
           </View>
 
           <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.bodyContent}>
-            <MarkdownMessage text={announcement.message} color="#cbd5e1" streaming={false} />
+            <MarkdownMessage text={announcement.message} color={textSecondary || '#cbd5e1'} streaming={false} />
           </ScrollView>
 
-          <View style={styles.footer}>
+          <View style={[styles.footer, { borderTopColor: borderSubtle || 'rgba(255, 255, 255, 0.1)' }]}>
             <Pressable
               onPress={handleDismiss}
               style={[styles.dismissButton, { backgroundColor: accentPrimary || '#3b82f6' }]}
@@ -103,7 +125,7 @@ export const AnnouncementModal: React.FC = () => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -111,10 +133,8 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxHeight: '80%',
-    backgroundColor: '#1e293b',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
     overflow: 'hidden',
   },
   header: {
@@ -124,7 +144,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   titleRow: {
     flexDirection: 'row',
@@ -135,7 +154,6 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#f8fafc',
     flex: 1,
   },
   closeButton: {
@@ -153,7 +171,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'flex-end',
   },
   dismissButton: {

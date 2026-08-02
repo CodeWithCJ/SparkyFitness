@@ -60,6 +60,7 @@ import { useScreenHeader, SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../h
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { UpdatePresetSessionRequest } from '@workspace/shared';
+import { canEditGroupedWorkout } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
@@ -69,6 +70,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
   const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
@@ -94,10 +96,16 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // Metric column is shared with the active-workout screen; changing it on
   // either screen changes both (intended).
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
-  const [metricMenuAnchor, setMetricMenuAnchor] = useState<AnchorRect | null>(null);
-  const handlePressMetricHeader = useCallback((anchor: AnchorRect) => {
-    setMetricMenuAnchor(anchor);
-  }, []);
+  const [metricMenu, setMetricMenu] = useState<{
+    anchor: AnchorRect;
+    clampedToRpe: boolean;
+  } | null>(null);
+  const handlePressMetricHeader = useCallback(
+    (anchor: AnchorRect, clampedToRpe: boolean) => {
+      setMetricMenu({ anchor, clampedToRpe });
+    },
+    [],
+  );
 
   // Active workout state (narrow selector to avoid re-rendering on unrelated
   // changes). The Diary routes the live session to ActiveWorkout instead of
@@ -111,7 +119,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
+  const sourceLabel = getSourceLabel(session.source);
+  const canEdit = canEditGroupedWorkout(session.source);
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
 
@@ -160,8 +169,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     exercisesModifiedRef,
   } = useWorkoutForm({ isEditMode: true, skipDraftLoad: true });
   const submission = useMemo(
-    () => getWorkoutDraftSubmission(formState, weightUnit as 'kg' | 'lbs'),
-    [formState, weightUnit],
+    () => getWorkoutDraftSubmission(formState, weightUnit as 'kg' | 'lbs', distanceUnit),
+    [formState, weightUnit, distanceUnit],
   );
   const hasEditedExercisesWithSets = submission.canSave;
 
@@ -225,11 +234,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const startEditing = useCallback(() => {
-    populate(session, weightUnit as 'kg' | 'lbs');
+    populate(session, weightUnit as 'kg' | 'lbs', distanceUnit);
     setEditNotes(session.notes ?? '');
     setEligibleIds(new Set());
     setIsEditing(true);
-  }, [populate, session, weightUnit]);
+  }, [populate, session, weightUnit, distanceUnit]);
 
   const cancelEditing = useCallback(() => {
     setIsEditing(false);
@@ -297,19 +306,19 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleStartWorkout = () => beginWorkout();
 
   // Long-pressing a set opens a menu-style bottom sheet (same ActionSheet the
-  // live/edit exercise ⋮ menus use). Gated on isSparky like the Start button:
-  // synced (non-manual) sessions can be neither edited nor run live — a live
-  // workout autosaves via the nested-exercise update, which the server
-  // rejects (409) for them.
+  // live/edit exercise ⋮ menus use). Gated on canEdit like the Start button:
+  // sessions that are not editable (external/unknown sources) can be neither
+  // edited nor run live — a live workout autosaves via the nested-exercise
+  // update, which the server rejects (409) for them.
   const setMenuSheetRef = useRef<ActionSheetRef>(null);
   const [setMenuTargetId, setSetMenuTargetId] = useState<string | null>(null);
   const handleLongPressSet = useCallback(
     (setId: string) => {
-      if (!isSparky) return;
+      if (!canEdit) return;
       setSetMenuTargetId(setId);
       setMenuSheetRef.current?.present();
     },
-    [isSparky],
+    [canEdit],
   );
 
   const setMenuItems = useMemo<ActionSheetItem[]>(() => {
@@ -328,7 +337,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout]);
 
   // "Save as preset": review-and-save through the preset create form,
-  // prefilled from this session. Not gated on isSparky — templating a synced
+  // prefilled from this session. Not gated on canEdit — templating a synced
   // workout (e.g. a Garmin strength import) only reads the session.
   const handleSaveAsPreset = useCallback(() => {
     navigation.navigate('WorkoutPresetForm', {
@@ -421,9 +430,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             activeSetId={null}
             metricColumn={metricColumn}
             weightUnit={weightUnit as 'kg' | 'lbs'}
+            distanceUnit={distanceUnit}
             getImageSource={getImageSource}
             excludePresetEntryId={session.id}
-            showRestChip={isSparky}
+            showRestChip={canEdit}
             onPressThumb={handleViewExercise}
             onToggleExpanded={toggleSection}
             onPressMetricHeader={handlePressMetricHeader}
@@ -602,7 +612,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       ? canReorderEdit
         ? [reorderHeaderItem, saveHeaderItem]
         : saveHeaderItem
-      : isSparky
+      : canEdit
         ? [
             saveAsPresetHeaderItem,
             {
@@ -676,7 +686,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {renderSummaryCard()}
 
         {/* Start Workout button */}
-        {!isEditing && isSparky && !isWorkoutActive && (
+        {!isEditing && canEdit && !isWorkoutActive && (
           <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
             Start Workout
           </Button>
@@ -690,6 +700,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               ref={exerciseListRef}
               exercises={formState.exercises}
               weightUnit={weightUnit as 'kg' | 'lbs'}
+              distanceUnit={distanceUnit}
               getImageSource={getImageSource}
               excludePresetEntryId={session.id}
               activeSetKey={activeSetKey}
@@ -775,8 +786,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       />
 
       <MetricColumnMenu
-        anchor={metricMenuAnchor}
-        onClose={() => setMetricMenuAnchor(null)}
+        anchor={metricMenu?.anchor ?? null}
+        onClose={() => setMetricMenu(null)}
+        includeWeightMetrics={!metricMenu?.clampedToRpe}
       />
 
       <ActionSheet

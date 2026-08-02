@@ -13,6 +13,8 @@ import {
 } from 'recharts';
 import ZoomableChart from '@/components/ZoomableChart';
 import { ChartDataPoint } from '@/types/reports';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { formatTimeWithPreference } from '@/utils/timeFormatters';
 
 interface ActivityElevationChartProps {
   data: ChartDataPoint[];
@@ -30,6 +32,7 @@ export const ActivityElevationChart = ({
   distanceUnit,
 }: ActivityElevationChartProps) => {
   const { t } = useTranslation();
+  const { timeFormat } = usePreferences();
 
   return (
     <ZoomableChart title={t('reports.activityReport.elevationM')}>
@@ -65,7 +68,10 @@ export const ActivityElevationChart = ({
                     if (xAxisMode === 'distance')
                       return `${Number(value).toFixed(2)}`;
                     if (xAxisMode === 'timeOfDay')
-                      return new Date(value).toLocaleTimeString();
+                      return formatTimeWithPreference(
+                        new Date(value),
+                        timeFormat
+                      );
                     return String(value);
                   }}
                   interval="preserveStartEnd"
@@ -78,7 +84,10 @@ export const ActivityElevationChart = ({
                   }}
                   labelFormatter={(value) => {
                     if (xAxisMode === 'timeOfDay')
-                      return new Date(value).toLocaleTimeString();
+                      return formatTimeWithPreference(
+                        new Date(value),
+                        timeFormat
+                      );
                     if (xAxisMode === 'activityDuration')
                       return `${Number(value).toFixed(0)} ${t('common.min', 'min')}`;
                     if (xAxisMode === 'distance')

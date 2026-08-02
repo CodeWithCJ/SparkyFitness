@@ -45,11 +45,12 @@ async function createWorkoutPreset(presetData: any) {
             set.reps,
             set.weight,
             set.duration,
+            set.distance,
             set.rest_time,
             set.notes,
           ]);
           const setsQuery = format(
-            'INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
+            'INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, distance, rest_time, notes) VALUES %L',
             setsValues
           );
           await client.query(setsQuery);
@@ -85,11 +86,12 @@ async function getWorkoutPresetByName(userId: any, name: any) {
                wpe.superset_group,
                e.name as exercise_name,
                e.category as category,
+               e.modality as modality,
                COALESCE(
                  (SELECT json_agg(set_data ORDER BY set_data.set_number)
                   FROM (
                     SELECT
-                      wpes.id, wpes.set_number, wpes.set_type, wpes.reps, wpes.weight, wpes.duration, wpes.rest_time, wpes.notes
+                      wpes.id, wpes.set_number, wpes.set_type, wpes.reps, wpes.weight, wpes.duration, wpes.distance, wpes.rest_time, wpes.notes
                     FROM workout_preset_exercise_sets wpes
                     WHERE wpes.workout_preset_exercise_id = wpe.id
                   ) AS set_data
@@ -137,11 +139,12 @@ async function getWorkoutPresets(userId: any, page = 1, limit = 10) {
                 wpe.superset_group,
                 e.name as exercise_name,
                 e.category as category,
+                e.modality as modality,
                 COALESCE(
                   (SELECT json_agg(set_data ORDER BY set_data.set_number)
                    FROM (
                      SELECT
-                       wpes.id, wpes.set_number, wpes.set_type, wpes.reps, wpes.weight, wpes.duration, wpes.rest_time, wpes.notes
+                       wpes.id, wpes.set_number, wpes.set_type, wpes.reps, wpes.weight, wpes.duration, wpes.distance, wpes.rest_time, wpes.notes
                      FROM workout_preset_exercise_sets wpes
                      WHERE wpes.workout_preset_exercise_id = wpe.id
                    ) AS set_data
@@ -187,11 +190,12 @@ async function getWorkoutPresetById(presetId: any, userId: any) {
                 wpe.superset_group,
                 e.name as exercise_name,
                 e.category as category,
+                e.modality as modality,
                 COALESCE(
                   (SELECT json_agg(set_data ORDER BY set_data.set_number)
                    FROM (
                      SELECT
-                       wpes.id, wpes.set_number, wpes.set_type, wpes.reps, wpes.weight, wpes.duration, wpes.rest_time, wpes.notes
+                       wpes.id, wpes.set_number, wpes.set_type, wpes.reps, wpes.weight, wpes.duration, wpes.distance, wpes.rest_time, wpes.notes
                      FROM workout_preset_exercise_sets wpes
                      WHERE wpes.workout_preset_exercise_id = wpe.id
                    ) AS set_data
@@ -266,11 +270,12 @@ async function updateWorkoutPreset(
               set.reps,
               set.weight,
               set.duration,
+              set.distance,
               set.rest_time,
               set.notes,
             ]);
             const setsQuery = format(
-              'INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
+              'INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, distance, rest_time, notes) VALUES %L',
               setsValues
             );
             await client.query(setsQuery);
@@ -377,11 +382,12 @@ async function addExerciseToWorkoutPreset(
         set.reps,
         set.weight,
         set.duration,
+        set.distance,
         set.rest_time,
         set.notes,
       ]);
       const setsQuery = format(
-        'INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, rest_time, notes) VALUES %L',
+        'INSERT INTO workout_preset_exercise_sets (workout_preset_exercise_id, set_number, set_type, reps, weight, duration, distance, rest_time, notes) VALUES %L',
         setsValues
       );
       await client.query(setsQuery);
@@ -443,11 +449,12 @@ async function searchWorkoutPresets(
                wpe.superset_group,
                e.name as exercise_name,
                e.category as category,
+               e.modality as modality,
                COALESCE(
                  (SELECT json_agg(set_data ORDER BY set_data.set_number)
                   FROM (
                     SELECT
-                      wpes.id, wpes.set_number, wpes.set_type, wpes.reps, wpes.weight, wpes.duration, wpes.rest_time, wpes.notes
+                      wpes.id, wpes.set_number, wpes.set_type, wpes.reps, wpes.weight, wpes.duration, wpes.distance, wpes.rest_time, wpes.notes
                     FROM workout_preset_exercise_sets wpes
                     WHERE wpes.workout_preset_exercise_id = wpe.id
                   ) AS set_data

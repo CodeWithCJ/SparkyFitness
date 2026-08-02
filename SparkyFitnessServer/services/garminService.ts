@@ -10,7 +10,11 @@ import garminConnectService from '../integrations/garminconnect/garminConnectSer
 import garminMeasurementMapping from '../integrations/garminconnect/garminMeasurementMapping.js';
 import moment from 'moment';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
-import { todayInZone, addDays } from '@workspace/shared';
+import {
+  todayInZone,
+  addDays,
+  deriveExerciseModality,
+} from '@workspace/shared';
 import sleepRepository from '../models/sleepRepository.js';
 import foodRepository from '../models/food.js';
 import foodEntryRepository from '../models/foodEntry.js';
@@ -151,6 +155,7 @@ async function getOrCreateGarminExercise(
     ) {
       await exerciseRepository.updateExercise(exercise.id, userId, {
         category: mappedCategory,
+        modality: deriveExerciseModality(mappedCategory),
       });
       exercise.category = mappedCategory;
     }
@@ -176,6 +181,7 @@ async function getOrCreateGarminExercise(
         await exerciseRepository.updateExercise(exercise.id, userId, {
           name: formattedName,
           category: mappedCategory,
+          modality: deriveExerciseModality(mappedCategory),
         });
         exercise.name = formattedName;
         exercise.category = mappedCategory;
@@ -544,7 +550,7 @@ async function processGarminWorkoutSession(
             set_type: setType,
             reps: Math.round(garminSet.repetitionCount || 0),
             weight: weightKg,
-            duration: Math.round(durationSeconds / 60),
+            duration: durationSeconds,
             rest_time: 0, // Default rest time
             notes: garminSet.notes || '',
           };

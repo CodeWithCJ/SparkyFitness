@@ -1,8 +1,10 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
+import Toast from 'react-native-toast-message';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { createFoodEntry } from '../../src/services/api/foodEntriesApi';
 import { createFoodVariant, fetchFoodVariants, saveFood } from '../../src/services/api/foodsApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import type { FoodVariantDetail } from '../../src/types/foods';
 
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   createFoodEntry: jest.fn(),
@@ -24,6 +26,23 @@ const mockCreateFoodVariant =
 const mockFetchFoodVariants =
   fetchFoodVariants as jest.MockedFunction<typeof fetchFoodVariants>;
 const mockSaveFood = saveFood as jest.MockedFunction<typeof saveFood>;
+
+function makeStoredVariant(
+  id: string,
+  servingUnit: string,
+  calories: number,
+): FoodVariantDetail {
+  return {
+    id,
+    food_id: 'food-1',
+    serving_size: 1,
+    serving_unit: servingUnit,
+    calories,
+    protein: 1,
+    carbs: 10,
+    fat: 1,
+  } as FoodVariantDetail;
+}
 
 describe('useAddFoodEntry', () => {
   let queryClient: QueryClient;
@@ -509,6 +528,281 @@ describe('useAddFoodEntry', () => {
       entry_date: '2026-04-25',
       food_id: 'food-1',
       variant_id: 'one-portion-variant',
+    });
+  });
+
+  test('uses one unambiguous legacy variant for a described provider serving', async () => {
+    mockSaveFood.mockResolvedValue({
+      id: 'food-1',
+      name: 'Legacy Food',
+      default_variant: {
+        id: 'default-variant',
+        serving_size: 100,
+        serving_unit: 'g',
+      },
+    } as unknown as Awaited<ReturnType<typeof saveFood>>);
+
+    const storedVariants = [
+      {
+        id: 'default-variant',
+        food_id: 'food-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 100,
+        protein: 1,
+        carbs: 10,
+        fat: 1,
+      },
+      {
+        id: 'legacy-serving',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'serving',
+        calories: 80,
+        protein: 1,
+        carbs: 8,
+        fat: 1,
+      },
+    ] as Awaited<ReturnType<typeof fetchFoodVariants>>;
+    mockFetchFoodVariants
+      .mockResolvedValueOnce(storedVariants)
+      .mockResolvedValueOnce(storedVariants);
+    mockCreateFoodEntry.mockResolvedValue({
+      id: 'entry-1',
+      food_id: 'food-1',
+      variant_id: 'legacy-serving',
+      meal_type: 'breakfast',
+      meal_type_id: 'meal-type-1',
+      quantity: 1,
+      unit: 'serving',
+      entry_date: '2026-04-25',
+      food_name: 'Legacy Food',
+      brand_name: null,
+      serving_size: 1,
+      serving_unit: 'serving',
+      calories: 80,
+      protein: 1,
+      carbs: 8,
+      fat: 1,
+    });
+
+    const { result } = renderHook(() => useAddFoodEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.addEntryAsync({
+        saveFoodPayload: {
+          name: 'Legacy Food',
+          serving_size: 1,
+          serving_unit: 'serving (80 g)',
+          calories: 80,
+          protein: 1,
+          carbs: 8,
+          fat: 1,
+        },
+        externalVariants: [
+          {
+            serving_size: 1,
+            serving_unit: 'serving',
+            serving_description: '1 serving (80 g)',
+            calories: 80,
+            protein: 1,
+            carbs: 8,
+            fat: 1,
+          },
+        ],
+        createEntryPayload: {
+          meal_type_id: 'meal-type-1',
+          quantity: 1,
+          unit: 'serving',
+          entry_date: '2026-04-25',
+        },
+      });
+    });
+
+    expect(mockCreateFoodVariant).not.toHaveBeenCalled();
+    expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      meal_type_id: 'meal-type-1',
+      quantity: 1,
+      unit: 'serving',
+      entry_date: '2026-04-25',
+      food_id: 'food-1',
+      variant_id: 'legacy-serving',
+    });
+  });
+
+  test.each([
+    {
+      failureKind: 'ambiguous legacy matches',
+      variants: [
+        makeStoredVariant('legacy-200', 'package', 100),
+        makeStoredVariant('legacy-400', 'package', 200),
+      ],
+    },
+    {
+      failureKind: 'ambiguous exact matches',
+      variants: [
+        makeStoredVariant('package-400-a', 'package (400 g)', 200),
+        makeStoredVariant('package-400-b', 'package (400 g)', 210),
+      ],
+    },
+    {
+      failureKind: 'a failed variant refresh',
+      variants: null,
+    },
+  ])(
+    'does not log after $failureKind with a mismatched default',
+    async ({ variants }: { variants: FoodVariantDetail[] | null }) => {
+      mockSaveFood.mockResolvedValue({
+        id: 'food-1',
+        name: 'Ambiguous Packages',
+        default_variant: {
+          id: 'default-variant',
+          serving_size: 100,
+          serving_unit: 'g',
+        },
+      } as unknown as Awaited<ReturnType<typeof saveFood>>);
+      if (variants) {
+        mockFetchFoodVariants.mockResolvedValue(variants);
+      } else {
+        mockFetchFoodVariants.mockRejectedValue(new Error('refresh failed'));
+      }
+
+      const { result } = renderHook(() => useAddFoodEntry(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        await expect(
+          result.current.addEntryAsync({
+            saveFoodPayload: {
+              name: 'Ambiguous Packages',
+              brand: null,
+              serving_size: 1,
+              serving_unit: 'package (400 g)',
+              calories: 200,
+              protein: 2,
+              carbs: 20,
+              fat: 2,
+            },
+            createEntryPayload: {
+              meal_type_id: 'meal-type-1',
+              quantity: 1,
+              unit: 'package (400 g)',
+              entry_date: '2026-04-25',
+            },
+          }),
+        ).rejects.toThrow(
+          'Could not uniquely resolve the selected serving variant',
+        );
+      });
+
+      expect(mockCreateFoodEntry).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(Toast.show).toHaveBeenCalledWith({
+          type: 'error',
+          text1: 'Failed to add food',
+          text2: 'Choose a different serving.',
+        });
+      });
+    },
+  );
+
+  test('uses an exact saved default to resolve multiple exact stored variants', async () => {
+    mockSaveFood.mockResolvedValue({
+      id: 'food-1',
+      name: 'Duplicate Packages',
+      default_variant: {
+        id: 'package-400-default',
+        serving_size: 1,
+        serving_unit: 'package (400 g)',
+      },
+    } as unknown as Awaited<ReturnType<typeof saveFood>>);
+    mockFetchFoodVariants.mockResolvedValue([
+      makeStoredVariant('package-400-a', 'package (400 g)', 200),
+      makeStoredVariant('package-400-b', 'package (400 g)', 210),
+    ]);
+
+    const { result } = renderHook(() => useAddFoodEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.addEntryAsync({
+        saveFoodPayload: {
+          name: 'Duplicate Packages',
+          brand: null,
+          serving_size: 1,
+          serving_unit: 'package (400 g)',
+          calories: 200,
+          protein: 2,
+          carbs: 20,
+          fat: 2,
+        },
+        createEntryPayload: {
+          meal_type_id: 'meal-type-1',
+          quantity: 1,
+          unit: 'package (400 g)',
+          entry_date: '2026-04-25',
+        },
+      });
+    });
+
+    expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      meal_type_id: 'meal-type-1',
+      quantity: 1,
+      unit: 'package (400 g)',
+      entry_date: '2026-04-25',
+      food_id: 'food-1',
+      variant_id: 'package-400-default',
+    });
+  });
+
+  test('uses an exact saved default when the variant refresh fails', async () => {
+    mockSaveFood.mockResolvedValue({
+      id: 'food-1',
+      name: 'Exact Package',
+      default_variant: {
+        id: 'package-400',
+        serving_size: 1,
+        serving_unit: 'package (400 g)',
+      },
+    } as unknown as Awaited<ReturnType<typeof saveFood>>);
+    mockFetchFoodVariants.mockRejectedValue(new Error('refresh failed'));
+
+    const { result } = renderHook(() => useAddFoodEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.addEntryAsync({
+        saveFoodPayload: {
+          name: 'Exact Package',
+          brand: null,
+          serving_size: 1,
+          serving_unit: 'package (400 g)',
+          calories: 200,
+          protein: 2,
+          carbs: 20,
+          fat: 2,
+        },
+        createEntryPayload: {
+          meal_type_id: 'meal-type-1',
+          quantity: 1,
+          unit: 'package (400 g)',
+          entry_date: '2026-04-25',
+        },
+      });
+    });
+
+    expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      meal_type_id: 'meal-type-1',
+      quantity: 1,
+      unit: 'package (400 g)',
+      entry_date: '2026-04-25',
+      food_id: 'food-1',
+      variant_id: 'package-400',
     });
   });
 });

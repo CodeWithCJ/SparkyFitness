@@ -16,7 +16,8 @@ export const workoutPlanAssignmentSetsSchema = z.object({
   set_type: z.string().nullable(),
   reps: z.number().nullable(),
   weight: z.number().nullable(),
-  duration: z.number().nullable(),
+  // Per-set duration is integer SECONDS.
+  duration: z.number().int().nullable(),
   rest_time: z.number().nullable(),
   notes: z.string().nullable(),
   created_at: z.date().nullable(),
@@ -30,7 +31,8 @@ export const workoutPlanAssignmentSetsInitializerSchema = z.object({
   set_type: z.string().optional().nullable(),
   reps: z.number().optional().nullable(),
   weight: z.number().optional().nullable(),
-  duration: z.number().optional().nullable(),
+  // Per-set duration is integer SECONDS.
+  duration: z.number().int().optional().nullable(),
   rest_time: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
   created_at: z.date().optional().nullable(),
@@ -44,7 +46,8 @@ export const workoutPlanAssignmentSetsMutatorSchema = z.object({
   set_type: z.string().optional().nullable(),
   reps: z.number().optional().nullable(),
   weight: z.number().optional().nullable(),
-  duration: z.number().optional().nullable(),
+  // Per-set duration is integer SECONDS.
+  duration: z.number().int().optional().nullable(),
   rest_time: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
   created_at: z.date().optional().nullable(),

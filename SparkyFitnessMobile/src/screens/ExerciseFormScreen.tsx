@@ -9,6 +9,7 @@ import FormScreenChrome from '../components/FormScreenChrome';
 import Icon from '../components/Icon';
 import { useCreateExercise, useUpdateExercise } from '../hooks';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import { deriveExerciseModality, isExerciseModality } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
 import type {
   RootStackParamList,
@@ -28,6 +29,13 @@ const CATEGORY_OPTIONS = [
   { label: 'Plyometrics', value: 'plyometrics' },
   { label: 'Stretching', value: 'stretching' },
   { label: 'Isometric', value: 'isometric' },
+] as const;
+
+const MODALITY_OPTIONS = [
+  { label: 'Weight & Reps', value: 'weight_reps' },
+  { label: 'Reps', value: 'reps_only' },
+  { label: 'Duration', value: 'duration' },
+  { label: 'Duration & Distance', value: 'duration_distance' },
 ] as const;
 
 const LEVEL_OPTIONS = [
@@ -72,6 +80,13 @@ const titleCase = (value: string): string =>
 interface ExerciseFormState {
   name: string;
   category: string | null;
+  modality: string | null;
+  /**
+   * Once the user picks a modality it is pinned; until then create mode keeps
+   * it following the category's derived value (edit mode seeds this true so a
+   * stored modality never silently changes with the category).
+   */
+  modalityManuallySet: boolean;
   caloriesPerHourText: string;
   description: string;
   equipment: string;
@@ -136,6 +151,19 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
     return CATEGORY_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value }));
   }, [state.category]);
 
+  const modalityOptions = useMemo(() => {
+    if (
+      state.modality &&
+      !MODALITY_OPTIONS.some((opt) => opt.value === state.modality)
+    ) {
+      return [
+        ...MODALITY_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value })),
+        { label: titleCase(state.modality), value: state.modality },
+      ];
+    }
+    return MODALITY_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value }));
+  }, [state.modality]);
+
   const renderPicker = (
     label: string,
     options: readonly { label: string; value: string }[],
@@ -183,9 +211,19 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
       {showCategory
         ? renderPicker('Category', categoryOptions, state.category, (category) =>
-            setState((prev) => ({ ...prev, category })),
+            setState((prev) => ({
+              ...prev,
+              category,
+              ...(prev.modalityManuallySet
+                ? null
+                : { modality: deriveExerciseModality(category) }),
+            })),
           )
         : null}
+
+      {renderPicker('Tracking Type', modalityOptions, state.modality, (modality) =>
+        setState((prev) => ({ ...prev, modality, modalityManuallySet: true })),
+      )}
 
       <View className="gap-1.5">
         <Text className="text-text-secondary text-sm font-medium">
@@ -353,6 +391,8 @@ const buildCreatePayload = (
     description: trimmedDescription.length > 0 ? trimmedDescription : null,
   };
 
+  if (isExerciseModality(state.modality)) payload.modality = state.modality;
+
   if (caloriesValue !== undefined) payload.calories_per_hour = caloriesValue;
   if (equipmentList.length > 0) payload.equipment = equipmentList;
   if (primaryList.length > 0) payload.primary_muscles = primaryList;
@@ -373,6 +413,8 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
   const [state, setState] = useState<ExerciseFormState>({
     name: '',
     category: 'general',
+    modality: deriveExerciseModality('general'),
+    modalityManuallySet: false,
     caloriesPerHourText: '',
     description: '',
     equipment: '',
@@ -447,6 +489,14 @@ const buildEditPayload = (
     payload.category = state.category;
   }
 
+  // Diff against the stored-or-derived value so unrelated edits never imply a
+  // modality choice (old servers would drop it anyway; new ones would pin it).
+  const initialModality =
+    initial.modality ?? deriveExerciseModality(initial.category);
+  if (isExerciseModality(state.modality) && state.modality !== initialModality) {
+    payload.modality = state.modality;
+  }
+
   if (
     caloriesValue !== undefined &&
     caloriesValue !== initial.calories_per_hour
@@ -507,6 +557,8 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
   const [state, setState] = useState<ExerciseFormState>(() => ({
     name: exercise.name,
     category: exercise.category,
+    modality: exercise.modality ?? deriveExerciseModality(exercise.category),
+    modalityManuallySet: true,
     caloriesPerHourText:
       exercise.calories_per_hour > 0 ? String(exercise.calories_per_hour) : '',
     description: exercise.description ?? '',

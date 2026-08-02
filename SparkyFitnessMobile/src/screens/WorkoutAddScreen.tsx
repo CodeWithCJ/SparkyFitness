@@ -167,8 +167,9 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const isPending = isCreating || isUpdating;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
+  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
-  const submission = getWorkoutDraftSubmission(state, weightUnit as 'kg' | 'lbs');
+  const submission = getWorkoutDraftSubmission(state, weightUnit as 'kg' | 'lbs', distanceUnit);
 
   // Populate the edit form once after the preferences query settles so
   // the initial unit conversion is correct without overwriting later edits.
@@ -188,15 +189,20 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     // One-time initialization from the async-loaded session; setting state
     // synchronously here is intentional and mirrors the populate() side effect.
     setHasPopulatedEdit(true);
-    populate(session, weightUnit as 'kg' | 'lbs');
-  }, [isEditMode, session, isPreferencesLoading, populate, weightUnit, hasPopulatedEdit]);
+    populate(session, weightUnit as 'kg' | 'lbs', distanceUnit);
+  }, [isEditMode, session, isPreferencesLoading, populate, weightUnit, distanceUnit, hasPopulatedEdit]);
 
   // Populate from preset once after preferences load
   const hasPopulatedPresetRef = useRef(false);
   useEffect(() => {
     if (!preset || isEditMode || hasPopulatedPresetRef.current || isPreferencesLoading) return;
     hasPopulatedPresetRef.current = true;
-    const populatedIds = populateFromPreset(preset, weightUnit as 'kg' | 'lbs', initialDate);
+    const populatedIds = populateFromPreset(
+      preset,
+      weightUnit as 'kg' | 'lbs',
+      distanceUnit,
+      initialDate,
+    );
     // One-time initialization from the async-loaded preset; setting state
     // synchronously here is intentional and mirrors the populateFromPreset side effect.
     setEligibleIds(prev => {
@@ -204,7 +210,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
       populatedIds.forEach(id => next.add(id));
       return next;
     });
-  }, [preset, isEditMode, isPreferencesLoading, populateFromPreset, weightUnit, initialDate]);
+  }, [preset, isEditMode, isPreferencesLoading, populateFromPreset, weightUnit, distanceUnit, initialDate]);
 
   const isInitializingEditForm = isEditMode && !hasPopulatedEdit;
 
@@ -409,6 +415,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     ref={exerciseListRef}
                     exercises={state.exercises}
                     weightUnit={weightUnit as 'kg' | 'lbs'}
+                    distanceUnit={distanceUnit}
                     getImageSource={getImageSource}
                     excludePresetEntryId={session?.id}
                     activeSetKey={activeSetKey}

@@ -76,6 +76,37 @@ describe('mapRowsToHealthItems', () => {
     });
   });
 
+  // Issue #1960: a European export ("80,2") parsed as NaN and the row was
+  // dropped without an error, so a 1400-row import silently saved only the
+  // rows whose weight happened to be a whole number.
+  it('accepts a comma decimal separator for measurements', () => {
+    const { items, errors } = mapRowsToHealthItems('measurements', [
+      row({ date: '2022-06-13', weight: '80,2', weight_unit: 'kg' }),
+    ]);
+    expect(errors).toEqual([]);
+    expect(items).toEqual([
+      { date: '2022-06-13', type: 'weight', value: 80.2, unit: 'kg' },
+    ]);
+  });
+
+  it('reports an unparseable numeric cell instead of dropping the row', () => {
+    const { items, errors } = mapRowsToHealthItems('measurements', [
+      row({ date: '2022-06-13', weight: 'abc', weight_unit: 'kg' }),
+    ]);
+    expect(items).toEqual([]);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]?.error).toContain("Invalid number 'abc'");
+    expect(errors[0]?.error).toContain("column 'weight'");
+  });
+
+  it('reports an unparseable vitals value instead of dropping the row', () => {
+    const { items, errors } = mapRowsToHealthItems('vitals', [
+      row({ date: '2026-01-02', type: 'heart_rate', value: '7x', unit: 'bpm' }),
+    ]);
+    expect(items).toEqual([]);
+    expect(errors).toHaveLength(1);
+  });
+
   it('maps hydration L -> ml as an integer water item', () => {
     const { items } = mapRowsToHealthItems('hydration', [
       row({ date: '2026-01-02', value: '2.5', unit: 'L', source: '' }),

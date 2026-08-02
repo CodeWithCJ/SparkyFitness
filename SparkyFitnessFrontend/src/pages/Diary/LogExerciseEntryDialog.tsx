@@ -47,8 +47,14 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   todayInZone,
   prefillEntryTime,
+  resolveExerciseModality,
+  setsDurationMinutes,
   userHourMinute,
 } from '@workspace/shared';
+import {
+  defaultSetForModality,
+  toSetTableModality,
+} from '@/constants/exercises';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -85,7 +91,11 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   const { loggingLevel, weightUnit, distanceUnit, convertDistance, timezone } =
     usePreferences();
 
-  const isCardio = exercise?.category === 'cardio';
+  const modality = resolveExerciseModality(
+    exercise?.modality,
+    exercise?.category
+  );
+  const isCardio = modality === 'duration_distance';
 
   const [notes, setNotes] = useState<string>('');
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -119,20 +129,17 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
     if (initialSets && initialSets.length > 0) {
       return initialSets.map((set) => ({
         ...set,
-        weight: Number(set.weight) || 0,
+        weight: set.weight != null ? Number(set.weight) : null,
         _dndId: uuidv4(),
       }));
     }
-    return [
-      {
-        set_number: 1,
-        set_type: 'Working Set',
-        reps: 10,
-        weight: 0,
-        _dndId: uuidv4(),
-      },
-    ];
+    return [{ ...defaultSetForModality(modality), _dndId: uuidv4() }];
   });
+
+  // Cardio renders the entry-level Duration/Distance form only while it has
+  // at most one set; a multi-set cardio source (e.g. an interval preset)
+  // keeps the duration set table so no rows are hidden.
+  const cardioForm = isCardio && sets.length <= 1;
 
   const handleSetChange = (
     index: number,
@@ -241,20 +248,36 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
         }))
         .filter((detail) => detail.detail_type !== '');
 
-      const totalDuration = isCardio
+      const totalDuration = cardioForm
         ? durationInput === ''
           ? 0
           : durationInput
-        : sets.reduce(
-            (acc, set) => acc + (set.duration || 0) + (set.rest_time || 0) / 60,
-            0
-          );
+        : setsDurationMinutes(sets);
+
+      // Cardio performance also lives on its single backing set (issue
+      // #1903): duration in seconds + distance in km, no between-set rest.
+      // These agree with the entry-level totals below by construction. A
+      // multi-set cardio entry keeps its rows untouched instead.
+      const cardioSetValues = cardioForm
+        ? {
+            duration:
+              durationInput === ''
+                ? null
+                : Math.round(Number(durationInput) * 60),
+            distance:
+              distanceInput === ''
+                ? null
+                : convertDistance(Number(distanceInput), distanceUnit, 'km'),
+            rest_time: 0,
+          }
+        : null;
 
       const entryData = {
         exercise_id: exercise.id,
         sets: sets.map(({ _dndId, ...set }) => ({
           ...set,
-          weight: set.weight ?? 0,
+          weight: set.weight ?? null,
+          ...(cardioSetValues ?? {}),
         })),
         notes,
         entry_date: selectedDate,
@@ -305,7 +328,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
 
         <div className="space-y-4 py-2">
           {/* ── Cardio log or strength sets ── */}
-          {isCardio ? (
+          {cardioForm ? (
             <CardioLog
               durationMinutes={durationInput}
               distance={distanceInput}
@@ -332,7 +355,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <SetColumnHeaders category={exercise?.category} />
+                <SetColumnHeaders modality={toSetTableModality(modality)} />
                 <SortableContext items={sets.map((set) => set._dndId)}>
                   <div className="space-y-0.5">
                     {sets.map((set, index) => (
@@ -348,6 +371,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                         onDuplicateSet={(_, sIdx) => handleDuplicateSet(sIdx)}
                         onRemoveSet={(_, sIdx) => handleRemoveSet(sIdx)}
                         weightUnit={weightUnit}
+                        modality={toSetTableModality(modality)}
                       />
                     ))}
                   </div>
@@ -451,7 +475,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
 
             <CollapsibleContent className="space-y-3 pt-2">
               {/* Calories — only for strength (cardio shows it in CardioLog) */}
-              {!isCardio && (
+              {!cardioForm && (
                 <div className="space-y-1.5">
                   <Label htmlFor="calories-burned" className="text-sm">
                     {t(
@@ -495,7 +519,7 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
               )}
 
               {/* Avg heart rate — only for strength (cardio shows it in CardioLog) */}
-              {!isCardio && (
+              {!cardioForm && (
                 <div className="space-y-1.5">
                   <Label htmlFor="avg-heart-rate" className="text-sm">
                     {t(

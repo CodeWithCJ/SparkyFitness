@@ -843,7 +843,7 @@ async function processGoogleActivities(
         {
           set_number: 1,
           set_type: 'Working Set',
-          duration: Math.round(durationSeconds / 60),
+          duration: Math.round(durationSeconds),
           notes: 'Automatically created from Google Health sync',
         },
       ],

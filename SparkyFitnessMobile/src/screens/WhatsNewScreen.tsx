@@ -399,6 +399,49 @@ const WorkoutMockup: React.FC = () => {
   );
 };
 
+const MedicationsMockup: React.FC = () => {
+  const [catTeal, textSecondary] = useCSSVariable([
+    '--color-cat-teal',
+    '--color-text-secondary',
+  ]) as [string, string];
+
+  return (
+    <View
+      className="h-44 items-center justify-center overflow-hidden"
+      style={{ backgroundColor: `${catTeal}20` }}
+    >
+      <View
+        className="bg-surface rounded-2xl shadow-md justify-center px-4 py-3 border border-border-subtle"
+        style={{ width: 220, height: 110 }}
+      >
+        <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center gap-2">
+            <View
+              className="w-7 h-7 rounded-full items-center justify-center"
+              style={{ backgroundColor: `${catTeal}30` }}
+            >
+              <Icon name="medication" size={14} color={catTeal} />
+            </View>
+            <Text className="text-xs font-bold text-text-primary">Fauxprofen</Text>
+          </View>
+          <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: `${catTeal}25` }}>
+            <Text className="text-[10px] font-semibold" style={{ color: catTeal }}>
+              8:00 AM
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
+          <Text className="text-[11px]" style={{ color: textSecondary }}>
+            200 mg • Daily
+          </Text>
+          <Text className="text-[11px] font-medium text-text-primary">Taken</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -412,6 +455,16 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
+    {
+      eyebrow: 'MEDICATIONS',
+      headline: 'Track your medications',
+      body: 'Add your medications, set dose schedules, and log each dose from the dashboard with optional reminders.',
+      hero: <MedicationsMockup />,
+      cta: {
+        label: 'Set up medications',
+        onPress: () => navigation.navigate('MedicationsList'),
+      },
+    },
     {
       eyebrow: 'CYCLE & PREGNANCY',
       headline: 'Track your cycle & pregnancy',

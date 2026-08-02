@@ -165,6 +165,58 @@ export function computeCalorieProgress(
   return Math.max(0, (effectiveConsumed / goalCalories) * 100);
 }
 
+/** A set row carrying per-set duration and rest, both in SECONDS. */
+export interface TimedSetLike {
+  duration?: number | null;
+  rest_time?: number | null;
+}
+
+/**
+ * Total workout minutes from per-set duration + rest (both integer seconds).
+ * `fallbackMinutes` is returned when the sets sum to 0 or are absent,
+ * preserving the legacy "empty preset defaults to 30 minutes" behavior.
+ */
+export function setsDurationMinutes(
+  sets: readonly TimedSetLike[] | null | undefined,
+  options?: { fallbackMinutes?: number }
+): number {
+  const rows = Array.isArray(sets) ? sets : [];
+  const totalSeconds = rows.reduce(
+    // Values flow through pg drivers and legacy call sites, so coerce defensively.
+    (sum, set) => sum + (Number(set.duration) || 0) + (Number(set.rest_time) || 0),
+    0
+  );
+  const minutes = totalSeconds / 60;
+  if (minutes === 0 && options?.fallbackMinutes != null) {
+    return options.fallbackMinutes;
+  }
+  return minutes;
+}
+
+/** A set row carrying per-set distance in KM. */
+export interface DistanceSetLike {
+  distance?: number | null;
+}
+
+/**
+ * Total distance in km across sets, or null when no set carries one.
+ * Distinguishing "no distance recorded" (null) from an explicit 0 lets
+ * entry-total derivation preserve existing values for distance-less sets.
+ */
+export function setsDistanceKm(
+  sets: readonly DistanceSetLike[] | null | undefined,
+): number | null {
+  const rows = Array.isArray(sets) ? sets : [];
+  let total: number | null = null;
+  for (const set of rows) {
+    // Values flow through pg drivers and legacy call sites, so coerce defensively.
+    const km = set.distance == null ? null : Number(set.distance);
+    if (km == null || Number.isNaN(km)) continue;
+    total = (total ?? 0) + km;
+  }
+  return total;
+}
+
 export type GoalMode = "maintain" | "recomp" | "cut" | "high_cut" | "manual";
 export type GoalModeCalculationMethod = "adaptive" | "manual";
 

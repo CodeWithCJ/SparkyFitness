@@ -1,7 +1,11 @@
-import { extractGarminActivityEntries } from '@/utils/exerciseTrendUtils';
+import {
+  calculateMaxWeightTrendData,
+  extractGarminActivityEntries,
+} from '@/utils/exerciseTrendUtils';
 import type { ExerciseProgressResponse } from '@workspace/shared';
 
 const parseISO = (dateString: string) => new Date(`${dateString}T00:00:00Z`);
+const formatDate = (date: Date) => date.toISOString().slice(0, 10);
 
 const makeEntry = (
   overrides: Partial<ExerciseProgressResponse>
@@ -17,6 +21,36 @@ const makeEntry = (
   provider_name: 'garmin',
   sets: [],
   ...overrides,
+});
+
+describe('calculateMaxWeightTrendData', () => {
+  it('reports 0 rather than -Infinity for an entry with no sets', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Plank: [makeEntry({ sets: [] })],
+    };
+
+    const trend = calculateMaxWeightTrendData(data, {}, formatDate, parseISO);
+
+    expect(trend[0]?.maxWeight).toBe(0);
+    expect(trend[0]?.comparisonMaxWeight).toBe(0);
+  });
+
+  it('ignores null weights on timed sets', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Plank: [
+        makeEntry({
+          sets: [
+            { set_number: 1, reps: null, weight: null, duration: 45 },
+            { set_number: 2, reps: 5, weight: 20 },
+          ],
+        }),
+      ],
+    };
+
+    const trend = calculateMaxWeightTrendData(data, {}, formatDate, parseISO);
+
+    expect(trend[0]?.maxWeight).toBe(20);
+  });
 });
 
 describe('extractGarminActivityEntries', () => {

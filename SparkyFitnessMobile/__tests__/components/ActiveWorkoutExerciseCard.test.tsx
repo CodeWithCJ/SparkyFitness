@@ -52,10 +52,12 @@ jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
       previousSet,
       assumed,
       displayNumber,
+      distanceUnit,
     }: any) => (
       <View
         testID={`set-row-${set.id}`}
         displayNumber={displayNumber}
+        distanceUnit={distanceUnit}
         assumed={assumed == null ? 'none' : `${assumed.weight}x${assumed.reps}`}
         accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}${isFocused ? ' focused' : ''}`}
         accessibilityHint={`next:${nextSetId ?? 'none'} entry:${entryId ?? 'none'}`}
@@ -208,6 +210,189 @@ describe('ActiveWorkoutExerciseCard', () => {
     mockCapturePrBaseline.mockClear();
   });
 
+  describe('column header per modality', () => {
+    const withModality = (modality: string | null, category: string | null = 'Strength') =>
+      makeExercise({
+        exercise_snapshot: {
+          ...makeExercise().exercise_snapshot!,
+          category,
+          modality,
+        } as never,
+      });
+
+    it('shows KG and Reps for weight_reps', () => {
+      const utils = renderCard(true, { exercise: withModality('weight_reps') });
+      expect(utils.getByText('KG')).toBeTruthy();
+      expect(utils.getByText('Reps')).toBeTruthy();
+      expect(utils.queryByText('Sec')).toBeNull();
+    });
+
+    it('drops the KG column for reps_only', () => {
+      const utils = renderCard(true, { exercise: withModality('reps_only') });
+      expect(utils.queryByText('KG')).toBeNull();
+      expect(utils.getByText('Reps')).toBeTruthy();
+    });
+
+    it('shows a single Sec column for duration', () => {
+      const utils = renderCard(true, { exercise: withModality('duration') });
+      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.queryByText('KG')).toBeNull();
+      expect(utils.queryByText('Reps')).toBeNull();
+    });
+
+    it('renders the Duration+Distance form for a ≤1-set cardio exercise', () => {
+      const utils = renderCard(true, { exercise: withModality('duration_distance') });
+      expect(utils.queryByText('Sec')).toBeNull();
+      expect(utils.getByText('Duration (min)')).toBeTruthy();
+      expect(utils.getByText('Distance (km)')).toBeTruthy();
+      expect(utils.queryByLabelText('Add set to Bench Press')).toBeNull();
+    });
+
+    it('labels the distance input in miles when that is the display unit', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('duration_distance'),
+        distanceUnit: 'miles',
+      });
+      expect(utils.getByText('Distance (mi)')).toBeTruthy();
+    });
+
+    it('falls back to the Sec table for multi-set cardio (no rows hidden)', () => {
+      const base = withModality('duration_distance');
+      const utils = renderCard(true, {
+        exercise: {
+          ...base,
+          sets: [base.sets[0], { ...base.sets[0], id: 102, set_number: 2 }],
+        },
+      });
+      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.queryByText('Duration (min)')).toBeNull();
+      expect(utils.queryByText('Km')).toBeNull();
+    });
+
+    it('adds a distance column to the view-mode cardio table', () => {
+      const base = withModality('duration_distance');
+      const utils = renderCard(true, {
+        mode: 'view',
+        exercise: {
+          ...base,
+          sets: [base.sets[0], { ...base.sets[0], id: 102, set_number: 2 }],
+        },
+      });
+      expect(utils.getByText('Km')).toBeTruthy();
+    });
+
+    it('labels the view-mode distance column Mi and forwards the unit to rows', () => {
+      const base = withModality('duration_distance');
+      const utils = renderCard(true, {
+        mode: 'view',
+        distanceUnit: 'miles',
+        exercise: {
+          ...base,
+          sets: [base.sets[0], { ...base.sets[0], id: 102, set_number: 2 }],
+        },
+      });
+      expect(utils.getByText('Mi')).toBeTruthy();
+      expect(utils.getByTestId('set-row-101').props.distanceUnit).toBe('miles');
+    });
+
+    it('omits the distance column on plain duration view tables', () => {
+      const utils = renderCard(true, {
+        mode: 'view',
+        exercise: withModality('duration'),
+      });
+      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.queryByText('Km')).toBeNull();
+    });
+
+    it('keeps the Sec table for cardio when the form is disabled (preset surfaces)', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('duration_distance'),
+        cardioFormEnabled: false,
+      });
+      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.queryByText('Duration (min)')).toBeNull();
+    });
+
+    it('derives from the snapshot category when modality is absent (old server)', () => {
+      const utils = renderCard(true, { exercise: withModality(null, 'Cardio') });
+      expect(utils.getByText('Duration (min)')).toBeTruthy();
+    });
+
+    it('reports cardio form focus through onActivateSet with translated keys', () => {
+      const onActivateSet = jest.fn();
+      const utils = renderCard(true, {
+        exercise: withModality('duration_distance'),
+        onActivateSet,
+        setRenderKeys: { '101': 'rk-101' },
+      });
+      fireEvent(utils.getByLabelText('Duration in minutes for Bench Press'), 'focus');
+      expect(onActivateSet).toHaveBeenCalledWith('rk-101', 'duration');
+      fireEvent(utils.getByLabelText('Distance in km for Bench Press'), 'focus');
+      expect(onActivateSet).toHaveBeenCalledWith('rk-101', 'distance');
+    });
+
+    it('shows the summed duration on a collapsed duration exercise', () => {
+      const base = withModality('duration');
+      const holdSet = base.sets[0];
+      const utils = renderCard(false, {
+        mode: 'view',
+        exercise: {
+          ...base,
+          sets: [
+            { ...holdSet, weight: null, reps: null, duration: 45 },
+            // Legacy isometric row: seconds live in reps (pre-duration data).
+            { ...holdSet, id: 102, set_number: 2, weight: null, reps: 30, duration: null },
+          ],
+        },
+      });
+      expect(utils.getByText('2 sets · 1:15')).toBeTruthy();
+    });
+
+    it('clamps the metric column to RPE on duration-like tables and reports it', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('duration'),
+        metricColumn: 'volume',
+      });
+      expect(utils.getByText('RPE')).toBeTruthy();
+      expect(utils.queryByText('Vol')).toBeNull();
+
+      fireEvent.press(utils.getByLabelText('Change metric column'));
+      expect(utils.callbacks.onPressMetricHeader).toHaveBeenCalledWith(
+        expect.anything(),
+        true,
+      );
+    });
+
+    it('clamps the metric column to RPE on reps_only tables and reports it', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('reps_only'),
+        metricColumn: 'volume',
+      });
+      expect(utils.getByText('RPE')).toBeTruthy();
+      expect(utils.queryByText('Vol')).toBeNull();
+
+      fireEvent.press(utils.getByLabelText('Change metric column'));
+      expect(utils.callbacks.onPressMetricHeader).toHaveBeenCalledWith(
+        expect.anything(),
+        true,
+      );
+    });
+
+    it('leaves the metric column alone on weight tables', () => {
+      const utils = renderCard(true, {
+        exercise: withModality('weight_reps'),
+        metricColumn: 'volume',
+      });
+      expect(utils.getByText('Vol')).toBeTruthy();
+
+      fireEvent.press(utils.getByLabelText('Change metric column'));
+      expect(utils.callbacks.onPressMetricHeader).toHaveBeenCalledWith(
+        expect.anything(),
+        false,
+      );
+    });
+  });
+
   it('renders the overflow trigger when expanded and fires onPressOverflow', () => {
     const { getByLabelText, callbacks } = renderCard(true);
 
@@ -319,6 +504,7 @@ describe('ActiveWorkoutExerciseCard', () => {
           width: expect.any(Number),
           height: expect.any(Number),
         }),
+        false,
       );
     });
 

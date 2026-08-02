@@ -1,8 +1,45 @@
-import Papa from 'papaparse';
 import {
   ImportCategory,
   getCategoryConfig,
 } from '@/constants/healthDataImport';
+import {
+  isBlank,
+  toNumber,
+  readNumberCell,
+  weightToKg,
+  lengthToCm,
+  volumeToMl,
+  round,
+  parseCsv,
+  detectDecimalFormat,
+  resolveDecimalFormat,
+  DEFAULT_CSV_FORMAT,
+  type CellResult,
+  type DecimalFormat,
+  type DecimalFormatChoice,
+  type CsvFormatOptions,
+} from '@workspace/shared';
+
+const SLEEP_NUMERIC_FIELDS = [
+  'duration_in_seconds',
+  'time_asleep_in_seconds',
+  'deep_sleep_seconds',
+  'light_sleep_seconds',
+  'rem_sleep_seconds',
+  'awake_sleep_seconds',
+  'sleep_score',
+];
+
+// Numeric columns per import category, used only to auto-detect the decimal
+// format (comma vs. dot) from the file's own data — see detectDecimalFormat.
+export const NUMERIC_COLUMNS_BY_CATEGORY: Record<ImportCategory, string[]> = {
+  measurements: ['weight', 'body_fat', 'height', 'neck', 'waist', 'hips'],
+  sleep: [...SLEEP_NUMERIC_FIELDS],
+  vitals: ['value'],
+  activity: ['value'],
+  hydration: ['value'],
+  mood: ['mood_value'],
+};
 
 export interface HealthImportRow {
   id: string;
@@ -40,71 +77,31 @@ export const generateUniqueId = () =>
 // index-access rules are satisfied and missing columns read as empty strings.
 const cell = (row: HealthImportRow, key: string): string => row[key] ?? '';
 
-const isBlank = (value: string | undefined): boolean =>
-  value === undefined || value === null || String(value).trim() === '';
+// isBlank, toNumber, weightToKg/lengthToCm/volumeToMl, and round now live in
+// @workspace/shared/utils/csvValue — they are used by every CSV import path,
+// not just this one (issue #1960 was fixed here first, then found to affect
+// every other importer identically; see that module's doc for the full
+// rationale). readNumber below is a thin wrapper adding the row/column
+// context this file's error messages need.
+const readNumber = (
+  row: HealthImportRow,
+  key: string,
+  format: DecimalFormat
+): CellResult<number> => readNumberCell(cell(row, key), format);
 
-const toNumber = (value: string | undefined): number | undefined => {
-  if (isBlank(value)) return undefined;
-  const parsed = Number(String(value).trim());
-  return Number.isNaN(parsed) ? undefined : parsed;
-};
-
-// ── Unit conversions to the server's stored metric units ────────────────────
-// Each converter returns undefined for an unrecognized unit so callers can flag
-// the row as an error instead of silently defaulting to the base unit.
-const KG_UNITS = new Set(['kg', 'kgs', 'kilogram', 'kilograms']);
-const LB_UNITS = new Set(['lb', 'lbs', 'pound', 'pounds']);
-const CM_UNITS = new Set([
-  'cm',
-  'centimeter',
-  'centimeters',
-  'centimetre',
-  'centimetres',
-]);
-const IN_UNITS = new Set(['in', 'inch', 'inches']);
-const M_UNITS = new Set(['m', 'meter', 'meters', 'metre', 'metres']);
-const ML_UNITS = new Set(['ml', 'milliliter', 'milliliters']);
-const L_UNITS = new Set(['l', 'liter', 'liters', 'litre', 'litres']);
-const OZ_UNITS = new Set(['oz', 'floz', 'fl oz', 'ounce', 'ounces']);
-
-const norm = (unit?: string): string => (unit || '').trim().toLowerCase();
-
-export const weightToKg = (
-  value: number,
-  unit?: string
-): number | undefined => {
-  const u = norm(unit);
-  if (u === '' || KG_UNITS.has(u)) return value;
-  if (LB_UNITS.has(u)) return value * 0.45359237;
-  return undefined;
-};
-
-export const lengthToCm = (
-  value: number,
-  unit?: string
-): number | undefined => {
-  const u = norm(unit);
-  if (u === '' || CM_UNITS.has(u)) return value;
-  if (IN_UNITS.has(u)) return value * 2.54;
-  if (M_UNITS.has(u)) return value * 100;
-  return undefined;
-};
-
-export const volumeToMl = (
-  value: number,
-  unit?: string
-): number | undefined => {
-  const u = norm(unit);
-  if (u === '' || ML_UNITS.has(u)) return value;
-  if (L_UNITS.has(u)) return value * 1000;
-  if (OZ_UNITS.has(u)) return value * 29.5735;
-  return undefined;
-};
-
-const round = (value: number, digits = 2): number => {
-  const f = 10 ** digits;
-  return Math.round(value * f) / f;
-};
+const numberError = (
+  row: HealthImportRow,
+  key: string,
+  raw: string
+): MappedRows => ({
+  items: [],
+  errors: [
+    {
+      error: `Invalid number '${raw.trim()}' in column '${key}'.`,
+      entry: rowSnapshot(row),
+    },
+  ],
+});
 
 // Parse a CSV string into editable row objects (string cells + a temp id).
 // An optional header mapping (required-header -> file-header) supports files
@@ -112,14 +109,11 @@ const round = (value: number, digits = 2): number => {
 export const parseHealthCSV = (
   text: string,
   category: ImportCategory,
-  mapping?: Record<string, string>
+  mapping?: Record<string, string>,
+  options: CsvFormatOptions = DEFAULT_CSV_FORMAT
 ): HealthImportRow[] => {
   const config = getCategoryConfig(category);
-  const { data, errors } = Papa.parse<Record<string, string>>(text, {
-    header: true,
-    skipEmptyLines: true,
-  });
-  if (errors.length) console.warn('PapaParse Errors:', errors);
+  const { rows: data } = parseCsv(text, options);
 
   return data.map((rawRow) => {
     const row: HealthImportRow = { id: generateUniqueId() };
@@ -151,13 +145,18 @@ const rowSnapshot = (row: HealthImportRow): Record<string, string> => {
 // Fan a single measurements row (one row per day, many columns) out into one
 // item per populated metric. Blank columns are omitted, never sent as 0. An
 // unrecognized weight/length unit fails the whole row rather than defaulting.
-const mapMeasurementRow = (row: HealthImportRow): MappedRows => {
+const mapMeasurementRow = (
+  row: HealthImportRow,
+  format: DecimalFormat
+): MappedRows => {
   const items: HealthDataItem[] = [];
   const base = baseFields(row);
   const weightUnit = cell(row, 'weight_unit');
   const lengthUnit = cell(row, 'length_unit');
 
-  const weight = toNumber(cell(row, 'weight'));
+  const weightCell = readNumber(row, 'weight', format);
+  if (!weightCell.ok) return numberError(row, 'weight', weightCell.raw);
+  const weight = weightCell.value;
   if (weight !== undefined) {
     const kg = weightToKg(weight, weightUnit);
     if (kg === undefined) {
@@ -174,20 +173,18 @@ const mapMeasurementRow = (row: HealthImportRow): MappedRows => {
     items.push({ ...base, type: 'weight', value: round(kg, 3), unit: 'kg' });
   }
 
-  const bodyFat = toNumber(cell(row, 'body_fat'));
+  const bodyFatCell = readNumber(row, 'body_fat', format);
+  if (!bodyFatCell.ok) return numberError(row, 'body_fat', bodyFatCell.raw);
+  const bodyFat = bodyFatCell.value;
   if (bodyFat !== undefined) {
     items.push({ ...base, type: 'body_fat', value: bodyFat, unit: '%' });
   }
 
-  const lengthMetrics: Array<
-    ['height' | 'neck' | 'waist' | 'hips', number | undefined]
-  > = [
-    ['height', toNumber(cell(row, 'height'))],
-    ['neck', toNumber(cell(row, 'neck'))],
-    ['waist', toNumber(cell(row, 'waist'))],
-    ['hips', toNumber(cell(row, 'hips'))],
-  ];
-  for (const [type, value] of lengthMetrics) {
+  const lengthTypes = ['height', 'neck', 'waist', 'hips'] as const;
+  for (const type of lengthTypes) {
+    const read = readNumber(row, type, format);
+    if (!read.ok) return numberError(row, type, read.raw);
+    const value = read.value;
     if (value === undefined) continue;
     const cm = lengthToCm(value, lengthUnit);
     if (cm === undefined) {
@@ -207,25 +204,19 @@ const mapMeasurementRow = (row: HealthImportRow): MappedRows => {
   return { items, errors: [] };
 };
 
-const SLEEP_NUMERIC_FIELDS = [
-  'duration_in_seconds',
-  'time_asleep_in_seconds',
-  'deep_sleep_seconds',
-  'light_sleep_seconds',
-  'rem_sleep_seconds',
-  'awake_sleep_seconds',
-  'sleep_score',
-];
-
-const mapSleepRow = (row: HealthImportRow): MappedRows => {
+const mapSleepRow = (
+  row: HealthImportRow,
+  format: DecimalFormat
+): MappedRows => {
   const item: HealthDataItem = { ...baseFields(row), type: 'SleepSession' };
   const bedtime = cell(row, 'bedtime');
   const wakeTime = cell(row, 'wake_time');
   if (!isBlank(bedtime)) item['bedtime'] = bedtime.trim();
   if (!isBlank(wakeTime)) item['wake_time'] = wakeTime.trim();
   for (const field of SLEEP_NUMERIC_FIELDS) {
-    const num = toNumber(cell(row, field));
-    if (num !== undefined) item[field] = num;
+    const read = readNumber(row, field, format);
+    if (!read.ok) return numberError(row, field, read.raw);
+    if (read.value !== undefined) item[field] = read.value;
   }
   // Optional full stage timeline: a JSON array of {stage_type,start_time,end_time}.
   // The server writes these to sleep_entry_stages; durations-only rows omit it.
@@ -251,8 +242,13 @@ const mapSleepRow = (row: HealthImportRow): MappedRows => {
   return { items: [item], errors: [] };
 };
 
-const mapVitalRow = (row: HealthImportRow): MappedRows => {
-  const value = toNumber(cell(row, 'value'));
+const mapVitalRow = (
+  row: HealthImportRow,
+  format: DecimalFormat
+): MappedRows => {
+  const read = readNumber(row, 'value', format);
+  if (!read.ok) return numberError(row, 'value', read.raw);
+  const value = read.value;
   const type = cell(row, 'type');
   const unit = cell(row, 'unit');
   if (isBlank(type) || value === undefined) return { items: [], errors: [] };
@@ -261,8 +257,13 @@ const mapVitalRow = (row: HealthImportRow): MappedRows => {
   return { items: [item], errors: [] };
 };
 
-const mapActivityRow = (row: HealthImportRow): MappedRows => {
-  const value = toNumber(cell(row, 'value'));
+const mapActivityRow = (
+  row: HealthImportRow,
+  format: DecimalFormat
+): MappedRows => {
+  const read = readNumber(row, 'value', format);
+  if (!read.ok) return numberError(row, 'value', read.raw);
+  const value = read.value;
   const rawType = cell(row, 'type');
   if (isBlank(rawType) || value === undefined) return { items: [], errors: [] };
   const type = rawType.trim();
@@ -286,8 +287,13 @@ const mapActivityRow = (row: HealthImportRow): MappedRows => {
   return { items: [item], errors: [] };
 };
 
-const mapHydrationRow = (row: HealthImportRow): MappedRows => {
-  const value = toNumber(cell(row, 'value'));
+const mapHydrationRow = (
+  row: HealthImportRow,
+  format: DecimalFormat
+): MappedRows => {
+  const read = readNumber(row, 'value', format);
+  if (!read.ok) return numberError(row, 'value', read.raw);
+  const value = read.value;
   if (value === undefined) return { items: [], errors: [] };
   const unit = cell(row, 'unit');
   const ml = volumeToMl(value, unit);
@@ -310,10 +316,13 @@ const mapHydrationRow = (row: HealthImportRow): MappedRows => {
   };
 };
 
-const mapMoodRow = (row: HealthImportRow): MappedRows => {
+const mapMoodRow = (
+  row: HealthImportRow,
+  format: DecimalFormat
+): MappedRows => {
   const moodValueRaw = cell(row, 'mood_value');
   if (isBlank(moodValueRaw)) return { items: [], errors: [] };
-  const moodValue = toNumber(moodValueRaw);
+  const moodValue = toNumber(moodValueRaw, format);
   if (
     moodValue === undefined ||
     !Number.isInteger(moodValue) ||
@@ -351,9 +360,13 @@ const mapMoodRow = (row: HealthImportRow): MappedRows => {
 // happen.
 export const mapRowsToHealthItems = (
   category: ImportCategory,
-  rows: HealthImportRow[]
+  rows: HealthImportRow[],
+  decimalChoice: DecimalFormatChoice = 'auto'
 ): MappedRows => {
-  const mapper: Record<ImportCategory, (row: HealthImportRow) => MappedRows> = {
+  const mapper: Record<
+    ImportCategory,
+    (row: HealthImportRow, format: DecimalFormat) => MappedRows
+  > = {
     measurements: mapMeasurementRow,
     sleep: mapSleepRow,
     vitals: mapVitalRow,
@@ -361,10 +374,15 @@ export const mapRowsToHealthItems = (
     hydration: mapHydrationRow,
     mood: mapMoodRow,
   };
+  const detection = detectDecimalFormat(
+    rows,
+    NUMERIC_COLUMNS_BY_CATEGORY[category]
+  );
+  const format = resolveDecimalFormat(decimalChoice, detection);
   const items: HealthDataItem[] = [];
   const errors: ImportError[] = [];
   for (const row of rows) {
-    const mapped = mapper[category](row);
+    const mapped = mapper[category](row, format);
     items.push(...mapped.items);
     errors.push(...mapped.errors);
   }

@@ -445,6 +445,56 @@ describe('WorkoutFormExerciseList', () => {
       expect(utils.queryByText('Clear logged sets')).toBeNull();
     });
 
+    it('omits Clear logged sets for a completed cardio effort form', () => {
+      const clearExerciseCompletions = jest.fn();
+      const utils = renderList(
+        [
+          makeExercise('a', {
+            exerciseModality: 'duration_distance',
+            sets: [
+              {
+                clientId: 'a-s1',
+                weight: '',
+                reps: '',
+                distance: '5',
+                duration: 1800,
+                completedAt: '2026-07-14T10:00:00.000Z',
+              },
+            ],
+          }),
+        ],
+        { clearExerciseCompletions },
+      );
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      expect(utils.queryByText('Clear logged sets')).toBeNull();
+    });
+
+    it('keeps Clear logged sets for multi-set cardio (fallback set table)', () => {
+      const clearExerciseCompletions = jest.fn();
+      const utils = renderList(
+        [
+          makeExercise('a', {
+            exerciseModality: 'duration_distance',
+            sets: [
+              {
+                clientId: 'a-s1',
+                weight: '',
+                reps: '',
+                distance: '2.5',
+                duration: 900,
+                completedAt: '2026-07-14T10:00:00.000Z',
+              },
+              { clientId: 'a-s2', weight: '', reps: '', distance: '', duration: 900 },
+            ],
+          }),
+        ],
+        { clearExerciseCompletions },
+      );
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      fireEvent.press(utils.getByTestId('menu-item-clear'));
+      expect(clearExerciseCompletions).toHaveBeenCalledWith('a');
+    });
+
     it('omits Clear logged sets without the prop even when a set is logged', () => {
       const utils = renderList([
         makeExercise('a', {
