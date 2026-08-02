@@ -44,15 +44,15 @@ const FoodMedSafetySearch: React.FC = () => {
       <FormInput
         value={query}
         onChangeText={setQuery}
-        placeholder={category === 'food' ? 'Search a food, e.g. sushi' : 'Search a medication, e.g. ibuprofen'}
+        placeholder={category === 'food' ? 'Sushi' : 'Ibuprofen'}
       />
 
       {!debouncedQuery.trim() ? (
-        <Text className="text-text-secondary text-xs">
+        <Text className="text-text-secondary text-sm">
           Search to see how a food or medication is commonly categorized during pregnancy.
         </Text>
       ) : results.length === 0 ? (
-        <Text className="text-text-secondary text-xs">
+        <Text className="text-text-secondary text-sm">
           No match found. This list is not exhaustive, so ask your provider if unsure.
         </Text>
       ) : (
@@ -79,7 +79,7 @@ const FoodMedSafetySearch: React.FC = () => {
         </View>
       )}
 
-      <Text className="text-text-secondary text-xs">
+      <Text className="text-text-secondary text-sm">
         General guidance only, not medical advice. Always confirm with your provider.
       </Text>
     </View>

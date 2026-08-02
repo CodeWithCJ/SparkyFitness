@@ -11,6 +11,7 @@ import { getTodayDate, formatDate } from '../../utils/dateUtils';
 
 const CycleHistoryList: React.FC = () => {
   const { cycles, createCycle, deleteCycle } = useCycleHistory();
+  const maxCycleLength = cycles.reduce((max, c) => Math.max(max, c.cycle_length || 0), 0);
   const [showAddForm, setShowAddForm] = useState(false);
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
@@ -120,7 +121,7 @@ const CycleHistoryList: React.FC = () => {
               <Text className="text-text-primary font-semibold text-sm">
                 Started {c.start_date}
               </Text>
-              <Text className="text-text-secondary text-xs mt-1">
+              <Text className="text-text-secondary text-sm mt-1">
                 {c.cycle_length ? `${c.cycle_length} day cycle` : 'Current cycle'} • {c.period_length || 5} day period
               </Text>
               {c.cycle_length && c.period_length && (
@@ -128,6 +129,7 @@ const CycleHistoryList: React.FC = () => {
                   <CycleBarGlyph
                     cycleLength={c.cycle_length}
                     periodLength={c.period_length}
+                    maxLength={maxCycleLength}
                   />
                 </View>
               )}

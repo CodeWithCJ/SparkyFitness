@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
@@ -68,7 +68,9 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
   return (
     <View
       className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+      // iOS keeps no top inset even without the native header: this modal
+      // sheet already starts below the status bar.
+      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {header}
 

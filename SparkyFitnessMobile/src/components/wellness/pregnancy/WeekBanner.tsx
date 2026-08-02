@@ -23,7 +23,7 @@ const TRIMESTER_LABEL: Record<Trimester, string> = {
 /** Gestational-age header: current week/day, trimester, term progress, due date. */
 const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
   const tokens = useWellnessTokens();
-  const [textSecondary] = useCSSVariable(['--color-text-secondary']) as [string];
+  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
   const { discreetMode } = useDiscreetMode();
   const pct = Math.max(0, Math.min(1, ga.progress));
 
@@ -35,7 +35,7 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
-      <View className="flex-row items-center justify-between">
+      <View className="flex-row items-end justify-between">
         <View>
           <Text className="text-text-secondary text-base">
             {discreetMode ? 'Wellness Progress' : TRIMESTER_LABEL[ga.trimester]}
@@ -54,7 +54,7 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
             className="flex-row items-center gap-1"
           >
             {dueLabel}
-            <Icon name="chevron-forward" size={16} color={textSecondary} />
+            <Icon name="chevron-forward" size={16} color={accentPrimary} />
           </TouchableOpacity>
         ) : (
           dueLabel

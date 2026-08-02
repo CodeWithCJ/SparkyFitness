@@ -43,9 +43,9 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
       <Text className="text-base font-bold text-text-secondary">Baby this week</Text>
-      <View className="flex-row items-center gap-4">
+      <View className="flex-row items-center justify-evenly gap-4">
         <WombScene scene={info.wombScene} size={96} />
-        <View className="flex-1 gap-1">
+        <View className="shrink gap-1">
           <Text className="text-sm font-semibold" style={{ color: tokens.phasePregnant }}>
             Size of {info.comparison}
           </Text>
@@ -67,12 +67,12 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
       </View>
 
       {!!info.babyBlurb && (
-        <Text className="text-text-primary text-base leading-5">{info.babyBlurb}</Text>
+        <Text className="text-text-primary text-sm">{info.babyBlurb}</Text>
       )}
       {!!info.momBlurb && (
         <View className="gap-0.5">
-          <Text className="text-text-secondary text-base font-semibold">For you</Text>
-          <Text className="text-text-primary text-base leading-5">{info.momBlurb}</Text>
+          <Text className="text-text-secondary text-sm font-semibold">For you</Text>
+          <Text className="text-text-primary text-sm leading-5">{info.momBlurb}</Text>
         </View>
       )}
     </View>
