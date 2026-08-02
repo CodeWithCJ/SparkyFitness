@@ -23,9 +23,10 @@ import {
   canEditGroupedWorkout,
   setsDistanceKm,
   setsDurationMinutes,
+  toNumber,
+  parseCsv,
+  DEFAULT_CSV_FORMAT,
 } from '@workspace/shared';
-
-import papa from 'papaparse';
 import {
   getGroupedExerciseSessionById,
   getGroupedExerciseSessionByIdWithClient,
@@ -1546,15 +1547,26 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
   const failedRows = [];
   try {
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    const { data, errors } = papa.parse(fileContent, {
-      header: true,
-      skipEmptyLines: true,
+    // parseCsv (shared, not a raw papa.parse call) so delimiter detection
+    // failures and other parse issues become a per-row failedRows entry
+    // naming the actual problem, instead of a blanket "CSV parsing failed"
+    // that discarded which row/column caused it.
+    const {
+      rows: data,
+      resolvedDecimal,
+      warnings,
+      fatal,
+    } = parseCsv(fileContent, DEFAULT_CSV_FORMAT, {
+      numericColumns: ['calories_per_hour'],
     });
-    if (errors.length > 0) {
-      log('error', 'CSV parsing errors:', errors);
-      throw new Error('CSV parsing failed. Please check file format.');
+    if (fatal) {
+      log('error', 'CSV parsing error:', fatal);
+      throw new Error(fatal.message);
     }
-    for (const row of data as Record<string, string>[]) {
+    if (warnings.length > 0) {
+      log('warn', 'CSV parsing warnings:', warnings);
+    }
+    for (const row of data) {
       try {
         const exerciseName = row.name ? row.name.trim() : null;
         if (!exerciseName) {
@@ -1592,8 +1604,11 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
             ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
               row.secondary_muscles.split(',').map((m: any) => m.trim())
             : [],
+          // toNumber (not parseFloat) so a locale-comma decimal like "300,5"
+          // parses to 300.5 instead of parseFloat's silent truncation at the
+          // comma — the same #1960 bug already fixed client-side.
           calories_per_hour: row.calories_per_hour
-            ? parseFloat(row.calories_per_hour)
+            ? (toNumber(row.calories_per_hour, resolvedDecimal) ?? null)
             : null,
           user_id: authenticatedUserId,
           is_custom: true,
@@ -2331,8 +2346,11 @@ async function importExercisesFromJson(
           ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
             exerciseData.secondary_muscles.split(',').map((m: any) => m.trim())
           : [],
+        // toNumber (not parseFloat) so a locale-comma decimal parses
+        // correctly instead of silently truncating — same fix as the CSV
+        // import path above.
         calories_per_hour: exerciseData.calories_per_hour
-          ? parseFloat(exerciseData.calories_per_hour)
+          ? (toNumber(exerciseData.calories_per_hour) ?? null)
           : null,
         user_id: authenticatedUserId,
         is_custom: exerciseData.is_custom === true,

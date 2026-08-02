@@ -832,10 +832,16 @@ importers:
 
   shared:
     dependencies:
+      papaparse:
+        specifier: ^5.5.3
+        version: 5.5.3
       zod:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@types/papaparse':
+        specifier: ^5.5.2
+        version: 5.5.2
       ts-to-zod:
         specifier: ^3.0.0
         version: 3.15.0(@types/node@25.5.0)
