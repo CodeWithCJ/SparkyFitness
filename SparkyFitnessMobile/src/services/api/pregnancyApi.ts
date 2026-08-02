@@ -1,10 +1,5 @@
 import { apiFetch } from './apiClient';
-import type {
-  SharedPregnancy,
-  SharedContraction,
-  PregnancyOverview,
-  ContractionAnalysis,
-} from '../../types/womensHealth';
+import type { SharedPregnancy, PregnancyOverview } from '../../types/womensHealth';
 
 export const getCurrent = async (): Promise<SharedPregnancy | null> => {
   return apiFetch<SharedPregnancy | null>({
@@ -54,42 +49,6 @@ export const deletePregnancy = async (id: string): Promise<void> => {
     serviceName: 'Pregnancy API',
     operation: 'delete pregnancy',
     method: 'DELETE',
-  });
-};
-
-// --- Contractions ---
-
-export const createContraction = async (
-  pregnancyId: string,
-  startedAt?: string
-): Promise<SharedContraction> => {
-  return apiFetch<SharedContraction>({
-    endpoint: '/api/v2/pregnancy/contractions',
-    serviceName: 'Pregnancy API',
-    operation: 'create contraction',
-    method: 'POST',
-    body: { pregnancy_id: pregnancyId, started_at: startedAt },
-  });
-};
-
-export const updateContraction = async (
-  id: string,
-  body: { ended_at?: string | null; intensity?: number | null }
-): Promise<SharedContraction> => {
-  return apiFetch<SharedContraction>({
-    endpoint: `/api/v2/pregnancy/contractions/${encodeURIComponent(id)}`,
-    serviceName: 'Pregnancy API',
-    operation: 'update contraction',
-    method: 'PUT',
-    body,
-  });
-};
-
-export const getContractions = async (): Promise<ContractionAnalysis> => {
-  return apiFetch<ContractionAnalysis>({
-    endpoint: '/api/v2/pregnancy/contractions',
-    serviceName: 'Pregnancy API',
-    operation: 'get contractions',
   });
 };
 

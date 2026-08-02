@@ -49,7 +49,6 @@ export {
   cycleDisplayPreferencesQueryKey,
   pregnancyCurrentQueryKey,
   pregnancyOverviewQueryKey,
-  pregnancyContractionsQueryKey,
   pregnancyChecklistQueryKey,
   pregnancyPhotosQueryKey,
   medicationsRootQueryKey,

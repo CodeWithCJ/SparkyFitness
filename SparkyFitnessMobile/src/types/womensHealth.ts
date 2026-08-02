@@ -17,7 +17,6 @@ import type {
   PregnancyStatus,
   SharedPregnancy,
   SharedKickSession,
-  SharedContraction,
   Trimester,
   GestationalAge,
 } from '@workspace/shared';
@@ -41,7 +40,6 @@ export type {
   PregnancyStatus,
   SharedPregnancy,
   SharedKickSession,
-  SharedContraction,
   Trimester,
   GestationalAge,
 };
@@ -149,12 +147,6 @@ export interface PregnancyOverview {
     prenatalMedication: { id: string; name: string | null; entryId: string | null; loggedToday: boolean } | null;
     supplementMedication: { id: string; name: string | null; entryId: string | null; loggedToday: boolean } | null;
   };
-}
-
-export interface ContractionAnalysis {
-  frequencySeconds: number;
-  durationSeconds: number;
-  shouldGoToHospital: boolean;
 }
 
 export interface PregnancyChecklistItem {
