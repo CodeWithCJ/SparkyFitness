@@ -148,6 +148,16 @@ describe('CycleTodayView optional pickers', () => {
     });
   });
 
+  it('writes nothing when the BBT input is invalid', async () => {
+    const { getByPlaceholderText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+
+    fireEvent.changeText(getByPlaceholderText('e.g. 36.5'), 'abc');
+    fireEvent.press(getByText('Save Log Entry'));
+
+    await waitFor(() => expect(mockUpsertLogAsync).not.toHaveBeenCalled());
+    expect(mockUpsertBbt).not.toHaveBeenCalled();
+  });
+
   it('keeps a real selection instead of clearing it', async () => {
     const { getByLabelText, getByText } = render(<CycleTodayView date="2026-08-01" />);
 
@@ -195,6 +205,18 @@ describe('CycleTodayView pregnant mode weight', () => {
     fireEvent(input, 'blur');
 
     expect(mockUpsertCheckInAsync).not.toHaveBeenCalled();
+  });
+
+  it('keeps a typed weight when measurements refetch mid-edit', () => {
+    const { getByPlaceholderText, getByDisplayValue, rerender } = render(
+      <CycleTodayView date="2026-08-01" />,
+    );
+
+    fireEvent.changeText(getByPlaceholderText('e.g. 65'), '70');
+    mockMeasurements = { weight: 65 };
+    rerender(<CycleTodayView date="2026-08-01" />);
+
+    expect(getByDisplayValue('70')).toBeTruthy();
   });
 
   it('skips the check-in when the weight is unchanged', async () => {

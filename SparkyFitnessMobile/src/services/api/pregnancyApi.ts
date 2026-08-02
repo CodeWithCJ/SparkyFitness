@@ -1,7 +1,6 @@
 import { apiFetch } from './apiClient';
 import type {
   SharedPregnancy,
-  SharedKickSession,
   SharedContraction,
   PregnancyOverview,
   ContractionAnalysis,
@@ -55,41 +54,6 @@ export const deletePregnancy = async (id: string): Promise<void> => {
     serviceName: 'Pregnancy API',
     operation: 'delete pregnancy',
     method: 'DELETE',
-  });
-};
-
-// --- Kicks ---
-
-export const startKickSession = async (
-  pregnancyId: string
-): Promise<SharedKickSession> => {
-  return apiFetch<SharedKickSession>({
-    endpoint: '/api/v2/pregnancy/kicks/start',
-    serviceName: 'Pregnancy API',
-    operation: 'start kick session',
-    method: 'POST',
-    body: { pregnancy_id: pregnancyId },
-  });
-};
-
-export const updateKickSession = async (
-  id: string,
-  body: { kick_count?: number; kick_times?: string[]; ended?: boolean }
-): Promise<SharedKickSession> => {
-  return apiFetch<SharedKickSession>({
-    endpoint: `/api/v2/pregnancy/kicks/${encodeURIComponent(id)}`,
-    serviceName: 'Pregnancy API',
-    operation: 'update kick session',
-    method: 'PUT',
-    body,
-  });
-};
-
-export const listKickSessions = async (): Promise<SharedKickSession[]> => {
-  return apiFetch<SharedKickSession[]>({
-    endpoint: '/api/v2/pregnancy/kicks',
-    serviceName: 'Pregnancy API',
-    operation: 'list kick sessions',
   });
 };
 
@@ -154,50 +118,5 @@ export const upsertChecklistItem = async (body: {
     operation: 'upsert checklist item',
     method: 'PUT',
     body,
-  });
-};
-
-// --- Appointments ---
-
-export const listAppointments = async (upcoming?: boolean): Promise<unknown[]> => {
-  const queryParams = upcoming ? '?upcoming=true' : '';
-  return apiFetch<unknown[]>({
-    endpoint: `/api/v2/pregnancy/appointments${queryParams}`,
-    serviceName: 'Pregnancy API',
-    operation: 'list appointments',
-  });
-};
-
-export const createAppointment = async (
-  body: Record<string, unknown>
-): Promise<unknown> => {
-  return apiFetch<unknown>({
-    endpoint: '/api/v2/pregnancy/appointments',
-    serviceName: 'Pregnancy API',
-    operation: 'create appointment',
-    method: 'POST',
-    body,
-  });
-};
-
-export const updateAppointment = async (
-  id: string,
-  body: Record<string, unknown>
-): Promise<unknown> => {
-  return apiFetch<unknown>({
-    endpoint: `/api/v2/pregnancy/appointments/${encodeURIComponent(id)}`,
-    serviceName: 'Pregnancy API',
-    operation: 'update appointment',
-    method: 'PUT',
-    body,
-  });
-};
-
-export const deleteAppointment = async (id: string): Promise<void> => {
-  return apiFetch<void>({
-    endpoint: `/api/v2/pregnancy/appointments/${encodeURIComponent(id)}`,
-    serviceName: 'Pregnancy API',
-    operation: 'delete appointment',
-    method: 'DELETE',
   });
 };

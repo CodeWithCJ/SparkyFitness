@@ -25,7 +25,7 @@ interface PregnancyLogViewProps {
 /**
  * Pregnancy logging form for CycleLogModalScreen: weight, symptoms, and notes
  * for the selected date, saved through the screen-level Save action. Live
- * tools (kick counter, bump photos) live on the Pregnancy Hub overview.
+ * tools (bump photos, safety search) live on the Pregnancy Hub.
  */
 const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({
   date = getTodayDate(),
@@ -54,7 +54,7 @@ const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({
       <View className="bg-surface rounded-2xl p-6 shadow-sm gap-4 items-center">
         <Text className="text-text-primary text-base font-semibold">Set up your pregnancy</Text>
         <Text className="text-text-secondary text-sm text-center">
-          Add your due date to track baby&apos;s growth week by week, count kicks, and keep a bump photo journal.
+          Add your due date to track baby&apos;s growth week by week and keep a bump photo journal.
         </Text>
         <Button variant="primary" onPress={() => navigation.navigate('PregnancySetup')}>
           Get Started

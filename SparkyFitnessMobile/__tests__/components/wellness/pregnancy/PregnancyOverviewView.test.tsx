@@ -35,17 +35,9 @@ jest.mock('../../../../src/components/wellness/pregnancy/WeeklyChecklist', () =>
   const { View } = require('react-native');
   return { __esModule: true, default: () => <View testID="weekly-checklist" /> };
 });
-jest.mock('../../../../src/components/wellness/pregnancy/KickCounter', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="kick-counter" /> };
-});
 jest.mock('../../../../src/components/wellness/pregnancy/BumpPhotoJournal', () => {
   const { View } = require('react-native');
   return { __esModule: true, default: () => <View testID="bump-photos" /> };
-});
-jest.mock('../../../../src/components/wellness/pregnancy/AppointmentsCard', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="appointments" /> };
 });
 jest.mock('../../../../src/components/wellness/pregnancy/FoodMedSafetySearch', () => {
   const { View } = require('react-native');
@@ -62,17 +54,13 @@ describe('PregnancyOverviewView', () => {
     expect(getByTestId('week-banner')).toBeTruthy();
     expect(getByTestId('baby-growth')).toBeTruthy();
     expect(getByTestId('weekly-checklist')).toBeTruthy();
-    expect(queryByTestId('kick-counter')).toBeNull();
     expect(queryByTestId('bump-photos')).toBeNull();
-    expect(queryByTestId('appointments')).toBeNull();
     expect(queryByTestId('safety-search')).toBeNull();
   });
 
   it('renders only interactive cards in the tools section', () => {
     const { getByTestId, queryByTestId } = render(<PregnancyOverviewView section="tools" />);
-    expect(getByTestId('kick-counter')).toBeTruthy();
     expect(getByTestId('bump-photos')).toBeTruthy();
-    expect(getByTestId('appointments')).toBeTruthy();
     expect(getByTestId('safety-search')).toBeTruthy();
     expect(queryByTestId('week-banner')).toBeNull();
     expect(queryByTestId('baby-growth')).toBeNull();
