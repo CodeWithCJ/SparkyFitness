@@ -187,11 +187,26 @@
       "badgeCustom": "Custom Fast"
     },
     "protocols": {
-      "sixteenEight": { "name": "16:8 Leangains", "description": "Skip breakfast and eat during an 8-hour window." },
-      "eighteenSix": { "name": "18:6 Warrior", "description": "More aggressive fast with a 6-hour eating window." },
-      "twentyFour": { "name": "20:4 Warrior", "description": "Eat one large meal or spread calories over 4 hours." },
-      "circadian": { "name": "Circadian Rhythm", "description": "Fast from sunset to morning." },
-      "custom": { "name": "Custom Fast", "description": "Set your own fasting duration." }
+      "sixteenEight": {
+        "name": "16:8 Leangains",
+        "description": "Skip breakfast and eat during an 8-hour window."
+      },
+      "eighteenSix": {
+        "name": "18:6 Warrior",
+        "description": "More aggressive fast with a 6-hour eating window."
+      },
+      "twentyFour": {
+        "name": "20:4 Warrior",
+        "description": "Eat one large meal or spread calories over 4 hours."
+      },
+      "circadian": {
+        "name": "Circadian Rhythm",
+        "description": "Fast from sunset to morning."
+      },
+      "custom": {
+        "name": "Custom Fast",
+        "description": "Set your own fasting duration."
+      }
     },
     "stages": {
       "anabolic": "Anabolic",
@@ -501,7 +516,8 @@
     "noEntriesForDay": "No entries recorded for this day"
   },
   "diarySummary": {
-    "title": "Summary",    "protein": "Protein",
+    "title": "Summary",
+    "protein": "Protein",
     "carbs": "Carbs",
     "netCarbs": "Net Carbs",
     "fat": "Fat",
@@ -602,12 +618,46 @@
   },
   "days": {
     "short": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    "long": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+    "long": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
     "min": ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
   },
   "months": {
-    "long": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-    "short": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    "long": [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December"
+    ],
+    "short": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec"
+    ]
   },
   "mealTypes": {
     "breakfast": "Breakfast",
@@ -711,6 +761,73 @@
     "medications": "Medications",
     "medication": "Medication",
     "logDailyEntry": "Log Daily Entry"
+  },
+  "devTools": {
+    "title": "Dev Tools",
+    "description": "These tools are only visible in development builds.",
+    "seed": {
+      "title": "Seed Health Data",
+      "description": "Insert sample health data for testing.",
+      "sevenDays": "7 Days",
+      "fourteenDays": "14 Days",
+      "thirtyDays": "30 Days",
+      "oneYear": "1 Year",
+      "steps": "(Steps)"
+    },
+    "healthConnect": {
+      "title": "Health Connect",
+      "data": "Health Connect Data",
+      "backgroundPermission": {
+        "title": "Background Access Permission",
+        "granted": "Background access permission is granted.",
+        "notGranted": "Background access permission is NOT granted."
+      }
+    },
+    "sync": {
+      "title": "Background Sync",
+      "description": "Manually trigger the background sync process.",
+      "trigger": "Trigger Sync",
+      "checkPermission": "Check BG Permission"
+    },
+    "auth": {
+      "title": "Auth",
+      "description": "Trigger auth modals for testing.",
+      "reauth": "Show ReauthModal"
+    },
+    "whatsNew": {
+      "title": "What's New Banner",
+      "description": "Clear the last-seen version so the banner re-appears above the tab bar.",
+      "reset": "Reset Banner"
+    },
+    "announcement": {
+      "title": "System Announcement",
+      "description": "Clear the dismissed announcement flag so active system announcements re-appear.",
+      "reset": "Reset Announcement"
+    },
+    "popovers": {
+      "title": "Food Search Popovers",
+      "description": "Clear a seen flag so its coaching popover re-appears on the next food search.",
+      "sources": "Sources Intro",
+      "provider": "Source Switcher"
+    },
+    "toast": {
+      "syncCompleted": "Background sync completed. Check Logs for details.",
+      "syncFailed": "Sync failed: {{message}}",
+      "healthSeeded_one": "Seeded {{count}} health record for the past {{days}} days.",
+      "healthSeeded_other": "Seeded {{count}} health records for the past {{days}} days.",
+      "healthSeedFailed": "Failed to seed health data.",
+      "healthSeedFailedWithMessage": "Failed to seed health data: {{message}}",
+      "historicalSeeded_one": "Seeded {{count}} historical step record across the past year.",
+      "historicalSeeded_other": "Seeded {{count}} historical step records across the past year.",
+      "historicalSeedFailed": "Failed to seed historical step data.",
+      "historicalSeedFailedWithMessage": "Failed to seed historical step data: {{message}}",
+      "reset": "Reset",
+      "whatsNewReset": "What's New banner will re-appear.",
+      "announcementReset": "System announcement modal will re-appear.",
+      "announcementResetFailed": "Could not reset announcement.",
+      "popoverReset": "{{label}} popover will re-appear.",
+      "popoverResetFailed": "Could not reset popover."
+    }
   },
   "appAlerts": {
     "noServer": {

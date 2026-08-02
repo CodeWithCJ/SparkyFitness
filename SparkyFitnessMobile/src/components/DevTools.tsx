@@ -1,17 +1,50 @@
 import React, { useState } from 'react';
-import { View, Text, ActivityIndicator, Pressable, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  Pressable,
+  Platform,
+} from 'react-native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import Toast from 'react-native-toast-message';
 import Button from './ui/Button';
-import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
+import {
+  seedHealthData,
+  seedHistoricalSteps,
+} from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
 import { notifySessionExpired } from '../services/api/authService';
 import { getActiveServerConfig } from '../services/storage';
 import { resetWhatsNewBanner } from '../services/whatsNewBanner';
 import { resetAnnouncementModal } from './AnnouncementModal';
-import { FOOD_SEARCH_POPOVERS } from '../services/foodSearchPreferences';
-import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedPermissions } from 'react-native-health-connect';
+import {
+  FOOD_SEARCH_POPOVERS,
+  type FoodSearchPopover,
+} from '../services/foodSearchPreferences';
+import {
+  openHealthConnectSettings,
+  openHealthConnectDataManagement,
+  getGrantedPermissions,
+} from 'react-native-health-connect';
+
+function getPopoverResetLabel(
+  t: TFunction,
+  popover: FoodSearchPopover,
+): string {
+  switch (popover.id) {
+    case 'sources':
+      return t('devTools.popovers.sources');
+    case 'provider':
+      return t('devTools.popovers.provider');
+    default:
+      return popover.resetLabel;
+  }
+}
 
 const DevTools: React.FC = () => {
+  const { t } = useTranslation();
   const [isSeeding, setIsSeeding] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -19,10 +52,18 @@ const DevTools: React.FC = () => {
     setIsSyncing(true);
     try {
       await triggerManualSync();
-      Toast.show({ type: 'success', text1: 'Success', text2: 'Background sync completed. Check Logs for details.' });
+      Toast.show({
+        type: 'success',
+        text1: t('common.success'),
+        text2: t('devTools.toast.syncCompleted'),
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      Toast.show({ type: 'error', text1: 'Error', text2: `Sync failed: ${message}` });
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: t('devTools.toast.syncFailed', { message }),
+      });
     } finally {
       setIsSyncing(false);
     }
@@ -33,13 +74,27 @@ const DevTools: React.FC = () => {
     try {
       const result = await seedHistoricalSteps();
       if (result.success) {
-        Toast.show({ type: 'success', text1: 'Success', text2: `Seeded ${result.recordsInserted} historical step records across the past year.` });
+        Toast.show({
+          type: 'success',
+          text1: t('common.success'),
+          text2: t('devTools.toast.historicalSeeded', {
+            count: result.recordsInserted,
+          }),
+        });
       } else {
-        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Failed to seed historical step data.' });
+        Toast.show({
+          type: 'error',
+          text1: t('common.error'),
+          text2: result.error ?? t('devTools.toast.historicalSeedFailed'),
+        });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed historical step data: ${message}` });
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: t('devTools.toast.historicalSeedFailedWithMessage', { message }),
+      });
     } finally {
       setIsSeeding(false);
     }
@@ -50,13 +105,28 @@ const DevTools: React.FC = () => {
     try {
       const result = await seedHealthData(days);
       if (result.success) {
-        Toast.show({ type: 'success', text1: 'Success', text2: `Seeded ${result.recordsInserted} health records for the past ${days} days.` });
+        Toast.show({
+          type: 'success',
+          text1: t('common.success'),
+          text2: t('devTools.toast.healthSeeded', {
+            count: result.recordsInserted,
+            days,
+          }),
+        });
       } else {
-        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Failed to seed health data.' });
+        Toast.show({
+          type: 'error',
+          text1: t('common.error'),
+          text2: result.error ?? t('devTools.toast.healthSeedFailed'),
+        });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed health data: ${message}` });
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: t('devTools.toast.healthSeedFailedWithMessage', { message }),
+      });
     } finally {
       setIsSeeding(false);
     }
@@ -65,30 +135,34 @@ const DevTools: React.FC = () => {
   const handleCheckBackgroundPermissions = async () => {
     const permissions = await getGrantedPermissions();
     const hasBackgroundAccess = permissions.some(
-      (permission) =>
+      permission =>
         permission.accessType === 'read' &&
-        permission.recordType === 'BackgroundAccessPermission'
+        permission.recordType === 'BackgroundAccessPermission',
     );
 
     Toast.show({
       type: hasBackgroundAccess ? 'success' : 'error',
-      text1: 'Background Access Permission',
+      text1: t('devTools.healthConnect.backgroundPermission.title'),
       text2: hasBackgroundAccess
-        ? 'Background access permission is granted.'
-        : 'Background access permission is NOT granted.',
+        ? t('devTools.healthConnect.backgroundPermission.granted')
+        : t('devTools.healthConnect.backgroundPermission.notGranted'),
     });
   };
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold mb-3 text-text-primary">Dev Tools</Text>
+      <Text className="text-lg font-bold mb-3 text-text-primary">
+        {t('devTools.title')}
+      </Text>
       <Text className="text-text-muted mb-3 text-[13px]">
-        These tools are only visible in development builds.
+        {t('devTools.description')}
       </Text>
 
-      <Text className="text-sm text-text-primary">Seed Health Data</Text>
+      <Text className="text-sm text-text-primary">
+        {t('devTools.seed.title')}
+      </Text>
       <Text className="text-text-muted mb-3 text-[13px]">
-        Insert sample health data for testing.
+        {t('devTools.seed.description')}
       </Text>
 
       <View className="flex-row gap-2 flex-wrap justify-between">
@@ -101,7 +175,9 @@ const DevTools: React.FC = () => {
           {isSeeding ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text className="text-white text-base font-bold">7 Days</Text>
+            <Text className="text-white text-base font-bold">
+              {t('devTools.seed.sevenDays')}
+            </Text>
           )}
         </Button>
 
@@ -111,7 +187,9 @@ const DevTools: React.FC = () => {
           onPress={() => handleSeedData(14)}
           disabled={isSeeding}
         >
-          <Text className="text-white text-base font-bold">14 Days</Text>
+          <Text className="text-white text-base font-bold">
+            {t('devTools.seed.fourteenDays')}
+          </Text>
         </Button>
 
         <Button
@@ -120,7 +198,9 @@ const DevTools: React.FC = () => {
           onPress={() => handleSeedData(30)}
           disabled={isSeeding}
         >
-          <Text className="text-white text-base font-bold">30 Days</Text>
+          <Text className="text-white text-base font-bold">
+            {t('devTools.seed.thirtyDays')}
+          </Text>
         </Button>
 
         <Button
@@ -129,29 +209,41 @@ const DevTools: React.FC = () => {
           onPress={handleSeedHistoricalSteps}
           disabled={isSeeding}
         >
-          <Text className="text-white text-base font-bold text-center">1 Year{'\n'}(Steps)</Text>
+          <Text className="text-white text-base font-bold text-center">
+            {t('devTools.seed.oneYear')}
+            {'\n'}
+            {t('devTools.seed.steps')}
+          </Text>
         </Button>
       </View>
+
       {Platform.OS === 'android' && (
         <View className="flex-row gap-2 flex-wrap justify-between mt-4">
           <Pressable
             className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
             onPress={() => openHealthConnectSettings()}
           >
-            <Text className="text-white text-base font-bold">Health Connect</Text>
+            <Text className="text-white text-base font-bold">
+              {t('devTools.healthConnect.title')}
+            </Text>
           </Pressable>
           <Pressable
             className="bg-accent-primary py-2 px-4 rounded-lg my-1 items-center self-center min-w-20"
             onPress={() => openHealthConnectDataManagement()}
           >
-            <Text className="text-white text-base font-bold">Health Connect Data</Text>
+            <Text className="text-white text-base font-bold">
+              {t('devTools.healthConnect.data')}
+            </Text>
           </Pressable>
         </View>
       )}
+
       <View className="mt-5">
-        <Text className="text-sm text-text-primary">Background Sync</Text>
+        <Text className="text-sm text-text-primary">
+          {t('devTools.sync.title')}
+        </Text>
         <Text className="text-text-muted mb-3 text-[13px]">
-          Manually trigger the background sync process.
+          {t('devTools.sync.description')}
         </Text>
         <View className="flex-row gap-2 flex-wrap justify-between">
           <Button
@@ -163,7 +255,9 @@ const DevTools: React.FC = () => {
             {isSyncing ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text className="text-white text-base font-bold">Trigger Sync</Text>
+              <Text className="text-white text-base font-bold">
+                {t('devTools.sync.trigger')}
+              </Text>
             )}
           </Button>
           {Platform.OS === 'android' && (
@@ -172,16 +266,20 @@ const DevTools: React.FC = () => {
               className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
               onPress={handleCheckBackgroundPermissions}
             >
-              <Text className="text-white text-base font-bold">Check BG Permission</Text>
+              <Text className="text-white text-base font-bold">
+                {t('devTools.sync.checkPermission')}
+              </Text>
             </Button>
           )}
         </View>
       </View>
 
       <View className="mt-5">
-        <Text className="text-sm text-text-primary">Auth</Text>
+        <Text className="text-sm text-text-primary">
+          {t('devTools.auth.title')}
+        </Text>
         <Text className="text-text-muted mb-3 text-[13px]">
-          Trigger auth modals for testing.
+          {t('devTools.auth.description')}
         </Text>
         <View className="flex-row gap-2 flex-wrap">
           <Button
@@ -192,15 +290,19 @@ const DevTools: React.FC = () => {
               notifySessionExpired(config?.id ?? 'dev-test');
             }}
           >
-            <Text className="text-white text-base font-bold">Show ReauthModal</Text>
+            <Text className="text-white text-base font-bold">
+              {t('devTools.auth.reauth')}
+            </Text>
           </Button>
         </View>
       </View>
 
       <View className="mt-5">
-        <Text className="text-sm text-text-primary">What&apos;s New Banner</Text>
+        <Text className="text-sm text-text-primary">
+          {t('devTools.whatsNew.title')}
+        </Text>
         <Text className="text-text-muted mb-3 text-[13px]">
-          Clear the last-seen version so the banner re-appears above the tab bar.
+          {t('devTools.whatsNew.description')}
         </Text>
         <View className="flex-row gap-2 flex-wrap">
           <Button
@@ -210,20 +312,24 @@ const DevTools: React.FC = () => {
               await resetWhatsNewBanner();
               Toast.show({
                 type: 'success',
-                text1: 'Reset',
-                text2: "What's New banner will re-appear.",
+                text1: t('devTools.toast.reset'),
+                text2: t('devTools.toast.whatsNewReset'),
               });
             }}
           >
-            <Text className="text-white text-base font-bold">Reset Banner</Text>
+            <Text className="text-white text-base font-bold">
+              {t('devTools.whatsNew.reset')}
+            </Text>
           </Button>
         </View>
       </View>
 
       <View className="mt-5">
-        <Text className="text-sm text-text-primary">System Announcement</Text>
+        <Text className="text-sm text-text-primary">
+          {t('devTools.announcement.title')}
+        </Text>
         <Text className="text-text-muted mb-3 text-[13px]">
-          Clear the dismissed announcement flag so active system announcements re-appear.
+          {t('devTools.announcement.description')}
         </Text>
         <View className="flex-row gap-2 flex-wrap">
           <Button
@@ -234,60 +340,63 @@ const DevTools: React.FC = () => {
                 await resetAnnouncementModal();
                 Toast.show({
                   type: 'success',
-                  text1: 'Reset',
-                  text2: 'System announcement modal will re-appear.',
+                  text1: t('devTools.toast.reset'),
+                  text2: t('devTools.toast.announcementReset'),
                 });
               } catch {
                 Toast.show({
                   type: 'error',
-                  text1: 'Error',
-                  text2: 'Could not reset announcement.',
+                  text1: t('common.error'),
+                  text2: t('devTools.toast.announcementResetFailed'),
                 });
               }
             }}
           >
-            <Text className="text-white text-base font-bold">Reset Announcement</Text>
+            <Text className="text-white text-base font-bold">
+              {t('devTools.announcement.reset')}
+            </Text>
           </Button>
         </View>
       </View>
 
       <View className="mt-5">
-        <Text className="text-sm text-text-primary">Food Search Popovers</Text>
+        <Text className="text-sm text-text-primary">
+          {t('devTools.popovers.title')}
+        </Text>
         <Text className="text-text-muted mb-3 text-[13px]">
-          Clear a seen flag so its coaching popover re-appears on the next food
-          search.
+          {t('devTools.popovers.description')}
         </Text>
         <View className="flex-row gap-2 flex-wrap">
-          {FOOD_SEARCH_POPOVERS.map((popover) => (
-            <Button
-              key={popover.id}
-              variant="primary"
-              className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
-              onPress={async () => {
-                try {
-                  await popover.reset();
-                  Toast.show({
-                    type: 'success',
-                    text1: 'Reset',
-                    text2: `${popover.resetLabel} popover will re-appear.`,
-                  });
-                } catch {
-                  Toast.show({
-                    type: 'error',
-                    text1: 'Error',
-                    text2: 'Could not reset popover.',
-                  });
-                }
-              }}
-            >
-              <Text className="text-white text-base font-bold">
-                {popover.resetLabel}
-              </Text>
-            </Button>
-          ))}
+          {FOOD_SEARCH_POPOVERS.map(popover => {
+            const label = getPopoverResetLabel(t, popover);
+            return (
+              <Button
+                key={popover.id}
+                variant="primary"
+                className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
+                onPress={async () => {
+                  try {
+                    await popover.reset();
+                    Toast.show({
+                      type: 'success',
+                      text1: t('devTools.toast.reset'),
+                      text2: t('devTools.toast.popoverReset', { label }),
+                    });
+                  } catch {
+                    Toast.show({
+                      type: 'error',
+                      text1: t('common.error'),
+                      text2: t('devTools.toast.popoverResetFailed'),
+                    });
+                  }
+                }}
+              >
+                <Text className="text-white text-base font-bold">{label}</Text>
+              </Button>
+            );
+          })}
         </View>
       </View>
-
     </View>
   );
 };
