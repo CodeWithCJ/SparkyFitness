@@ -21,6 +21,103 @@
     "collapseSection": "Zwiń tę sekcję",
     "favorite": "W ulubionych"
   },
+  "cycleCard": {
+    "title": {
+      "wellness": "Zdrowie",
+      "pregnancy": "Monitorowanie ciąży",
+      "fertility": "Monitorowanie płodności",
+      "postpartum": "Regeneracja po porodzie",
+      "menopause": "Monitorowanie menopauzy",
+      "cycle": "Monitorowanie cyklu",
+      "cycleAndPregnancy": "Cykl i ciąża"
+    },
+    "setup": {
+      "accessibility": "Skonfiguruj monitorowanie cyklu i ciąży",
+      "action": "Skonfiguruj",
+      "description": "Monitoruj fazy cyklu, prognozy, objawy i etapy ciąży.",
+      "discreetDescription": "Monitoruj parametry zdrowotne i prognozy."
+    },
+    "discreet": {
+      "day": "Dzień {{day}}",
+      "active": "Monitorowanie zdrowia aktywne",
+      "details": "Dotknij, aby zobaczyć szczegóły"
+    },
+    "pregnancy": {
+      "weekDay": "Tydzień {{week}}, dzień {{day}}",
+      "comparison": "Porównanie wielkości: {{comparison}}",
+      "length": "{{value}} cm",
+      "weight": "{{value}} g",
+      "daysToDue_one": "{{count}} dzień do terminu porodu",
+      "daysToDue_few": "{{count}} dni do terminu porodu",
+      "daysToDue_many": "{{count}} dni do terminu porodu",
+      "daysToDue_other": "{{count}} dni do terminu porodu",
+      "dueToday": "Termin porodu przypada dziś",
+      "active": "Monitorowanie ciąży aktywne",
+      "details": "Dotknij, aby zobaczyć postęp ciąży."
+    },
+    "cycle": {
+      "periodLate_one": "Okres spóźnia się o {{count}} dzień",
+      "periodLate_few": "Okres spóźnia się o {{count}} dni",
+      "periodLate_many": "Okres spóźnia się o {{count}} dni",
+      "periodLate_other": "Okres spóźnia się o {{count}} dni",
+      "nextPeriod": "Przewidywany następny okres: {{date}}",
+      "day": "Dzień {{day}}",
+      "active": "Aktywny",
+      "fallbackActive": "Monitorowanie aktywne",
+      "fallbackDetails": "Dotknij, aby otworzyć centrum monitorowania cyklu."
+    },
+    "phase": {
+      "menstrual": "Okres",
+      "follicular": "Faza folikularna",
+      "fertile": "Okno płodne",
+      "ovulation": "Dzień owulacji",
+      "luteal": "Faza lutealna",
+      "active": "Cykl aktywny"
+    },
+    "babyComparison": {
+      "poppySeed": "ziarenko maku",
+      "sesameSeed": "ziarenko sezamu",
+      "lentil": "soczewica",
+      "blueberry": "borówka",
+      "raspberry": "malina",
+      "cherry": "czereśnia",
+      "strawberry": "truskawka",
+      "lime": "limonka",
+      "plum": "śliwka",
+      "peapod": "strąk grochu",
+      "lemon": "cytryna",
+      "apple": "jabłko",
+      "avocado": "awokado",
+      "turnip": "rzepa",
+      "bellPepper": "papryka",
+      "mango": "mango",
+      "banana": "banan",
+      "carrot": "marchew",
+      "spaghettiSquash": "dynia makaronowa",
+      "largeMango": "duże mango",
+      "earOfCorn": "kolba kukurydzy",
+      "rutabaga": "brukiew",
+      "scallionBunch": "pęczek dymki",
+      "cauliflower": "kalafior",
+      "eggplant": "bakłażan",
+      "butternutSquash": "dynia piżmowa",
+      "largeCabbage": "duża kapusta",
+      "coconut": "kokos",
+      "jicama": "jicama",
+      "pineapple": "ananas",
+      "cantaloupe": "melon kantalupa",
+      "honeydewMelon": "melon miodowy",
+      "headOfRomaine": "główka sałaty rzymskiej",
+      "swissChard": "pęczek boćwiny",
+      "leek": "por",
+      "miniWatermelon": "mały arbuz",
+      "smallPumpkin": "mała dynia"
+    },
+    "actions": {
+      "hub": "Centrum",
+      "openHub": "Otwórz centrum monitorowania cyklu i ciąży"
+    }
+  },
   "anchoredMenu": {
     "dismiss": "Zamknij menu"
   },

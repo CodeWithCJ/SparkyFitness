@@ -21,6 +21,99 @@
     "collapseSection": "Collapse this section",
     "favorite": "Favorite"
   },
+  "cycleCard": {
+    "title": {
+      "wellness": "Wellness",
+      "pregnancy": "Pregnancy tracking",
+      "fertility": "Fertility tracking",
+      "postpartum": "Postpartum recovery",
+      "menopause": "Menopause tracking",
+      "cycle": "Cycle tracking",
+      "cycleAndPregnancy": "Cycle and pregnancy"
+    },
+    "setup": {
+      "accessibility": "Set up cycle and pregnancy tracking",
+      "action": "Set up",
+      "description": "Track cycle phases, predictions, symptoms, and pregnancy milestones.",
+      "discreetDescription": "Track your wellness parameters and predictions."
+    },
+    "discreet": {
+      "day": "Day {{day}}",
+      "active": "Wellness tracking active",
+      "details": "Tap to view details"
+    },
+    "pregnancy": {
+      "weekDay": "Week {{week}}, day {{day}}",
+      "comparison": "Size comparison: {{comparison}}",
+      "length": "{{value}} cm",
+      "weight": "{{value}} g",
+      "daysToDue_one": "{{count}} day to due date",
+      "daysToDue_other": "{{count}} days to due date",
+      "dueToday": "Due today",
+      "active": "Pregnancy tracking active",
+      "details": "Tap to view gestational progress."
+    },
+    "cycle": {
+      "periodLate_one": "Period is {{count}} day late",
+      "periodLate_other": "Period is {{count}} days late",
+      "nextPeriod": "Next period expected: {{date}}",
+      "day": "Day {{day}}",
+      "active": "Active",
+      "fallbackActive": "Tracking active",
+      "fallbackDetails": "Tap to view cycle tracking hub."
+    },
+    "phase": {
+      "menstrual": "Period",
+      "follicular": "Follicular phase",
+      "fertile": "Fertile window",
+      "ovulation": "Ovulation day",
+      "luteal": "Luteal phase",
+      "active": "Cycle active"
+    },
+    "babyComparison": {
+      "poppySeed": "A poppy seed",
+      "sesameSeed": "A sesame seed",
+      "lentil": "A lentil",
+      "blueberry": "A blueberry",
+      "raspberry": "A raspberry",
+      "cherry": "A cherry",
+      "strawberry": "A strawberry",
+      "lime": "A lime",
+      "plum": "A plum",
+      "peapod": "A peapod",
+      "lemon": "A lemon",
+      "apple": "An apple",
+      "avocado": "An avocado",
+      "turnip": "A turnip",
+      "bellPepper": "A bell pepper",
+      "mango": "A mango",
+      "banana": "A banana",
+      "carrot": "A carrot",
+      "spaghettiSquash": "A spaghetti squash",
+      "largeMango": "A large mango",
+      "earOfCorn": "An ear of corn",
+      "rutabaga": "A rutabaga",
+      "scallionBunch": "A scallion bunch",
+      "cauliflower": "A cauliflower",
+      "eggplant": "An eggplant",
+      "butternutSquash": "A butternut squash",
+      "largeCabbage": "A large cabbage",
+      "coconut": "A coconut",
+      "jicama": "A jicama",
+      "pineapple": "A pineapple",
+      "cantaloupe": "A cantaloupe",
+      "honeydewMelon": "A honeydew melon",
+      "headOfRomaine": "A head of romaine",
+      "swissChard": "A bunch of Swiss chard",
+      "leek": "A leek",
+      "miniWatermelon": "A mini watermelon",
+      "smallPumpkin": "A small pumpkin"
+    },
+    "actions": {
+      "hub": "Hub",
+      "openHub": "Open cycle and pregnancy tracking hub"
+    }
+  },
   "anchoredMenu": {
     "dismiss": "Dismiss menu"
   },

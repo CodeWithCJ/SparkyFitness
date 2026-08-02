@@ -155,6 +155,25 @@ describe('localized number formatting', () => {
 });
 
 describe('real i18next pluralization', () => {
+  it('pluralizes cycle card due dates and late periods in English and Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n();
+
+      await i18n.changeLanguage('en');
+      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 1 })).toBe('1 day to due date');
+      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 2 })).toBe('2 days to due date');
+      expect(i18n.t('cycleCard.cycle.periodLate', { count: 1 })).toBe('Period is 1 day late');
+
+      await i18n.changeLanguage('pl');
+      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 1 })).toBe('1 dzień do terminu porodu');
+      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 2 })).toBe('2 dni do terminu porodu');
+      expect(i18n.t('cycleCard.pregnancy.daysToDue', { count: 5 })).toBe('5 dni do terminu porodu');
+      expect(i18n.t('cycleCard.cycle.periodLate', { count: 1 })).toBe('Okres spóźnia się o 1 dzień');
+      expect(i18n.t('cycleCard.cycle.periodLate', { count: 5 })).toBe('Okres spóźnia się o 5 dni');
+    });
+  });
+
   it('uses English plural forms for 1, 2, and 5', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
