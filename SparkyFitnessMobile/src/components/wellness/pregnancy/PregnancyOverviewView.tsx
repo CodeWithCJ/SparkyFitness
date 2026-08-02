@@ -7,6 +7,8 @@ import { useCurrentPregnancy, usePregnancyOverview } from '../../../hooks/usePre
 import WeekBanner from './WeekBanner';
 import BabyGrowthView from './BabyGrowthView';
 import WeeklyChecklist from './WeeklyChecklist';
+import KickCounter from './KickCounter';
+import BumpPhotoJournal from './BumpPhotoJournal';
 import FoodMedSafetySearch from './FoodMedSafetySearch';
 import AppointmentsCard from './AppointmentsCard';
 import Button from '../../ui/Button';
@@ -14,8 +16,8 @@ import type { RootStackParamList } from '../../../types/navigation';
 
 /**
  * Pregnancy Overview View for CycleHubScreen (Pregnancy Hub Insights).
- * Focuses on passive overview: gestational milestones, baby growth, weekly checklist,
- * prenatal appointments, and safety search.
+ * Gestational milestones, baby growth, weekly checklist, live tools
+ * (kick counter, bump photo journal), prenatal appointments, and safety search.
  */
 const PregnancyOverviewView: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -64,7 +66,11 @@ const PregnancyOverviewView: React.FC = () => {
           />
           <BabyGrowthView week={gestationalAge.week} />
           {pregnancy?.id && (
-            <WeeklyChecklist pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
+            <>
+              <WeeklyChecklist pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
+              <KickCounter pregnancyId={pregnancy.id} />
+              <BumpPhotoJournal pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
+            </>
           )}
         </>
       )}
