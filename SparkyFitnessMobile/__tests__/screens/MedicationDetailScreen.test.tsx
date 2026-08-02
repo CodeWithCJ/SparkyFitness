@@ -290,7 +290,7 @@ describe('MedicationDetailScreen', () => {
     const screen = setupScreen(buildMedication({ schedules: [] }));
 
     expect(screen.getByText('Schedules')).toBeTruthy();
-    expect(screen.getByText('No schedules. Doses are logged as needed.')).toBeTruthy();
+    expect(screen.getByText('No schedule. Doses are logged as needed.')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Add schedule'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('MedicationScheduleForm', {
