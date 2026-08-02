@@ -46,8 +46,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
     }
   }, [isModeLoading, enabled, onboardedAt, navigation]);
 
-  // Selected Date State
-  const [selectedDate, setSelectedDate] = useState(getTodayDate);
+  // Anchor date for predictions, alerts, and the header log action
+  const [selectedDate] = useState(getTodayDate);
 
   // Tabs State: 'insights' | 'history'
   const [activeTab, setActiveTab] = useState<'insights' | 'history'>('insights');
@@ -184,11 +184,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
         {activeTab === 'history' && (
           <View className="gap-6">
             <CycleCalendarGrid
-              selectedDate={selectedDate}
-              onSelectDate={(date) => {
-                setSelectedDate(date);
-                navigation.navigate('CycleLogModal', { date });
-              }}
+              initialDate={selectedDate}
+              onDayPress={(date) => navigation.navigate('CycleLogModal', { date })}
               cycles={cycles}
               logs={logs}
               settings={settings}

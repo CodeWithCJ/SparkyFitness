@@ -1,8 +1,9 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer } from '@react-navigation/native';
 import CycleHubScreen from '../../src/screens/CycleHubScreen';
+import { getTodayDate } from '../../src/utils/dateUtils';
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
   const { View } = require('react-native');
@@ -56,13 +57,15 @@ jest.mock('../../src/hooks/useCycleHistory', () => ({
   }),
 }));
 
+const mockLogs: { entry_date: string }[] = [];
+
 jest.mock('../../src/hooks/useCycleLogs', () => ({
   useCycleLog: () => ({
     log: null,
     isLoading: false,
   }),
   useCycleLogsRange: () => ({
-    logs: [],
+    logs: mockLogs,
     isLoading: false,
   }),
 }));
@@ -112,9 +115,34 @@ function renderScreen() {
 }
 
 describe('CycleHubScreen', () => {
+  beforeEach(() => {
+    mockNavigation.navigate.mockClear();
+    mockLogs.length = 0;
+  });
+
   it('renders standard Insights and History tabs', () => {
     const { getByText } = renderScreen();
     expect(getByText('Insights')).toBeTruthy();
     expect(getByText('History')).toBeTruthy();
+  });
+
+  it('opens the log modal for a tapped calendar day', () => {
+    const { getByText } = renderScreen();
+    fireEvent.press(getByText('History'));
+
+    fireEvent.press(getByText('15'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CycleLogModal', {
+      date: expect.stringMatching(/^\d{4}-\d{2}-15$/),
+    });
+  });
+
+  it('marks calendar days that already have a log', () => {
+    const month = getTodayDate().slice(0, 7);
+    mockLogs.push({ entry_date: `${month}-10` });
+    const { getByText, getByTestId, queryByTestId } = renderScreen();
+    fireEvent.press(getByText('History'));
+
+    expect(getByTestId(`logged-dot-${month}-10`)).toBeTruthy();
+    expect(queryByTestId(`logged-dot-${month}-11`)).toBeNull();
   });
 });

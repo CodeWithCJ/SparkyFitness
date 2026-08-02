@@ -8,8 +8,8 @@ import { useWellnessTokens } from './theme/wellnessTokens';
 import { getPhaseColor } from '../../utils/cycleDisplayUtils';
 
 interface CycleCalendarGridProps {
-  selectedDate: string; // YYYY-MM-DD
-  onSelectDate: (date: string) => void;
+  initialDate: string; // YYYY-MM-DD, seeds the visible month
+  onDayPress: (date: string) => void;
   cycles: SharedCycle[];
   logs: SharedCycleDailyLog[];
   settings: SharedCycleSettings;
@@ -18,8 +18,8 @@ interface CycleCalendarGridProps {
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
-  selectedDate,
-  onSelectDate,
+  initialDate,
+  onDayPress,
   cycles,
   logs,
   settings,
@@ -29,7 +29,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     '--color-text-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [currentMonth, setCurrentMonth] = useState(() => selectedDate.slice(0, 7)); // YYYY-MM
+  const [currentMonth, setCurrentMonth] = useState(() => initialDate.slice(0, 7)); // YYYY-MM
 
   const { year, monthVal } = useMemo(() => {
     const parts = currentMonth.split('-').map(Number);
@@ -143,6 +143,8 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     return map;
   }, [logs, predictions, settings]);
 
+  const loggedDays = useMemo(() => new Set(logs.map((log) => log.entry_date)), [logs]);
+
   const handlePrevMonth = () => {
     let nextMonth = monthVal - 1;
     let nextYear = year;
@@ -190,7 +192,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
       {/* Days Grid */}
       <View className="flex-row flex-wrap">
         {gridDates.map((dateStr) => {
-          const isSelected = dateStr === selectedDate;
+          const hasLog = loggedDays.has(dateStr);
           const phase = decoratedDaysMap[dateStr] || 'none';
           const [,, dayNum] = dateStr.split('-').map(Number);
           const isCurrentMonth = dateStr.startsWith(currentMonth);
@@ -232,7 +234,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
           return (
             <TouchableOpacity
               key={dateStr}
-              onPress={() => onSelectDate(dateStr)}
+              onPress={() => onDayPress(dateStr)}
               style={{
                 width: '14.28%',
                 aspectRatio: 1,
@@ -249,20 +251,33 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
                   backgroundColor: cellBg,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderWidth: isSelected || borderColor !== 'transparent' ? 1.5 : 0,
-                  borderColor: isSelected ? textPrimary : borderColor,
+                  borderWidth: borderColor !== 'transparent' ? 1.5 : 0,
+                  borderColor,
                   borderStyle,
                 }}
               >
                 <Text
                   style={{
                     fontSize: 14,
-                    fontWeight: isSelected ? 'bold' : '500',
-                    color: isSelected ? textPrimary : textColor,
+                    fontWeight: '500',
+                    color: textColor,
                   }}
                 >
                   {dayNum}
                 </Text>
+                {hasLog && (
+                  <View
+                    testID={`logged-dot-${dateStr}`}
+                    style={{
+                      position: 'absolute',
+                      bottom: 4,
+                      width: 4,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: textColor,
+                    }}
+                  />
+                )}
               </View>
             </TouchableOpacity>
           );
@@ -310,6 +325,18 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
             }}
           />
           <Text className="text-text-secondary text-xs">Est. Ovulation</Text>
+        </View>
+
+        <View className="flex-row items-center gap-1.5">
+          <View
+            style={{
+              width: 4,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: textPrimary,
+            }}
+          />
+          <Text className="text-text-secondary text-xs">Logged</Text>
         </View>
       </View>
     </View>
