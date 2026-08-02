@@ -16,6 +16,7 @@ import {
   scheduleFastGoalNotification,
   scheduleRestNotification,
   setNotificationsEnabled,
+  setRestTimerNotificationsEnabled,
 } from '../../src/services/notifications';
 import { ExactAlarmBridge } from '../../src/services/ExactAlarmBridge';
 import { __resetSoundsForTests } from '../../src/services/sounds';
@@ -53,6 +54,9 @@ const mockSetChannel = Notifications.setNotificationChannelAsync as jest.MockedF
 const mockSetCategory = Notifications.setNotificationCategoryAsync as jest.MockedFunction<
   typeof Notifications.setNotificationCategoryAsync
 >;
+const mockGetAllScheduled = Notifications.getAllScheduledNotificationsAsync as jest.MockedFunction<
+  typeof Notifications.getAllScheduledNotificationsAsync
+>;
 const mockGetPresented = Notifications.getPresentedNotificationsAsync as jest.MockedFunction<
   typeof Notifications.getPresentedNotificationsAsync
 >;
@@ -73,6 +77,7 @@ describe('notifications service', () => {
     mockSetHandler.mockClear();
     mockSetChannel.mockClear();
     mockSetCategory.mockReset().mockResolvedValue(undefined as any);
+    mockGetAllScheduled.mockReset().mockResolvedValue([]);
     mockGetPresented.mockReset().mockResolvedValue([]);
     mockDismiss.mockReset().mockResolvedValue(undefined as any);
     mockToastShow.mockClear();
@@ -360,6 +365,55 @@ describe('notifications service', () => {
     it('does not cancel scheduled notifications when turned on', async () => {
       await setNotificationsEnabled(true);
       expect(mockCancelAll).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('per-category notification toggles', () => {
+    it('skips scheduling a rest notification when the rest-timer toggle is off', async () => {
+      await setRestTimerNotificationsEnabled(false);
+      expect(await scheduleRestNotification('Bench Press', 60)).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
+      expect(mockGetPerms).not.toHaveBeenCalled();
+    });
+
+    it('still schedules a fast-goal notification when only the rest-timer toggle is off', async () => {
+      await setRestTimerNotificationsEnabled(false);
+      const target = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      expect(await scheduleFastGoalNotification(target)).toBe('notif-id');
+    });
+
+    it('skips scheduling a fast-goal notification when the fasting toggle is off', async () => {
+      useAppPreferencesStore.getState().setFastingGoalNotificationsEnabled(false);
+      const target = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      expect(await scheduleFastGoalNotification(target)).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
+    it('still schedules a rest notification when only the fasting toggle is off', async () => {
+      useAppPreferencesStore.getState().setFastingGoalNotificationsEnabled(false);
+      expect(await scheduleRestNotification('Bench Press', 60)).toBe('notif-id');
+    });
+
+    it('cancels only pending rest pings when the rest-timer toggle is turned off', async () => {
+      mockGetAllScheduled.mockResolvedValue([
+        { identifier: 'rest-1', content: { categoryIdentifier: 'rest-complete' } },
+        { identifier: 'med-1', content: { categoryIdentifier: 'medication-reminder' } },
+        { identifier: 'fast-1', content: {} },
+      ] as any);
+
+      await setRestTimerNotificationsEnabled(false);
+
+      expect(useAppPreferencesStore.getState().restTimerNotificationsEnabled).toBe(false);
+      expect(mockCancel).toHaveBeenCalledTimes(1);
+      expect(mockCancel).toHaveBeenCalledWith('rest-1');
+      expect(mockCancelAll).not.toHaveBeenCalled();
+    });
+
+    it('does not cancel anything when the rest-timer toggle is turned on', async () => {
+      await setRestTimerNotificationsEnabled(true);
+      expect(useAppPreferencesStore.getState().restTimerNotificationsEnabled).toBe(true);
+      expect(mockGetAllScheduled).not.toHaveBeenCalled();
+      expect(mockCancel).not.toHaveBeenCalled();
     });
   });
 
