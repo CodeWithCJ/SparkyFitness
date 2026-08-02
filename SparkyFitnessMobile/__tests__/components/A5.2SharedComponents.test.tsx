@@ -85,14 +85,23 @@ describe('A5.2 shared components', () => {
   });
 
   it.each([
-    ['en', 'Server connected', 'Connected', 'Connection failed', 'Configuration required', 'Connected to server. Tap to refresh.', 'Connection failed. Tap to retry.', 'Server configuration required.'],
-    ['pl', 'Połączono z serwerem', 'Połączono', 'Połączenie nieudane', 'Wymagana konfiguracja', 'Połączono z serwerem. Dotknij, aby odświeżyć.', 'Połączenie nieudane. Dotknij, aby spróbować ponownie.', 'Wymagana konfiguracja serwera.'],
-  ] as const)('ConnectionStatus covers all states in %s', (locale, header, connected, failed, unconfigured, connectedA11y, failedA11y, unconfiguredA11y) => {
+    ['en', 'Server connected', 'Connected', 'Connection failed', 'Configuration required', 'Connected to server.', 'Connection failed.', 'Server configuration required.', 'Connected to server. Tap to refresh.', 'Connection failed. Tap to retry.'],
+    ['pl', 'Połączono z serwerem', 'Połączono', 'Połączenie nieudane', 'Wymagana konfiguracja', 'Połączono z serwerem.', 'Połączenie nieudane.', 'Wymagana konfiguracja serwera.', 'Połączono z serwerem. Dotknij, aby odświeżyć.', 'Połączenie nieudane. Dotknij, aby spróbować ponownie.'],
+  ] as const)('ConnectionStatus covers all states in %s', (locale, header, connected, failed, unconfigured, connectedStatic, failedStatic, unconfiguredStatic, connectedA11y, failedA11y) => {
     setTestLocale(locale);
-    expect(render(<ConnectionStatus isConnected={true} variant="header" />).getByText(header)).toBeTruthy();
+    const headerView = render(<ConnectionStatus isConnected variant="header" />);
+    expect(headerView.getByText(header)).toBeTruthy();
+    expect(headerView.getByLabelText(connectedStatic)).toBeTruthy();
+    const headerRefresh = jest.fn();
+    fireEvent.press(headerView.getByLabelText(connectedStatic));
+    expect(headerRefresh).not.toHaveBeenCalled();
     expect(render(<ConnectionStatus isConnected={false} variant="header" />).toJSON()).toBeNull();
     const refresh = jest.fn();
-    expect(render(<ConnectionStatus isConnected={true} onRefresh={refresh} />).getByText(connected)).toBeTruthy();
+    const connectedStaticView = render(<ConnectionStatus isConnected />);
+    expect(connectedStaticView.getByText(connected)).toBeTruthy();
+    expect(connectedStaticView.getByLabelText(connectedStatic)).toBeTruthy();
+    fireEvent.press(connectedStaticView.getByLabelText(connectedStatic));
+    expect(refresh).not.toHaveBeenCalled();
     const connectedView = render(<ConnectionStatus isConnected onRefresh={refresh} />);
     expect(connectedView.getByLabelText(connectedA11y)).toBeTruthy();
     fireEvent.press(connectedView.getByLabelText(connectedA11y));
@@ -102,9 +111,15 @@ describe('A5.2 shared components', () => {
     expect(failedView.getByLabelText(failedA11y)).toBeTruthy();
     fireEvent.press(failedView.getByLabelText(failedA11y));
     expect(refresh).toHaveBeenCalledTimes(2);
+    const failedStaticView = render(<ConnectionStatus isConnected={false} />);
+    expect(failedStaticView.getByLabelText(failedStatic)).toBeTruthy();
+    fireEvent.press(failedStaticView.getByLabelText(failedStatic));
+    expect(refresh).toHaveBeenCalledTimes(2);
     const unconfiguredView = render(<ConnectionStatus isConnected={false} hasConfig={false} onRefresh={refresh} />);
     expect(unconfiguredView.getByText(unconfigured)).toBeTruthy();
-    expect(unconfiguredView.queryByLabelText(unconfiguredA11y)).toBeNull();
+    expect(unconfiguredView.getByLabelText(unconfiguredStatic)).toBeTruthy();
+    fireEvent.press(unconfiguredView.getByLabelText(unconfiguredStatic));
+    expect(refresh).toHaveBeenCalledTimes(2);
   });
 
   it.each([

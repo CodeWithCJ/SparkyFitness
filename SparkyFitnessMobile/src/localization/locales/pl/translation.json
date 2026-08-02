@@ -43,7 +43,7 @@
     "distanceFallback": "Dystans ćwiczenia w {{unit}}",
     "completeExercise": "Ukończ ćwiczenie: {{exerciseName}}",
     "completeFallback": "Ukończ ćwiczenie",
-    "incompleteExercise": "Oznacz {{exerciseName}} jako nieukończone",
+    "incompleteExercise": "Oznacz jako nieukończone: {{exerciseName}}",
     "incompleteFallback": "Oznacz ćwiczenie jako nieukończone"
   },
   "chat": {
@@ -56,11 +56,13 @@
     "configurationRequired": "Wymagana konfiguracja",
     "connectedAccessibility": "Połączono z serwerem. Dotknij, aby odświeżyć.",
     "failedAccessibility": "Połączenie nieudane. Dotknij, aby spróbować ponownie.",
+    "connectedStaticAccessibility": "Połączono z serwerem.",
+    "failedStaticAccessibility": "Połączenie nieudane.",
     "configurationAccessibility": "Wymagana konfiguracja serwera."
   },
   "copyMeal": {
     "title": "Kopiuj posiłek: {{mealType}}",
-    "fromDate": "Z dnia {{date}}",
+    "fromDate": "Data źródłowa: {{date}}",
     "targetDate": "Data docelowa",
     "targetMeal": "Posiłek docelowy",
     "copying": "Kopiowanie...",

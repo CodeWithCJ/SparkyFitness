@@ -46,6 +46,8 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
       <View
         className="flex-row items-center px-2.5 py-1 rounded-xl"
         style={{ backgroundColor: successBackground }}
+        accessible
+        accessibilityLabel={t('connectionStatus.connectedStaticAccessibility')}
       >
         <View
           className="w-2 h-2 rounded-full mr-1.5"
@@ -97,6 +99,17 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     }
   };
 
+  const getStaticAccessibilityLabel = () => {
+    switch (state) {
+      case 'connected':
+        return t('connectionStatus.connectedStaticAccessibility');
+      case 'disconnected':
+        return t('connectionStatus.failedStaticAccessibility');
+      case 'unconfigured':
+        return t('connectionStatus.configurationAccessibility');
+    }
+  };
+
   // Connected state uses pill style (matching header variant)
   if (state === 'connected') {
     const connectedContent = (
@@ -115,7 +128,11 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
     );
 
     if (!onRefresh) {
-      return connectedContent;
+      return (
+        <View accessible accessibilityLabel={getStaticAccessibilityLabel()}>
+          {connectedContent}
+        </View>
+      );
     }
 
     return (
@@ -143,7 +160,11 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
 
   // Unconfigured state is not clickable
   if (state === 'unconfigured' || !onRefresh) {
-    return <View className="flex-row items-center">{content}</View>;
+    return (
+      <View className="flex-row items-center" accessible accessibilityLabel={getStaticAccessibilityLabel()}>
+        {content}
+      </View>
+    );
   }
 
   return (

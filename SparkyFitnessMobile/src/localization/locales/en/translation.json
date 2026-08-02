@@ -56,11 +56,13 @@
     "configurationRequired": "Configuration required",
     "connectedAccessibility": "Connected to server. Tap to refresh.",
     "failedAccessibility": "Connection failed. Tap to retry.",
+    "connectedStaticAccessibility": "Connected to server.",
+    "failedStaticAccessibility": "Connection failed.",
     "configurationAccessibility": "Server configuration required."
   },
   "copyMeal": {
     "title": "Copy meal: {{mealType}}",
-    "fromDate": "From {{date}}",
+    "fromDate": "Source date: {{date}}",
     "targetDate": "Target date",
     "targetMeal": "Target meal",
     "copying": "Copying...",

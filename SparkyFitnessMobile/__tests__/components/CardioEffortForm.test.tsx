@@ -42,7 +42,7 @@ describe('CardioEffortForm', () => {
 
   it.each([
     ['en', 'Effort for Run', 'Duration in minutes for Run', 'Distance in km for Run', 'Complete Run', 'Mark Run as incomplete'],
-    ['pl', 'Parametry wysiłku: Run', 'Czas trwania w minutach: Run', 'Dystans w km: Run', 'Ukończ ćwiczenie: Run', 'Oznacz Run jako nieukończone'],
+    ['pl', 'Parametry wysiłku: Run', 'Czas trwania w minutach: Run', 'Dystans w km: Run', 'Ukończ ćwiczenie: Run', 'Oznacz jako nieukończone: Run'],
   ] as const)('localizes named accessibility labels in %s', (locale, effort, duration, distance, complete, incomplete) => {
     setTestLocale(locale);
     const view = render(
