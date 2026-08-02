@@ -295,7 +295,7 @@ function AppContent() {
   const cycleSheetLabel = cycleDiscreet
     ? 'Wellness'
     : cycleMode === 'pregnant' || cycleMode === 'postpartum'
-      ? 'Log Pregnancy'
+      ? 'Log Pregnancy Entry'
       : 'Log Cycle';
   const rememberActiveTab = useCallback((routeName: string) => {
     if ((NON_ADD_TABS as readonly string[]).includes(routeName)) {

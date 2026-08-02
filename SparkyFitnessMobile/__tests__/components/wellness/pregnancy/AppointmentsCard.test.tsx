@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, act } from '@testing-library/react-native';
 import AppointmentsCard from '../../../../src/components/wellness/pregnancy/AppointmentsCard';
+import { getTodayDate, addDays } from '../../../../src/utils/dateUtils';
 
 jest.mock('../../../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -65,6 +66,30 @@ describe('AppointmentsCard', () => {
     expect(mockCreateAsync).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Checkup' }),
     );
+  });
+
+  it('does not save without a title', () => {
+    mockUseHealthAppointments.mockReturnValue({ appointments: [], isLoading: false });
+    const { getByText } = render(<AppointmentsCard />);
+
+    fireEvent.press(getByText('Add'));
+    fireEvent.press(getByText('Save Appointment'));
+
+    expect(mockCreateAsync).not.toHaveBeenCalled();
+  });
+
+  it('does not save an appointment scheduled in the past', () => {
+    mockUseHealthAppointments.mockReturnValue({ appointments: [], isLoading: false });
+    const { getByText, getByPlaceholderText, UNSAFE_getByType } = render(<AppointmentsCard />);
+
+    fireEvent.press(getByText('Add'));
+    fireEvent.changeText(getByPlaceholderText('Title (e.g. Anatomy scan)'), 'Checkup');
+    const CalendarSheet = require('../../../../src/components/CalendarSheet').default;
+    const sheet = UNSAFE_getByType(CalendarSheet);
+    act(() => sheet.props.onSelectDate(addDays(getTodayDate(), -1)));
+    fireEvent.press(getByText('Save Appointment'));
+
+    expect(mockCreateAsync).not.toHaveBeenCalled();
   });
 
   it('deletes an appointment', () => {

@@ -38,7 +38,7 @@ const PregnancyOverviewView: React.FC = () => {
       <View className="bg-surface rounded-xl p-6 border-0 shadow-sm gap-4 items-center">
         <Text className="text-text-primary text-base font-semibold">Set up your pregnancy</Text>
         <Text className="text-text-secondary text-sm text-center">
-          Add your due date to track baby&apos;s growth week by week, count kicks, and time contractions.
+          Add your due date to track baby&apos;s growth week by week, count kicks, and keep a bump photo journal.
         </Text>
         <Button variant="primary" onPress={() => navigation.navigate('PregnancySetup')}>
           Get Started

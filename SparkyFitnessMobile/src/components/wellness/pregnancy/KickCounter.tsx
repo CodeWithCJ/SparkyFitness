@@ -38,6 +38,27 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
     };
   }, [startedAt]);
 
+  // A session left running when the screen closes would stay open on the
+  // server forever, freezing the "Last session" readout at the previous
+  // completed session. End it with whatever was counted so far.
+  const activeSessionRef = useRef<{ id: string; times: string[] } | null>(null);
+  useEffect(() => {
+    activeSessionRef.current = sessionId ? { id: sessionId, times: kickTimes } : null;
+  }, [sessionId, kickTimes]);
+  useEffect(() => {
+    return () => {
+      const active = activeSessionRef.current;
+      if (active) {
+        updateKickAsync({
+          id: active.id,
+          body: { kick_count: active.times.length, kick_times: active.times, ended: true },
+        }).catch(() => {
+          // best-effort; an orphaned session is ended on the next attempt
+        });
+      }
+    };
+  }, [updateKickAsync]);
+
   const handleStart = async () => {
     try {
       const session = await startKickAsync(pregnancyId);

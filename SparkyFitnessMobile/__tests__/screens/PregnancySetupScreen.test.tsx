@@ -46,14 +46,15 @@ describe('PregnancySetupScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('rejects a future LMP date instead of saving', async () => {
-    // Default basis is LMP; default date is today. Force a future LMP.
+  it('rejects an implausibly distant due date instead of saving', async () => {
+    // Default basis is a manual due date; default date is today. Force a due
+    // date past the 300-day plausibility window.
     const { getByText, UNSAFE_getByType } = renderScreen();
     // The date field renders formatDate(date); we can't easily open the calendar
     // sheet in tests, so drive the CalendarSheet's onSelectDate directly.
     const CalendarSheet = require('../../src/components/CalendarSheet').default;
     const sheet = UNSAFE_getByType(CalendarSheet);
-    act(() => sheet.props.onSelectDate(addDays(getTodayDate(), 30))); // 30 days in the future
+    act(() => sheet.props.onSelectDate(addDays(getTodayDate(), 310)));
 
     fireEvent.press(getByText('Save'));
 
@@ -65,17 +66,22 @@ describe('PregnancySetupScreen', () => {
     expect(mockCreateAsync).not.toHaveBeenCalled();
   });
 
-  it('creates a pregnancy for a valid past LMP', async () => {
+  it('creates a pregnancy for a valid future due date', async () => {
+    const dueDate = addDays(getTodayDate(), 100);
     const { getByText, UNSAFE_getByType } = renderScreen();
     const CalendarSheet = require('../../src/components/CalendarSheet').default;
     const sheet = UNSAFE_getByType(CalendarSheet);
-    act(() => sheet.props.onSelectDate(addDays(getTodayDate(), -70))); // 10 weeks ago
+    act(() => sheet.props.onSelectDate(dueDate));
 
     fireEvent.press(getByText('Save'));
 
     await waitFor(() => {
       expect(mockCreateAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ due_date_basis: 'lmp', status: 'active' }),
+        expect.objectContaining({
+          due_date_basis: 'manual',
+          due_date: dueDate,
+          status: 'active',
+        }),
       );
     });
     expect(mockUpdateAsync).not.toHaveBeenCalled();

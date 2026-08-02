@@ -16,10 +16,10 @@ import { PREGNANCY_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 
 const BASIS_OPTIONS: { value: PregnancyDueDateBasis; label: string }[] = [
+  { value: 'manual', label: 'Due date' },
+  { value: 'scan', label: 'Ultrasound scan' },
   { value: 'lmp', label: 'Last period (LMP)' },
   { value: 'conception', label: 'Conception date' },
-  { value: 'manual', label: 'Due date (manual)' },
-  { value: 'scan', label: 'Ultrasound scan' },
 ];
 
 const DATE_FIELD_LABEL: Record<PregnancyDueDateBasis, string> = {
@@ -45,7 +45,8 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Prefill from the existing record when editing. For lmp/conception the date
   // field holds that basis date; for manual/scan it holds the due date itself.
-  const initialBasis = existing?.due_date_basis ?? 'lmp';
+  // New pregnancies default to a plain due date, the value most people know.
+  const initialBasis = existing?.due_date_basis ?? 'manual';
   const initialDate =
     initialBasis === 'lmp'
       ? existing?.lmp_date ?? getTodayDate()

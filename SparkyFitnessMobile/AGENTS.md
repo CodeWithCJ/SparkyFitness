@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-07-15*
+*Last updated: 2026-08-02*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -22,6 +22,7 @@ This is the package guide for `SparkyFitnessMobile/`. Work from this directory f
 - `@/*` maps to this package and `@workspace/shared` maps to `../shared/src/index.ts`.
 - Prefer `@workspace/shared` schemas, constants, date/timezone helpers, and types over local duplicates.
 - The app talks to the backend under `/api`; health uploads go to `POST /api/health-data`.
+- Global `fetch` is Expo's WinterCG `expo/fetch`, so React Native's `{uri, name, type}` FormData file parts throw "Unsupported FormDataPart implementation". Append an `expo-file-system` `File` (it implements Blob) for multipart uploads; see `pregnancyPhotosApi.ts`.
 - Server-stored distance/weight units are metric. UI conversion belongs in mobile helpers such as `unitConversions.ts`.
 
 ## Commands

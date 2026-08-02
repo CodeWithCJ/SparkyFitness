@@ -26,40 +26,18 @@ describe('VitalsCard', () => {
     jest.clearAllMocks();
   });
 
-  it('renders weight and medication link status', () => {
+  it("renders today's weight", () => {
     mockUseMeasurements.mockReturnValue({ measurements: { weight: 65 }, isLoading: false });
 
-    const { getByText } = render(
-      <VitalsCard
-        pregnancy={{
-          due_date: '2026-06-01',
-          due_date_basis: 'lmp',
-          fetus_count: 1,
-          status: 'active',
-          prenatal_medication_id: 'med-1',
-          supplement_medication_id: null,
-        }}
-      />,
-    );
+    const { getByText } = render(<VitalsCard />);
 
     expect(getByText('65 kg')).toBeTruthy();
-    expect(getByText('Linked')).toBeTruthy();
-    expect(getByText('Not set')).toBeTruthy();
   });
 
   it('shows placeholder when no weight is logged yet', () => {
     mockUseMeasurements.mockReturnValue({ measurements: null, isLoading: false });
 
-    const { getByText } = render(
-      <VitalsCard
-        pregnancy={{
-          due_date: '2026-06-01',
-          due_date_basis: 'lmp',
-          fetus_count: 1,
-          status: 'active',
-        }}
-      />,
-    );
+    const { getByText } = render(<VitalsCard />);
 
     expect(getByText('—')).toBeTruthy();
   });
@@ -67,16 +45,7 @@ describe('VitalsCard', () => {
   it('saves an edited weight through the check-in mutation', () => {
     mockUseMeasurements.mockReturnValue({ measurements: { weight: 65 }, isLoading: false });
 
-    const { getByText, getByPlaceholderText, getByTestId } = render(
-      <VitalsCard
-        pregnancy={{
-          due_date: '2026-06-01',
-          due_date_basis: 'lmp',
-          fetus_count: 1,
-          status: 'active',
-        }}
-      />,
-    );
+    const { getByText, getByPlaceholderText, getByTestId } = render(<VitalsCard />);
 
     fireEvent.press(getByText('65 kg'));
     fireEvent.changeText(getByPlaceholderText('kg'), '66.5');
@@ -84,6 +53,20 @@ describe('VitalsCard', () => {
 
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({ weight: 66.5 }),
+    );
+  });
+
+  it('saves via the keyboard submit action', () => {
+    mockUseMeasurements.mockReturnValue({ measurements: { weight: 65 }, isLoading: false });
+
+    const { getByText, getByPlaceholderText } = render(<VitalsCard />);
+
+    fireEvent.press(getByText('65 kg'));
+    fireEvent.changeText(getByPlaceholderText('kg'), '67');
+    fireEvent(getByPlaceholderText('kg'), 'submitEditing');
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ weight: 67 }),
     );
   });
 });
