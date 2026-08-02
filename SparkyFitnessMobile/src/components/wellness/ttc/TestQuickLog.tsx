@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useCycleTests, useCycleTestMutations } from '../../../hooks/useCycleTests';
 import { formatDate, addDays } from '../../../utils/dateUtils';
-import Icon from '../../Icon';
+import SwipeableDeleteRow from '../../SwipeableDeleteRow';
 import { useCSSVariable } from 'uniwind';
 import type { SharedCycleTestEntry } from '@workspace/shared';
 
@@ -30,10 +30,7 @@ const RESULTS: Record<TestType, { value: string; label: string }[]> = {
 };
 
 const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
-  const [accentColor, dangerColor] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-icon-danger',
-  ]) as [string, string];
+  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [testType, setTestType] = useState<TestType>('opk');
 
   const { tests, isLoading } = useCycleTests(addDays(date, -14), date);
@@ -93,11 +90,13 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
           <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider">
             Recent Logged Tests
           </Text>
-          <View className="bg-raised rounded-xl border border-border-subtle overflow-hidden">
+          <View className="rounded-xl overflow-hidden">
             {tests.slice(0, 6).map((entry, idx) => (
-              <View
+              <SwipeableDeleteRow
                 key={entry.id ?? `test-${idx}`}
-                className={`flex-row items-center justify-between p-3 ${
+                title={`${entry.test_type.toUpperCase()} · ${entry.result}`}
+                onConfirmDelete={() => handleDelete(entry)}
+                className={`flex-row items-center justify-between py-2.5 ${
                   idx < Math.min(tests.length, 6) - 1 ? 'border-b border-border-subtle' : ''
                 }`}
               >
@@ -110,10 +109,7 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
                 <Text className="text-text-primary text-xs font-bold capitalize flex-1 text-center">
                   {entry.result}
                 </Text>
-                <TouchableOpacity onPress={() => handleDelete(entry)} hitSlop={8} className="p-1">
-                  <Icon name="trash" size={16} color={dangerColor} />
-                </TouchableOpacity>
-              </View>
+              </SwipeableDeleteRow>
             ))}
           </View>
         </View>

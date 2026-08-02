@@ -7,6 +7,7 @@ import { getTodayDate, formatDate, toLocalDateString, addDays } from '../../../u
 import CalendarSheet, { type CalendarSheetRef } from '../../CalendarSheet';
 import FormInput from '../../FormInput';
 import StepperInput from '../../StepperInput';
+import SwipeableDeleteRow from '../../SwipeableDeleteRow';
 import Button from '../../ui/Button';
 import Icon from '../../Icon';
 import type { HealthAppointment } from '../../../types/womensHealth';
@@ -34,11 +35,7 @@ function defaultAppointmentSlot(): { date: string; hour: number } {
 const AppointmentsCard: React.FC = () => {
   const { appointments, isLoading } = useHealthAppointments(true);
   const { createAsync, isCreating, deleteAsync } = useHealthAppointmentMutations();
-  const [accentColor, dangerColor, textMuted] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-icon-danger',
-    '--color-text-muted',
-  ]) as [string, string, string];
+  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
 
   const calendarRef = useRef<CalendarSheetRef>(null);
   const [showForm, setShowForm] = useState(false);
@@ -100,15 +97,16 @@ const AppointmentsCard: React.FC = () => {
   const sorted = [...appointments].sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at));
 
   return (
-    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-4 shadow-sm gap-3 overflow-hidden">
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-primary text-base font-bold">Appointments</Text>
+        <Text className="text-base font-bold text-text-secondary">Appointments</Text>
         <TouchableOpacity
           onPress={() => setShowForm((v) => !v)}
-          className="flex-row items-center gap-1 rounded-full bg-raised px-3 py-1.5"
+          hitSlop={8}
+          className="flex-row items-center"
         >
-          <Icon name={showForm ? 'close' : 'add'} size={16} color={accentColor} />
-          <Text className="text-xs font-semibold" style={{ color: accentColor }}>
+          <Icon name={showForm ? 'close' : 'add'} size={18} color={accentColor} />
+          <Text className="font-semibold text-sm ml-1" style={{ color: accentColor }}>
             {showForm ? 'Cancel' : 'Add'}
           </Text>
         </TouchableOpacity>
@@ -117,34 +115,28 @@ const AppointmentsCard: React.FC = () => {
       {isLoading ? (
         <ActivityIndicator color={accentColor} />
       ) : sorted.length === 0 && !showForm ? (
-        <Text className="text-text-secondary text-xs italic py-2">
+        <Text className="text-text-secondary text-sm py-2">
           No upcoming appointments scheduled.
         </Text>
       ) : (
-        <View className="gap-2">
-          {sorted.map((appt) => (
-            <View key={appt.id} className="flex-row items-start justify-between rounded-xl bg-raised p-3">
-              <View className="flex-1 mr-2">
-                <Text className="text-text-primary text-sm font-semibold">
-                  {appt.title || appt.appointment_type || 'Appointment'}
-                </Text>
-                <Text className="text-text-secondary text-xs mt-0.5">
-                  {formatScheduledAt(appt.scheduled_at)}
-                </Text>
-                {!!appt.location && (
-                  <Text className="text-xs mt-0.5" style={{ color: textMuted }}>
-                    {appt.location}
-                  </Text>
-                )}
-              </View>
-              <TouchableOpacity
-                onPress={() => handleDelete(appt)}
-                hitSlop={8}
-                testID={`delete-appointment-${appt.id}`}
-              >
-                <Icon name="trash" size={16} color={dangerColor} />
-              </TouchableOpacity>
-            </View>
+        <View>
+          {sorted.map((appt, idx) => (
+            <SwipeableDeleteRow
+              key={appt.id}
+              title={appt.title || appt.appointment_type || 'Appointment'}
+              onConfirmDelete={() => handleDelete(appt)}
+              className={`py-2 ${idx < sorted.length - 1 ? 'border-b border-border-subtle' : ''}`}
+            >
+              <Text className="text-text-primary text-base font-semibold">
+                {appt.title || appt.appointment_type || 'Appointment'}
+              </Text>
+              <Text className="text-text-secondary text-xs mt-0.5">
+                {formatScheduledAt(appt.scheduled_at)}
+              </Text>
+              {!!appt.location && (
+                <Text className="text-text-secondary text-xs mt-0.5">{appt.location}</Text>
+              )}
+            </SwipeableDeleteRow>
           ))}
         </View>
       )}

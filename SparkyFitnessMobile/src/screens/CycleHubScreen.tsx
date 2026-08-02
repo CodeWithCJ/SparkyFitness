@@ -107,6 +107,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       kind: 'icon',
       ionicon: 'add-outline',
       sfSymbol: 'plus',
+      role: 'primary',
       accessibilityLabel: 'Log Entry',
       onPress: () => navigation.navigate('CycleLogModal', { date: selectedDate }),
     },

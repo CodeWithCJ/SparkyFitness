@@ -110,7 +110,7 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
         </View>
       )}
 
-      <Text className="text-text-muted text-xs italic">
+      <Text className="text-text-secondary text-xs">
         Estimates from your logged data. Not medical advice.
       </Text>
     </View>
