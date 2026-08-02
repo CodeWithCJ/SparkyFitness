@@ -192,7 +192,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
               logs={logs}
               settings={settings}
             />
-            <View className="border-t border-border-subtle my-2" />
+            <View className="border-t border-border-subtle" />
             <CycleHistoryList />
           </View>
         )}

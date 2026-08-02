@@ -5,8 +5,11 @@ import CycleTodayView from '../../../src/components/wellness/CycleTodayView';
 const mockUpsertLogAsync = jest.fn().mockResolvedValue({});
 const mockUpsertBbt = jest.fn().mockResolvedValue({});
 const mockUpsertCheckInAsync = jest.fn().mockResolvedValue({});
+const mockCreateEntryAsync = jest.fn().mockResolvedValue({});
+const mockDeleteEntryAsync = jest.fn().mockResolvedValue(undefined);
 let mockMode = 'ttc';
 let mockMeasurements: { weight: number } | null = null;
+let mockSymptomEntries: Record<string, unknown>[] = [];
 const mockLog: Record<string, unknown> = {
   cervical_mucus: 'creamy',
   cervical_position: 'high',
@@ -47,10 +50,41 @@ jest.mock('../../../src/components/wellness/CycleIcon', () => {
   return { __esModule: true, default: () => <View testID="cycle-icon" /> };
 });
 
+// Renders one pressable per selected/known symptom so tests can toggle draft
+// selection without depending on chip internals.
 jest.mock('../../../src/components/wellness/CycleSymptomPicker', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="symptom-picker" /> };
+  const { Text, TouchableOpacity, View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({
+      selected,
+      onToggle,
+    }: {
+      selected: string[];
+      onToggle: (symptom: { displayName: string }) => void;
+    }) => (
+      <View testID="symptom-picker">
+        {['Nausea', 'Fatigue'].map((name) => (
+          <TouchableOpacity
+            key={name}
+            accessibilityLabel={`toggle-symptom:${name}`}
+            onPress={() => onToggle({ displayName: name })}
+          >
+            <Text>{selected.includes(name) ? `${name}:on` : `${name}:off`}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    ),
+  };
 });
+
+jest.mock('../../../src/hooks/useSymptoms', () => ({
+  useSymptomEntries: () => ({ entries: mockSymptomEntries, isLoading: false }),
+  useSymptomMutations: () => ({
+    createEntryAsync: mockCreateEntryAsync,
+    deleteEntryAsync: mockDeleteEntryAsync,
+  }),
+}));
 
 jest.mock('../../../src/hooks/useCycleLogs', () => ({
   useCycleLog: () => ({ log: mockLog, isLoading: false, refetch: jest.fn() }),
@@ -182,6 +216,71 @@ describe('CycleTodayView pregnant mode weight', () => {
 
     await waitFor(() => expect(mockUpsertLogAsync).toHaveBeenCalled());
     expect(mockUpsertCheckInAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('CycleTodayView deferred symptom save', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSymptomEntries = [];
+  });
+
+  afterAll(() => {
+    mockSymptomEntries = [];
+  });
+
+  it('does not save a symptom toggle until Save is pressed', () => {
+    const { getByLabelText } = render(<CycleTodayView date="2026-08-01" />);
+
+    fireEvent.press(getByLabelText('toggle-symptom:Nausea'));
+
+    expect(mockCreateEntryAsync).not.toHaveBeenCalled();
+    expect(mockDeleteEntryAsync).not.toHaveBeenCalled();
+  });
+
+  it('creates toggled-on symptoms on Save', async () => {
+    const { getByLabelText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+
+    fireEvent.press(getByLabelText('toggle-symptom:Nausea'));
+    fireEvent.press(getByText('Save Log Entry'));
+
+    await waitFor(() =>
+      expect(mockCreateEntryAsync).toHaveBeenCalledWith({
+        symptom_name_snapshot: 'Nausea',
+        severity: 3,
+        source: 'cycle',
+        entry_date: '2026-08-01',
+      }),
+    );
+    expect(mockDeleteEntryAsync).not.toHaveBeenCalled();
+  });
+
+  it('deletes toggled-off symptoms on Save, leaving non-cycle entries alone', async () => {
+    mockSymptomEntries = [
+      { id: 's1', symptom_name_snapshot: 'Nausea', severity: 3, source: 'cycle', entry_date: '2026-08-01' },
+      { id: 's2', symptom_name_snapshot: 'Fatigue', severity: 3, source: 'manual', entry_date: '2026-08-01' },
+    ];
+    const { getByLabelText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+
+    fireEvent.press(getByLabelText('toggle-symptom:Nausea'));
+    fireEvent.press(getByText('Save Log Entry'));
+
+    await waitFor(() => expect(mockDeleteEntryAsync).toHaveBeenCalledWith('s1'));
+    expect(mockDeleteEntryAsync).toHaveBeenCalledTimes(1);
+    expect(mockCreateEntryAsync).not.toHaveBeenCalled();
+  });
+
+  it('leaves an unchanged server selection untouched on Save', async () => {
+    mockSymptomEntries = [
+      { id: 's1', symptom_name_snapshot: 'Nausea', severity: 3, source: 'cycle', entry_date: '2026-08-01' },
+    ];
+    const { getByText } = render(<CycleTodayView date="2026-08-01" />);
+
+    fireEvent.press(getByText('Save Log Entry'));
+
+    await waitFor(() => expect(mockUpsertLogAsync).toHaveBeenCalled());
+    expect(mockCreateEntryAsync).not.toHaveBeenCalled();
+    expect(mockDeleteEntryAsync).not.toHaveBeenCalled();
   });
 });
 
