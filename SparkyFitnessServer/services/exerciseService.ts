@@ -20,6 +20,7 @@ import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 import {
   deriveExerciseModality,
+  canEditGroupedWorkout,
   setsDistanceKm,
   setsDurationMinutes,
 } from '@workspace/shared';
@@ -1939,10 +1940,10 @@ async function updateGroupedWorkoutSession(
     );
     const targetEntryDate = updateData.entry_date || existingSession.entry_date;
     if (updateData.exercises !== undefined) {
-      if (!['manual', 'sparky'].includes(existingSession.source)) {
+      if (!canEditGroupedWorkout(existingSession.source)) {
         throw createServiceError(
           409,
-          'Nested exercise editing is only supported for manual or sparky workouts.'
+          'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.'
         );
       }
 
@@ -1962,6 +1963,17 @@ async function updateGroupedWorkoutSession(
       const useReconcile =
         withId === incomingExercises.length && incomingExercises.length > 0;
 
+      // Capture the workout plan assignment before any child rows are deleted:
+      // the assignment id lives on exercise_entries, so once delete-and-recreate
+      // removes them there is nothing left to recover it from. Returns null for
+      // sessions that never came from a workout plan.
+      const workoutPlanAssignmentId =
+        await exerciseEntryDb.getWorkoutPlanAssignmentIdByPresetEntryIdWithClient(
+          client,
+          userId,
+          presetEntryId
+        );
+
       if (!useReconcile) {
         await exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient(
           client,
@@ -1978,6 +1990,7 @@ async function updateGroupedWorkoutSession(
           incomingExercises,
           {
             entrySource: existingSession.source,
+            workoutPlanAssignmentId,
           }
         );
       } else {
@@ -2020,6 +2033,7 @@ async function updateGroupedWorkoutSession(
               [ex],
               {
                 entrySource: existingSession.source,
+                workoutPlanAssignmentId,
               }
             );
             continue;
@@ -2067,7 +2081,7 @@ async function updateGroupedWorkoutSession(
               entry_time: ex.entry_time ?? null,
             },
             actingUserId,
-            existingSession.source
+            existingById.get(ex.id)?.source ?? existingSession.source
           );
 
           await exerciseEntryDb._reconcileExerciseEntrySetsWithClient(

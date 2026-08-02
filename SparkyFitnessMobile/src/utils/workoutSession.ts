@@ -107,6 +107,9 @@ export function getWorkoutIcon(session: ExerciseSessionResponse): IconName {
 }
 
 const SOURCE_DISPLAY_NAMES: Record<string, string> = {
+  manual: 'Sparky',
+  sparky: 'Sparky',
+  'workout plan': 'Sparky',
   healthkit: 'Apple Health',
   'health connect': 'Health Connect',
   garmin: 'Garmin',
@@ -116,12 +119,22 @@ const SOURCE_DISPLAY_NAMES: Record<string, string> = {
   withings: 'Withings',
 };
 
-export function getSourceLabel(source: string | null): { label: string; isSparky: boolean } {
-  const s = source?.toLowerCase() ?? null;
-  if (s == null || s === 'manual' || s === 'sparky' || s === 'workout plan') {
-    return { label: 'Sparky', isSparky: true };
+/**
+ * Present a human-readable label for a workout session source. This function
+ * is purely presentational — editability is decided by
+ * `canEditGroupedWorkout` from `@workspace/shared`, never by this label map.
+ */
+export function getSourceLabel(
+  source: string | null | undefined
+): string {
+  if (source == null) {
+    return 'Sparky';
   }
-  return { label: SOURCE_DISPLAY_NAMES[s] ?? source!, isSparky: false };
+
+  const trimmed = source.trim();
+  const normalized = trimmed.toLowerCase();
+
+  return SOURCE_DISPLAY_NAMES[normalized] ?? trimmed;
 }
 
 export function formatDuration(minutes: number): string {

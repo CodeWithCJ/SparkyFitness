@@ -66,6 +66,7 @@ import type {
 } from '@workspace/shared';
 import {
   presetSessionExerciseRequestSchema,
+  canEditGroupedWorkout,
   workoutPresetExerciseRequestSchema,
 } from '@workspace/shared';
 import { weightFromKg } from '../../src/utils/unitConversions';
@@ -215,35 +216,64 @@ describe('workoutSession', () => {
 
   describe('getSourceLabel', () => {
     it('returns Sparky for null source', () => {
-      expect(getSourceLabel(null)).toEqual({ label: 'Sparky', isSparky: true });
+      expect(getSourceLabel(null)).toBe('Sparky');
+    });
+
+    it('returns Sparky for undefined source', () => {
+      expect(getSourceLabel(undefined)).toBe('Sparky');
     });
 
     it('returns Sparky for "manual" source', () => {
-      expect(getSourceLabel('manual')).toEqual({ label: 'Sparky', isSparky: true });
+      expect(getSourceLabel('manual')).toBe('Sparky');
     });
 
     it('returns Sparky for "sparky" source', () => {
-      expect(getSourceLabel('sparky')).toEqual({ label: 'Sparky', isSparky: true });
+      expect(getSourceLabel('sparky')).toBe('Sparky');
+    });
+
+    it('returns Sparky for "Workout Plan" source', () => {
+      expect(getSourceLabel('Workout Plan')).toBe('Sparky');
+    });
+
+    it('returns Sparky for a padded "WORKOUT PLAN" source', () => {
+      expect(getSourceLabel('  WORKOUT PLAN  ')).toBe('Sparky');
     });
 
     it('returns Apple Health for HealthKit source', () => {
-      expect(getSourceLabel('HealthKit')).toEqual({ label: 'Apple Health', isSparky: false });
+      expect(getSourceLabel('HealthKit')).toBe('Apple Health');
     });
 
     it('returns Garmin for garmin source (lowercase)', () => {
-      expect(getSourceLabel('garmin')).toEqual({ label: 'Garmin', isSparky: false });
+      expect(getSourceLabel('garmin')).toBe('Garmin');
     });
 
     it('returns Garmin for Garmin source (capitalized)', () => {
-      expect(getSourceLabel('Garmin')).toEqual({ label: 'Garmin', isSparky: false });
+      expect(getSourceLabel('Garmin')).toBe('Garmin');
     });
 
     it('returns Health Connect for Health Connect source', () => {
-      expect(getSourceLabel('Health Connect')).toEqual({ label: 'Health Connect', isSparky: false });
+      expect(getSourceLabel('Health Connect')).toBe('Health Connect');
     });
 
-    it('returns the source string as-is for unknown sources', () => {
-      expect(getSourceLabel('MyFitnessPal')).toEqual({ label: 'MyFitnessPal', isSparky: false });
+    it('returns the trimmed source string as-is for unknown sources', () => {
+      expect(getSourceLabel('MyFitnessPal')).toBe('MyFitnessPal');
+    });
+  });
+
+  describe('canEditGroupedWorkout', () => {
+    it.each([
+      ['manual', true],
+      ['sparky', true],
+      ['Workout Plan', true],
+      ['WORKOUT PLAN', true],
+      ['  Workout Plan  ', true],
+      [null, true],
+      [undefined, true],
+      ['Health Connect', false],
+      ['garmin', false],
+      ['Some Unknown Source', false],
+    ])('returns %s for source %j', (source, expected) => {
+      expect(canEditGroupedWorkout(source)).toBe(expected);
     });
   });
 

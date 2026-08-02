@@ -1,5 +1,6 @@
 import { compareByEntryTime, earliestEntryTime } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
+import type { PoolClient } from 'pg';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
 import { log } from '../config/logging.js';
@@ -801,6 +802,37 @@ async function updateExerciseEntriesDateByPresetEntryIdWithClient(
     [entryDate, updatedByUserId, userId, presetEntryId]
   );
 }
+/**
+ * The single non-null workout plan assignment id shared by the child
+ * exercise_entries of a grouped session, or null when the session is not
+ * linked to a workout plan. Throws if the children carry more than one
+ * distinct non-null assignment id.
+ */
+async function getWorkoutPlanAssignmentIdByPresetEntryIdWithClient(
+  client: PoolClient,
+  userId: string,
+  presetEntryId: string
+): Promise<number | null> {
+  interface AssignmentRow {
+    workout_plan_assignment_id: number;
+  }
+  const result = await client.query<AssignmentRow>(
+    `SELECT DISTINCT workout_plan_assignment_id
+       FROM exercise_entries
+      WHERE user_id = $1
+        AND exercise_preset_entry_id = $2
+        AND workout_plan_assignment_id IS NOT NULL`,
+    [userId, presetEntryId]
+  );
+
+  if (result.rows.length > 1) {
+    throw new Error(
+      'Grouped workout contains multiple workout plan assignment ids.'
+    );
+  }
+
+  return result.rows[0]?.workout_plan_assignment_id ?? null;
+}
 async function deleteExerciseEntriesByPresetEntryIdWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -1568,6 +1600,7 @@ export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };
 export { updateExerciseEntry };
 export { updateExerciseEntriesDateByPresetEntryIdWithClient };
+export { getWorkoutPlanAssignmentIdByPresetEntryIdWithClient };
 export { deleteExerciseEntriesByPresetEntryIdWithClient };
 export { deleteExerciseEntry };
 export { getExerciseEntriesByDate };
@@ -1594,6 +1627,7 @@ export default {
   getExerciseEntryOwnerId,
   updateExerciseEntry,
   updateExerciseEntriesDateByPresetEntryIdWithClient,
+  getWorkoutPlanAssignmentIdByPresetEntryIdWithClient,
   deleteExerciseEntriesByPresetEntryIdWithClient,
   deleteExerciseEntry,
   getExerciseEntriesByDate,

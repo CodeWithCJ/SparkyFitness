@@ -12,6 +12,7 @@ import {
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
 import { updateWorkout } from '../../src/services/api/exerciseApi';
+import { ApiError } from '../../src/services/api/errors';
 import { invalidateExerciseCache } from '../../src/hooks/invalidateExerciseCache';
 import { syncExerciseSessionInCache } from '../../src/hooks/syncExerciseSessionInCache';
 import { addLog } from '../../src/services/LogService';
@@ -393,7 +394,12 @@ describe('useActiveWorkoutAutosave', () => {
       expect(mockAddLog).toHaveBeenCalledWith(
         'Active workout autosave failed',
         'ERROR',
-        ['network down'],
+        [
+          'sessionId: session-1',
+          'session source: sparky',
+          'status: unknown',
+          'server response: network down',
+        ],
       );
     });
 
@@ -426,6 +432,71 @@ describe('useActiveWorkoutAutosave', () => {
       expect(getStore().hasUnsavedChanges).toBe(false);
       expect(mockInvalidate).toHaveBeenCalledTimes(1);
       expect(mockToastShow).toHaveBeenCalledTimes(1);
+    });
+
+    it('logs ApiError status and exact body for workout plan conflicts', async () => {
+      renderAutosave();
+      const body = JSON.stringify({
+        message:
+          'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.',
+      });
+      mockUpdateWorkout.mockRejectedValue(
+        new ApiError('Request failed', 409, body)
+      );
+      startAndEdit();
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+      expect(getStore().hasUnsavedChanges).toBe(true);
+      expect(mockAddLog).toHaveBeenCalledWith(
+        'Active workout autosave failed',
+        'ERROR',
+        [
+          'sessionId: session-1',
+          'session source: sparky',
+          'status: 409',
+          `server response: ${body}`,
+        ],
+      );
+    });
+
+    it('logs the session captured before the request when the store changes mid-flight', async () => {
+      renderAutosave();
+      const planSession = { ...makeSession(), source: 'Workout Plan' };
+      act(() => {
+        getStore().startWorkout(planSession);
+        getStore().updateSetField('101', { weight: 80 });
+      });
+
+      let rejectRequest!: (error: Error) => void;
+      mockUpdateWorkout.mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectRequest = reject;
+          })
+      );
+      await advance(AUTOSAVE_DEBOUNCE_MS);
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+
+      // The user ends the workout while the save is in flight.
+      act(() => {
+        getStore().clearWorkout();
+      });
+
+      await act(async () => {
+        rejectRequest(new Error('network down'));
+      });
+
+      expect(mockAddLog).toHaveBeenCalledWith(
+        'Active workout autosave failed',
+        'ERROR',
+        [
+          'sessionId: session-1',
+          'session source: Workout Plan',
+          'status: unknown',
+          'server response: network down',
+        ],
+      );
     });
   });
 
@@ -477,6 +548,41 @@ describe('useActiveWorkoutAutosave', () => {
       expect(ok).toBe(true);
       expect(mockUpdateWorkout).not.toHaveBeenCalled();
       expect(mockInvalidate).not.toHaveBeenCalled();
+    });
+
+    it('flushes a Workout Plan session with a completed set and clears dirty state', async () => {
+      const { result } = renderAutosave();
+      const planSession = { ...makeSession(), source: 'Workout Plan' };
+      act(() => {
+        getStore().startWorkout(planSession);
+        getStore().completeActiveSet();
+      });
+
+      // The beforeEach echo mock is the successful server response.
+      let ok = false;
+      await act(async () => {
+        ok = await result.current.flush();
+      });
+
+      expect(ok).toBe(true);
+      expect(getStore().hasUnsavedChanges).toBe(false);
+      expect(mockUpdateWorkout).toHaveBeenCalledWith(
+        'session-1',
+        expect.objectContaining({
+          exercises: [
+            expect.objectContaining({
+              sets: [
+                expect.objectContaining({
+                  reps: 10,
+                  weight: 60,
+                  completed_at: expect.any(String),
+                }),
+                expect.anything(),
+              ],
+            }),
+          ],
+        })
+      );
     });
   });
 

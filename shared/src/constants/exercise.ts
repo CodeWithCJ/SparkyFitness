@@ -63,3 +63,28 @@ export function resolveExerciseModality(
     ? modality
     : deriveExerciseModality(category);
 }
+
+// Workout sources that support nested exercise editing after creation.
+const EDITABLE_SOURCES = new Set(["manual", "sparky", "workout plan"]);
+
+function normalizeSource(source: string | null | undefined): string | null {
+  if (source == null) return null;
+  return source.trim().toLowerCase();
+}
+
+/**
+ * Whether a workout source supports nested exercise editing.
+ *
+ * Returns true for `manual`, `sparky`, `workout plan`, and `null`/`undefined`
+ * (legacy local records). Returns false for external sync sources (HealthKit,
+ * Garmin, Strava, etc.).
+ */
+export function canEditGroupedWorkout(
+  source: string | null | undefined,
+): boolean {
+  const normalized = normalizeSource(source);
+  if (normalized == null) {
+    return true;
+  }
+  return EDITABLE_SOURCES.has(normalized);
+}
