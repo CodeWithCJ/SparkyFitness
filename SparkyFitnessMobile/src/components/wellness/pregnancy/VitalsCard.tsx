@@ -8,13 +8,8 @@ import { weightFromKg, weightToKg } from '../../../utils/unitConversions';
 import { getTodayDate } from '../../../utils/dateUtils';
 import FormInput from '../../FormInput';
 import Icon from '../../Icon';
-import type { SharedPregnancy } from '../../../types/womensHealth';
 
-interface VitalsCardProps {
-  pregnancy: SharedPregnancy;
-}
-
-const VitalsCard: React.FC<VitalsCardProps> = ({ pregnancy }) => {
+const VitalsCard: React.FC = () => {
   const today = getTodayDate();
   const { measurements, isLoading } = useMeasurements({ date: today });
   const upsertCheckIn = useUpsertCheckIn();
@@ -67,6 +62,8 @@ const VitalsCard: React.FC<VitalsCardProps> = ({ pregnancy }) => {
               placeholder={weightUnit}
               style={{ width: 80 }}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleSave}
             />
             <TouchableOpacity onPress={handleSave} hitSlop={8} testID="vitals-weight-save">
               <Icon name="checkmark" size={20} color={accentColor} />
@@ -78,21 +75,6 @@ const VitalsCard: React.FC<VitalsCardProps> = ({ pregnancy }) => {
             <Icon name="pencil" size={14} color={textMuted} />
           </TouchableOpacity>
         )}
-      </View>
-
-      <View className="h-px bg-border-subtle" />
-
-      <View className="flex-row items-center justify-between">
-        <Text className="text-text-secondary text-sm">Prenatal vitamin</Text>
-        <Text className="text-text-primary text-sm font-semibold">
-          {pregnancy.prenatal_medication_id ? 'Linked' : 'Not set'}
-        </Text>
-      </View>
-      <View className="flex-row items-center justify-between">
-        <Text className="text-text-secondary text-sm">Supplement</Text>
-        <Text className="text-text-primary text-sm font-semibold">
-          {pregnancy.supplement_medication_id ? 'Linked' : 'Not set'}
-        </Text>
       </View>
     </View>
   );

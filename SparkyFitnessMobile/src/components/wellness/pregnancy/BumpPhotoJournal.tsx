@@ -6,6 +6,7 @@ import { useCSSVariable } from 'uniwind';
 import { usePregnancyPhotos, usePregnancyPhotoMutations } from '../../../hooks/usePregnancyPhotos';
 import { useServerConfigs } from '../../../hooks/useServerConfigs';
 import { normalizeUrl } from '../../../services/api/apiClient';
+import { getApiErrorMessage } from '../../../services/api/errors';
 import { formatDate } from '../../../utils/dateUtils';
 import ActionSheet, { type ActionSheetRef } from '../../ActionSheet';
 import Icon from '../../Icon';
@@ -60,8 +61,12 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       }
       await uploadAsync({ pregnancyId, week: currentWeek, uri });
       Toast.show({ type: 'success', text1: 'Photo added' });
-    } catch {
-      Toast.show({ type: 'error', text1: 'Could not upload photo' });
+    } catch (err) {
+      Toast.show({
+        type: 'error',
+        text1: 'Could not upload photo',
+        text2: getApiErrorMessage(err) ?? undefined,
+      });
     } finally {
       pickerLock.current = false;
     }

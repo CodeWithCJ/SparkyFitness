@@ -6,7 +6,6 @@ import { useCSSVariable } from 'uniwind';
 import { useCurrentPregnancy, usePregnancyOverview } from '../../../hooks/usePregnancy';
 import VitalsCard from './VitalsCard';
 import KickCounter from './KickCounter';
-import ContractionTimer from './ContractionTimer';
 import BumpPhotoJournal from './BumpPhotoJournal';
 import Button from '../../ui/Button';
 import type { RootStackParamList } from '../../../types/navigation';
@@ -21,7 +20,7 @@ interface PregnancyLogViewProps {
 
 /**
  * Active Pregnancy Logging View for CycleLogModalScreen.
- * Contains interactive tools: Vitals logging (weight/BP), kick counter, contraction timer,
+ * Contains interactive tools: Vitals logging (weight/BP), kick counter,
  * bump photos, and pregnancy symptoms/notes.
  */
 const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({ date = getTodayDate(), onSaveSuccess }) => {
@@ -45,7 +44,7 @@ const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({ date = getTodayDate
       <View className="bg-surface rounded-2xl p-6 shadow-sm gap-4 items-center">
         <Text className="text-text-primary text-base font-semibold">Set up your pregnancy</Text>
         <Text className="text-text-secondary text-sm text-center">
-          Add your due date to track baby&apos;s growth week by week, count kicks, and time contractions.
+          Add your due date to track baby&apos;s growth week by week, count kicks, and keep a bump photo journal.
         </Text>
         <Button variant="primary" onPress={() => navigation.navigate('PregnancySetup')}>
           Get Started
@@ -58,14 +57,13 @@ const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({ date = getTodayDate
 
   return (
     <View className="gap-4">
-      {/* Vitals (Weight & BP) */}
-      {pregnancy && <VitalsCard pregnancy={pregnancy} />}
+      {/* Vitals (Weight) */}
+      <VitalsCard />
 
-      {/* Kick Counter, Contraction Timer & Bump Photos */}
+      {/* Kick Counter & Bump Photos */}
       {pregnancy?.id && (
         <>
           <KickCounter pregnancyId={pregnancy.id} />
-          <ContractionTimer pregnancyId={pregnancy.id} />
           <BumpPhotoJournal
             pregnancyId={pregnancy.id}
             currentWeek={currentWeek}

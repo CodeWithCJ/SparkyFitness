@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import { useHealthAppointments, useHealthAppointmentMutations } from '../../../hooks/useHealthAppointments';
-import { getTodayDate, formatDate, toLocalDateString } from '../../../utils/dateUtils';
+import { getTodayDate, formatDate, toLocalDateString, addDays } from '../../../utils/dateUtils';
 import CalendarSheet, { type CalendarSheetRef } from '../../CalendarSheet';
 import FormInput from '../../FormInput';
 import StepperInput from '../../StepperInput';
@@ -24,6 +24,13 @@ function formatScheduledAt(iso: string): string {
   return `${formatDate(localDateStr)} · ${time}`;
 }
 
+/** The next full hour, rolling to 9 AM tomorrow when the day is nearly over. */
+function defaultAppointmentSlot(): { date: string; hour: number } {
+  const nextHour = new Date().getHours() + 1;
+  if (nextHour > 23) return { date: addDays(getTodayDate(), 1), hour: 9 };
+  return { date: getTodayDate(), hour: nextHour };
+}
+
 const AppointmentsCard: React.FC = () => {
   const { appointments, isLoading } = useHealthAppointments(true);
   const { createAsync, isCreating, deleteAsync } = useHealthAppointmentMutations();
@@ -35,30 +42,42 @@ const AppointmentsCard: React.FC = () => {
 
   const calendarRef = useRef<CalendarSheetRef>(null);
   const [showForm, setShowForm] = useState(false);
+  const [initialSlot] = useState(defaultAppointmentSlot);
   const [title, setTitle] = useState('');
   const [appointmentType, setAppointmentType] = useState('');
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
-  const [date, setDate] = useState(getTodayDate);
-  const [hour, setHour] = useState(9);
+  const [date, setDate] = useState(initialSlot.date);
+  const [hour, setHour] = useState(initialSlot.hour);
   const [minute, setMinute] = useState(0);
 
   const resetForm = () => {
+    const slot = defaultAppointmentSlot();
     setTitle('');
     setAppointmentType('');
     setLocation('');
     setNotes('');
-    setDate(getTodayDate());
-    setHour(9);
+    setDate(slot.date);
+    setHour(slot.hour);
     setMinute(0);
   };
 
   const handleSave = async () => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      Toast.show({ type: 'error', text1: 'Title required', text2: 'Give the appointment a name.' });
+      return;
+    }
+    const scheduledAt = combineDateAndTime(date, hour, minute);
+    if (new Date(scheduledAt).getTime() <= Date.now()) {
+      Toast.show({ type: 'error', text1: 'Time has passed', text2: 'Pick a future date and time.' });
+      return;
+    }
     try {
       await createAsync({
-        scheduled_at: combineDateAndTime(date, hour, minute),
+        scheduled_at: scheduledAt,
         appointment_type: appointmentType || undefined,
-        title: title || undefined,
+        title: trimmedTitle,
         location: location || undefined,
         notes: notes || undefined,
       });
