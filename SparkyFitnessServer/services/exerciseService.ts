@@ -1561,17 +1561,23 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
       log('error', 'CSV parsing error:', fatal);
       throw new Error(fatal.message);
     }
+    const warningRowIndices = new Set<number>();
     if (warnings.length > 0) {
       log('warn', 'CSV parsing warnings:', warnings);
       for (const w of warnings) {
+        if (w.row !== undefined) {
+          warningRowIndices.add(w.row);
+        }
         failedRows.push({
-          row: w.row ? { row: w.row } : {},
+          row: w.row !== undefined ? { row: w.row } : {},
           reason: w.message,
         });
         failedCount++;
       }
     }
-    for (const row of data) {
+    for (let i = 0; i < data.length; i++) {
+      if (warningRowIndices.has(i)) continue;
+      const row = data[i];
       try {
         const exerciseName = row.name ? row.name.trim() : null;
         if (!exerciseName) {
