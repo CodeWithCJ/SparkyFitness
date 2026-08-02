@@ -182,18 +182,21 @@ const parseCSV = (
   headers: string[],
   options: CsvFormatOptions,
   mapping?: Record<string, string>
-): CSVRow[] => {
-  const { rows: rawRows } = parseCsv(text, options, {
+): { rows: CSVRow[]; resolvedDecimal: DecimalFormat } => {
+  const { rows: rawRows, resolvedDecimal } = parseCsv(text, options, {
     numericColumns: BASE_NUMERIC_HEADERS,
   });
-  return rawRows.map((rawRow) => {
-    const row: CSVRow = { id: generateUniqueId() };
-    headers.forEach((header) => {
-      const fileColumn = mapping?.[header] ?? header;
-      row[header] = (rawRow[fileColumn] ?? '').trim();
-    });
-    return row;
-  });
+  return {
+    resolvedDecimal,
+    rows: rawRows.map((rawRow) => {
+      const row: CSVRow = { id: generateUniqueId() };
+      headers.forEach((header) => {
+        const fileColumn = mapping?.[header] ?? header;
+        row[header] = (rawRow[fileColumn] ?? '').trim();
+      });
+      return row;
+    }),
+  };
 };
 
 const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
@@ -226,6 +229,11 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
   // parseCSV against loadedText with no mapping, or against rawCsvText
   // with headerMapping.
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
+  // Decimal format resolved over the *whole* file by the last full parse.
+  // The format bar's preview only sees the first 1000 rows, so a file whose
+  // only disambiguating value sits past that would submit under the wrong
+  // format if we reused the preview's answer here.
+  const [resolvedDecimal, setResolvedDecimal] = useState<DecimalFormat>('us');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const preview = useMemo(
@@ -281,10 +289,17 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
     {
       source,
       silent = false,
-    }: { source?: 'file' | 'text'; silent?: boolean } = {}
+      // Callers that reset the format bar in the same tick must pass the
+      // fresh options — `csvFormat.options` is still the outgoing file's.
+      options = csvFormat.options,
+    }: {
+      source?: 'file' | 'text';
+      silent?: boolean;
+      options?: CsvFormatOptions;
+    } = {}
   ) => {
-    lastEvaluatedKeyRef.current = `${text}|${JSON.stringify(csvFormat.options)}`;
-    const parsedFileHeaders = getCsvHeaders(text, csvFormat.options);
+    lastEvaluatedKeyRef.current = `${text}|${JSON.stringify(options)}`;
+    const parsedFileHeaders = getCsvHeaders(text, options);
     if (!validateHeaders(parsedFileHeaders)) {
       setFileHeaders(parsedFileHeaders ?? []);
       setHeaderMapping(
@@ -313,7 +328,9 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       ...parsedFileHeaders!.filter((h) => !BASE_HEADER_SET.has(h)),
     ];
     setUploadedHeaders(headers);
-    setCsvData(parseCSV(text, headers, csvFormat.options));
+    const parsed = parseCSV(text, headers, options);
+    setCsvData(parsed.rows);
+    setResolvedDecimal(parsed.resolvedDecimal);
     setResult(null);
   };
 
@@ -332,7 +349,8 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       headerMapping
     );
     setUploadedHeaders(headers);
-    setCsvData(parsedData);
+    setCsvData(parsedData.rows);
+    setResolvedDecimal(parsedData.resolvedDecimal);
     setResult(null);
     setShowMapping(false);
     setMappingConfirmed(true);
@@ -379,9 +397,14 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       const extraColumns = fileHeaders.filter((h) => !mappedFileColumns.has(h));
       const headers = [...BASE_HEADERS, ...extraColumns];
       setUploadedHeaders(headers);
-      setCsvData(
-        parseCSV(rawCsvText, headers, csvFormat.options, headerMapping)
+      const parsed = parseCSV(
+        rawCsvText,
+        headers,
+        csvFormat.options,
+        headerMapping
       );
+      setCsvData(parsed.rows);
+      setResolvedDecimal(parsed.resolvedDecimal);
     }, REPARSE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [
@@ -405,9 +428,9 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       });
       return;
     }
-    csvFormat.resetForNewInput();
+    const options = csvFormat.resetForNewInput();
     setLoadedText(csvText);
-    evaluateAndParse(csvText, { source: 'text' });
+    evaluateAndParse(csvText, { source: 'text', options });
     setCsvText('');
   };
 
@@ -426,7 +449,7 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
-    csvFormat.resetForNewInput();
+    const options = csvFormat.resetForNewInput();
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -442,7 +465,7 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
         return;
       }
       setLoadedText(text);
-      evaluateAndParse(text, { source: 'file' });
+      evaluateAndParse(text, { source: 'file', options });
     };
     reader.readAsText(file);
   };
@@ -564,7 +587,7 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
         public: includePublic,
       };
       const res = await onSave(
-        buildEntries(preview?.resolvedDecimal ?? 'us'),
+        buildEntries(resolvedDecimal),
         scope,
         overrideNutrition
       );
@@ -789,7 +812,8 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
                 options={csvFormat.options}
                 decimalDetection={preview.decimal}
                 numericColumns={BASE_NUMERIC_HEADERS}
-                totalRowCount={csvData.length}
+                totalRowCount={preview.rows.length}
+                totalRowCountIsPartial={preview.previewTruncated}
               />
             )}
             <CsvHeaderMappingDialog

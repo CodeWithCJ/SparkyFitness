@@ -35,11 +35,17 @@ export function useCsvFormat({ defaultDateFormat }: UseCsvFormatOptions = {}) {
     [optionsState, defaultDateFormat, preferredDateFormat]
   );
 
-  const resetForNewInput = useCallback(() => {
-    setOptions({
+  // Returns the reset options so a caller that parses in the same tick can
+  // use them directly — `options` is still the previous render's value until
+  // React re-renders, so the parse right after this call would otherwise run
+  // under the outgoing file's overrides.
+  const resetForNewInput = useCallback((): CsvFormatOptions => {
+    const fresh: CsvFormatOptions = {
       ...DEFAULT_CSV_FORMAT,
       dateFormat: defaultDateFormat ?? preferredDateFormat,
-    });
+    };
+    setOptions(fresh);
+    return fresh;
   }, [defaultDateFormat, preferredDateFormat]);
 
   /**
@@ -60,7 +66,13 @@ export function useCsvFormat({ defaultDateFormat }: UseCsvFormatOptions = {}) {
     (
       text: string,
       opts?: { numericColumns?: string[]; preview?: number }
-    ): CsvParseResult => parseCsv(text, options, { preview: 1000, ...opts }),
+    ): CsvParseResult & { previewTruncated: boolean } => {
+      const cap = opts?.preview ?? 1000;
+      const result = parseCsv(text, options, { preview: cap, ...opts });
+      // Papa stops reading at the cap, so the true file row count is unknown
+      // past it — callers must present the count as a lower bound.
+      return { ...result, previewTruncated: result.rows.length >= cap };
+    },
     [options]
   );
 

@@ -241,6 +241,7 @@ const ExerciseEntryHistoryImportCSV = ({
               numericColumns={numericColumns}
               dateColumn="entry_date"
               totalRowCount={preview.rows.length}
+              totalRowCountIsPartial={preview.previewTruncated}
             />
           )}
           <div className="flex flex-wrap gap-2">
