@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useCycleLog } from '../../hooks/useCycleLogs';
@@ -124,9 +124,20 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
     }
   }, [log]);
 
+  // Hydrate the weight field only while the user hasn't typed in it, so a
+  // background measurements refetch can't overwrite an in-progress edit.
+  const weightDirtyRef = useRef(false);
   useEffect(() => {
-    if (isPregnant) setWeight(hydratedWeight);
+    weightDirtyRef.current = false;
+  }, [date]);
+  useEffect(() => {
+    if (isPregnant && !weightDirtyRef.current) setWeight(hydratedWeight);
   }, [isPregnant, hydratedWeight]);
+
+  const handleWeightChange = (text: string) => {
+    weightDirtyRef.current = true;
+    setWeight(text);
+  };
 
   useEffect(() => {
     const names = symptomEntries
@@ -149,6 +160,23 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
   };
 
   const handleSave = async () => {
+    // Validate numeric inputs before any write so bad input can't leave a
+    // partially-saved entry behind.
+    const bbtVal = bbt.trim() ? parseFloat(bbt) : null;
+    if (bbt.trim() && isNaN(bbtVal as number)) {
+      Toast.show({ type: 'error', text1: 'Invalid temperature input' });
+      return;
+    }
+    // Save weight only when the field was edited to a new value. An emptied
+    // field preserves the stored check-in (weight may come from health sync);
+    // clearing it belongs to the measurements screen.
+    const weightEdited = isPregnant && weight.trim() !== '' && weight.trim() !== hydratedWeight;
+    const weightVal = weightEdited ? parseFloat(weight) : null;
+    if (weightEdited && isNaN(weightVal as number)) {
+      Toast.show({ type: 'error', text1: 'Invalid weight input' });
+      return;
+    }
+
     setSubmitting(true);
     try {
       // 1. Save daily log
@@ -196,26 +224,15 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       ]);
 
       // 3. Save BBT custom measurement if input is present/changed
-      const bbtVal = bbt.trim() ? parseFloat(bbt) : null;
-      if (isNaN(bbtVal as number) && bbt.trim()) {
-        Toast.show({ type: 'error', text1: 'Invalid temperature input' });
-        return;
-      }
       await upsertBbt(date, bbtVal);
 
-      // 4. Pregnancy vitals: save weight only when the field was edited to a
-      // new value. An emptied field preserves the stored check-in (weight may
-      // come from health sync); clearing it belongs to the measurements screen.
-      if (isPregnant && weight.trim() && weight.trim() !== hydratedWeight) {
-        const weightVal = parseFloat(weight);
-        if (isNaN(weightVal)) {
-          Toast.show({ type: 'error', text1: 'Invalid weight input' });
-          return;
-        }
+      // 4. Pregnancy vitals
+      if (weightEdited && weightVal != null) {
         await upsertCheckIn.mutateAsync({
           entryDate: date,
           weight: weightToKg(weightVal, weightUnit),
         });
+        weightDirtyRef.current = false;
       }
 
       // Refetch to pull latest server-hydrated BBT
@@ -287,7 +304,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
             </Text>
             <FormInput
               value={weight}
-              onChangeText={setWeight}
+              onChangeText={handleWeightChange}
               placeholder={weightUnit === 'lbs' ? 'e.g. 143' : 'e.g. 65'}
               keyboardType="decimal-pad"
             />

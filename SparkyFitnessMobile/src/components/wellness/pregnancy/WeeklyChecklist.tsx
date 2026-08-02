@@ -90,8 +90,9 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
           <Pressable
             key={row.key}
             onPress={() => handleToggle(row)}
-            accessibilityRole="button"
-            accessibilityLabel={row.completed ? `Unmark ${row.title}` : `Mark ${row.title} done`}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: row.completed }}
+            accessibilityLabel={row.title}
             className="py-2 flex-row items-center"
           >
             <View

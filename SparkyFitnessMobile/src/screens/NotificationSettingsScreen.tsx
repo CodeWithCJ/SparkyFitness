@@ -103,7 +103,7 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
       >
         <SettingsRow
           title="Allow Notifications"
-          
+          subtitle="Master switch for all alerts from SparkyFitness."
           subtitleNumberOfLines={0}
           rightAccessory={
             <Switch

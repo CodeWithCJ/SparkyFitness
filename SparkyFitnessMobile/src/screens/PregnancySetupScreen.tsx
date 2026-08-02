@@ -45,14 +45,15 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Prefill from the existing record when editing. For lmp/conception the date
   // field holds that basis date; for manual/scan it holds the due date itself.
-  // New pregnancies default to a plain due date, the value most people know.
+  // New pregnancies default to a plain due date, the value most people know —
+  // seeded a full term out so an untouched form doesn't save a due date of today.
   const initialBasis = existing?.due_date_basis ?? 'manual';
   const initialDate =
     initialBasis === 'lmp'
       ? existing?.lmp_date ?? getTodayDate()
       : initialBasis === 'conception'
         ? existing?.conception_date ?? getTodayDate()
-        : existing?.due_date ?? getTodayDate();
+        : existing?.due_date ?? addDays(getTodayDate(), 280);
 
   const [basis, setBasis] = useState<PregnancyDueDateBasis>(initialBasis);
   const [date, setDate] = useState<string>(initialDate);

@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import { Alert, Text, Pressable, TouchableOpacity } from 'react-native';
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import ReanimatedSwipeable, {
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 interface SwipeableDeleteRowProps {
   /** Names the row in the confirm dialog and long-press menu. */
@@ -24,10 +26,7 @@ const SwipeableDeleteRow: React.FC<SwipeableDeleteRowProps> = ({
   className = '',
   children,
 }) => {
-  // Matches the existing swipeable-row convention in this codebase. A more
-  // specific ref type resolves to `{}` and breaks `.close()` under the current
-  // React types; `any` is what the other swipe rows use for the same ref.
-  const swipeableRef = useRef<any>(null);
+  const swipeableRef = useRef<SwipeableMethods | null>(null);
 
   const handleDeletePress = () => {
     Alert.alert(

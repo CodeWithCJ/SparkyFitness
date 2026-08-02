@@ -7,18 +7,16 @@ import { useCurrentPregnancy, usePregnancyOverview } from '../../../hooks/usePre
 import WeekBanner from './WeekBanner';
 import BabyGrowthView from './BabyGrowthView';
 import WeeklyChecklist from './WeeklyChecklist';
-import KickCounter from './KickCounter';
 import BumpPhotoJournal from './BumpPhotoJournal';
 import FoodMedSafetySearch from './FoodMedSafetySearch';
-import AppointmentsCard from './AppointmentsCard';
 import Button from '../../ui/Button';
 import type { RootStackParamList } from '../../../types/navigation';
 
 interface PregnancyOverviewViewProps {
   /**
    * `overview` renders this week's content (week banner, baby growth, weekly
-   * checklist); `tools` renders the interactive cards (kick counter, bump
-   * photo journal, appointments, safety search).
+   * checklist); `tools` renders the interactive cards (bump photo journal,
+   * safety search).
    */
   section: 'overview' | 'tools';
 }
@@ -49,7 +47,7 @@ const PregnancyOverviewView: React.FC<PregnancyOverviewViewProps> = ({ section }
       <View className="bg-surface rounded-xl p-6 shadow-sm gap-4 items-center">
         <Text className="text-text-primary text-base font-semibold">Set up your pregnancy</Text>
         <Text className="text-text-secondary text-sm text-center">
-          Add your due date to track baby&apos;s growth week by week, count kicks, and keep a bump photo journal.
+          Add your due date to track baby&apos;s growth week by week and keep a bump photo journal.
         </Text>
         <Button variant="primary" onPress={() => navigation.navigate('PregnancySetup')}>
           Get Started
@@ -68,13 +66,9 @@ const PregnancyOverviewView: React.FC<PregnancyOverviewViewProps> = ({ section }
             <ActivityIndicator color={accentColor} />
           </View>
         ) : (
-          <>
-            <KickCounter pregnancyId={pregnancy.id} />
-            <BumpPhotoJournal pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
-          </>
+          <BumpPhotoJournal pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
         )}
 
-        <AppointmentsCard />
         <FoodMedSafetySearch />
       </View>
     );

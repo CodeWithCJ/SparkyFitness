@@ -153,8 +153,8 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
             <Text className="text-sm text-text-secondary mt-0.5">{strengthLabel}</Text>
           )}
           {!med.is_active && (
-            <View className="self-start font-bold mt-2">
-              <Text className="text-base text-text-muted">Inactive</Text>
+            <View className="self-start mt-2">
+              <Text className="text-base font-bold text-text-muted">Inactive</Text>
             </View>
           )}
         </View>
