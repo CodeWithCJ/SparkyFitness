@@ -86,6 +86,8 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const lastEvaluatedKeyRef = useRef<string>('');
+
   // Decides whether `text` parses directly under the current format, or
   // needs the header-mapping dialog, and acts on that decision. Shared by
   // the initial upload and the reparse-on-format-change effect below, so a
@@ -94,6 +96,7 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
   // is the mapping dialog's "escape hatch back to the bar": adjusting the
   // format bar after Cancel is enough, because the decision itself reruns.
   const evaluateAndParse = (text: string) => {
+    lastEvaluatedKeyRef.current = `${category}|${text}|${JSON.stringify(csvFormat)}`;
     const { headers: parsedFileHeaders } = parseCsvHeaders(text, csvFormat);
     const headersValid = config.requiredHeaders.every((req) =>
       parsedFileHeaders.includes(req)
@@ -169,6 +172,8 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
   // with the unchanged format and silently reopen the dialog just closed.
   useEffect(() => {
     if (!loadedText || showMapping || mappingConfirmed) return;
+    const currentKey = `${category}|${loadedText}|${JSON.stringify(csvFormat)}`;
+    if (lastEvaluatedKeyRef.current === currentKey) return;
     const timer = setTimeout(() => {
       evaluateAndParse(loadedText);
     }, REPARSE_DEBOUNCE_MS);

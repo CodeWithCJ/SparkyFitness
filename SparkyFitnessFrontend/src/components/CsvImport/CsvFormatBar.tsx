@@ -223,8 +223,25 @@ const CsvFormatBar = ({
                 </SelectTrigger>
                 <SelectContent>
                   {DATE_FORMATS.map((f) => (
-                    <SelectItem key={f.value} value={f.value}>
-                      {f.label}
+                    <SelectItem key={f} value={f}>
+                      {t(
+                        `csvImport.dateFormat.${f}`,
+                        f === 'MM/dd/yyyy'
+                          ? 'MM/dd/yyyy (e.g., 12/25/2024)'
+                          : f === 'dd/MM/yyyy'
+                            ? 'dd/MM/yyyy (e.g., 25/12/2024)'
+                            : f === 'dd-MMM-yyyy'
+                              ? 'dd-MMM-yyyy (e.g., 25-Dec-2024)'
+                              : f === 'yyyy-MM-dd'
+                                ? 'yyyy-MM-dd (e.g., 2024-12-25)'
+                                : f === 'MMM dd, yyyy'
+                                  ? 'MMM dd, yyyy (e.g., Dec 25, 2024)'
+                                  : f === 'yyyy/MM/dd'
+                                    ? 'yyyy/MM/dd (e.g., 2024/12/25)'
+                                    : f === 'dd.MM.yyyy'
+                                      ? 'dd.MM.yyyy (e.g., 25.12.2024)'
+                                      : f
+                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>

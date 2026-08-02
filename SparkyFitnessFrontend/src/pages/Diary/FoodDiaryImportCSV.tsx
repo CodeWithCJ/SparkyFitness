@@ -244,6 +244,8 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
     [mealTypes]
   );
 
+  const lastEvaluatedKeyRef = useRef<string>('');
+
   // Base columns plus one column per user-defined custom nutrient (by name).
   const defaultHeaders = useMemo(
     () => [...BASE_HEADERS, ...(customNutrients?.map((cn) => cn.name) ?? [])],
@@ -281,6 +283,7 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       silent = false,
     }: { source?: 'file' | 'text'; silent?: boolean } = {}
   ) => {
+    lastEvaluatedKeyRef.current = `${text}|${JSON.stringify(csvFormat.options)}`;
     const parsedFileHeaders = getCsvHeaders(text, csvFormat.options);
     if (!validateHeaders(parsedFileHeaders)) {
       setFileHeaders(parsedFileHeaders ?? []);
@@ -355,6 +358,8 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
   // matching comment in useExerciseImport.ts for why.
   useEffect(() => {
     if (!loadedText || showMapping || mappingConfirmed) return;
+    const currentKey = `${loadedText}|${JSON.stringify(csvFormat.options)}`;
+    if (lastEvaluatedKeyRef.current === currentKey) return;
     const timer = setTimeout(() => {
       evaluateAndParse(loadedText, { silent: true });
     }, REPARSE_DEBOUNCE_MS);
@@ -763,7 +768,7 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
                 delimiter: true,
                 decimal: true,
                 quote: true,
-                date: true,
+                date: false,
               }}
               value={csvFormat.options}
               onChange={csvFormat.setOptions}
@@ -784,7 +789,6 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
                 options={csvFormat.options}
                 decimalDetection={preview.decimal}
                 numericColumns={BASE_NUMERIC_HEADERS}
-                dateColumn="date"
                 totalRowCount={csvData.length}
               />
             )}
