@@ -21,19 +21,26 @@ export interface UseCsvFormatOptions {
 export function useCsvFormat({ defaultDateFormat }: UseCsvFormatOptions = {}) {
   const { dateFormat: preferredDateFormat } = usePreferences();
 
-  const initialOptions = useCallback(
+  const [optionsState, setOptions] =
+    useState<CsvFormatOptions>(DEFAULT_CSV_FORMAT);
+
+  const options = useMemo(
     (): CsvFormatOptions => ({
-      ...DEFAULT_CSV_FORMAT,
-      dateFormat: defaultDateFormat ?? preferredDateFormat,
+      ...optionsState,
+      dateFormat:
+        optionsState.dateFormat !== DEFAULT_CSV_FORMAT.dateFormat
+          ? optionsState.dateFormat
+          : (defaultDateFormat ?? preferredDateFormat),
     }),
-    [defaultDateFormat, preferredDateFormat]
+    [optionsState, defaultDateFormat, preferredDateFormat]
   );
 
-  const [options, setOptions] = useState<CsvFormatOptions>(initialOptions);
-
   const resetForNewInput = useCallback(() => {
-    setOptions(initialOptions());
-  }, [initialOptions]);
+    setOptions({
+      ...DEFAULT_CSV_FORMAT,
+      dateFormat: defaultDateFormat ?? preferredDateFormat,
+    });
+  }, [defaultDateFormat, preferredDateFormat]);
 
   /**
    * Cheap preview parse — pass `numericColumns` to drive decimal detection

@@ -15,6 +15,8 @@ import {
   type CsvFormatOptions,
 } from '@workspace/shared';
 
+export const EXERCISE_NUMERIC_COLUMNS = ['calories_per_hour'];
+
 // parseCsv (not a raw Papa.parse call) so delimiter/quote-char are driven by
 // the user's format choice instead of Papa's silent auto-detect, and so a
 // delimiter-detection failure is reported via `warnings` instead of
@@ -25,7 +27,7 @@ export const parseCSV = (
   options: CsvFormatOptions = DEFAULT_CSV_FORMAT
 ): ExerciseCSVData[] => {
   const { rows, resolvedDecimal: format } = parseCsv(text, options, {
-    numericColumns: ['calories_per_hour'],
+    numericColumns: EXERCISE_NUMERIC_COLUMNS,
   });
 
   return rows.map((rawRow) => {

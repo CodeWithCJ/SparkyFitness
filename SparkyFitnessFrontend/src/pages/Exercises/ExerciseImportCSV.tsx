@@ -28,13 +28,14 @@ import {
   arrayFields,
   DROPDOWN_GUIDES,
 } from '@/constants/exercises';
+import { EXERCISE_NUMERIC_COLUMNS } from '@/utils/exercises';
 import { useExerciseImport } from '@/hooks/Exercises/useExerciseImport';
 import { useCsvFormat } from '@/hooks/useCsvFormat';
 import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
 import CsvFormatPreview from '@/components/CsvImport/CsvFormatPreview';
 import CsvHeaderMappingDialog from '@/components/CsvImport/CsvHeaderMappingDialog';
 
-const NUMERIC_COLUMNS = ['calories_per_hour'];
+const NUMERIC_COLUMNS = EXERCISE_NUMERIC_COLUMNS;
 
 export interface ExerciseCSVData {
   id: string;

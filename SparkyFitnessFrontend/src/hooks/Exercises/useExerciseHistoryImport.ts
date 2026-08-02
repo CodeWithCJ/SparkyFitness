@@ -280,15 +280,28 @@ export function useExerciseHistoryImport(
       }
 
       if (row.set_number) {
-        grouped[key].sets.push({
-          set_number: readOptionalInt(row.set_number, decimalFormat) ?? NaN,
-          set_type: row.set_type?.trim(),
-          reps: readOptionalInt(row.reps, decimalFormat),
-          weight: readOptionalNumber(row.weight, decimalFormat),
-          duration_min: readOptionalNumber(row.duration_min, decimalFormat),
-          rest_time_sec: readOptionalInt(row.rest_time_sec, decimalFormat),
-          notes: row.set_notes?.trim(),
-        });
+        const setNum = readOptionalInt(row.set_number, decimalFormat);
+        if (setNum === undefined) {
+          errors.push({
+            row: rowNum,
+            error: t(
+              'exercise.importHistoryCSV.invalidSetNumber',
+              "Row {{rowNum}}: Invalid set number '{{value}}'.",
+              { rowNum, value: row.set_number }
+            ),
+            entry: row,
+          });
+        } else {
+          grouped[key].sets.push({
+            set_number: setNum,
+            set_type: row.set_type?.trim(),
+            reps: readOptionalInt(row.reps, decimalFormat),
+            weight: readOptionalNumber(row.weight, decimalFormat),
+            duration_min: readOptionalNumber(row.duration_min, decimalFormat),
+            rest_time_sec: readOptionalInt(row.rest_time_sec, decimalFormat),
+            notes: row.set_notes?.trim(),
+          });
+        }
       }
 
       if (row.activity_field_name && row.activity_value) {

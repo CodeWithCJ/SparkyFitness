@@ -20,19 +20,21 @@ import {
   type CsvFormatOptions,
 } from '@workspace/shared';
 
+const SLEEP_NUMERIC_FIELDS = [
+  'duration_in_seconds',
+  'time_asleep_in_seconds',
+  'deep_sleep_seconds',
+  'light_sleep_seconds',
+  'rem_sleep_seconds',
+  'awake_sleep_seconds',
+  'sleep_score',
+];
+
 // Numeric columns per import category, used only to auto-detect the decimal
 // format (comma vs. dot) from the file's own data — see detectDecimalFormat.
 export const NUMERIC_COLUMNS_BY_CATEGORY: Record<ImportCategory, string[]> = {
   measurements: ['weight', 'body_fat', 'height', 'neck', 'waist', 'hips'],
-  sleep: [
-    'duration_in_seconds',
-    'time_asleep_in_seconds',
-    'deep_sleep_seconds',
-    'light_sleep_seconds',
-    'rem_sleep_seconds',
-    'awake_sleep_seconds',
-    'sleep_score',
-  ],
+  sleep: [...SLEEP_NUMERIC_FIELDS],
   vitals: ['value'],
   activity: ['value'],
   hydration: ['value'],
@@ -201,16 +203,6 @@ const mapMeasurementRow = (
 
   return { items, errors: [] };
 };
-
-const SLEEP_NUMERIC_FIELDS = [
-  'duration_in_seconds',
-  'time_asleep_in_seconds',
-  'deep_sleep_seconds',
-  'light_sleep_seconds',
-  'rem_sleep_seconds',
-  'awake_sleep_seconds',
-  'sleep_score',
-];
 
 const mapSleepRow = (
   row: HealthImportRow,

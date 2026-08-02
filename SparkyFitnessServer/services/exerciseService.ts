@@ -1547,9 +1547,8 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
   try {
     const fileContent = fs.readFileSync(filePath, 'utf8');
     // parseCsv (shared, not a raw papa.parse call) so delimiter detection
-    // failures and other parse issues become a per-row failedRows entry
-    // naming the actual problem, instead of a blanket "CSV parsing failed"
-    // that discarded which row/column caused it.
+    // failures and parse issues are logged and included in warnings/failedRows
+    // naming the actual problem, instead of a blanket "CSV parsing failed".
     const {
       rows: data,
       resolvedDecimal,
@@ -1564,6 +1563,13 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
     }
     if (warnings.length > 0) {
       log('warn', 'CSV parsing warnings:', warnings);
+      for (const w of warnings) {
+        failedRows.push({
+          row: w.row ? { row: w.row } : {},
+          reason: w.message,
+        });
+        failedCount++;
+      }
     }
     for (const row of data) {
       try {
@@ -2335,9 +2341,12 @@ async function importExercisesFromJson(
         // toNumber (not parseFloat) so a locale-comma decimal parses
         // correctly instead of silently truncating — same fix as the CSV
         // import path above.
-        calories_per_hour: exerciseData.calories_per_hour
-          ? (toNumber(exerciseData.calories_per_hour) ?? null)
-          : null,
+        calories_per_hour:
+          exerciseData.calories_per_hour !== undefined &&
+          exerciseData.calories_per_hour !== null &&
+          exerciseData.calories_per_hour !== ''
+            ? (toNumber(String(exerciseData.calories_per_hour)) ?? null)
+            : null,
         user_id: authenticatedUserId,
         is_custom: exerciseData.is_custom === true,
         shared_with_public: exerciseData.shared_with_public === true,

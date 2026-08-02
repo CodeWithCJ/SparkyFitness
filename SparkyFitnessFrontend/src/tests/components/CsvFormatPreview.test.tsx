@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { renderWithClient } from '../test-utils';
+import { screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CsvFormatPreview from '@/components/CsvImport/CsvFormatPreview';
 import { DEFAULT_CSV_FORMAT, type CsvFormatOptions } from '@workspace/shared';
@@ -21,7 +22,7 @@ describe('CsvFormatPreview', () => {
   };
 
   it('renders an already-ISO date as-is, not "raw → —"', () => {
-    render(
+    renderWithClient(
       <CsvFormatPreview
         headers={['date', 'weight']}
         rows={[{ date: '2022-06-13', weight: '80.2' }]}
@@ -36,7 +37,7 @@ describe('CsvFormatPreview', () => {
   });
 
   it('still evaluates a non-ISO date against the selected format', () => {
-    render(
+    renderWithClient(
       <CsvFormatPreview
         headers={['date', 'weight']}
         rows={[{ date: '06/13/2022', weight: '80.2' }]}
@@ -51,7 +52,7 @@ describe('CsvFormatPreview', () => {
   });
 
   it('shows a destructive failure for a date matching neither ISO nor the selected format', () => {
-    render(
+    renderWithClient(
       <CsvFormatPreview
         headers={['date', 'weight']}
         rows={[{ date: 'not-a-date', weight: '80.2' }]}

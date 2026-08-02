@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
 import {
   localDateToDay,
+  isBlank,
   toNumber,
   parseCsv,
   parseCsvHeaders,
@@ -145,9 +146,6 @@ const BASE_NUMERIC_HEADERS = ['quantity', ...NUTRIENT_HEADERS];
 // are dropdowns, and these three are free text. Everything else (quantity,
 // standard nutrients, custom-nutrient columns) is numeric.
 const TEXT_HEADERS = new Set(['meal_name', 'food_name', 'brand']);
-
-const isBlank = (v: string | undefined) =>
-  v === undefined || v === null || v.trim() === '';
 
 // Keeps only digits and a single decimal point, so number cells reject 'e',
 // '+', '-', and stray dots while still allowing decimals.
