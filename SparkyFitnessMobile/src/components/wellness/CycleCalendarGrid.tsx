@@ -57,17 +57,23 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     };
   }, [cycles, settings]);
 
+  // Periods are not expected in these modes, so cycle predictions are hidden
+  // entirely; fertility markers are additionally hidden on hormonal birth
+  // control or when the user turns off the fertile window.
+  const suppressPredictions =
+    settings.mode === 'pregnant' ||
+    settings.mode === 'postpartum' ||
+    settings.mode === 'menopause';
+  const suppressFertility =
+    suppressPredictions ||
+    isHormonalBc(settings.birth_control_method) ||
+    settings.show_fertile_window === false;
+
   // Compute Predictions
   const predictions = useMemo(() => {
+    if (suppressPredictions) return null;
     const lastCycle = cycles[0]; // descending order
     if (!lastCycle || !lastCycle.start_date) return null;
-
-    const suppressFertility =
-      isHormonalBc(settings.birth_control_method) ||
-      settings.show_fertile_window === false ||
-      settings.mode === 'pregnant' ||
-      settings.mode === 'postpartum' ||
-      settings.mode === 'menopause';
 
     const count = 4;
     const predictedCycles = [];
@@ -100,14 +106,14 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     }
 
     return { cycles: predictedCycles };
-  }, [cycles, stats, settings]);
+  }, [cycles, stats, settings, suppressPredictions, suppressFertility]);
 
   // Decoration mapping for grid rendering
   const decoratedDaysMap = useMemo(() => {
     const map: Record<string, 'period' | 'predicted-period' | 'fertile' | 'ovulation' | 'none'> = {};
 
     // 1. Predicted days
-    if (predictions && settings?.show_fertile_window !== false) {
+    if (predictions) {
       predictions.cycles.forEach((pc) => {
         // Predicted period
         let start = pc.periodStart;
@@ -141,7 +147,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     });
 
     return map;
-  }, [logs, predictions, settings]);
+  }, [logs, predictions]);
 
   const loggedDays = useMemo(() => new Set(logs.map((log) => log.entry_date)), [logs]);
 
@@ -244,6 +250,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
               }}
             >
               <View
+                testID={`cycle-day-${dateStr}-${phase}`}
                 style={{
                   width: '100%',
                   height: '100%',
@@ -292,40 +299,58 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
               width: 10,
               height: 10,
               borderRadius: 5,
-              backgroundColor: getPhaseColor('menstrual', tokens) + '26',
-              borderWidth: 1,
-              borderColor: getPhaseColor('menstrual', tokens),
-              borderStyle: 'dashed',
+              backgroundColor: getPhaseColor('menstrual', tokens) + '35',
             }}
           />
-          <Text className="text-text-secondary text-xs">Predicted Period</Text>
+          <Text className="text-text-secondary text-xs">Period</Text>
         </View>
 
-        <View className="flex-row items-center gap-1.5">
-          <View
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: getPhaseColor('fertile', tokens) + '35',
-            }}
-          />
-          <Text className="text-text-secondary text-xs">Fertile Window</Text>
-        </View>
+        {!suppressPredictions && (
+          <View className="flex-row items-center gap-1.5">
+            <View
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: getPhaseColor('menstrual', tokens) + '26',
+                borderWidth: 1,
+                borderColor: getPhaseColor('menstrual', tokens),
+                borderStyle: 'dashed',
+              }}
+            />
+            <Text className="text-text-secondary text-xs">Predicted Period</Text>
+          </View>
+        )}
 
-        <View className="flex-row items-center gap-1.5">
-          <View
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              backgroundColor: getPhaseColor('ovulation', tokens) + '26',
-              borderWidth: 1.5,
-              borderColor: getPhaseColor('ovulation', tokens),
-            }}
-          />
-          <Text className="text-text-secondary text-xs">Est. Ovulation</Text>
-        </View>
+        {!suppressFertility && (
+          <>
+            <View className="flex-row items-center gap-1.5">
+              <View
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: getPhaseColor('fertile', tokens) + '35',
+                }}
+              />
+              <Text className="text-text-secondary text-xs">Fertile Window</Text>
+            </View>
+
+            <View className="flex-row items-center gap-1.5">
+              <View
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  backgroundColor: getPhaseColor('ovulation', tokens) + '26',
+                  borderWidth: 1.5,
+                  borderColor: getPhaseColor('ovulation', tokens),
+                }}
+              />
+              <Text className="text-text-secondary text-xs">Est. Ovulation</Text>
+            </View>
+          </>
+        )}
 
         <View className="flex-row items-center gap-1.5">
           <View
