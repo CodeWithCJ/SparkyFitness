@@ -64,7 +64,7 @@ export const CycleCardRingContent: React.FC<{
   info: CycleRingContentInfo;
 }> = ({ title, info }) => {
   const tokens = useWellnessTokens();
-  const [textSecondary] = useCSSVariable(['--color-text-secondary']) as [string];
+  const [textAccent] = useCSSVariable(['--color-accent-primary']) as [string];
   const phaseName = getPhaseDisplayName(info.phase, false);
   const phaseColor = getPhaseColor(info.phase, tokens);
 
@@ -106,7 +106,7 @@ export const CycleCardRingContent: React.FC<{
         size={98}
         strokeWidth={7.5}
       />
-      <Icon name="chevron-forward" size={18} color={textSecondary} />
+      <Icon name="chevron-forward" size={18} color={textAccent} />
     </View>
   );
 };

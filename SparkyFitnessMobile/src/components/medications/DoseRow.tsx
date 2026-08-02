@@ -172,7 +172,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
           {title}
         </Text>
         {(showTime || showSubtitle) && (
-          <Text className={`text-xs ${completed ? 'text-text-muted' : 'text-text-secondary'} mt-0.5`} numberOfLines={1}>
+          <Text className={`text-sm ${completed ? 'text-text-muted' : 'text-text-secondary'} mt-0.5`} numberOfLines={1}>
             {showTime && (
               <Text className={`${completed ? 'text-text-muted' : 'text-text-primary'}`}>
                 {time}
