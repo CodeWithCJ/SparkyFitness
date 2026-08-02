@@ -4,6 +4,8 @@ import Toast from 'react-native-toast-message';
 import { useCycleLog } from '../../hooks/useCycleLogs';
 import { useUpsertCycleLog } from '../../hooks/useUpsertCycleLog';
 import { useCycleMode } from '../../hooks/useCycleMode';
+import { useSymptomEntries, useSymptomMutations } from '../../hooks/useSymptoms';
+import type { SymptomEntry } from '../../services/api/symptomsApi';
 import { useMeasurements } from '../../hooks/useMeasurements';
 import { useUpsertCheckIn } from '../../hooks/useUpsertCheckIn';
 import { usePreferences } from '../../hooks/usePreferences';
@@ -17,7 +19,7 @@ import FormInput from '../FormInput';
 import DateSelectRow from '../DateSelectRow';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from '../BottomSheetPicker';
-import type { FlowLevel } from '@workspace/shared';
+import type { CycleSymptomDef, FlowLevel } from '@workspace/shared';
 
 interface CycleTodayViewProps {
   date: string;
@@ -72,6 +74,11 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
   const isPregnant = mode === 'pregnant';
   const { measurements } = useMeasurements({ date, enabled: isPregnant });
   const upsertCheckIn = useUpsertCheckIn();
+  const { entries: symptomEntries, isLoading: isSymptomsLoading } = useSymptomEntries({
+    fromDate: date,
+    toDate: date,
+  });
+  const { createEntryAsync, deleteEntryAsync } = useSymptomMutations(date, date);
   const { preferences } = usePreferences();
   const weightUnit: 'kg' | 'lbs' = preferences?.default_weight_unit === 'lbs' ? 'lbs' : 'kg';
   const [accentColor, textMuted] = useCSSVariable([
@@ -87,6 +94,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
   const [intercourse, setIntercourse] = useState<boolean | null>(null);
   const [intercourseProtected, setIntercourseProtected] = useState<boolean | null>(null);
   const [cervicalPosition, setCervicalPosition] = useState<string | null>(null);
+  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [weight, setWeight] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [isNotesFocused, setIsNotesFocused] = useState(false);
@@ -120,6 +128,26 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
     if (isPregnant) setWeight(hydratedWeight);
   }, [isPregnant, hydratedWeight]);
 
+  useEffect(() => {
+    const names = symptomEntries
+      .filter((e) => e.source === 'cycle')
+      .map((e) => e.symptom_name_snapshot);
+    // The hook falls back to a fresh [] while entries load, so keep the
+    // previous reference when content is unchanged or this effect loops.
+    setSelectedSymptoms((prev) =>
+      prev.length === names.length && prev.every((n, i) => n === names[i]) ? prev : names
+    );
+  }, [symptomEntries]);
+
+  const handleToggleSymptom = (symptom: CycleSymptomDef) => {
+    const name = symptom.displayName.toLowerCase();
+    setSelectedSymptoms((prev) =>
+      prev.some((s) => s.toLowerCase() === name)
+        ? prev.filter((s) => s.toLowerCase() !== name)
+        : [...prev, symptom.displayName]
+    );
+  };
+
   const handleSave = async () => {
     setSubmitting(true);
     try {
@@ -140,7 +168,34 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
         },
       });
 
-      // 2. Save BBT custom measurement if input is present/changed
+      // 2. Sync symptom selections: create toggled-on entries the server
+      // doesn't have yet and delete toggled-off ones it still has.
+      const selectedLower = selectedSymptoms.map((s) => s.toLowerCase());
+      const existingCycleEntries = symptomEntries.filter((e) => e.source === 'cycle');
+      const symptomsToDelete = existingCycleEntries.filter(
+        (e): e is SymptomEntry & { id: string } =>
+          typeof e.id === 'string' &&
+          !selectedLower.includes(e.symptom_name_snapshot.toLowerCase())
+      );
+      const symptomsToCreate = selectedSymptoms.filter(
+        (name) =>
+          !existingCycleEntries.some(
+            (e) => e.symptom_name_snapshot.toLowerCase() === name.toLowerCase()
+          )
+      );
+      await Promise.all([
+        ...symptomsToDelete.map((e) => deleteEntryAsync(e.id)),
+        ...symptomsToCreate.map((name) =>
+          createEntryAsync({
+            symptom_name_snapshot: name,
+            severity: 3,
+            source: 'cycle',
+            entry_date: date,
+          })
+        ),
+      ]);
+
+      // 3. Save BBT custom measurement if input is present/changed
       const bbtVal = bbt.trim() ? parseFloat(bbt) : null;
       if (isNaN(bbtVal as number) && bbt.trim()) {
         Toast.show({ type: 'error', text1: 'Invalid temperature input' });
@@ -148,7 +203,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       }
       await upsertBbt(date, bbtVal);
 
-      // 3. Pregnancy vitals: save weight only when the field was edited to a
+      // 4. Pregnancy vitals: save weight only when the field was edited to a
       // new value. An emptied field preserves the stored check-in (weight may
       // come from health sync); clearing it belongs to the measurements screen.
       if (isPregnant && weight.trim() && weight.trim() !== hydratedWeight) {
@@ -242,7 +297,11 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
 
       {/* Symptoms */}
       <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
-        <CycleSymptomPicker date={date} />
+        <CycleSymptomPicker
+          selected={selectedSymptoms}
+          onToggle={handleToggleSymptom}
+          loading={isSymptomsLoading}
+        />
       </View>
 
       {/* Cervical Mucus — Bottom Sheet Picker */}

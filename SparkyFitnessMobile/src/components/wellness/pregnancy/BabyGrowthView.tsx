@@ -47,7 +47,7 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
         <WombScene scene={info.wombScene} size={96} />
         <View className="shrink gap-1">
           <Text className="text-sm font-semibold" style={{ color: tokens.phasePregnant }}>
-            Size of {info.comparison}
+            Size of {info.comparison.toLowerCase()}
           </Text>
           <View className="flex-row gap-4 mt-1">
             {info.lengthCm != null && (
