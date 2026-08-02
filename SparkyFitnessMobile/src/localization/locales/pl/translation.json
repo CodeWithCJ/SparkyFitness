@@ -845,6 +845,25 @@
       "popoverResetFailed": "Nie udało się zresetować podpowiedzi."
     }
   },
+  "mobileComponents": {
+    "healthSource": { "source": "Źródło", "appleHealth": "Apple Health", "healthConnect": "Health Connect" },
+    "macros": { "title": "Makroskładniki" },
+    "osDenied": { "title": "Nadaj uprawnienia", "body": "Alerty SparkyFitness (timery odpoczynku, cele postu, przypomnienia o lekach) nie będą działać." },
+    "popover": { "dismiss": "Zamknij", "gotIt": "Rozumiem" },
+    "privacy": { "title": "Polityka prywatności", "noData": "Ta aplikacja nie zbiera, nie przechowuje ani nie sprzedaje Twoich danych osobowych.", "healthData": "Wszystkie dane HealthKit pozostają na urządzeniu i są przesyłane wyłącznie na Twój serwer.", "learnMore": "Dowiedz się więcej w naszej Polityce prywatności." },
+    "verifiedFood": "Zweryfikowany produkt",
+    "nutrition": { "left": "pozostało", "calories": "kalorii", "remaining": "pozostało {{value}} g", "over": "{{value}} g ponad cel", "met": "cel osiągnięty" },
+    "rest": { "off": "Wył.", "label": "Odpoczynek {{value}}", "title": "Czas odpoczynku", "custom": "Niestandardowy" },
+    "errors": { "title": "Coś poszło nie tak", "message": "Wystąpił nieoczekiwany błąd. Serwer może wymagać aktualizacji.", "section": "Nie udało się wczytać tej sekcji.", "retry": "Spróbuj ponownie", "back": "Cofnij" },
+    "charts": { "pressBar": "Dotknij słupka, aby zobaczyć szczegóły", "pressLine": "Dotknij wykresu, aby zobaczyć szczegóły", "consumedOn": "Spożyto {{value}}{{unit}} · {{date}}", "stepsOn": "{{value}} kroków · {{date}}", "weightOn": "{{value}} {{unit}} · {{date}}", "bbtOn": "{{date}}: {{value}}°C", "loading": "Wczytywanie wykresu...", "nutrientError": "Nie udało się wczytać danych trendu", "noIntake": "Brak zarejestrowanego spożycia w tym okresie", "stepsError": "Nie udało się wczytać danych kroków", "noSteps": "Brak danych kroków w tym okresie", "weightError": "Nie udało się wczytać danych masy ciała", "noBbt": "Zapisuj codzienną temperaturę, aby zobaczyć wykres BBT." },
+    "calendar": { "predictedPeriod": "Przewidywany okres", "fertileWindow": "Okno płodne", "estimatedOvulation": "Szacowana owulacja" },
+    "cycleHistory": { "title": "Historia cyklu", "addManual": "Dodaj ręcznie", "logManual": "Zapisz cykl ręcznie", "startDate": "Data rozpoczęcia", "selectDate": "Wybierz datę", "periodDays": "Dni okresu", "cycleDays": "Dni cyklu", "exclude": "Wyklucz z prognoz", "saveManual": "Zapisz cykl", "empty": "Brak zapisanych cykli.", "started": "Rozpoczęto {{date}}", "dayCycleLabel": "{{value}} dni cyklu", "currentCycle": "Bieżący cykl", "dayPeriodLabel": "{{value}} dni okresu" },
+    "symptoms": { "title": "Objawy", "showLess": "Pokaż mniej", "showAll": "+ Pokaż wszystkie" },
+    "correlation": { "byPhase": "{{metric}} według fazy cyklu", "higher": "wyższa", "lower": "niższa", "summary": "{{metric}} jest zwykle {{direction}} w fazie {{phase}} ({{delta}}{{unit}} względem średniej).", "emptyTitle": "Korelacje pojawią się przy większej ilości danych", "emptyBody": "Zapisuj masę ciała, nastrój, sen i energię przez kilka cykli, aby zobaczyć ich zależność od faz.", "metricWeight": "Masa ciała", "metricMood": "Nastrój", "metricSleep": "Sen", "metricEnergy": "Energia", "phaseMenstrual": "Miesiączka", "phaseFollicular": "Faza folikularna", "phaseFertile": "Płodna", "phaseOvulation": "Owulacja", "phaseLuteal": "Faza lutealna", "flagLongCycles": "Twoje cykle trwają średnio ponad 35 dni. Ten wzorzec bywa związany z PCOS — omów go z lekarzem.", "flagIrregularCycles": "Twoje cykle znacznie się różnią. Zapisz jeszcze kilka, aby lepiej je poznać; możesz omówić je z lekarzem.", "flagShortCycles": "Twoje cykle są krótsze niż typowe. Jeśli to nowa sytuacja, skonsultuj ją z lekarzem." },
+    "pregnancy": { "firstTrimester": "Pierwszy trymestr", "secondTrimester": "Drugi trymestr", "thirdTrimester": "Trzeci trymestr", "wellnessProgress": "Postęp zdrowotny", "week": "Tydzień {{week}}", "weekDay": "{{week}} tydz. {{day}} dni", "due": "Termin", "daysToGoLabel": "{{value}} dni do terminu", "anyDay": "Termin już blisko" },
+    "checklist": { "title": "Zadania na ten tydzień", "empty": "Brak zadań na ten tydzień.", "item": "Element listy" },
+    "vitals": { "title": "Parametry", "todayWeight": "Dzisiejsza masa ciała", "prenatalVitamin": "Witamina prenatalna", "supplement": "Suplement", "linked": "Połączono", "notSet": "Nie ustawiono" }
+  },
   "appAlerts": {
     "noServer": {
       "title": "Brak połączenia z serwerem",

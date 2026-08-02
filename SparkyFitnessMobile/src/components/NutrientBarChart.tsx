@@ -10,6 +10,8 @@ import ChartTouchOverlay, {
   createChartTouchLayoutSignature,
   type ChartTouchLayout,
 } from './ChartTouchOverlay';
+import { useTranslation } from 'react-i18next';
+import { getAppLocale, formatLocalizedNumber } from '../localization';
 
 export type NutrientChartDataPoint = {
   day: string;
@@ -51,27 +53,25 @@ const formatXLabel7d = (day: string): string => {
   if (typeof day !== 'string') return '';
   const [year, month, d] = day.split('-').map(Number);
   const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'short' });
+  return date.toLocaleDateString(getAppLocale(), { weekday: 'short' });
 };
 
 const formatXLabel30d90d = (day: string): string => {
   if (typeof day !== 'string') return '';
   const [year, month, d] = day.split('-').map(Number);
   const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
 };
 
 const formatTooltipDate = (day: string): string => {
   const [year, month, d] = day.split('-').map(Number);
   const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(getAppLocale(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
 };
-
-const DEFAULT_TOOLTIP = 'Press a bar for details';
 
 const NutrientTooltip: React.FC<{ text: string }> = ({ text }) => (
   <View className="h-6 justify-center mt-3 mb-1">
@@ -88,11 +88,13 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
   unit,
   goal,
 }) => {
+  const { t } = useTranslation();
+  const defaultTooltip = t('mobileComponents.charts.pressBar');
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [tooltipText, setTooltipText] = useState(defaultTooltip);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -112,7 +114,7 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
   const [tooltipResetKey, setTooltipResetKey] = useState({ data, range });
   if (tooltipResetKey.data !== data || tooltipResetKey.range !== range) {
     setTooltipResetKey({ data, range });
-    setTooltipText(DEFAULT_TOOLTIP);
+    setTooltipText(defaultTooltip);
   }
 
   const handleTouchLayoutChange = useCallback(
@@ -141,17 +143,19 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
 
       const formattedVal = point.value % 1 !== 0 ? point.value.toFixed(1) : point.value;
       setTooltipText(
-        `${formattedVal}${unit} consumed · ${formatTooltipDate(
-          point.day,
-        )}`,
+        t('mobileComponents.charts.consumedOn', {
+          value: formatLocalizedNumber(Number(formattedVal)),
+          unit,
+          date: formatTooltipDate(point.day),
+        }),
       );
     },
     [data, unit],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(DEFAULT_TOOLTIP);
-  }, []);
+    setTooltipText(defaultTooltip);
+  }, [defaultTooltip]);
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
@@ -163,18 +167,18 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Loading...</Text>
+          <Text className="text-text-muted text-sm">{t('common.loading')}</Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            Failed to load trend data
+            {t('mobileComponents.charts.nutrientError')}
           </Text>
         </View>
       ) : !hasData ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            No logged intake for this period
+            {t('mobileComponents.charts.noIntake')}
           </Text>
         </View>
       ) : (

@@ -9,6 +9,8 @@ import { getTodayDate } from '../../../utils/dateUtils';
 import FormInput from '../../FormInput';
 import Icon from '../../Icon';
 import type { SharedPregnancy } from '../../../types/womensHealth';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../../../localization';
 
 interface VitalsCardProps {
   pregnancy: SharedPregnancy;
@@ -19,6 +21,7 @@ const VitalsCard: React.FC<VitalsCardProps> = ({ pregnancy }) => {
   const { measurements, isLoading } = useMeasurements({ date: today });
   const upsertCheckIn = useUpsertCheckIn();
   const { preferences } = usePreferences();
+  const { t } = useTranslation();
   const weightUnit: 'kg' | 'lbs' = preferences?.default_weight_unit === 'lbs' ? 'lbs' : 'kg';
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
@@ -30,7 +33,7 @@ const VitalsCard: React.FC<VitalsCardProps> = ({ pregnancy }) => {
 
   const displayValue =
     measurements?.weight != null
-      ? String(Math.round(weightFromKg(measurements.weight, weightUnit) * 10) / 10)
+      ? formatLocalizedNumber(Math.round(weightFromKg(measurements.weight, weightUnit) * 10) / 10, { maximumFractionDigits: 1 })
       : '';
 
   const startEditing = () => {
@@ -52,10 +55,10 @@ const VitalsCard: React.FC<VitalsCardProps> = ({ pregnancy }) => {
 
   return (
     <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
-      <Text className="text-text-primary text-base font-bold">Vitals</Text>
+      <Text className="text-text-primary text-base font-bold">{t('mobileComponents.vitals.title')}</Text>
 
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-secondary text-sm">Today&apos;s weight</Text>
+        <Text className="text-text-secondary text-sm">{t('mobileComponents.vitals.todayWeight')}</Text>
         {isLoading ? (
           <ActivityIndicator size="small" color={accentColor} />
         ) : editing ? (
@@ -83,15 +86,15 @@ const VitalsCard: React.FC<VitalsCardProps> = ({ pregnancy }) => {
       <View className="h-px bg-border-subtle" />
 
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-secondary text-sm">Prenatal vitamin</Text>
+        <Text className="text-text-secondary text-sm">{t('mobileComponents.vitals.prenatalVitamin')}</Text>
         <Text className="text-text-primary text-sm font-semibold">
-          {pregnancy.prenatal_medication_id ? 'Linked' : 'Not set'}
+          {pregnancy.prenatal_medication_id ? t('mobileComponents.vitals.linked') : t('mobileComponents.vitals.notSet')}
         </Text>
       </View>
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-secondary text-sm">Supplement</Text>
+        <Text className="text-text-secondary text-sm">{t('mobileComponents.vitals.supplement')}</Text>
         <Text className="text-text-primary text-sm font-semibold">
-          {pregnancy.supplement_medication_id ? 'Linked' : 'Not set'}
+          {pregnancy.supplement_medication_id ? t('mobileComponents.vitals.linked') : t('mobileComponents.vitals.notSet')}
         </Text>
       </View>
     </View>

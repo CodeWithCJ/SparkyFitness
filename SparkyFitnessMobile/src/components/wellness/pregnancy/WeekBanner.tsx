@@ -7,6 +7,8 @@ import { useWellnessTokens } from '../theme/wellnessTokens';
 import Icon from '../../Icon';
 
 import { useDiscreetMode } from '../../../hooks/useDiscreetMode';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../../../localization';
 
 interface WeekBannerProps {
   ga: GestationalAge;
@@ -14,17 +16,21 @@ interface WeekBannerProps {
   onEdit?: () => void;
 }
 
-const TRIMESTER_LABEL: Record<string, string> = {
-  first: 'First trimester',
-  second: 'Second trimester',
-  third: 'Third trimester',
-};
+function trimesterLabel(trimester: string | number, t: (key: string) => string): string {
+  switch (String(trimester)) {
+    case 'first': return t('mobileComponents.pregnancy.firstTrimester');
+    case 'second': return t('mobileComponents.pregnancy.secondTrimester');
+    case 'third': return t('mobileComponents.pregnancy.thirdTrimester');
+    default: return t('cycleCard.title.pregnancy');
+  }
+}
 
 /** Gestational-age header: current week/day, trimester, term progress, due date. */
 const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
   const tokens = useWellnessTokens();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
   const { discreetMode } = useDiscreetMode();
+  const { t } = useTranslation();
   const pct = Math.max(0, Math.min(1, ga.progress));
 
   return (
@@ -32,16 +38,16 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
       <View className="flex-row items-start justify-between">
         <View>
           <Text className="text-text-secondary text-xs">
-            {discreetMode ? 'Wellness Progress' : TRIMESTER_LABEL[ga.trimester] ?? 'Pregnancy'}
+            {discreetMode ? t('mobileComponents.pregnancy.wellnessProgress') : trimesterLabel(ga.trimester, t)}
           </Text>
           <Text className="text-text-primary text-2xl font-bold">
-            {discreetMode ? `Week ${ga.week}` : `${ga.week}w ${ga.day}d`}
+            {discreetMode ? t('mobileComponents.pregnancy.week', { week: formatLocalizedNumber(ga.week) }) : t('mobileComponents.pregnancy.weekDay', { week: formatLocalizedNumber(ga.week), day: formatLocalizedNumber(ga.day) })}
           </Text>
         </View>
         <View className="flex-row items-center gap-3">
           {!discreetMode && (
             <View className="items-end">
-              <Text className="text-text-secondary text-xs">Due</Text>
+              <Text className="text-text-secondary text-xs">{t('mobileComponents.pregnancy.due')}</Text>
               <Text className="text-text-primary text-sm font-semibold">{formatDate(dueDate)}</Text>
             </View>
           )}
@@ -63,7 +69,7 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
 
       {!discreetMode && (
         <Text className="text-text-secondary text-xs">
-          {ga.daysRemaining > 0 ? `${ga.daysRemaining} days to go` : 'Any day now'}
+          {ga.daysRemaining > 0 ? t('mobileComponents.pregnancy.daysToGoLabel', { value: formatLocalizedNumber(ga.daysRemaining) }) : t('mobileComponents.pregnancy.anyDay')}
         </Text>
       )}
     </View>

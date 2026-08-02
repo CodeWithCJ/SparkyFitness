@@ -13,6 +13,8 @@ import ChartTouchOverlay, {
   createChartTouchLayoutSignature,
   type ChartTouchLayout,
 } from './ChartTouchOverlay';
+import { useTranslation } from 'react-i18next';
+import { getAppLocale, formatLocalizedNumber } from '../localization';
 
 type WeightLineChartProps = {
   data: WeightDataPoint[];
@@ -35,29 +37,27 @@ const formatXLabel7d = (day: string): string => {
   if (typeof day !== 'string') return '';
   const [year, month, d] = day.split('-').map(Number);
   const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'short' });
+  return date.toLocaleDateString(getAppLocale(), { weekday: 'short' });
 };
 
 const formatXLabel30d90d = (day: string): string => {
   if (typeof day !== 'string') return '';
   const [year, month, d] = day.split('-').map(Number);
   const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
 };
 
 const formatTooltipDate = (day: string): string => {
   const [year, month, d] = day.split('-').map(Number);
   const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(getAppLocale(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
 };
 
-const formatTooltipWeight = (weight: number): string => weight.toFixed(2);
-
-const DEFAULT_TOOLTIP = 'Press the line for details';
+const formatTooltipWeight = (weight: number): string => formatLocalizedNumber(weight, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const WeightTooltip: React.FC<{ text: string }> = ({ text }) => (
   <View className="h-6 justify-center mt-3 mb-1">
@@ -72,11 +72,13 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   range,
   unit,
 }) => {
+  const { t } = useTranslation();
+  const defaultTooltip = t('mobileComponents.charts.pressLine');
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [tooltipText, setTooltipText] = useState(defaultTooltip);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -95,7 +97,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     tooltipResetKey.unit !== unit
   ) {
     setTooltipResetKey({ data, range, unit });
-    setTooltipText(DEFAULT_TOOLTIP);
+    setTooltipText(defaultTooltip);
   }
 
   const handleTouchLayoutChange = useCallback(
@@ -123,17 +125,17 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
       }
 
       setTooltipText(
-        `${formatTooltipWeight(point.weight)} ${unit} · ${formatTooltipDate(
-          point.day,
-        )}`,
+        t('mobileComponents.charts.weightOn', {
+          value: formatTooltipWeight(point.weight), unit, date: formatTooltipDate(point.day),
+        }),
       );
     },
     [data, unit],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(DEFAULT_TOOLTIP);
-  }, []);
+    setTooltipText(defaultTooltip);
+  }, [defaultTooltip]);
 
   if (!hasData && !isLoading && !isError) {
     return null;
@@ -142,19 +144,19 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <Text className="text-text-primary text-lg font-semibold mb-2">
-        Weight
+        {t('measurements.weight')}
       </Text>
 
       <WeightTooltip text={tooltipText} />
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Loading...</Text>
+          <Text className="text-text-muted text-sm">{t('common.loading')}</Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            Failed to load weight data
+            {t('mobileComponents.charts.weightError')}
           </Text>
         </View>
       ) : (

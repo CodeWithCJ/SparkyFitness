@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-na
 import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import type { AnchorRect } from './AnchoredMenu';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   visible: boolean;
@@ -48,11 +49,12 @@ const Popover: React.FC<Props> = ({
   onDismiss,
   title,
   children,
-  dismissLabel = 'Got it',
+  dismissLabel,
   showDismissButton = true,
   margin = 16,
 }) => {
   const { width: screenWidth } = useWindowDimensions();
+  const { t } = useTranslation();
   const surface = String(useCSSVariable('--color-surface'));
   const borderSubtle = String(useCSSVariable('--color-border-subtle'));
 
@@ -74,7 +76,7 @@ const Popover: React.FC<Props> = ({
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={onDismiss}
-        accessibilityLabel="Dismiss"
+        accessibilityLabel={t('mobileComponents.popover.dismiss')}
       />
       <Pressable
         className="absolute bg-surface rounded-2xl border border-border-subtle shadow-lg px-4 py-3.5"
@@ -115,7 +117,7 @@ const Popover: React.FC<Props> = ({
               className="py-1.5 px-2"
               textClassName="text-sm"
             >
-              {dismissLabel}
+              {dismissLabel ?? t('mobileComponents.popover.gotIt')}
             </Button>
           </View>
         ) : null}

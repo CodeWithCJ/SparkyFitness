@@ -6,6 +6,8 @@ import type { SharedCycle, SharedCycleDailyLog, SharedCycleSettings } from '@wor
 import Icon from '../Icon';
 import { useWellnessTokens } from './theme/wellnessTokens';
 import { getPhaseColor } from '../../utils/cycleDisplayUtils';
+import { useTranslation } from 'react-i18next';
+import { getAppLocale, formatLocalizedNumber } from '../../localization';
 
 interface CycleCalendarGridProps {
   selectedDate: string; // YYYY-MM-DD
@@ -15,8 +17,6 @@ interface CycleCalendarGridProps {
   settings: SharedCycleSettings;
 }
 
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
 const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
   selectedDate,
   onSelectDate,
@@ -24,6 +24,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
   logs,
   settings,
 }) => {
+  const { t } = useTranslation();
   const tokens = useWellnessTokens();
   const [textPrimary, textMuted] = useCSSVariable([
     '--color-text-primary',
@@ -163,7 +164,8 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     setCurrentMonth(`${nextYear}-${String(nextMonth).padStart(2, '0')}`);
   };
 
-  const monthName = new Date(year, monthVal - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+  const monthName = new Date(year, monthVal - 1, 1).toLocaleString(getAppLocale(), { month: 'long', year: 'numeric' });
+  const weekdays = t('days.min', { returnObjects: true }) as string[];
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
@@ -180,7 +182,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
 
       {/* Weekdays Headers */}
       <View className="flex-row mb-2">
-        {WEEKDAYS.map((day, idx) => (
+        {weekdays.map((day, idx) => (
           <Text key={idx} className="flex-1 text-center text-text-secondary text-xs font-semibold py-1">
             {day}
           </Text>
@@ -261,7 +263,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
                     color: isSelected ? textPrimary : textColor,
                   }}
                 >
-                  {dayNum}
+                  {formatLocalizedNumber(dayNum)}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -283,7 +285,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
               borderStyle: 'dashed',
             }}
           />
-          <Text className="text-text-secondary text-xs">Predicted Period</Text>
+          <Text className="text-text-secondary text-xs">{t('mobileComponents.calendar.predictedPeriod')}</Text>
         </View>
 
         <View className="flex-row items-center gap-1.5">
@@ -295,7 +297,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
               backgroundColor: getPhaseColor('fertile', tokens) + '35',
             }}
           />
-          <Text className="text-text-secondary text-xs">Fertile Window</Text>
+          <Text className="text-text-secondary text-xs">{t('mobileComponents.calendar.fertileWindow')}</Text>
         </View>
 
         <View className="flex-row items-center gap-1.5">
@@ -309,7 +311,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
               borderColor: getPhaseColor('ovulation', tokens),
             }}
           />
-          <Text className="text-text-secondary text-xs">Est. Ovulation</Text>
+          <Text className="text-text-secondary text-xs">{t('mobileComponents.calendar.estimatedOvulation')}</Text>
         </View>
       </View>
     </View>

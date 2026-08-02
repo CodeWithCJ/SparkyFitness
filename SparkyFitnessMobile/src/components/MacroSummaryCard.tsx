@@ -4,6 +4,8 @@ import { Canvas, Rect, Group, rect, rrect } from '@shopify/react-native-skia';
 import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 interface MacroData {
   label: string;
@@ -69,7 +71,7 @@ const MacroRow: React.FC<{ macro: MacroData; overfillColor: string; unit: string
           <Text className="text-sm font-medium text-text-primary">{macro.label}</Text>
         </View>
         <Text className="text-xs text-text-secondary">
-          {Math.round(macro.consumed)}{unit} / {Math.round(macro.goal)}{unit}
+          {formatLocalizedNumber(Math.round(macro.consumed))}{unit} / {formatLocalizedNumber(Math.round(macro.goal))}{unit}
         </Text>
       </View>
       <View
@@ -93,9 +95,10 @@ const MacroRow: React.FC<{ macro: MacroData; overfillColor: string; unit: string
 };
 
 const MacroSummaryCard: React.FC<MacroSummaryCardProps> = ({ macros, overfillColor, unit = 'g' }) => {
+  const { t } = useTranslation();
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-primary mb-3">Macros</Text>
+      <Text className="text-md font-bold text-text-primary mb-3">{t('mobileComponents.macros.title')}</Text>
       {macros.map((macro) => (
         <MacroRow key={macro.label} macro={macro} overfillColor={overfillColor} unit={unit} />
       ))}

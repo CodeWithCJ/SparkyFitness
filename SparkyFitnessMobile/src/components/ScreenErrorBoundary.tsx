@@ -4,6 +4,33 @@ import Icon from './Icon';
 import Button from './ui/Button';
 import { addLog } from '../services/LogService';
 import { queryClient } from '../hooks/queryClient';
+import { useTranslation } from 'react-i18next';
+
+const ScreenErrorFallback: React.FC<{ onRetry: () => void; onGoBack?: () => void }> = ({
+  onRetry,
+  onGoBack,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <View className="flex-1 justify-center items-center px-6">
+      <Icon name="alert-circle" size={64} color="#EF4444" />
+      <Text className="text-text-secondary text-base mt-4 text-center">
+        {t('mobileComponents.errors.title')}
+      </Text>
+      <Text className="text-text-secondary text-sm mt-2 text-center">
+        {t('mobileComponents.errors.message')}
+      </Text>
+      <Button variant="primary" onPress={onRetry} className="mt-4 px-6">
+        {t('mobileComponents.errors.retry')}
+      </Button>
+      {onGoBack && (
+        <Button variant="ghost" onPress={onGoBack} className="mt-2 px-6">
+          {t('mobileComponents.errors.back')}
+        </Button>
+      )}
+    </View>
+  );
+};
 
 interface ScreenErrorBoundaryProps {
   screenName: string;
@@ -38,25 +65,7 @@ class ScreenErrorBoundary extends React.Component<ScreenErrorBoundaryProps, Scre
 
   render() {
     if (this.state.hasError) {
-      return (
-        <View className="flex-1 justify-center items-center px-6">
-          <Icon name="alert-circle" size={64} color="#EF4444" />
-          <Text className="text-text-secondary text-base mt-4 text-center">
-            Something went wrong
-          </Text>
-          <Text className="text-text-secondary text-sm mt-2 text-center">
-            An unexpected error occurred. Your server may need to be updated.
-          </Text>
-          <Button variant="primary" onPress={this.handleRetry} className="mt-4 px-6">
-            Try Again
-          </Button>
-          {this.props.onGoBack && (
-            <Button variant="ghost" onPress={this.props.onGoBack} className="mt-2 px-6">
-              Go Back
-            </Button>
-          )}
-        </View>
-      );
+      return <ScreenErrorFallback onRetry={this.handleRetry} onGoBack={this.props.onGoBack} />;
     }
 
     return (
@@ -99,16 +108,22 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
 
   render() {
     if (this.state.hasError) {
+      const RetryFallback = () => {
+        const { t } = useTranslation();
+        return (
+          <View className="items-center py-6 px-4">
+            <Icon name="alert-circle" size={32} color="#EF4444" />
+            <Text className="text-text-secondary text-sm mt-2 text-center">
+              {t('mobileComponents.errors.section')}
+            </Text>
+            <Button variant="ghost" onPress={this.handleRetry} className="mt-2 px-4">
+              {t('mobileComponents.errors.retry')}
+            </Button>
+          </View>
+        );
+      };
       return (
-        <View className="items-center py-6 px-4">
-          <Icon name="alert-circle" size={32} color="#EF4444" />
-          <Text className="text-text-secondary text-sm mt-2 text-center">
-            This section failed to load.
-          </Text>
-          <Button variant="ghost" onPress={this.handleRetry} className="mt-2 px-4">
-            Try Again
-          </Button>
-        </View>
+        <RetryFallback />
       );
     }
 

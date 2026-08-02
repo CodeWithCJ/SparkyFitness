@@ -829,6 +829,25 @@
       "popoverResetFailed": "Could not reset popover."
     }
   },
+  "mobileComponents": {
+    "healthSource": { "source": "Source", "appleHealth": "Apple Health", "healthConnect": "Health Connect" },
+    "macros": { "title": "Macros" },
+    "osDenied": { "title": "Grant permissions", "body": "SparkyFitness alerts (rest timers, fasting goals, medication reminders) won't fire." },
+    "popover": { "dismiss": "Dismiss", "gotIt": "Got it" },
+    "privacy": { "title": "Privacy Policy", "noData": "This app does not collect, store, or sell your personal data.", "healthData": "All HealthKit data stays on your device and is transmitted only to your own server.", "learnMore": "Learn more in our Privacy Policy." },
+    "verifiedFood": "Verified food",
+    "nutrition": { "left": "left", "calories": "calories", "remaining": "{{value}}g left", "over": "{{value}}g over", "met": "met" },
+    "rest": { "off": "Off", "label": "Rest {{value}}", "title": "Rest period", "custom": "Custom" },
+    "errors": { "title": "Something went wrong", "message": "An unexpected error occurred. Your server may need to be updated.", "section": "This section failed to load.", "retry": "Try Again", "back": "Go Back" },
+    "charts": { "pressBar": "Press a bar for details", "pressLine": "Press the line for details", "consumedOn": "{{value}}{{unit}} consumed · {{date}}", "stepsOn": "{{value}} steps · {{date}}", "weightOn": "{{value}} {{unit}} · {{date}}", "bbtOn": "{{date}}: {{value}}°C", "loading": "Loading chart...", "nutrientError": "Failed to load trend data", "noIntake": "No logged intake for this period", "stepsError": "Failed to load step data", "noSteps": "No step data for this period", "weightError": "Failed to load weight data", "noBbt": "Log daily temperature logs to view your BBT chart." },
+    "calendar": { "predictedPeriod": "Predicted Period", "fertileWindow": "Fertile Window", "estimatedOvulation": "Est. Ovulation" },
+    "cycleHistory": { "title": "Cycle History", "addManual": "Add Manual", "logManual": "Log Manual Cycle", "startDate": "Start Date", "selectDate": "Select Date", "periodDays": "Period Days", "cycleDays": "Cycle Days", "exclude": "Exclude from predictions", "saveManual": "Save Manual Cycle", "empty": "No logged cycles yet.", "started": "Started {{date}}", "dayCycleLabel": "{{value}} day cycle", "currentCycle": "Current cycle", "dayPeriodLabel": "{{value}} day period" },
+    "symptoms": { "title": "Symptoms", "showLess": "Show less", "showAll": "+ Show all" },
+    "correlation": { "byPhase": "{{metric}} by cycle phase", "higher": "higher", "lower": "lower", "summary": "{{metric}} tends to be {{direction}} in your {{phase}} phase ({{delta}}{{unit}} vs your average).", "emptyTitle": "Correlations unlock with more data", "emptyBody": "Keep logging weight, mood, sleep and energy across a few cycles to see how they move with your phases.", "metricWeight": "Weight", "metricMood": "Mood", "metricSleep": "Sleep", "metricEnergy": "Energy", "phaseMenstrual": "Menstrual", "phaseFollicular": "Follicular", "phaseFertile": "Fertile", "phaseOvulation": "Ovulation", "phaseLuteal": "Luteal", "flagLongCycles": "Your cycles average over 35 days. This pattern is sometimes associated with PCOS — worth discussing with a clinician.", "flagIrregularCycles": "Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.", "flagShortCycles": "Your cycles are shorter than typical. If this is new, it may be worth a clinician’s input." },
+    "pregnancy": { "firstTrimester": "First trimester", "secondTrimester": "Second trimester", "thirdTrimester": "Third trimester", "wellnessProgress": "Wellness Progress", "week": "Week {{week}}", "weekDay": "{{week}}w {{day}}d", "due": "Due", "daysToGoLabel": "{{value}} days to go", "anyDay": "Any day now" },
+    "checklist": { "title": "This Week's To-Do", "empty": "Nothing on your checklist for this week.", "item": "Checklist item" },
+    "vitals": { "title": "Vitals", "todayWeight": "Today's weight", "prenatalVitamin": "Prenatal vitamin", "supplement": "Supplement", "linked": "Linked", "notSet": "Not set" }
+  },
   "appAlerts": {
     "noServer": {
       "title": "No Server Connected",

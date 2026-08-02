@@ -8,6 +8,8 @@ import ChartTouchOverlay, {
   EMPTY_CHART_TOUCH_LAYOUT,
   type ChartTouchLayout,
 } from '../ChartTouchOverlay';
+import { useTranslation } from 'react-i18next';
+import { getAppLocale, formatLocalizedNumber } from '../../localization';
 
 type BBTDataPoint = {
   date: string;
@@ -34,21 +36,21 @@ const formatTooltipDate = (day: string): string => {
   if (parts.length < 3) return day;
   const [year, month, d] = parts.map(Number);
   const date = new Date(year, (month || 1) - 1, d || 1);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(getAppLocale(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
 };
 
-const DEFAULT_TOOLTIP = 'Press the line for details';
-
 const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
+  const { t } = useTranslation();
+  const defaultTooltip = t('mobileComponents.charts.pressLine');
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [tooltipText, setTooltipText] = useState(defaultTooltip);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -59,7 +61,7 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   const [tooltipResetKey, setTooltipResetKey] = useState({ data });
   if (tooltipResetKey.data !== data) {
     setTooltipResetKey({ data });
-    setTooltipText(DEFAULT_TOOLTIP);
+       setTooltipText(defaultTooltip);
   }
 
   const chartData = useMemo(() => {
@@ -74,14 +76,14 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   const onTouch = (index: number) => {
     const point = data[index];
     if (point) {
-      setTooltipText(`${formatTooltipDate(point.date)}: ${point.bbt.toFixed(2)}°C`);
+       setTooltipText(t('mobileComponents.charts.bbtOn', { date: formatTooltipDate(point.date), value: formatLocalizedNumber(point.bbt, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }));
     } else {
-      setTooltipText(DEFAULT_TOOLTIP);
+      setTooltipText(defaultTooltip);
     }
   };
 
   const onTouchEnd = () => {
-    setTooltipText(DEFAULT_TOOLTIP);
+    setTooltipText(defaultTooltip);
   };
 
 
@@ -89,7 +91,7 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   if (isLoading) {
     return (
       <View className="h-44 justify-center items-center">
-        <Text className="text-text-secondary text-sm">Loading chart...</Text>
+        <Text className="text-text-secondary text-sm">{t('mobileComponents.charts.loading')}</Text>
       </View>
     );
   }
@@ -98,7 +100,7 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
     return (
       <View className="h-44 justify-center items-center bg-raised rounded-2xl border border-dashed border-border-subtle p-4">
         <Text className="text-text-secondary text-xs text-center italic">
-          Log daily temperature logs to view your BBT chart.
+          {t('mobileComponents.charts.noBbt')}
         </Text>
       </View>
     );

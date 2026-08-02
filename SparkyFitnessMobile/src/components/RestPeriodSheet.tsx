@@ -22,6 +22,7 @@ import CollapsibleSection from './CollapsibleSection';
 import StepperInput from './StepperInput';
 import { formatRestLabel } from './RestPeriodChip';
 import { getDefaultRestSec } from '../utils/workoutSession';
+import { useTranslation } from 'react-i18next';
 
 // Render the sheet inside an iOS UIWindow so it sits above any native modal
 // presentation. No-op on Android.
@@ -60,6 +61,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
       '--color-text-muted',
     ]) as [string, string, string];
     const isDarkMode = theme === 'dark' || theme === 'amoled';
+    const { t } = useTranslation();
 
     const [currentValue, setCurrentValue] = useState<number>(90);
     const [customOpen, setCustomOpen] = useState(false);
@@ -144,7 +146,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
       >
         <BottomSheetView className="px-6 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-4">
-            Rest period
+            {t('mobileComponents.rest.title')}
           </Text>
 
           <View className="flex-row flex-wrap justify-center" style={{ gap: 8 }}>
@@ -165,7 +167,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
                     className="text-sm font-medium"
                     style={{ color: selected ? '#fff' : textMuted }}
                   >
-                    {formatRestLabel(preset)}
+                    {formatRestLabel(preset, t('mobileComponents.rest.off'))}
                   </Text>
                 </TouchableOpacity>
               );
@@ -173,7 +175,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
           </View>
 
           <CollapsibleSection
-            title="Custom"
+            title={t('mobileComponents.rest.custom')}
             expanded={customOpen}
             onToggle={() => setCustomOpen((v) => !v)}
             itemCount={1}
@@ -190,11 +192,11 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
                   InputComponent={BottomSheetTextInput}
                 />
                 <Text className="text-text-secondary text-base ml-3">
-                  {formatRestLabel(Number.isNaN(parsedCustom) ? currentValue : parsedCustom)}
+                  {formatRestLabel(Number.isNaN(parsedCustom) ? currentValue : parsedCustom, t('mobileComponents.rest.off'))}
                 </Text>
               </View>
               <Button variant="primary" onPress={handleCustomSave}>
-                Save
+                {t('common.save')}
               </Button>
             </View>
           </CollapsibleSection>
