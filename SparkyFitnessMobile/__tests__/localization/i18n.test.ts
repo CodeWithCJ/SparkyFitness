@@ -196,6 +196,9 @@ describe('real i18next pluralization', () => {
       expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 2 })).toBe(
         '1 / 2 exercises',
       );
+      expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 5 })).toBe(
+        '1 / 5 exercises',
+      );
 
       await i18n.changeLanguage('pl');
       expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 1 })).toBe(
@@ -206,6 +209,15 @@ describe('real i18next pluralization', () => {
       );
       expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 5 })).toBe(
         '1 / 5 ćwiczeń',
+      );
+      expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 12 })).toBe(
+        '1 / 12 ćwiczeń',
+      );
+      expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 22 })).toBe(
+        '1 / 22 ćwiczenia',
+      );
+      expect(i18n.t('activeWorkout.header.exerciseProgress', { completed: 1, count: 25 })).toBe(
+        '1 / 25 ćwiczeń',
       );
     });
   });

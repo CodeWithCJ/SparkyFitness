@@ -18,16 +18,6 @@ export interface ExerciseProgress {
   completedSets: number;
 }
 
-function interpolateTranslation(
-  template: string,
-  values: Record<string, string | number>,
-): string {
-  return Object.entries(values).reduce(
-    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
-    template,
-  );
-}
-
 export function buildExerciseProgress(
   session: PresetSessionResponse,
   completedSetIds: CompletedSetMap,
@@ -223,10 +213,7 @@ function ActiveWorkoutHeader({
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            {interpolateTranslation(
-              t('activeWorkout.header.elapsedTime', { time: formatElapsed(startedAt, now) }),
-              { time: formatElapsed(startedAt, now) },
-            )}
+            {t('activeWorkout.header.elapsedTime', { time: formatElapsed(startedAt, now) })}
           </Text>
         </View>
 
@@ -273,13 +260,10 @@ function ActiveWorkoutHeader({
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            {interpolateTranslation(
-              t('activeWorkout.header.exerciseProgress', {
-                completed: doneCount,
-                count: progress.length,
-              }),
-              { completed: doneCount, count: progress.length },
-            )}
+            {t('activeWorkout.header.exerciseProgress', {
+              completed: doneCount,
+              count: progress.length,
+            })}
           </Text>
         </View>
       </KeyboardCollapsible>

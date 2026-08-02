@@ -39,9 +39,8 @@
       "paused": "Paused",
       "workoutComplete": "Workout complete",
       "workoutActive": "Workout active",
-      "next": "Next",
-      "nextUp": "Next Up",
-      "setProgress": "Set {{setNumber}}/{{setCount}}"
+      "nextSet": "Next: {{exerciseName}} — set {{setNumber}}/{{setCount}}",
+      "nextUpSet": "Next up: {{exerciseName}} — set {{setNumber}}/{{setCount}}"
     },
     "header": {
       "addExercise": "Add exercise",
@@ -50,8 +49,6 @@
       "discardWorkout": "Discard workout",
       "elapsedTime": "{{time}} elapsed",
       "endWorkout": "End workout",
-      "exerciseCount_one": "{{count}} exercise",
-      "exerciseCount_other": "{{count}} exercises",
       "exerciseProgress_one": "{{completed}} / {{count}} exercise",
       "exerciseProgress_other": "{{completed}} / {{count}} exercises",
       "renameWorkout": "Rename workout",
@@ -88,7 +85,7 @@
       "skip": "Skip rest",
       "pause": "Pause rest",
       "resume": "Resume rest",
-      "target": "Target"
+      "targetValue": "Target: {{value}}"
     },
     "setDetail": {
       "addNote": "Add a note for this set…",

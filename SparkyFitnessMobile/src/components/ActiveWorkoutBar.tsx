@@ -61,16 +61,6 @@ const SLIDE_ANIMATION_DURATION_MS = 220;
  */
 const EMBEDDED_FAB_CLEARANCE = 6;
 
-function interpolateTranslation(
-  template: string,
-  values: Record<string, string | number>,
-): string {
-  return Object.entries(values).reduce(
-    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
-    template,
-  );
-}
-
 type StackTransitionSnapshot = {
   phase: 'idle' | 'start' | 'end';
   closing: boolean;
@@ -478,17 +468,10 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     activeSetDescription == null
       ? null
       : {
-          exerciseName: activeSetDescription.exerciseName ?? 'Exercise',
-          setNumber: interpolateTranslation(
-            t('activeWorkout.bar.setProgress', {
-              setNumber: activeSetDescription.setNumber,
-              setCount: activeSetDescription.setCount,
-            }),
-            {
-              setNumber: activeSetDescription.setNumber,
-              setCount: activeSetDescription.setCount,
-            },
-          ),
+          exerciseName:
+            activeSetDescription.exerciseName ?? t('exerciseSummary.title'),
+          setNumber: activeSetDescription.setNumber,
+          setCount: activeSetDescription.setCount,
           loadText: formatSetLoad(activeSetDescription, weightUnit) ?? '',
         };
 
@@ -616,10 +599,15 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   const primaryLine = (() => {
     if (isWorkoutComplete) return t('activeWorkout.bar.workoutComplete');
     if (!activeSetLabel) return t('activeWorkout.bar.workoutActive');
-    const prefix = isResting
-      ? t('activeWorkout.bar.next')
-      : t('activeWorkout.bar.nextUp');
-    return `${prefix}: ${activeSetLabel.exerciseName} - ${activeSetLabel.setNumber}`;
+    const values = {
+      exerciseName: activeSetLabel.exerciseName,
+      setNumber: activeSetLabel.setNumber,
+      setCount: activeSetLabel.setCount,
+    };
+    if (isResting) {
+      return t('activeWorkout.bar.nextSet', values);
+    }
+    return t('activeWorkout.bar.nextUpSet', values);
   })();
   const secondaryLine = isWorkoutComplete
     ? ''

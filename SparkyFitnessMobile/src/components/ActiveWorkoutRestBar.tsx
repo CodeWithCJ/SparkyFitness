@@ -11,16 +11,6 @@ import { formatRestCountdown } from '../utils/workoutSession';
 
 const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
-function interpolateTranslation(
-  template: string,
-  values: Record<string, string | number>,
-): string {
-  return Object.entries(values).reduce(
-    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
-    template,
-  );
-}
-
 /**
  * Scroll clearance the workout log needs above the floating glass variant so
  * the last card and the End Workout button can scroll out from under the pill
@@ -115,7 +105,7 @@ function ActiveWorkoutRestBar({
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-             {t('activeWorkout.rest.target')} {nextSetText}
+             {t('activeWorkout.rest.targetValue', { value: nextSetText })}
           </Text>
         )}
       </View>
@@ -171,14 +161,14 @@ function ActiveWorkoutRestBar({
           <Pressable
             onPress={() => onAdjust(-15)}
             accessibilityRole="button"
-             accessibilityLabel={interpolateTranslation(t('activeWorkout.rest.shortenBySeconds', { seconds: 15 }), { seconds: 15 })}
+             accessibilityLabel={t('activeWorkout.rest.shortenBySeconds', { seconds: 15 })}
             className="rounded-full bg-raised px-3 py-2"
           >
             <Text
               className="text-sm font-semibold text-text-primary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-               {interpolateTranslation(t('activeWorkout.rest.subtractSecondsShort', { seconds: 15 }), { seconds: 15 })}
+                {t('activeWorkout.rest.subtractSecondsShort', { seconds: 15 })}
             </Text>
           </Pressable>
         </View>
@@ -197,14 +187,14 @@ function ActiveWorkoutRestBar({
           <Pressable
             onPress={() => onAdjust(15)}
             accessibilityRole="button"
-             accessibilityLabel={interpolateTranslation(t('activeWorkout.rest.extendBySeconds', { seconds: 15 }), { seconds: 15 })}
+             accessibilityLabel={t('activeWorkout.rest.extendBySeconds', { seconds: 15 })}
             className="rounded-full bg-raised px-3 py-2"
           >
             <Text
               className="text-sm font-semibold text-text-primary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-               {interpolateTranslation(t('activeWorkout.rest.addSecondsShort', { seconds: 15 }), { seconds: 15 })}
+                {t('activeWorkout.rest.addSecondsShort', { seconds: 15 })}
             </Text>
           </Pressable>
           <Pressable
@@ -234,7 +224,7 @@ function ActiveWorkoutRestBar({
               className="text-xs text-text-secondary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-               {t('activeWorkout.rest.target')} {nextSetText}
+                {t('activeWorkout.rest.targetValue', { value: nextSetText })}
             </Text>
           )}
         </View>

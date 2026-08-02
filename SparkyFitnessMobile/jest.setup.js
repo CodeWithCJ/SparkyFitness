@@ -79,9 +79,14 @@ Object.defineProperty(Date.prototype, 'toLocaleTimeString', {
 jest.mock('react-i18next', () => {
   const actual = jest.requireActual('react-i18next');
   const en = require('./src/localization/locales/en/translation.json');
+  const pl = require('./src/localization/locales/pl/translation.json');
 
   const lookup = (obj, path) =>
     path.split('.').reduce((acc, part) => (acc == null ? acc : acc[part]), obj);
+
+  globalThis.__setTestLocale = (locale) => {
+    globalThis.__activeWorkoutTestLocale = locale;
+  };
 
   return {
     ...actual,
@@ -89,8 +94,11 @@ jest.mock('react-i18next', () => {
       t: (key, options) => {
         if (typeof key !== 'string') return key;
         const count = options && typeof options.count === 'number' ? options.count : null;
-        const pluralKey = count === null ? key : `${key}_${count === 1 ? 'one' : 'other'}`;
-        const value = lookup(en, pluralKey) ?? lookup(en, key);
+        const locale = globalThis.__activeWorkoutTestLocale === 'pl' ? 'pl-PL' : 'en-US';
+        const pluralForm = count === null ? null : new Intl.PluralRules(locale).select(count);
+        const pluralKey = pluralForm === null ? key : `${key}_${pluralForm}`;
+        const resources = globalThis.__activeWorkoutTestLocale === 'pl' ? pl : en;
+        const value = lookup(resources, pluralKey) ?? lookup(resources, key);
         if (typeof value !== 'string') return key;
         return value.replace(/{{(\w+)}}/g, (_, name) => {
           const replacement = options?.[name];
@@ -101,6 +109,11 @@ jest.mock('react-i18next', () => {
       ready: true,
     }),
   };
+});
+
+globalThis.__activeWorkoutTestLocale = 'en';
+afterEach(() => {
+  globalThis.__activeWorkoutTestLocale = 'en';
 });
 
 // Mock radon-ide (ESM module that Jest can't transform)

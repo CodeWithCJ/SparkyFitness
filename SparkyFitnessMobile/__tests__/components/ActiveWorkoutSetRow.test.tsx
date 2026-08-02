@@ -15,6 +15,12 @@ import ActiveWorkoutSetRow, {
 import type { AssumedSetValues, WorkoutCardSet } from '../../src/utils/workoutSession';
 import type { ActiveWorkoutMetricColumn } from '../../src/stores/appPreferencesStore';
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & {
+    __setTestLocale: (value: 'en' | 'pl') => void;
+  }).__setTestLocale(locale);
+}
+
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
@@ -150,6 +156,23 @@ describe('parseRpeInput', () => {
 });
 
 describe('ActiveWorkoutSetRow', () => {
+  it.each([
+    ['en', 'Weight', 'Reps', 'Duration', 'Log set 1', 'Change type for set 1', 'Delete set 1'],
+    ['pl', 'Ciężar', 'Powtórzenia', 'Czas trwania', 'Zapisz serię 1', 'Zmień typ serii 1', 'Usuń serię 1'],
+  ] as const)('renders the %s locale contract and keeps callbacks', (locale, weight, reps, duration, log, changeType, deleteLabel) => {
+    setTestLocale(locale);
+    const { getByLabelText } = renderRow({ state: 'current' });
+    const durationRow = renderRow({ state: 'current', modality: 'duration' });
+    expect(getByLabelText(weight)).toBeTruthy();
+    expect(getByLabelText(reps)).toBeTruthy();
+    expect(durationRow.getByLabelText(duration)).toBeTruthy();
+    expect(getByLabelText(log)).toBeTruthy();
+    const editRow = renderRow({ mode: 'edit', state: 'upcoming', enableSetType: true });
+    fireEvent.press(editRow.getByLabelText(changeType));
+    expect(editRow.callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.anything());
+    expect(getByLabelText(deleteLabel)).toBeTruthy();
+  });
+
   beforeEach(() => {
     (useCSSVariable as jest.Mock).mockImplementation((vars: string | string[]) =>
       Array.isArray(vars)

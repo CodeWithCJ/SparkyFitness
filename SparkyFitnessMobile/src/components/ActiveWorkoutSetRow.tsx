@@ -48,16 +48,6 @@ export const RPE_TONE_VARS: Record<RpeTone, string> = {
   max: '--color-icon-danger',
 };
 
-function interpolateTranslation(
-  template: string,
-  values: Record<string, string | number>,
-): string {
-  return Object.entries(values).reduce(
-    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
-    template,
-  );
-}
-
 function formatDisplayWeight(weightKg: number | null, unit: 'kg' | 'lbs'): string {
   if (weightKg == null) return '';
   return String(parseFloat(weightFromKg(weightKg, unit).toFixed(1)));
@@ -638,7 +628,7 @@ function ActiveWorkoutSetRow({
           onPress={openSetTypeMenu}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-           accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.changeType', { setNumber: set.set_number }), { setNumber: set.set_number })}
+            accessibilityLabel={t('activeWorkout.setRow.changeType', { setNumber: set.set_number })}
         >
           {setIndicator}
         </Pressable>
@@ -666,7 +656,7 @@ function ActiveWorkoutSetRow({
           onPress={() => onUncomplete?.(setId)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-           accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.incomplete', { setNumber: set.set_number }), { setNumber: set.set_number })}
+            accessibilityLabel={t('activeWorkout.setRow.incomplete', { setNumber: set.set_number })}
         >
           <CompletionCheck size={28} />
         </Pressable>
@@ -678,7 +668,7 @@ function ActiveWorkoutSetRow({
           onPress={handleLog}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-           accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.log', { setNumber: set.set_number }), { setNumber: set.set_number })}
+            accessibilityLabel={t('activeWorkout.setRow.log', { setNumber: set.set_number })}
         >
           <LogCircle color={accentPrimary} />
         </Pressable>
@@ -694,7 +684,7 @@ function ActiveWorkoutSetRow({
         onPress={handleLog}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
-         accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.log', { setNumber: set.set_number }), { setNumber: set.set_number })}
+          accessibilityLabel={t('activeWorkout.setRow.log', { setNumber: set.set_number })}
       >
         <View
           className="h-7 w-7 rounded-full border-2 items-center justify-center"
@@ -716,8 +706,8 @@ function ActiveWorkoutSetRow({
       accessibilityRole="button"
        accessibilityLabel={
          completedBadge
-           ? interpolateTranslation(t('activeWorkout.setRow.incomplete', { setNumber: set.set_number }), { setNumber: set.set_number })
-           : interpolateTranslation(t('activeWorkout.setRow.complete', { setNumber: set.set_number }), { setNumber: set.set_number })
+            ? t('activeWorkout.setRow.incomplete', { setNumber: set.set_number })
+            : t('activeWorkout.setRow.complete', { setNumber: set.set_number })
        }
     >
       {completedBadge ? (
@@ -952,7 +942,7 @@ function ActiveWorkoutSetRow({
       renderRightActions={() => (
         <SetSwipeDeleteAction
           onPress={() => onDelete?.(setId)}
-           accessibilityLabel={interpolateTranslation(t('activeWorkout.setRow.delete', { setNumber: set.set_number }), { setNumber: set.set_number })}
+            accessibilityLabel={t('activeWorkout.setRow.delete', { setNumber: set.set_number })}
         />
       )}
       overshootRight={false}

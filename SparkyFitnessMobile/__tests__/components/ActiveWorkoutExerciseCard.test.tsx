@@ -119,6 +119,12 @@ const mockCapturePreviousSessionSets = jest.requireMock(
   '../../src/stores/activeWorkoutStore',
 ).__capturePreviousSessionSets as jest.Mock;
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & {
+    __setTestLocale: (value: 'en' | 'pl') => void;
+  }).__setTestLocale(locale);
+}
+
 /** Stats fixture with a historical best of 100kg × 5. */
 const STATS_WITH_BEST = {
   data: {
@@ -208,6 +214,30 @@ describe('ActiveWorkoutExerciseCard', () => {
     mockUseExerciseStats.mockClear();
     mockUseExerciseStats.mockReturnValue({ data: null });
     mockCapturePrBaseline.mockClear();
+  });
+
+  it.each([
+    ['en', 'Exercise', 'Add set', 'Add set to Exercise', 'Collapse Exercise'],
+    ['pl', 'Ćwiczenie', 'Dodaj serię', 'Dodaj serię do Ćwiczenie', 'Zwiń Ćwiczenie'],
+  ] as const)('renders the %s locale contract and fallback', (locale, fallback, addSet, addSetTo, expand) => {
+    setTestLocale(locale);
+    const exercise = makeExercise({
+      exercise_snapshot: {
+        ...makeExercise().exercise_snapshot!,
+        name: null as never,
+      },
+    });
+    const { getByText, getAllByLabelText } = renderCard(true, { exercise });
+    expect(getByText(fallback)).toBeTruthy();
+    expect(getByText(addSet)).toBeTruthy();
+    expect(getAllByLabelText(addSetTo)).toHaveLength(1);
+    expect(getAllByLabelText(expand).length).toBeGreaterThan(0);
+  });
+
+  it('keeps data exercise names literal', () => {
+    const { getByText, getAllByLabelText } = renderCard(true);
+    expect(getByText('Bench Press')).toBeTruthy();
+    expect(getAllByLabelText('Collapse Bench Press').length).toBeGreaterThan(0);
   });
 
   describe('column header per modality', () => {

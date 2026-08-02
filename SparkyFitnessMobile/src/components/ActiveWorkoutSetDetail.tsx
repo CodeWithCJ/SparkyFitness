@@ -4,16 +4,6 @@ import WorkoutNotesField from './WorkoutNotesField';
 import type { WorkoutCardSet } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 
-function interpolateTranslation(
-  template: string,
-  values: Record<string, string | number>,
-): string {
-  return Object.entries(values).reduce(
-    (text, [key, value]) => text.replaceAll(`{{${key}}}`, String(value)),
-    template,
-  );
-}
-
 interface ActiveWorkoutSetDetailProps {
   set: WorkoutCardSet;
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
@@ -43,7 +33,7 @@ function ActiveWorkoutSetDetail({ set, onCommitField }: ActiveWorkoutSetDetailPr
         }}
         label={t('activeWorkout.setDetail.notes')}
         placeholder={t('activeWorkout.setDetail.addNote')}
-        accessibilityLabel={interpolateTranslation(t('activeWorkout.setDetail.notesForSet', { setNumber: set.set_number }), { setNumber: set.set_number })}
+        accessibilityLabel={t('activeWorkout.setDetail.notesForSet', { setNumber: set.set_number })}
       />
     </View>
   );

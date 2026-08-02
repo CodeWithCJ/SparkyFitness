@@ -6,6 +6,12 @@ import ActiveWorkoutHeader, {
 } from '../../src/components/ActiveWorkoutHeader';
 import { formatElapsed } from '../../src/utils/workoutSession';
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & {
+    __setTestLocale: (value: 'en' | 'pl') => void;
+  }).__setTestLocale(locale);
+}
+
 function makeSession(): PresetSessionResponse {
   return {
     type: 'preset',
@@ -107,6 +113,18 @@ describe('ActiveWorkoutHeader', () => {
     // (the gorhom mock always renders sheet children).
     expect(getAllByText('Push Day').length).toBeGreaterThanOrEqual(1);
     expect(getByText('01:02 elapsed')).toBeTruthy();
+  });
+
+  it.each([
+    ['en', 'Back', '01:02 elapsed', 'Workout menu', '1 / 3 exercises'],
+    ['pl', 'Cofnij', 'Czas: 01:02', 'Menu treningu', '1 / 3 ćwiczenia'],
+  ] as const)('renders the %s locale contract', (locale, back, elapsed, menu, progress) => {
+    setTestLocale(locale);
+    const { getByLabelText, getByText } = renderHeaderComponent({ '101': true, '201': true, '301': true });
+    expect(getByLabelText(back)).toBeTruthy();
+    expect(getByText(elapsed)).toBeTruthy();
+    expect(getByLabelText(menu)).toBeTruthy();
+    expect(getByText(progress)).toBeTruthy();
   });
 
   it('shows one segment per exercise and the done count', () => {

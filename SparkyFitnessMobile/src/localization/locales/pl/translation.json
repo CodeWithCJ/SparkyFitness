@@ -39,9 +39,8 @@
       "paused": "Wstrzymano",
       "workoutComplete": "Trening ukończony",
       "workoutActive": "Trening aktywny",
-      "next": "Następna",
-      "nextUp": "Następna w kolejce",
-      "setProgress": "Seria {{setNumber}}/{{setCount}}"
+      "nextSet": "Następna seria: {{exerciseName}} — {{setNumber}}/{{setCount}}",
+      "nextUpSet": "Następna w kolejce: {{exerciseName}} — seria {{setNumber}}/{{setCount}}"
     },
     "header": {
       "addExercise": "Dodaj ćwiczenie",
@@ -50,10 +49,6 @@
       "discardWorkout": "Odrzuć trening",
       "elapsedTime": "Czas: {{time}}",
       "endWorkout": "Zakończ trening",
-      "exerciseCount_one": "{{count}} ćwiczenie",
-      "exerciseCount_few": "{{count}} ćwiczenia",
-      "exerciseCount_many": "{{count}} ćwiczeń",
-      "exerciseCount_other": "{{count}} ćwiczeń",
       "exerciseProgress_one": "{{completed}} / {{count}} ćwiczenie",
       "exerciseProgress_few": "{{completed}} / {{count}} ćwiczenia",
       "exerciseProgress_many": "{{completed}} / {{count}} ćwiczeń",
@@ -92,7 +87,7 @@
       "skip": "Pomiń odpoczynek",
       "pause": "Wstrzymaj odpoczynek",
       "resume": "Wznów odpoczynek",
-      "target": "Cel"
+      "targetValue": "Cel: {{value}}"
     },
     "setDetail": {
       "addNote": "Dodaj notatkę do tej serii…",
