@@ -519,84 +519,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/components/EditableSetList.tsx",
-      "value": "Add Set",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/EditableSetList.tsx:Add Set:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/EditableSetList.tsx",
-      "value": "Reps",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/EditableSetList.tsx:Reps:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/EditableSetList.tsx",
-      "value": "Sec",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/EditableSetList.tsx:Sec:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/EditableSetList.tsx",
-      "value": "Set",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/EditableSetList.tsx:Set:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/EditableSetList.tsx",
-      "value": "Weight",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/EditableSetList.tsx:Weight:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/EditableSetRow.tsx",
-      "value": "Cancel",
-      "context": {
-        "context": "Alert.alert:button"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/EditableSetRow.tsx:Cancel:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/EditableSetRow.tsx",
-      "value": "Delete",
-      "context": {
-        "context": "Alert.alert:button"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/EditableSetRow.tsx:Delete:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/EditableSetRow.tsx",
-      "value": "Set {{dynamic}}",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 0
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/EditableSetRow.tsx:Set {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":0}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/components/EndFastSheet.tsx",
       "value": "End fast",
       "context": {
@@ -664,64 +586,6 @@
         "form": "text"
       },
       "fingerprint": "hardcoded-ui-text:src/components/EndFastSheet.tsx:Time:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ExerciseHistoryList.tsx",
-      "value": "Couldn&apos;t load history.",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ExerciseHistoryList.tsx:Couldn&apos;t load history.:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ExerciseHistoryList.tsx",
-      "value": "No sessions logged yet.",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ExerciseHistoryList.tsx:No sessions logged yet.:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ExerciseProgressCard.tsx",
-      "value": "Calories",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:Calories:{\"attr\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ExerciseProgressCard.tsx",
-      "value": "Exercise",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:Exercise:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ExerciseProgressCard.tsx",
-      "value": "Minutes",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:Minutes:{\"attr\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/ExerciseProgressCard.tsx",
-      "value": "No exercise entries yet",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:No exercise entries yet:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -2335,43 +2199,6 @@
         "form": "text"
       },
       "fingerprint": "hardcoded-ui-text:src/components/ServingAdjustSheet.tsx:Cal:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/SetRowChrome.tsx",
-      "value": "Delete",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/SetRowChrome.tsx:Delete:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/SetRowChrome.tsx",
-      "value": "Done",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/SetRowChrome.tsx:Done:{\"attr\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/SetRowChrome.tsx",
-      "value": "Next Set",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/SetRowChrome.tsx:Next Set:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/SetRowChrome.tsx",
-      "value": "Next",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/SetRowChrome.tsx:Next:{\"prop\":\"label\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -19750,14 +19577,6 @@
     "hardcoded-ui-text:src/components/DevTools.tsx:Trigger Sync:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/DevTools.tsx:What's New banner will re-appear.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/components/DevTools.tsx:What&apos;s New Banner:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/EditableSetList.tsx:Add Set:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/EditableSetList.tsx:Reps:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/EditableSetList.tsx:Sec:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/EditableSetList.tsx:Set:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/EditableSetList.tsx:Weight:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/EditableSetRow.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
-    "hardcoded-ui-text:src/components/EditableSetRow.tsx:Delete:{\"context\":\"Alert.alert:button\"}": 1,
-    "hardcoded-ui-text:src/components/EditableSetRow.tsx:Set {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:End fast:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Failed to end fast:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Fast ended:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
@@ -19765,12 +19584,6 @@
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Start time must be before the end time.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Time:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/ExerciseHistoryList.tsx:Couldn&apos;t load history.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/ExerciseHistoryList.tsx:No sessions logged yet.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:Calories:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:Exercise:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:Minutes:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/ExerciseProgressCard.tsx:No exercise entries yet:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/FastingCard.tsx:0h:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/FastingCard.tsx:elapsed:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/FastingCard.tsx:Fasting:{\"element\":\"Text\",\"form\":\"text\"}": 3,
@@ -19917,10 +19730,6 @@
     "hardcoded-ui-text:src/components/ServerConfigModal.tsx:Used when running behind certain reverse proxies:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/ServerConfigModal.tsx:Value:{\"attr\":\"placeholder\"}": 1,
     "hardcoded-ui-text:src/components/ServingAdjustSheet.tsx:Cal:{\"element\":\"Text\",\"form\":\"text\"}": 2,
-    "hardcoded-ui-text:src/components/SetRowChrome.tsx:Delete:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/SetRowChrome.tsx:Done:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/SetRowChrome.tsx:Next Set:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/components/SetRowChrome.tsx:Next:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/components/StepsBarChart.tsx:Failed to load step data:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/StepsBarChart.tsx:Loading...:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/StepsBarChart.tsx:No step data for this period:{\"element\":\"Text\",\"form\":\"text\"}": 1,

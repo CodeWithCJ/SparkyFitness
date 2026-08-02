@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert, Platform } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import EditableSetRow from '../../src/components/EditableSetRow';
 import type { ExerciseModality } from '@workspace/shared';
@@ -19,6 +20,7 @@ interface RenderOverrides {
   activeField?: 'weight' | 'reps' | 'duration' | 'rpe';
   modality?: ExerciseModality;
   nextSetKey?: string | null;
+  setNumber?: number;
 }
 
 function renderRow(overrides?: RenderOverrides) {
@@ -36,7 +38,7 @@ function renderRow(overrides?: RenderOverrides) {
       weight={overrides?.weight ?? ''}
       reps={overrides?.reps ?? ''}
       duration={overrides?.duration ?? ''}
-      setNumber={1}
+       setNumber={overrides?.setNumber ?? 1}
       isActive={overrides?.isActive ?? false}
       activeField={overrides?.activeField}
       modality={overrides?.modality}
@@ -48,7 +50,13 @@ function renderRow(overrides?: RenderOverrides) {
   return { ...utils, callbacks };
 }
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & { __setTestLocale: (value: 'en' | 'pl') => void }).__setTestLocale(locale);
+}
+
 describe('EditableSetRow', () => {
+  beforeEach(() => setTestLocale('en'));
+
   describe('weight_reps (default)', () => {
     it('renders weight and reps inputs when active and dispatches field updates', () => {
       const { getByDisplayValue, callbacks } = renderRow({
@@ -132,5 +140,48 @@ describe('EditableSetRow', () => {
     });
     fireEvent.press(getByText('45'));
     expect(callbacks.onActivateSet).toHaveBeenCalledWith('ex-1:set-1', 'duration');
+  });
+
+  it.each([
+    ['en', 'Set 3', 'Delete', 'Cancel'],
+    ['pl', 'Seria 3', 'Usuń', 'Anuluj'],
+  ] as const)('localizes remove alert buttons in %s', (locale, title, deleteLabel, cancelLabel) => {
+    setTestLocale(locale);
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const { getByText } = renderRow({ setNumber: 3, weight: '100', reps: '5' });
+    fireEvent(getByText('100 kg'), 'longPress');
+    expect(alert).toHaveBeenCalledWith(title, undefined, expect.any(Array));
+    const buttons = alert.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+    expect(buttons.map((button) => button.text)).toEqual([deleteLabel, cancelLabel]);
+    alert.mockRestore();
+  });
+
+  it('confirms deletion and leaves cancellation without invoking the remove callback', () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const { getByText, callbacks } = renderRow({ setNumber: 2, weight: '100', reps: '5' });
+    fireEvent(getByText('100 kg'), 'longPress');
+    const buttons = alert.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+    buttons[1].onPress?.();
+    expect(callbacks.onRemoveSet).not.toHaveBeenCalled();
+    buttons[0].onPress?.();
+    expect(callbacks.onRemoveSet).toHaveBeenCalledWith('ex-1', 'set-1');
+    alert.mockRestore();
+  });
+
+  it.each([
+    ['en', 'Next', 'Next set'],
+    ['pl', 'Dalej', 'Następna seria'],
+  ] as const)('localizes accessory advance labels in %s', (locale, nextLabel, nextSetLabel) => {
+    setTestLocale(locale);
+    const osSpy = jest.replaceProperty(Platform, 'OS', 'ios');
+    try {
+      const next = renderRow({ isActive: true, activeField: 'weight', weight: '100', reps: '5' });
+      expect(next.getByText(nextLabel)).toBeTruthy();
+      next.unmount();
+      const nextSet = renderRow({ isActive: true, activeField: 'reps', weight: '100', reps: '5' });
+      expect(nextSet.getByText(nextSetLabel)).toBeTruthy();
+    } finally {
+      osSpy.restore();
+    }
   });
 });

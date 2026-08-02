@@ -17,6 +17,10 @@ const SETS: WorkoutDraftSet[] = [
   { clientId: 's2', weight: '', reps: '', duration: null },
 ];
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & { __setTestLocale: (value: 'en' | 'pl') => void }).__setTestLocale(locale);
+}
+
 function renderList(props?: {
   modality?: ExerciseModality;
   sets?: WorkoutDraftSet[];
@@ -43,6 +47,8 @@ function renderList(props?: {
 }
 
 describe('EditableSetList', () => {
+  beforeEach(() => setTestLocale('en'));
+
   it('renders Set/Weight/Reps headers and a row per set by default', () => {
     const { getByText, getAllByText } = renderList();
     expect(getByText('Set')).toBeTruthy();
@@ -73,7 +79,18 @@ describe('EditableSetList', () => {
 
   it('adds a set through the Add Set action', () => {
     const { getByText, callbacks } = renderList();
-    fireEvent.press(getByText('Add Set'));
+    fireEvent.press(getByText('Add set'));
+    expect(callbacks.onAddSet).toHaveBeenCalledWith('ex-1');
+  });
+
+  it('localizes headers and add-set accessibility in Polish without changing the exercise id', () => {
+    setTestLocale('pl');
+    const { getByText, getByLabelText, callbacks } = renderList();
+    expect(getByText('Seria')).toBeTruthy();
+    expect(getByText('Ciężar')).toBeTruthy();
+    expect(getByText('Powtórzenia')).toBeTruthy();
+    const addButton = getByLabelText('Dodaj serię');
+    fireEvent.press(addButton);
     expect(callbacks.onAddSet).toHaveBeenCalledWith('ex-1');
   });
 

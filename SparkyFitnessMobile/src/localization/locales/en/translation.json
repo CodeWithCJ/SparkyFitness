@@ -116,6 +116,36 @@
       "openWellnessHub": "Open wellness tracking hub"
     }
   },
+  "editableSets": {
+    "set": "Set",
+    "seconds": "Sec",
+    "weight": "Weight",
+    "reps": "Reps",
+    "addSet": "Add set",
+    "setTitle": "Set {{setNumber}}",
+    "next": "Next",
+    "nextSet": "Next set"
+  },
+  "exerciseHistory": {
+    "unknownDate": "Unknown date",
+    "noSetData": "No set data",
+    "loadError": "Couldn't load history.",
+    "empty": "No sessions logged yet.",
+    "loadMore": "Load more",
+    "loading": "Loading…",
+    "durationSummary": "{{minutes}} min",
+    "caloriesSummary": "{{calories}} cal"
+  },
+  "exerciseProgress": {
+    "exercise": "Exercise",
+    "minutes": "Minutes",
+    "calories": "Calories",
+    "empty": "No exercise entries yet",
+    "minutesUnit": "min",
+    "caloriesUnit": "Cal",
+    "valueWithGoal": "{{current}} / {{goal}} {{unit}}",
+    "valueWithoutGoal": "{{current}} {{unit}}"
+  },
   "anchoredMenu": {
     "dismiss": "Dismiss menu"
   },

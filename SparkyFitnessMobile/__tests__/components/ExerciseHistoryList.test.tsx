@@ -12,6 +12,9 @@ import type {
 jest.mock('../../src/hooks/useExerciseHistory', () => ({
   useExerciseHistory: jest.fn(),
 }));
+jest.mock('../../src/localization', () => ({
+  getAppLocale: () => (globalThis.__activeWorkoutTestLocale === 'pl' ? 'pl-PL' : 'en-US'),
+}));
 
 const mockUseExerciseHistory = useExerciseHistory as jest.MockedFunction<
   typeof useExerciseHistory
@@ -102,8 +105,13 @@ const renderList = (
     <ExerciseHistoryList exerciseId={EXERCISE_ID} weightUnit="kg" {...props} />,
   );
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & { __setTestLocale: (value: 'en' | 'pl') => void }).__setTestLocale(locale);
+}
+
 describe('ExerciseHistoryList', () => {
   beforeEach(() => {
+    setTestLocale('en');
     jest.clearAllMocks();
     nextSetId = 1;
     mockUseExerciseHistory.mockReturnValue({ ...baseHookResult });
@@ -212,6 +220,75 @@ describe('ExerciseHistoryList', () => {
     const screen = renderList();
 
     expect(screen.getByText('30 min · 200 cal')).toBeTruthy();
+  });
+
+  it.each([
+    ['en', 'Tue, Jan 6'],
+    ['pl', 'wt., 6 sty'],
+  ] as const)('formats ordinary history dates in the application locale: %s', (locale, date) => {
+    setTestLocale(locale);
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [makeIndividualSession([makeSet()])],
+    });
+    expect(renderList().getByText(date)).toBeTruthy();
+  });
+
+  it.each([
+    ['en', 'Today', 'Yesterday'],
+    ['pl', 'Dziś', 'Wczoraj'],
+  ] as const)('localizes today and yesterday labels in %s', (locale, todayLabel, yesterdayLabel) => {
+    setTestLocale(locale);
+    const originalToday = new Date();
+    const todayDate = `${originalToday.getFullYear()}-${String(originalToday.getMonth() + 1).padStart(2, '0')}-${String(originalToday.getDate()).padStart(2, '0')}`;
+    const yesterday = new Date(originalToday);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayDate = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [
+        makeIndividualSession([makeSet()], { entry_date: todayDate }),
+        makeIndividualSession([makeSet()], { entry_date: yesterdayDate }),
+      ],
+    });
+    const screen = renderList();
+    expect(screen.getByText(todayLabel)).toBeTruthy();
+    expect(screen.getByText(yesterdayLabel)).toBeTruthy();
+  });
+
+  it('renders the unknown date and all summary combinations', () => {
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [
+        makeIndividualSession([], { entry_date: null, duration_minutes: 30, calories_burned: 0 }),
+        makeIndividualSession([], { entry_date: null, duration_minutes: 0, calories_burned: 200 }),
+        makeIndividualSession([], { entry_date: null, duration_minutes: 30, calories_burned: 200 }),
+        makeIndividualSession([], { entry_date: null, duration_minutes: 0, calories_burned: 0 }),
+      ],
+    });
+    const screen = renderList();
+    expect(screen.getAllByText('Unknown date')).toHaveLength(4);
+    expect(screen.getByText('30 min')).toBeTruthy();
+    expect(screen.getByText('200 cal')).toBeTruthy();
+    expect(screen.getByText('30 min · 200 cal')).toBeTruthy();
+    expect(screen.getByText('No set data')).toBeTruthy();
+  });
+
+  it('localizes history summaries and empty/load controls in Polish', () => {
+    setTestLocale('pl');
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      sessions: [makeIndividualSession([], { duration_minutes: 30, calories_burned: 200 })],
+      hasMore: true,
+      isLoadingMore: true,
+    });
+    const screen = renderList();
+    expect(screen.getByText('30 min · 200 cal')).toBeTruthy();
+    expect(screen.getByText('Ładowanie…')).toBeTruthy();
+    mockUseExerciseHistory.mockReturnValue({ ...baseHookResult, isError: true });
+    expect(renderList().getByText('Nie udało się wczytać historii.')).toBeTruthy();
+    mockUseExerciseHistory.mockReturnValue({ ...baseHookResult });
+    expect(renderList().getByText('Nie zapisano jeszcze żadnych sesji.')).toBeTruthy();
   });
 
   it('shows an empty state when there are no sessions', () => {

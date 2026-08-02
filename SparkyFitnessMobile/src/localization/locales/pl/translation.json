@@ -120,6 +120,36 @@
       "openWellnessHub": "Otwórz centrum monitorowania zdrowia"
     }
   },
+  "editableSets": {
+    "set": "Seria",
+    "seconds": "Sek.",
+    "weight": "Ciężar",
+    "reps": "Powtórzenia",
+    "addSet": "Dodaj serię",
+    "setTitle": "Seria {{setNumber}}",
+    "next": "Dalej",
+    "nextSet": "Następna seria"
+  },
+  "exerciseHistory": {
+    "unknownDate": "Nieznana data",
+    "noSetData": "Brak danych serii",
+    "loadError": "Nie udało się wczytać historii.",
+    "empty": "Nie zapisano jeszcze żadnych sesji.",
+    "loadMore": "Wczytaj więcej",
+    "loading": "Ładowanie…",
+    "durationSummary": "{{minutes}} min",
+    "caloriesSummary": "{{calories}} cal"
+  },
+  "exerciseProgress": {
+    "exercise": "Ćwiczenia",
+    "minutes": "Minuty",
+    "calories": "Kalorie",
+    "empty": "Brak zapisanych ćwiczeń",
+    "minutesUnit": "min",
+    "caloriesUnit": "Cal",
+    "valueWithGoal": "{{current}} / {{goal}} {{unit}}",
+    "valueWithoutGoal": "{{current}} {{unit}}"
+  },
   "anchoredMenu": {
     "dismiss": "Zamknij menu"
   },

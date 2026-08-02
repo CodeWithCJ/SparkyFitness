@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
+import { formatLocalizedNumber } from '../localization';
 
 interface ProgressBarProps {
   label: string;
@@ -12,9 +14,10 @@ interface ProgressBarProps {
   color: string;
   trackColor: string;
   opacity?: number;
+  t: (key: string, options?: Record<string, string>) => string;
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, color, trackColor, opacity = 1 }) => {
+const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, color, trackColor, opacity = 1, t }) => {
   const [barWidth, setBarWidth] = useState(0);
   const barHeight = 8;
   const borderRadius = 4;
@@ -70,7 +73,16 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, c
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-sm font-semibold text-text-primary">{label}</Text>
         <Text className="text-sm text-text-primary">
-          {goal > 0 ? `${Math.round(current)} / ${Math.round(goal)} ${unit}` : `${Math.round(current)} ${unit}`}
+          {goal > 0
+            ? t('exerciseProgress.valueWithGoal', {
+                current: formatLocalizedNumber(Math.round(current)),
+                goal: formatLocalizedNumber(Math.round(goal)),
+                unit,
+              })
+            : t('exerciseProgress.valueWithoutGoal', {
+                current: formatLocalizedNumber(Math.round(current)),
+                unit,
+              })}
         </Text>
       </View>
       {showBar && <View
@@ -120,6 +132,7 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
   exerciseCalories,
   exerciseCaloriesGoal,
 }) => {
+  const { t } = useTranslation();
   const [exerciseColor, trackColor] = useCSSVariable([
     '--color-calories',
     '--color-progress-track',
@@ -129,31 +142,33 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-4">Exercise</Text>
+      <Text className="text-md font-bold text-text-secondary mb-4">{t('exerciseProgress.exercise')}</Text>
       {hasEntries ? (
         <>
           <ProgressBar
-            label="Minutes"
+            label={t('exerciseProgress.minutes')}
             current={exerciseMinutes}
             goal={exerciseMinutesGoal}
-            unit="min"
+            unit={t('exerciseProgress.minutesUnit')}
             color={exerciseColor}
             trackColor={trackColor}
             opacity={0.8}
+            t={t}
           />
           <View className="h-3" />
           <ProgressBar
-            label="Calories"
+            label={t('exerciseProgress.calories')}
             current={exerciseCalories}
             goal={exerciseCaloriesGoal}
-            unit="Cal"
+            unit={t('exerciseProgress.caloriesUnit')}
             color={exerciseColor}
             trackColor={trackColor}
             opacity={0.5}
+            t={t}
           />
         </>
       ) : (
-        <Text className="text-sm text-text-secondary text-center py-2">No exercise entries yet</Text>
+        <Text className="text-sm text-text-secondary text-center py-2">{t('exerciseProgress.empty')}</Text>
       )}
     </View>
   );
