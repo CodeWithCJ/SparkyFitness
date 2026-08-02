@@ -125,6 +125,42 @@
       "title": "Post",
       "history": "Historia"
     },
+    "management": {
+      "started": "Rozpoczęto",
+      "ended": "Zakończono",
+      "time": "Czas",
+      "durationFasted": "Czas postu: {{duration}}",
+      "invalidRange": "Czas rozpoczęcia musi być wcześniejszy niż czas zakończenia.",
+      "deleteTitle": "Usunąć post?",
+      "deleteMessage": "Tej operacji nie można cofnąć."
+    },
+    "end": {
+      "title": "Zakończ post",
+      "action": "Zakończ post",
+      "pending": "Kończenie...",
+      "success": "Post zakończony",
+      "failure": "Nie udało się zakończyć postu"
+    },
+    "edit": {
+      "title": "Edytuj post",
+      "save": "Zapisz zmiany",
+      "saving": "Zapisywanie...",
+      "delete": "Usuń post",
+      "deleting": "Usuwanie...",
+      "updated": "Post zaktualizowany",
+      "updateFailed": "Nie udało się zaktualizować postu",
+      "deleted": "Post usunięty",
+      "deleteFailed": "Nie udało się usunąć postu"
+    },
+    "history": {
+      "title": "Historia postów",
+      "hint": "Dotknij, aby edytować · przesuń w lewo, aby usunąć",
+      "empty": "Brak zakończonych postów.",
+      "loadMore": "Wczytaj więcej",
+      "delete": "Usuń",
+      "today": "Dzisiaj",
+      "yesterday": "Wczoraj"
+    },
     "card": {
       "openDetails": "Otwórz szczegóły postu",
       "viewHistory": "Wyświetl historię postów",

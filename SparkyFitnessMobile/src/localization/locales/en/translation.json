@@ -121,6 +121,42 @@
       "title": "Fasting",
       "history": "History"
     },
+    "management": {
+      "started": "Started",
+      "ended": "Ended",
+      "time": "Time",
+      "durationFasted": "{{duration}} fasted",
+      "invalidRange": "Start time must be before the end time.",
+      "deleteTitle": "Delete fast?",
+      "deleteMessage": "This cannot be undone."
+    },
+    "end": {
+      "title": "End fast",
+      "action": "End Fast",
+      "pending": "Ending...",
+      "success": "Fast ended",
+      "failure": "Failed to end fast"
+    },
+    "edit": {
+      "title": "Edit fast",
+      "save": "Save changes",
+      "saving": "Saving...",
+      "delete": "Delete fast",
+      "deleting": "Deleting...",
+      "updated": "Fast updated",
+      "updateFailed": "Failed to update fast",
+      "deleted": "Fast deleted",
+      "deleteFailed": "Failed to delete fast"
+    },
+    "history": {
+      "title": "Fasting history",
+      "hint": "Tap to edit · swipe left to delete",
+      "empty": "No past fasts yet.",
+      "loadMore": "Load more",
+      "delete": "Delete",
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
     "card": {
       "openDetails": "Open fasting details",
       "viewHistory": "View fasting history",
