@@ -172,7 +172,11 @@ const WorkoutPlaybackSetRow = ({
               inputMode="numeric"
               min={0}
               step={1}
-              aria-label={`Duration set ${setNumber}`}
+              aria-label={t(
+                'workout.durationSet',
+                'Duration set {{setNumber}}',
+                { setNumber }
+              )}
               value={duration ?? ''}
               onClick={(event) => event.stopPropagation()}
               onChange={(event) =>

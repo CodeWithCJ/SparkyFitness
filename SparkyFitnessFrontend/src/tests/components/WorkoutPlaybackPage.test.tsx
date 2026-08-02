@@ -11,7 +11,15 @@ let mockLocationState: { returnTo?: string; draft?: unknown } | null = null;
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, defaultValue?: string) => defaultValue || key,
+    t: (
+      key: string,
+      defaultValue?: string,
+      values?: Record<string, string | number>
+    ) =>
+      (defaultValue || key).replace(
+        '{{setNumber}}',
+        String(values?.['setNumber'] ?? '{{setNumber}}')
+      ),
   }),
 }));
 
@@ -134,7 +142,7 @@ describe('WorkoutPlaybackPage', () => {
               set_number: 1,
               duration: 600,
               reps: null,
-              weight: null,
+              weight: 0,
               rest_time: 60,
             },
           ],
@@ -160,6 +168,7 @@ describe('WorkoutPlaybackPage', () => {
     render(<WorkoutPlaybackPage />);
 
     expect(screen.getByText('Duration (s)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Duration set 1')).toHaveValue(600);
     expect(screen.getByLabelText('Duration set 2')).toHaveValue(null);
     expect(screen.queryByLabelText('Reps set 2')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Weight set 2')).not.toBeInTheDocument();

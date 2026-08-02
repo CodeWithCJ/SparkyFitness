@@ -52,10 +52,7 @@ const WorkoutPlaybackExercisesList = ({
         const isTimedExercise =
           exercise.modality === 'duration' ||
           exercise.modality === 'duration_distance' ||
-          exercise.sets.some(
-            (set) =>
-              set.duration != null && set.reps == null && set.weight == null
-          );
+          exercise.sets.some((set) => set.duration != null && set.reps == null);
         const completedSets = exercise.sets.filter(
           (set) => set.completed
         ).length;
