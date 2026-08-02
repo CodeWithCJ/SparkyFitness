@@ -29,7 +29,7 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
 
   const dueLabel = !discreetMode && (
     <Text className="text-text-secondary text-sm">
-      Due <Text className="text-text-primary font-semibold">{formatDate(dueDate)}</Text>
+      Due <Text className="text-accent-primary font-semibold">{formatDate(dueDate)}</Text>
     </Text>
   );
 
