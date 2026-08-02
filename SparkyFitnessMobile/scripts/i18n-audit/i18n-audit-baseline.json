@@ -589,142 +589,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "0h",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:0h:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "elapsed",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:elapsed:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "Fasting",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:Fasting:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "Fasting",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:Fasting:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "Fasting",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:Fasting:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "History",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:History:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "History",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:History:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "Open fasting details",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:Open fasting details:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "Ready to start",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:Ready to start:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "Start a fast",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:Start a fast:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "Start Fast",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:Start Fast:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "View details",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:View details:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "View fasting history",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:View fasting history:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingCard.tsx",
-      "value": "View fasting history",
-      "context": {
-        "attr": "accessibilityLabel"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingCard.tsx:View fasting history:{\"attr\":\"accessibilityLabel\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/components/FastingEditSheet.tsx",
       "value": "Cancel",
       "context": {
@@ -978,66 +842,6 @@
         "argIndex": 1
       },
       "fingerprint": "hardcoded-ui-text:src/components/FastingHistorySheet.tsx:This cannot be undone.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingProtocolSheet.tsx",
-      "value": "Failed to start fast",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Failed to start fast:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingProtocolSheet.tsx",
-      "value": "Fast started",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Fast started:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingProtocolSheet.tsx",
-      "value": "hour fast",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:hour fast:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingProtocolSheet.tsx",
-      "value": "Please try again.",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text2"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingProtocolSheet.tsx",
-      "value": "Start a fast",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Start a fast:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/components/FastingProtocolSheet.tsx",
-      "value": "Start time",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Start time:{\"element\":\"Text\",\"form\":\"text\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -19584,16 +19388,6 @@
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Start time must be before the end time.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/EndFastSheet.tsx:Time:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:0h:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:elapsed:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:Fasting:{\"element\":\"Text\",\"form\":\"text\"}": 3,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:History:{\"element\":\"Text\",\"form\":\"text\"}": 2,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:Open fasting details:{\"attr\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:Ready to start:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:Start a fast:{\"attr\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:Start Fast:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:View details:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FastingCard.tsx:View fasting history:{\"attr\":\"accessibilityLabel\"}": 2,
     "hardcoded-ui-text:src/components/FastingEditSheet.tsx:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
     "hardcoded-ui-text:src/components/FastingEditSheet.tsx:Delete fast?:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
     "hardcoded-ui-text:src/components/FastingEditSheet.tsx:Delete:{\"context\":\"Alert.alert:button\"}": 1,
@@ -19619,12 +19413,6 @@
     "hardcoded-ui-text:src/components/FastingHistorySheet.tsx:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/components/FastingHistorySheet.tsx:Tap to edit · swipe left to delete:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/FastingHistorySheet.tsx:This cannot be undone.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
-    "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Failed to start fast:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Fast started:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
-    "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:hour fast:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
-    "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Start a fast:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/components/FastingProtocolSheet.tsx:Start time:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/FoodForm.tsx:+ Add equivalent:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/components/FoodForm.tsx:Auto Scale Nutrition:{\"attr\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/components/FoodForm.tsx:Auto Scale Nutrition:{\"element\":\"Text\",\"form\":\"text\"}": 1,

@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import {
   BottomSheetBackdrop,
@@ -29,6 +30,11 @@ import {
   CUSTOM_PRESET_ID,
 } from '../constants/fasting';
 import { addLog } from '../services/LogService';
+import { getAppLocale } from '../localization';
+import {
+  getFastingPresetDescription,
+  getFastingPresetDisplayName,
+} from '../utils/fastingLocalization';
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 const MIN_CUSTOM_HOURS = 1;
@@ -57,6 +63,7 @@ export interface FastingProtocolSheetRef {
 }
 
 const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) => {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useUniwind();
   const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -132,7 +139,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
 
   const startLabel = useMemo(
     () =>
-      startDate.toLocaleString([], {
+      startDate.toLocaleString(getAppLocale(), {
         weekday: 'short',
         hour: 'numeric',
         minute: '2-digit',
@@ -157,14 +164,14 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
       {
         onSuccess: () => {
           bottomSheetRef.current?.dismiss();
-          Toast.show({ type: 'success', text1: 'Fast started' });
+        Toast.show({ type: 'success', text1: t('fasting.toast.started') });
         },
         onError: (error) => {
-          addLog(`Failed to start fast: ${error}`, 'ERROR');
+          addLog(`${t('fasting.toast.failed')}: ${error}`, 'ERROR');
           Toast.show({
             type: 'error',
-            text1: 'Failed to start fast',
-            text2: 'Please try again.',
+            text1: t('fasting.toast.failed'),
+            text2: t('fasting.toast.retry'),
           });
         },
       },
@@ -195,7 +202,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
           container absorb them. */}
       <BottomSheetScrollView contentContainerClassName="bg-surface px-5 pb-safe-or-8">
         <Text className="text-lg font-semibold text-text-primary text-center mb-4">
-          Start a fast
+          {t('fasting.protocol.title')}
         </Text>
 
         {/* Protocol list */}
@@ -211,14 +218,18 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
               }`}
             >
               <View className="flex-row items-center justify-between">
-                <Text className="text-base font-semibold text-text-primary">{preset.name}</Text>
+              <Text className="text-base font-semibold text-text-primary">
+                {getFastingPresetDisplayName(t, preset)}
+              </Text>
                 {preset.id !== CUSTOM_PRESET_ID && (
                   <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
                     {preset.fastingHours}:{preset.eatingHours}
                   </Text>
                 )}
               </View>
-              <Text className="text-sm text-text-secondary mt-0.5">{preset.description}</Text>
+              <Text className="text-sm text-text-secondary mt-0.5">
+                {getFastingPresetDescription(t, preset)}
+              </Text>
 
               {/* Custom duration input */}
               {selected && preset.id === CUSTOM_PRESET_ID && (
@@ -230,8 +241,9 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
                     onIncrement={() => adjustCustom(1)}
                     keyboardType="number-pad"
                     InputComponent={BottomSheetTextInput}
+                    inputProps={{ accessibilityLabel: t('fasting.protocol.durationAccessibility') }}
                   />
-                  <Text className="text-text-secondary text-base ml-3">hour fast</Text>
+                  <Text className="text-text-secondary text-base ml-3">{t('fasting.protocol.hours')}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -244,7 +256,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
           activeOpacity={0.7}
           className="flex-row items-center justify-between py-3 mt-1"
         >
-          <Text className="text-base text-text-primary">Start time</Text>
+          <Text className="text-base text-text-primary">{t('fasting.protocol.startTime')}</Text>
           <View className="flex-row items-center">
             <Text className="text-sm" style={{ color: accentPrimary }}>
               {startLabel}
@@ -262,6 +274,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
           <DateTimePicker
             mode="single"
             date={startDate}
+            locale={getAppLocale()}
             timePicker
             onChange={handleStartChange}
             components={{
@@ -295,7 +308,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
           disabled={isPending || !customValid}
           className="mt-4"
         >
-          {isPending ? 'Starting...' : 'Start Fasting'}
+          {isPending ? t('fasting.protocol.starting') : t('fasting.protocol.startButton')}
         </Button>
       </BottomSheetScrollView>
     </BottomSheetModal>

@@ -1,6 +1,7 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
-import { protocolBadgeLabel } from '../constants/fasting';
+import { getLocalizedProtocolBadge } from '../utils/fastingLocalization';
 
 export interface FastingStatCardProps {
   label: string;
@@ -29,7 +30,8 @@ export const FastingProtocolBadge: React.FC<FastingProtocolBadgeProps> = ({
   variant = 'pill',
   className = '',
 }) => {
-  const badgeText = protocolBadgeLabel(protocol);
+  const { t } = useTranslation();
+  const badgeText = getLocalizedProtocolBadge(t, protocol);
 
   if (variant === 'subtle') {
     return <Text className={`text-sm text-text-secondary ${className}`}>{badgeText}</Text>;

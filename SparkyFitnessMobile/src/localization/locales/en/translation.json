@@ -116,6 +116,68 @@
       "openWellnessHub": "Open wellness tracking hub"
     }
   },
+  "fasting": {
+    "common": {
+      "title": "Fasting",
+      "history": "History"
+    },
+    "card": {
+      "openDetails": "Open fasting details",
+      "viewHistory": "View fasting history",
+      "viewDetails": "View details",
+      "ready": "Ready to start",
+      "startFast": "Start fast",
+      "startAccessibility": "Start a fast",
+      "goalRemaining": "{{remaining}} to your {{hours}} h goal",
+      "goalReached": "Goal reached · {{hours}} h",
+      "elapsed": "{{duration}} elapsed",
+      "progressHours": "{{hours}} h",
+      "progressPercent": "{{percent}}%",
+      "lastFast": "Last fast: {{duration}}",
+      "lastFastToday": "Last fast: {{duration}} · {{date}}",
+      "lastFastYesterday": "Last fast: {{duration}} · {{date}}",
+      "lastFastDate": "Last fast: {{duration}} · {{date}}"
+    },
+    "protocol": {
+      "title": "Start a fast",
+      "startTime": "Start time",
+      "hours": "hours",
+      "durationAccessibility": "Fasting duration in hours",
+      "starting": "Starting...",
+      "startButton": "Start fasting",
+      "badgeFasting": "Fasting",
+      "badgePost": "Fasting",
+      "badgeCircadian": "Circadian Rhythm",
+      "badgeCustom": "Custom Fast"
+    },
+    "protocols": {
+      "sixteenEight": { "name": "16:8 Leangains", "description": "Skip breakfast and eat during an 8-hour window." },
+      "eighteenSix": { "name": "18:6 Warrior", "description": "More aggressive fast with a 6-hour eating window." },
+      "twentyFour": { "name": "20:4 Warrior", "description": "Eat one large meal or spread calories over 4 hours." },
+      "circadian": { "name": "Circadian Rhythm", "description": "Fast from sunset to morning." },
+      "custom": { "name": "Custom Fast", "description": "Set your own fasting duration." }
+    },
+    "stages": {
+      "anabolic": "Anabolic",
+      "catabolic": "Catabolic",
+      "fatBurning": "Fat burning",
+      "ketosis": "Ketosis",
+      "deepKetosis": "Deep ketosis"
+    },
+    "duration": {
+      "minutes": "{{minutes}}m",
+      "hoursMinutes": "{{hours}}h {{minutes}}m"
+    },
+    "relativeDate": {
+      "today": "today",
+      "yesterday": "yesterday"
+    },
+    "toast": {
+      "started": "Fast started",
+      "failed": "Failed to start fast",
+      "retry": "Please try again."
+    }
+  },
   "editableSets": {
     "set": "Set",
     "seconds": "Sec",

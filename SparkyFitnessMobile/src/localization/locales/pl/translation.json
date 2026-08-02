@@ -120,6 +120,68 @@
       "openWellnessHub": "Otwórz centrum monitorowania zdrowia"
     }
   },
+  "fasting": {
+    "common": {
+      "title": "Post",
+      "history": "Historia"
+    },
+    "card": {
+      "openDetails": "Otwórz szczegóły postu",
+      "viewHistory": "Wyświetl historię postów",
+      "viewDetails": "Zobacz szczegóły",
+      "ready": "Gotowy do rozpoczęcia",
+      "startFast": "Rozpocznij post",
+      "startAccessibility": "Rozpocznij post",
+      "goalRemaining": "Do celu {{hours}} godz. pozostało {{remaining}}",
+      "goalReached": "Cel osiągnięty · {{hours}} godz.",
+      "elapsed": "Upłynęło {{duration}}",
+      "progressHours": "{{hours}} godz.",
+      "progressPercent": "{{percent}}%",
+      "lastFast": "Ostatni post: {{duration}}",
+      "lastFastToday": "Ostatni post: {{duration}} · {{date}}",
+      "lastFastYesterday": "Ostatni post: {{duration}} · {{date}}",
+      "lastFastDate": "Ostatni post: {{duration}} · {{date}}"
+    },
+    "protocol": {
+      "title": "Rozpocznij post",
+      "startTime": "Czas rozpoczęcia",
+      "hours": "godz.",
+      "durationAccessibility": "Czas postu w godzinach",
+      "starting": "Rozpoczynanie...",
+      "startButton": "Rozpocznij post",
+      "badgeFasting": "Post",
+      "badgePost": "Post",
+      "badgeCircadian": "Rytm dobowy",
+      "badgeCustom": "Własny post"
+    },
+    "protocols": {
+      "sixteenEight": { "name": "16:8 Leangains", "description": "Pomiń śniadanie i jedz w 8-godzinnym oknie." },
+      "eighteenSix": { "name": "18:6 Warrior", "description": "Bardziej intensywny post z 6-godzinnym oknem żywieniowym." },
+      "twentyFour": { "name": "20:4 Warrior", "description": "Zjedz jeden duży posiłek lub rozłóż kalorie na 4 godziny." },
+      "circadian": { "name": "Rytm dobowy", "description": "Pość od zachodu słońca do rana." },
+      "custom": { "name": "Własny post", "description": "Ustaw własny czas trwania postu." }
+    },
+    "stages": {
+      "anabolic": "Faza anaboliczna",
+      "catabolic": "Faza kataboliczna",
+      "fatBurning": "Spalanie tłuszczu",
+      "ketosis": "Ketoza",
+      "deepKetosis": "Głęboka ketoza"
+    },
+    "duration": {
+      "minutes": "{{minutes}} min",
+      "hoursMinutes": "{{hours}} godz. {{minutes}} min"
+    },
+    "relativeDate": {
+      "today": "dzisiaj",
+      "yesterday": "wczoraj"
+    },
+    "toast": {
+      "started": "Post rozpoczęty",
+      "failed": "Nie udało się rozpocząć postu",
+      "retry": "Spróbuj ponownie."
+    }
+  },
   "editableSets": {
     "set": "Seria",
     "seconds": "Sek.",
