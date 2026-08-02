@@ -51,11 +51,11 @@ const FoodMedSafetySearch: React.FC = () => {
 
       {!debouncedQuery.trim() ? (
         <Text className="text-xs italic" style={{ color: textMuted }}>
-          Search to check if it&apos;s considered safe during pregnancy.
+          Search to see how a food or medication is commonly categorized during pregnancy.
         </Text>
       ) : results.length === 0 ? (
         <Text className="text-xs italic" style={{ color: textMuted }}>
-          No match found. This list isn&apos;t exhaustive — ask your provider if unsure.
+          No match found. This list is not exhaustive, so ask your provider if unsure.
         </Text>
       ) : (
         <View className="gap-2">
@@ -77,6 +77,10 @@ const FoodMedSafetySearch: React.FC = () => {
           })}
         </View>
       )}
+
+      <Text className="text-xs" style={{ color: textMuted }}>
+        General guidance only, not medical advice. Always confirm with your provider.
+      </Text>
     </View>
   );
 };

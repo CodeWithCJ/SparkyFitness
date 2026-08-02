@@ -29,7 +29,7 @@ const PHASE_LABELS: Record<string, string> = {
 
 const CONDITION_LABELS: Record<string, string> = {
   long_cycles:
-    'Your cycles average over 35 days. This pattern is sometimes associated with PCOS — worth discussing with a clinician.',
+    'Your cycles average over 35 days. If this is new for you, it may be worth discussing with a clinician.',
   irregular_cycles:
     'Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.',
   short_cycles:

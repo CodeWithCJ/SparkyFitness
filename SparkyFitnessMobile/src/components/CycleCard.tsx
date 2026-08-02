@@ -86,7 +86,7 @@ export const CycleCardRingContent: React.FC<{
             </Text>
           ) : info.nextPeriodStart ? (
             <Text className="text-sm text-text-secondary mt-0.5">
-              Next period expected {formatDate(info.nextPeriodStart)}
+              Next period est. {formatDate(info.nextPeriodStart)}
             </Text>
           ) : null}
         </View>

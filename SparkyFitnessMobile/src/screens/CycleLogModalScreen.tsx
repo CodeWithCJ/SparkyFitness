@@ -7,6 +7,7 @@ import Button from '../components/ui/Button';
 import { useCycleMode } from '../hooks/useCycleMode';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
+import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import CycleTodayView from '../components/wellness/CycleTodayView';
 import PregnancyLogView from '../components/wellness/pregnancy/PregnancyLogView';
 import FertilityCard from '../components/wellness/ttc/FertilityCard';
@@ -127,6 +128,10 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
               />
             </>
           )}
+        </View>
+
+        <View className="mt-6 px-2">
+          <MedicalDisclaimer />
         </View>
       </ScrollView>
 

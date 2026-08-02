@@ -179,7 +179,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">Name *</Text>
             <FormInput
-              placeholder="Lisinopril"
+              placeholder="Ipsumol"
               value={form.name}
               onChangeText={(v) => updateField('name', v)}
               autoCapitalize="words"

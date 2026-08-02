@@ -206,7 +206,7 @@ describe('reconcileMedicationReminders', () => {
       expect(mockSchedule).toHaveBeenNthCalledWith(1, {
         content: {
           title: 'Medication reminder',
-          body: 'Time to take Metformin (500 mg)',
+          body: 'Scheduled dose: Metformin (500 mg)',
           sound: true,
           categoryIdentifier: 'medication-reminder',
           data: {
@@ -279,7 +279,7 @@ describe('reconcileMedicationReminders', () => {
         [],
       );
 
-      expect(mockSchedule.mock.calls[0][0].content.body).toBe('Time to take Metformin');
+      expect(mockSchedule.mock.calls[0][0].content.body).toBe('Scheduled dose: Metformin');
     });
 
     it.each([['taken'], ['skipped']] as const)(
@@ -443,7 +443,7 @@ describe('reconcileMedicationReminders', () => {
       await reconcileMedicationReminders([buildMedication()], []);
 
       for (const call of mockSchedule.mock.calls) {
-        expect(call[0].content.body).toBe('Time to take your medication');
+        expect(call[0].content.body).toBe('You have a scheduled dose');
         expect(call[0].content.data?.hideNames).toBe('true');
       }
     });
@@ -485,7 +485,7 @@ describe('reconcileMedicationReminders', () => {
 
       expect(mockCancel).toHaveBeenCalledWith('censored');
       const base = mockSchedule.mock.calls.find((c) => c[0].content.data?.key === BASE_KEY);
-      expect(base?.[0].content.body).toBe('Time to take Metformin (500 mg)');
+      expect(base?.[0].content.body).toBe('Scheduled dose: Metformin (500 mg)');
     });
   });
 
