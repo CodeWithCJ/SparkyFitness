@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import CycleCalendarGrid from '../../../src/components/wellness/CycleCalendarGrid';
 import type { SharedCycle, SharedCycleDailyLog, SharedCycleSettings } from '@workspace/shared';
 
@@ -53,6 +53,28 @@ const renderGrid = (settings: SharedCycleSettings) =>
   );
 
 describe('CycleCalendarGrid', () => {
+  it('reports the visible month on mount and after navigation', () => {
+    const onMonthChange = jest.fn();
+    const { getByLabelText } = render(
+      <CycleCalendarGrid
+        initialDate="2026-08-05"
+        onDayPress={jest.fn()}
+        cycles={cycles}
+        logs={logs}
+        settings={baseSettings}
+        onMonthChange={onMonthChange}
+      />,
+    );
+
+    expect(onMonthChange).toHaveBeenCalledWith('2026-08');
+
+    fireEvent.press(getByLabelText('Previous month'));
+    expect(onMonthChange).toHaveBeenLastCalledWith('2026-07');
+
+    fireEvent.press(getByLabelText('Next month'));
+    expect(onMonthChange).toHaveBeenLastCalledWith('2026-08');
+  });
+
   it('decorates predicted period, fertile window, and ovulation days in standard mode', () => {
     const { getByTestId } = renderGrid(baseSettings);
 

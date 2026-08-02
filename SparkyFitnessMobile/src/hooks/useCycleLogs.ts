@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { getLog, listLogs } from '../services/api/cycleApi';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { cycleLogQueryKey, cycleLogsRangeQueryKey } from './queryKeys';
@@ -38,6 +38,9 @@ export function useCycleLogsRange({ startDate, endDate, enabled = true }: UseCyc
     queryKey: cycleLogsRangeQueryKey(startDate, endDate),
     queryFn: () => listLogs(startDate, endDate),
     enabled,
+    // Callers move the range (calendar month navigation); keep the previous
+    // range's logs visible instead of dropping to a loading state.
+    placeholderData: keepPreviousData,
   });
 
   useRefetchOnFocus(query.refetch, enabled);

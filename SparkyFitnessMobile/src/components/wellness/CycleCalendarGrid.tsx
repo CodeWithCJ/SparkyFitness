@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { buildMonthGrid, addDays, compareDays, isHormonalBc } from '@workspace/shared';
@@ -13,6 +13,8 @@ interface CycleCalendarGridProps {
   cycles: SharedCycle[];
   logs: SharedCycleDailyLog[];
   settings: SharedCycleSettings;
+  /** Fires with the visible YYYY-MM on mount and after month navigation. */
+  onMonthChange?: (month: string) => void;
 }
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -23,6 +25,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
   cycles,
   logs,
   settings,
+  onMonthChange,
 }) => {
   const tokens = useWellnessTokens();
   const [textPrimary, textMuted] = useCSSVariable([
@@ -30,6 +33,10 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     '--color-text-muted',
   ]) as [string, string];
   const [currentMonth, setCurrentMonth] = useState(() => initialDate.slice(0, 7)); // YYYY-MM
+
+  useEffect(() => {
+    onMonthChange?.(currentMonth);
+  }, [currentMonth, onMonthChange]);
 
   const { year, monthVal } = useMemo(() => {
     const parts = currentMonth.split('-').map(Number);
@@ -177,11 +184,21 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
       {/* Month Header Navigation */}
       <View className="flex-row justify-between items-center mb-4">
-        <TouchableOpacity onPress={handlePrevMonth} className="p-2" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity
+          onPress={handlePrevMonth}
+          accessibilityLabel="Previous month"
+          className="p-2"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Icon name="chevron-back" size={20} color={textPrimary} />
         </TouchableOpacity>
         <Text className="text-text-primary text-base font-bold">{monthName}</Text>
-        <TouchableOpacity onPress={handleNextMonth} className="p-2" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity
+          onPress={handleNextMonth}
+          accessibilityLabel="Next month"
+          className="p-2"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Icon name="chevron-forward" size={20} color={textPrimary} />
         </TouchableOpacity>
       </View>

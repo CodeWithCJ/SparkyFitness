@@ -63,11 +63,14 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       ? 'overview'
       : activeTab;
 
-  // Queries
+  // Queries. Logs feed the History calendar, so the range follows the month
+  // it is showing, padded to cover the adjacent-month days the grid renders.
   const { cycles, isLoading: isHistoryLoading } = useCycleHistory();
+  const [visibleMonth, setVisibleMonth] = useState(() => selectedDate.slice(0, 7));
+  const monthStart = `${visibleMonth}-01`;
   const { logs, isLoading: isLogsLoading } = useCycleLogsRange({
-    startDate: useMemo(() => addDays(selectedDate, -60), [selectedDate]),
-    endDate: useMemo(() => addDays(selectedDate, 60), [selectedDate]),
+    startDate: useMemo(() => addDays(monthStart, -7), [monthStart]),
+    endDate: useMemo(() => addDays(monthStart, 45), [monthStart]),
   });
 
   const isLoading = isModeLoading || isSettingsLoading || isHistoryLoading || isLogsLoading;
@@ -212,6 +215,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
               cycles={cycles}
               logs={logs}
               settings={settings}
+              onMonthChange={setVisibleMonth}
             />
             <View className="border-t border-border-subtle" />
             <CycleHistoryList />
