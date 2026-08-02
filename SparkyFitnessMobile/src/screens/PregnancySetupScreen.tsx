@@ -1,62 +1,27 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { eddFromLmp, eddFromConception, compareDays } from '@workspace/shared';
-import type { PregnancyDueDateBasis } from '@workspace/shared';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { usePregnancyMutations } from '../hooks/usePregnancy';
-import { getTodayDate, formatDate, addDays } from '../utils/dateUtils';
-import BottomSheetPicker from '../components/BottomSheetPicker';
-import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import Button from '../components/ui/Button';
 import StepperInput, { useStepperDraft } from '../components/StepperInput';
-import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
+import SettingsRow from '../components/SettingsRow';
+import PregnancyDueDateForm, {
+  usePregnancyDueDateForm,
+} from '../components/wellness/pregnancy/PregnancyDueDateForm';
 import { PREGNANCY_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 
-const BASIS_OPTIONS: { value: PregnancyDueDateBasis; label: string }[] = [
-  { value: 'manual', label: 'Due date' },
-  { value: 'scan', label: 'Ultrasound scan' },
-  { value: 'lmp', label: 'Last period (LMP)' },
-  { value: 'conception', label: 'Conception date' },
-];
-
-const DATE_FIELD_LABEL: Record<PregnancyDueDateBasis, string> = {
-  lmp: 'First day of last period',
-  conception: 'Conception date',
-  manual: 'Estimated due date',
-  scan: 'Estimated due date (from scan)',
-};
-
 type Props = RootStackScreenProps<'PregnancySetup'>;
-
-// A pregnancy runs ~280 days; term is capped at 42 weeks (294 days). Allow a
-// little slack for overdue (past) and very-early (future) due dates.
-const MAX_DUE_DAYS_AHEAD = 300;
-const MAX_OVERDUE_DAYS = 21;
 
 const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const calendarRef = useRef<CalendarSheetRef>(null);
 
   const existing = route.params?.pregnancy;
   const isEdit = !!existing?.id;
 
-  // Prefill from the existing record when editing. For lmp/conception the date
-  // field holds that basis date; for manual/scan it holds the due date itself.
-  // New pregnancies default to a plain due date, the value most people know —
-  // seeded a full term out so an untouched form doesn't save a due date of today.
-  const initialBasis = existing?.due_date_basis ?? 'manual';
-  const initialDate =
-    initialBasis === 'lmp'
-      ? existing?.lmp_date ?? getTodayDate()
-      : initialBasis === 'conception'
-        ? existing?.conception_date ?? getTodayDate()
-        : existing?.due_date ?? addDays(getTodayDate(), 280);
-
-  const [basis, setBasis] = useState<PregnancyDueDateBasis>(initialBasis);
-  const [date, setDate] = useState<string>(initialDate);
+  const form = usePregnancyDueDateForm(existing);
   const [fetusCount, setFetusCount] = useState(existing?.fetus_count ?? 1);
 
   const fetusCountProps = useStepperDraft({
@@ -69,41 +34,14 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
     usePregnancyMutations();
   const isSaving = isCreating || isUpdating;
 
-  const computedDueDate = useMemo(() => {
-    if (basis === 'lmp') return eddFromLmp(date);
-    if (basis === 'conception') return eddFromConception(date);
-    return date; // manual / scan: the entered date is already the due date
-  }, [basis, date]);
-
-  /** Returns an error message if the entered dates are implausible, else null. */
-  const validate = (): string | null => {
-    const today = getTodayDate();
-    if (basis === 'lmp' && compareDays(date, today) > 0) {
-      return 'Your last period can’t be in the future.';
-    }
-    if (basis === 'conception' && compareDays(date, today) > 0) {
-      return 'The conception date can’t be in the future.';
-    }
-    if (compareDays(computedDueDate, addDays(today, -MAX_OVERDUE_DAYS)) < 0) {
-      return 'That due date is in the past. Please check the date.';
-    }
-    if (compareDays(computedDueDate, addDays(today, MAX_DUE_DAYS_AHEAD)) > 0) {
-      return 'That due date is too far away — a pregnancy is about 40 weeks.';
-    }
-    return null;
-  };
-
   const handleSave = async () => {
-    const error = validate();
+    const error = form.validate();
     if (error) {
       Toast.show({ type: 'error', text1: 'Check the dates', text2: error });
       return;
     }
     const body = {
-      due_date: computedDueDate,
-      due_date_basis: basis,
-      lmp_date: basis === 'lmp' ? date : null,
-      conception_date: basis === 'conception' ? date : null,
+      ...form.dates,
       fetus_count: fetusCount,
       status: 'active' as const,
     };
@@ -139,39 +77,14 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
           Tell us how to estimate your due date. You can change this later.
         </Text>
 
-        <SettingsRowGroup>
-          <SettingsRow
-            title="Based on"
-            rightAccessory={
-              <BottomSheetPicker
-                value={basis}
-                options={BASIS_OPTIONS}
-                onSelect={setBasis}
-                title="Estimate due date by"
-                containerStyle={{ flex: 1, maxWidth: 210 }}
-              />
-            }
-          />
-          <SettingsRow
-            title={DATE_FIELD_LABEL[basis]}
-            rightAccessory={
-              <TouchableOpacity onPress={() => calendarRef.current?.present()}>
-                <Text className="text-accent-primary text-sm font-semibold">{formatDate(date)}</Text>
-              </TouchableOpacity>
-            }
-          />
+        <PregnancyDueDateForm form={form}>
           <SettingsRow
             title="Number of babies"
             rightAccessory={
               <StepperInput {...fetusCountProps} keyboardType="number-pad" compact />
             }
           />
-        </SettingsRowGroup>
-
-        <View className="bg-surface rounded-2xl p-4 mt-4 border border-border-subtle shadow-sm">
-          <Text className="text-text-secondary text-xs">Estimated due date</Text>
-          <Text className="text-text-primary text-lg font-bold">{formatDate(computedDueDate)}</Text>
-        </View>
+        </PregnancyDueDateForm>
       </ScrollView>
 
       <View
@@ -188,8 +101,6 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
           {isSaving ? 'Saving…' : 'Save'}
         </Button>
       </View>
-
-      <CalendarSheet ref={calendarRef} selectedDate={date} onSelectDate={setDate} />
     </View>
   );
 };
