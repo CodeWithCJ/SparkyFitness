@@ -219,6 +219,19 @@ describe('CycleTodayView pregnant mode weight', () => {
     expect(getByDisplayValue('70')).toBeTruthy();
   });
 
+  it('resumes hydration after an edit is retyped back to the hydrated value', () => {
+    mockMeasurements = { weight: 65 };
+    const { getByDisplayValue, rerender } = render(<CycleTodayView date="2026-08-01" />);
+
+    const input = getByDisplayValue('65');
+    fireEvent.changeText(input, '6');
+    fireEvent.changeText(input, '65');
+    mockMeasurements = { weight: 70 };
+    rerender(<CycleTodayView date="2026-08-01" />);
+
+    expect(getByDisplayValue('70')).toBeTruthy();
+  });
+
   it('skips the check-in when the weight is unchanged', async () => {
     mockMeasurements = { weight: 65 };
     const { getByText } = render(<CycleTodayView date="2026-08-01" />);
