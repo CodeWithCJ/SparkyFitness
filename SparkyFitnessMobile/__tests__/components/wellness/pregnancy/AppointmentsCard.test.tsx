@@ -1,7 +1,10 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import AppointmentsCard from '../../../../src/components/wellness/pregnancy/AppointmentsCard';
 import { getTodayDate, addDays } from '../../../../src/utils/dateUtils';
+
+type AlertButton = { text: string; style?: string; onPress?: () => void };
 
 jest.mock('../../../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -92,7 +95,7 @@ describe('AppointmentsCard', () => {
     expect(mockCreateAsync).not.toHaveBeenCalled();
   });
 
-  it('deletes an appointment', () => {
+  it('deletes an appointment through swipe-to-delete after confirming', () => {
     mockUseHealthAppointments.mockReturnValue({
       appointments: [
         {
@@ -109,10 +112,16 @@ describe('AppointmentsCard', () => {
       ],
       isLoading: false,
     });
+    let buttons: AlertButton[] = [];
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_t, _m, b) => {
+      buttons = b as AlertButton[];
+    });
 
-    const { getByTestId } = render(<AppointmentsCard />);
-    fireEvent.press(getByTestId('delete-appointment-appt-1'));
+    const { getByText } = render(<AppointmentsCard />);
+    fireEvent.press(getByText('Delete'));
+    buttons.find((b) => b.text === 'Delete')?.onPress?.();
 
     expect(mockDeleteAsync).toHaveBeenCalledWith('appt-1');
+    alertSpy.mockRestore();
   });
 });

@@ -21,11 +21,10 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
   const { photos, isLoading } = usePregnancyPhotos(pregnancyId);
   const { uploadAsync, isUploading, deleteAsync } = usePregnancyPhotoMutations();
   const { activeConfig } = useServerConfigs();
-  const [accentColor, dangerColor, textMuted] = useCSSVariable([
+  const [accentColor, dangerColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-danger',
-    '--color-text-muted',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const actionSheetRef = useRef<ActionSheetRef>(null);
   const pickerLock = useRef(false);
@@ -82,20 +81,21 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
   };
 
   return (
-    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-primary text-base font-bold">Bump Photos</Text>
+        <Text className="text-base font-bold text-text-secondary">Bump Photos</Text>
         <TouchableOpacity
           disabled={isUploading}
           onPress={() => actionSheetRef.current?.present()}
-          className="flex-row items-center gap-1 rounded-full bg-raised px-3 py-1.5"
+          hitSlop={8}
+          className="flex-row items-center"
         >
           {isUploading ? (
             <ActivityIndicator size="small" color={accentColor} />
           ) : (
             <>
-              <Icon name="add" size={16} color={accentColor} />
-              <Text className="text-xs font-semibold" style={{ color: accentColor }}>
+              <Icon name="add" size={18} color={accentColor} />
+              <Text className="font-semibold text-sm ml-1" style={{ color: accentColor }}>
                 Add Photo
               </Text>
             </>
@@ -143,7 +143,7 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       )}
 
       {selectedPhoto?.entry_date && (
-        <Text className="text-text-secondary text-xs" style={{ color: textMuted }}>
+        <Text className="text-text-secondary text-xs">
           Taken {formatDate(selectedPhoto.entry_date)}
         </Text>
       )}

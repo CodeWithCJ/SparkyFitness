@@ -30,7 +30,7 @@ const CycleBarGlyph: React.FC<CycleBarGlyphProps> = ({
   const fertileWidth = `${((fertileEndDay - fertileStartDay + 1) / len) * 100}%`;
 
   return (
-    <View className="relative w-full h-2.5 rounded-full bg-raised overflow-hidden">
+    <View className="relative w-full h-2.5 rounded-full bg-progress-track overflow-hidden">
       {/* Period segment */}
       <View
         className="absolute top-0 left-0 h-full rounded-full"
