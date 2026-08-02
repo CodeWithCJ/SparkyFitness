@@ -52,14 +52,17 @@ const formatCustomValue = (
   value: string,
   dataType: string | null | undefined,
 ): string => {
-  if (dataType === 'numeric') {
-    const numericValue = Number(value);
-    return Number.isFinite(numericValue)
-      ? formatLocalizedNumber(numericValue, { maximumFractionDigits: 4 })
-      : value;
+  if (dataType !== 'numeric') {
+    return value;
   }
 
-  return value;
+  const trimmed = value.trim();
+  if (trimmed === '') return value;
+
+  const numericValue = Number(trimmed);
+  return Number.isFinite(numericValue)
+    ? formatLocalizedNumber(numericValue, { maximumFractionDigits: 20 })
+    : value;
 };
 
 const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({

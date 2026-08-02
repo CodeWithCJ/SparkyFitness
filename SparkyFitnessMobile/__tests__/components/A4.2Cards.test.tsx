@@ -157,17 +157,20 @@ describe('FoodSummary A4.2 localization', () => {
     const customMeasurements = [
       { id: 'text-en', category_id: 'text', value: 'Morning note', entry_date: '2026-01-01', custom_categories: { name: 'Mood', display_name: 'Mood', measurement_type: 'note', data_type: 'text' } },
       { id: 'bool-en', category_id: 'bool', value: 'true', entry_date: '2026-01-01', custom_categories: { name: 'Fasted', display_name: 'Fasted', measurement_type: '', data_type: 'boolean' } },
+      { id: 'bool-false', category_id: 'bool-false', value: 'false', entry_date: '2026-01-01', custom_categories: { name: 'Recovered', display_name: 'Recovered', measurement_type: '', data_type: 'boolean' } },
     ] as never;
     const screen = render(<MeasurementsSummary measurements={{}} customMeasurements={customMeasurements} />);
     expect(screen.getByText('Mood')).toBeTruthy();
     expect(screen.getByText('Morning note note')).toBeTruthy();
     expect(screen.getByText('true')).toBeTruthy();
+    expect(screen.getByText('false')).toBeTruthy();
 
     setLanguage('pl');
     screen.rerender(<MeasurementsSummary measurements={{}} customMeasurements={customMeasurements} />);
     expect(screen.getByText('Mood')).toBeTruthy();
     expect(screen.getByText('Morning note note')).toBeTruthy();
     expect(screen.getByText('true')).toBeTruthy();
+    expect(screen.getByText('false')).toBeTruthy();
   });
 
   it('translates system meal types and keeps a custom meal type literal', () => {
@@ -269,6 +272,18 @@ describe('HydrationGauge and library rows A4.2 localization', () => {
     expect(screen.getByText('1 serving')).toBeTruthy();
   });
 
+  it('preserves serving size precision in EN and PL', () => {
+    const food = { name: 'Pear', brand: 'Orchard', user_id: 'u', shared_with_public: false, default_variant: { calories: 42, serving_size: 1.23456789, serving_unit: 'serving' } } as never;
+    setLanguage('en');
+    const screen = render(<FoodLibraryRow food={food} />);
+    expect(screen.getByText('Pear')).toBeTruthy();
+    expect(screen.getByText('Orchard')).toBeTruthy();
+    expect(screen.getByText('1.23456789 serving')).toBeTruthy();
+    setLanguage('pl');
+    screen.rerender(<FoodLibraryRow food={food} />);
+    expect(screen.getByText('1,23456789 serving')).toBeTruthy();
+  });
+
   it('uses English and Polish meal plural forms for 1, 2, and 5 items', () => {
     const createMeal = (count: number) => ({
       id: `m-${count}`,
@@ -350,16 +365,25 @@ describe('MeasurementsSummary A4.2 localization', () => {
     const customMeasurements = [{
       id: 'numeric',
       category_id: 'cat',
-      value: '12345.6',
+      value: '1.23456789',
       entry_date: '2026-01-01',
       custom_categories: { name: 'Distance', display_name: null, measurement_type: 'm', data_type: 'numeric' },
     }] as never;
     setLanguage('en');
     const screen = render(<MeasurementsSummary measurements={{}} customMeasurements={customMeasurements} />);
-    expect(screen.getByText('12,345.6 m')).toBeTruthy();
+    expect(screen.getByText('1.23456789 m')).toBeTruthy();
     setLanguage('pl');
     screen.rerender(<MeasurementsSummary measurements={{}} customMeasurements={customMeasurements} />);
-    expect(screen.getByText('12 345,6 m')).toBeTruthy();
+    expect(screen.getByText('1,23456789 m')).toBeTruthy();
+    const grouped = [{
+      id: 'grouped',
+      category_id: 'cat-grouped',
+      value: '12345.678901',
+      entry_date: '2026-01-01',
+      custom_categories: { name: 'Long distance', display_name: null, measurement_type: 'm', data_type: 'numeric' },
+    }] as never;
+    screen.rerender(<MeasurementsSummary measurements={{}} customMeasurements={grouped} />);
+    expect(screen.getByText(`${new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 20 }).format(12345.678901)} m`)).toBeTruthy();
   });
 });
 

@@ -71,7 +71,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
             </Text>
           </View>
           <Text className="text-text-secondary text-xs">
-            {formatLocalizedNumber(food.default_variant.serving_size, { maximumFractionDigits: 4 })}{' '}
+            {formatLocalizedNumber(food.default_variant.serving_size, { maximumFractionDigits: 20 })}{' '}
             {formatServingUnit(food.default_variant.serving_unit)}
           </Text>
         </View>
