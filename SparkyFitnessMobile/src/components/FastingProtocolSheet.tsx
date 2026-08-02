@@ -64,6 +64,7 @@ export interface FastingProtocolSheetRef {
 
 const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) => {
   const { t } = useTranslation();
+  const appLocale = getAppLocale();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const { theme } = useUniwind();
   const isDarkMode = theme === 'dark' || theme === 'amoled';
@@ -139,12 +140,12 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
 
   const startLabel = useMemo(
     () =>
-      startDate.toLocaleString(getAppLocale(), {
+      startDate.toLocaleString(appLocale, {
         weekday: 'short',
         hour: 'numeric',
         minute: '2-digit',
       }),
-    [startDate],
+    [startDate, appLocale],
   );
 
   const handleStart = () => {
@@ -274,7 +275,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
           <DateTimePicker
             mode="single"
             date={startDate}
-            locale={getAppLocale()}
+            locale={appLocale}
             timePicker
             onChange={handleStartChange}
             components={{

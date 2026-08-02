@@ -5,6 +5,7 @@ import FastingCard from '../../src/components/FastingCard';
 import { METABOLIC_STAGES } from '../../src/constants/fasting';
 import type { FastingLog } from '../../src/types/fasting';
 import type { FastTimerValues } from '../../src/utils/fasting';
+import { formatDate } from '../../src/utils/dateUtils';
 
 let mockCurrentFast: FastingLog | null = null;
 let mockHistory: FastingLog[] = [];
@@ -38,6 +39,10 @@ jest.mock('../../src/hooks/useFasting', () => ({
   useFastingHistory: () => ({ data: mockHistory }),
 }));
 jest.mock('../../src/hooks/useFastingTimer', () => ({ useFastingTimer: () => mockTimer }));
+jest.mock('../../src/localization', () => ({
+  ...jest.requireActual('../../src/localization'),
+  getAppLocale: () => (globalThis.__activeWorkoutTestLocale === 'pl' ? 'pl-PL' : 'en-US'),
+}));
 jest.mock('../../src/components/Icon', () => () => null);
 jest.mock('../../src/components/FastingProtocolSheet', () => {
   const ReactNative = require('react');
@@ -61,6 +66,8 @@ jest.mock('../../src/components/FastingHistorySheet', () => {
 });
 
 describe('FastingCard', () => {
+  afterEach(() => jest.useRealTimers());
+
   beforeEach(() => {
     setTestLocale('en');
     mockCurrentFast = null;
@@ -116,12 +123,24 @@ describe('FastingCard', () => {
   });
 
   it.each([
+    ['en', 'Goal reached · 16 h'],
+    ['pl', 'Cel osiągnięty · 16 godz.'],
+  ] as const)('renders an achieved goal in %s', (locale, goalReached) => {
+    setTestLocale(locale);
+    mockCurrentFast = buildFast();
+    mockTimer = buildTimer({ remainingMs: 0, remainingLabel: null, progress: 1 });
+    const view = render(<FastingCard navigation={{ navigate: jest.fn() } as never} />);
+    expect(view.getByText(goalReached)).toBeTruthy();
+  });
+
+  it.each([
     ['en', 'Ready to start', 'Start fast', 'Start a fast', 'Last fast: 2h 0m · today'],
     ['pl', 'Gotowy do rozpoczęcia', 'Rozpocznij post', 'Rozpocznij post', 'Ostatni post: 2 godz. 0 min · dzisiaj'],
   ] as const)('renders idle card with today last fast in %s', (locale, ready, start, accessibility, lastFast) => {
     setTestLocale(locale);
     mockHistory = [{ ...buildFast({ status: 'COMPLETED', duration_minutes: 120, end_time: new Date().toISOString() }) }];
-    const view = render(<FastingCard navigation={{ navigate: jest.fn() } as never} />);
+    const navigation = { navigate: jest.fn() };
+    const view = render(<FastingCard navigation={navigation as never} />);
     expect(view.getByText(ready)).toBeTruthy();
     expect(view.getByText(start)).toBeTruthy();
     expect(view.getByText(lastFast)).toBeTruthy();
@@ -129,6 +148,59 @@ describe('FastingCard', () => {
     expect(mockProtocolPresent).toHaveBeenCalledWith('16-8');
     fireEvent.press(view.getByLabelText(locale === 'en' ? 'View fasting history' : 'Wyświetl historię postów'));
     expect(mockHistoryPresent).toHaveBeenCalledTimes(1);
+    expect(navigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['en', 'Anabolic', 'Catabolic', 'Fat burning', 'Ketosis', 'Deep ketosis'],
+    ['pl', 'Faza anaboliczna', 'Faza kataboliczna', 'Spalanie tłuszczu', 'Ketoza', 'Głęboka ketoza'],
+  ] as const)('renders every metabolic stage exactly in %s', (locale, ...stageNames) => {
+    setTestLocale(locale);
+    for (const [index, stageName] of stageNames.entries()) {
+      mockCurrentFast = buildFast();
+      mockTimer = buildTimer({ stage: METABOLIC_STAGES[index] });
+      const view = render(<FastingCard navigation={{ navigate: jest.fn() } as never} />);
+      expect(view.getByText(stageName)).toBeTruthy();
+      view.unmount();
+    }
+  });
+
+  it.each([
+    ['en', '16:8', 'Circadian Rhythm', 'Custom Fast', 'Fasting'],
+    ['pl', '16:8', 'Rytm dobowy', 'Własny post', 'Post'],
+  ] as const)('renders localized protocol badges in %s', (locale, ratio, circadian, custom, empty) => {
+    setTestLocale(locale);
+    for (const protocol of ['16:8 Leangains', 'Circadian Rhythm', 'Custom Fast', null, '']) {
+      mockCurrentFast = buildFast({ fasting_type: protocol });
+      const view = render(<FastingCard navigation={{ navigate: jest.fn() } as never} />);
+      const expected = protocol === '16:8 Leangains' ? ratio : protocol === 'Circadian Rhythm' ? circadian : protocol === 'Custom Fast' ? custom : empty;
+      expect(view.getAllByText(expected).length).toBeGreaterThan(0);
+      view.unmount();
+    }
+    mockCurrentFast = buildFast({ fasting_type: 'Server Special' });
+    expect(render(<FastingCard navigation={{ navigate: jest.fn() } as never} />).getByText('Server Special')).toBeTruthy();
+  });
+
+  it.each([
+    ['en', 'Last fast: 16h 4m', 'Last fast: 16h 4m · today', 'Last fast: 16h 4m · yesterday', 'Last fast: 16h 4m · Fri, Feb 13'],
+    ['pl', 'Ostatni post: 16 godz. 4 min', 'Ostatni post: 16 godz. 4 min · dzisiaj', 'Ostatni post: 16 godz. 4 min · wczoraj', 'Ostatni post: 16 godz. 4 min · pt., 13 lut'],
+  ] as const)('renders all last-fast date variants in %s', (locale, plain, today, yesterday, calendarDate) => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-02-15T12:00:00.000Z'));
+    setTestLocale(locale);
+    const cases = [
+      { end_time: null, start_time: '' },
+      { end_time: '2026-02-15T10:00:00.000Z' },
+      { end_time: '2026-02-14T10:00:00.000Z' },
+      { end_time: '2026-02-13T10:00:00.000Z' },
+    ];
+    for (const [index, dateCase] of cases.entries()) {
+      mockHistory = [buildFast({ status: 'COMPLETED', duration_minutes: 964, ...dateCase })];
+      const view = render(<FastingCard navigation={{ navigate: jest.fn() } as never} />);
+      expect(view.getByText([plain, today, yesterday, calendarDate][index])).toBeTruthy();
+      view.unmount();
+    }
+    expect(formatDate('2026-02-13')).toBe(locale === 'en' ? 'Fri, Feb 13' : 'pt., 13 lut');
   });
 
   it('selects the initial preset from history and keeps unknown server badges literal', () => {

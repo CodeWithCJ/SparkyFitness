@@ -97,7 +97,10 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
             <Text className="text-md font-bold text-text-secondary">{t('fasting.common.title')}</Text>
             <View className="flex-row items-center">
               <TouchableOpacity
-                onPress={() => historyRef.current?.present()}
+                onPress={(event) => {
+                  event?.stopPropagation?.();
+                  historyRef.current?.present();
+                }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityRole="button"
                 accessibilityLabel={t('fasting.card.viewHistory')}
@@ -199,7 +202,10 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
         <View className="flex-row items-center justify-between mb-2">
           <Text className="text-md font-bold text-text-secondary">{t('fasting.common.title')}</Text>
           <TouchableOpacity
-            onPress={() => historyRef.current?.present()}
+            onPress={(event) => {
+              event?.stopPropagation?.();
+              historyRef.current?.present();
+            }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
             accessibilityLabel={t('fasting.card.viewHistory')}
