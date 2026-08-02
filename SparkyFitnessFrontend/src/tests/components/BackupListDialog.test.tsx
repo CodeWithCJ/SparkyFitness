@@ -49,20 +49,26 @@ const mockedUseBackupList = useBackupList as jest.MockedFunction<
 const mockedUseDownloadBackupFile =
   useDownloadBackupFile as jest.MockedFunction<typeof useDownloadBackupFile>;
 
+// Timestamps are deliberately mid-month at midday UTC: the dialog groups by
+// *local* month, so a midnight-on-the-1st fixture would land in the previous
+// month for any test runner west of UTC.
 const backupFeb: BackupFileInfo = {
-  fileName: 'sparkyfitness_full_backup_2026-02-01T00-00-00-000Z.tar.gz',
+  fileName: 'sparkyfitness_full_backup_2026-02-10T12-00-00-000Z.tar.gz',
   size: 1024,
-  createdAt: '2026-02-01T00:00:00.000Z',
+  createdAt: '2026-02-10T12:00:00.000Z',
+  completedAt: '2026-02-10T12:00:05.000Z',
 };
 const backupJan: BackupFileInfo = {
-  fileName: 'sparkyfitness_full_backup_2026-01-15T00-00-00-000Z.tar.gz',
+  fileName: 'sparkyfitness_full_backup_2026-01-15T12-00-00-000Z.tar.gz',
   size: 2048,
-  createdAt: '2026-01-15T00:00:00.000Z',
+  createdAt: '2026-01-15T12:00:00.000Z',
+  completedAt: '2026-01-15T12:00:05.000Z',
 };
 const backupDec: BackupFileInfo = {
-  fileName: 'sparkyfitness_full_backup_2025-12-01T00-00-00-000Z.tar.gz',
+  fileName: 'sparkyfitness_full_backup_2025-12-10T12-00-00-000Z.tar.gz',
   size: 512,
-  createdAt: '2025-12-01T00:00:00.000Z',
+  createdAt: '2025-12-10T12:00:00.000Z',
+  completedAt: '2025-12-10T12:00:05.000Z',
 };
 
 const mockMutate = jest.fn();

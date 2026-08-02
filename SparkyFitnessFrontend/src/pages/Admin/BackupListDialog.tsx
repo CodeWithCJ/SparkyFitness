@@ -106,7 +106,7 @@ export const BackupListDialog: React.FC<BackupListDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-6xl w-[95vw]">
         <DialogHeader>
           <DialogTitle>
             {t('admin.backupSettings.availableBackups', 'Available Backups')}
@@ -141,7 +141,7 @@ export const BackupListDialog: React.FC<BackupListDialogProps> = ({
         )}
 
         {!isLoading && !isError && monthGroups.length > 0 && (
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[75vh] overflow-y-auto">
             <Accordion
               type="multiple"
               defaultValue={monthGroups.slice(0, 1).map((group) => group.key)}
@@ -165,10 +165,16 @@ export const BackupListDialog: React.FC<BackupListDialogProps> = ({
                               'File Name'
                             )}
                           </TableHead>
-                          <TableHead>
-                            {t('admin.backupSettings.backupDate', 'Created')}
+                          <TableHead className="whitespace-nowrap">
+                            {t('admin.backupSettings.backupDate', 'Started')}
                           </TableHead>
-                          <TableHead>
+                          <TableHead className="whitespace-nowrap">
+                            {t(
+                              'admin.backupSettings.backupCompletedDate',
+                              'Completed'
+                            )}
+                          </TableHead>
+                          <TableHead className="whitespace-nowrap">
                             {t('admin.backupSettings.backupSize', 'Size')}
                           </TableHead>
                           <TableHead className="text-right">
@@ -186,10 +192,13 @@ export const BackupListDialog: React.FC<BackupListDialogProps> = ({
                               <TableCell className="break-all">
                                 {backup.fileName}
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="whitespace-nowrap">
                                 {new Date(backup.createdAt).toLocaleString()}
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                {new Date(backup.completedAt).toLocaleString()}
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">
                                 {formatFileSize(backup.size)}
                               </TableCell>
                               <TableCell className="text-right">

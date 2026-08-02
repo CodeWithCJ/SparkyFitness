@@ -399,6 +399,11 @@ router.post('/settings', authenticate, isAdmin, async (req, res) => {
  *                       createdAt:
  *                         type: string
  *                         format: date-time
+ *                         description: When the backup run started.
+ *                       completedAt:
+ *                         type: string
+ *                         format: date-time
+ *                         description: When the backup run finished.
  *       500:
  *         description: Server error.
  */
@@ -410,6 +415,7 @@ router.get('/list', authenticate, isAdmin, async (req, res) => {
         fileName: backup.fileName,
         size: backup.size,
         createdAt: backup.createdAt.toISOString(),
+        completedAt: backup.completedAt.toISOString(),
       })),
     });
   } catch (error) {
