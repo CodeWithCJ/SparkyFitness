@@ -312,7 +312,7 @@ const HealthDataImportCSV = () => {
               decimalDetection={preview.decimal}
               numericColumns={numericColumns}
               dateColumn="date"
-              totalRowCount={csvData.length}
+              totalRowCount={preview.rows.length}
             />
           )}
           {csvData.length > 0 && (
