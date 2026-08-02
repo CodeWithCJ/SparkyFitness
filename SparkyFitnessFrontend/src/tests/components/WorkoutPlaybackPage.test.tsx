@@ -78,6 +78,93 @@ describe('WorkoutPlaybackPage', () => {
     expect(screen.getAllByRole('checkbox').length).toBeGreaterThanOrEqual(1);
   });
 
+  it('renders duration instead of reps and weight for a timed set', () => {
+    const timedPreset = {
+      ...presetFixture,
+      exercises: [
+        {
+          exercise_id: 'exercise-treadmill',
+          exercise_name: 'Treadmill Warm Up',
+          category: 'cardio',
+          sets: [
+            {
+              set_number: 1,
+              set_type: 'Warm-up',
+              duration: 600,
+              reps: null,
+              weight: null,
+              rest_time: 60,
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkoutPreset;
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      timedPreset,
+      '2026-04-27'
+    );
+    expect(draft.exercises[0]?.modality).toBe('duration_distance');
+    // Pre-modality local drafts must retain their time-based rendering.
+    delete (draft.exercises[0] as { modality?: unknown }).modality;
+    mockLocationState = { returnTo: '/?date=2026-04-27', draft };
+
+    render(<WorkoutPlaybackPage />);
+
+    expect(screen.getByText('Duration (s)')).toBeInTheDocument();
+    const durationInput = screen.getByLabelText(
+      'Duration set 1'
+    ) as HTMLInputElement;
+    expect(durationInput).toHaveValue(600);
+    fireEvent.change(durationInput, { target: { value: '300' } });
+    expect(durationInput).toHaveValue(300);
+    expect(screen.queryByLabelText('Reps set 1')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Weight set 1')).not.toBeInTheDocument();
+  });
+
+  it('keeps blank rows duration-based in legacy timed drafts', () => {
+    const timedPreset = {
+      ...presetFixture,
+      exercises: [
+        {
+          exercise_id: 'exercise-treadmill',
+          exercise_name: 'Treadmill Warm Up',
+          category: 'cardio',
+          sets: [
+            {
+              set_number: 1,
+              duration: 600,
+              reps: null,
+              weight: null,
+              rest_time: 60,
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkoutPreset;
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      timedPreset,
+      '2026-04-27'
+    );
+    delete (draft.exercises[0] as { modality?: unknown }).modality;
+    draft.exercises[0]?.sets.push({
+      set_number: 2,
+      duration: null,
+      reps: null,
+      weight: null,
+      rest_time: 60,
+      completed: false,
+      completed_at: null,
+    });
+    mockLocationState = { returnTo: '/?date=2026-04-27', draft };
+
+    render(<WorkoutPlaybackPage />);
+
+    expect(screen.getByText('Duration (s)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Duration set 2')).toHaveValue(null);
+    expect(screen.queryByLabelText('Reps set 2')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Weight set 2')).not.toBeInTheDocument();
+  });
+
   it('restores a draft from localStorage on reload', async () => {
     const draft = createWorkoutPlaybackDraftFromPreset(
       presetFixture,
