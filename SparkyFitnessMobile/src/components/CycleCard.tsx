@@ -178,7 +178,6 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
           <Text className="text-base font-semibold text-text-primary">
             {activeDay ? `Day ${activeDay}` : 'Wellness Tracking Active'}
           </Text>
-          <Text className="text-sm text-text-secondary">Tap to view details</Text>
         </View>
       );
     }

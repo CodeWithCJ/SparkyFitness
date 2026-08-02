@@ -141,10 +141,12 @@ const ICON_MAP = {
   'share-public': { sf: 'square.and.arrow.up', ion: 'share-social-outline', useIoniconOnIOS: true },
 
   // Wellness / Cycle
-  // Must stay legible as plain hydration: this fronts cycle tracking, which
-  // renders under a neutral "Wellness" label when discreet mode is on. A moon
-  // or calendar-heart would give the feature away to anyone glancing over.
-  'wellness': { sf: 'drop', ion: 'water-outline' },
+  // Must stay neutral in every tint: this fronts cycle tracking, which renders
+  // under a "Wellness" label when discreet mode is on. A moon or calendar-heart
+  // would give the feature away, and a droplet reads as a blood drop when a
+  // caller tints it red or pink.
+  'wellness': { sf: 'leaf', ion: 'leaf-outline' },
+  'wellness-filled': { sf: 'leaf.fill', ion: 'leaf' },
   'medication': { sf: 'pills', ion: 'medkit-outline' },
   'calendar': { sf: 'calendar', ion: 'calendar-outline' },
 } as const;
