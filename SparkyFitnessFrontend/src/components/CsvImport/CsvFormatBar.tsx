@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CSV_DELIMITER_LABEL_KEYS,
+  DATE_FORMATS,
   type CsvDelimiter,
   type CsvFormatCapabilities,
   type CsvFormatOptions,
@@ -21,7 +22,6 @@ import {
 } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { DATE_FORMATS } from '@/constants/exercises';
 
 export interface CsvFormatBarDetection {
   delimiter: CsvDelimiter | null;
@@ -55,7 +55,8 @@ const CsvFormatBar = ({
   detection,
 }: CsvFormatBarProps) => {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(!!detection?.delimiterFailed);
+  const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
+  const expanded = userExpanded ?? !!detection?.delimiterFailed;
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const set = <K extends keyof CsvFormatOptions>(
@@ -84,7 +85,9 @@ const CsvFormatBar = ({
   if (capabilities.decimal) {
     summaryParts.push(
       value.decimal === 'auto'
-        ? t('csvImport.summary.autoDecimal', 'Auto decimals')
+        ? detection?.decimal.format === 'eu'
+          ? t('csvImport.summary.autoDecimalEu', 'Auto decimals (1.234,56)')
+          : t('csvImport.summary.autoDecimalUs', 'Auto decimals (1,234.56)')
         : value.decimal === 'eu'
           ? t('csvImport.decimal.euShort', '1.234,56 (EU)')
           : t('csvImport.decimal.usShort', '1,234.56 (US)')
@@ -101,7 +104,7 @@ const CsvFormatBar = ({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => setExpanded((e) => !e)}
+          onClick={() => setUserExpanded(!expanded)}
         >
           {expanded
             ? t('csvImport.hideOptions', 'Hide format options')

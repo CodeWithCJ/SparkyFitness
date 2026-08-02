@@ -130,6 +130,17 @@ export function useExerciseImport(
       setLoadedText(text);
       evaluateAndParse(text);
     };
+    reader.onerror = () => {
+      toast({
+        title: t('exercise.exerciseImportCSV.importError', 'Import Error'),
+        description: t(
+          'exercise.exerciseImportCSV.readError',
+          'Failed to read the selected file.'
+        ),
+        variant: 'destructive',
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
     reader.readAsText(file);
   };
 

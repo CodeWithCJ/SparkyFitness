@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { renderWithClient } from '../test-utils';
+import { screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
 import { DEFAULT_CSV_FORMAT, type CsvFormatOptions } from '@workspace/shared';
@@ -19,7 +20,7 @@ const baseValue: CsvFormatOptions = {
 // — not a disabled one — rather than showing every axis unconditionally.
 describe('CsvFormatBar', () => {
   it('renders no date control when capabilities.date is false', () => {
-    render(
+    renderWithClient(
       <CsvFormatBar
         capabilities={{
           delimiter: true,
@@ -37,7 +38,7 @@ describe('CsvFormatBar', () => {
   });
 
   it('renders a date control when capabilities.date is true', () => {
-    render(
+    renderWithClient(
       <CsvFormatBar
         capabilities={{
           delimiter: true,
@@ -54,7 +55,7 @@ describe('CsvFormatBar', () => {
   });
 
   it('renders only the enabled axes (Food DB / Exercise DB shape: no date)', () => {
-    render(
+    renderWithClient(
       <CsvFormatBar
         capabilities={{
           delimiter: true,
@@ -74,7 +75,7 @@ describe('CsvFormatBar', () => {
   });
 
   it('surfaces the delimiter-detection-failed hint and auto-expands', () => {
-    render(
+    renderWithClient(
       <CsvFormatBar
         capabilities={{
           delimiter: true,
