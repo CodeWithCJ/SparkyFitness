@@ -63,7 +63,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
               <Text className="w-20 text-text-secondary text-xs">
                 {PHASE_LABELS[p.phase] || p.phase}
               </Text>
-              <View className="flex-1 h-2 rounded-full bg-raised overflow-hidden">
+              <View className="flex-1 h-2 rounded-full bg-progress-rail overflow-hidden">
                 <View
                   className="h-full bg-accent-primary rounded-full"
                   style={{ width: `${percentage}%` }}
