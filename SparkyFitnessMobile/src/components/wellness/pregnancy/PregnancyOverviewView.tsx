@@ -14,12 +14,21 @@ import AppointmentsCard from './AppointmentsCard';
 import Button from '../../ui/Button';
 import type { RootStackParamList } from '../../../types/navigation';
 
+interface PregnancyOverviewViewProps {
+  /**
+   * `overview` renders this week's content (week banner, baby growth, weekly
+   * checklist); `tools` renders the interactive cards (kick counter, bump
+   * photo journal, appointments, safety search).
+   */
+  section: 'overview' | 'tools';
+}
+
 /**
- * Pregnancy Overview View for CycleHubScreen (Pregnancy Hub Insights).
- * Gestational milestones, baby growth, weekly checklist, live tools
- * (kick counter, bump photo journal), prenatal appointments, and safety search.
+ * Pregnancy views for the CycleHubScreen (Pregnancy Hub) Overview and Tools
+ * segments. Both sections share the pregnancy/overview queries and the
+ * setup prompt shown when no active pregnancy exists.
  */
-const PregnancyOverviewView: React.FC = () => {
+const PregnancyOverviewView: React.FC<PregnancyOverviewViewProps> = ({ section }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
 
@@ -51,6 +60,26 @@ const PregnancyOverviewView: React.FC = () => {
 
   const gestationalAge = overview?.gestation;
 
+  if (section === 'tools') {
+    return (
+      <View className="gap-4">
+        {isOverviewLoading || !gestationalAge || !pregnancy?.id ? (
+          <View className="items-center py-8">
+            <ActivityIndicator color={accentColor} />
+          </View>
+        ) : (
+          <>
+            <KickCounter pregnancyId={pregnancy.id} />
+            <BumpPhotoJournal pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
+          </>
+        )}
+
+        <AppointmentsCard />
+        <FoodMedSafetySearch />
+      </View>
+    );
+  }
+
   return (
     <View className="gap-4">
       {isOverviewLoading || !gestationalAge || !pregnancy ? (
@@ -66,17 +95,10 @@ const PregnancyOverviewView: React.FC = () => {
           />
           <BabyGrowthView week={gestationalAge.week} />
           {pregnancy?.id && (
-            <>
-              <WeeklyChecklist pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
-              <KickCounter pregnancyId={pregnancy.id} />
-              <BumpPhotoJournal pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
-            </>
+            <WeeklyChecklist pregnancyId={pregnancy.id} currentWeek={gestationalAge.week} />
           )}
         </>
       )}
-
-      <AppointmentsCard />
-      <FoodMedSafetySearch />
     </View>
   );
 };

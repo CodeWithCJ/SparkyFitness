@@ -50,8 +50,18 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   // Anchor date for predictions, alerts, and the header log action
   const [selectedDate] = useState(getTodayDate);
 
-  // Tabs State: 'insights' | 'history'
-  const [activeTab, setActiveTab] = useState<'insights' | 'history'>('insights');
+  // Tabs State. The middle segment is mode-specific: cycle/TTC gets Trends,
+  // pregnancy gets Tools; a middle-tab selection left over from the other mode
+  // falls back to Overview.
+  const [activeTab, setActiveTab] = useState<'overview' | 'trends' | 'tools' | 'history'>('overview');
+  const middleTab =
+    mode === 'pregnant'
+      ? ({ key: 'tools', label: 'Tools' } as const)
+      : ({ key: 'trends', label: 'Trends' } as const);
+  const currentTab =
+    (activeTab === 'trends' || activeTab === 'tools') && activeTab !== middleTab.key
+      ? 'overview'
+      : activeTab;
 
   // Queries
   const { cycles, isLoading: isHistoryLoading } = useCycleHistory();
@@ -132,10 +142,11 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       <View className="px-4 py-2 bg-background z-10 border-b border-border-subtle">
         <SegmentedControl
           segments={[
-            { key: 'insights', label: 'Insights' },
+            { key: 'overview', label: 'Overview' },
+            middleTab,
             { key: 'history', label: 'History' },
           ]}
-          activeKey={activeTab}
+          activeKey={currentTab}
           onSelect={setActiveTab}
         />
       </View>
@@ -147,11 +158,11 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
           paddingBottom: insets.bottom + 80,
         }}
       >
-        {activeTab === 'insights' && (
+        {currentTab === 'overview' && (
           <View className="gap-3">
-            {/* Pregnancy View or Cycle Insights */}
+            {/* Pregnancy Overview or Cycle Overview */}
             {mode === 'pregnant' ? (
-              <PregnancyOverviewView />
+              <PregnancyOverviewView section="overview" />
             ) : (
               <>
                 {/* Cycle Ring Visualisation */}
@@ -176,14 +187,24 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
 
                 {/* TTC: fertility summary */}
                 {mode === 'ttc' && <FertilityCard date={selectedDate} />}
-
-                <CycleInsightsView />
               </>
             )}
           </View>
         )}
 
-        {activeTab === 'history' && (
+        {currentTab === 'trends' && (
+          <View className="gap-3">
+            <CycleInsightsView />
+          </View>
+        )}
+
+        {currentTab === 'tools' && (
+          <View className="gap-3">
+            <PregnancyOverviewView section="tools" />
+          </View>
+        )}
+
+        {currentTab === 'history' && (
           <View className="gap-6">
             <CycleCalendarGrid
               initialDate={selectedDate}
