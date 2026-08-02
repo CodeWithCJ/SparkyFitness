@@ -135,7 +135,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
   }, [isPregnant, hydratedWeight]);
 
   const handleWeightChange = (text: string) => {
-    weightDirtyRef.current = true;
+    weightDirtyRef.current = text.trim() !== hydratedWeight;
     setWeight(text);
   };
 
