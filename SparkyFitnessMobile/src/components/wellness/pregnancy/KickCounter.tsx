@@ -106,17 +106,17 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
     <View className="bg-surface rounded-xl p-5 border-0 shadow-sm gap-4">
       <View className="flex-row items-center justify-between">
         <Text className="text-text-primary text-sm font-semibold">Kick Counter</Text>
-        {isActive && <Text className="text-text-secondary text-xs">{formatElapsed(elapsed)}</Text>}
+        {isActive && <Text className="text-text-secondary text-sm">{formatElapsed(elapsed)}</Text>}
       </View>
 
       {isActive ? (
         <>
           <TouchableOpacity
             onPress={handleKick}
-            className="items-center justify-center rounded-full bg-pink-500 aspect-square self-center w-40"
+            className="items-center justify-center rounded-full bg-wellness-pregnant aspect-square self-center w-40"
           >
             <Text className="text-white text-4xl font-bold">{kickTimes.length}</Text>
-            <Text className="text-white text-xs mt-1">Tap for each kick</Text>
+            <Text className="text-white text-sm mt-1">Tap for each kick</Text>
           </TouchableOpacity>
           <Button variant="outline" tone="neutral" onPress={handleEnd}>
             End Session
@@ -124,15 +124,15 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
         </>
       ) : (
         <>
-          <Text className="text-text-secondary text-xs">
+          <Text className="text-text-secondary text-sm">
             Time how long it takes to feel 10 movements. Tap once for each kick.
           </Text>
           {lastSession && (
-            <Text className="text-text-secondary text-xs">
+            <Text className="text-text-secondary text-sm">
               Last session: {lastSession.kick_count} kicks
             </Text>
           )}
-          <Button variant="primary" disabled={isStarting} onPress={handleStart}>
+          <Button variant="outline" disabled={isStarting} onPress={handleStart}>
             {isStarting ? 'Starting…' : 'Start Counting'}
           </Button>
         </>
