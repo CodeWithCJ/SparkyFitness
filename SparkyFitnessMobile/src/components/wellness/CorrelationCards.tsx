@@ -60,7 +60,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
           const percentage = p.count ? Math.round((p.mean / max) * 100) : 0;
           return (
             <View key={p.phase} className="flex-row items-center gap-2">
-              <Text className="w-20 text-text-secondary text-xs">
+              <Text className="w-20 text-text-secondary text-sm">
                 {PHASE_LABELS[p.phase] || p.phase}
               </Text>
               <View className="flex-1 h-2 rounded-full bg-progress-rail overflow-hidden">
@@ -69,7 +69,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
                   style={{ width: `${percentage}%` }}
                 />
               </View>
-              <Text className="w-12 text-right text-text-primary text-xs font-semibold">
+              <Text className="w-14 text-right text-text-primary text-sm font-semibold">
                 {p.count ? `${p.mean}${unit}` : '—'}
               </Text>
             </View>
@@ -77,7 +77,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
         })}
       </View>
       {c.peakPhase ? (
-        <Text className="text-xs text-text-secondary leading-relaxed border-t border-border-subtle pt-2">
+        <Text className="text-sm text-text-secondary leading-relaxed border-t border-border-subtle pt-2">
           {label} tends to be {c.peakDelta > 0 ? 'higher' : 'lower'} in your {PHASE_LABELS[c.peakPhase] || c.peakPhase} phase ({c.peakDelta > 0 ? `+${c.peakDelta}` : c.peakDelta}{unit} vs your average).
         </Text>
       ) : null}
@@ -119,12 +119,12 @@ const CorrelationCards: React.FC = () => {
       {flags.map((f) => (
         <View
           key={f.key}
-          className="flex-row items-start p-3 bg-surface rounded-xl border-none"
+          className="flex-row items-start p-3 bg-surface rounded-xl border-none shadow-sm"
         >
           <View className="mr-2 mt-0.5">
-            <Icon name="warning" size={16} color={warningColor} />
+            <Icon name="warning" size={18} color={warningColor} />
           </View>
-          <Text className="flex-1 text-xs text-text-primary leading-normal">
+          <Text className="flex-1 text-sm text-text-primary leading-normal">
             {CONDITION_LABELS[f.key] || ''}
           </Text>
         </View>

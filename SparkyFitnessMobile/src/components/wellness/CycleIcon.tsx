@@ -51,6 +51,13 @@ const CycleIcon: React.FC<CycleIconProps> = ({ id, size = 28 }) => {
             <Path d="M14 13 C14 13 10.5 17.6 10.5 20.4 a3.5 3.5 0 0 0 7 0 C17.5 17.6 14 13 14 13 Z" fill={tokens.phaseMenstrual} />
           </>
         );
+      case 'ovulation':
+        return (
+          <>
+            <Circle cx="14" cy="14" r="7.5" fill="none" stroke={tokens.phaseOvulation} strokeWidth="1.8" />
+            <Circle cx="14" cy="14" r="3.2" fill={tokens.phaseOvulation} />
+          </>
+        );
       case 'symptom-cramps':
         return (
           <>

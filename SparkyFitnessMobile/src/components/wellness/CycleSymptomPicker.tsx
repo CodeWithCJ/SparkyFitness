@@ -95,13 +95,13 @@ const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ selected, onTog
               key={s.name}
               onPress={() => onToggle(s)}
               activeOpacity={0.7}
-              className={`flex-row items-center rounded-full px-3 py-1.5 border ${
+              className={`flex-row items-center rounded-full px-3.5 py-2 border ${
                 isActive ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-border-subtle'
               }`}
             >
-              <CycleIcon id={s.icon} size={16} />
+              <CycleIcon id={s.icon} size={20} />
               <Text
-                className={`text-xs ml-1.5 ${
+                className={`text-sm ml-2 ${
                   isActive ? 'text-text-primary font-bold' : 'text-text-secondary font-medium'
                 }`}
               >
