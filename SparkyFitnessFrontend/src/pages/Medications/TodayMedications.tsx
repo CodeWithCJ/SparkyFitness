@@ -50,6 +50,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { entryMatchesDue } from '@/utils/medicationUtils';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -81,15 +82,6 @@ export interface DueDose {
 // the Cabinet), same rule as Glp1Coach. Oral GLP-1 meds stay on the adherence path.
 const isGlp1Injectable = (med: Medication) =>
   med.is_glp1 && med.type_id === 'injection';
-
-// Injection rows merged into the entries feed carry no schedule_id, so GLP-1
-// injectable doses fall back to matching by medication.
-const entryMatchesDue = (
-  e: MedicationEntry,
-  due: { medication: { id: string }; schedule: { id: string } }
-) =>
-  e.schedule_id === due.schedule.id ||
-  (e.entry_type === 'injection' && e.medication_id === due.medication.id);
 
 export interface TodayMedicationsProps {
   selectedDate: string;
@@ -572,7 +564,7 @@ export default function TodayMedications({
             </div>
             {!entries.some(
               (e) =>
-                e.schedule_id === nextGlpDue.schedule.id &&
+                entryMatchesDue(e, nextGlpDue) &&
                 (e.status === 'taken' || e.status === 'skipped')
             ) && (
               <Button
