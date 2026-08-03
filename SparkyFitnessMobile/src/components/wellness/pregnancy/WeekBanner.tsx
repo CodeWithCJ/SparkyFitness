@@ -69,7 +69,7 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
 
       {!discreetMode && (
         <Text className="text-text-secondary text-xs">
-          {ga.daysRemaining > 0 ? t('mobileComponents.pregnancy.daysToGo', { count: ga.daysRemaining }) : t('mobileComponents.pregnancy.anyDay')}
+          {ga.daysRemaining > 0 ? t('mobileComponents.pregnancy.daysToGo', { count: ga.daysRemaining, formattedCount: formatLocalizedNumber(ga.daysRemaining) }) : t('mobileComponents.pregnancy.anyDay')}
         </Text>
       )}
     </View>

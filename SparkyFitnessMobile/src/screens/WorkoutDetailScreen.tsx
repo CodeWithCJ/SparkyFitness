@@ -61,6 +61,7 @@ import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { UpdatePresetSessionRequest } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
@@ -520,7 +521,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const summaryItems: { value: string; label: string }[] = [];
     summaryItems.push({
       value: String(exerciseCount),
-       label: t('workout.exerciseCount', { count: exerciseCount }),
+        label: t('workout.exerciseCount', { count: exerciseCount, formattedCount: formatLocalizedNumber(exerciseCount) }),
     });
      if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: t('workout.setsLabel') });
     if (totalVolume > 0) {

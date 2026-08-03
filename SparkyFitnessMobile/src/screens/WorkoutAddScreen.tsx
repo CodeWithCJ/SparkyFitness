@@ -322,6 +322,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     invalidateCreateCache,
     invalidateUpdateCache,
     discardDraft,
+    t,
     navigation,
     popCount,
   ]);

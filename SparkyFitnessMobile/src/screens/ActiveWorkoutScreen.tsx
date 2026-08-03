@@ -444,7 +444,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onPress: () => useActiveWorkoutStore.getState().removeExercise(entryId),
       },
     ]);
-  }, []);
+  }, [t]);
 
   const handleClearExerciseSets = useCallback((entryId: string) => {
     useActiveWorkoutStore.getState().clearExerciseCompletions(entryId);
@@ -463,7 +463,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         },
       ],
     );
-  }, []);
+  }, [t]);
 
   // Tap an exercise thumbnail → its library detail. Maps the session's full
   // snapshot to an Exercise so the detail screen gets muscles/equipment/etc.
@@ -579,7 +579,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     if (mode === 'pick') {
       return candidates.map((candidate) => ({
         key: candidate.id,
-        label: candidate.exercise_snapshot?.name ?? 'Exercise',
+         label: candidate.exercise_snapshot?.name ?? t('workout.exercise'),
         onPress: () => {
           useActiveWorkoutStore.getState().supersetWith(entryId, candidate.id);
         },
@@ -768,7 +768,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       return;
     }
     store.deleteSet(setId);
-  }, []);
+  }, [t]);
 
   // Set-type menu: tapping a set number (or long-pressing the row) anchors
   // the shared SetTypeMenu. Replaces an Alert, which capped at 3 buttons on
@@ -841,7 +841,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         },
       ],
     );
-  }, [createdByLiveStart, sessionId, session, queryClient, navigation]);
+  }, [createdByLiveStart, sessionId, session, queryClient, navigation, t]);
 
   const handleFinish = useCallback(async () => {
     // "Discard changes" sits one tap from "Retry", and a mis-tap would
@@ -908,7 +908,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       }
     }
     await attempt();
-  }, [flush, navigation]);
+  }, [flush, navigation, t]);
 
   // Long-gap guard on the way out: a workout left open across a long break
   // (forgotten overnight, one straggler set the next morning) would stamp the
@@ -945,7 +945,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         },
       ],
     );
-  }, [handleFinish]);
+  }, [handleFinish, t]);
 
   const handleDurationSave = useCallback(
     (minutes: number) => {
@@ -978,7 +978,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
        { text: t('workout.keepGoing'), style: 'cancel' },
        { text: t('workout.endWorkout'), style: 'default', onPress: maybeAdjustDurationThenFinish },
     ]);
-  }, [session, completedSetIds, maybeAdjustDurationThenFinish]);
+  }, [session, completedSetIds, maybeAdjustDurationThenFinish, t]);
 
   if (session == null || sessionId == null) {
     return (
@@ -1284,7 +1284,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           overflowMenu?.mode === 'pick'
             ? 'Superset with…'
             : (session.exercises.find((e) => e.id === overflowMenu?.entryId)
-                ?.exercise_snapshot?.name ?? 'Exercise')
+                ?.exercise_snapshot?.name ?? t('workout.exercise'))
         }
         items={overflowMenuItems}
         onBack={

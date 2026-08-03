@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -165,7 +166,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
                     ovulationDay={ringMarkers.ovulationDay}
                     centerLabel={activeSegmentLabel}
                      centerValue={dayStats.cycleDay !== null ? t('mobileComponents.wellness.hub.day', { value: dayStats.cycleDay }) : '—'}
-                     centerSub={discreetMode ? undefined : t('mobileComponents.wellness.hub.cycleLength', { count: cycleStats.avgCycleLength })}
+                      centerSub={discreetMode ? undefined : t('mobileComponents.wellness.hub.cycleLength', { count: cycleStats.avgCycleLength, formattedCount: formatLocalizedNumber(cycleStats.avgCycleLength) })}
                   />
                 </View>
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../../../localization';
 import Toast from 'react-native-toast-message';
 import { useKickMutations, useKickSessions } from '../../../hooks/usePregnancyTracking';
 import Button from '../../ui/Button';
@@ -70,7 +71,7 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
         id: sessionId,
         body: { kick_count: kickTimes.length, kick_times: kickTimes, ended: true },
       });
-       Toast.show({ type: 'success', text1: t('mobileComponents.wellness.pregnancyTools.saved', { count: kickTimes.length }) });
+       Toast.show({ type: 'success', text1: t('mobileComponents.wellness.pregnancyTools.saved', { count: kickTimes.length, formattedCount: formatLocalizedNumber(kickTimes.length) }) });
     } catch {
        Toast.show({ type: 'error', text1: t('mobileComponents.wellness.pregnancyTools.saveError') });
     } finally {
@@ -110,7 +111,7 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
           </Text>
           {lastSession && (
             <Text className="text-text-secondary text-xs">
-               {t('mobileComponents.wellness.pregnancyTools.lastSession', { count: lastSession.kick_count })}
+                {t('mobileComponents.wellness.pregnancyTools.lastSession', { count: lastSession.kick_count, formattedCount: formatLocalizedNumber(lastSession.kick_count) })}
             </Text>
           )}
           <Button variant="primary" disabled={isStarting} onPress={handleStart}>

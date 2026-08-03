@@ -26,6 +26,7 @@ import type { Exercise } from '../types/exercise';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 type PresetSearchScreenProps = RootStackScreenProps<'PresetSearch'>;
 
@@ -171,7 +172,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
               <ShareStatusBadge status={status} />
             </View>
             <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-               {t('workout.exerciseCount', { count: item.exercises.length })}
+                {t('workout.exerciseCount', { count: item.exercises.length, formattedCount: formatLocalizedNumber(item.exercises.length) })}
             </Text>
           </View>
         </TouchableOpacity>

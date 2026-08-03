@@ -412,7 +412,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
       );
     }, UPDATE_PRESET_PROMPT_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [isFocused, sourcePreset, presetUpdateExercises, profile?.id, updatePresetAsync]);
+  }, [isFocused, sourcePreset, presetUpdateExercises, profile?.id, updatePresetAsync, t]);
 
   const rpeTone = summary.averageRpe != null ? getRpeTone(summary.averageRpe) : null;
   const rpeToneColor = String(

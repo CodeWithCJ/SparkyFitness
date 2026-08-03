@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../../../localization';
 import { useCSSVariable } from 'uniwind';
 import { useCycleFertility } from '../../../hooks/useCycleInsights';
 import { daysBetween } from '@workspace/shared';
@@ -93,7 +94,7 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
         <View className="items-end">
            <Text className="text-text-secondary text-xs">{t('mobileComponents.wellness.fertility.nextPeriod')}</Text>
           <Text className="text-text-primary text-base font-bold">
-             {daysUntilNextPeriod != null ? t('mobileComponents.wellness.fertility.days', { count: daysUntilNextPeriod }) : '—'}
+              {daysUntilNextPeriod != null ? t('mobileComponents.wellness.fertility.days', { count: daysUntilNextPeriod, formattedCount: formatLocalizedNumber(daysUntilNextPeriod) }) : '—'}
           </Text>
         </View>
       </View>
@@ -102,7 +103,7 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
         <View className="rounded-xl bg-raised p-3">
            <Text className="text-text-secondary text-xs mb-0.5">{t('mobileComponents.wellness.fertility.wait')}</Text>
           <Text className="text-text-primary text-sm font-semibold">
-             {dpo === 0 ? t('mobileComponents.wellness.fertility.ovulationDay') : t('mobileComponents.wellness.fertility.past', { count: dpo })}
+              {dpo === 0 ? t('mobileComponents.wellness.fertility.ovulationDay') : t('mobileComponents.wellness.fertility.past', { count: dpo, formattedCount: formatLocalizedNumber(dpo) })}
           </Text>
           {dpo >= 1 && dpo < 14 && (
             <Text className="text-text-secondary text-xs mt-1">

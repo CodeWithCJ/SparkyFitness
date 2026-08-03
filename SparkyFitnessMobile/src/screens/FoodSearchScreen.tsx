@@ -489,6 +489,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     headerSaveColor,
     isMealBuilderMode,
     navigation,
+    t,
     usesNativeHeader,
   ]);
 

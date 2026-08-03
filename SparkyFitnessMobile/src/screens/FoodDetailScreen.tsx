@@ -100,7 +100,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
         ]
       );
     }
-  }, [isPublic, updateShareMutation]);
+  }, [isPublic, updateShareMutation, t]);
 
   // Favorites: a saved local food can be starred here, so the library is no
   // longer edit-only via search. External results have no stable id to

@@ -77,7 +77,7 @@ describe('OnboardingScreen', () => {
 
       expect(getByText('SparkyFitness')).toBeTruthy();
       expect(getByText('Your self-hosted fitness tracker')).toBeTruthy();
-      expect(getByPlaceholderText('https://your-sparky-app.com')).toBeTruthy();
+      expect(getByPlaceholderText('Frontend URL')).toBeTruthy();
       expect(getByText('Next')).toBeTruthy();
       expect(getByText('Later')).toBeTruthy();
     });
@@ -89,7 +89,7 @@ describe('OnboardingScreen', () => {
       const { getByPlaceholderText, getByText } = renderScreen();
 
       fireEvent.changeText(
-        getByPlaceholderText('https://your-sparky-app.com'),
+        getByPlaceholderText('Frontend URL'),
         'https://a-long-enough-server-url.example.com',
       );
 
@@ -129,7 +129,7 @@ describe('OnboardingScreen', () => {
       const { getByText, getByPlaceholderText } = renderScreen();
 
       fireEvent.changeText(
-        getByPlaceholderText('https://your-sparky-app.com'),
+        getByPlaceholderText('Frontend URL'),
         'https://example.com',
       );
 
@@ -139,7 +139,7 @@ describe('OnboardingScreen', () => {
 
       await waitFor(() => {
         expect(
-          getByText('Could not reach server. Check the URL and try again.'),
+          getByText('Could not connect to server. Check the URL and try again.'),
         ).toBeTruthy();
       });
     });
@@ -150,7 +150,7 @@ describe('OnboardingScreen', () => {
       const { getByText, getByPlaceholderText } = renderScreen();
 
       fireEvent.changeText(
-        getByPlaceholderText('https://your-sparky-app.com'),
+        getByPlaceholderText('Frontend URL'),
         'https://example.com',
       );
 
@@ -180,7 +180,7 @@ describe('OnboardingScreen', () => {
       const { getByText, getByPlaceholderText } = renderScreen();
 
       fireEvent.changeText(
-        getByPlaceholderText('https://your-sparky-app.com'),
+        getByPlaceholderText('Frontend URL'),
         'https://example.com',
       );
 
@@ -190,7 +190,7 @@ describe('OnboardingScreen', () => {
 
       await waitFor(() => {
         expect(
-          getByText('Could not reach server. Check the URL and try again.'),
+          getByText('Could not connect to server. Check the URL and try again.'),
         ).toBeTruthy();
       });
       // The fallback would probe the same host that just spent the full
@@ -206,7 +206,7 @@ describe('OnboardingScreen', () => {
       mockFetch.mockResolvedValueOnce({ ok: true });
 
       fireEvent.changeText(
-        result.getByPlaceholderText('https://your-sparky-app.com'),
+        result.getByPlaceholderText('Frontend URL'),
         'https://example.com',
       );
 
@@ -239,7 +239,7 @@ describe('OnboardingScreen', () => {
 
       // Should be back on page 1 with URL preserved
       expect(
-        result.getByPlaceholderText('https://your-sparky-app.com').props.value,
+        result.getByPlaceholderText('Frontend URL').props.value,
       ).toBe('https://example.com');
     });
 
@@ -269,7 +269,7 @@ describe('OnboardingScreen', () => {
 
       // Enter API key
       fireEvent.changeText(
-        result.getByPlaceholderText('Uds3d8i...'),
+        result.getByPlaceholderText('API Key'),
         'my-api-key',
       );
 
@@ -307,7 +307,7 @@ describe('OnboardingScreen', () => {
 
       // Fill in sign in fields
       fireEvent.changeText(
-        result.getByPlaceholderText('email@example.com'),
+        result.getByPlaceholderText('Email'),
         'user@example.com',
       );
       fireEvent.changeText(
@@ -343,7 +343,7 @@ describe('OnboardingScreen', () => {
       await goToPage2(result);
 
       fireEvent.changeText(
-        result.getByPlaceholderText('email@example.com'),
+        result.getByPlaceholderText('Email'),
         'user@example.com',
       );
       fireEvent.changeText(

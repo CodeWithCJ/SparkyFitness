@@ -86,6 +86,21 @@ interface SectionErrorBoundaryState {
   retryKey: number;
 }
 
+const SectionErrorFallback: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
+  const { t } = useTranslation();
+  return (
+    <View className="items-center py-6 px-4">
+      <Icon name="alert-circle" size={32} color="#EF4444" />
+      <Text className="text-text-secondary text-sm mt-2 text-center">
+        {t('mobileComponents.errors.section')}
+      </Text>
+      <Button variant="ghost" onPress={onRetry} className="mt-2 px-4">
+        {t('mobileComponents.errors.retry')}
+      </Button>
+    </View>
+  );
+};
+
 export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryProps, SectionErrorBoundaryState> {
   state: SectionErrorBoundaryState = { hasError: false, retryKey: 0 };
 
@@ -108,23 +123,7 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
 
   render() {
     if (this.state.hasError) {
-      const RetryFallback = () => {
-        const { t } = useTranslation();
-        return (
-          <View className="items-center py-6 px-4">
-            <Icon name="alert-circle" size={32} color="#EF4444" />
-            <Text className="text-text-secondary text-sm mt-2 text-center">
-              {t('mobileComponents.errors.section')}
-            </Text>
-            <Button variant="ghost" onPress={this.handleRetry} className="mt-2 px-4">
-              {t('mobileComponents.errors.retry')}
-            </Button>
-          </View>
-        );
-      };
-      return (
-        <RetryFallback />
-      );
+      return <SectionErrorFallback onRetry={this.handleRetry} />;
     }
 
     return (

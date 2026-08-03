@@ -624,7 +624,7 @@ describe('FoodEntryAddScreen', () => {
       pickerMode: 'meal-builder',
     });
 
-    fireEvent.press(screen.getByText('Add Meal'));
+      fireEvent.press(screen.getByText('Log Meal'));
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
@@ -671,7 +671,7 @@ describe('FoodEntryAddScreen', () => {
       date: '2026-05-15',
     });
 
-    fireEvent.press(screen.getByText('Add Meal'));
+    fireEvent.press(screen.getByText('Log Meal'));
 
     expect(mockAddMeal).toHaveBeenCalledWith(
       expect.objectContaining({

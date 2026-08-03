@@ -528,7 +528,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
       });
     });
     return unsub;
-  }, [navigation, equivalentDraft]);
+  }, [navigation, equivalentDraft, t]);
 
   const [selectedDate, setSelectedDate] = useState(params.date ?? getTodayDate());
   const calendarRef = useRef<CalendarSheetRef>(null);
@@ -987,7 +987,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       });
     });
     return unsub;
-  }, [navigation, equivalentDraft, equivalentBaseline]);
+  }, [navigation, equivalentDraft, equivalentBaseline, t]);
 
   const buildGroupNutrition = useCallback(
     (
@@ -1542,7 +1542,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       });
     });
     return unsub;
-  }, [navigation, equivalentDraft, equivalentBaseline]);
+  }, [navigation, equivalentDraft, equivalentBaseline, t]);
 
   const handleUnitSelectionChange = useCallback(
     async (
@@ -1578,6 +1578,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       equivalentDraft,
       equivalentBaseline,
       pendingUnitSelection,
+      t,
     ],
   );
 

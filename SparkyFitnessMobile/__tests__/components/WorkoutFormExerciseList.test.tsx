@@ -797,7 +797,7 @@ describe('WorkoutFormExerciseList', () => {
 
   it('renders the Add Exercise footer', () => {
     const utils = renderList([makeExercise('a')]);
-    fireEvent.press(utils.getByText('Add Exercise'));
+    fireEvent.press(utils.getByText('Add an Exercise'));
     expect(utils.callbacks.onAddExercisePress).toHaveBeenCalledTimes(1);
   });
 

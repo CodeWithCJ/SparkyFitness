@@ -475,9 +475,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
                 return (
                   <SwipeableIngredientRow
                     key={`${food.food_id}-${food.variant_id}-${index}`}
-                     foodName={food.food_name ?? t('foodMealScreens.foods')}
+                     foodName={food.food_name || t('foodMealScreens.unknownFood')}
                     quantityLabel={`${formatServingSizeDisplay(scaledQty)} ${food.unit}`}
-                    caloriesLabel={`${foodCals} Cal`}
+                     caloriesLabel={`${foodCals} ${t('common.caloriesUnit')}`}
                     showBottomBorder={index < ingredients.length - 1}
                     isLastIngredient={ingredients.length === 1}
                     disabled={isRowBusy}

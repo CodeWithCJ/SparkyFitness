@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AnnouncementModal, DISMISSED_ANNOUNCEMENT_KEY } from '../../src/components/AnnouncementModal';
 
@@ -17,8 +17,9 @@ function setTestLocale(locale: 'en' | 'pl'): void {
 
 describe('AnnouncementModal', () => {
   beforeEach(async () => {
+    setTestLocale('en');
     mockApiFetch.mockResolvedValue({ id: 'announcement-1', active: true, title: 'Server title', message: 'Server message' });
-    await AsyncStorage.clear();
+    await AsyncStorage.removeItem(DISMISSED_ANNOUNCEMENT_KEY);
   });
 
   it.each([
@@ -40,10 +41,13 @@ describe('AnnouncementModal', () => {
   it('does not persist on close but persists the exact id on dismiss', async () => {
     const view = render(<AnnouncementModal />);
     await waitFor(() => expect(view.getByText('Server title')).toBeTruthy());
-    fireEvent.press(view.getByLabelText("Got it, don't show again"));
+    const dismissButton = view.getByText(/Got it, don't show again|nie pokazuj ponownie/i);
+    await act(async () => {
+      fireEvent.press(dismissButton);
+    });
     await waitFor(async () => {
       expect(await AsyncStorage.getItem(DISMISSED_ANNOUNCEMENT_KEY)).toBe('announcement-1');
-      expect(view.queryByLabelText('Close')).toBeNull();
+      expect(view.queryByText('Server title')).toBeNull();
     });
   });
 });

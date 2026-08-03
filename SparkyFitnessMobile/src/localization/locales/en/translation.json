@@ -26,7 +26,8 @@
     "favorite": "Favorite",
     "dismiss": "Dismiss",
     "continue": "Continue",
-    "tryAgain": "Please try again."
+    "tryAgain": "Please try again.",
+    "caloriesUnit": "Cal"
   },
   "calorieModes": {"adaptive":"Adaptive Goal","dynamic":"Dynamic Goal","fixed":"Fixed Goal","percentage":"Percentage Earn-Back","tdee":"Device Projection"},
   "activityLevels": {"none":"None (x1.0)","not_much":"Sedentary (x1.2)","light":"Lightly Active (x1.375)","moderate":"Moderately Active (x1.55)","heavy":"Very Active (x1.725)"},
@@ -720,7 +721,6 @@
     "addExercise": "Add an Exercise",
     "reorderExercises": "Reorder exercises",
     "addExerciseBeforeSave": "Add at least one exercise with a set before saving.",
-    "reorderExercises": "Reorder exercises",
     "clearLoggedSets": "Clear logged sets",
     "removeExercise": "Remove exercise",
     "removeFromSuperset": "Remove from superset",
@@ -840,7 +840,6 @@
     "failedSearchExercises": "Failed to search exercises",
     "failedAdd": "Failed to add exercise",
     "viewExerciseDetails": "View exercise details",
-    "failedLoadPresets": "Failed to load presets",
     "failedSearchPresets": "Failed to search presets",
     "startEmptyOrSave": "Start an empty workout, or save a workout as a preset to see it here",
     "changeOwnership": "Try changing your ownership filter",
@@ -852,7 +851,6 @@
     "presetUpdated": "Workout preset updated",
     "presetDeleted": "Workout preset deleted",
     "presetAddBeforeSave": "Add at least one exercise with a set before saving.",
-    "presetNameRequired": "Please enter a name for this preset.",
     "presetMissingName": "Missing name",
     "presetNameRequired": "Please enter a name for this preset.",
     "draftInProgress": "Draft in Progress",
@@ -899,7 +897,6 @@
     "keepAwakeSubtitle": "Prevent the screen from sleeping while a workout is active.",
     "durationSpan": "Minutes this workout counts as, up to its {{span}} span.",
     "selectActivityPlaceholder": "Activity",
-    "category": "Category",
     "categoryGeneral": "General",
     "categoryStrength": "Strength",
     "categoryCardio": "Cardio",
@@ -926,11 +923,10 @@
     "caloriesPerHour": "Calories per Hour",
     "muscles": "Muscles",
     "classification": "Classification",
-    "select": "Select {{label}}",
     "selectValue": "Select…",
     "next": "Next",
-    "exerciseCount_one": "{{count}} exercise",
-    "exerciseCount_other": "{{count}} exercises",
+     "exerciseCount_one": "{{formattedCount}} exercise",
+     "exerciseCount_other": "{{formattedCount}} exercises",
     "failedToSaveActivity": "Failed to save activity",
     "pleaseTryAgain": "Please try again.",
     "avgHeartRateLabel": "Avg Heart Rate",
@@ -941,15 +937,7 @@
     "repsLabel": "Reps",
     "setLabel": "Set",
     "startWorkoutHere": "Start workout here",
-    "exerciseDetails": "Exercise details",
-    "presetsTitle": "Workout presets",
-    "noServer": "No server configured",
-    "configureServer": "Configure your server connection in Settings to view your workout presets.",
-    "loadingPresets": "Loading workout presets...",
     "failedLoadPresets": "Failed to load workout presets",
-    "failedMorePresets": "Failed to load more presets.",
-    "workoutPresetCount_one": "{{count}} exercise",
-    "workoutPresetCount_other": "{{count}} exercises",
     "deleteActivity": "Delete Activity",
     "deleting": "Deleting...",
     "addNotesPlaceholder": "Add notes...",
@@ -997,8 +985,8 @@
     "failedLoadPresetsFull": "Failed to load workout presets",
     "failedMorePresets": "Failed to load more presets.",
     "searchWorkoutPresets": "Search workout presets...",
-    "workoutPresetCount_one": "{{count}} exercise",
-    "workoutPresetCount_other": "{{count}} exercises"
+     "workoutPresetCount_one": "{{formattedCount}} exercise",
+     "workoutPresetCount_other": "{{formattedCount}} exercises"
   },
   "sync": {
     "someChangesPending": "Some changes have not reached the server yet.",
@@ -1063,7 +1051,15 @@
     "editFood": "Edit {{foodName}}",
     "selectUnit": "Select Unit",
     "unitUpdateFailed": "Could not update that unit",
-    "aiEstimate": "AI estimate",
+     "aiEstimate": "AI estimate",
+     "convertWithAi": "Convert with AI",
+    "aiEstimateWithConfidence": "AI estimate ({{confidence}} confidence)",
+     "confidenceHigh": "Good",
+     "confidenceMedium": "Fair",
+     "confidenceLow": "Rough",
+     "confidenceEstimateHigh": "Good estimate",
+     "confidenceEstimateMedium": "Fair estimate",
+     "confidenceEstimateLow": "Rough estimate",
     "savedCustomUnits": "Saved Custom Units",
     "noServerMealNutrition": "Configure your server connection in Settings to view meal nutrition.",
     "loadingMeal": "Loading meal...",
@@ -1123,12 +1119,13 @@
     ,"removeEquivalent": "Remove equivalent"
     ,"addEquivalent": "+ Add equivalent"
     ,"addFood": "Add Food"
-    ,"couldNotEstimate": "Couldn't estimate"
+     ,"couldNotEstimate": "Couldn't estimate"
+     ,"aiEstimateFailed": "AI estimate failed."
     ,"noTrustedDefault": "The food has no trusted default to scale from."
     ,"setServingFirst": "Set a serving size first"
     ,"untitledFood": "Untitled food"
     ,"manualNutritionUpdate": "Manual Nutrition Update"
-    ,"manualNutritionMessage": "Can't convert between units. Update nutrition values manually before saving."
+     ,"manualNutritionMessage": "Can't convert between units. Update nutrition values manually."
     ,"saveAnyway": "Save Anyway"
     ,"foodName": "Food Name"
     ,"foodNamePlaceholder": "e.g. Chicken Breast"
@@ -1155,7 +1152,7 @@
     "searchFoods": "Search foods..."
   },
   "foodMealScreens": {
-    "mealMakes": "meal makes {{count}}", "now": "Now",
+     "mealMakes_one": "meal makes {{formattedCount}} serving", "mealMakes_other": "meal makes {{formattedCount}} servings", "now": "Now",
     "serving": "serving",
     "servings": "servings",
     "perServing": "per serving",
@@ -1531,33 +1528,33 @@
     "nutrition": { "left": "left", "calories": "calories", "remaining": "{{value}}g left", "over": "{{value}}g over", "met": "met" },
     "rest": { "off": "Off", "label": "Rest {{value}}", "title": "Rest period", "custom": "Custom" },
     "errors": { "title": "Something went wrong", "message": "An unexpected error occurred. Your server may need to be updated.", "section": "This section failed to load.", "retry": "Try Again", "back": "Go Back" },
-    "charts": { "pressBar": "Press a bar for details", "pressLine": "Press the line for details", "consumedOn": "{{value}}{{unit}} consumed · {{date}}", "stepsOn": "{{value}} steps · {{date}}", "weightOn": "{{value}} {{unit}} · {{date}}", "bbtOn": "{{date}}: {{value}}°C", "loading": "Loading chart...", "nutrientError": "Failed to load trend data", "noIntake": "No logged intake for this period", "stepsError": "Failed to load step data", "noSteps": "No step data for this period", "weightError": "Failed to load weight data", "noBbt": "Log daily temperature logs to view your BBT chart." },
+      "charts": { "pressBar": "Press a bar for details", "pressLine": "Press the line for details", "consumedOn": "{{value}}{{unit}} consumed · {{date}}", "stepsOn_one": "{{formattedCount}} step · {{date}}", "stepsOn_other": "{{formattedCount}} steps · {{date}}", "weightOn": "{{value}} {{unit}} · {{date}}", "bbtOn": "{{date}}: {{value}}°C", "loading": "Loading chart...", "nutrientError": "Failed to load trend data", "noIntake": "No logged intake for this period", "stepsError": "Failed to load step data", "noSteps": "No step data for this period", "weightError": "Failed to load weight data", "noBbt": "Log daily temperature logs to view your BBT chart." },
     "calendar": { "predictedPeriod": "Predicted Period", "fertileWindow": "Fertile Window", "estimatedOvulation": "Est. Ovulation" },
-     "cycleHistory": { "title": "Cycle History", "addManual": "Add Manual", "logManual": "Log Manual Cycle", "startDate": "Start Date", "selectDate": "Select Date", "periodDays": "Period Days", "cycleDays": "Cycle Days", "exclude": "Exclude from predictions", "saveManual": "Save Manual Cycle", "empty": "No logged cycles yet.", "started": "Started {{date}}", "dayCycle_one": "{{count}} day cycle", "dayCycle_other": "{{count}} days cycle", "dayCycleLabel": "{{value}} day cycle", "currentCycle": "Current cycle", "dayPeriod_one": "{{count}} day period", "dayPeriod_other": "{{count}} day period", "dayPeriodLabel": "{{value}} day period" },
+     "cycleHistory": { "title": "Cycle History", "addManual": "Add Manual", "logManual": "Log Manual Cycle", "startDate": "Start Date", "selectDate": "Select Date", "periodDays": "Period Days", "cycleDays": "Cycle Days", "exclude": "Exclude from predictions", "saveManual": "Save Manual Cycle", "empty": "No logged cycles yet.", "started": "Started {{date}}", "dayCycle_one": "{{formattedCount}} day cycle", "dayCycle_other": "{{formattedCount}} days cycle", "dayCycleLabel": "{{value}} day cycle", "currentCycle": "Current cycle", "dayPeriod_one": "{{formattedCount}} day period", "dayPeriod_other": "{{formattedCount}} day period", "dayPeriodLabel": "{{value}} day period" },
     "symptoms": { "title": "Symptoms", "showLess": "Show less", "showAll": "+ Show all" },
     "correlation": { "byPhase": "{{metric}} by cycle phase", "higher": "higher", "lower": "lower", "summary": "{{metric}} tends to be {{direction}} in your {{phase}} phase ({{delta}}{{unit}} vs your average).", "emptyTitle": "Correlations unlock with more data", "emptyBody": "Keep logging weight, mood, sleep and energy across a few cycles to see how they move with your phases.", "metricWeight": "Weight", "metricMood": "Mood", "metricSleep": "Sleep", "metricEnergy": "Energy", "phaseMenstrual": "Menstrual", "phaseFollicular": "Follicular", "phaseFertile": "Fertile", "phaseOvulation": "Ovulation", "phaseLuteal": "Luteal", "flagLongCycles": "Your cycles average over 35 days. This pattern is sometimes associated with PCOS — worth discussing with a clinician.", "flagIrregularCycles": "Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.", "flagShortCycles": "Your cycles are shorter than typical. If this is new, it may be worth a clinician’s input." },
-     "pregnancy": { "firstTrimester": "First trimester", "secondTrimester": "Second trimester", "thirdTrimester": "Third trimester", "wellnessProgress": "Wellness Progress", "week": "Week {{week}}", "weekDay": "{{week}}w {{day}}d", "due": "Due", "daysToGo_one": "{{count}} day to go", "daysToGo_other": "{{count}} days to go", "daysToGoLabel": "{{value}} days to go", "anyDay": "Any day now" },
+      "pregnancy": { "firstTrimester": "First trimester", "secondTrimester": "Second trimester", "thirdTrimester": "Third trimester", "wellnessProgress": "Wellness Progress", "week": "Week {{week}}", "weekDay": "{{week}}w {{day}}d", "due": "Due", "daysToGo_one": "{{formattedCount}} day to go", "daysToGo_other": "{{formattedCount}} days to go", "daysToGoLabel": "{{value}} days to go", "anyDay": "Any day now" },
     "checklist": { "title": "This Week's To-Do", "empty": "Nothing on your checklist for this week.", "item": "Checklist item" },
     "vitals": { "title": "Vitals", "todayWeight": "Today's weight", "prenatalVitamin": "Prenatal vitamin", "supplement": "Supplement", "linked": "Linked", "notSet": "Not set" },
     "wellness": {
-      "hub": { "wellness": "Wellness", "pregnancy": "Pregnancy Hub", "cycle": "Cycle Hub", "logEntry": "Log Entry", "logPregnancy": "Log Pregnancy Entry", "logFertility": "Log Fertility & Test", "logDaily": "Log Daily Entry", "selectedDate": "Selected Date", "insights": "Insights", "history": "History", "day": "Day {{value}}", "cycleLength_one": "{{count}} day cycle", "cycleLength_other": "{{count}} days cycle" },
+       "hub": { "wellness": "Wellness", "pregnancy": "Pregnancy Hub", "cycle": "Cycle Hub", "logEntry": "Log Entry", "logPregnancy": "Log Pregnancy Entry", "logFertility": "Log Fertility & Test", "logDaily": "Log Daily Entry", "selectedDate": "Selected Date", "insights": "Insights", "history": "History", "day": "Day {{value}}", "cycleLength_one": "{{formattedCount}} day cycle", "cycleLength_other": "{{formattedCount}} days cycle" },
       "insights": { "summary": "Cycle Summary", "avgCycle": "Avg Cycle", "avgPeriod": "Avg Period", "regularity": "Regularity", "set": "Set", "regular": "Regular", "predictions": "Next Predictions", "confidence": "{{value}} confidence", "upcoming": "Upcoming Cycle", "following": "Following Cycle", "nextPeriod": "Next Period", "ovulation": "Est. Ovulation", "alerts": "Clinical Health Alerts", "bbt": "Basal Body Temperature", "forecast": "Symptom Forecast", "forecastEmpty": "Log symptoms across a couple of cycles to forecast upcoming days.", "correlations": "Personal Correlations" },
       "today": { "flow": "Menstrual Flow", "mucus": "Cervical Mucus", "selectMucus": "Select Cervical Mucus", "selectPosition": "Select Cervical Position", "selectPlaceholder": "Tap to select...", "intercourse": "Intercourse", "protection": "Protection", "position": "Cervical Position", "temperature": "Basal Body Temperature", "temperatureHelp": "Track your waking temperature (°C) to identify biphasic shifts post-ovulation.", "temperaturePlaceholder": "e.g. 36.5", "notes": "Notes", "notesPlaceholder": "Log details about how you feel, energy level...", "invalidTemperature": "Invalid temperature input", "save": "Save Log Entry", "saving": "Saving..." },
       "flow": { "none": "None", "spotting": "Spot", "light": "Light", "medium": "Med", "heavy": "Heavy" },
       "mucus": { "dry": "Dry", "sticky": "Sticky", "creamy": "Creamy", "watery": "Watery", "eggwhite": "Egg White" },
       "position": { "low": "Low", "medium": "Medium", "high": "High" },
       "binary": { "yes": "Yes", "no": "No", "protected": "Protected", "unprotected": "Unprotected" },
-      "fertility": { "title": "Fertility", "fertile": "Fertile window", "ovulation": "Est. ovulation", "nextPeriod": "Next period in", "days_one": "{{count}} day", "days_other": "{{count}} days", "wait": "Two-week wait", "ovulationDay": "Ovulation day", "past_one": "{{count}} day past ovulation", "past_other": "{{count}} days past ovulation", "accuracy": "A test is typically most accurate around 12–14 DPO." },
+       "fertility": { "title": "Fertility", "fertile": "Fertile window", "ovulation": "Est. ovulation", "nextPeriod": "Next period in", "days_one": "{{formattedCount}} day", "days_other": "{{formattedCount}} days", "wait": "Two-week wait", "ovulationDay": "Ovulation day", "past_one": "{{formattedCount}} day past ovulation", "past_other": "{{formattedCount}} days past ovulation", "accuracy": "A test is typically most accurate around 12–14 DPO." },
       "tests": { "title": "Log a Test", "opk": "Ovulation (OPK)", "hpt": "Pregnancy (HPT)", "recent": "Recent Logged Tests", "negative": "Negative", "low": "Low", "high": "High", "peak": "Peak", "faint": "Faint", "positive": "Positive", "logged": "Test logged", "logError": "Could not log test", "removeError": "Could not remove test" },
       "setup": { "title": "{{action}} Pregnancy", "newTitle": "Pregnancy Setup", "editTitle": "Edit Pregnancy", "description": "Tell us how to estimate your due date. You can change this later.", "basedOn": "Based on", "estimateBy": "Estimate due date by", "babies": "Number of babies", "due": "Estimated due date", "notes": "Notes", "notesPlaceholder": "Anything you'd like to remember…", "save": "Save", "saving": "Saving…", "checkDates": "Check the dates", "updated": "Pregnancy updated", "created": "Pregnancy set up", "saveError": "Could not save pregnancy", "futureLmp": "Your last period can’t be in the future.", "futureConception": "The conception date can’t be in the future.", "pastDue": "That due date is in the past. Please check the date.", "farDue": "That due date is too far away — a pregnancy is about 40 weeks." },
       "setupBasis": { "lmp": "Last period (LMP)", "conception": "Conception date", "manual": "Due date (manual)", "scan": "Ultrasound scan" },
       "setupField": { "lmp": "First day of last period", "conception": "Conception date", "manual": "Estimated due date", "scan": "Estimated due date (from scan)" },
       "pregnancy": { "setup": "Set up your pregnancy", "setupBody": "Add your due date to track baby's growth week by week, count kicks, and time contractions.", "getStarted": "Get Started", "weeklyMilestone": "Weekly Milestone", "weekActive": "Week {{week}} active tracking.", "babyThisWeek": "Baby this week", "sizeOf": "Size of {{value}}", "length": "Length", "weight": "Weight", "forYou": "For you", "checkBack": "Week-by-week baby development starts around week 4. Check back soon!" },
-      "pregnancyTools": { "kickCounter": "Kick Counter", "tapKick": "Tap for each kick", "endSession": "End Session", "timingHelp": "Time how long it takes to feel 10 movements. Tap once for each kick.", "lastSession_one": "Last session: {{count}} kick", "lastSession_other": "Last session: {{count}} kicks", "startCounting": "Start Counting", "starting": "Starting…", "startError": "Could not start session", "saved_one": "Session saved · {{count}} kick", "saved_other": "Session saved · {{count}} kicks", "saveError": "Could not save session", "contractionTimer": "Contraction Timer", "stop": "Stop", "startContraction": "Start Contraction", "startTimerError": "Could not start timer", "saveContractionError": "Could not save contraction", "frequency": "Frequency", "every": "every {{value}}", "duration": "Duration", "hospital": "Your contractions match the 5-1-1 pattern — consider contacting your provider." },
+       "pregnancyTools": { "kickCounter": "Kick Counter", "tapKick": "Tap for each kick", "endSession": "End Session", "timingHelp": "Time how long it takes to feel 10 movements. Tap once for each kick.", "lastSession_one": "Last session: {{formattedCount}} kick", "lastSession_other": "Last session: {{formattedCount}} kicks", "startCounting": "Start Counting", "starting": "Starting…", "startError": "Could not start session", "saved_one": "Session saved · {{formattedCount}} kick", "saved_other": "Session saved · {{formattedCount}} kicks", "saveError": "Could not save session", "contractionTimer": "Contraction Timer", "stop": "Stop", "startContraction": "Start Contraction", "startTimerError": "Could not start timer", "saveContractionError": "Could not save contraction", "frequency": "Frequency", "every": "every {{value}}", "duration": "Duration", "hospital": "Your contractions match the 5-1-1 pattern — consider contacting your provider." },
       "photos": { "title": "Bump Photos", "add": "Add Photo", "empty": "Capture your first bump photo to start a weekly journal.", "week": "Week {{week}}", "remove": "Remove", "taken": "Taken {{date}}", "addTitle": "Add Bump Photo", "take": "Take Photo", "library": "Choose from Library", "cameraPermission": "Camera permission required", "noPhoto": "No photo returned by picker.", "added": "Photo added", "uploadError": "Could not upload photo", "removeError": "Could not remove photo" },
       "appointments": { "title": "Appointments", "add": "Add", "cancel": "Cancel", "empty": "No upcoming appointments scheduled.", "fallback": "Appointment", "titlePlaceholder": "Title (e.g. Anatomy scan)", "typePlaceholder": "Type (e.g. Ultrasound)", "locationPlaceholder": "Location", "date": "Date", "time": "Time", "notes": "Notes", "save": "Save Appointment", "saving": "Saving…", "added": "Appointment added", "saveError": "Could not save appointment", "removeError": "Could not remove appointment" },
       "safety": { "title": "Food & Medication Safety", "food": "Food", "medications": "Medications", "foodPlaceholder": "Search a food, e.g. sushi", "medPlaceholder": "Search a medication, e.g. ibuprofen", "empty": "Search to check if it's considered safe during pregnancy.", "none": "No match found. This list isn't exhaustive — ask your provider if unsure.", "safe": "Safe", "caution": "Caution", "avoid": "Avoid" },
-      "settings": { "title": "Cycle Settings", "wellnessTitle": "Wellness Settings", "enable": "Enable Cycle & Pregnancy Tracking", "enableBody": "Turn on logging, predictions, and history", "configuration": "Feature Configuration", "mode": "Tracking Mode", "selectMode": "Select Mode", "birthControl": "Birth Control Method", "selectMethod": "Select Method", "calculations": "Cycle Calculations Overrides", "custom": "Custom override", "default": "Default/History", "luteal": "Luteal Phase Length", "lutealBody": "Days post-ovulation (default 14)", "conditions": "Conditions", "conditionsBody": "Select applicable conditions to personalize your tracking.", "display": "Display Options", "fertile": "Show Fertile Window", "fertileBody": "Highlight fertile days on calendar", "discreet": "Discreet Mode", "discreetBody": "Hides \"Cycle\" or \"Pregnancy\" labels in UI", "terminology": "Terminology", "selectTerminology": "Select Terminology", "actions": "Actions", "export": "Export Cycle & Pregnancy Data", "exportBody": "Download JSON data export", "reset": "Reset Onboarding Wizard", "resetBody": "Restart setup walkthrough", "resetTitle": "Reset Onboarding", "resetBodyAlert": "Are you sure you want to reset your cycle onboarding? This will clear your setup progress, but your logged cycle days will remain intact.", "reset": "Reset", "resetDone": "Onboarding reset completed.", "preparing": "Preparing Export", "generating": "Generating JSON export file...", "exportFailed": "Export Failed", "exportError": "Could not export cycle data.", "standard": "Standard Cycle", "ttc": "Trying to Conceive", "pregnant": "Pregnancy Tracking", "postpartum": "Postpartum", "menopause": "Menopause-aware", "defaultTerm": "Default", "neutral": "Gender-Neutral" },
+      "settings": { "title": "Cycle Settings", "wellnessTitle": "Wellness Settings", "enable": "Enable Cycle & Pregnancy Tracking", "enableBody": "Turn on logging, predictions, and history", "configuration": "Feature Configuration", "mode": "Tracking Mode", "selectMode": "Select Mode", "birthControl": "Birth Control Method", "selectMethod": "Select Method", "calculations": "Cycle Calculations Overrides", "custom": "Custom override", "default": "Default/History", "luteal": "Luteal Phase Length", "lutealBody": "Days post-ovulation (default 14)", "conditions": "Conditions", "conditionsBody": "Select applicable conditions to personalize your tracking.", "display": "Display Options", "fertile": "Show Fertile Window", "fertileBody": "Highlight fertile days on calendar", "discreet": "Discreet Mode", "discreetBody": "Hides \"Cycle\" or \"Pregnancy\" labels in UI", "terminology": "Terminology", "selectTerminology": "Select Terminology", "actions": "Actions", "export": "Export Cycle & Pregnancy Data", "exportBody": "Download JSON data export",  "resetBody": "Restart setup walkthrough", "resetTitle": "Reset Onboarding", "resetBodyAlert": "Are you sure you want to reset your cycle onboarding? This will clear your setup progress, but your logged cycle days will remain intact.", "reset": "Reset", "resetDone": "Onboarding reset completed.", "preparing": "Preparing Export", "generating": "Generating JSON export file...", "exportFailed": "Export Failed", "exportError": "Could not export cycle data.", "standard": "Standard Cycle", "ttc": "Trying to Conceive", "pregnant": "Pregnancy Tracking", "postpartum": "Postpartum", "menopause": "Menopause-aware", "defaultTerm": "Default", "neutral": "Gender-Neutral" },
        "onboarding": { "step": "Setup: Step {{step}} of 4", "goal": "What is your tracking goal?", "goalBody": "Select the mode that best fits your current health focus. You can change this anytime in settings.", "dates": "Dates & Averages", "lmpHelp": "Please specify the first day of your last menstrual period (LMP).", "lmpStart": "Last Period Start (LMP)", "noConfig": "No configuration needed", "noConfigBody": "We will tailor your insights to hormonal recovery or menopause transition symptoms. Let's move on to the next step.", "predictionHelp": "Help us build predictions for your cycle.", "startDate": "Last Period Start Date", "avgCycle": "Average Cycle Length", "avgPeriod": "Average Period Length", "profile": "Profile & Conditions", "profileBody": "Select any relevant conditions or birth control methods to personalize your tracking.", "birthControl": "Birth Control Method", "selectMethod": "Select Method", "conditions": "Conditions", "disclaimer": "Disclaimer & Complete", "medical": "Medical Disclaimer", "medicalBody": "The SparkyFitness Wellness and Reproductive Health Tracker is designed to help you track predictions, symptoms, and physiological parameters. It is NOT intended to be used as a contraceptive method or as a diagnostic/treatment tool. Always consult with a qualified medical professional for health concerns.", "accept": "Accept & Initialize Profile", "next": "Next Step", "back": "Back", "success": "Setup complete!", "successBody": "Your wellness profile has been initialized.", "failed": "Setup failed", "failedBody": "Could not complete onboarding. Please try again." }
     }
     },

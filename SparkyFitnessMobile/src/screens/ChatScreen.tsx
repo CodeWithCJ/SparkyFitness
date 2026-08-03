@@ -569,7 +569,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
         },
       ]
     );
-  }, [queryClient]);
+  }, [queryClient, t]);
 
   // Clear chat is disabled while a stream runs so the server's in-flight
   // onFinish save can't resurrect the exchange after the DELETE.

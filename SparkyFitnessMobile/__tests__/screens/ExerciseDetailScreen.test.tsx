@@ -615,8 +615,8 @@ describe('ExerciseDetailScreen', () => {
     it('dispatches a local exercise to the form and pops both screens', async () => {
       const screen = renderPreview({ id: uuidId });
 
-      expectActionPresent(screen, navigation, 'Add');
-      pressAction(screen, navigation, 'Add');
+      expectActionPresent(screen, navigation, 'Add exercise');
+      pressAction(screen, navigation, 'Add exercise');
 
       await waitFor(() =>
         expect(navigation.dispatch).toHaveBeenCalledWith(
@@ -647,7 +647,7 @@ describe('ExerciseDetailScreen', () => {
 
       const screen = renderPreview({ id: '123', source: 'wger' });
 
-      pressAction(screen, navigation, 'Add');
+      pressAction(screen, navigation, 'Add exercise');
 
       await waitFor(() =>
         expect(navigation.dispatch).toHaveBeenCalledWith(
@@ -679,7 +679,7 @@ describe('ExerciseDetailScreen', () => {
 
       const screen = renderPreview({ id: '123', source: 'wger' });
 
-      pressAction(screen, navigation, 'Add');
+      pressAction(screen, navigation, 'Add exercise');
 
       await waitFor(() =>
         expect(Toast.show).toHaveBeenCalledWith(
@@ -690,7 +690,7 @@ describe('ExerciseDetailScreen', () => {
 
       // The in-flight guard must clear on failure, so a retry can succeed.
       mockImportExercise.mockResolvedValueOnce({ ...baseExercise, id: uuidId });
-      pressAction(screen, navigation, 'Add');
+      pressAction(screen, navigation, 'Add exercise');
 
       await waitFor(() =>
         expect(navigation.dispatch).toHaveBeenCalledWith(
@@ -705,7 +705,7 @@ describe('ExerciseDetailScreen', () => {
 
       const screen = renderPreview({ id: '123', source: 'wger' });
 
-      pressAction(screen, navigation, 'Add');
+      pressAction(screen, navigation, 'Add exercise');
 
       await waitFor(() => expect(mockImportExercise).toHaveBeenCalled());
       await act(async () => {});

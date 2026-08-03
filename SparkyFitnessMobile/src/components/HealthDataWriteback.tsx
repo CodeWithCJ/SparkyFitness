@@ -84,7 +84,9 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
       <View className="flex-row items-center flex-1 mr-2">
         <Image source={metric.icon} className="w-6 h-6" />
         <Text className="ml-2 text-base text-text-primary flex-shrink" numberOfLines={1}>
-          {translate(WRITEBACK_METRIC_LABEL_KEYS[metric.id] ?? 'healthWriteback.metrics.nutrition', { defaultValue: metric.label })}
+          {WRITEBACK_METRIC_LABEL_KEYS[metric.id]
+            ? translate(WRITEBACK_METRIC_LABEL_KEYS[metric.id])
+            : metric.label}
         </Text>
       </View>
       <Switch
@@ -110,7 +112,9 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
         return (
           <CollapsibleSection
             key={category}
-            title={translate(WRITEBACK_CATEGORY_LABEL_KEYS[category] ?? 'healthDataSync.categories.Common', { defaultValue: category })}
+            title={WRITEBACK_CATEGORY_LABEL_KEYS[category]
+              ? translate(WRITEBACK_CATEGORY_LABEL_KEYS[category])
+              : category}
             expanded={!collapsedCategories.has(category)}
             onToggle={() => toggleCategory(category)}
             itemCount={metricsInCategory.length}

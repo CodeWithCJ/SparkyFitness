@@ -408,7 +408,7 @@ describe('WorkoutDetailScreen', () => {
 
       // Tap the set number → set-type menu → Warmup.
       fireEvent.press(screen.getByLabelText('Change type for set 1'));
-      fireEvent.press(screen.getByLabelText('Warmup'));
+      fireEvent.press(screen.getByLabelText('Warm-up'));
 
       // Inputs are always mounted in edit mode; type an RPE and blur to snap
       // it to 0.5 steps.

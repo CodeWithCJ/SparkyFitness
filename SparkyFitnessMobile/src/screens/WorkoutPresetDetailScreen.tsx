@@ -30,6 +30,7 @@ import {
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 type WorkoutPresetDetailScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
 
@@ -263,7 +264,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           <Text className="text-base text-text-secondary mt-2">{preset.description}</Text>
         ) : null}
         <Text className="text-sm text-text-muted mt-2 mb-4">
-           {t('workout.exerciseCount', { count: exerciseCount })}
+            {t('workout.exerciseCount', { count: exerciseCount, formattedCount: formatLocalizedNumber(exerciseCount) })}
         </Text>
 
         {/* Pull back part of the scroll container's 16px inset so the cards

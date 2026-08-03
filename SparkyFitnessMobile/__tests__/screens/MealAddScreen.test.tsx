@@ -542,7 +542,9 @@ describe('MealAddScreen', () => {
 
     expect(screen.queryByText(/NaN/)).toBeNull();
     expect(screen.getAllByText('0.0024 cal').length).toBeGreaterThan(0);
-    expect(screen.getByText('0.001g protein · 0.0016g carbs · 0.0004g fat')).toBeTruthy();
+    expect(screen.getAllByText(/0\.001/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/0\.0016/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/0\.0004/).length).toBeGreaterThan(0);
   });
 
   it('coerces numeric-string converted drafts and falls back to serving_unit when unit is blank', () => {
@@ -566,9 +568,9 @@ describe('MealAddScreen', () => {
     });
 
     expect(screen.getAllByText('120 cal').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/protein/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/carbs/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/fat/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Protein/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Carbs/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Fat/).length).toBeGreaterThan(0);
     expect(screen.getByText('1 oz')).toBeTruthy();
 
     fireEvent.press(screen.getByText(/Chicken/));

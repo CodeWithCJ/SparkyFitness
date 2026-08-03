@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -45,7 +45,7 @@ const passkeyNameExample = Platform.OS === 'ios' ? 'My iPhone' : 'My Android Pho
 
 const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   const { t } = useTranslation();
-  const copy = (key: string, options?: Record<string, string | number>) => {
+  const copy = useCallback((key: string, options?: Record<string, string | number>) => {
     switch (key) {
       case 'title': return t('screenCopy.passkey.title', options);
       case 'sessionOnly': return t('screenCopy.passkey.sessionOnly', options);
@@ -72,7 +72,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
       case 'noSession': return t('screenCopy.passkey.noSession', options);
       default: return t('common.error');
     }
-  };
+  }, [t]);
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();

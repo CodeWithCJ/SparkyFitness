@@ -133,7 +133,9 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {translate(HEALTH_METRIC_LABEL_KEYS[metric.id] ?? 'healthDataSync.metrics.steps', { defaultValue: metric.label })}
+            {HEALTH_METRIC_LABEL_KEYS[metric.id]
+              ? translate(HEALTH_METRIC_LABEL_KEYS[metric.id])
+              : metric.label}
           </Text>
         </View>
         {showLoading && (
@@ -208,7 +210,9 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         return (
           <CollapsibleSection
             key={category}
-            title={translate(HEALTH_CATEGORY_LABEL_KEYS[category] ?? 'healthDataSync.categories.Common', { defaultValue: category })}
+            title={HEALTH_CATEGORY_LABEL_KEYS[category]
+              ? translate(HEALTH_CATEGORY_LABEL_KEYS[category])
+              : category}
             expanded={!collapsedCategories.has(category)}
             onToggle={() => handleCategoryToggle(category)}
             itemCount={metricsInCategory.length}

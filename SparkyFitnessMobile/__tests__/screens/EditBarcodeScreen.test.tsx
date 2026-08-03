@@ -176,7 +176,7 @@ describe('EditBarcodeScreen', () => {
     const alertSpy = jest
       .spyOn(Alert, 'alert')
       .mockImplementation((_title, _msg, buttons) => {
-        const removeBtn = buttons?.find((b: any) => b.text === 'Remove');
+        const removeBtn = buttons?.find((b: any) => b.text === 'Remove barcode');
         removeBtn?.onPress?.();
       });
 

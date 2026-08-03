@@ -24,7 +24,6 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import {
   CONFIDENCE_TONES,
   FOOD_FORM_UNIT_GROUPS,
-  OVERALL_CONFIDENCE_LABELS,
   getConversionFactor,
   shouldOfferAiConversion,
   type AiConfidence,
@@ -1122,6 +1121,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     try {
       const result = await requestAiUnitConversion({
         foodId: unitSelector?.foodId ?? 'pending-new-food',
+        // This is a protocol fallback for unsaved foods, not user-facing copy.
         foodName: form.name.trim() || 'Untitled food',
         brand: form.brand.trim() || undefined,
         fromUnit: context.fromUnit,
@@ -1219,7 +1219,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
       swapContextRef.current = null;
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'AI estimate failed.';
+        err instanceof Error ? err.message : t('foodMeals.aiEstimateFailed');
       Toast.show({
         type: 'error',
         text1: t('foodMeals.couldNotEstimate'),
@@ -1476,7 +1476,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         style={androidSparkleStyle}
                       />
                       <Text className="text-text-primary font-semibold">
-                        {t('foodMeals.aiEstimate')}
+                         {t('foodMeals.convertWithAi')}
                       </Text>
                     </View>
                   )}
@@ -1510,13 +1510,18 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     ],
                 }}
               >
-                {
-                  OVERALL_CONFIDENCE_LABELS[
-                    selectedUnitSelection.variant
-                      .ai_confidence as AiConfidence
-                  ]
-                 }{' '}
-                 {t('foodMeals.aiEstimate')}
+                  {(() => {
+                    switch (selectedUnitSelection.variant.ai_confidence as AiConfidence) {
+                      case 'high':
+                        return t('foodMeals.confidenceEstimateHigh');
+                      case 'medium':
+                        return t('foodMeals.confidenceEstimateMedium');
+                      case 'low':
+                        return t('foodMeals.confidenceEstimateLow');
+                      default:
+                        return t('foodMeals.aiEstimate');
+                    }
+                  })()}
               </Text>
             </View>
           ) : null}

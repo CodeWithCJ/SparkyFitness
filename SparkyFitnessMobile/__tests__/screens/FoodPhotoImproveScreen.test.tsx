@@ -85,7 +85,7 @@ describe('FoodPhotoImproveScreen', () => {
       expect(Toast.show).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
-          text1: 'Invalid weight',
+          text1: 'Invalid serving size',
         }),
       );
     });

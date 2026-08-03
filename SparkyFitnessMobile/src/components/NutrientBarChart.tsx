@@ -94,7 +94,7 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(defaultTooltip);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -111,10 +111,14 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
-  const [tooltipResetKey, setTooltipResetKey] = useState({ data, range });
-  if (tooltipResetKey.data !== data || tooltipResetKey.range !== range) {
-    setTooltipResetKey({ data, range });
-    setTooltipText(defaultTooltip);
+  const [tooltipResetKey, setTooltipResetKey] = useState({ data, range, unit });
+  if (
+    tooltipResetKey.data !== data ||
+    tooltipResetKey.range !== range ||
+    tooltipResetKey.unit !== unit
+  ) {
+    setTooltipResetKey({ data, range, unit });
+    setSelectedIndex(null);
   }
 
   const handleTouchLayoutChange = useCallback(
@@ -141,21 +145,27 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
         return;
       }
 
-      const formattedVal = point.value % 1 !== 0 ? point.value.toFixed(1) : point.value;
-      setTooltipText(
-        t('mobileComponents.charts.consumedOn', {
-          value: formatLocalizedNumber(Number(formattedVal)),
-          unit,
-          date: formatTooltipDate(point.day),
-        }),
-      );
+      setSelectedIndex(index);
     },
-    [data, unit, t],
+    [data],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(defaultTooltip);
-  }, [defaultTooltip]);
+    setSelectedIndex(null);
+  }, []);
+
+  const selectedPoint = selectedIndex == null ? undefined : data[selectedIndex];
+  const tooltipText = selectedPoint
+    ? t('mobileComponents.charts.consumedOn', {
+        value: formatLocalizedNumber(
+          selectedPoint.value % 1 !== 0
+            ? Number(selectedPoint.value.toFixed(1))
+            : selectedPoint.value,
+        ),
+        unit,
+        date: formatTooltipDate(selectedPoint.day),
+      })
+    : defaultTooltip;
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../../localization';
 import { useCSSVariable } from 'uniwind';
 import { useCycleInsights } from '../../hooks/useCycleInsights';
 import { useCycleHistory } from '../../hooks/useCycleHistory';
@@ -84,13 +85,13 @@ const CycleInsightsView: React.FC = () => {
           <View className="flex-1 items-center border-r border-border-subtle">
              <Text className="text-text-secondary text-xs font-medium">{t('mobileComponents.wellness.insights.avgCycle')}</Text>
             <Text className="text-text-primary text-lg font-bold mt-1">
-               {t('mobileComponents.wellness.fertility.days', { count: cycleStats.avgCycleLength })}
+               {t('mobileComponents.wellness.fertility.days', { count: cycleStats.avgCycleLength, formattedCount: formatLocalizedNumber(cycleStats.avgCycleLength) })}
             </Text>
           </View>
           <View className="flex-1 items-center border-r border-border-subtle">
              <Text className="text-text-secondary text-xs font-medium">{t('mobileComponents.wellness.insights.avgPeriod')}</Text>
             <Text className="text-text-primary text-lg font-bold mt-1">
-               {t('mobileComponents.wellness.fertility.days', { count: cycleStats.avgPeriodLength })}
+               {t('mobileComponents.wellness.fertility.days', { count: cycleStats.avgPeriodLength, formattedCount: formatLocalizedNumber(cycleStats.avgPeriodLength) })}
             </Text>
           </View>
           <View className="flex-1 items-center">

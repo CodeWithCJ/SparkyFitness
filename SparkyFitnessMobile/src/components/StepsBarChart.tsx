@@ -82,7 +82,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(defaultTooltip);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -97,7 +97,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
   const [tooltipResetKey, setTooltipResetKey] = useState({ data, range });
   if (tooltipResetKey.data !== data || tooltipResetKey.range !== range) {
     setTooltipResetKey({ data, range });
-    setTooltipText(defaultTooltip);
+    setSelectedIndex(null);
   }
 
   const handleTouchLayoutChange = useCallback(
@@ -124,19 +124,23 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
         return;
       }
 
-      setTooltipText(
-        t('mobileComponents.charts.stepsOn', {
-          value: formatLocalizedNumber(point.steps),
-          date: formatTooltipDate(point.day),
-        }),
-      );
+      setSelectedIndex(index);
     },
-    [data, t],
+    [data],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(defaultTooltip);
-  }, [defaultTooltip]);
+    setSelectedIndex(null);
+  }, []);
+
+  const selectedPoint = selectedIndex == null ? undefined : data[selectedIndex];
+  const tooltipText = selectedPoint
+    ? t('mobileComponents.charts.stepsOn', {
+        count: selectedPoint.steps,
+        formattedCount: formatLocalizedNumber(selectedPoint.steps),
+        date: formatTooltipDate(selectedPoint.day),
+      })
+    : defaultTooltip;
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">

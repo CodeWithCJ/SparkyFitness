@@ -87,6 +87,7 @@ import { buildMealIngredientDraft } from '../utils/mealBuilderDraft';
 import { persistExternalVariants } from '../utils/persistExternalVariants';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 type FoodEntryAddScreenProps = RootStackScreenProps<'FoodEntryAdd'>;
 const EXTERNAL_DRAFT_VARIANT_ID = '__draft-external-unit__';
@@ -1420,7 +1421,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               item.source === 'meal' &&
               (item.mealTotalServings ?? 1) > 1 && (
                 <Text className="text-text-secondary text-sm">
-                   {' \u00b7 '}{t('foodMealScreens.mealMakes', { count: item.mealTotalServings })}
+                    {' \u00b7 '}{t('foodMealScreens.mealMakes', { count: item.mealTotalServings ?? 0, formattedCount: formatLocalizedNumber(item.mealTotalServings ?? 0) })}
                 </Text>
               )}
           </View>

@@ -39,7 +39,7 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
 
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const { t } = useTranslation();
-  const copy = (key: string, options?: Record<string, string | number>) => {
+  const copy = useCallback((key: string, options?: Record<string, string | number>) => {
     switch (key) {
       case 'title': return t('screenCopy.calorie.title', options);
       case 'mode': return t('screenCopy.calorie.mode', options);
@@ -75,7 +75,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
       case 'externalIosNote': return t('screenCopy.calorie.externalIosNote', options);
       default: return '';
     }
-  };
+  }, [t]);
   const modeOptions = useMemo(() => [
     { label: t('calorieModes.adaptive'), value: 'adaptive' },
     { label: t('calorieModes.dynamic'), value: 'dynamic' },

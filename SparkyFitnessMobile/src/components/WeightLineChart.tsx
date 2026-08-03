@@ -78,7 +78,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(defaultTooltip);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -97,7 +97,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     tooltipResetKey.unit !== unit
   ) {
     setTooltipResetKey({ data, range, unit });
-    setTooltipText(defaultTooltip);
+    setSelectedIndex(null);
   }
 
   const handleTouchLayoutChange = useCallback(
@@ -124,18 +124,23 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
         return;
       }
 
-      setTooltipText(
-        t('mobileComponents.charts.weightOn', {
-          value: formatTooltipWeight(point.weight), unit, date: formatTooltipDate(point.day),
-        }),
-      );
+      setSelectedIndex(index);
     },
-    [data, unit, t],
+    [data],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(defaultTooltip);
-  }, [defaultTooltip]);
+    setSelectedIndex(null);
+  }, []);
+
+  const selectedPoint = selectedIndex == null ? undefined : data[selectedIndex];
+  const tooltipText = selectedPoint
+    ? t('mobileComponents.charts.weightOn', {
+        value: formatTooltipWeight(selectedPoint.weight),
+        unit,
+        date: formatTooltipDate(selectedPoint.day),
+      })
+    : defaultTooltip;
 
   if (!hasData && !isLoading && !isError) {
     return null;

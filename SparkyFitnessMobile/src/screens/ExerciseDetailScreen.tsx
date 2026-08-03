@@ -161,7 +161,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     } else {
       void runUpdate();
     }
-  }, [exercise.id, isPublic, updateExerciseAsync, navigation]);
+  }, [exercise.id, isPublic, updateExerciseAsync, navigation, t]);
 
   const { confirmAndDelete, isPending: isDeletePending } = useDeleteExerciseLibrary({
     exerciseId: exercise.id,
@@ -222,7 +222,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     if (historyAvailable) tabs.push({ key: 'history', label: t('workout.history') });
     if (hasHowToContent) tabs.push({ key: 'how-to', label: t('workout.howTo') });
     return tabs;
-  }, [historyAvailable, hasHowToContent]);
+  }, [historyAvailable, hasHowToContent, t]);
 
   const resolvedTab: TabKey =
     (activeTab === 'history' && !historyAvailable) ||

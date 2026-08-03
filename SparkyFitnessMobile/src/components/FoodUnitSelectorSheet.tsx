@@ -28,7 +28,6 @@ import {
 import {
   CONFIDENCE_TONES,
   FOOD_FORM_UNIT_GROUPS,
-  OVERALL_CONFIDENCE_LABELS,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
@@ -84,6 +83,24 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   const presentFrameRef = useRef<number | null>(null);
   const { theme } = useUniwind();
   const { t } = useTranslation();
+  const getConfidenceAccessibilityLabel = useCallback(
+    (confidence: AiConfidence): string => {
+      const confidenceLabel = (() => {
+        switch (confidence) {
+          case 'high':
+            return t('foodMeals.confidenceHigh');
+          case 'medium':
+            return t('foodMeals.confidenceMedium');
+          case 'low':
+            return t('foodMeals.confidenceLow');
+          default:
+            return confidence;
+        }
+      })();
+      return t('foodMeals.aiEstimateWithConfidence', { confidence: confidenceLabel });
+    },
+    [t],
+  );
   const resolvedTitle = title ?? t('foodMeals.selectUnit');
   const [
     surfaceBg,
@@ -242,7 +259,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         setIsSubmitting(false);
       }
     },
-    [dismissSheet, onSelect],
+    [dismissSheet, onSelect, t],
   );
 
   /**
@@ -281,7 +298,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         setIsSubmitting(false);
       }
     },
-    [buildManualVariant, dismissSheet, onSelect],
+    [buildManualVariant, dismissSheet, onSelect, t],
   );
 
   const handleUnitPress = useCallback(
@@ -328,6 +345,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       handleExistingVariantPress,
       onSelect,
       submitManualDraft,
+      t,
       variants,
     ],
   );
@@ -365,7 +383,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     const aiTone = aiConfidence ? CONFIDENCE_TONES[aiConfidence] : null;
     const aiSparkleColor = aiTone ? aiSparkleColorByTone[aiTone] : textMuted;
     const aiAccessibilityLabel = aiConfidence
-      ? `AI estimate (${OVERALL_CONFIDENCE_LABELS[aiConfidence]} confidence)`
+      ? getConfidenceAccessibilityLabel(aiConfidence)
        : t('foodMeals.aiEstimate');
 
     return (
@@ -422,7 +440,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       ? aiSparkleColorByTone[matchedAiTone]
       : textMuted;
     const matchedAiAccessibilityLabel = matchedAiConfidence
-      ? `AI estimate (${OVERALL_CONFIDENCE_LABELS[matchedAiConfidence]} confidence)`
+      ? getConfidenceAccessibilityLabel(matchedAiConfidence)
        : t('foodMeals.aiEstimate');
     const compatible = canAutoConvertToUnit(variants, selectedVariant, unit);
     const isSelected = selectedUnitKey === normalizeUnitKey(unit);

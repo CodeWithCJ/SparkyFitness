@@ -38,17 +38,17 @@ describe('formatRest', () => {
 
 describe('formatRestLabel', () => {
   it('labels 0 as Off', () => {
-    expect(formatRestLabel(0)).toBe('Off');
+    expect(formatRestLabel(0, 'Off')).toBe('Off');
   });
 
   it('passes non-zero durations through to formatRest', () => {
-    expect(formatRestLabel(5)).toBe('5s');
-    expect(formatRestLabel(45)).toBe('45s');
-    expect(formatRestLabel(90)).toBe('1:30');
+    expect(formatRestLabel(5, 'Off')).toBe('5s');
+    expect(formatRestLabel(45, 'Off')).toBe('45s');
+    expect(formatRestLabel(90, 'Off')).toBe('1:30');
   });
 
   it('falls back to the default rest for null', () => {
-    expect(formatRestLabel(null)).toBe('1:30');
+    expect(formatRestLabel(null, 'Off')).toBe('1:30');
   });
 });
 

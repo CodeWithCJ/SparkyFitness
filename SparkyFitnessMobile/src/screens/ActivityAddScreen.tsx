@@ -202,7 +202,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [
     submission, isEditMode, entry, popCount, modality,
-    createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, discardDraft, navigation,
+     createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, discardDraft, navigation, t,
   ]);
 
   return (

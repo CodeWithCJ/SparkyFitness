@@ -15,6 +15,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
   items: T[],
@@ -119,7 +120,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <ShareStatusBadge status={status} />
         </View>
         <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-           {t('workout.exerciseCount', { count: exerciseCount })}
+            {t('workout.exerciseCount', { count: exerciseCount, formattedCount: formatLocalizedNumber(exerciseCount) })}
         </Text>
       </TouchableOpacity>
     );
