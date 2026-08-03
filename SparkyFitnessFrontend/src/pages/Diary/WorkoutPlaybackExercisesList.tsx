@@ -49,10 +49,12 @@ const WorkoutPlaybackExercisesList = ({
   return (
     <div className="space-y-2">
       {exercises.map((exercise, exerciseIndex) => {
-        const isTimedExercise =
-          exercise.modality === 'duration' ||
-          exercise.modality === 'duration_distance' ||
-          exercise.sets.some((set) => set.duration != null && set.reps == null);
+        const isTimedExercise = exercise.modality
+          ? exercise.modality === 'duration' ||
+            exercise.modality === 'duration_distance'
+          : exercise.sets.some(
+              (set) => set.duration != null && set.reps == null
+            );
         const completedSets = exercise.sets.filter(
           (set) => set.completed
         ).length;

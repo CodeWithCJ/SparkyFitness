@@ -174,6 +174,56 @@ describe('WorkoutPlaybackPage', () => {
     expect(screen.queryByLabelText('Weight set 2')).not.toBeInTheDocument();
   });
 
+  it('trusts exercise modality over stale set data', () => {
+    const mixedPreset = {
+      ...presetFixture,
+      exercises: [
+        {
+          exercise_id: 'exercise-plank',
+          exercise_name: 'Plank',
+          category: 'isometric',
+          sets: [
+            {
+              set_number: 1,
+              duration: null,
+              reps: null,
+              weight: null,
+              rest_time: 60,
+            },
+          ],
+        },
+        {
+          exercise_id: 'exercise-bench',
+          exercise_name: 'Bench Press',
+          sets: [
+            {
+              set_number: 1,
+              duration: 600,
+              reps: null,
+              weight: 80,
+              rest_time: 90,
+            },
+          ],
+        },
+      ],
+    } as unknown as WorkoutPreset;
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      mixedPreset,
+      '2026-04-27'
+    );
+    expect(draft.exercises[0]?.modality).toBe('duration');
+    expect(draft.exercises[1]?.modality).toBe('weight_reps');
+    mockLocationState = { returnTo: '/?date=2026-04-27', draft };
+
+    render(<WorkoutPlaybackPage />);
+
+    // Plank is timed by modality even with no duration values yet.
+    expect(screen.getByLabelText('Duration set 1')).toHaveValue(null);
+    // Bench keeps reps/weight despite a stale duration on its set.
+    expect(screen.getByLabelText('Reps set 1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Weight set 1')).toBeInTheDocument();
+  });
+
   it('restores a draft from localStorage on reload', async () => {
     const draft = createWorkoutPlaybackDraftFromPreset(
       presetFixture,
