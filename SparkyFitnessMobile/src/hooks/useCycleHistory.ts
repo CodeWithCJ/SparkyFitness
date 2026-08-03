@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { listCycles, createManualCycle, updateCycle, deleteCycle } from '../services/api/cycleApi';
+import { addLog } from '../services/LogService';
 import { cyclesQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import type { SharedCycle } from '@workspace/shared';
@@ -33,7 +34,7 @@ export function useCycleHistory() {
       });
     },
     onError: (err) => {
-      console.log('[useCycleHistory] Create failed:', err);
+      addLog(`Failed to add manual cycle: ${err}`, 'ERROR');
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -54,7 +55,7 @@ export function useCycleHistory() {
       });
     },
     onError: (err) => {
-      console.log('[useCycleHistory] Update failed:', err);
+      addLog(`Failed to update cycle entry: ${err}`, 'ERROR');
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -74,7 +75,7 @@ export function useCycleHistory() {
       });
     },
     onError: (err) => {
-      console.log('[useCycleHistory] Delete failed:', err);
+      addLog(`Failed to delete cycle entry: ${err}`, 'ERROR');
       Toast.show({
         type: 'error',
         text1: 'Error',

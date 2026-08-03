@@ -8,7 +8,6 @@ import type {
   FertilityDetails,
   CycleCorrelations,
   CycleInsightsOverview,
-  DisplayPreferences,
 } from '../../types/womensHealth';
 
 export const getSettings = async (): Promise<SharedCycleSettings | null> => {
@@ -90,16 +89,6 @@ export const listCycles = async (limit?: number): Promise<SharedCycle[]> => {
     endpoint: `/api/v2/cycle/cycles${queryParams}`,
     serviceName: 'Cycle API',
     operation: 'list cycles',
-  });
-};
-
-export const dismissPrompt = async (key: string): Promise<SharedCycleSettings> => {
-  return apiFetch<SharedCycleSettings>({
-    endpoint: '/api/v2/cycle/prompts/dismiss',
-    serviceName: 'Cycle API',
-    operation: 'dismiss prompt',
-    method: 'POST',
-    body: { key },
   });
 };
 
@@ -213,31 +202,6 @@ export const getExport = async (): Promise<Record<string, unknown>> => {
     endpoint: '/api/v2/cycle/export',
     serviceName: 'Cycle API',
     operation: 'export data',
-  });
-};
-
-export const getDisplayPreferences = async (
-  viewGroup: string,
-  platform = 'mobile'
-): Promise<DisplayPreferences> => {
-  return apiFetch<DisplayPreferences>({
-    endpoint: `/api/v2/cycle/display-preferences/${encodeURIComponent(viewGroup)}?platform=${encodeURIComponent(platform)}`,
-    serviceName: 'Cycle API',
-    operation: 'get display preferences',
-  });
-};
-
-export const putDisplayPreferences = async (
-  viewGroup: string,
-  body: DisplayPreferences,
-  platform = 'mobile'
-): Promise<DisplayPreferences> => {
-  return apiFetch<DisplayPreferences>({
-    endpoint: `/api/v2/cycle/display-preferences/${encodeURIComponent(viewGroup)}?platform=${encodeURIComponent(platform)}`,
-    serviceName: 'Cycle API',
-    operation: 'put display preferences',
-    method: 'PUT',
-    body,
   });
 };
 

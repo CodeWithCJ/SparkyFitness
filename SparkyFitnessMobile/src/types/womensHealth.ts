@@ -13,6 +13,9 @@ import type {
   PredictedCycle,
   CyclePrediction,
   DayEvidence,
+  ProductStatsResult,
+  CorrelationResult,
+  ConditionFlag,
   PregnancyDueDateBasis,
   PregnancyStatus,
   SharedPregnancy,
@@ -36,6 +39,9 @@ export type {
   PredictedCycle,
   CyclePrediction,
   DayEvidence,
+  ProductStatsResult,
+  CorrelationResult,
+  ConditionFlag,
   PregnancyDueDateBasis,
   PregnancyStatus,
   SharedPregnancy,
@@ -66,7 +72,7 @@ export interface CycleInsightsOverview {
   /** Map of upcoming date (YYYY-MM-DD) to the symptom names expected on that day. */
   forecast: Record<string, string[]>;
   anomalies: { key: string; severity: string; message: string }[];
-  productStats: any;
+  productStats: ProductStatsResult;
   bbtSeries: { date: string; bbt: number }[];
   cycles: SharedCycle[];
 }
@@ -91,17 +97,9 @@ export interface FertilityDetails {
 }
 
 export interface CycleCorrelations {
-  symptoms: { name: string; correlation: number }[];
-  bbt: { date: string; value: number }[];
-}
-
-export interface DisplayPreferences {
-  enabled_items: string[];
-  custom_items: {
-    value: string;
-    displayName: string;
-    capacityMl?: number;
-  }[];
+  correlations: CorrelationResult[];
+  conditionFlags: ConditionFlag[];
+  stats: CycleStats;
 }
 
 /**
