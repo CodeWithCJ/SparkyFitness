@@ -1,4 +1,6 @@
+import type { PoolClient } from 'pg';
 import { log } from '../../config/logging.js';
+import { getClient } from '../../db/poolManager.js';
 import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import exercisePresetEntryRepository from '../../models/exercisePresetEntryRepository.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
@@ -14,10 +16,99 @@ import {
   findGroupForTimestamp,
   ExtractedLap,
   ExtractedGpsPoint,
+  UnknownRecord,
 } from './garminTelemetryExtractors.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRecord = Record<string, any>;
+// Minimal shapes for the Garmin Connect JSON this processor actually reads.
+// Payloads arrive as untyped JSON from SparkyFitnessGarmin; anything not
+// listed here flows through to the telemetry extractors untouched.
+type GarminExerciseSetDto = {
+  setType?: string;
+  duration?: number;
+  weight?: number;
+  repetitionCount?: number;
+  startTime?: string | number;
+  notes?: string;
+  exercises?: Array<{ name?: string; category?: string }>;
+  category?: string;
+  stepIndex?: number;
+  wktStepId?: number;
+};
+
+type GarminActivityDto = {
+  activityId?: number | string;
+  activityName?: string;
+  startTimeLocal?: string;
+  notes?: string;
+  active_calories?: number;
+  calories?: number;
+  duration?: number;
+  steps?: number;
+  totalSteps?: number;
+  stepCount?: number;
+  distance?: number;
+  averageHR?: number;
+  averageHeartRateInBeatsPerMinute?: number;
+  waterEstimated?: number;
+  activityType?: { typeKey?: string };
+  summarizedExerciseSets?: unknown[];
+};
+
+export type GarminSessionData = {
+  activity: GarminActivityDto;
+  exercise_sets?: { exerciseSets?: GarminExerciseSetDto[] };
+  details?: {
+    activityDetailMetrics?: Array<{ metrics?: Array<number | null> }>;
+    metricDescriptors?: Array<{ key?: string; metricsIndex?: number }>;
+  };
+};
+
+export type GarminSimpleActivityData = {
+  activity: GarminActivityDto;
+  exercise_sets?:
+    | { exerciseSets?: GarminExerciseSetDto[] }
+    | GarminExerciseSetDto[];
+  exerciseSets?: GarminExerciseSetDto[];
+};
+
+type GarminWorkoutStepDto = {
+  type?: string;
+  workoutSteps?: GarminWorkoutStepDto[];
+  exerciseName?: string;
+  category?: string;
+  description?: string;
+  stepType?: { stepTypeKey?: string };
+  endConditionValue?: number;
+  weightValue?: number;
+  weightUnit?: { unitKey?: string };
+};
+
+export type GarminWorkoutDefinitionDto = {
+  workoutName?: string;
+  description?: string;
+  workoutSegments?: Array<{ workoutSteps?: GarminWorkoutStepDto[] }>;
+};
+
+interface SessionSetRow {
+  set_number: number;
+  set_type: string;
+  reps: number;
+  weight: number;
+  duration: number;
+  rest_time: number;
+  notes: string;
+}
+
+interface SessionExerciseGroup {
+  name: string;
+  stepIndex: number | null;
+  exerciseDetails: { category: string };
+  sets: SessionSetRow[];
+  totalDuration: number;
+  activeDuration: number;
+  startTime: number | null;
+  endTime: number | null;
+}
 
 /**
  * Distributes extracted laps/GPS points across the exercise entries created for a
@@ -26,6 +117,7 @@ type AnyRecord = Record<string, any>;
  * telemetry type in a single call rather than once per entry.
  */
 async function attachSessionTelemetry(
+  client: PoolClient,
   userId: string,
   entryDate: string,
   groups: Array<{ id: string; startMs: number | null; endMs: number | null }>,
@@ -45,8 +137,8 @@ async function attachSessionTelemetry(
         ...lapFields,
       };
     });
-    await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
-      userId,
+    await workoutTelemetryRepo._bulkInsertExerciseEntryLapsWithClient(
+      client,
       userId,
       lapRows
     );
@@ -63,8 +155,8 @@ async function attachSessionTelemetry(
         ...ptFields,
       };
     });
-    await workoutTelemetryRepo.bulkInsertExerciseEntryGpsPoints(
-      userId,
+    await workoutTelemetryRepo._bulkInsertExerciseEntryGpsPointsWithClient(
+      client,
       userId,
       gpsRows
     );
@@ -77,15 +169,16 @@ async function attachSessionTelemetry(
  * entry for a simple activity) rather than duplicated or arbitrarily split.
  */
 async function attachHrZones(
+  client: PoolClient,
   userId: string,
   entryDate: string,
   exerciseEntryId: string,
-  payload: AnyRecord
+  payload: UnknownRecord
 ) {
   const zones = extractGarminHrZones(payload);
   if (zones.length === 0) return;
-  await workoutTelemetryRepo.bulkInsertExerciseEntryHrZones(
-    userId,
+  await workoutTelemetryRepo._bulkInsertExerciseEntryHrZonesWithClient(
+    client,
     userId,
     zones.map((zone) => ({
       user_id: userId,
@@ -109,60 +202,85 @@ export async function processActivitiesAndWorkouts(
     'info',
     `[garminActivityProcessor] Performing comprehensive cleanup for Garmin data for user ${userId} from ${startDate} to ${endDate}.`
   );
-  await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDate(
-    userId,
-    startDate,
-    endDate,
-    'garmin'
-  );
-  await exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDate(
-    userId,
-    startDate,
-    endDate,
-    'garmin'
-  );
+  // One transaction around the range delete and every re-created entry:
+  // committing the delete first and then failing part-way through the
+  // re-creates would wipe the user's whole synced range until the next
+  // successful sync (fitImportService.ts follows the same unit-of-work rule
+  // for FIT uploads). Library rows — exercises via getOrCreateGarminExercise
+  // and workout presets — are written outside it: they are get-or-create
+  // lookups whose survival after a rollback is harmless.
+  const client = await getClient(userId, userId);
+  try {
+    await client.query('BEGIN');
+    await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient(
+      client,
+      userId,
+      startDate,
+      endDate,
+      'garmin'
+    );
+    await exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDateWithClient(
+      client,
+      userId,
+      startDate,
+      endDate,
+      'garmin'
+    );
 
-  // Process Activities and Workouts
-  if (activities && Array.isArray(activities)) {
-    for (const activityData of activities) {
-      const act = activityData as Record<string, Record<string, unknown>>;
-      const hasSummarizedSets =
-        Array.isArray(act.activity?.['summarizedExerciseSets']) &&
-        (act.activity['summarizedExerciseSets'] as unknown[]).length > 0;
-      const hasExerciseSets =
-        Array.isArray(act.exercise_sets?.['exerciseSets']) &&
-        (act.exercise_sets['exerciseSets'] as unknown[]).length > 0;
+    // Process Activities and Workouts
+    if (activities && Array.isArray(activities)) {
+      for (const activityData of activities) {
+        const act = activityData as Record<string, Record<string, unknown>>;
+        const hasSummarizedSets =
+          Array.isArray(act.activity?.['summarizedExerciseSets']) &&
+          (act.activity['summarizedExerciseSets'] as unknown[]).length > 0;
+        const hasExerciseSets =
+          Array.isArray(act.exercise_sets?.['exerciseSets']) &&
+          (act.exercise_sets['exerciseSets'] as unknown[]).length > 0;
 
-      if (hasSummarizedSets || hasExerciseSets) {
-        await processGarminWorkoutSession(
-          userId,
-          activityData,
-          startDate,
-          endDate,
-          timezone
-        );
-      } else if (act.activity) {
-        await processGarminSimpleActivity(userId, activityData, timezone);
+        if (hasSummarizedSets || hasExerciseSets) {
+          await processGarminWorkoutSession(
+            userId,
+            activityData as GarminSessionData,
+            client,
+            timezone
+          );
+        } else if (act.activity) {
+          await processGarminSimpleActivity(
+            userId,
+            activityData as GarminSimpleActivityData,
+            client,
+            timezone
+          );
+        }
+        processedCount++;
       }
-      processedCount++;
     }
-  }
 
-  // Process standalone Workouts (definitions)
-  if (workouts && Array.isArray(workouts)) {
-    for (const workoutData of workouts) {
-      await processGarminWorkoutDefinition(userId, workoutData);
-      processedCount++;
+    // Process standalone Workouts (definitions)
+    if (workouts && Array.isArray(workouts)) {
+      for (const workoutData of workouts) {
+        await processGarminWorkoutDefinition(
+          userId,
+          workoutData as GarminWorkoutDefinitionDto
+        );
+        processedCount++;
+      }
     }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
   return { processedEntries: processedCount };
 }
 
 export async function processGarminWorkoutSession(
   userId: string,
-  sessionData: any,
-  _startDate?: string,
-  _endDate?: string,
+  sessionData: GarminSessionData,
+  client: PoolClient,
   timezone = 'UTC'
 ) {
   const { activity, exercise_sets } = sessionData;
@@ -180,10 +298,10 @@ export async function processGarminWorkoutSession(
   const metricDescriptors = details.metricDescriptors || [];
 
   const hrIndex = metricDescriptors.findIndex(
-    (desc: any) => desc.key === 'directHeartRate'
+    (desc) => desc.key === 'directHeartRate'
   );
   const timestampIndex = metricDescriptors.findIndex(
-    (desc: any) => desc.key === 'directTimestamp'
+    (desc) => desc.key === 'directTimestamp'
   );
 
   let workoutPreset = await workoutPresetRepository.getWorkoutPresetByName(
@@ -214,13 +332,14 @@ export async function processGarminWorkoutSession(
   };
 
   const newExercisePresetEntry =
-    await exercisePresetEntryRepository.createExercisePresetEntry(
+    await exercisePresetEntryRepository.createExercisePresetEntryWithClient(
+      client,
       userId,
       exercisePresetEntryData,
       userId
     );
 
-  await activityDetailsRepository.createActivityDetail(userId, {
+  await activityDetailsRepository._createActivityDetailWithClient(client, {
     exercise_preset_entry_id: newExercisePresetEntry.id,
     provider_name: 'garmin',
     detail_type: 'full_activity_data',
@@ -229,10 +348,15 @@ export async function processGarminWorkoutSession(
   });
 
   if (exercise_sets && Array.isArray(exercise_sets.exerciseSets)) {
-    const groupedExercises: any[] = [];
-    let currentGroup: any = null;
+    const groupedExercises: SessionExerciseGroup[] = [];
+    let currentGroup: SessionExerciseGroup | null = null;
     let totalActiveDurationSeconds = 0;
-    const activeSetsWithStartAndEndTimes: any[] = [];
+    const activeSetsWithStartAndEndTimes: Array<{
+      set: SessionSetRow;
+      startTime: number;
+      endTime: number;
+      garminSetIndex: number;
+    }> = [];
 
     for (let i = 0; i < exercise_sets.exerciseSets.length; i++) {
       const garminSet = exercise_sets.exerciseSets[i];
@@ -241,7 +365,9 @@ export async function processGarminWorkoutSession(
 
       if (garminSet.exercises && garminSet.exercises.length > 0) {
         garminExerciseName =
-          garminSet.exercises[0].name || garminSet.exercises[0].category;
+          garminSet.exercises[0].name ||
+          garminSet.exercises[0].category ||
+          null;
         garminCategory = garminSet.exercises[0].category || 'Uncategorized';
       } else if (garminSet.category) {
         garminExerciseName = garminSet.category;
@@ -287,7 +413,8 @@ export async function processGarminWorkoutSession(
           REST: 'Rest Set',
           WARM_UP: 'Warm-up Set',
         };
-        const setType = setTypeMapping[garminSet.setType] || 'Working Set';
+        const setType =
+          setTypeMapping[garminSet.setType ?? ''] || 'Working Set';
 
         const durationSeconds = garminSet.duration
           ? Math.round(garminSet.duration)
@@ -319,7 +446,7 @@ export async function processGarminWorkoutSession(
             currentGroup.totalDuration += durationSeconds;
             currentGroup.activeDuration += durationSeconds;
             totalActiveDurationSeconds += durationSeconds;
-            const setStartTime = new Date(garminSet.startTime).getTime();
+            const setStartTime = new Date(garminSet.startTime ?? NaN).getTime();
             const setEndTime = setStartTime + durationSeconds * 1000;
             if (
               !currentGroup.startTime ||
@@ -360,7 +487,7 @@ export async function processGarminWorkoutSession(
           potentialNextGarminSet.exercises.length > 0
         ) {
           const nextSetStartTime = new Date(
-            potentialNextGarminSet.startTime
+            potentialNextGarminSet.startTime ?? NaN
           ).getTime();
           const nextSetDuration = potentialNextGarminSet.duration
             ? Math.round(potentialNextGarminSet.duration)
@@ -427,13 +554,15 @@ export async function processGarminWorkoutSession(
         let heartRateSum = 0;
         let heartRateCount = 0;
         for (const metric of activityDetailMetrics) {
-          const metricTimestamp = metric.metrics[timestampIndex];
-          const heartRate = metric.metrics[hrIndex];
+          const metricTimestamp = metric.metrics?.[timestampIndex];
+          const heartRate = metric.metrics?.[hrIndex];
           if (
-            metricTimestamp >= startTime &&
-            metricTimestamp <= endTime &&
+            metricTimestamp !== undefined &&
+            metricTimestamp !== null &&
             heartRate !== undefined &&
-            heartRate !== null
+            heartRate !== null &&
+            metricTimestamp >= startTime &&
+            metricTimestamp <= endTime
           ) {
             heartRateSum += heartRate;
             heartRateCount++;
@@ -463,13 +592,15 @@ export async function processGarminWorkoutSession(
           activity.steps || activity.totalSteps || activity.stepCount || 0
         ),
       };
-      const newEntry = await exerciseEntryRepository.createExerciseEntry(
-        userId,
-        { ...exerciseEntryData, sort_order: exerciseSortOrder },
-        userId,
-        'garmin',
-        newExercisePresetEntry.id
-      );
+      const { entry: newEntry } =
+        await exerciseEntryRepository._createExerciseEntryWithClient(
+          client,
+          userId,
+          { ...exerciseEntryData, sort_order: exerciseSortOrder },
+          userId,
+          'garmin',
+          newExercisePresetEntry.id
+        );
 
       if (!newEntry || !newEntry.id) {
         log(
@@ -499,6 +630,7 @@ export async function processGarminWorkoutSession(
     const sessionLaps = extractGarminLaps(sessionData);
     const sessionGpsPoints = extractGarminGpsPoints(sessionData);
     await attachSessionTelemetry(
+      client,
       userId,
       entryDate,
       createdGroups,
@@ -506,14 +638,20 @@ export async function processGarminWorkoutSession(
       sessionGpsPoints
     );
     if (createdGroups.length > 0) {
-      await attachHrZones(userId, entryDate, createdGroups[0].id, sessionData);
+      await attachHrZones(
+        client,
+        userId,
+        entryDate,
+        createdGroups[0].id,
+        sessionData
+      );
     }
   }
 }
 
 export async function processGarminWorkoutDefinition(
   userId: string,
-  workoutData: any
+  workoutData: GarminWorkoutDefinitionDto
 ) {
   const workoutName = workoutData.workoutName || 'Garmin Workout Definition';
   const description =
@@ -539,7 +677,7 @@ export async function processGarminWorkoutDefinition(
       if (segment.workoutSteps && Array.isArray(segment.workoutSteps)) {
         for (const step of segment.workoutSteps) {
           const stepsToProcess =
-            step.type === 'RepeatGroupDTO' ? step.workoutSteps : [step];
+            step.type === 'RepeatGroupDTO' ? (step.workoutSteps ?? []) : [step];
           for (const individualStep of stepsToProcess) {
             if (
               individualStep.type === 'ExecutableStepDTO' &&
@@ -594,7 +732,8 @@ export async function processGarminWorkoutDefinition(
 
 export async function processGarminSimpleActivity(
   userId: string,
-  activityData: any,
+  activityData: GarminSimpleActivityData,
+  client: PoolClient,
   timezone = 'UTC'
 ) {
   const { activity } = activityData;
@@ -616,12 +755,12 @@ export async function processGarminSimpleActivity(
       : null;
   const telemetryFields = extractGarminTelemetryFields(activityData);
 
-  const rawExerciseSets =
-    activityData.exercise_sets?.exerciseSets ||
-    activityData.exerciseSets ||
-    activityData.exercise_sets ||
-    [];
-  let extractedSets: any[] = [];
+  const rawExerciseSets = Array.isArray(activityData.exercise_sets)
+    ? activityData.exercise_sets
+    : activityData.exercise_sets?.exerciseSets ||
+      activityData.exerciseSets ||
+      [];
+  let extractedSets: SessionSetRow[] = [];
   if (Array.isArray(rawExerciseSets) && rawExerciseSets.length > 0) {
     const setTypeMapping: Record<string, string> = {
       ACTIVE: 'Working Set',
@@ -630,10 +769,10 @@ export async function processGarminSimpleActivity(
       COOL_DOWN: 'Cool-down Set',
     };
     extractedSets = rawExerciseSets
-      .filter((s: any) => s && s.setType !== 'REST')
-      .map((s: any, idx: number) => ({
+      .filter((s) => s && s.setType !== 'REST')
+      .map((s, idx) => ({
         set_number: idx + 1,
-        set_type: setTypeMapping[s.setType] || 'Working Set',
+        set_type: setTypeMapping[s.setType ?? ''] || 'Working Set',
         reps: Math.round(s.repetitionCount || 0),
         // See the matching comment on the workout-session path above: Garmin's raw
         // weight field is grams, no further lb->kg correction needed.
@@ -658,7 +797,7 @@ export async function processGarminSimpleActivity(
     avg_heart_rate:
       activity.averageHR || activity.averageHeartRateInBeatsPerMinute
         ? Math.round(
-            activity.averageHR || activity.averageHeartRateInBeatsPerMinute
+            activity.averageHR || activity.averageHeartRateInBeatsPerMinute || 0
           )
         : null,
     source_id: activity.activityId?.toString() ?? null,
@@ -671,13 +810,15 @@ export async function processGarminSimpleActivity(
     ...telemetryFields,
     sets: extractedSets,
   };
-  const newEntry = await exerciseEntryRepository.createExerciseEntry(
-    userId,
-    exerciseEntryData,
-    userId,
-    'garmin'
-  );
-  await activityDetailsRepository.createActivityDetail(userId, {
+  const { entry: newEntry } =
+    await exerciseEntryRepository._createExerciseEntryWithClient(
+      client,
+      userId,
+      exerciseEntryData,
+      userId,
+      'garmin'
+    );
+  await activityDetailsRepository._createActivityDetailWithClient(client, {
     exercise_entry_id: newEntry.id,
     provider_name: 'garmin',
     detail_type: 'full_activity_data',
@@ -687,8 +828,8 @@ export async function processGarminSimpleActivity(
 
   const laps = extractGarminLaps(activityData);
   if (laps.length > 0) {
-    await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
-      userId,
+    await workoutTelemetryRepo._bulkInsertExerciseEntryLapsWithClient(
+      client,
       userId,
       laps.map(({ startMs: _startMs, endMs: _endMs, ...lap }) => ({
         user_id: userId,
@@ -701,8 +842,8 @@ export async function processGarminSimpleActivity(
 
   const gpsPoints = extractGarminGpsPoints(activityData);
   if (gpsPoints.length > 0) {
-    await workoutTelemetryRepo.bulkInsertExerciseEntryGpsPoints(
-      userId,
+    await workoutTelemetryRepo._bulkInsertExerciseEntryGpsPointsWithClient(
+      client,
       userId,
       gpsPoints.map(({ timestampMs: _timestampMs, ...pt }) => ({
         user_id: userId,
@@ -713,5 +854,5 @@ export async function processGarminSimpleActivity(
     );
   }
 
-  await attachHrZones(userId, entryDate, newEntry.id, activityData);
+  await attachHrZones(client, userId, entryDate, newEntry.id, activityData);
 }

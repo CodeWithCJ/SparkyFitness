@@ -6,9 +6,9 @@
 // always meant to be — this is the reprocessing.
 //
 // Usage (from SparkyFitnessServer/):
-//   pnpm exec tsx tests/backfillWorkoutTelemetry.script.ts --dry-run
-//   pnpm exec tsx tests/backfillWorkoutTelemetry.script.ts
-//   pnpm exec tsx tests/backfillWorkoutTelemetry.script.ts --start=2026-01-01 --end=2026-07-30
+//   pnpm exec tsx scripts/backfillWorkoutTelemetry.script.ts --dry-run
+//   pnpm exec tsx scripts/backfillWorkoutTelemetry.script.ts
+//   pnpm exec tsx scripts/backfillWorkoutTelemetry.script.ts --start=2026-01-01 --end=2026-07-30
 //
 // Idempotent: laps/GPS/HR-zone writers upsert on their unique constraints, and the
 // telemetry-column update always overwrites with freshly-derived values, so running this

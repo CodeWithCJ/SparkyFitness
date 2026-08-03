@@ -4,7 +4,7 @@
 // in, camelCase/PascalCase variants tolerated) but produces a provider-neutral output.
 //
 // Used by both live sync (garminActivityProcessor.ts, session and simple-activity paths)
-// and the one-off backfill script (scripts/backfillWorkoutTelemetry.ts) so the parsing
+// and the one-off backfill script (scripts/backfillWorkoutTelemetry.script.ts) so the parsing
 // logic only exists once — the "rule of two" in AGENTS.md applies here since this is
 // already the third caller if you count both processor paths as one.
 
@@ -61,19 +61,19 @@ export function firstValue(record: UnknownRecord, keys: string[]): unknown {
 }
 
 /**
- * Parses a Garmin lap boundary into a real instant.
+ * Parses a Garmin timestamp into a real instant.
  *
  * Garmin Connect sends naive wall-clock strings ("2026-07-30 06:12:34.0") with
  * no zone marker, which `new Date(...)` resolves against the *server's* zone.
- * That silently shifts every lap boundary by the server's UTC offset — invisible
- * on a UTC host, hours off on any host with TZ set. So a naive string is pinned
- * to UTC explicitly here, and callers must hand this the GMT field rather than
- * the Local one (see pickLapInstant below).
+ * That silently shifts every parsed instant by the server's UTC offset —
+ * invisible on a UTC host, hours off on any host with TZ set. So a naive
+ * string is pinned to UTC explicitly here, and callers must hand this a GMT
+ * field rather than a Local one (see pickLapInstant below).
  *
  * Values that already carry a zone (ISO strings with Z/offset, epoch numbers,
  * Date objects) are unambiguous and pass through untouched.
  */
-function toLapInstant(raw: unknown): Date | null {
+export function toUtcInstant(raw: unknown): Date | null {
   if (raw === undefined || raw === null || raw === '') return null;
   let value = raw as string | number | Date;
   if (typeof value === 'string') {
@@ -90,7 +90,7 @@ function toLapInstant(raw: unknown): Date | null {
  * Picks a lap boundary, preferring the unambiguous GMT field over the naive
  * local one. `startTimeLocal` is only reached when a payload carries no GMT
  * variant at all; it is a wall-clock reading with no offset attached, so
- * toLapInstant can do no better than read it as UTC.
+ * toUtcInstant can do no better than read it as UTC.
  */
 function pickLapInstant(
   lap: UnknownRecord,
@@ -98,8 +98,8 @@ function pickLapInstant(
   localKeys: string[]
 ): Date | null {
   return (
-    toLapInstant(firstValue(lap, gmtKeys)) ??
-    toLapInstant(firstValue(lap, localKeys))
+    toUtcInstant(firstValue(lap, gmtKeys)) ??
+    toUtcInstant(firstValue(lap, localKeys))
   );
 }
 

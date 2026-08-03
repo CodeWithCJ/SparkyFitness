@@ -8,10 +8,11 @@ import { vi, beforeEach, describe, it, expect } from 'vitest';
 // `hrvSummary`/`respirationValuesArray`-only shapes the old code expected).
 
 const upsertHealthMetricSamples = vi.fn().mockResolvedValue(undefined);
+const bulkUpsertVitals = vi.fn().mockResolvedValue([]);
 vi.mock('../models/genericHealthRepository.js', () => ({
   upsertHealthMetricSamples: (...args: unknown[]) =>
     upsertHealthMetricSamples(...args),
-  bulkUpsertVitals: vi.fn().mockResolvedValue([]),
+  bulkUpsertVitals: (...args: unknown[]) => bulkUpsertVitals(...args),
 }));
 
 vi.mock('../db/poolManager.js', () => ({
@@ -58,6 +59,7 @@ function samplesForMetric(metric: string): StoredSample[] {
 
 beforeEach(() => {
   upsertHealthMetricSamples.mockClear();
+  bulkUpsertVitals.mockClear();
 });
 
 describe('processGarminHealthAndWellnessData - HRV', () => {
@@ -92,11 +94,13 @@ describe('processGarminHealthAndWellnessData - HRV', () => {
         expect.objectContaining({ rmssd_ms: 50 }),
         expect.objectContaining({
           rmssd_ms: 47,
-          sdnn_ms: 48,
           status: 'balanced',
         }),
       ])
     );
+    // weekly_avg is a weekly RMSSD average, not SDNN — it must not be
+    // smuggled into sdnn_ms.
+    expect(samples.every((s) => s.sdnn_ms === undefined)).toBe(true);
   });
 
   it('still handles the legacy hrvSummary shape', async () => {
@@ -119,9 +123,9 @@ describe('processGarminHealthAndWellnessData - HRV', () => {
     expect(samples).toHaveLength(1);
     expect(samples[0]).toMatchObject({
       rmssd_ms: 40,
-      sdnn_ms: 42,
       status: 'low',
     });
+    expect(samples[0].sdnn_ms).toBeUndefined();
   });
 
   it('still handles the legacy flat timestamp/rmssd shape', async () => {
@@ -178,6 +182,32 @@ describe('processGarminHealthAndWellnessData - respiration', () => {
     );
   });
 
+  it('writes no daily_average sample when the true daily average is missing', async () => {
+    // routes.py sends average_respiration_rate: null when Garmin has no
+    // avgRespiration — it must not be backfilled from the sleep value, which
+    // would store the same reading twice under two contexts.
+    await processGarminHealthAndWellnessData(
+      'user-1',
+      'user-1',
+      {
+        respiration: [
+          {
+            date: '2026-08-01',
+            sleep_respiration_avg: 14,
+            awake_respiration_avg: 16,
+            average_respiration_rate: null,
+          },
+        ],
+      },
+      '2026-08-01',
+      '2026-08-01'
+    );
+
+    const samples = samplesForMetric('respiration');
+    expect(samples).toHaveLength(2);
+    expect(samples.map((s) => s.context).sort()).toEqual(['awake', 'sleep']);
+  });
+
   it('still handles the intraday respirationValuesArray shape', async () => {
     await processGarminHealthAndWellnessData(
       'user-1',
@@ -228,5 +258,71 @@ describe('processGarminHealthAndWellnessData - respiration', () => {
       (c) => (c[2] as { metric?: string })?.metric === 'respiration'
     );
     expect((call?.[2] as { entry_date: string }).entry_date).toBe('2026-08-02');
+  });
+});
+
+describe('processGarminHealthAndWellnessData - blood pressure', () => {
+  interface VitalsRow {
+    timestamp: Date;
+    systolic_mmhg: number | null;
+    diastolic_mmhg: number | null;
+  }
+  const storedVitals = (): VitalsRow[] =>
+    (bulkUpsertVitals.mock.calls[0]?.[2] as VitalsRow[]) ?? [];
+
+  it('pins a naive measurementTimestampGMT string to UTC', async () => {
+    // Garmin sends GMT wall-clock strings with no zone marker; a bare
+    // `new Date(...)` would resolve this against the server's own zone.
+    // (On a UTC host both parses agree, so this only bites on TZ-set hosts —
+    // same caveat as the lap-boundary tests sharing toUtcInstant.)
+    await processGarminHealthAndWellnessData(
+      'user-1',
+      'user-1',
+      {
+        blood_pressure: [
+          {
+            date: '2026-08-01',
+            value: '120/80, 62 bpm',
+            timestamp: '2026-08-01 14:30:00.0',
+          },
+        ],
+      },
+      '2026-08-01',
+      '2026-08-01'
+    );
+
+    const rows = storedVitals();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ systolic_mmhg: 120, diastolic_mmhg: 80 });
+    expect(rows[0].timestamp.toISOString()).toBe('2026-08-01T14:30:00.000Z');
+  });
+
+  it('keeps same-day readings distinct and falls back to noon without a timestamp', async () => {
+    await processGarminHealthAndWellnessData(
+      'user-1',
+      'user-1',
+      {
+        blood_pressure: [
+          {
+            date: '2026-08-01',
+            value: '120/80',
+            timestamp: '2026-08-01 08:05:00.0',
+          },
+          {
+            date: '2026-08-01',
+            value: '135/88',
+            timestamp: '2026-08-01 20:40:00.0',
+          },
+          { date: '2026-08-02', value: '118/79' },
+        ],
+      },
+      '2026-08-01',
+      '2026-08-02'
+    );
+
+    const instants = storedVitals().map((r) => r.timestamp.toISOString());
+    expect(instants).toHaveLength(3);
+    expect(new Set(instants).size).toBe(3);
+    expect(instants).toContain('2026-08-02T12:00:00.000Z');
   });
 });

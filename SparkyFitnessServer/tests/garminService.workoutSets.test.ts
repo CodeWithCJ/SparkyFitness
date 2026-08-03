@@ -15,17 +15,17 @@ vi.mock('../models/exercise.js', () => ({
 }));
 vi.mock('../models/exerciseEntry.js', () => ({
   default: {
-    createExerciseEntry: vi.fn(),
+    _createExerciseEntryWithClient: vi.fn(),
   },
 }));
 vi.mock('../models/activityDetailsRepository.js', () => ({
   default: {
-    createActivityDetail: vi.fn(),
+    _createActivityDetailWithClient: vi.fn(),
   },
 }));
 vi.mock('../models/exercisePresetEntryRepository.js', () => ({
   default: {
-    createExercisePresetEntry: vi.fn(),
+    createExercisePresetEntryWithClient: vi.fn(),
   },
 }));
 vi.mock('../models/workoutPresetRepository.js', () => ({
@@ -52,6 +52,10 @@ vi.mock('../models/foodEntry.js', () => ({ default: {} }));
 vi.mock('../models/mealType.js', () => ({ default: {} }));
 
 const UID = 'user-1';
+// The session path writes diary rows through *WithClient repo variants on the
+// transaction client owned by processActivitiesAndWorkouts; every repo call
+// is mocked, so a bare stub is enough here.
+const stubClient = { query: vi.fn() } as unknown as import('pg').PoolClient;
 
 describe('processGarminWorkoutSession set durations', () => {
   beforeEach(() => {
@@ -59,11 +63,11 @@ describe('processGarminWorkoutSession set durations', () => {
     vi.mocked(exerciseRepository.findExerciseByNameAndUserId).mockResolvedValue(
       { id: 'exercise-1', name: 'Bench Press', category: 'strength' }
     );
-    vi.mocked(exerciseEntryRepository.createExerciseEntry).mockResolvedValue({
-      id: 'entry-1',
-    });
     vi.mocked(
-      exercisePresetEntryRepository.createExercisePresetEntry
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mockResolvedValue({ entry: { id: 'entry-1' }, operation: 'created' });
+    vi.mocked(
+      exercisePresetEntryRepository.createExercisePresetEntryWithClient
     ).mockResolvedValue({ id: 'preset-entry-1' });
     vi.mocked(workoutPresetRepository.getWorkoutPresetByName).mockResolvedValue(
       { id: 7 }
@@ -93,11 +97,13 @@ describe('processGarminWorkoutSession set durations', () => {
           ],
         },
       },
-      '2026-07-15',
-      '2026-07-15'
+      stubClient
     );
 
-    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledWith(
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledWith(
+      stubClient,
       UID,
       expect.objectContaining({
         duration_minutes: 1.5,
