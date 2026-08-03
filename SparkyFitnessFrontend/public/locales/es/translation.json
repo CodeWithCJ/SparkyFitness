@@ -2102,5 +2102,84 @@
     "noDataDesc": "Empieza a registrar tu sueño para desbloquear análisis avanzados.",
     "baselineCalculated": "Línea base de necesidad de sueño calculada correctamente",
     "baselineError": "Error al calcular la línea base de necesidad de sueño"
+  },
+  "chat": {
+    "toolCategories": {
+      "title": "Herramientas de chatbot",
+      "description": "Un menor número de herramientas ayuda a que los modelos locales más pequeños respondan de manera confiable.",
+      "emptyHint": "No se han seleccionado categorías; el chatbot usará su conjunto de herramientas predeterminadas.",
+      "food": "Comida y Agua",
+      "exercise": "Ejercicios",
+      "checkin": "Cuerpo y Check-ins",
+      "goals": "Objetivos",
+      "reports": "Reportes y estadísticas",
+      "coaching": "Asesoramiento",
+      "profile": "Perfil y Hábitos"
+    }
+  },
+  "foodCsvImport": {
+    "title": "Importar datos de comida",
+    "addRow": "Añadir fila",
+    "uploadCsv": "Subir CSV",
+    "downloadTemplate": "Descargar Plantila",
+    "clearData": "Limpiar Datos",
+    "pastePlaceholder": "O bien, pega aquí el contenido del archivo CSV...",
+    "recordsLoaded": "Se han cargado correctamente {{count}} registros.",
+    "actions": "Acciones",
+    "deleteRow": "Borrar Fila",
+    "overrideLabel": "Sobrescribir los datos existentes de los alimentos",
+    "overrideDescription": "Si ya existe un alimento con el mismo nombre y la misma marca, actualiza su información nutricional en lugar de rechazar la importación. Deja la casilla sin marcar para omitir los duplicados y mostrar un error.",
+    "importing": "Importando...",
+    "importData": "Importar Datos",
+    "importRecords_one": "Importar {{count}} registro",
+    "importRecords_many": "Importar {{count}} registros",
+    "importRecords_other": "",
+    "importErrorTitle": "Error de importación",
+    "pasteFirst": "Por favor, pega primero algunos datos en formato CSV.",
+    "invalidFormatTitle": "Formato CSV no válido",
+    "headersMismatchText": "Los encabezados no se ajustan al formato requerido. Utiliza la plantilla.",
+    "successTitle": "Éxito",
+    "loadedRowsFromText": "Se han cargado {{count}} filas del texto.",
+    "emptyFile": "El archivo seleccionado está vacío.",
+    "headersMismatchFile": "Los encabezados del archivo CSV no se ajustan al formato ni al orden requeridos. Por favor descarga la plantilla.",
+    "noDataTitle": "No se han encontrado datos",
+    "noDataText": "El archivo CSV contiene encabezados, pero no filas de datos.",
+    "validationErrorTitle": "Error de validación",
+    "nameRequired": "El campo «nombre» no puede estar vacío."
+  },
+  "foods": {
+    "providerVerified": "Alimentos verificados"
+  },
+  "medications": {
+    "tabs": {
+      "log": "Registro",
+      "symptoms": "Sintomas"
+    },
+    "calendar": {
+      "loggedCount_one": "{{count}} síntoma registrado",
+      "loggedCount_many": "{{count}} síntomas registrados",
+      "loggedCount_other": ""
+    },
+    "common": {
+      "logging": "Registrando…",
+      "saving": "Guardando…",
+      "save": "Guardar",
+      "reset": "Restablecer",
+      "custom": "Personalizado"
+    },
+    "today": {
+      "noIntake": "Hoy aún no se ha registrado ninguna entrada.",
+      "doses": "Dosis",
+      "dosesToday": "Dosis de hoy",
+      "adherence14": "Cumplimiento durante 14 días",
+      "last14": "Últimos 14 días",
+      "streak": "Racha de {{count}} días",
+      "checklistToday": "Lista de tareas de hoy",
+      "checklistMed": "Lista de medicamentos",
+      "scheduled": "Programado",
+      "undo": "Deshacer",
+      "skip": "Saltar",
+      "take": "Toma"
+    }
   }
 }
