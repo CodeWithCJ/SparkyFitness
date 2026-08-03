@@ -401,7 +401,9 @@ export const exportFoodDiary = async ({
                 entry[nutrient.name] ?? customSource?.[nutrient.name] ?? 0
               );
 
-              acc[nutrient.name] = (acc[nutrient.name] || 0) + nutrientValue;
+              acc[nutrient.name] =
+                (Number((total as Record<string, number>)[nutrient.name]) ||
+                  0) + nutrientValue;
               return acc;
             },
             {} as Record<string, number>

@@ -1,5 +1,6 @@
 import { exportFoodDiary } from '@/utils/reportUtil';
 import { DailyFoodEntry } from '@/types/reports';
+import { UserCustomNutrient } from '@/types/customNutrient';
 
 // Mock dependencies
 jest.mock('@/i18n', () => ({
@@ -18,13 +19,19 @@ jest.mock('@/hooks/use-toast', () => ({
 }));
 
 describe('exportFoodDiary', () => {
+  let createdBlobs: Blob[] = [];
+
   beforeEach(() => {
     jest.clearAllMocks();
-    global.URL.createObjectURL = jest.fn(() => 'blob:test-url');
+    createdBlobs = [];
+    global.URL.createObjectURL = jest.fn((blob: Blob) => {
+      createdBlobs.push(blob);
+      return 'blob:test-url';
+    });
     global.URL.revokeObjectURL = jest.fn();
   });
 
-  it('exports CSV with correct non-double-scaled nutrient values', async () => {
+  it('exports CSV with correct non-double-scaled nutrient values and asserts CSV content', async () => {
     const appendChildSpy = jest
       .spyOn(document.body, 'appendChild')
       .mockImplementation((node) => node);
@@ -71,6 +78,96 @@ describe('exportFoodDiary', () => {
     expect(linkElement.download).toContain(
       'food - diary - 2026-08-01 -to - 2026-08-03.csv'
     );
+
+    // Assert CSV content from Blob
+    expect(createdBlobs.length).toBe(1);
+    const csvContent = await createdBlobs[0]!.text();
+    const lines = csvContent.split('\n');
+
+    // Check individual entry row: "2026-08-03","breakfast","Eggs","Farm Fresh","120","g","184","15.6","1.4","12.8",...
+    const eggsRow = lines.find((line) => line.includes('"Eggs"'));
+    expect(eggsRow).toBeDefined();
+    expect(eggsRow).toContain('"184"');
+    expect(eggsRow).toContain('"15.6"');
+    expect(eggsRow).toContain('"1.4"');
+    expect(eggsRow).toContain('"12.8"');
+
+    // Check total row: "2026-08-03","Total","","","","","184","15.6","1.4","12.8",...
+    const totalRow = lines.find((line) => line.includes('"Total"'));
+    expect(totalRow).toBeDefined();
+    expect(totalRow).toContain('"184"');
+    expect(totalRow).toContain('"15.6"');
+
+    appendChildSpy.mockRestore();
+    removeChildSpy.mockRestore();
+  });
+
+  it('correctly accumulates custom nutrient totals across multiple entries', async () => {
+    const appendChildSpy = jest
+      .spyOn(document.body, 'appendChild')
+      .mockImplementation((node) => node);
+    const removeChildSpy = jest
+      .spyOn(document.body, 'removeChild')
+      .mockImplementation((node) => node);
+
+    const customNutrients: UserCustomNutrient[] = [
+      {
+        id: '1',
+        user_id: 'user1',
+        name: 'Caffeine',
+        unit: 'mg',
+        aliases: [],
+        created_at: '2026-01-01',
+        updated_at: '2026-01-01',
+      },
+    ];
+
+    const entry1: DailyFoodEntry = {
+      entry_date: '2026-08-03',
+      meal_type: 'breakfast',
+      food_name: 'Coffee',
+      quantity: 1,
+      unit: 'cup',
+      calories: 5,
+      protein: 0.1,
+      carbs: 0.8,
+      fat: 0,
+      Caffeine: 2.0,
+    };
+
+    const entry2: DailyFoodEntry = {
+      entry_date: '2026-08-03',
+      meal_type: 'lunch',
+      food_name: 'Energy Drink',
+      quantity: 1,
+      unit: 'can',
+      calories: 10,
+      protein: 0,
+      carbs: 2.0,
+      fat: 0,
+      Caffeine: 3.0,
+    };
+
+    await exportFoodDiary({
+      loggingLevel: 'INFO',
+      tabularData: [entry1, entry2],
+      energyUnit: 'kcal',
+      customNutrients,
+      startDate: '2026-08-01',
+      endDate: '2026-08-03',
+      formatDateInUserTimezone: (d) => String(d),
+      convertEnergy: (v) => v,
+      showNetCarbs: false,
+    });
+
+    expect(createdBlobs.length).toBe(1);
+    const csvContent = await createdBlobs[0]!.text();
+    const lines = csvContent.split('\n');
+
+    // Total row should have Caffeine accumulated: 2.0 + 3.0 = 5.0
+    const totalRow = lines.find((line) => line.includes('"Total"'));
+    expect(totalRow).toBeDefined();
+    expect(totalRow).toContain('"5.0"');
 
     appendChildSpy.mockRestore();
     removeChildSpy.mockRestore();
