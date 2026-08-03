@@ -19,7 +19,12 @@
     "or": "or",
     "expandSection": "Expand this section",
     "collapseSection": "Collapse this section",
-    "favorite": "Favorite"
+    "favorite": "Favorite",
+    "dismiss": "Dismiss",
+    "continue": "Continue"
+  },
+  "batch": {
+    "about": "About", "version": "Version {{version}} ({{build}})", "aboutApp": "About this app", "aboutDescription": "SparkyFitness is an open-source nutrition, exercise, and health-data tracker that syncs to your own server. This app is the mobile companion for logging meals, workouts, and measurements on the go.", "github": "Project on GitHub", "documentation": "Documentation", "trendTitle": "{{nutrient}} Trends", "trendLoadFailed": "Failed to load trend data", "connectionRetry": "Please check your connection and try again.", "summary": "Summary Statistics", "dailyAverage": "Daily Average", "highestDay": "Highest Intake Day", "targetGoal": "Target Daily Goal", "averageTarget": "Average vs. Target", "percentOfGoal": "{{percent}}% of goal"
   },
   "cycleCard": {
     "title": {
@@ -266,6 +271,73 @@
     "title": "Announcement",
     "dismiss": "Got it, don't show again"
   },
+  "healthDataSync": {
+    "title": "Health Data to Sync",
+    "appleHealth": "Apple Health",
+    "healthConnect": "Health Connect",
+    "appleHealthSummary": "Reads selected data from Apple Health and syncs it to your self-hosted server.",
+    "healthConnectSummary": "Reads selected data from Health Connect and syncs it to your self-hosted server.",
+    "appleHealthDetail": "SparkyFitness reads the health data you select below using Apple Health (HealthKit). If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).\n\nManage or remove access in Settings → Health → Data Access & Devices → SparkyFitnessMobile",
+    "healthConnectDetail": "SparkyFitness reads the health data you select below using Health Connect. If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).",
+    "notMedicalAdvice": "Not medical advice.",
+    "medicalAdviceDetail": "Consult a healthcare professional for medical advice, diagnosis, or treatment.",
+    "learnMore": "Learn more",
+    "showLess": "Show less",
+    "enableAll": "Enable All Health Metrics",
+    "batteryNotice": "Enabling many health metrics may increase battery usage. Each enabled metric allows the app to wake in the background when new data is available.",
+    "categories": { "Common": "Common", "Activity": "Activity", "Vitals": "Vitals", "Body Measurements": "Body Measurements", "Nutrition": "Nutrition", "Reproductive": "Reproductive", "Mobility": "Mobility", "Running": "Running", "Cycling": "Cycling", "Environment": "Environment", "Apple": "Apple" },
+    "metrics": { "steps": "Steps", "calories": "Active Calories", "totalCalories": "Total Calories", "heartRate": "Heart Rate", "weight": "Weight", "bloodPressure": "Blood Pressure", "nutrition": "Nutrition", "sleepSession": "Sleep Session", "stress": "Stress", "basalBodyTemperature": "Basal Body Temperature", "basalMetabolicRate": "Basal Metabolic Rate", "bloodGlucose": "Blood Glucose", "bodyFat": "Body Fat", "bodyTemperature": "Body Temperature", "distance": "Distance", "exerciseSession": "Exercise Session", "floorsClimbed": "Floors Climbed", "height": "Height", "hydration": "Hydration", "leanBodyMass": "Lean Body Mass", "respiratoryRate": "Respiratory Rate", "restingHeartRate": "Resting Heart Rate", "heartRateVariability": "Heart Rate Variability", "vo2Max": "VO2 Max", "wheelchairPushes": "Wheelchair Pushes", "speed": "Speed", "power": "Power", "elevationGained": "Elevation Gained", "boneMass": "Bone Mass", "cervicalMucus": "Cervical Mucus", "cyclingPedalingCadence": "Cycling Pedaling Cadence", "intermenstrualBleeding": "Intermenstrual Bleeding", "menstruationPeriod": "Menstruation Period", "ovulationTest": "Ovulation Test", "stepsCadence": "Steps Cadence", "bloodOxygenSaturation": "Blood Oxygen Saturation", "bloodAlcoholContent": "Blood Alcohol Content", "menstruationFlow": "Menstruation Flow", "nutritionDietaryFatTotal": "Dietary Fat Total", "nutritionDietaryProtein": "Dietary Protein", "nutritionDietarySodium": "Dietary Sodium", "walkingSpeed": "Walking Speed", "walkingStepLength": "Walking Step Length", "walkingAsymmetryPercentage": "Walking Asymmetry %", "walkingDoubleSupportPercentage": "Walking Double Support %", "runningGroundContactTime": "Running Ground Contact Time", "runningStrideLength": "Running Stride Length", "runningPower": "Running Power", "runningVerticalOscillation": "Running Vertical Oscillation", "runningSpeed": "Running Speed", "cyclingSpeed": "Cycling Speed", "cyclingPower": "Cycling Power", "cyclingCadence": "Cycling Cadence", "cyclingFunctionalThresholdPower": "Cycling Functional Threshold Power", "environmentalAudioExposure": "Environmental Audio Exposure", "headphoneAudioExposure": "Headphone Audio Exposure", "appleMoveTime": "Apple Move Time", "appleExerciseTime": "Apple Exercise Time", "appleStandTime": "Apple Stand Time" }
+  },
+  "healthWriteback": {
+    "removeTitle": "Remove from {{storeName}}",
+    "allTime": "All time",
+    "pickDateRange": "Pick a date range…",
+    "removeData": "Remove SparkyFitness data from {{storeName}}",
+    "metrics": { "nutrition": "Nutrition", "hydration": "Hydration" }, "writeTo": "Write to {{storeName}}", "description": "Syncs the data you log in SparkyFitness out to {{storeName}}, keeping the two in sync."
+  },
+  "medications": {
+    "title": "Medications",
+    "viewAll": "View all",
+    "viewAllAccessibility": "View all medications",
+    "markTaken": "Mark {{title}} taken",
+    "unmark": "Unmark {{title}}",
+    "log": "Log {{title}}",
+    "take": "Take",
+    "takeNamed": "Take {{title}}",
+    "skip": "Skip",
+    "skipNamed": "Skip {{title}}",
+    "taken": "Taken",
+    "skipped": "Skipped",
+    "daysOfWeek": "Days of Week",
+    "types": { "pill": "Pill", "tablet": "Tablet", "capsule": "Capsule", "liquid": "Liquid", "injection": "Injection", "patch": "Patch", "inhaler": "Inhaler", "drops": "Drops", "nasal_spray": "Nasal Spray", "cream": "Cream", "suppository": "Suppository", "other": "Other" },
+    "add": "Add Medication", "loading": "Loading medications...", "loadFailed": "Failed to load medications.", "emptyTitle": "No medications yet", "emptyDescription": "Add your first medication to start tracking.", "inactiveAccessibility": "Inactive medications ({{count}})", "inactive": "Inactive ({{count}})", "required": "Required", "nameRequired": "Please enter a medication name.", "invalidNumber": "Invalid number", "invalidStrengthDose": "Please enter valid numeric values for strength and dose.", "updateFailed": "Failed to update medication: {{message}}", "createFailed": "Failed to create medication: {{message}}", "edit": "Edit Medication", "new": "New Medication", "nameRequiredLabel": "Name *", "namePlaceholder": "Lisinopril", "type": "Type", "typePicker": "Medication Type", "strength": "Strength", "unit": "Unit", "dose": "Dose", "details": "Details", "reason": "Reason", "prescriber": "Prescriber", "pharmacy": "Pharmacy", "notes": "Notes", "active": "Active", "delete": "Delete Medication", "deleteConfirm": "Are you sure you want to delete '{{name}}'? This will also remove all schedules and logged entries.", "deleteFailed": "Failed to delete medication", "removeDose": "Remove dose", "removeDoseConfirm": "Remove this logged dose from {{time}}?", "today": "today", "removeDoseFailed": "Failed to remove dose", "titleSingular": "Medication", "inactiveLabel": "Inactive", "noDosesToday": "No doses scheduled for this day.", "asNeeded": "As needed", "logged": "Logged", "schedules": "Schedules", "addSchedule": "Add schedule", "noSchedules": "No schedules. Take as needed.", "rxNumber": "Rx number", "selectDay": "Select at least one day of the week.", "invalidInterval": "Invalid interval", "intervalMinimum": "Interval must be at least 1 day.", "intervalStartRequired": "Every N days schedules need a start date.", "invalidCycle": "Invalid cycle", "cycleInvalid": "Days on must be at least 1 and days off at least 0.", "cycleStartRequired": "Cycle schedules need a start date.", "invalidDay": "Invalid day", "dayRange": "Day of month must be between 1 and 31.", "invalidDose": "Invalid dose", "doseRequired": "Please enter a valid dose amount.", "invalidLimit": "Invalid limit", "limitMinimum": "Max per day must be at least 1.", "invalidDates": "Invalid dates", "endDateRange": "End date must be on or after the start date.", "updateScheduleFailed": "Failed to update schedule: {{message}}", "createScheduleFailed": "Failed to create schedule: {{message}}", "deleteSchedule": "Delete Schedule", "deleteScheduleConfirm": "Delete this schedule? Logged doses are kept."
+  },
+  "auth": {
+    "authenticatorApp": "Authenticator App",
+    "emailCode": "Email Code",
+    "enterAuthenticatorCode": "Enter the code from your authenticator app.",
+    "enterEmailCode": "Enter the code sent to your email.",
+    "requestEmailCode": "Tap the button below to receive a verification code by email.",
+    "sendCode": "Send Code",
+    "verify": "Verify",
+    "resendCode": "Resend Code",
+    "useApiKeyInstead": "Use API Key Instead",
+    "noServerSelected": "No server selected.", "enterEmail": "Please enter your email.", "enterPassword": "Please enter your password.", "connectionFailed": "Could not connect to server. Please try again.", "httpsRequired": "HTTPS is required for server connections.", "enterVerificationCode": "Please enter the verification code.", "tooManyAttempts": "Too many attempts. Please wait a moment and try again.", "invalidVerificationCode": "Invalid verification code. Please try again.", "sessionExpired": "Your session has expired. Please sign in again.", "verificationFailed": "Verification failed. Please try again.", "sendCodeFailed": "Failed to send email code. Please try again.", "sessionExpiredTitle": "Session Expired", "twoFactorTitle": "Two-Factor Authentication", "email": "Email", "password": "Password", "orSignInWith": "Or sign in with", "signInWithProvider": "Sign in with {{provider}}", "signInWithPasskey": "Sign in with Passkey", "signIn": "Sign In", "sso": "SSO", "passkey": "Passkey", "apiKey": "API Key"
+  },
+  "serverConfig": {
+    "validUrl": "Enter a valid Frontend URL", "connectionFailed": "Could not connect to server. Check the URL and try again.", "enterUrlFirst": "Please enter your Frontend URL first.", "enterApiKey": "Please enter an API key.", "invalidApiKey": "Invalid API key. Please check and try again.", "connectionStatus": "Connection failed ({{status}}): {{error}}", "unknownError": "Unknown error", "saveFailed": "Failed to save: {{message}}", "reservedHeader": "Reserved Header", "reservedHeaderMessage": "\"{{name}}\" may conflict with headers set by the app. Continue anyway?", "frontendUrl": "Frontend URL", "pasteUrl": "Paste URL from clipboard", "hidePassword": "Hide password", "showPassword": "Show password", "noSignInMethods": "No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.", "pasteApiKey": "Paste API key from clipboard", "hideApiKey": "Hide API key", "showApiKey": "Show API key", "editServer": "Edit Server", "addServer": "Add Server", "advancedOptions": "Advanced options", "proxyHeaders": "Proxy Headers", "addHeader": "Add header", "proxyHint": "Used when running behind certain reverse proxies", "headerNamePlaceholder": "Name (e.g. X-Access-Token)", "removeHeader": "Remove header {{index}}", "headerValuePlaceholder": "Value", "hideHeaderValue": "Hide header value", "showHeaderValue": "Show header value", "connect": "Connect"
+  },
+  "serverSettings": { "activeChanged": "Active server changed", "setActiveFailed": "Failed to set active server configuration: {{message}}", "deleted": "Server configuration deleted.", "deleteFailed": "Failed to delete server configuration: {{message}}", "noServer": "No Server Configured", "addFirst": "Please add a server first.", "dashboardFailed": "Could not open web dashboard: {{message}}", "setActive": "Set Active", "activeConfiguration": "Active configuration", "selectAction": "Select an action", "activeServer": "Active Server", "openWeb": "Open Web", "testConnection": "Test Connection", "otherServers": "Other Servers", "none": "No servers configured yet.", "addAccessibility": "Add new configuration", "addServer": "Add Server" },
+  "notificationPermission": { "enable": "Enable Notifications", "openSettings": "Open Settings" },
+  "syncSettings": {
+    "backgroundTitle": "Background Sync",
+    "enableBackground": "Enable Background Sync",
+    "backgroundDescription": "When enabled, the app will update in the background when your phone allows it. Manually syncing will always update right away.",
+    "openTitle": "Sync on Open",
+    "openLabel": "Sync when app opens",
+    "openDescription": "When enabled, health data will sync automatically when you open the app."
+  },
+  "whatsNewBanner": { "title": "What's new", "subtitle": "See what's improved in this update", "openAccessibility": "See what's new in this update" },
   "picker": {
     "selectOption": "Select an option",
     "opensSelectionMenu": "Opens selection menu"

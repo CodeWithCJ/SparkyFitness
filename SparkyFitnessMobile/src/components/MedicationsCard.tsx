@@ -14,6 +14,7 @@ import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { MEDICATION_TYPES } from '../types/medications';
 import { doseSlotStatus } from '../utils/medications';
+import { useTranslation } from 'react-i18next';
 
 type MedicationsCardNavigation = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'Dashboard'>,
@@ -24,9 +25,6 @@ interface MedicationsCardProps {
   navigation: MedicationsCardNavigation;
 }
 
-const typeLabelFor = (typeId: string | null): string =>
-  MEDICATION_TYPES.find((t) => t.id === typeId)?.label ?? '';
-
 const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
 
@@ -35,6 +33,17 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const { entryForDue, logDose, toggleTaken, logPrn } = useLogDose(selectedDate, entries);
 
   const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
+  const { t } = useTranslation();
+  const translate = t;
+  const medicationTypeLabels: Record<string, string> = {
+    pill: 'medications.types.pill', tablet: 'medications.types.tablet', capsule: 'medications.types.capsule', liquid: 'medications.types.liquid',
+    injection: 'medications.types.injection', patch: 'medications.types.patch', inhaler: 'medications.types.inhaler', drops: 'medications.types.drops',
+    nasal_spray: 'medications.types.nasal_spray', cream: 'medications.types.cream', suppository: 'medications.types.suppository', other: 'medications.types.other',
+  };
+  const localizedTypeLabelFor = (typeId: string | null): string => {
+    const type = MEDICATION_TYPES.find((item) => item.id === typeId);
+    return type ? translate(medicationTypeLabels[type.id] ?? 'medications.types.other', { defaultValue: type.label }) : '';
+  };
 
   const dueDoses = useMemo(() => {
     if (!medications) return [];
@@ -54,7 +63,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     return (
       <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
         <View className="flex-row items-center justify-between">
-          <Text className="font-bold text-text-secondary">Medications</Text>
+          <Text className="font-bold text-text-secondary">{t('medications.title')}</Text>
           <ActivityIndicator size="small" color={accentPrimary} />
         </View>
       </View>
@@ -69,12 +78,12 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         onPress={() => navigation.navigate('MedicationsList')}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
-        accessibilityLabel="View all medications"
+         accessibilityLabel={t('medications.viewAllAccessibility')}
         className="flex-row items-center justify-between mb-2"
       >
-        <Text className="font-bold text-text-secondary">Medications</Text>
+         <Text className="font-bold text-text-secondary">{t('medications.title')}</Text>
         <View className="flex-row items-center">
-          <Text className="text-accent-primary font-medium">View all</Text>
+           <Text className="text-accent-primary font-medium">{t('medications.viewAll')}</Text>
           <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
         </View>
       </TouchableOpacity>
@@ -82,7 +91,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
       {dueDoses.map((due) => {
         const med = due.medication;
         const subtitle = [
-          typeLabelFor(med.type_id),
+           localizedTypeLabelFor(med.type_id),
           formatDose(med, due.schedule),
         ].filter(Boolean).join(' · ');
         return (
@@ -105,7 +114,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         const prnCount = entries?.filter(
           (e) => e.medication_id === med.id && e.status === 'prn_taken' && e.entry_date === selectedDate,
         ).length ?? 0;
-        const subtitle = [typeLabelFor(med.type_id), formatDose(med)].filter(Boolean).join(' · ');
+         const subtitle = [localizedTypeLabelFor(med.type_id), formatDose(med)].filter(Boolean).join(' · ');
         return (
           <DoseRow
             key={med.id}

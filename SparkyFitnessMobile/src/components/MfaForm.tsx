@@ -7,6 +7,7 @@ import Icon from './Icon';
 import SafeImage from './SafeImage';
 import { normalizeUrl } from '../utils/serverUrl';
 import type { MfaFactors } from '../services/api/authService';
+import { useTranslation } from 'react-i18next';
 
 // --- Shared auth sub-components ---
 
@@ -114,6 +115,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
   onUseApiKey,
   textMuted,
 }) => {
+  const { t } = useTranslation();
   const showCodeInput = mfaMethod === 'totp' || emailOtpSent;
 
   return (
@@ -122,8 +124,8 @@ const MfaForm: React.FC<MfaFormProps> = ({
       {mfaFactors.mfaTotpEnabled && mfaFactors.mfaEmailEnabled && (
         <View className="flex-row mb-4 rounded-lg overflow-hidden border border-border-subtle">
           {([
-            { method: 'totp' as const, label: 'Authenticator App' },
-            { method: 'email' as const, label: 'Email Code' },
+             { method: 'totp' as const, label: t('auth.authenticatorApp') },
+             { method: 'email' as const, label: t('auth.emailCode') },
           ]).map(({ method, label }) => (
             <TouchableOpacity
               key={method}
@@ -148,16 +150,16 @@ const MfaForm: React.FC<MfaFormProps> = ({
       {/* MFA Instructions */}
       <Text className="text-sm text-text-secondary mb-3 text-center">
         {mfaMethod === 'totp'
-          ? 'Enter the code from your authenticator app.'
+           ? t('auth.enterAuthenticatorCode')
           : emailOtpSent
-            ? 'Enter the code sent to your email.'
-            : 'Tap the button below to receive a verification code by email.'}
+             ? t('auth.enterEmailCode')
+             : t('auth.requestEmailCode')}
       </Text>
 
       {/* Send Email OTP Button */}
       {mfaMethod === 'email' && !emailOtpSent && (
         <View className="mb-3">
-          <PrimaryButton label="Send Code" onPress={onSendEmailOtp} loading={loading} />
+           <PrimaryButton label={t('auth.sendCode')} onPress={onSendEmailOtp} loading={loading} />
         </View>
       )}
 
@@ -180,7 +182,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
           <ErrorBanner message={error} />
 
           <PrimaryButton
-            label="Verify"
+             label={t('auth.verify')}
             onPress={onVerify}
             loading={loading}
             disabled={loading || mfaCode.length < 6}
@@ -200,7 +202,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
           className="mt-2 py-3"
           textClassName="text-sm"
         >
-          Resend Code
+           {t('auth.resendCode')}
         </Button>
       )}
 
@@ -211,7 +213,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
         className="mt-2 py-3"
         textClassName="text-base text-text-muted"
       >
-        Back
+         {t('common.back')}
       </Button>
 
       {onUseApiKey && (
@@ -221,7 +223,7 @@ const MfaForm: React.FC<MfaFormProps> = ({
           className="py-2"
           textClassName="text-sm"
         >
-          Use API Key Instead
+           {t('auth.useApiKeyInstead')}
         </Button>
       )}
     </>

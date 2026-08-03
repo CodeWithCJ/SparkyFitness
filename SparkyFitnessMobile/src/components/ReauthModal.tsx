@@ -36,6 +36,7 @@ import {
   type ServerConfig,
 } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { useTranslation } from 'react-i18next';
 
 interface ReauthModalProps {
   visible: boolean;
@@ -58,6 +59,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
     '--color-text-secondary',
     '--color-accent-primary',
   ]) as [string, string, string];
+  const { t } = useTranslation();
 
   // Config state
   const scrollViewRef = useRef<ScrollView>(null);
@@ -170,9 +172,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
   // --- Sign In ---
 
   const handleSignIn = async () => {
-    if (!currentUrl) { setError('No server selected.'); return; }
-    if (!email.trim()) { setError('Please enter your email.'); return; }
-    if (!password) { setError('Please enter your password.'); return; }
+    if (!currentUrl) { setError(t('auth.noServerSelected')); return; }
+    if (!email.trim()) { setError(t('auth.enterEmail')); return; }
+    if (!password) { setError(t('auth.enterPassword')); return; }
 
     setLoading(true);
     setError('');
@@ -204,7 +206,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       if (err instanceof LoginError) {
         setError(err.message);
       } else {
-        setError('Could not connect to server. Please try again.');
+        setError(t('auth.connectionFailed'));
       }
     } finally {
       setLoading(false);
@@ -212,9 +214,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
   };
 
   const handlePasskeySignIn = async () => {
-    if (!currentUrl) { setError('No server selected.'); return; }
+    if (!currentUrl) { setError(t('auth.noServerSelected')); return; }
     if (!__DEV__ && currentUrl.toLowerCase().startsWith('http://')) {
-      setError('HTTPS is required for server connections.');
+      setError(t('auth.httpsRequired'));
       return;
     }
 
@@ -238,9 +240,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
   };
 
   const handleOidcLogin = async (providerId: string) => {
-    if (!currentUrl) { setError('No server selected.'); return; }
+    if (!currentUrl) { setError(t('auth.noServerSelected')); return; }
     if (!__DEV__ && currentUrl.toLowerCase().startsWith('http://')) {
-      setError('HTTPS is required for server connections.');
+      setError(t('auth.httpsRequired'));
       return;
     }
 
@@ -270,7 +272,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
 
   const handleVerifyMfa = async () => {
     const code = mfaCode.trim();
-    if (!code) { setError('Please enter the verification code.'); return; }
+    if (!code) { setError(t('auth.enterVerificationCode')); return; }
 
     setLoading(true);
     setError('');
@@ -287,9 +289,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
     } catch (err) {
       if (err instanceof LoginError) {
         if (err.statusCode === 429) {
-          setError('Too many attempts. Please wait a moment and try again.');
+          setError(t('auth.tooManyAttempts'));
         } else if (err.message.toLowerCase().includes('invalid code')) {
-          setError('Invalid verification code. Please try again.');
+          setError(t('auth.invalidVerificationCode'));
         } else if (err.statusCode === undefined) {
           setError(err.message);
         } else if (
@@ -298,13 +300,13 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
           err.message.includes('expired')
         ) {
           await clearAuthCookies();
-          setError('Your session has expired. Please sign in again.');
+          setError(t('auth.sessionExpired'));
           setStep('credentials');
         } else {
           setError(err.message);
         }
       } else {
-        setError('Verification failed. Please try again.');
+        setError(t('auth.verificationFailed'));
       }
     } finally {
       setLoading(false);
@@ -322,7 +324,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       if (err instanceof LoginError) {
         setError(err.message);
       } else {
-        setError('Failed to send email code. Please try again.');
+        setError(t('auth.sendCodeFailed'));
       }
     } finally {
       setLoading(false);
@@ -381,12 +383,12 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
             {/* Header */}
             <View className="items-center mb-5">
               <Text className="text-[22px] font-bold text-center text-text-primary">
-                {step === 'credentials' ? 'Session Expired' : 'Two-Factor Authentication'}
+                {step === 'credentials' ? t('auth.sessionExpiredTitle') : t('auth.twoFactorTitle')}
               </Text>
               <Button
                 variant="ghost"
                 onPress={handleDismiss}
-                accessibilityLabel="Close"
+                accessibilityLabel={t('common.close')}
                 className="absolute p-2 py-2 px-2 rounded-lg"
                 // Sits in the card's corner padding, clear of long titles.
                 style={{ right: -12, top: -12 }}
@@ -410,7 +412,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                 {hasEmail && (
                   <>
                     <View className="mb-3">
-                      <Text className="text-sm mb-2 text-text-secondary">Email</Text>
+                      <Text className="text-sm mb-2 text-text-secondary">{t('auth.email')}</Text>
                       <FormInput
                         placeholder="email@example.com"
                         value={email}
@@ -421,9 +423,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                       />
                     </View>
                     <View className="mb-4">
-                      <Text className="text-sm mb-2 text-text-secondary">Password</Text>
+                      <Text className="text-sm mb-2 text-text-secondary">{t('auth.password')}</Text>
                       <FormInput
-                        placeholder="Password"
+                         placeholder={t('auth.password')}
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
@@ -436,7 +438,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                 {oidcProviders.length > 0 && hasEmail && (
                   <View className="flex-row items-center mb-4">
                     <View className="flex-1 h-px bg-border-subtle" />
-                    <Text className="mx-3 text-xs text-text-muted uppercase">Or sign in with</Text>
+                    <Text className="mx-3 text-xs text-text-muted uppercase">{t('auth.orSignInWith')}</Text>
                     <View className="flex-1 h-px bg-border-subtle" />
                   </View>
                 )}
@@ -453,7 +455,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                       <View className="flex-row items-center">
                         <OidcProviderLogo logoUrl={provider.logo_url} serverUrl={currentUrl} />
                         <Text className="text-base font-semibold text-text-primary">
-                          {provider.display_name || `Sign in with ${provider.id}`}
+                          {provider.display_name || t('auth.signInWithProvider', { provider: provider.id })}
                         </Text>
                       </View>
                     </Button>
@@ -469,7 +471,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                         <Icon name="fingerprint" size={20} color={accentPrimary} />
                       </View>
                       <Text className="text-base font-semibold text-text-primary">
-                        Sign in with Passkey
+                        {t('auth.signInWithPasskey')}
                       </Text>
                     </View>
                   </Button>
@@ -480,7 +482,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                     {/* ErrorBanner's own mb-4 is the banner→button gap. */}
                     <ErrorBanner message={error} />
                     {hasEmail && (
-                      <PrimaryButton label="Sign In" onPress={handleSignIn} loading={loading} />
+                      <PrimaryButton label={t('auth.signIn')} onPress={handleSignIn} loading={loading} />
                     )}
                   </View>
                 )}
@@ -492,7 +494,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                     className="mt-2 py-2"
                     textClassName="text-sm"
                   >
-                    Use API Key Instead
+                    {t('auth.useApiKeyInstead')}
                   </Button>
                 )}
               </>

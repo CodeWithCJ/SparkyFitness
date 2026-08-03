@@ -6,6 +6,7 @@ import Button from './ui/Button';
 import CollapsibleSection from './CollapsibleSection';
 import { saveCollapsedCategories, loadCollapsedCategories } from '../services/storage';
 import { NO_DATA_DISPLAY } from '../services/healthDataDisplay';
+import { useTranslation } from 'react-i18next';
 
 // Re-export HealthMetric for backwards compatibility
 export type { HealthMetric };
@@ -30,6 +31,36 @@ const groupMetricsByCategory = (metrics: HealthMetric[]): Record<string, HealthM
   }, {} as Record<string, HealthMetric[]>);
 };
 
+const HEALTH_METRIC_LABEL_KEYS: Record<string, string> = {
+  steps: 'healthDataSync.metrics.steps', calories: 'healthDataSync.metrics.calories', totalCalories: 'healthDataSync.metrics.totalCalories',
+  heartRate: 'healthDataSync.metrics.heartRate', weight: 'healthDataSync.metrics.weight', bloodPressure: 'healthDataSync.metrics.bloodPressure',
+  nutrition: 'healthDataSync.metrics.nutrition', sleepSession: 'healthDataSync.metrics.sleepSession', stress: 'healthDataSync.metrics.stress',
+  basalBodyTemperature: 'healthDataSync.metrics.basalBodyTemperature', basalMetabolicRate: 'healthDataSync.metrics.basalMetabolicRate', bloodGlucose: 'healthDataSync.metrics.bloodGlucose',
+  bodyFat: 'healthDataSync.metrics.bodyFat', bodyTemperature: 'healthDataSync.metrics.bodyTemperature', distance: 'healthDataSync.metrics.distance',
+  exerciseSession: 'healthDataSync.metrics.exerciseSession', floorsClimbed: 'healthDataSync.metrics.floorsClimbed', height: 'healthDataSync.metrics.height',
+  hydration: 'healthDataSync.metrics.hydration', leanBodyMass: 'healthDataSync.metrics.leanBodyMass', respiratoryRate: 'healthDataSync.metrics.respiratoryRate',
+  restingHeartRate: 'healthDataSync.metrics.restingHeartRate', heartRateVariability: 'healthDataSync.metrics.heartRateVariability', vo2Max: 'healthDataSync.metrics.vo2Max',
+  wheelchairPushes: 'healthDataSync.metrics.wheelchairPushes', speed: 'healthDataSync.metrics.speed', power: 'healthDataSync.metrics.power', elevationGained: 'healthDataSync.metrics.elevationGained',
+  boneMass: 'healthDataSync.metrics.boneMass', cervicalMucus: 'healthDataSync.metrics.cervicalMucus', cyclingPedalingCadence: 'healthDataSync.metrics.cyclingPedalingCadence',
+  intermenstrualBleeding: 'healthDataSync.metrics.intermenstrualBleeding', menstruationPeriod: 'healthDataSync.metrics.menstruationPeriod', ovulationTest: 'healthDataSync.metrics.ovulationTest',
+  stepsCadence: 'healthDataSync.metrics.stepsCadence', bloodOxygenSaturation: 'healthDataSync.metrics.bloodOxygenSaturation', bloodAlcoholContent: 'healthDataSync.metrics.bloodAlcoholContent',
+  menstruationFlow: 'healthDataSync.metrics.menstruationFlow', nutritionDietaryFatTotal: 'healthDataSync.metrics.nutritionDietaryFatTotal', nutritionDietaryProtein: 'healthDataSync.metrics.nutritionDietaryProtein',
+  nutritionDietarySodium: 'healthDataSync.metrics.nutritionDietarySodium', walkingSpeed: 'healthDataSync.metrics.walkingSpeed', walkingStepLength: 'healthDataSync.metrics.walkingStepLength',
+  walkingAsymmetryPercentage: 'healthDataSync.metrics.walkingAsymmetryPercentage', walkingDoubleSupportPercentage: 'healthDataSync.metrics.walkingDoubleSupportPercentage',
+  runningGroundContactTime: 'healthDataSync.metrics.runningGroundContactTime', runningStrideLength: 'healthDataSync.metrics.runningStrideLength', runningPower: 'healthDataSync.metrics.runningPower',
+  runningVerticalOscillation: 'healthDataSync.metrics.runningVerticalOscillation', runningSpeed: 'healthDataSync.metrics.runningSpeed', cyclingSpeed: 'healthDataSync.metrics.cyclingSpeed',
+  cyclingPower: 'healthDataSync.metrics.cyclingPower', cyclingCadence: 'healthDataSync.metrics.cyclingCadence', cyclingFunctionalThresholdPower: 'healthDataSync.metrics.cyclingFunctionalThresholdPower',
+  environmentalAudioExposure: 'healthDataSync.metrics.environmentalAudioExposure', headphoneAudioExposure: 'healthDataSync.metrics.headphoneAudioExposure',
+  appleMoveTime: 'healthDataSync.metrics.appleMoveTime', appleExerciseTime: 'healthDataSync.metrics.appleExerciseTime', appleStandTime: 'healthDataSync.metrics.appleStandTime',
+};
+
+const HEALTH_CATEGORY_LABEL_KEYS: Record<string, string> = {
+  Common: 'healthDataSync.categories.Common', Activity: 'healthDataSync.categories.Activity', Vitals: 'healthDataSync.categories.Vitals',
+  'Body Measurements': 'healthDataSync.categories.Body Measurements', Nutrition: 'healthDataSync.categories.Nutrition', Reproductive: 'healthDataSync.categories.Reproductive',
+  Mobility: 'healthDataSync.categories.Mobility', Running: 'healthDataSync.categories.Running', Cycling: 'healthDataSync.categories.Cycling',
+  Environment: 'healthDataSync.categories.Environment', Apple: 'healthDataSync.categories.Apple',
+};
+
 const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   healthMetricStates,
   handleToggleHealthMetric,
@@ -45,15 +76,17 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
   const [learnMoreExpanded, setLearnMoreExpanded] = useState(false);
+  const { t } = useTranslation();
+  const translate = t;
 
   const isIOS = Platform.OS === 'ios';
-  const platformSubtitle = isIOS ? 'Apple Health' : 'Health Connect';
+  const platformSubtitle = isIOS ? t('healthDataSync.appleHealth') : t('healthDataSync.healthConnect');
   const platformSummary = isIOS
-    ? 'Reads selected data from Apple Health and syncs it to your self-hosted server.'
-    : 'Reads selected data from Health Connect and syncs it to your self-hosted server.';
+    ? t('healthDataSync.appleHealthSummary')
+    : t('healthDataSync.healthConnectSummary');
   const platformDetail = isIOS
-    ? 'SparkyFitness reads the health data you select below using Apple Health (HealthKit). If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).\n\nManage or remove access in Settings → Health → Data Access & Devices → SparkyFitnessMobile'
-    : 'SparkyFitness reads the health data you select below using Health Connect. If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).';
+    ? t('healthDataSync.appleHealthDetail')
+    : t('healthDataSync.healthConnectDetail');
 
   const handleLearnMoreToggle = useCallback(() => {
     setLearnMoreExpanded((prev) => !prev);
@@ -100,7 +133,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {metric.label}
+            {translate(HEALTH_METRIC_LABEL_KEYS[metric.id] ?? 'healthDataSync.metrics.steps', { defaultValue: metric.label })}
           </Text>
         </View>
         {showLoading && (
@@ -126,7 +159,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold mb-3 text-text-primary">Health Data to Sync</Text>
+      <Text className="text-lg font-bold mb-3 text-text-primary">{t('healthDataSync.title')}</Text>
       <View className="mb-3">
         <Text className="text-sm font-semibold text-text-secondary mb-1">{platformSubtitle}</Text>
         <Text className="text-sm text-text-secondary">{platformSummary}</Text>
@@ -134,7 +167,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           <>
             <Text className="text-sm text-text-secondary mt-2">{platformDetail}</Text>
             <Text className="text-sm text-text-secondary mt-1">
-              <Text className="font-semibold">Not medical advice.</Text> Consult a healthcare professional for medical advice, diagnosis, or treatment.
+              <Text className="font-semibold">{t('healthDataSync.notMedicalAdvice')}</Text> {t('healthDataSync.medicalAdviceDetail')}
             </Text>
           </>
         )}
@@ -144,7 +177,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           className="self-start py-0 px-0 mt-1"
           textClassName="text-sm"
         >
-          {learnMoreExpanded ? 'Show less' : 'Learn more'}
+          {learnMoreExpanded ? t('healthDataSync.showLess') : t('healthDataSync.learnMore')}
         </Button>
       </View>
       <View className="flex-row justify-between items-center mb-2">
@@ -154,7 +187,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            Enable All Health Metrics
+            {t('healthDataSync.enableAll')}
           </Text>
         </View>
         <Switch
@@ -165,7 +198,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         />
       </View>
       <Text className="text-xs text-text-muted mb-3">
-        Enabling many health metrics may increase battery usage. Each enabled metric allows the app to wake in the background when new data is available.
+        {t('healthDataSync.batteryNotice')}
       </Text>
       {isLoaded && CATEGORY_ORDER.map((category) => {
         const metricsInCategory = groupedMetrics[category];
@@ -175,7 +208,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         return (
           <CollapsibleSection
             key={category}
-            title={category}
+            title={translate(HEALTH_CATEGORY_LABEL_KEYS[category] ?? 'healthDataSync.categories.Common', { defaultValue: category })}
             expanded={!collapsedCategories.has(category)}
             onToggle={() => handleCategoryToggle(category)}
             itemCount={metricsInCategory.length}

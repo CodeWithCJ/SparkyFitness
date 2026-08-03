@@ -17,6 +17,7 @@ import {
 } from '../services/notifications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { addLog } from '../services/LogService';
+import { useTranslation } from 'react-i18next';
 
 export interface NotificationPermissionBannerHandle {
   refresh: () => void;
@@ -26,6 +27,7 @@ const NotificationPermissionBanner = forwardRef<
   NotificationPermissionBannerHandle
 >((_, ref) => {
   const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
+  const { t } = useTranslation();
 
   const [osStatus, setOsStatus] = useState<AppNotificationPermission | null>(null);
 
@@ -85,7 +87,7 @@ const NotificationPermissionBanner = forwardRef<
 
   return (
     <OSDeniedWarningCard
-      actionLabel={osStatus === 'undetermined' ? 'Enable Notifications' : 'Open Settings'}
+       actionLabel={osStatus === 'undetermined' ? t('notificationPermission.enable') : t('notificationPermission.openSettings')}
       onPress={() => {
         void handlePress();
       }}

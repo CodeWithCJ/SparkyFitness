@@ -19,7 +19,12 @@
     "or": "lub",
     "expandSection": "Rozwiń tę sekcję",
     "collapseSection": "Zwiń tę sekcję",
-    "favorite": "W ulubionych"
+    "favorite": "W ulubionych",
+    "dismiss": "Zamknij",
+    "continue": "Kontynuuj"
+  },
+  "batch": {
+    "about": "Informacje", "version": "Wersja {{version}} ({{build}})", "aboutApp": "O aplikacji", "aboutDescription": "SparkyFitness to open-source'owy rejestr odżywiania, ćwiczeń i danych zdrowotnych, który synchronizuje się z własnym serwerem. Ta aplikacja mobilna pomaga zapisywać posiłki, treningi i pomiary.", "github": "Projekt na GitHubie", "documentation": "Dokumentacja", "trendTitle": "Trendy: {{nutrient}}", "trendLoadFailed": "Nie udało się załadować danych trendu", "connectionRetry": "Sprawdź połączenie i spróbuj ponownie.", "summary": "Podsumowanie statystyk", "dailyAverage": "Średnia dzienna", "highestDay": "Dzień z najwyższym spożyciem", "targetGoal": "Dzienny cel", "averageTarget": "Średnia względem celu", "percentOfGoal": "{{percent}}% celu"
   },
   "cycleCard": {
     "title": {
@@ -270,6 +275,73 @@
     "title": "Ogłoszenie",
     "dismiss": "Rozumiem, nie pokazuj ponownie"
   },
+  "healthDataSync": {
+    "title": "Dane zdrowotne do synchronizacji",
+    "appleHealth": "Apple Health",
+    "healthConnect": "Health Connect",
+    "appleHealthSummary": "Odczytuje wybrane dane z Apple Health i synchronizuje je z Twoim serwerem SparkyFitness.",
+    "healthConnectSummary": "Odczytuje wybrane dane z Health Connect i synchronizuje je z Twoim serwerem SparkyFitness.",
+    "appleHealthDetail": "SparkyFitness odczytuje wybrane poniżej dane zdrowotne z Apple Health (HealthKit). Po włączeniu synchronizacji dane są przesyłane wyłącznie między urządzeniem a Twoim serwerem SparkyFitness (ręcznie lub w tle).\n\nDostępem możesz zarządzać lub go usunąć w Ustawieniach → Zdrowie → Dostęp do danych i urządzenia → SparkyFitnessMobile",
+    "healthConnectDetail": "SparkyFitness odczytuje wybrane poniżej dane zdrowotne z Health Connect. Po włączeniu synchronizacji dane są przesyłane wyłącznie między urządzeniem a Twoim serwerem SparkyFitness (ręcznie lub w tle).",
+    "notMedicalAdvice": "To nie jest porada medyczna.",
+    "medicalAdviceDetail": "W sprawie porad, diagnozy lub leczenia skonsultuj się z lekarzem.",
+    "learnMore": "Dowiedz się więcej",
+    "showLess": "Pokaż mniej",
+    "enableAll": "Włącz wszystkie dane zdrowotne",
+    "batteryNotice": "Włączenie wielu danych zdrowotnych może zwiększyć zużycie baterii. Każdy włączony typ danych pozwala aplikacji uruchamiać się w tle, gdy pojawią się nowe dane.",
+    "categories": { "Common": "Wspólne", "Activity": "Aktywność", "Vitals": "Parametry życiowe", "Body Measurements": "Pomiary ciała", "Nutrition": "Odżywianie", "Reproductive": "Rozrodczość", "Mobility": "Mobilność", "Running": "Bieganie", "Cycling": "Kolarstwo", "Environment": "Środowisko", "Apple": "Apple" },
+    "metrics": { "steps": "Kroki", "calories": "Aktywne kalorie", "totalCalories": "Wszystkie kalorie", "heartRate": "Tętno", "weight": "Masa ciała", "bloodPressure": "Ciśnienie krwi", "nutrition": "Odżywianie", "sleepSession": "Sesja snu", "stress": "Stres", "basalBodyTemperature": "Podstawowa temperatura ciała", "basalMetabolicRate": "Podstawowa przemiana materii", "bloodGlucose": "Glukoza we krwi", "bodyFat": "Tkanka tłuszczowa", "bodyTemperature": "Temperatura ciała", "distance": "Dystans", "exerciseSession": "Sesja ćwiczeń", "floorsClimbed": "Pokonane piętra", "height": "Wzrost", "hydration": "Nawodnienie", "leanBodyMass": " beztłuszczowa masa ciała", "respiratoryRate": "Częstość oddechów", "restingHeartRate": "Tętno spoczynkowe", "heartRateVariability": "Zmienność rytmu serca", "vo2Max": "VO2 Max", "wheelchairPushes": "Pchnięcia wózka", "speed": "Prędkość", "power": "Moc", "elevationGained": "Wzrost wysokości", "boneMass": "Masa kostna", "cervicalMucus": "Śluz szyjkowy", "cyclingPedalingCadence": "Kadencja pedałowania", "intermenstrualBleeding": "Krwawienie międzymiesiączkowe", "menstruationPeriod": "Okres menstruacji", "ovulationTest": "Test owulacyjny", "stepsCadence": "Kadencja kroków", "bloodOxygenSaturation": "Saturacja krwi", "bloodAlcoholContent": "Stężenie alkoholu we krwi", "menstruationFlow": "Intensywność menstruacji", "nutritionDietaryFatTotal": "Tłuszcz w diecie", "nutritionDietaryProtein": "Białko w diecie", "nutritionDietarySodium": "Sód w diecie", "walkingSpeed": "Prędkość chodzenia", "walkingStepLength": "Długość kroku", "walkingAsymmetryPercentage": "Asymetria chodu %", "walkingDoubleSupportPercentage": "Podwójne podparcie podczas chodu %", "runningGroundContactTime": "Czas kontaktu z podłożem podczas biegu", "runningStrideLength": "Długość kroku biegowego", "runningPower": "Moc biegu", "runningVerticalOscillation": "Oscylacja pionowa podczas biegu", "runningSpeed": "Prędkość biegu", "cyclingSpeed": "Prędkość jazdy na rowerze", "cyclingPower": "Moc jazdy na rowerze", "cyclingCadence": "Kadencja jazdy na rowerze", "cyclingFunctionalThresholdPower": "Próg funkcjonalny mocy na rowerze", "environmentalAudioExposure": "Narażenie na hałas środowiskowy", "headphoneAudioExposure": "Narażenie na hałas w słuchawkach", "appleMoveTime": "Czas ruchu Apple", "appleExerciseTime": "Czas ćwiczeń Apple", "appleStandTime": "Czas stania Apple" }
+  },
+  "healthWriteback": {
+    "removeTitle": "Usuń z {{storeName}}",
+    "allTime": "Cały okres",
+    "pickDateRange": "Wybierz zakres dat…",
+    "removeData": "Usuń dane SparkyFitness z {{storeName}}",
+    "metrics": { "nutrition": "Odżywianie", "hydration": "Nawodnienie" }, "writeTo": "Zapisuj do {{storeName}}", "description": "Synchronizuje dane zapisane w SparkyFitness z {{storeName}}, utrzymując je w zgodności."
+  },
+  "medications": {
+    "title": "Leki",
+    "viewAll": "Wyświetl wszystkie",
+    "viewAllAccessibility": "Wyświetl wszystkie leki",
+    "markTaken": "Oznacz {{title}} jako przyjęty",
+    "unmark": "Cofnij oznaczenie {{title}}",
+    "log": "Zarejestruj {{title}}",
+    "take": "Przyjmij",
+    "takeNamed": "Przyjmij {{title}}",
+    "skip": "Pomiń",
+    "skipNamed": "Pomiń {{title}}",
+    "taken": "Przyjęto",
+    "skipped": "Pominięto",
+    "daysOfWeek": "Dni tygodnia",
+    "types": { "pill": "Pigułka", "tablet": "Tabletka", "capsule": "Kapsułka", "liquid": "Płyn", "injection": "Zastrzyk", "patch": "Plaster", "inhaler": "Inhalator", "drops": "Krople", "nasal_spray": "Spray do nosa", "cream": "Krem", "suppository": "Czopek", "other": "Inne" },
+    "add": "Dodaj lek", "loading": "Ładowanie leków...", "loadFailed": "Nie udało się załadować leków.", "emptyTitle": "Brak leków", "emptyDescription": "Dodaj pierwszy lek, aby rozpocząć śledzenie.", "inactiveAccessibility": "Nieaktywne leki ({{count}})", "inactive": "Nieaktywne ({{count}})", "required": "Wymagane", "nameRequired": "Wpisz nazwę leku.", "invalidNumber": "Nieprawidłowa liczba", "invalidStrengthDose": "Wpisz prawidłowe wartości liczbowe mocy i dawki.", "updateFailed": "Nie udało się zaktualizować leku: {{message}}", "createFailed": "Nie udało się utworzyć leku: {{message}}", "edit": "Edytuj lek", "new": "Nowy lek", "nameRequiredLabel": "Nazwa *", "namePlaceholder": "Lisinopril", "type": "Typ", "typePicker": "Typ leku", "strength": "Moc", "unit": "Jednostka", "dose": "Dawka", "details": "Szczegóły", "reason": "Powód", "prescriber": "Lekarz", "pharmacy": "Apteka", "notes": "Notatki", "active": "Aktywny", "delete": "Usuń lek", "deleteConfirm": "Czy na pewno usunąć '{{name}}'? Spowoduje to również usunięcie harmonogramów i zapisanych dawek.", "deleteFailed": "Nie udało się usunąć leku", "removeDose": "Usuń dawkę", "removeDoseConfirm": "Usunąć zapisaną dawkę z {{time}}?", "today": "dzisiaj", "removeDoseFailed": "Nie udało się usunąć dawki", "titleSingular": "Lek", "inactiveLabel": "Nieaktywny", "noDosesToday": "Brak dawek zaplanowanych na ten dzień.", "asNeeded": "W razie potrzeby", "logged": "Zapisano", "schedules": "Harmonogramy", "addSchedule": "Dodaj harmonogram", "noSchedules": "Brak harmonogramów. Przyjmuj w razie potrzeby.", "rxNumber": "Numer recepty", "selectDay": "Wybierz co najmniej jeden dzień tygodnia.", "invalidInterval": "Nieprawidłowy odstęp", "intervalMinimum": "Odstęp musi wynosić co najmniej 1 dzień.", "intervalStartRequired": "Harmonogram co N dni wymaga daty rozpoczęcia.", "invalidCycle": "Nieprawidłowy cykl", "cycleInvalid": "Dni przyjmowania: co najmniej 1, dni przerwy: co najmniej 0.", "cycleStartRequired": "Harmonogram cykliczny wymaga daty rozpoczęcia.", "invalidDay": "Nieprawidłowy dzień", "dayRange": "Dzień miesiąca musi być od 1 do 31.", "invalidDose": "Nieprawidłowa dawka", "doseRequired": "Wpisz prawidłową dawkę.", "invalidLimit": "Nieprawidłowy limit", "limitMinimum": "Maksimum dzienne musi wynosić co najmniej 1.", "invalidDates": "Nieprawidłowe daty", "endDateRange": "Data końcowa musi przypadać w dniu rozpoczęcia lub później.", "updateScheduleFailed": "Nie udało się zaktualizować harmonogramu: {{message}}", "createScheduleFailed": "Nie udało się utworzyć harmonogramu: {{message}}", "deleteSchedule": "Usuń harmonogram", "deleteScheduleConfirm": "Usunąć ten harmonogram? Zapisane dawki zostaną zachowane."
+  },
+  "auth": {
+    "authenticatorApp": "Aplikacja uwierzytelniająca",
+    "emailCode": "Kod e-mail",
+    "enterAuthenticatorCode": "Wpisz kod z aplikacji uwierzytelniającej.",
+    "enterEmailCode": "Wpisz kod wysłany na Twój adres e-mail.",
+    "requestEmailCode": "Dotknij przycisku poniżej, aby otrzymać kod weryfikacyjny e-mailem.",
+    "sendCode": "Wyślij kod",
+    "verify": "Zweryfikuj",
+    "resendCode": "Wyślij kod ponownie",
+    "useApiKeyInstead": "Użyj zamiast tego klucza API",
+    "noServerSelected": "Nie wybrano serwera.", "enterEmail": "Wpisz swój adres e-mail.", "enterPassword": "Wpisz hasło.", "connectionFailed": "Nie można połączyć się z serwerem. Spróbuj ponownie.", "httpsRequired": "Połączenia z serwerem wymagają HTTPS.", "enterVerificationCode": "Wpisz kod weryfikacyjny.", "tooManyAttempts": "Zbyt wiele prób. Poczekaj chwilę i spróbuj ponownie.", "invalidVerificationCode": "Nieprawidłowy kod weryfikacyjny. Spróbuj ponownie.", "sessionExpired": "Sesja wygasła. Zaloguj się ponownie.", "verificationFailed": "Weryfikacja nie powiodła się. Spróbuj ponownie.", "sendCodeFailed": "Nie udało się wysłać kodu e-mailem. Spróbuj ponownie.", "sessionExpiredTitle": "Sesja wygasła", "twoFactorTitle": "Uwierzytelnianie dwuskładnikowe", "email": "E-mail", "password": "Hasło", "orSignInWith": "Lub zaloguj się przez", "signInWithProvider": "Zaloguj się przez {{provider}}", "signInWithPasskey": "Zaloguj się kluczem dostępu", "signIn": "Zaloguj się", "sso": "SSO", "passkey": "Klucz dostępu", "apiKey": "Klucz API"
+  },
+  "serverConfig": {
+    "validUrl": "Wpisz prawidłowy adres URL Frontend", "connectionFailed": "Nie można połączyć się z serwerem. Sprawdź adres URL i spróbuj ponownie.", "enterUrlFirst": "Najpierw wpisz adres URL Frontend.", "enterApiKey": "Wpisz klucz API.", "invalidApiKey": "Nieprawidłowy klucz API. Sprawdź go i spróbuj ponownie.", "connectionStatus": "Połączenie nieudane ({{status}}): {{error}}", "unknownError": "Nieznany błąd", "saveFailed": "Nie udało się zapisać: {{message}}", "reservedHeader": "Zarezerwowany nagłówek", "reservedHeaderMessage": "\"{{name}}\" może kolidować z nagłówkami ustawianymi przez aplikację. Kontynuować?", "frontendUrl": "Adres URL Frontend", "pasteUrl": "Wklej adres URL ze schowka", "hidePassword": "Ukryj hasło", "showPassword": "Pokaż hasło", "noSignInMethods": "Na tym serwerze nie włączono standardowych metod logowania. Użyj klucza API lub skontaktuj się z administratorem.", "pasteApiKey": "Wklej klucz API ze schowka", "hideApiKey": "Ukryj klucz API", "showApiKey": "Pokaż klucz API", "editServer": "Edytuj serwer", "addServer": "Dodaj serwer", "advancedOptions": "Opcje zaawansowane", "proxyHeaders": "Nagłówki proxy", "addHeader": "Dodaj nagłówek", "proxyHint": "Używane podczas pracy za niektórymi odwrotnymi proxy", "headerNamePlaceholder": "Nazwa (np. X-Access-Token)", "removeHeader": "Usuń nagłówek {{index}}", "headerValuePlaceholder": "Wartość", "hideHeaderValue": "Ukryj wartość nagłówka", "showHeaderValue": "Pokaż wartość nagłówka", "connect": "Połącz"
+  },
+  "serverSettings": { "activeChanged": "Zmieniono aktywny serwer", "setActiveFailed": "Nie udało się ustawić aktywnego serwera: {{message}}", "deleted": "Usunięto konfigurację serwera.", "deleteFailed": "Nie udało się usunąć konfiguracji serwera: {{message}}", "noServer": "Brak skonfigurowanego serwera", "addFirst": "Najpierw dodaj serwer.", "dashboardFailed": "Nie udało się otworzyć panelu WWW: {{message}}", "setActive": "Ustaw jako aktywny", "activeConfiguration": "Aktywna konfiguracja", "selectAction": "Wybierz działanie", "activeServer": "Aktywny serwer", "openWeb": "Otwórz WWW", "testConnection": "Testuj połączenie", "otherServers": "Inne serwery", "none": "Nie skonfigurowano jeszcze serwerów.", "addAccessibility": "Dodaj nową konfigurację", "addServer": "Dodaj serwer" },
+  "notificationPermission": { "enable": "Włącz powiadomienia", "openSettings": "Otwórz ustawienia" },
+  "syncSettings": {
+    "backgroundTitle": "Synchronizacja w tle",
+    "enableBackground": "Włącz synchronizację w tle",
+    "backgroundDescription": "Po włączeniu aplikacja będzie aktualizować dane w tle, gdy pozwoli na to telefon. Ręczna synchronizacja zawsze zaktualizuje dane od razu.",
+    "openTitle": "Synchronizuj przy otwarciu",
+    "openLabel": "Synchronizuj po otwarciu aplikacji",
+    "openDescription": "Po włączeniu dane zdrowotne będą automatycznie synchronizowane przy otwarciu aplikacji."
+  },
+  "whatsNewBanner": { "title": "Co nowego", "subtitle": "Zobacz, co ulepszono w tej aktualizacji", "openAccessibility": "Zobacz, co nowego w tej aktualizacji" },
   "picker": {
     "selectOption": "Wybierz opcję",
     "opensSelectionMenu": "Otwiera menu wyboru"

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Switch } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 
 interface SyncOnOpenProps {
   isEnabled: boolean;
@@ -12,12 +13,13 @@ const SyncOnOpen: React.FC<SyncOnOpenProps> = ({ isEnabled, onToggle }) => {
     '--color-form-enabled',
     '--color-form-disabled',
   ]) as [string, string];
+  const { t } = useTranslation();
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold mb-3 text-text-primary">Sync on Open</Text>
+      <Text className="text-lg font-bold mb-3 text-text-primary">{t('syncSettings.openTitle')}</Text>
       <View className="flex-row justify-between items-center">
-        <Text className="text-base text-text-primary">Sync when app opens</Text>
+        <Text className="text-base text-text-primary">{t('syncSettings.openLabel')}</Text>
         <Switch
           onValueChange={onToggle}
           value={isEnabled}
@@ -26,7 +28,7 @@ const SyncOnOpen: React.FC<SyncOnOpenProps> = ({ isEnabled, onToggle }) => {
         />
       </View>
       <Text className="text-[13px] text-text-muted leading-4.5 mt-1">
-        When enabled, health data will sync automatically when you open the app.
+        {t('syncSettings.openDescription')}
       </Text>
     </View>
   );

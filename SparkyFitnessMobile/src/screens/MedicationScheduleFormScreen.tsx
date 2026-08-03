@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Switch, Alert, TouchableOpacity, type TextStyle } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -133,6 +134,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
   route,
   navigation,
 }) => {
+  const { t } = useTranslation();
   const { medicationId, scheduleId } = route.params;
   const isEditing = !!scheduleId;
   const insets = useSafeAreaInsets();
@@ -246,17 +248,17 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
     const type = form.scheduleTypeId;
     if (usesDaysOfWeek(type) && form.daysOfWeek.length === 0) {
-      Alert.alert('Required', 'Select at least one day of the week.');
+      Alert.alert(t('medications.required'), t('medications.selectDay'));
       return;
     }
     if (usesIntervalDays(type)) {
       const interval = parseInt(form.intervalDays, 10);
       if (!Number.isFinite(interval) || interval < 1) {
-        Alert.alert('Invalid interval', 'Interval must be at least 1 day.');
+         Alert.alert(t('medications.invalidInterval'), t('medications.intervalMinimum'));
         return;
       }
       if (!form.startDate) {
-        Alert.alert('Required', 'Every N days schedules need a start date.');
+         Alert.alert(t('medications.required'), t('medications.intervalStartRequired'));
         return;
       }
     }
@@ -264,38 +266,38 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
       const on = parseInt(form.cycleOnDays, 10);
       const off = parseInt(form.cycleOffDays, 10);
       if (!Number.isFinite(on) || on < 1 || !Number.isFinite(off) || off < 0) {
-        Alert.alert('Invalid cycle', 'Days on must be at least 1 and days off at least 0.');
+         Alert.alert(t('medications.invalidCycle'), t('medications.cycleInvalid'));
         return;
       }
       if (!form.startDate) {
-        Alert.alert('Required', 'Cycle schedules need a start date.');
+         Alert.alert(t('medications.required'), t('medications.cycleStartRequired'));
         return;
       }
     }
     if (usesDayOfMonth(type)) {
       const day = parseInt(form.dayOfMonth, 10);
       if (!Number.isFinite(day) || day < 1 || day > 31) {
-        Alert.alert('Invalid day', 'Day of month must be between 1 and 31.');
+         Alert.alert(t('medications.invalidDay'), t('medications.dayRange'));
         return;
       }
     }
     if (form.doseAmount) {
       const dose = parseFloat(form.doseAmount);
       if (!Number.isFinite(dose) || dose <= 0) {
-        Alert.alert('Invalid dose', 'Please enter a valid dose amount.');
+         Alert.alert(t('medications.invalidDose'), t('medications.doseRequired'));
         return;
       }
     }
     if (isPrnType(type) && form.prnMaxPerDay) {
       const max = parseInt(form.prnMaxPerDay, 10);
       if (!Number.isFinite(max) || max < 1) {
-        Alert.alert('Invalid limit', 'Max per day must be at least 1.');
+         Alert.alert(t('medications.invalidLimit'), t('medications.limitMinimum'));
         return;
       }
     }
     // Lexical compare is safe for YYYY-MM-DD strings.
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
-      Alert.alert('Invalid dates', 'End date must be on or after the start date.');
+       Alert.alert(t('medications.invalidDates'), t('medications.endDateRange'));
       return;
     }
 
@@ -305,7 +307,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         { id: scheduleId, medicationId, body },
         {
           onSuccess: () => navigation.goBack(),
-          onError: (error) => Alert.alert('Error', `Failed to update schedule: ${error.message}`),
+           onError: (error) => Alert.alert(t('common.error'), t('medications.updateScheduleFailed', { message: error.message })),
         },
       );
     } else {
@@ -313,7 +315,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         { medicationId, body },
         {
           onSuccess: () => navigation.goBack(),
-          onError: (error) => Alert.alert('Error', `Failed to create schedule: ${error.message}`),
+           onError: (error) => Alert.alert(t('common.error'), t('medications.createScheduleFailed', { message: error.message })),
         },
       );
     }
@@ -331,10 +333,10 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
   const handleDelete = useCallback(() => {
     if (!isEditing || !scheduleId || !existing) return;
-    Alert.alert('Delete Schedule', 'Delete this schedule? Logged doses are kept.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('medications.deleteSchedule'), t('medications.deleteScheduleConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => {
           deleteScheduleMutation.mutate(
