@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Switch, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Switch, ScrollView, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
@@ -7,6 +7,7 @@ import * as Sharing from 'expo-sharing';
 import { File, Paths } from 'expo-file-system';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
+import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
@@ -48,11 +49,10 @@ const TERMINOLOGY_OPTIONS = [
 const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
-    '--color-accent-primary',
+  const [formEnabled, formDisabled] = useCSSVariable([
     '--color-form-enabled',
     '--color-form-disabled',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const {
@@ -175,11 +175,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
   });
 
   if (isLoading || !settings) {
-    return (
-      <View className="flex-1 bg-background justify-center items-center">
-        <ActivityIndicator size="large" color={accentPrimary} />
-      </View>
-    );
+    return <StatusView loading className="bg-background" />;
   }
 
   return (

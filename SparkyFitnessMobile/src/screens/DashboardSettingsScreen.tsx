@@ -1,11 +1,12 @@
 import React, { useCallback } from 'react';
-import { View, Text, Switch, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, Switch, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
+import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
 import {
@@ -38,11 +39,10 @@ const SERVER_DEFAULT_SUMMARY_NUTRIENTS = [
 const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
-    '--color-accent-primary',
+  const [formEnabled, formDisabled] = useCSSVariable([
     '--color-form-enabled',
     '--color-form-disabled',
-  ]) as [string, string, string];
+  ]) as [string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const fastingCardVisible = useAppPreferencesStore((s) => s.fastingCardVisible);
@@ -123,11 +123,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
 
   const renderContent = () => {
     if (isLoading) {
-      return (
-        <View className="items-center justify-center py-12">
-          <ActivityIndicator size="large" color={accentPrimary} />
-        </View>
-      );
+      return <StatusView inline loading />;
     }
 
     if (customNutrients.length === 0) {

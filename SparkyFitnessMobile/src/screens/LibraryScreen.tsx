@@ -172,7 +172,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
       <View className="flex-1 bg-background" style={usesNativeTabs ? undefined : { paddingTop: insets.top }}>
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
           title="No server configured"
           subtitle="Configure your server connection in Settings to view your library."

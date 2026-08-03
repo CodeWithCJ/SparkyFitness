@@ -1,11 +1,12 @@
 import React, { useRef } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import ProgressRing from '../components/ProgressRing';
+import StatusView from '../components/StatusView';
 import FastingProtocolSheet, {
   type FastingProtocolSheetRef,
 } from '../components/FastingProtocolSheet';
@@ -159,9 +160,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
     return (
       <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
         {header}
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={accentPrimary} />
-        </View>
+        <StatusView loading />
       </View>
     );
   }

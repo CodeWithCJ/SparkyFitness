@@ -444,7 +444,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         {header}
         <StatusView
           icon="alert-circle"
-          iconColor="#EF4444"
+          iconTone="danger"
           iconSize={64}
           title="Failed to load meal"
           subtitle="Please check your connection and try again."

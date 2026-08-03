@@ -54,27 +54,21 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
   const renderEmpty = () => {
     if (presets.length > 0 && filteredPresets.length === 0) {
       return (
-        <View className="px-6 py-10 items-center">
-          <Text className="text-text-primary text-base font-medium text-center">
-            No matching presets found
-          </Text>
-          <Text className="text-text-secondary text-sm mt-2 text-center">
-            Try changing your ownership filter.
-          </Text>
-        </View>
+        <StatusView
+          inline
+          title="No matching presets found"
+          subtitle="Try changing your ownership filter."
+        />
       );
     }
     return (
-      <View className="px-6 py-10 items-center">
-        <Text className="text-text-primary text-base font-medium text-center">
-          {searchText.trim().length > 0 ? 'No matching presets found' : 'No workout presets yet'}
-        </Text>
-        <Text className="text-text-secondary text-sm mt-2 text-center">
-          {searchText.trim().length > 0
-            ? 'Try a different search term to find a workout preset.'
-            : 'Workout presets you create will appear here.'}
-        </Text>
-      </View>
+      <StatusView
+        inline
+        title={searchText.trim().length > 0 ? 'No matching presets found' : 'No workout presets yet'}
+        subtitle={searchText.trim().length > 0
+          ? 'Try a different search term to find a workout preset.'
+          : 'Workout presets you create will appear here.'}
+      />
     );
   };
 
@@ -105,7 +99,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
           title="No server configured"
           subtitle="Configure your server connection in Settings to view your workout presets."
@@ -126,7 +120,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
       return (
         <StatusView
           icon="alert-circle"
-          iconColor="#EF4444"
+          iconTone="danger"
           iconSize={64}
           title="Failed to load workout presets"
           subtitle="Please check your connection and try again."

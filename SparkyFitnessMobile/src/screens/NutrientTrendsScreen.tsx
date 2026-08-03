@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNutritionTrends, type TrendRange } from '../hooks/useNutritionTrends';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
+import StatusView from '../components/StatusView';
 import NutrientBarChart from '../components/NutrientBarChart';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -25,8 +25,6 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [range, setRange] = useState<TrendRange>('7d');
-
-  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
 
   const header = useScreenHeader({
     title: `${nutrientLabel} Trends`,
@@ -76,11 +74,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
   }, [stats.peakDay]);
 
   if (isLoading) {
-    return (
-      <View className="flex-1 bg-background justify-center items-center">
-        <ActivityIndicator size="large" color={accentColor} />
-      </View>
-    );
+    return <StatusView loading className="bg-background" />;
   }
 
   if (isError) {

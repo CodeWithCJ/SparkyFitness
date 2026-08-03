@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
-  Text,
   TextInput,
   FlatList,
   ActivityIndicator,
@@ -111,27 +110,21 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   const renderEmpty = () => {
     if (displayedMeals.length > 0 && filteredMeals.length === 0) {
       return (
-        <View className="px-6 py-10 items-center">
-          <Text className="text-text-primary text-base font-medium text-center">
-            No matching meals found
-          </Text>
-          <Text className="text-text-secondary text-sm mt-2 text-center">
-            Try changing your ownership filter.
-          </Text>
-        </View>
+        <StatusView
+          inline
+          title="No matching meals found"
+          subtitle="Try changing your ownership filter."
+        />
       );
     }
     return (
-      <View className="px-6 py-10 items-center">
-        <Text className="text-text-primary text-base font-medium text-center">
-          {isSearchActive ? 'No matching meals found' : 'No meals found'}
-        </Text>
-        <Text className="text-text-secondary text-sm mt-2 text-center">
-          {isSearchActive
-            ? 'Try a different search term to find saved meals.'
-            : 'Meals you create will appear here.'}
-        </Text>
-      </View>
+      <StatusView
+        inline
+        title={isSearchActive ? 'No matching meals found' : 'No meals found'}
+        subtitle={isSearchActive
+          ? 'Try a different search term to find saved meals.'
+          : 'Meals you create will appear here.'}
+      />
     );
   };
 
@@ -140,7 +133,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
           title="No server configured"
           subtitle="Configure your server connection in Settings to view your meal library."
@@ -157,7 +150,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
       return (
         <StatusView
           icon="alert-circle"
-          iconColor="#EF4444"
+          iconTone="danger"
           iconSize={64}
           title={isSearchActive ? 'Failed to search meals' : 'Failed to load meals'}
           subtitle="Please check your connection and try again."
