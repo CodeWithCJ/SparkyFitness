@@ -6,7 +6,10 @@
     "foods": "Eten",
     "goals": "Doelen",
     "settings": "Instellingen",
-    "admin": "Beheer"
+    "admin": "Beheer",
+    "cycle": "Cyclus",
+    "pregnancy": "Zwangerschap",
+    "medications": "Medicijnen"
   },
   "aboutDialog": {
     "title": "Over SparkyFitness",
@@ -1857,14 +1860,22 @@
   },
   "nutrition": {
     "calories": "Calorieën",
-    "protein": "Proteïne",
+    "protein": "Eiwitten",
     "carbohydrates": "Koolhydraten",
     "fat": "Vetten",
-    "saturatedFat": "Verzadigde Vetten"
+    "saturatedFat": "Verzadigde Vetten",
+    "sugars": "Suikers",
+    "vitaminA": "Vitamine A",
+    "vitaminC": "Vitamine C",
+    "calcium": "Calcium",
+    "polyunsaturatedFat": "Meervoudig onverzadigd vet",
+    "monounsaturatedFat": "Enkelvoudig onverzadigd vet",
+    "carbs": "Koolhydraten",
+    "netCarbs": "Netto koolhydraten"
   },
   "medications": {
     "tabs": {
-      "log": "Log",
+      "log": "Logboek",
       "cabinet": "Medicijnkast",
       "symptoms": "Symptomen"
     },
@@ -1872,7 +1883,8 @@
       "saving": "Opslaan…",
       "save": "Opslaan",
       "reset": "Opnieuw instellen",
-      "custom": "Op maat"
+      "custom": "Op maat",
+      "logging": "Bezig met loggen…"
     },
     "today": {
       "noIntake": "Geen waardes ingevoerd vandaag.",
@@ -1886,7 +1898,10 @@
       "perfectDays": "Perfecte dagen (14d)",
       "last14": "Laatste 14 dagen",
       "streak": "{{count}}-dagen reeks",
-      "take": "Neem in"
+      "take": "Neem in",
+      "adherence14": "14-daagse therapietrouw",
+      "checklistMed": "Checklist voor medicatie",
+      "scheduled": "Gepland"
     },
     "insights": {
       "title": "Inzichten en tips over bijwerkingen",
@@ -1912,6 +1927,109 @@
       "acid_reflux": "Zuurbranden / GERD",
       "stomach_pain": "Buikpijn / krampen",
       "dizziness": "Duizeligheid"
+    },
+    "schedule": {
+      "endDate": "Einddatum (optioneel)"
+    },
+    "calendar": {
+      "loggedCount_one": "{{count}} gemeld symptoom",
+      "loggedCount_other": "{{count}} gemelde symptomen",
+      "maxSeverity": "Maximale ernst: {{n}}"
+    },
+    "reports": {
+      "logTableTitle": "Tabel voor medicatieoverzicht",
+      "logTableDesc": "Aantal doses per dag en tijdstippen voor {{start}}–{{end}}, inclusief symptomen die op dezelfde dag optreden.",
+      "logTableEmpty": "Er zijn geen medicatiedoses geregistreerd in deze periode.",
+      "dosesLogged": "{{count}} geregistreerde doses",
+      "dosesTaken": "Ingenomen doses",
+      "times": "Tijden",
+      "symptomsColumn": "Symptomen",
+      "injectionAbbrev": "inj"
+    },
+    "scheduleDesc": {
+      "atTime": " om {{time}}",
+      "mealSuffix": " ({{meal}} maaltijd)",
+      "daily": "Dagelijks",
+      "weeklyOn": "Wekelijks op {{days}}",
+      "everyNDays": "Om de {{n}} dagen",
+      "cyclic": "Cyclus: {{on}} dagen aan, {{off}} dagen uit",
+      "monthly": "Maandelijks op {{day}}",
+      "prn": "Indien nodig (PRN)",
+      "taper": "Afbouw"
+    },
+    "bodymap": {
+      "label": "Lichaamskaart met injectieplaatsen"
+    },
+    "gi": {
+      "title": "GI-subtracker",
+      "subtitle": "Wekelijkse tarieven van de afgelopen 30 dagen",
+      "nausea": "Misselijkheid / week",
+      "vomiting": "Braken / week",
+      "reflux": "Reflux / week",
+      "avgBristol": "Gem Bristol"
+    },
+    "symptoms": {
+      "logTitle": "Symptoom registreren",
+      "calendarTitle": "Kalender met symptomen en activiteiten",
+      "logsTitle": "Geregistreerde symptoomverslagen"
     }
+  },
+  "chat": {
+    "toolCategories": {
+      "presetCore": "Kern",
+      "clearAll": "Alles wissen",
+      "tooltip": "Kies chatbot-tools",
+      "title": "Chatbot-tools",
+      "description": "Met minder tools kunnen kleinere lokale modellen betrouwbaarder reageren.",
+      "presetFull": "Vol",
+      "emptyHint": "Er zijn geen categorieën geselecteerd — de chatbot gebruikt zijn standaardtoolset.",
+      "food": "Eten & Water",
+      "exercise": "Oefening",
+      "checkin": "Lichaam & Check-ins",
+      "goals": "Doelen",
+      "reports": "Rapporten & Analyses",
+      "coaching": "Coaching",
+      "vision": "Visie",
+      "profile": "Profiel & Gewoontes"
+    }
+  },
+  "calculationSettings": {
+    "showNetCarbs": "Toon netto koolhydraten (koolhydraten zonder vezels)",
+    "showNetCarbsHint": "Als ingeschakeld, wordt in de koolhydraatoverzichten het totale aantal koolhydraten zonder voedingsvezels weergegeven."
+  },
+  "foodCsvImport": {
+    "title": "Voedingsgegevens importeren",
+    "addRow": "Rij toevoegen",
+    "uploadCsv": "Upload CSV",
+    "downloadTemplate": "Download sjabloon",
+    "clearData": "Gegevens wissen",
+    "pastePlaceholder": "Of plak hier de inhoud van het CSV-bestand...",
+    "parseText": "Parse Tekst",
+    "recordsLoaded": "Er zijn {{count}} records succesvol geladen.",
+    "actions": "Acties",
+    "booleanTrue": "Waar",
+    "booleanFalse": "Onwaar",
+    "deleteRow": "Rij verwijderen",
+    "overrideLabel": "Bestaande voedingsgegevens overschrijven",
+    "overrideDescription": "Als er al een voedingsmiddel met dezelfde naam en hetzelfde merk bestaat, werk dan de voedingswaarden bij in plaats van de import af te breken. Laat dit vakje leeg om duplicaten over te slaan en een foutmelding te geven.",
+    "importing": "Bezig met importeren...",
+    "importData": "Gegevens importeren",
+    "importRecords_one": "{{count}} record importeren",
+    "importRecords_other": "{{count}} records importeren",
+    "importErrorTitle": "Importfout",
+    "pasteFirst": "Plak eerst wat CSV-gegevens.",
+    "invalidFormatTitle": "Ongeldige CSV-indeling",
+    "headersMismatchText": "De kopteksten voldoen niet aan het vereiste formaat. Gebruik het sjabloon.",
+    "successTitle": "Succes",
+    "loadedRowsFromText": "Er zijn {{count}} rijen uit de tekst geladen.",
+    "emptyFile": "Het geselecteerde bestand is leeg.",
+    "headersMismatchFile": "De CSV-kopteksten voldoen niet aan de vereiste indeling of volgorde. Download het sjabloon.",
+    "noDataTitle": "Geen gegevens gevonden",
+    "noDataText": "Het CSV-bestand bevat kopteksten, maar geen gegevensrijen.",
+    "validationErrorTitle": "Validatiefout",
+    "nameRequired": "Het veld ‘naam’ mag niet leeg zijn."
+  },
+  "foods": {
+    "providerVerified": "Gecertificeerde voedingsmiddelen"
   }
 }

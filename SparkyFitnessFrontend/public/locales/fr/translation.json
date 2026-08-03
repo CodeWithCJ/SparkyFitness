@@ -2277,5 +2277,15 @@
       "vomiting": "Vomissements",
       "acid_reflux": "Reflux acide / RGO"
     }
+  },
+  "chat": {
+    "toolCategories": {
+      "description": "Moins d'outils aident les petits modèles locaux à répondre de façon fiable.",
+      "presetFull": "Plein",
+      "clearAll": "Tout effacer",
+      "emptyHint": "Aucune catégorie sélectionnée — le chatbot utilisera son jeu d'outils par défaut.",
+      "food": "Alimentation et eau",
+      "exercise": "Exercice"
+    }
   }
 }

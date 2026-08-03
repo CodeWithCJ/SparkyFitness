@@ -237,5 +237,10 @@
     "monounsaturatedFat": "Mononenasycený Tuk",
     "transFat": "Transmastné Kyseliny",
     "dietaryFiber": "Dietní Vláknina"
+  },
+  "chat": {
+    "toolCategories": {
+      "description": "Menší počet nástrojů pomáhá lokálním modelům odpovídat spolehlivěji."
+    }
   }
 }

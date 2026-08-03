@@ -67,5 +67,22 @@
       "categoryYoga": "Jóga",
       "caloriesPerHourLabel": "Kalóriák/Óra"
     }
+  },
+  "chat": {
+    "toolCategories": {
+      "tooltip": "AI eszközök kiválasztása",
+      "title": "AI eszközök",
+      "description": "Kevesebb eszköz segíti a kisebb helyi modelek megfelelő működését.",
+      "presetFull": "Teljes",
+      "presetCore": "Alap",
+      "clearAll": "Összes törlése",
+      "emptyHint": "Nincsenek kategóriák kiválasztva - az alapértelmezett eszközök lesznek beállítva.",
+      "food": "Étel & Víz",
+      "exercise": "Edzés",
+      "goals": "Célok"
+    }
+  },
+  "foodCsvImport": {
+    "clearData": "Adatok törlése"
   }
 }
