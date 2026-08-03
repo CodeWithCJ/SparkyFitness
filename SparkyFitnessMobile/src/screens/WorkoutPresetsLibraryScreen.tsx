@@ -14,6 +14,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
 
 const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
   items: T[],
@@ -41,6 +42,7 @@ const filterItems = <T extends { user_id?: string | null; userId?: string | null
 type WorkoutPresetsLibraryScreenProps = RootStackScreenProps<'WorkoutPresetsLibrary'>;
 
 const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -79,10 +81,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
       return (
         <View className="px-6 py-10 items-center">
           <Text className="text-text-primary text-base font-medium text-center">
-            No matching presets found
+             {t('workout.noMatchingPresets')}
           </Text>
           <Text className="text-text-secondary text-sm mt-2 text-center">
-            Try changing your ownership filter.
+             {t('workout.tryOwnership')}
           </Text>
         </View>
       );
@@ -90,12 +92,12 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     return (
       <View className="px-6 py-10 items-center">
         <Text className="text-text-primary text-base font-medium text-center">
-          {searchText.trim().length > 0 ? 'No matching presets found' : 'No workout presets yet'}
+           {searchText.trim().length > 0 ? t('workout.noMatchingPresets') : t('workout.noWorkoutPresets')}
         </Text>
         <Text className="text-text-secondary text-sm mt-2 text-center">
           {searchText.trim().length > 0
-            ? 'Try a different search term to find a workout preset.'
-            : 'Workout presets you create will appear here.'}
+             ? t('workout.tryDifferentPresetSearch')
+             : t('workout.presetsAppearHere')}
         </Text>
       </View>
     );
@@ -117,7 +119,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <ShareStatusBadge status={status} />
         </View>
         <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+           {t('workout.exerciseCount', { count: exerciseCount })}
         </Text>
       </TouchableOpacity>
     );
@@ -130,10 +132,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your workout presets."
+           title={t('workout.noServer')}
+           subtitle={t('workout.configureServer')}
           action={{
-            label: 'Go to Settings',
+             label: t('common.goToSettings'),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
             variant: 'primary',
           }}
@@ -142,7 +144,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading workout presets..." />;
+       return <StatusView loading title={t('workout.loadingPresets')} />;
     }
 
     if (isError) {
@@ -151,10 +153,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title="Failed to load workout presets"
-          subtitle="Please check your connection and try again."
+           title={t('workout.failedLoadPresetsFull')}
+           subtitle={t('workout.tryConnection')}
           action={{
-            label: 'Retry',
+             label: t('common.retry'),
             onPress: () => {
               void refetch();
             },
@@ -174,7 +176,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more presets."
+             errorMessage={t('workout.failedMorePresets')}
             onRetry={loadMore}
           />
         }
@@ -193,7 +195,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     );
   };
 
-  const header = useScreenHeader({ title: 'Workout presets', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('workout.presetsTitle'), left: { kind: 'back' } });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -203,16 +205,16 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <LibrarySearchBar
             value={searchText}
             onChangeText={setSearchText}
-            placeholder="Search workout presets..."
+             placeholder={t('workout.searchWorkoutPresets')}
             isSearching={isSearching}
           />
           <View className="px-4 pb-2 border-b border-border-subtle">
             <SegmentedControl
               segments={[
-                { key: 'all', label: 'All' },
-                { key: 'mine', label: 'Mine' },
-                { key: 'family', label: 'Family' },
-                { key: 'public', label: 'Public' },
+                 { key: 'all', label: t('workout.all') },
+                 { key: 'mine', label: t('workout.mine') },
+                 { key: 'family', label: t('workout.family') },
+                 { key: 'public', label: t('workout.public') },
               ]}
               activeKey={ownershipFilter}
               onSelect={setOwnershipFilter}

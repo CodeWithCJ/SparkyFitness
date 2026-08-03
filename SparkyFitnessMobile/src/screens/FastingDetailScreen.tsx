@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -14,6 +15,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCurrentFast, useFastingStats } from '../hooks/useFasting';
 import { useFastingTimer } from '../hooks/useFastingTimer';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { getAppLocale } from '../localization';
 import { formatFastingStats } from '../utils/fasting';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
 import {
@@ -29,7 +31,7 @@ type Props = RootStackScreenProps<'FastingDetail'>;
 const RING_SIZE = 240;
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' });
 }
 
 const DetailRow: React.FC<{ label: string; value: string; isLast?: boolean }> = ({
@@ -48,6 +50,30 @@ const DetailRow: React.FC<{ label: string; value: string; isLast?: boolean }> = 
 );
 
 const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
+  const copy = (key: string, options?: Record<string, string | number>) => {
+    switch (key) {
+      case 'title': return t('screenCopy.fastingDetail.title', { ...options, defaultValue: 'Fasting' });
+      case 'stages': return t('screenCopy.fastingDetail.stages', { ...options, defaultValue: 'Metabolic Stages' });
+      case 'now': return t('screenCopy.fastingDetail.now', { ...options, defaultValue: 'now' });
+      case 'goalReached': return t('screenCopy.fastingDetail.goalReached', { ...options, defaultValue: 'Goal reached' });
+      case 'elapsed': return t('screenCopy.fastingDetail.elapsed', { ...options, defaultValue: 'elapsed' });
+      case 'avg': return t('screenCopy.fastingDetail.avg', { ...options, defaultValue: 'Avg Fast' });
+      case 'fasts': return t('screenCopy.fastingDetail.fasts', { ...options, defaultValue: '# Fasts' });
+      case 'total': return t('screenCopy.fastingDetail.total', { ...options, defaultValue: 'Total' });
+      case 'protocol': return t('screenCopy.fastingDetail.protocol', { ...options, defaultValue: 'Protocol' });
+      case 'started': return t('screenCopy.fastingDetail.started', { ...options, defaultValue: 'Started' });
+      case 'goal': return t('screenCopy.fastingDetail.goal', { ...options, defaultValue: 'Goal reached' });
+      case 'end': return t('screenCopy.fastingDetail.end', { ...options, defaultValue: 'End Fast' });
+      case 'endAccessibility': return t('screenCopy.fastingDetail.endAccessibility', { ...options, defaultValue: 'End fast' });
+      case 'none': return t('screenCopy.fastingDetail.none', { ...options, defaultValue: 'No active fast' });
+      case 'noneDescription': return t('screenCopy.fastingDetail.noneDescription', { ...options, defaultValue: 'Start a fast to track your fasting window and metabolic stages.' });
+      case 'start': return t('screenCopy.fastingDetail.start', { ...options, defaultValue: 'Start Fast' });
+      case 'hoursFast': return t('screenCopy.fastingDetail.hoursFast', { ...options, defaultValue: '{{hours}}h fast' });
+      case 'remaining': return t('screenCopy.fastingDetail.remaining', { ...options, defaultValue: '{{percent}}% · {{label}} left' });
+      default: return key;
+    }
+  };
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const protocolSheetRef = useRef<FastingProtocolSheetRef>(null);
@@ -88,7 +114,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
       >
         <Icon name="chevron-back" size={22} color={backColor} />
       </Button>
-      <Text className="flex-1 text-center text-lg font-semibold text-text-primary">Fasting</Text>
+      <Text className="flex-1 text-center text-lg font-semibold text-text-primary">{copy('title')}</Text>
       {/* Spacer to balance the back button so the title stays centered. */}
       <View style={{ width: 22 }} />
     </View>
@@ -97,7 +123,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
   const renderStagesList = () => (
     <View className="mt-2">
       <Text className="text-xs font-semibold uppercase text-text-muted tracking-wide mb-3">
-        Metabolic Stages
+         {copy('stages')}
       </Text>
       {METABOLIC_STAGES.map((stage, index) => {
         const color = stageColors[index] ?? accentPrimary;
@@ -144,7 +170,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                 </Text>
                 <Text className="text-xs text-text-secondary">
                   {stage.rangeLabel}
-                  {current ? ' · now' : ''}
+                   {current ? ` · ${copy('now')}` : ''}
                 </Text>
               </View>
               <Text className="text-sm text-text-secondary mt-0.5">{stage.description}</Text>
@@ -209,41 +235,41 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                 {timer.hasGoal ? (
                   <Text className="text-sm text-text-muted mt-1">
                     {timer.remainingMs != null && timer.remainingMs > 0
-                      ? `${Math.round(timer.progress * 100)}% · ${timer.remainingLabel} left`
-                      : 'Goal reached'}
+                       ? copy('remaining', { percent: Math.round(timer.progress * 100), label: timer.remainingLabel ?? '' })
+                       : copy('goalReached')}
                   </Text>
                 ) : (
-                  <Text className="text-sm text-text-muted mt-1">{timer.elapsedLabel} elapsed</Text>
+                   <Text className="text-sm text-text-muted mt-1">{timer.elapsedLabel} {copy('elapsed')}</Text>
                 )}
               </View>
             </View>
 
             {/* Stats row */}
             <View className="flex-row gap-3 mb-6">
-              <FastingStatCard label="Avg Fast" value={statsDisplay.avgFastValue} unit={statsDisplay.avgFastUnit} />
-              <FastingStatCard label="# Fasts" value={statsDisplay.fastsCount} />
-              <FastingStatCard label="Total" value={statsDisplay.totalValue} unit={statsDisplay.totalUnit} />
+               <FastingStatCard label={copy('avg')} value={statsDisplay.avgFastValue} unit={statsDisplay.avgFastUnit} />
+               <FastingStatCard label={copy('fasts')} value={statsDisplay.fastsCount} />
+               <FastingStatCard label={copy('total')} value={statsDisplay.totalValue} unit={statsDisplay.totalUnit} />
             </View>
 
             {/* Detail rows + End Fast action */}
             <View className="bg-surface rounded-xl mb-6 overflow-hidden">
               <DetailRow
-                label="Protocol"
+                 label={copy('protocol')}
                 value={
                   timer.goalHours != null
-                    ? `${protocolBadgeLabel(currentFast.fasting_type)} · ${Math.round(timer.goalHours)}h fast`
+                     ? `${protocolBadgeLabel(currentFast.fasting_type)} · ${copy('hoursFast', { hours: Math.round(timer.goalHours) })}`
                     : protocolBadgeLabel(currentFast.fasting_type)
                 }
               />
               <DetailRow
-                label="Started"
+                 label={copy('started')}
                 value={`${formatDateLabel(toLocalDateString(currentFast.start_time))}, ${formatTime(
                   currentFast.start_time,
                 )}`}
               />
               {currentFast.target_end_time && (
                 <DetailRow
-                  label="Goal reached"
+                   label={copy('goal')}
                   value={formatTime(currentFast.target_end_time)}
                 />
               )}
@@ -254,9 +280,9 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                 className="items-center justify-center py-5"
                 style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
                 accessibilityRole="button"
-                accessibilityLabel="End fast"
+                 accessibilityLabel={copy('endAccessibility')}
               >
-                <Text className="text-base font-semibold text-bg-danger">End Fast</Text>
+                <Text className="text-base font-semibold text-bg-danger">{copy('end')}</Text>
               </Pressable>
             </View>
 
@@ -269,24 +295,24 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
               <View className="h-20 w-20 rounded-full bg-accent-primary/10 items-center justify-center mb-4">
                 <Icon name="timer" size={36} color={accentPrimary} />
               </View>
-              <Text className="text-lg font-semibold text-text-primary">No active fast</Text>
+               <Text className="text-lg font-semibold text-text-primary">{copy('none')}</Text>
               <Text className="text-sm text-text-muted mt-1 mb-5 text-center px-8">
-                Start a fast to track your fasting window and metabolic stages.
+                 {copy('noneDescription')}
               </Text>
               <Button
                 variant="primary"
                 onPress={() => protocolSheetRef.current?.present()}
                 className="px-8"
               >
-                Start Fast
+                 {copy('start')}
               </Button>
             </View>
 
             {/* Stats row (history is independent of an active fast) */}
             <View className="flex-row gap-3 mb-6">
-              <FastingStatCard label="Avg Fast" value={statsDisplay.avgFastValue} unit={statsDisplay.avgFastUnit} />
-              <FastingStatCard label="# Fasts" value={statsDisplay.fastsCount} />
-              <FastingStatCard label="Total" value={statsDisplay.totalValue} unit={statsDisplay.totalUnit} />
+               <FastingStatCard label={copy('avg')} value={statsDisplay.avgFastValue} unit={statsDisplay.avgFastUnit} />
+               <FastingStatCard label={copy('fasts')} value={statsDisplay.fastsCount} />
+               <FastingStatCard label={copy('total')} value={statsDisplay.totalValue} unit={statsDisplay.totalUnit} />
             </View>
 
             {renderStagesList()}

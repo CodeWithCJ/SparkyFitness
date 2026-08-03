@@ -6,6 +6,7 @@ import { useCSSVariable } from 'uniwind';
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNutritionTrends, type TrendRange } from '../hooks/useNutritionTrends';
+import { getAppLocale } from '../localization';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
@@ -14,12 +15,6 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type NutrientTrendsScreenProps = RootStackScreenProps<'NutrientTrends'>;
 
-const RANGE_SEGMENTS: Segment<TrendRange>[] = [
-  { key: '7d', label: '7d' },
-  { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
-];
-
 const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) => {
   const { t } = useTranslation();
   const { nutrientKey, nutrientLabel, unit, goal } = route.params;
@@ -27,6 +22,14 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [range, setRange] = useState<TrendRange>('7d');
+  const rangeSegments = useMemo<Segment<TrendRange>[]>(
+    () => [
+      { key: '7d', label: t('sync.last7Days') },
+      { key: '30d', label: t('sync.last30Days') },
+      { key: '90d', label: t('sync.last90Days') },
+    ],
+    [t],
+  );
 
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
 
@@ -74,7 +77,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
     if (!stats.peakDay) return '';
     const [year, month, d] = stats.peakDay.split('-').map(Number);
     const date = new Date(year, month - 1, d);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
   }, [stats.peakDay]);
 
   if (isLoading) {
@@ -112,7 +115,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
         {/* Segmented Range Control */}
         <View className="mb-4">
           <SegmentedControl
-            segments={RANGE_SEGMENTS}
+             segments={rangeSegments}
             activeKey={range}
             onSelect={setRange}
           />

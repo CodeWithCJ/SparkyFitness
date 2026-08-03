@@ -18,6 +18,7 @@ import { useCSSVariable, useUniwind } from 'uniwind';
 import Button from './ui/Button';
 import StepperInput from './StepperInput';
 import { formatDuration } from '../utils/workoutSession';
+import { useTranslation } from 'react-i18next';
 
 export interface WorkoutDurationSheetRef {
   /** Open prefilled with `initialMinutes`, capped at `maxMinutes`. */
@@ -36,6 +37,7 @@ interface WorkoutDurationSheetProps {
  */
 const WorkoutDurationSheet = forwardRef<WorkoutDurationSheetRef, WorkoutDurationSheetProps>(
   ({ onSave }, ref) => {
+    const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const { theme } = useUniwind();
     const [surfaceBg, textMuted] = useCSSVariable([
@@ -121,10 +123,10 @@ const WorkoutDurationSheet = forwardRef<WorkoutDurationSheetRef, WorkoutDuration
       >
         <BottomSheetView className="px-6 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-1">
-            Workout duration
+            {t('workout.durationTitle')}
           </Text>
           <Text className="text-sm text-text-muted text-center mb-4">
-            Minutes this workout counts as, up to its {formatDuration(maxMinutes)} span.
+            {t('workout.durationDescription', { span: formatDuration(maxMinutes) })}
           </Text>
 
           <View className="flex-row items-center justify-center mb-3">
@@ -142,7 +144,7 @@ const WorkoutDurationSheet = forwardRef<WorkoutDurationSheetRef, WorkoutDuration
             </Text>
           </View>
           <Button variant="primary" onPress={handleSave}>
-            Save
+             {t('common.save')}
           </Button>
         </BottomSheetView>
       </BottomSheetModal>

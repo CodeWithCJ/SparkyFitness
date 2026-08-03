@@ -261,7 +261,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
           ionicon: 'swap-vertical',
           role: 'secondary',
           onPress: () => exerciseListRef.current?.openReorder(),
-          accessibilityLabel: 'Reorder exercises',
+           accessibilityLabel: t('workout.reorderExercises'),
           identifier: 'workout-add-reorder',
         }
       : null,
@@ -269,7 +269,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleFinish = useCallback(() => {
     if (!submission.canSave) {
-      Toast.show({ type: 'error', text1: 'Add an Exercise', text2: 'Add at least one exercise with a set before saving.' });
+       Toast.show({ type: 'error', text1: t('workout.addExercise'), text2: t('workout.addExerciseBeforeSave') });
       return;
     }
 
@@ -277,9 +277,9 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const alertMessage = `Save "${submission.name}" with ${submission.exerciseCount} exercise(s)?`;
 
     Alert.alert(alertTitle, alertMessage, [
-      { text: 'Cancel', style: 'cancel' },
+       { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Save',
+         text: t('common.save'),
         onPress: async () => {
           try {
             if (isEditMode && session) {
@@ -307,7 +307,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
             }
           } catch (error) {
             addLog(`Failed to save workout: ${error}`, 'ERROR');
-            Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
+             Toast.show({ type: 'error', text1: t('workout.saveError'), text2: t('common.tryAgain') });
           }
         },
       },
@@ -354,7 +354,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         className="text-xl font-bold text-text-primary rounded-lg"
                         value={state.name}
                         onChangeText={setName}
-                        placeholder="Workout"
+                         placeholder={t('workout.namePlaceholder')}
                         returnKeyType="done"
                         autoFocus
                         selectTextOnFocus
@@ -370,7 +370,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         activeOpacity={0.6}
                       >
                         <Text className="text-xl font-bold text-text-primary">
-                          {state.name || 'Workout'}
+                           {state.name || t('workout.namePlaceholder')}
                         </Text>
                         <Icon name="pencil" size={20} color={textMuted} />
                       </TouchableOpacity>
@@ -385,7 +385,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     activeOpacity={0.7}
                     className="flex-row items-center"
                   >
-                    <Text className="text-text-secondary text-base">Date</Text>
+                     <Text className="text-text-secondary text-base">{t('workout.date')}</Text>
                     <Text className="text-text-primary text-base font-medium mx-1.5">
                       {formatDateLabel(state.entryDate)}
                     </Text>
@@ -397,14 +397,14 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       className="flex-row items-center mx-4"
                       onPress={() => setDate(addDays(getTodayDate(), -1))}
                     >
-                      <Text className="text-text-link text-sm font-medium mx-1.5">Use Yesterday</Text>
+                       <Text className="text-text-link text-sm font-medium mx-1.5">{t('workout.useYesterday')}</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity activeOpacity={0.7}
                       className="flex-row items-center mx-4"
                       onPress={() => setDate(getTodayDate())}
                     >
-                      <Text className="text-text-link text-sm font-medium mx-1.5">Use Today</Text>
+                       <Text className="text-text-link text-sm font-medium mx-1.5">{t('workout.useToday')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCSSVariable } from 'uniwind';
@@ -27,6 +28,7 @@ interface PregnancyLogViewProps {
 const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({ date = getTodayDate(), onSaveSuccess }) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
+  const { t } = useTranslation();
 
   const { pregnancy, isLoading: isPregnancyLoading } = useCurrentPregnancy();
   const hasActive = !!pregnancy && pregnancy.status === 'active';
@@ -43,12 +45,12 @@ const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({ date = getTodayDate
   if (!hasActive) {
     return (
       <View className="bg-surface rounded-2xl p-6 shadow-sm gap-4 items-center">
-        <Text className="text-text-primary text-base font-semibold">Set up your pregnancy</Text>
+         <Text className="text-text-primary text-base font-semibold">{t('mobileComponents.wellness.pregnancy.setup')}</Text>
         <Text className="text-text-secondary text-sm text-center">
-          Add your due date to track baby&apos;s growth week by week, count kicks, and time contractions.
+           {t('mobileComponents.wellness.pregnancy.setupBody')}
         </Text>
         <Button variant="primary" onPress={() => navigation.navigate('PregnancySetup')}>
-          Get Started
+           {t('mobileComponents.wellness.pregnancy.getStarted')}
         </Button>
       </View>
     );

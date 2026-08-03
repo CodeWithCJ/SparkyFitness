@@ -76,6 +76,7 @@ import {
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
 
 type Props = RootStackScreenProps<'ActiveWorkout'>;
 
@@ -95,6 +96,7 @@ function RenameWorkoutDialog({
   onCancel: () => void;
   onSubmit: (name: string) => void;
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<TextInput>(null);
   const [value, setValue] = useState(initialName);
   // Re-seed the field to the current name each time the dialog opens.
@@ -125,16 +127,16 @@ function RenameWorkoutDialog({
             className="flex-1 justify-center px-6"
             style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
             onPress={onCancel}
-            accessibilityLabel="Dismiss rename"
+             accessibilityLabel={t('workout.dismissRename')}
           >
             {/* Absorb taps on the card so only the backdrop dismisses. */}
             <Pressable className="bg-surface rounded-2xl p-5" onPress={() => {}} accessible={false}>
-              <Text className="text-lg font-semibold text-text-primary mb-3">Rename workout</Text>
+               <Text className="text-lg font-semibold text-text-primary mb-3">{t('workout.renameWorkout')}</Text>
               <FormInput
                 ref={inputRef}
                 value={value}
                 onChangeText={setValue}
-                placeholder="Workout name"
+                 placeholder={t('workout.renamePlaceholder')}
                 autoCapitalize="words"
                 autoCorrect={false}
                 returnKeyType="done"
@@ -142,10 +144,10 @@ function RenameWorkoutDialog({
               />
               <View className="flex-row justify-end gap-2 mt-4">
                 <Button variant="ghost" onPress={onCancel}>
-                  Cancel
+                   {t('common.cancel')}
                 </Button>
                 <Button variant="primary" onPress={submit} disabled={trimmed.length === 0}>
-                  Save
+                   {t('common.save')}
                 </Button>
               </View>
             </Pressable>
@@ -157,6 +159,7 @@ function RenameWorkoutDialog({
 }
 
 function ActiveWorkoutScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const session = useActiveWorkoutStore((s) => s.session);
   const sessionId = useActiveWorkoutStore((s) => s.sessionId);
@@ -432,11 +435,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const exercise = useActiveWorkoutStore
       .getState()
       .session?.exercises.find((e) => e.id === entryId);
-    const name = exercise?.exercise_snapshot?.name ?? 'this exercise';
-    Alert.alert('Remove exercise?', `${name} will be removed from this workout.`, [
-      { text: 'Cancel', style: 'cancel' },
+    const name = exercise?.exercise_snapshot?.name ?? t('workout.thisExercise');
+    Alert.alert(t('workout.removeExerciseTitle'), t('workout.removeExerciseMessage', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Remove',
+        text: t('workout.removeExercise'),
         style: 'destructive',
         onPress: () => useActiveWorkoutStore.getState().removeExercise(entryId),
       },
@@ -449,12 +452,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const handleClearAllSets = useCallback(() => {
     Alert.alert(
-      'Clear all logged sets?',
-      'Un-checks every logged set in this workout. Your set weights and reps are kept.',
+      t('workout.clearAllSetsTitle'),
+      t('workout.clearAllSetsMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('common.clear'),
           style: 'destructive',
           onPress: () => useActiveWorkoutStore.getState().clearAllCompletions(),
         },
@@ -595,18 +598,18 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const items: ActionSheetItem[] = [];
     items.push({
       key: 'view',
-      label: 'View exercise',
+         label: t('workout.viewExercise'),
       onPress: () => handlePressThumb(entryId),
     });
     items.push({
       key: 'notes',
-      label: 'Notes',
+       label: t('workout.notes'),
       onPress: () => handleToggleExerciseNote(entryId),
     });
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
-        label: 'Superset with…',
+         label: t('workout.supersetWith'),
         // Keeps the sheet presented; the candidate list swaps in place.
         dismissOnPress: false,
         onPress: () => {
@@ -617,7 +620,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     if (groupedIds.has(entryId)) {
       items.push({
         key: 'ungroup',
-        label: 'Remove from superset',
+         label: t('workout.removeFromSuperset'),
         onPress: () => {
           useActiveWorkoutStore.getState().ungroupExercise(entryId);
         },
@@ -629,25 +632,26 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     // eslint-disable-next-line react-hooks/refs
     items.push({
       key: 'replace',
-      label: 'Replace exercise',
+       label: t('workout.replaceExercise'),
       onPress: () => handleReplaceExercise(entryId),
     });
     if (entryHasCompleted && !entryIsCardioForm) {
       items.push({
         key: 'clear',
-        label: 'Clear logged sets',
+         label: t('workout.clearLoggedSets'),
         destructive: true,
         onPress: () => handleClearExerciseSets(entryId),
       });
     }
     items.push({
       key: 'remove',
-      label: 'Remove exercise',
+       label: t('workout.removeExercise'),
       destructive: true,
       onPress: () => handleRemoveExercise(entryId),
     });
     return items;
   }, [
+    t,
     overflowMenu,
     session,
     supersetRuns,
@@ -748,14 +752,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       e.sets.some((s) => String(s.id) === setId),
     );
     if (exercise != null && exercise.sets.length <= 1) {
-      const name = exercise.exercise_snapshot?.name ?? 'this exercise';
+       const name = exercise.exercise_snapshot?.name ?? t('workout.thisExercise');
       Alert.alert(
-        'Remove exercise?',
-        `Deleting the only set removes ${name} from this workout.`,
+         t('workout.removeExerciseTitle'),
+         t('workout.deleteOnlySetMessage', { name }),
         [
-          { text: 'Cancel', style: 'cancel' },
+           { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Remove',
+             text: t('workout.removeExercise'),
             style: 'destructive',
             onPress: () => useActiveWorkoutStore.getState().deleteSet(setId),
           },
@@ -793,10 +797,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       // entry_date can round-trip as an ISO timestamp; un-normalized it would
       // silently miss the daily-summary cache key on invalidation.
       const entryDate = session?.entry_date != null ? normalizeDate(session.entry_date) : null;
-      Alert.alert('Discard workout?', 'This deletes the workout from your diary.', [
-        { text: 'Cancel', style: 'cancel' },
+       Alert.alert(t('workout.discardWorkoutTitle'), t('workout.discardWorkoutMessage'), [
+         { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Discard',
+           text: t('workout.discard'),
           style: 'destructive',
           onPress: () => {
             // Clear and exit first: clearing cancels the pending autosave
@@ -812,8 +816,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
                 addLog(`Failed to delete discarded live-start workout: ${error}`, 'ERROR');
                 Toast.show({
                   type: 'error',
-                  text1: "Couldn't delete workout",
-                  text2: 'It remains in your diary.',
+                  text1: t('workout.couldntDelete'),
+                  text2: t('workout.remainsInDiary'),
                 });
               });
           },
@@ -823,12 +827,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     }
 
     Alert.alert(
-      'Discard workout?',
-      'Clears your progress on this device and drops unsaved changes. Edits already saved to the server are kept.',
+      t('workout.discardWorkoutTitle'),
+      t('workout.clearWorkoutMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Discard',
+          text: t('workout.discard'),
           style: 'destructive',
           onPress: () => {
             useActiveWorkoutStore.getState().clearWorkout();
@@ -845,12 +849,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     // destructive exit gets its own confirm.
     function confirmDiscardChanges(): void {
       Alert.alert(
-        'Discard unsaved changes?',
-        "Sets and edits that haven't reached the server will be lost. Changes already saved are kept.",
+         t('workout.discardChangesTitle'),
+         t('workout.discardChangesMessage'),
         [
-          { text: 'Cancel', style: 'cancel' },
+           { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Discard',
+             text: t('workout.discard'),
             style: 'destructive',
             onPress: () => {
               useActiveWorkoutStore.getState().clearWorkout();
@@ -865,16 +869,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       const ok = await flush();
       if (!ok) {
         Alert.alert(
-          'Could not save your workout',
-          'Some changes have not reached the server yet.',
+           t('workout.saveError'),
+           t('workout.failedChangesMessage'),
           [
-            { text: 'Retry', onPress: () => void attempt() },
+             { text: t('common.retry'), onPress: () => void attempt() },
             {
-              text: 'Discard changes',
+               text: t('common.discardChanges'),
               style: 'destructive',
               onPress: confirmDiscardChanges,
             },
-            { text: 'Cancel', style: 'cancel' },
+             { text: t('common.cancel'), style: 'cancel' },
           ],
         );
         return;
@@ -920,22 +924,22 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     }
     const activeLabel = formatDuration(span.activeMinutes);
     Alert.alert(
-      'Adjust workout duration?',
-      `This workout spans ${formatDuration(span.totalMinutes)}, including a long break. Log ${activeLabel} of active time instead?`,
+       t('workout.adjustDurationTitle'),
+       t('workout.endWorkoutMessage', { span: formatDuration(span.totalMinutes), active: activeLabel }),
       [
         {
-          text: `Log ${activeLabel}`,
+           text: t('workout.logWorkout', { name: activeLabel }),
           onPress: () => {
             useActiveWorkoutStore.getState().setWorkoutDurationMinutes(span.activeMinutes);
             void handleFinish();
           },
         },
         {
-          text: `Keep ${formatDuration(span.totalMinutes)}`,
+           text: t('workout.keep', { name: formatDuration(span.totalMinutes) }),
           onPress: () => void handleFinish(),
         },
         {
-          text: 'Custom…',
+           text: t('workout.custom'),
           onPress: () =>
             durationSheetRef.current?.present(span.activeMinutes, Math.floor(span.totalMinutes)),
         },
@@ -968,11 +972,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const remaining = totalSets - doneSets;
     const message =
       remaining > 0
-        ? `${doneSets} of ${totalSets} sets logged. ${remaining} still to go.`
-        : `All ${totalSets} sets logged. Nice work!`;
-    Alert.alert('End workout?', message, [
-      { text: 'Keep going', style: 'cancel' },
-      { text: 'End Workout', style: 'default', onPress: maybeAdjustDurationThenFinish },
+         ? t('workout.setsRemaining', { done: doneSets, total: totalSets, remaining })
+         : t('workout.allSetsLogged', { total: totalSets });
+     Alert.alert(t('workout.endWorkoutTitle'), message, [
+       { text: t('workout.keepGoing'), style: 'cancel' },
+       { text: t('workout.endWorkout'), style: 'default', onPress: maybeAdjustDurationThenFinish },
     ]);
   }, [session, completedSetIds, maybeAdjustDurationThenFinish]);
 
@@ -982,7 +986,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         className="flex-1 bg-background items-center justify-center"
         style={{ paddingTop: insets.top }}
       >
-        <Text className="text-base text-text-muted">No active workout</Text>
+        <Text className="text-base text-text-muted">{t('workout.noActiveWorkout')}</Text>
       </View>
     );
   }
@@ -1003,7 +1007,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const restLabel =
     activeSetDescription == null
       ? ''
-      : `${activeSetDescription.exerciseName ?? 'Exercise'} · Set ${activeSetDescription.setNumber}`;
+       : `${activeSetDescription.exerciseName ?? t('workout.exercise')} · ${t('workout.setNumber', { number: activeSetDescription.setNumber })}`;
   // Target load for the upcoming set, shown under the rest label so the user
   // knows what's next while resting.
   const restNextSetText =
@@ -1045,7 +1049,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       ? [
           {
             key: 'next',
-            label: 'Next',
+             label: t('workout.next'),
             onPress: () => {
               if (focusedSetKey == null) return;
               accessoryHandlesRef.current[focusedSetKey]?.focusField(accessoryNextField);
@@ -1061,7 +1065,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       ? [
           {
             key: 'next-set',
-            label: 'Next Set',
+             label: t('workout.nextSet'),
             onPress: () => {
               if (focusedSetKey == null) return;
               accessoryHandlesRef.current[focusedSetKey]?.advance();
@@ -1075,7 +1079,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       ? [
           {
             key: 'log',
-            label: 'Log',
+             label: t('workout.log'),
             bold: true,
             onPress: () => {
               if (focusedSetKey == null) return;

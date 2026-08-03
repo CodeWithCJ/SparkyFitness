@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import { useCycleFertility } from '../../../hooks/useCycleInsights';
 import { daysBetween } from '@workspace/shared';
@@ -21,6 +22,7 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
   const { fertility, isLoading } = useCycleFertility(referenceDate);
   const predictionData = useCyclePredictionData(referenceDate);
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
+  const { t } = useTranslation();
 
   const effectiveOvulationDate =
     fertility?.ovulationDate || predictionData?.prediction.cycles[0]?.ovulation || null;
@@ -73,38 +75,38 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm border-0 gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-primary text-sm font-semibold">Fertility</Text>
+         <Text className="text-text-primary text-sm font-semibold">{t('mobileComponents.wellness.fertility.title')}</Text>
         {isFertileToday && (
           <View className="rounded-full bg-emerald-500/15 px-3 py-1">
-            <Text className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold">Fertile window</Text>
+           <Text className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold">{t('mobileComponents.wellness.fertility.fertile')}</Text>
           </View>
         )}
       </View>
 
       <View className="flex-row justify-between">
         <View>
-          <Text className="text-text-secondary text-xs">Est. ovulation</Text>
+           <Text className="text-text-secondary text-xs">{t('mobileComponents.wellness.fertility.ovulation')}</Text>
           <Text className="text-text-primary text-base font-bold">
             {effectiveOvulationDate ? formatDate(effectiveOvulationDate) : '—'}
           </Text>
         </View>
         <View className="items-end">
-          <Text className="text-text-secondary text-xs">Next period in</Text>
+           <Text className="text-text-secondary text-xs">{t('mobileComponents.wellness.fertility.nextPeriod')}</Text>
           <Text className="text-text-primary text-base font-bold">
-            {daysUntilNextPeriod != null ? `${daysUntilNextPeriod} days` : '—'}
+             {daysUntilNextPeriod != null ? t('mobileComponents.wellness.fertility.days', { count: daysUntilNextPeriod }) : '—'}
           </Text>
         </View>
       </View>
 
       {dpo !== null && (
         <View className="rounded-xl bg-raised p-3">
-          <Text className="text-text-secondary text-xs mb-0.5">Two-week wait</Text>
+           <Text className="text-text-secondary text-xs mb-0.5">{t('mobileComponents.wellness.fertility.wait')}</Text>
           <Text className="text-text-primary text-sm font-semibold">
-            {dpo === 0 ? 'Ovulation day' : `${dpo} ${dpo === 1 ? 'day' : 'days'} past ovulation`}
+             {dpo === 0 ? t('mobileComponents.wellness.fertility.ovulationDay') : t('mobileComponents.wellness.fertility.past', { count: dpo })}
           </Text>
           {dpo >= 1 && dpo < 14 && (
             <Text className="text-text-secondary text-xs mt-1">
-              A test is typically most accurate around 12–14 DPO.
+               {t('mobileComponents.wellness.fertility.accuracy')}
             </Text>
           )}
         </View>

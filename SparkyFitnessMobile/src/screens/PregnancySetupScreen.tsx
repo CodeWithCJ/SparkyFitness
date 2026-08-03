@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { eddFromLmp, eddFromConception, compareDays } from '@workspace/shared';
@@ -14,18 +15,26 @@ import StepperInput from '../components/StepperInput';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import type { RootStackScreenProps } from '../types/navigation';
 
-const BASIS_OPTIONS: { value: PregnancyDueDateBasis; label: string }[] = [
-  { value: 'lmp', label: 'Last period (LMP)' },
-  { value: 'conception', label: 'Conception date' },
-  { value: 'manual', label: 'Due date (manual)' },
-  { value: 'scan', label: 'Ultrasound scan' },
+const BASIS_OPTIONS: { value: PregnancyDueDateBasis }[] = [
+  { value: 'lmp' }, { value: 'conception' }, { value: 'manual' }, { value: 'scan' },
 ];
 
-const DATE_FIELD_LABEL: Record<PregnancyDueDateBasis, string> = {
-  lmp: 'First day of last period',
-  conception: 'Conception date',
-  manual: 'Estimated due date',
-  scan: 'Estimated due date (from scan)',
+const basisLabel = (value: PregnancyDueDateBasis, t: (key: string) => string): string => {
+  switch (value) {
+    case 'lmp': return t('mobileComponents.wellness.setupBasis.lmp');
+    case 'conception': return t('mobileComponents.wellness.setupBasis.conception');
+    case 'manual': return t('mobileComponents.wellness.setupBasis.manual');
+    case 'scan': return t('mobileComponents.wellness.setupBasis.scan');
+  }
+};
+
+const fieldLabel = (value: PregnancyDueDateBasis, t: (key: string) => string): string => {
+  switch (value) {
+    case 'lmp': return t('mobileComponents.wellness.setupField.lmp');
+    case 'conception': return t('mobileComponents.wellness.setupField.conception');
+    case 'manual': return t('mobileComponents.wellness.setupField.manual');
+    case 'scan': return t('mobileComponents.wellness.setupField.scan');
+  }
 };
 
 type Props = RootStackScreenProps<'PregnancySetup'>;
@@ -37,6 +46,7 @@ const MAX_OVERDUE_DAYS = 21;
 
 const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const calendarRef = useRef<CalendarSheetRef>(null);
 
   const existing = route.params?.pregnancy;
@@ -71,16 +81,16 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const validate = (): string | null => {
     const today = getTodayDate();
     if (basis === 'lmp' && compareDays(date, today) > 0) {
-      return 'Your last period can’t be in the future.';
+      return t('mobileComponents.wellness.setup.futureLmp');
     }
     if (basis === 'conception' && compareDays(date, today) > 0) {
-      return 'The conception date can’t be in the future.';
+      return t('mobileComponents.wellness.setup.futureConception');
     }
     if (compareDays(computedDueDate, addDays(today, -MAX_OVERDUE_DAYS)) < 0) {
-      return 'That due date is in the past. Please check the date.';
+      return t('mobileComponents.wellness.setup.pastDue');
     }
     if (compareDays(computedDueDate, addDays(today, MAX_DUE_DAYS_AHEAD)) > 0) {
-      return 'That due date is too far away — a pregnancy is about 40 weeks.';
+      return t('mobileComponents.wellness.setup.farDue');
     }
     return null;
   };
@@ -88,7 +98,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSave = async () => {
     const error = validate();
     if (error) {
-      Toast.show({ type: 'error', text1: 'Check the dates', text2: error });
+      Toast.show({ type: 'error', text1: t('mobileComponents.wellness.setup.checkDates'), text2: error });
       return;
     }
     const body = {
@@ -103,19 +113,19 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       if (isEdit && existing?.id) {
         await updatePregnancyAsync({ id: existing.id, body });
-        Toast.show({ type: 'success', text1: 'Pregnancy updated' });
+        Toast.show({ type: 'success', text1: t('mobileComponents.wellness.setup.updated') });
       } else {
         await createPregnancyAsync(body);
-        Toast.show({ type: 'success', text1: 'Pregnancy set up' });
+        Toast.show({ type: 'success', text1: t('mobileComponents.wellness.setup.created') });
       }
       navigation.goBack();
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not save pregnancy' });
+      Toast.show({ type: 'error', text1: t('mobileComponents.wellness.setup.saveError') });
     }
   };
 
   const header = useScreenHeader({
-    title: isEdit ? 'Edit Pregnancy' : 'Pregnancy Setup',
+    title: isEdit ? t('mobileComponents.wellness.setup.editTitle') : t('mobileComponents.wellness.setup.newTitle'),
     left: { kind: 'back' },
   });
 
@@ -124,24 +134,24 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
       {header}
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 96 }}>
         <Text className="text-text-secondary text-sm mb-4">
-          Tell us how to estimate your due date. You can change this later.
+          {t('mobileComponents.wellness.setup.description')}
         </Text>
 
         <SettingsRowGroup>
           <SettingsRow
-            title="Based on"
+            title={t('mobileComponents.wellness.setup.basedOn')}
             rightAccessory={
               <BottomSheetPicker
                 value={basis}
-                options={BASIS_OPTIONS}
+                 options={BASIS_OPTIONS.map((option) => ({ ...option, label: basisLabel(option.value, t) }))}
                 onSelect={setBasis}
-                title="Estimate due date by"
+                 title={t('mobileComponents.wellness.setup.estimateBy')}
                 containerStyle={{ flex: 1, maxWidth: 210 }}
               />
             }
           />
           <SettingsRow
-            title={DATE_FIELD_LABEL[basis]}
+             title={fieldLabel(basis, t)}
             rightAccessory={
               <TouchableOpacity onPress={() => calendarRef.current?.present()}>
                 <Text className="text-accent-primary text-sm font-semibold">{formatDate(date)}</Text>
@@ -149,7 +159,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
             }
           />
           <SettingsRow
-            title="Number of babies"
+             title={t('mobileComponents.wellness.setup.babies')}
             rightAccessory={
               <StepperInput
                 value={String(fetusCount)}
@@ -164,16 +174,16 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
         </SettingsRowGroup>
 
         <View className="bg-surface rounded-2xl p-4 mt-4 border border-border-subtle shadow-sm">
-          <Text className="text-text-secondary text-xs">Estimated due date</Text>
+           <Text className="text-text-secondary text-xs">{t('mobileComponents.wellness.setup.due')}</Text>
           <Text className="text-text-primary text-lg font-bold">{formatDate(computedDueDate)}</Text>
         </View>
 
         <View className="bg-surface rounded-2xl p-4 mt-4 border border-border-subtle shadow-sm">
-          <Text className="text-text-primary text-sm font-semibold mb-2">Notes</Text>
+           <Text className="text-text-primary text-sm font-semibold mb-2">{t('mobileComponents.wellness.setup.notes')}</Text>
           <TextInput
             value={notes}
             onChangeText={setNotes}
-            placeholder="Anything you'd like to remember…"
+             placeholder={t('mobileComponents.wellness.setup.notesPlaceholder')}
             multiline
             className="bg-raised rounded-xl p-3 text-text-primary text-sm min-h-[70px]"
             style={{ textAlignVertical: 'top' }}
@@ -192,7 +202,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
         }}
       >
         <Button variant="primary" disabled={isSaving} onPress={handleSave}>
-          {isSaving ? 'Saving…' : 'Save'}
+          {isSaving ? t('mobileComponents.wellness.setup.saving') : t('mobileComponents.wellness.setup.save')}
         </Button>
       </View>
 

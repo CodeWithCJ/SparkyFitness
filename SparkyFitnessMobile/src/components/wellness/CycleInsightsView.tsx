@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import { useCycleInsights } from '../../hooks/useCycleInsights';
 import { useCycleHistory } from '../../hooks/useCycleHistory';
@@ -20,6 +21,7 @@ const CycleInsightsView: React.FC = () => {
   const { insights, isLoading: isInsightsLoading } = useCycleInsights();
   const { cycles, isLoading: isHistoryLoading } = useCycleHistory();
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
+  const { t } = useTranslation();
 
   const isLoading = isInsightsLoading || isHistoryLoading || isSettingsLoading;
 
@@ -77,24 +79,24 @@ const CycleInsightsView: React.FC = () => {
     <View className="gap-6">
       {/* 1. Stats Summary Card */}
       <View className="bg-surface rounded-xl p-4 shadow-sm gap-4">
-        <Text className="text-text-primary text-base font-bold">Cycle Summary</Text>
+         <Text className="text-text-primary text-base font-bold">{t('mobileComponents.wellness.insights.summary')}</Text>
         <View className="flex-row justify-between">
           <View className="flex-1 items-center border-r border-border-subtle">
-            <Text className="text-text-secondary text-xs font-medium">Avg Cycle</Text>
+             <Text className="text-text-secondary text-xs font-medium">{t('mobileComponents.wellness.insights.avgCycle')}</Text>
             <Text className="text-text-primary text-lg font-bold mt-1">
-              {cycleStats.avgCycleLength} days
+               {t('mobileComponents.wellness.fertility.days', { count: cycleStats.avgCycleLength })}
             </Text>
           </View>
           <View className="flex-1 items-center border-r border-border-subtle">
-            <Text className="text-text-secondary text-xs font-medium">Avg Period</Text>
+             <Text className="text-text-secondary text-xs font-medium">{t('mobileComponents.wellness.insights.avgPeriod')}</Text>
             <Text className="text-text-primary text-lg font-bold mt-1">
-              {cycleStats.avgPeriodLength} days
+               {t('mobileComponents.wellness.fertility.days', { count: cycleStats.avgPeriodLength })}
             </Text>
           </View>
           <View className="flex-1 items-center">
-            <Text className="text-text-secondary text-xs font-medium">Regularity</Text>
+             <Text className="text-text-secondary text-xs font-medium">{t('mobileComponents.wellness.insights.regularity')}</Text>
             <Text className="text-text-primary text-lg font-bold mt-1 capitalize">
-              {settings?.avg_cycle_length_override ? 'Set' : 'Regular'}
+               {settings?.avg_cycle_length_override ? t('mobileComponents.wellness.insights.set') : t('mobileComponents.wellness.insights.regular')}
             </Text>
           </View>
         </View>
@@ -104,10 +106,10 @@ const CycleInsightsView: React.FC = () => {
       {predictions && predictions.cycles.length > 0 && (
         <View className="bg-surface rounded-xl p-4 shadow-sm gap-4">
           <View className="flex-row justify-between items-center">
-            <Text className="text-text-primary text-base font-bold">Next Predictions</Text>
+             <Text className="text-text-primary text-base font-bold">{t('mobileComponents.wellness.insights.predictions')}</Text>
             <View className="bg-raised px-2.5 py-1 rounded-full">
               <Text className="text-text-secondary text-[10px] font-semibold uppercase tracking-wider">
-                {predictions.confidence} confidence
+                 {t('mobileComponents.wellness.insights.confidence', { value: predictions.confidence })}
               </Text>
             </View>
           </View>
@@ -117,7 +119,7 @@ const CycleInsightsView: React.FC = () => {
               <View key={index} className="gap-2">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-text-secondary text-[10px] font-bold uppercase tracking-wider">
-                    {index === 0 ? 'Upcoming Cycle' : 'Following Cycle'}
+                     {index === 0 ? t('mobileComponents.wellness.insights.upcoming') : t('mobileComponents.wellness.insights.following')}
                   </Text>
                   <Text className="text-text-secondary text-xs font-medium">
                     {formatShortDate(c.periodStart)} – {formatShortDate(c.periodEnd)}
@@ -132,7 +134,7 @@ const CycleInsightsView: React.FC = () => {
                     </View>
                     <View className="flex-1">
                       <Text className="text-text-secondary text-[10px] font-semibold uppercase">
-                        Next Period
+                         {t('mobileComponents.wellness.insights.nextPeriod')}
                       </Text>
                       <Text className="text-text-primary text-xs font-bold mt-0.5">
                         {formatShortDate(c.periodStart)}
@@ -148,7 +150,7 @@ const CycleInsightsView: React.FC = () => {
                       </View>
                       <View className="flex-1">
                         <Text className="text-text-secondary text-[10px] font-semibold uppercase">
-                          Est. Ovulation
+                           {t('mobileComponents.wellness.insights.ovulation')}
                         </Text>
                         <Text className="text-accent-primary text-xs font-bold mt-0.5">
                           {formatShortDate(c.ovulation)}
@@ -166,7 +168,7 @@ const CycleInsightsView: React.FC = () => {
       {/* 3. Anomalies/Alerts */}
       {anomalies.length > 0 && (
         <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
-          <Text className="text-text-primary text-base font-bold">Clinical Health Alerts</Text>
+           <Text className="text-text-primary text-base font-bold">{t('mobileComponents.wellness.insights.alerts')}</Text>
           <View className="gap-2">
             {anomalies.map((anom: { message: string }, idx: number) => (
               <View
@@ -187,16 +189,16 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 4. BBT Chart */}
       <View className="gap-2">
-        <Text className="text-text-primary text-base font-bold px-1">Basal Body Temperature</Text>
+         <Text className="text-text-primary text-base font-bold px-1">{t('mobileComponents.wellness.insights.bbt')}</Text>
         <BBTLineChart data={bbtData} isLoading={isLoading} />
       </View>
 
       {/* 5. Symptom Forecasting */}
       <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
-        <Text className="text-text-primary text-base font-bold">Symptom Forecast</Text>
+         <Text className="text-text-primary text-base font-bold">{t('mobileComponents.wellness.insights.forecast')}</Text>
         {forecastEntries.length === 0 ? (
           <Text className="text-text-secondary text-xs italic text-center py-4">
-            Log symptoms across a couple of cycles to forecast upcoming days.
+             {t('mobileComponents.wellness.insights.forecastEmpty')}
           </Text>
         ) : (
           <View className="gap-2">
@@ -214,7 +216,7 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 6. Personalized Correlations */}
       <View className="gap-2">
-        <Text className="text-text-primary text-base font-bold px-1">Personal Correlations</Text>
+         <Text className="text-text-primary text-base font-bold px-1">{t('mobileComponents.wellness.insights.correlations')}</Text>
         <CorrelationCards />
       </View>
     </View>

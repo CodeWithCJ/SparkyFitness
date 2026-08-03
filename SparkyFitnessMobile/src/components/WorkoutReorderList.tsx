@@ -33,6 +33,7 @@ import {
   type WorkoutCardExercise,
 } from '../utils/workoutSession';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
+import { useTranslation } from 'react-i18next';
 
 /** Fixed height of a single exercise (member) row. */
 export const REORDER_ROW_HEIGHT = 64;
@@ -118,6 +119,7 @@ function ReorderItemRow({
   onCommit,
   setScrollEnabled,
 }: ReorderItemRowProps) {
+  const { t } = useTranslation();
   const textMuted = String(useCSSVariable('--color-text-muted'));
   const isRun = item.groupId != null;
 
@@ -230,7 +232,7 @@ function ReorderItemRow({
             {name}
           </Text>
           <Text className="text-sm text-text-muted">
-            {setCount} set{setCount === 1 ? '' : 's'}
+             {setCount} {setCount === 1 ? t('workout.set') : t('workout.sets')}
           </Text>
         </View>
       </View>
@@ -263,7 +265,7 @@ function ReorderItemRow({
           <View
             testID={`reorder-handle-${item.key}`}
             className="px-4 py-2 justify-center"
-            accessibilityLabel="Drag to reorder"
+            accessibilityLabel={t('workout.dragToReorder')}
             accessibilityRole="adjustable"
           >
             <Icon name="reorder-handle" size={24} color={textMuted} />
@@ -288,6 +290,7 @@ function WorkoutReorderList({
   onMoveItem,
   onDone,
 }: WorkoutReorderListProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const accent = String(useCSSVariable('--color-accent-primary'));
   const palette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
@@ -435,15 +438,15 @@ function WorkoutReorderList({
           className="flex-row items-center justify-between px-4 pb-3 border-b border-border-subtle"
           style={{ paddingTop: headerTopPad }}
         >
-          <Text className="text-lg font-semibold text-text-primary">Reorder exercises</Text>
+          <Text className="text-lg font-semibold text-text-primary">{t('workout.reorderTitle')}</Text>
           <Pressable
             onPress={onDone}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
-            accessibilityLabel="Done reordering"
+            accessibilityLabel={t('workout.reorderDone')}
           >
             <Text className="text-base font-semibold" style={{ color: accent }}>
-              Done
+              {t('workout.reorderDoneText')}
             </Text>
           </Pressable>
         </View>

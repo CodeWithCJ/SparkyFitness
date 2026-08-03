@@ -8,7 +8,6 @@ import Button from '../ui/Button';
 import CalendarSheet, { type CalendarSheetRef } from '../CalendarSheet';
 import { getTodayDate, formatDate } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
-import { formatLocalizedNumber } from '../../localization';
 
 const CycleHistoryList: React.FC = () => {
   const { cycles, createCycle, deleteCycle } = useCycleHistory();
@@ -128,8 +127,8 @@ const CycleHistoryList: React.FC = () => {
                 </Text>
                 <Text className="text-text-secondary text-xs mt-1">
                   {c.cycle_length
-                    ? t('mobileComponents.cycleHistory.dayCycleLabel', { value: formatLocalizedNumber(c.cycle_length) })
-                    : t('mobileComponents.cycleHistory.currentCycle')} • {t('mobileComponents.cycleHistory.dayPeriodLabel', { value: formatLocalizedNumber(c.period_length || 5) })}
+                    ? t('mobileComponents.cycleHistory.dayCycle', { count: c.cycle_length })
+                    : t('mobileComponents.cycleHistory.currentCycle')} • {t('mobileComponents.cycleHistory.dayPeriod', { count: c.period_length || 5 })}
                 </Text>
                 {c.cycle_length && c.period_length && (
                   <View className="mt-2">

@@ -15,6 +15,7 @@ import {
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { getAppLocale } from '../localization';
 import Icon from '../components/Icon';
 import DoseRow from '../components/medications/DoseRow';
 import {
@@ -95,7 +96,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
     (entry: MedicationEntry) => {
       Alert.alert(
         t('medications.removeDose'),
-        t('medications.removeDoseConfirm', { time: entry.taken_at ? new Date(entry.taken_at).toLocaleTimeString() : t('medications.today') }),
+         t('medications.removeDoseConfirm', { time: entry.taken_at ? new Date(entry.taken_at).toLocaleTimeString(getAppLocale()) : t('medications.today') }),
         [
           { text: t('common.cancel'), style: 'cancel' },
           {
@@ -195,7 +196,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                     <View className="flex-1">
                       <Text className="text-base text-text-primary">
                         {dose.taken_at
-                          ? new Date(dose.taken_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                           ? new Date(dose.taken_at).toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' })
                            : t('medications.logged')}
                       </Text>
                       {dose.notes && (

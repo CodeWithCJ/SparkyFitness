@@ -16,7 +16,7 @@ export function formatRest(seconds: number | null | undefined): string {
 }
 
 /** Label a configured rest setting: 0 means no rest ("Off"), else the duration. */
-export function formatRestLabel(seconds: number | null | undefined, offLabel = 'Off'): string {
+export function formatRestLabel(seconds: number | null | undefined, offLabel: string): string {
   return seconds === 0 ? offLabel : formatRest(seconds);
 }
 

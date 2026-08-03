@@ -1,8 +1,10 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import { useHealthAppointments, useHealthAppointmentMutations } from '../../../hooks/useHealthAppointments';
+import { getAppLocale } from '../../../localization';
 import { getTodayDate, formatDate, toLocalDateString } from '../../../utils/dateUtils';
 import CalendarSheet, { type CalendarSheetRef } from '../../CalendarSheet';
 import FormInput from '../../FormInput';
@@ -19,7 +21,7 @@ function combineDateAndTime(dateStr: string, hour: number, minute: number): stri
 function formatScheduledAt(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const time = d.toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' });
   const localDateStr = toLocalDateString(d);
   return `${formatDate(localDateStr)} · ${time}`;
 }
@@ -27,6 +29,7 @@ function formatScheduledAt(iso: string): string {
 const AppointmentsCard: React.FC = () => {
   const { appointments, isLoading } = useHealthAppointments(true);
   const { createAsync, isCreating, deleteAsync } = useHealthAppointmentMutations();
+  const { t } = useTranslation();
   const [accentColor, dangerColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-danger',
@@ -62,11 +65,11 @@ const AppointmentsCard: React.FC = () => {
         location: location || undefined,
         notes: notes || undefined,
       });
-      Toast.show({ type: 'success', text1: 'Appointment added' });
+       Toast.show({ type: 'success', text1: t('mobileComponents.wellness.appointments.added') });
       resetForm();
       setShowForm(false);
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not save appointment' });
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.appointments.saveError') });
     }
   };
 
@@ -74,7 +77,7 @@ const AppointmentsCard: React.FC = () => {
     try {
       await deleteAsync(appt.id);
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not remove appointment' });
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.appointments.removeError') });
     }
   };
 
@@ -83,14 +86,14 @@ const AppointmentsCard: React.FC = () => {
   return (
     <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-primary text-base font-bold">Appointments</Text>
+         <Text className="text-text-primary text-base font-bold">{t('mobileComponents.wellness.appointments.title')}</Text>
         <TouchableOpacity
           onPress={() => setShowForm((v) => !v)}
           className="flex-row items-center gap-1 rounded-full bg-raised px-3 py-1.5"
         >
           <Icon name={showForm ? 'close' : 'add'} size={16} color={accentColor} />
           <Text className="text-xs font-semibold" style={{ color: accentColor }}>
-            {showForm ? 'Cancel' : 'Add'}
+             {showForm ? t('mobileComponents.wellness.appointments.cancel') : t('mobileComponents.wellness.appointments.add')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -99,7 +102,7 @@ const AppointmentsCard: React.FC = () => {
         <ActivityIndicator color={accentColor} />
       ) : sorted.length === 0 && !showForm ? (
         <Text className="text-text-secondary text-xs italic py-2">
-          No upcoming appointments scheduled.
+           {t('mobileComponents.wellness.appointments.empty')}
         </Text>
       ) : (
         <View className="gap-2">
@@ -107,7 +110,7 @@ const AppointmentsCard: React.FC = () => {
             <View key={appt.id} className="flex-row items-start justify-between rounded-xl bg-raised p-3">
               <View className="flex-1 mr-2">
                 <Text className="text-text-primary text-sm font-semibold">
-                  {appt.title || appt.appointment_type || 'Appointment'}
+                   {appt.title || appt.appointment_type || t('mobileComponents.wellness.appointments.fallback')}
                 </Text>
                 <Text className="text-text-secondary text-xs mt-0.5">
                   {formatScheduledAt(appt.scheduled_at)}
@@ -132,26 +135,26 @@ const AppointmentsCard: React.FC = () => {
 
       {showForm && (
         <View className="gap-3 mt-1 pt-3 border-t border-border-subtle">
-          <FormInput value={title} onChangeText={setTitle} placeholder="Title (e.g. Anatomy scan)" />
+           <FormInput value={title} onChangeText={setTitle} placeholder={t('mobileComponents.wellness.appointments.titlePlaceholder')} />
           <FormInput
             value={appointmentType}
             onChangeText={setAppointmentType}
-            placeholder="Type (e.g. Ultrasound)"
+             placeholder={t('mobileComponents.wellness.appointments.typePlaceholder')}
           />
-          <FormInput value={location} onChangeText={setLocation} placeholder="Location" />
+           <FormInput value={location} onChangeText={setLocation} placeholder={t('mobileComponents.wellness.appointments.locationPlaceholder')} />
 
           <TouchableOpacity
             onPress={() => calendarRef.current?.present()}
             className="flex-row items-center justify-between rounded-xl bg-raised p-3"
           >
-            <Text className="text-text-primary text-sm">Date</Text>
+             <Text className="text-text-primary text-sm">{t('mobileComponents.wellness.appointments.date')}</Text>
             <Text className="text-sm font-semibold" style={{ color: accentColor }}>
               {formatDate(date)}
             </Text>
           </TouchableOpacity>
 
           <View className="flex-row items-center justify-between rounded-xl bg-raised p-3">
-            <Text className="text-text-primary text-sm">Time</Text>
+             <Text className="text-text-primary text-sm">{t('mobileComponents.wellness.appointments.time')}</Text>
             <View className="flex-row items-center gap-2">
               <StepperInput
                 value={String(hour).padStart(2, '0')}
@@ -176,13 +179,13 @@ const AppointmentsCard: React.FC = () => {
           <FormInput
             value={notes}
             onChangeText={setNotes}
-            placeholder="Notes"
+             placeholder={t('mobileComponents.wellness.appointments.notes')}
             multiline
             style={{ minHeight: 60, textAlignVertical: 'top' }}
           />
 
           <Button variant="primary" disabled={isCreating} onPress={handleSave}>
-            {isCreating ? 'Saving…' : 'Save Appointment'}
+             {isCreating ? t('mobileComponents.wellness.appointments.saving') : t('mobileComponents.wellness.appointments.save')}
           </Button>
         </View>
       )}

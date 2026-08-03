@@ -25,6 +25,7 @@ import SegmentedControl from '../components/SegmentedControl';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
 
 type PresetSearchScreenProps = RootStackScreenProps<'PresetSearch'>;
 
@@ -56,6 +57,7 @@ const filterItems = <T extends { user_id?: string | null; userId?: string | null
 
 const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textMuted, textSecondary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -86,7 +88,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   }, [navigation]);
 
   const header = useScreenHeader({
-    title: 'Start Workout',
+     title: t('workout.startWorkout'),
     left: { kind: 'dismiss', onPress: handleCancel, identifier: 'preset-search-cancel' },
   });
 
@@ -169,7 +171,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
               <ShareStatusBadge status={status} />
             </View>
             <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-              {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
+               {t('workout.exerciseCount', { count: item.exercises.length })}
             </Text>
           </View>
         </TouchableOpacity>
@@ -178,7 +180,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
           activeOpacity={0.7}
           hitSlop={8}
           disabled={isNavigationLocked || isStarting}
-          accessibilityLabel="View preset details"
+           accessibilityLabel={t('workout.viewPresetDetails')}
           onPress={() => handlePreviewPreset(item)}
         >
           {isStarting && startingId === item.id ? (
@@ -207,10 +209,10 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       return <StatusView loading />;
     }
     if (isSearchError) {
-      return <StatusView icon="alert-circle" title="Failed to search presets" />;
+       return <StatusView icon="alert-circle" title={t('workout.failedSearchPresets')} />;
     }
     if (filteredSearchResults.length === 0) {
-      return <StatusView title="No matching presets found" />;
+       return <StatusView title={t('workout.noMatchingPresets')} />;
     }
     return (
       <FlatList
@@ -234,16 +236,16 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       return (
         <StatusView
           icon="alert-circle"
-          title="Failed to load presets"
-          action={{ label: 'Retry', onPress: () => refetch() }}
+           title={t('workout.failedLoadPresetsShort')}
+           action={{ label: t('common.retry'), onPress: () => refetch() }}
         />
       );
     }
     if (presets.length === 0) {
-      return <StatusView title="No presets yet" subtitle="Start an empty workout, or save a workout as a preset to see it here" />;
+       return <StatusView title={t('workout.noPresets')} subtitle={t('workout.startEmptyOrSave')} />;
     }
     if (filteredPresets.length === 0) {
-      return <StatusView title="No matching presets found" subtitle="Try changing your ownership filter" />;
+       return <StatusView title={t('workout.noMatchingPresets')} subtitle={t('workout.changeOwnership')} />;
     }
     return (
       <FlatList
@@ -271,7 +273,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
             <TextInput
               className="text-text-primary"
               style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-              placeholder="Search presets..."
+               placeholder={t('workout.searchPresets')}
               placeholderTextColor={textMuted}
               value={searchText}
               onChangeText={setSearchText}
@@ -294,10 +296,10 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       <View className="px-4 pb-2 border-b border-border-subtle">
         <SegmentedControl
           segments={[
-            { key: 'all', label: 'All' },
-            { key: 'mine', label: 'Mine' },
-            { key: 'family', label: 'Family' },
-            { key: 'public', label: 'Public' },
+             { key: 'all', label: t('workout.all') },
+             { key: 'mine', label: t('workout.mine') },
+             { key: 'family', label: t('workout.family') },
+             { key: 'public', label: t('workout.public') },
           ]}
           activeKey={ownershipFilter}
           onSelect={setOwnershipFilter}
@@ -312,9 +314,9 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       >
         <Icon name="add-circle" size={22} color={accentColor} />
         <View className="flex-1 ml-3">
-          <Text className="text-text-primary text-base font-medium">Empty workout</Text>
+           <Text className="text-text-primary text-base font-medium">{t('workout.emptyWorkout')}</Text>
           <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-            Pick your first exercise
+             {t('workout.pickFirstExercise')}
           </Text>
         </View>
         {isStarting && startingId === EMPTY_START_ID && (

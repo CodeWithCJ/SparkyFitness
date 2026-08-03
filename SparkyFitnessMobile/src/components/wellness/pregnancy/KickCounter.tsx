@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useKickMutations, useKickSessions } from '../../../hooks/usePregnancyTracking';
 import Button from '../../ui/Button';
@@ -22,6 +23,7 @@ function formatElapsed(ms: number): string {
 const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
   const { startKickAsync, updateKickAsync, isStarting } = useKickMutations();
   const { sessions } = useKickSessions();
+  const { t } = useTranslation();
 
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
@@ -46,7 +48,7 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
       setKickTimes([]);
       setElapsed(0);
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not start session' });
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.pregnancyTools.startError') });
     }
   };
 
@@ -68,9 +70,9 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
         id: sessionId,
         body: { kick_count: kickTimes.length, kick_times: kickTimes, ended: true },
       });
-      Toast.show({ type: 'success', text1: `Session saved · ${kickTimes.length} kicks` });
+       Toast.show({ type: 'success', text1: t('mobileComponents.wellness.pregnancyTools.saved', { count: kickTimes.length }) });
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not save session' });
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.pregnancyTools.saveError') });
     } finally {
       setSessionId(null);
       setStartedAt(null);
@@ -84,7 +86,7 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
   return (
     <View className="bg-surface rounded-xl p-5 border-0 shadow-sm gap-4">
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-primary text-sm font-semibold">Kick Counter</Text>
+         <Text className="text-text-primary text-sm font-semibold">{t('mobileComponents.wellness.pregnancyTools.kickCounter')}</Text>
         {isActive && <Text className="text-text-secondary text-xs">{formatElapsed(elapsed)}</Text>}
       </View>
 
@@ -95,24 +97,24 @@ const KickCounter: React.FC<KickCounterProps> = ({ pregnancyId }) => {
             className="items-center justify-center rounded-full bg-pink-500 aspect-square self-center w-40"
           >
             <Text className="text-white text-4xl font-bold">{kickTimes.length}</Text>
-            <Text className="text-white text-xs mt-1">Tap for each kick</Text>
+             <Text className="text-white text-xs mt-1">{t('mobileComponents.wellness.pregnancyTools.tapKick')}</Text>
           </TouchableOpacity>
           <Button variant="outline" tone="neutral" onPress={handleEnd}>
-            End Session
+             {t('mobileComponents.wellness.pregnancyTools.endSession')}
           </Button>
         </>
       ) : (
         <>
           <Text className="text-text-secondary text-xs">
-            Time how long it takes to feel 10 movements. Tap once for each kick.
+             {t('mobileComponents.wellness.pregnancyTools.timingHelp')}
           </Text>
           {lastSession && (
             <Text className="text-text-secondary text-xs">
-              Last session: {lastSession.kick_count} kicks
+               {t('mobileComponents.wellness.pregnancyTools.lastSession', { count: lastSession.kick_count })}
             </Text>
           )}
           <Button variant="primary" disabled={isStarting} onPress={handleStart}>
-            {isStarting ? 'Starting…' : 'Start Counting'}
+             {isStarting ? t('mobileComponents.wellness.pregnancyTools.starting') : t('mobileComponents.wellness.pregnancyTools.startCounting')}
           </Button>
         </>
       )}

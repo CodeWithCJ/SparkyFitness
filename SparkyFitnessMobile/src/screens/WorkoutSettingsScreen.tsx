@@ -12,10 +12,12 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
 
 type WorkoutSettingsScreenProps = RootStackScreenProps<'WorkoutSettings'>;
 
 const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -32,7 +34,7 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
     '--color-form-disabled',
   ]) as [string, string];
 
-  const header = useScreenHeader({ title: 'Workout Settings', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('screens.workoutSettings'), left: { kind: 'back' } });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -45,22 +47,22 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
         <SettingsRow
-          title="Default rest period"
-          subtitle="Rest between sets for newly added exercises."
+          title={t('workout.defaultRest')}
+          subtitle={t('workout.defaultRestSubtitle')}
           subtitleNumberOfLines={0}
           rightAccessory={
             <PickerTrigger
-              label={formatRestLabel(defaultRestSec)}
+              label={formatRestLabel(defaultRestSec, t('mobileComponents.rest.off'))}
               onPress={() => restSheetRef.current?.present(defaultRestSec)}
-              accessibilityLabel={`Default rest period, ${formatRestLabel(defaultRestSec)}`}
+              accessibilityLabel={t('workout.defaultRestAccessibility', { value: formatRestLabel(defaultRestSec, t('mobileComponents.rest.off')) })}
               containerStyle={{ width: 110 }}
             />
           }
         />
 
         <SettingsRow
-          title="Rest timer sound"
-          subtitle="Play a sound when the rest timer ends while the app is open."
+          title={t('workout.restTimerSound')}
+          subtitle={t('workout.restTimerSoundSubtitle')}
           subtitleNumberOfLines={0}
           rightAccessory={
             <Switch
@@ -68,14 +70,14 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
               onValueChange={setRestTimerSoundEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
-              accessibilityLabel="Rest timer sound"
+              accessibilityLabel={t('workout.restTimerSound')}
             />
           }
         />
 
         <SettingsRow
-          title="Keep screen awake"
-          subtitle="Prevent the screen from sleeping while a workout is active."
+          title={t('workout.keepAwake')}
+          subtitle={t('workout.keepAwakeSubtitle')}
           subtitleNumberOfLines={0}
           rightAccessory={
             <Switch
@@ -83,7 +85,7 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
               onValueChange={setWorkoutKeepAwakeEnabled}
               trackColor={{ false: formDisabled, true: formEnabled }}
               thumbColor="#FFFFFF"
-              accessibilityLabel="Keep screen awake"
+              accessibilityLabel={t('workout.keepAwake')}
             />
           }
         />
