@@ -1524,11 +1524,29 @@ Actions:
             }
 
             case 'create_food': {
-              const targetUnit = args.unit || 'serving';
+              const rawUnit = args.unit || 'serving';
+              // A unit that already encodes a count ("4 pieces", "2 cups") must be
+              // split into a numeric serving_size and a bare unit. Stored verbatim it
+              // becomes serving_size=1, serving_unit="4 pieces" — which then renders as
+              // the nonsense "14 pieces" (serving_size concatenated with serving_unit)
+              // and scales wrong. Peel a leading positive number off as a multiplier.
+              const countPrefix = /^\s*(\d+(?:\.\d+)?)\s+(\S.*)$/.exec(rawUnit);
+              const hasPositivePrefix =
+                countPrefix !== null && Number(countPrefix[1]) > 0;
+              const unitMultiplier = hasPositivePrefix
+                ? Number(countPrefix![1])
+                : 1;
+              const targetUnit = countPrefix ? countPrefix[2].trim() : rawUnit;
               const isCountUnit = COUNT_BASED_UNITS.includes(
                 targetUnit.toLowerCase()
               );
-              const targetQuantity = args.quantity || (isCountUnit ? 1 : 100);
+              // A numeric prefix already states the serving size ("250 ml" is one
+              // 250 ml serving), so the implicit base is 1 — not the 100 default
+              // used for bare mass/volume units, which would store 25,000 ml.
+              const targetQuantity =
+                (args.quantity ||
+                  (hasPositivePrefix || isCountUnit ? 1 : 100)) *
+                unitMultiplier;
               const mealType =
                 args.meal_type_id || args.meal_type
                   ? await resolveMealType(
