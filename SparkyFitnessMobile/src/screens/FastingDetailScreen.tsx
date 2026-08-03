@@ -251,7 +251,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                 accessibilityRole="button"
                 accessibilityLabel="End fast"
               >
-                <Text className="text-base font-semibold text-bg-danger">End Fast</Text>
+                <Text className="text-base font-semibold text-icon-danger">End Fast</Text>
               </Pressable>
             </View>
 

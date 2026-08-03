@@ -72,12 +72,12 @@ const variantClasses: Record<ButtonVariant, { container: string; text: string; p
     pressed: 'opacity-70',
   },
   // Red text on a transparent container, for the delete/remove action at the
-  // bottom of a detail screen. `bg-danger` rather than the foreground
-  // `text-danger-subtle` token because that is the red these actions have
-  // always rendered.
+  // bottom of a detail screen. `icon-danger` is a saturated red that stays
+  // readable on the app background in every theme, unlike `bg-danger`, which
+  // is a fill color and goes near-illegible maroon in dark/AMOLED.
   destructive: {
     container: 'bg-transparent rounded-xl',
-    text: 'text-bg-danger font-medium',
+    text: 'text-icon-danger font-medium',
     pressed: 'opacity-70',
   },
 };
