@@ -56,7 +56,16 @@ describe('entryMatchesDue', () => {
     expect(entryMatchesDue(entry, due)).toBe(true);
   });
 
-  test('does NOT match PRN entries to scheduled due doses', () => {
+  test('does NOT match PRN entries to scheduled due doses even if schedule_id matches', () => {
+    const entry = createBaseEntry({
+      schedule_id: 'sched-456',
+      status: 'prn_taken',
+    });
+
+    expect(entryMatchesDue(entry, due)).toBe(false);
+  });
+
+  test('does NOT match PRN entries with null schedule_id to scheduled due doses', () => {
     const entry = createBaseEntry({
       schedule_id: null,
       status: 'prn_taken',

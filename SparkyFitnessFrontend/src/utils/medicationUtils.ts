@@ -10,9 +10,12 @@ import type { MedicationEntry } from '@/types/medications';
 export const entryMatchesDue = (
   e: MedicationEntry,
   due: { medication: { id: string }; schedule: { id: string } }
-): boolean =>
-  e.schedule_id === due.schedule.id ||
-  (e.entry_type === 'injection' && e.medication_id === due.medication.id) ||
-  (e.medication_id === due.medication.id &&
-    !e.schedule_id &&
-    e.status !== 'prn_taken');
+): boolean => {
+  if (e.status === 'prn_taken') return false;
+
+  return (
+    e.schedule_id === due.schedule.id ||
+    (e.entry_type === 'injection' && e.medication_id === due.medication.id) ||
+    (e.medication_id === due.medication.id && !e.schedule_id)
+  );
+};
