@@ -21,9 +21,25 @@ jest.mock('@/hooks/use-toast', () => ({
 describe('exportFoodDiary', () => {
   let createdBlobs: Blob[] = [];
 
+  beforeAll(() => {
+    if (!Blob.prototype.text) {
+      Blob.prototype.text = function () {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsText(this);
+        });
+      };
+    }
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     createdBlobs = [];
+    jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
     global.URL.createObjectURL = jest.fn((blob: Blob) => {
       createdBlobs.push(blob);
       return 'blob:test-url';
