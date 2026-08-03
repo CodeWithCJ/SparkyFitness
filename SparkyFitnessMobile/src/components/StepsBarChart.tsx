@@ -131,7 +131,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
         }),
       );
     },
-    [data],
+    [data, t],
   );
 
   const handleClearSelection = useCallback(() => {

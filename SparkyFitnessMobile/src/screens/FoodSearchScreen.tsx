@@ -324,7 +324,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       opts.unshift({ label: t('foodMealScreens.allSources'), value: ALL_PROVIDERS_VALUE });
     }
     return opts;
-  }, [providers]);
+  }, [providers, t]);
   // Temporary peek at another provider; does not change the saved default.
   const handleSelectProvider = useCallback((id: string) => {
     hasUserSelectedProvider.current = true;
@@ -522,7 +522,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       }
       showFoodInfo(externalFoodItemToFoodInfo(item));
     },
-    [selectedProvider, providers, showFoodInfo],
+    [selectedProvider, providers, showFoodInfo, t],
   );
 
   // --- Derived state ---
@@ -747,6 +747,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     filteredRecentMeals,
     filteredTopMeals,
     landingLimit,
+    t,
   ]);
 
   const resultSections = useMemo<ResultSection[]>(() => {
@@ -882,6 +883,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     showAllFoods,
     showAllMeals,
     ownershipFilter,
+    t,
   ]);
 
   // --- Row renderers (shared between landing and results) ---

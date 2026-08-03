@@ -119,7 +119,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
         },
       ]
     );
-  }, [updateSettings]);
+  }, [updateSettings, t]);
 
   const handleExportData = useCallback(async () => {
     try {
@@ -141,7 +141,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
       addLog(`Failed to export cycle data: ${error}`, 'ERROR');
       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.settings.exportFailed'), text2: t('mobileComponents.wellness.settings.exportError') });
     }
-  }, []);
+  }, [t]);
 
   const discreetMode = useDiscreetMode();
 

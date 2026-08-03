@@ -187,7 +187,7 @@ useEffect(() => {
     // whole component. Every path above falls through to this cleanup.
     importInFlightRef.current = false;
     setImportingExerciseId(null);
-  }, [queryClient, handleSelectExercise, navigation]);
+  }, [queryClient, handleSelectExercise, navigation, t]);
 
   const handlePreviewExercise = useCallback((item: Exercise) => {
     runNavigationAction(() => {
@@ -289,6 +289,7 @@ useEffect(() => {
     textMuted,
     getImageSource,
     profile,
+    t,
   ]);
 
   const filteredRecentExercises = useMemo(() => filterItems(recentExercises, ownershipFilter, profile?.id), [recentExercises, ownershipFilter, profile?.id]);
@@ -301,7 +302,7 @@ useEffect(() => {
        { title: t('workout.popular'), data: filteredTopExercises },
     ];
     return allSections.filter((section) => section.data.length > 0);
-  }, [filteredRecentExercises, filteredTopExercises]);
+  }, [filteredRecentExercises, filteredTopExercises, t]);
 
   const renderSectionHeader = ({ section }: { section: ExerciseSection }) => (
     <View className="px-4 py-2 bg-surface">

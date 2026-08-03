@@ -92,7 +92,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       fiber: toFieldString(estimate.totals.fiber_g),
       sugars: toFieldString(estimate.totals.sugar_g),
     }),
-    [estimate, request],
+    [estimate, request, t],
   );
 
   const [showConfidenceReason, setShowConfidenceReason] = useState(false);

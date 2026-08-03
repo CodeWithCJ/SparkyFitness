@@ -37,7 +37,7 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
      if (mode === 'pregnant') return t('mobileComponents.wellness.hub.logPregnancy');
      if (mode === 'ttc') return t('mobileComponents.wellness.hub.logFertility');
      return t('mobileComponents.wellness.hub.logDaily');
-  }, [discreetMode, mode]);
+   }, [discreetMode, mode, t]);
 
   const header = useScreenHeader({
     title: headerTitle,

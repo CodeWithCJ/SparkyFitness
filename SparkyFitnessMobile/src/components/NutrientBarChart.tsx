@@ -150,7 +150,7 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
         }),
       );
     },
-    [data, unit],
+    [data, unit, t],
   );
 
   const handleClearSelection = useCallback(() => {

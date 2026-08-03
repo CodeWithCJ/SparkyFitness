@@ -130,7 +130,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
         }),
       );
     },
-    [data, unit],
+    [data, unit, t],
   );
 
   const handleClearSelection = useCallback(() => {
