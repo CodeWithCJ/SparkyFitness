@@ -269,7 +269,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             const cleanEqFirst = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
             if (cleanEqFirst.length > 0) {
               const groupNutrFirst = buildGroupNutrition(data, undefined);
-              void Promise.all(
+              await Promise.all(
                 cleanEqFirst.map((eq) =>
                   createFoodVariant({
                     food_id: foodId,
@@ -342,7 +342,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                   const cleanEq = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
                   if (cleanEq.length > 0) {
                     const groupNutr = buildGroupNutrition(data, undefined);
-                    void Promise.all(
+                    await Promise.all(
                       cleanEq.map((eq) =>
                         createFoodVariant({
                           food_id: foodId,
