@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-08-02*
+*Last updated: 2026-08-03*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -49,6 +49,7 @@ npx expo prebuild --clean
 ## App Shell And Navigation
 
 - `App.tsx` is the root composition point. `App()` wraps `QueryClientProvider`, `KeyboardProvider`, `GestureHandlerRootView`, and `BottomSheetModalProvider`; `AppContent()` owns `NavigationContainer`, `SafeAreaProvider`, navigators, `AddSheet`, auth modals, the embedded/floating active-workout bars, the tab-bar `WhatsNewBanner`, and toasts.
+- App-shell logic lives in dedicated hooks that `AppContent` composes: `useInitialRoute`/`useAppStartup` (`src/hooks/useAppStartup.ts`) for the initial route, splash hide, and one-time service init; `useAutoSyncOnOpen` (`src/hooks/useAutoSyncOnOpen.ts`) for cold-start/foreground-return sync and the observer-yield window; `useAddSheetActions` (`src/hooks/useAddSheetActions.ts`) for AddSheet handlers and last-active-tab tracking. Error-boundary-wrapped `Safe*` screen components live in `src/navigation/safeScreens.tsx`.
 - Startup initializes theme, haptics, sounds, notification prefs, logs, timezone bootstrap, background sync, pending cache refreshes, fasting/hydration card visibility, and platform health observers.
 - Initial route comes from `getActiveServerConfig()`: no active config lands on `Onboarding`; otherwise users enter `Tabs`.
 - Deep links are enabled only after startup confirms `Tabs`, so widget links do not bypass first-run onboarding.
@@ -79,7 +80,7 @@ npx expo prebuild --clean
 - `src/components/` - reusable UI, charts, settings rows, custom tab bar, add sheet, workout HUD, form chrome, library rows, diary rows, serving sheets, food/workout editors, fasting UI, writeback UI, and `ui/` primitives.
 - `src/components/auth/` - MFA UI shared by onboarding, setup, and reauth.
 - `src/screens/` - top-level route destinations: dashboard, diary, settings, sync, logs, Whats New, fasting, food search/scan/photo, library CRUD flows, workout/activity flows, and measurement entry.
-- `src/navigation/` - nested navigation such as `FoodPhotoFlow`.
+- `src/navigation/` - navigation-level modules such as `safeScreens.tsx`, the error-boundary-wrapped screen components registered in `App.tsx`. (`FoodPhotoFlow` lives in `src/components/`.)
 - `src/hooks/` - TanStack Query hooks, auth/connection hooks, library/search/mutation hooks, measurement/water/check-in hooks, fasting hooks, workout form hooks, widget sync, query client, query keys, and cache helpers.
 - `src/services/api/` - backend clients. `apiClient.ts` handles normal API auth/proxy headers; `healthDataApi.ts`, `aiSettingsApi.ts`, food-photo estimate, and other raw fetch paths must keep auth, proxy, timeout, and session-expiry behavior aligned.
 - `src/services/healthconnect/` - Android Health Connect reads, native aggregation, transformation, enrichment, preferences, and writeback.
