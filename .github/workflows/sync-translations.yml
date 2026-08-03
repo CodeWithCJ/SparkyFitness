@@ -58,7 +58,9 @@ jobs:
         run: |
           echo "=== Formatting synced files to match codebase styling ==="
           npx prettier --write "main-repo/SparkyFitnessFrontend/public/locales/**/*.json"
-          npx prettier --write "translation-repo/locales/**/*.json"
+          # Only format the English locale here; the other languages are owned by
+          # Weblate and reformatting them would drag them into the English-only PR.
+          npx prettier --write "translation-repo/locales/en/**/*.json"
 
       # 4. Create a Pull Request in the translation repository for English locales
       - name: Create Pull Request in SparkyFitnessTranslations
@@ -66,6 +68,8 @@ jobs:
         with:
           token: ${{ secrets.TRANSLATIONS_PAT }}
           path: translation-repo
+          add-paths: |
+            locales/en
           commit-message: "chore(i18n): update English locales from main repo"
           branch: i18n/update-english-locales
           delete-branch: true
@@ -81,6 +85,9 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           path: main-repo
+          add-paths: |
+            SparkyFitnessFrontend/public/locales
+            :!SparkyFitnessFrontend/public/locales/en
           commit-message: "chore(i18n): sync non-English translations from Weblate"
           branch: i18n/sync-weblate-translations
           delete-branch: true
