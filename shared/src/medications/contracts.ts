@@ -6,6 +6,9 @@ import type { SharedScheduleRule } from './schedules.ts';
 
 export type MedicationEntryStatus = 'taken' | 'skipped' | 'snoozed' | 'prn_taken';
 
+/** Meal timing for a scheduled dose, relative to the nearest meal. */
+export type MedicationWithMeal = 'before' | 'with' | 'after';
+
 export interface Medication {
   id: string;
   user_id: string;
@@ -13,8 +16,19 @@ export interface Medication {
   display_name: string | null;
   type_id: string | null;
   route_id: string | null;
+  /**
+   * Per-unit concentration of the medication (e.g. 500 mg per tablet), not
+   * an amount to take. Display it as secondary information under the dose.
+   */
   strength_value: number | null;
   strength_unit: string | null;
+  /**
+   * Default amount taken per administration, in dose_unit (e.g. 2 tablet).
+   * Rows created by the web app may carry dose mirrored from strength
+   * (dose ≡ strength, in strength units); such rows are valid and mean
+   * "one unit per dose". Display precedence for a dose slot is
+   * schedule.dose_amount → dose_amount → strength_value (see formatDose).
+   */
   dose_amount: number | null;
   dose_unit: string | null;
   reason_text: string | null;
@@ -43,6 +57,10 @@ export interface MedicationSchedule extends SharedScheduleRule {
   medication_id: string;
   schedule_type_id: string;
   time_of_day: string | null;
+  /**
+   * Per-schedule override of the medication's default dose_amount,
+   * implicitly in the medication's dose_unit — there is no unit column.
+   */
   dose_amount: number | null;
   days_of_week: number[] | null;
   interval_days: number | null;
@@ -51,7 +69,7 @@ export interface MedicationSchedule extends SharedScheduleRule {
   cycle_off_days: number | null;
   prn_reason: string | null;
   prn_max_per_day: number | null;
-  with_meal: string | null;
+  with_meal: MedicationWithMeal | null;
   start_date: string | null;
   end_date: string | null;
   active: boolean;
@@ -60,6 +78,31 @@ export interface MedicationSchedule extends SharedScheduleRule {
 }
 
 export type MedicationDetail = Medication & { schedules: MedicationSchedule[] };
+
+export interface CreateScheduleInput {
+  schedule_type_id: string;
+  /** 'HH:MM' or 'HH:MM:SS'. Null for schedules without a fixed time (e.g. PRN). */
+  time_of_day?: string | null;
+  dose_amount?: number | null;
+  days_of_week?: number[] | null;
+  interval_days?: number | null;
+  day_of_month?: number | null;
+  cycle_on_days?: number | null;
+  cycle_off_days?: number | null;
+  with_meal?: MedicationWithMeal | null;
+  prn_reason?: string | null;
+  prn_max_per_day?: number | null;
+  /** 'YYYY-MM-DD' calendar-day string. */
+  start_date?: string | null;
+  /** 'YYYY-MM-DD' calendar-day string. */
+  end_date?: string | null;
+  active?: boolean;
+  source?: string;
+  custom_fields?: Record<string, unknown> | null;
+}
+
+/** source is set at creation and never updateable — the server ignores it on update. */
+export type UpdateScheduleInput = Partial<Omit<CreateScheduleInput, 'source'>>;
 
 export interface CreateMedicationInput {
   name: string;

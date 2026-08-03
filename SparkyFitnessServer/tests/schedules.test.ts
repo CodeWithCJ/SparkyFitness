@@ -221,6 +221,57 @@ describe('getDueDosesForDate helper', () => {
     );
   });
 
+  it('sorts due doses by time of day with untimed slots last', () => {
+    const meds = [
+      {
+        id: 'med-evening',
+        is_active: true,
+        name: 'Evening Med',
+        schedules: [
+          {
+            id: 'sched-evening',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: '21:00',
+          },
+        ],
+      },
+      {
+        id: 'med-untimed',
+        is_active: true,
+        name: 'Untimed Med',
+        schedules: [
+          {
+            id: 'sched-untimed',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: null,
+          },
+        ],
+      },
+      {
+        id: 'med-morning',
+        is_active: true,
+        name: 'Morning Med',
+        schedules: [
+          {
+            id: 'sched-morning',
+            schedule_type_id: 'daily',
+            active: true,
+            time_of_day: '08:00',
+          },
+        ],
+      },
+    ];
+
+    const doses = getDueDosesForDate(meds, '2026-06-25', TZ);
+    expect(doses.map((d) => d.schedule.id)).toEqual([
+      'sched-morning',
+      'sched-evening',
+      'sched-untimed',
+    ]);
+  });
+
   it('honors explicit schedule start_date even when set before created_at', () => {
     // An imported schedule with start_date before the medication's created_at
     // should still count historical doses (e.g. back-filled histories).

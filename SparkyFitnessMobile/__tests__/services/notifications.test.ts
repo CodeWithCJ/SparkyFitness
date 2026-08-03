@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { Alert, Platform } from 'react-native';
+import { createAudioPlayer } from 'expo-audio';
+import { Alert, AppState, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import {
   __resetNotificationStateForTests,
@@ -9,14 +10,16 @@ import {
   cancelScheduledNotification,
   dismissDeliveredNotification,
   ensureNotificationPermission,
-  fireRestCompleteHaptic,
+  fireRestCompleteCue,
   initNotifications,
   maybePromptForExactAlarmPermission,
   scheduleFastGoalNotification,
   scheduleRestNotification,
   setNotificationsEnabled,
+  setRestTimerNotificationsEnabled,
 } from '../../src/services/notifications';
 import { ExactAlarmBridge } from '../../src/services/ExactAlarmBridge';
+import { __resetSoundsForTests } from '../../src/services/sounds';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 
 jest.mock('../../src/services/ExactAlarmBridge', () => ({
@@ -51,6 +54,9 @@ const mockSetChannel = Notifications.setNotificationChannelAsync as jest.MockedF
 const mockSetCategory = Notifications.setNotificationCategoryAsync as jest.MockedFunction<
   typeof Notifications.setNotificationCategoryAsync
 >;
+const mockGetAllScheduled = Notifications.getAllScheduledNotificationsAsync as jest.MockedFunction<
+  typeof Notifications.getAllScheduledNotificationsAsync
+>;
 const mockGetPresented = Notifications.getPresentedNotificationsAsync as jest.MockedFunction<
   typeof Notifications.getPresentedNotificationsAsync
 >;
@@ -71,6 +77,7 @@ describe('notifications service', () => {
     mockSetHandler.mockClear();
     mockSetChannel.mockClear();
     mockSetCategory.mockReset().mockResolvedValue(undefined as any);
+    mockGetAllScheduled.mockReset().mockResolvedValue([]);
     mockGetPresented.mockReset().mockResolvedValue([]);
     mockDismiss.mockReset().mockResolvedValue(undefined as any);
     mockToastShow.mockClear();
@@ -120,6 +127,36 @@ describe('notifications service', () => {
     it('does not create an Android channel on iOS', async () => {
       await initNotifications();
       expect(mockSetChannel).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('foreground presentation', () => {
+    const getHandler = async () => {
+      await initNotifications();
+      return mockSetHandler.mock.calls[0][0].handleNotification;
+    };
+    const notificationWith = (categoryIdentifier: string | null) =>
+      ({ request: { content: { categoryIdentifier } } }) as Notifications.Notification;
+
+    it('mutes the rest ping sound while the rest chime is enabled', async () => {
+      const handler = await getHandler();
+      const result = await handler(notificationWith('rest-complete'));
+      expect(result.shouldPlaySound).toBe(false);
+    });
+
+    it('restores the rest ping sound when the chime is disabled', async () => {
+      useAppPreferencesStore.getState().setRestTimerSoundEnabled(false);
+      const handler = await getHandler();
+      const result = await handler(notificationWith('rest-complete'));
+      expect(result.shouldPlaySound).toBe(true);
+    });
+
+    it('keeps sound for non-rest notifications regardless of the chime preference', async () => {
+      const handler = await getHandler();
+      const medReminder = await handler(notificationWith('medication-reminder'));
+      expect(medReminder.shouldPlaySound).toBe(true);
+      const uncategorized = await handler(notificationWith(null));
+      expect(uncategorized.shouldPlaySound).toBe(true);
     });
   });
 
@@ -251,24 +288,48 @@ describe('notifications service', () => {
     });
   });
 
-  describe('fireRestCompleteHaptic', () => {
+  describe('fireRestCompleteCue', () => {
     const mockHaptic = Haptics.notificationAsync as jest.MockedFunction<
       typeof Haptics.notificationAsync
     >;
+    const mockCreatePlayer = createAudioPlayer as jest.MockedFunction<typeof createAudioPlayer>;
 
     beforeEach(() => {
       mockHaptic.mockClear();
+      mockCreatePlayer.mockClear();
+      __resetSoundsForTests();
+      Object.defineProperty(AppState, 'currentState', {
+        get: () => 'active',
+        configurable: true,
+      });
     });
 
     it('calls Haptics.notificationAsync with Success feedback type', () => {
-      fireRestCompleteHaptic();
+      fireRestCompleteCue();
       expect(mockHaptic).toHaveBeenCalledTimes(1);
       expect(mockHaptic).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Success);
     });
 
+    it('plays the rest chime when the preference is enabled', async () => {
+      fireRestCompleteCue();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mockCreatePlayer).toHaveBeenCalledTimes(1);
+      const player = mockCreatePlayer.mock.results[0].value;
+      expect(player.seekTo).toHaveBeenCalledWith(0);
+      expect(player.play).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips the chime when the preference is disabled but still fires the haptic', async () => {
+      useAppPreferencesStore.getState().setRestTimerSoundEnabled(false);
+      fireRestCompleteCue();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mockCreatePlayer).not.toHaveBeenCalled();
+      expect(mockHaptic).toHaveBeenCalledTimes(1);
+    });
+
     it('swallows rejections from Haptics', () => {
       mockHaptic.mockRejectedValueOnce(new Error('boom'));
-      expect(() => fireRestCompleteHaptic()).not.toThrow();
+      expect(() => fireRestCompleteCue()).not.toThrow();
     });
   });
 
@@ -304,6 +365,55 @@ describe('notifications service', () => {
     it('does not cancel scheduled notifications when turned on', async () => {
       await setNotificationsEnabled(true);
       expect(mockCancelAll).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('per-category notification toggles', () => {
+    it('skips scheduling a rest notification when the rest-timer toggle is off', async () => {
+      await setRestTimerNotificationsEnabled(false);
+      expect(await scheduleRestNotification('Bench Press', 60)).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
+      expect(mockGetPerms).not.toHaveBeenCalled();
+    });
+
+    it('still schedules a fast-goal notification when only the rest-timer toggle is off', async () => {
+      await setRestTimerNotificationsEnabled(false);
+      const target = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      expect(await scheduleFastGoalNotification(target)).toBe('notif-id');
+    });
+
+    it('skips scheduling a fast-goal notification when the fasting toggle is off', async () => {
+      useAppPreferencesStore.getState().setFastingGoalNotificationsEnabled(false);
+      const target = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      expect(await scheduleFastGoalNotification(target)).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
+    it('still schedules a rest notification when only the fasting toggle is off', async () => {
+      useAppPreferencesStore.getState().setFastingGoalNotificationsEnabled(false);
+      expect(await scheduleRestNotification('Bench Press', 60)).toBe('notif-id');
+    });
+
+    it('cancels only pending rest pings when the rest-timer toggle is turned off', async () => {
+      mockGetAllScheduled.mockResolvedValue([
+        { identifier: 'rest-1', content: { categoryIdentifier: 'rest-complete' } },
+        { identifier: 'med-1', content: { categoryIdentifier: 'medication-reminder' } },
+        { identifier: 'fast-1', content: {} },
+      ] as any);
+
+      await setRestTimerNotificationsEnabled(false);
+
+      expect(useAppPreferencesStore.getState().restTimerNotificationsEnabled).toBe(false);
+      expect(mockCancel).toHaveBeenCalledTimes(1);
+      expect(mockCancel).toHaveBeenCalledWith('rest-1');
+      expect(mockCancelAll).not.toHaveBeenCalled();
+    });
+
+    it('does not cancel anything when the rest-timer toggle is turned on', async () => {
+      await setRestTimerNotificationsEnabled(true);
+      expect(useAppPreferencesStore.getState().restTimerNotificationsEnabled).toBe(true);
+      expect(mockGetAllScheduled).not.toHaveBeenCalled();
+      expect(mockCancel).not.toHaveBeenCalled();
     });
   });
 

@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import { fireSuccessHaptic } from './haptics';
+import { isRestTimerSoundEnabled, playRestCompleteSound } from './sounds';
 import { ExactAlarmBridge } from './ExactAlarmBridge';
 import { useAppPreferencesStore, __resetAppPreferencesStoreForTests } from '../stores/appPreferencesStore';
 
@@ -56,6 +57,30 @@ export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
   }
 }
 
+/**
+ * Updates the rest-timer notification toggle. Turning it off also cancels any
+ * pending rest-complete ping so one scheduled mid-rest doesn't still fire.
+ */
+export async function setRestTimerNotificationsEnabled(enabled: boolean): Promise<void> {
+  useAppPreferencesStore.getState().setRestTimerNotificationsEnabled(enabled);
+  if (!enabled) {
+    await cancelScheduledRestNotifications();
+  }
+}
+
+async function cancelScheduledRestNotifications(): Promise<void> {
+  try {
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      pending
+        .filter((n) => n.content.categoryIdentifier === REST_COMPLETE_CATEGORY)
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    );
+  } catch (err) {
+    addLog(`cancelScheduledRestNotifications failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
 export async function initNotifications(): Promise<void> {
   if (initialized) return;
   initialized = true;
@@ -63,11 +88,17 @@ export async function initNotifications(): Promise<void> {
   try {
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {
-        const isMedReminder = notification.request.content.categoryIdentifier === MEDICATION_REMINDER_CATEGORY;
+        const category = notification.request.content.categoryIdentifier;
+        const isMedReminder = category === MEDICATION_REMINDER_CATEGORY;
+        // While the in-app chime owns the foreground rest cue, the rest ping's
+        // notification sound is muted so the two never double up; turning the
+        // chime off restores it.
+        const restPingMuted =
+          category === REST_COMPLETE_CATEGORY && isRestTimerSoundEnabled();
         return {
           shouldShowBanner: isMedReminder,
           shouldShowList: isMedReminder,
-          shouldPlaySound: true,
+          shouldPlaySound: !restPingMuted,
           shouldSetBadge: false,
         };
       },
@@ -101,7 +132,7 @@ export async function initNotifications(): Promise<void> {
     await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
       {
         identifier: MEDICATION_TAKEN_ACTION,
-        buttonTitle: 'Take',
+        buttonTitle: 'Log as taken',
         options: { opensAppToForeground: false },
       },
       {
@@ -228,7 +259,8 @@ export async function scheduleRestNotification(
   seconds: number,
   content?: { title?: string; body?: string },
 ): Promise<string | null> {
-  if (!useAppPreferencesStore.getState().notificationsEnabled) return null;
+  const prefs = useAppPreferencesStore.getState();
+  if (!prefs.notificationsEnabled || !prefs.restTimerNotificationsEnabled) return null;
 
   const granted = await ensureNotificationPermission();
   if (!granted) return null;
@@ -304,7 +336,8 @@ export function addNotificationResponseListener(
 export async function scheduleFastGoalNotification(
   targetEndTime: string,
 ): Promise<string | null> {
-  if (!useAppPreferencesStore.getState().notificationsEnabled) return null;
+  const prefs = useAppPreferencesStore.getState();
+  if (!prefs.notificationsEnabled || !prefs.fastingGoalNotificationsEnabled) return null;
 
   const target = new Date(targetEndTime);
   if (Number.isNaN(target.getTime()) || target.getTime() <= Date.now()) {
@@ -359,8 +392,10 @@ export async function cancelAllScheduledNotifications(): Promise<void> {
   }
 }
 
-export function fireRestCompleteHaptic(): void {
+/** Haptic + optional foreground chime for the resting → ready flip. */
+export function fireRestCompleteCue(): void {
   fireSuccessHaptic();
+  playRestCompleteSound();
 }
 
 /** Test-only helper — resets module-level state and the preferences store. */

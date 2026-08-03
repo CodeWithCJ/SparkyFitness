@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, ClipboardList, Pencil } from 'lucide-react';
-import { format } from 'date-fns';
+
 import { Timer, Activity } from 'lucide-react';
 import {
   MeasurementUnit,
@@ -51,6 +51,8 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
     measurementDecimalPlaces,
+    formatDateInUserTimezone,
+    formatTime,
   } = usePreferences();
   const { t } = useTranslation();
 
@@ -190,13 +192,9 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                             : measurementName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {format(
-                            new Date(measurement.entry_timestamp),
-                            'h:mm a'
-                          )}{' '}
-                          &middot;{' '}
-                          {format(
-                            new Date(measurement.entry_timestamp),
+                          {formatTime(measurement.entry_timestamp)} &middot;{' '}
+                          {formatDateInUserTimezone(
+                            measurement.entry_timestamp,
                             'MMM d'
                           )}
                         </p>

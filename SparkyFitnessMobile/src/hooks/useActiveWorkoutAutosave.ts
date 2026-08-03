@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { updateWorkout } from '../services/api/exerciseApi';
+import { ApiError } from '../services/api/errors';
 import { syncExerciseSessionInCache } from './syncExerciseSessionInCache';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { buildSessionExercisesPayload } from '../utils/workoutSession';
@@ -37,9 +38,14 @@ export async function saveActiveWorkoutSession(
   // Entry-id order at send time: applyServerSession compares it against the
   // local session so a mid-flight reorder/delete can't be grafted positionally.
   const sentEntryIds = state.session.exercises.map((e) => e.id);
+  // Captured before the request: the user may end or swap the session while
+  // it is in flight, so the failure log must describe the session that was
+  // being saved, not whatever the store holds at catch time.
+  const sessionId = state.sessionId;
+  const sessionSource = state.session.source ?? 'unknown';
   try {
     const trimmedName = state.session.name.trim();
-    const result = await updateWorkout(state.sessionId, {
+    const result = await updateWorkout(sessionId, {
       // Persist the (possibly renamed) session name; skip an empty string so
       // the server's min(1) name validation isn't tripped.
       ...(trimmedName.length > 0 ? { name: trimmedName } : {}),
@@ -54,8 +60,20 @@ export async function saveActiveWorkoutSession(
     syncExerciseSessionInCache(queryClient, result);
     return 'saved';
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+
+    const statusCode =
+      error instanceof ApiError ? error.statusCode : undefined;
+
+    const responseBody =
+      error instanceof ApiError ? error.body : undefined;
+
     addLog('Active workout autosave failed', 'ERROR', [
-      error instanceof Error ? error.message : String(error),
+      `sessionId: ${sessionId}`,
+      `session source: ${sessionSource}`,
+      `status: ${statusCode ?? 'unknown'}`,
+      `server response: ${responseBody ?? errorMessage}`,
     ]);
     return 'failed';
   }

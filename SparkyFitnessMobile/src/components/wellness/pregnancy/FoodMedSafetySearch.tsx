@@ -4,7 +4,6 @@ import { lookupSafety, FOOD_SAFETY, MED_SAFETY } from '@workspace/shared';
 import type { SafetyItem, SafetyStatus } from '@workspace/shared';
 import FormInput from '../../FormInput';
 import SegmentedControl from '../../SegmentedControl';
-import { useCSSVariable } from 'uniwind';
 
 const STATUS_STYLE: Record<SafetyStatus, { bg: string; text: string; label: string }> = {
   safe: { bg: 'bg-green-100', text: 'text-green-700', label: 'Safe' },
@@ -18,7 +17,6 @@ const FoodMedSafetySearch: React.FC = () => {
   const [category, setCategory] = useState<'food' | 'med'>('food');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), DEBOUNCE_MS);
@@ -31,8 +29,8 @@ const FoodMedSafetySearch: React.FC = () => {
   }, [debouncedQuery, category]);
 
   return (
-    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
-      <Text className="text-text-primary text-base font-bold">Food & Medication Safety</Text>
+    <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
+      <Text className="text-base font-bold text-text-secondary">Food & Medication Safety</Text>
 
       <SegmentedControl
         segments={[
@@ -46,25 +44,28 @@ const FoodMedSafetySearch: React.FC = () => {
       <FormInput
         value={query}
         onChangeText={setQuery}
-        placeholder={category === 'food' ? 'Search a food, e.g. sushi' : 'Search a medication, e.g. ibuprofen'}
+        placeholder={category === 'food' ? 'Sushi' : 'Ibuprofen'}
       />
 
       {!debouncedQuery.trim() ? (
-        <Text className="text-xs italic" style={{ color: textMuted }}>
-          Search to check if it&apos;s considered safe during pregnancy.
+        <Text className="text-text-secondary text-sm">
+          Search to see how a food or medication is commonly categorized during pregnancy.
         </Text>
       ) : results.length === 0 ? (
-        <Text className="text-xs italic" style={{ color: textMuted }}>
-          No match found. This list isn&apos;t exhaustive — ask your provider if unsure.
+        <Text className="text-text-secondary text-sm">
+          No match found. This list is not exhaustive, so ask your provider if unsure.
         </Text>
       ) : (
-        <View className="gap-2">
-          {results.map((item) => {
+        <View>
+          {results.map((item, idx) => {
             const style = STATUS_STYLE[item.status];
             return (
-              <View key={item.name} className="rounded-xl bg-raised p-3 gap-1">
+              <View
+                key={item.name}
+                className={`py-2 gap-1 ${idx < results.length - 1 ? 'border-b border-border-subtle' : ''}`}
+              >
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-text-primary text-sm font-semibold flex-1 mr-2">
+                  <Text className="text-text-primary text-base font-semibold flex-1 mr-2">
                     {item.name}
                   </Text>
                   <View className={`rounded-full px-2.5 py-0.5 ${style.bg}`}>
@@ -77,6 +78,10 @@ const FoodMedSafetySearch: React.FC = () => {
           })}
         </View>
       )}
+
+      <Text className="text-text-secondary text-sm">
+        General guidance only, not medical advice. Always confirm with your provider.
+      </Text>
     </View>
   );
 };

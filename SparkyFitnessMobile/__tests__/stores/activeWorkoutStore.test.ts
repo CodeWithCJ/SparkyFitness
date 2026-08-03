@@ -9,7 +9,7 @@ import {
   addNotificationResponseListener,
   cancelScheduledNotification,
   dismissDeliveredNotification,
-  fireRestCompleteHaptic,
+  fireRestCompleteCue,
   scheduleRestNotification,
 } from '../../src/services/notifications';
 import { fireSelectionHaptic, fireSuccessHaptic } from '../../src/services/haptics';
@@ -23,7 +23,7 @@ import type { Exercise } from '../../src/types/exercise';
 jest.mock('../../src/services/notifications', () => ({
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
   cancelScheduledNotification: jest.fn(async () => undefined),
-  fireRestCompleteHaptic: jest.fn(),
+  fireRestCompleteCue: jest.fn(),
   COMPLETE_SET_ACTION: 'complete-set',
   addNotificationResponseListener: jest.fn(() => ({ remove: jest.fn() })),
   dismissDeliveredNotification: jest.fn(async () => undefined),
@@ -51,8 +51,8 @@ const mockSchedule = scheduleRestNotification as jest.MockedFunction<
 const mockCancel = cancelScheduledNotification as jest.MockedFunction<
   typeof cancelScheduledNotification
 >;
-const mockHaptic = fireRestCompleteHaptic as jest.MockedFunction<
-  typeof fireRestCompleteHaptic
+const mockHaptic = fireRestCompleteCue as jest.MockedFunction<
+  typeof fireRestCompleteCue
 >;
 const mockSuccessHaptic = fireSuccessHaptic as jest.MockedFunction<
   typeof fireSuccessHaptic
@@ -349,6 +349,55 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.setState({ createdByLiveStart: true });
       useActiveWorkoutStore.getState().startWorkoutAtSet(makeSession(), '102');
       expect(useActiveWorkoutStore.getState().createdByLiveStart).toBe(false);
+    });
+
+    it('records the source preset link when passed', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+        createdByLiveStart: true,
+        sourcePresetId: 42,
+        sourceServerConfigId: 'config-1',
+      });
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sourcePresetId).toBe(42);
+      expect(state.sourceServerConfigId).toBe('config-1');
+    });
+
+    it('defaults the source preset link to null', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), { createdByLiveStart: true });
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sourcePresetId).toBeNull();
+      expect(state.sourceServerConfigId).toBeNull();
+    });
+
+    it('clearWorkout resets the source preset link', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+        sourcePresetId: 42,
+        sourceServerConfigId: 'config-1',
+      });
+      useActiveWorkoutStore.getState().clearWorkout();
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sourcePresetId).toBeNull();
+      expect(state.sourceServerConfigId).toBeNull();
+    });
+
+    it('startWorkoutAtSet clears any source preset link', () => {
+      useActiveWorkoutStore.setState({ sourcePresetId: 42, sourceServerConfigId: 'config-1' });
+      useActiveWorkoutStore.getState().startWorkoutAtSet(makeSession(), '102');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.sourcePresetId).toBeNull();
+      expect(state.sourceServerConfigId).toBeNull();
+    });
+
+    it('persists the source preset link via partialize', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+        sourcePresetId: 42,
+        sourceServerConfigId: 'config-1',
+      });
+      const persisted = useActiveWorkoutStore.persist
+        .getOptions()
+        .partialize!(useActiveWorkoutStore.getState()) as Record<string, unknown>;
+      expect(persisted.sourcePresetId).toBe(42);
+      expect(persisted.sourceServerConfigId).toBe('config-1');
     });
   });
 
@@ -1043,6 +1092,60 @@ describe('activeWorkoutStore', () => {
           60,
           expect.objectContaining({ body: expect.stringContaining('6 reps target') }),
         );
+      });
+    });
+
+    describe('cardio-modality adoption', () => {
+      /** The base empty session with ex-1 flipped to a cardio exercise. */
+      function makeCardioSession(): PresetSessionResponse {
+        const session = makeEmptySession();
+        return {
+          ...session,
+          exercises: session.exercises.map((e, i) =>
+            i === 0
+              ? {
+                  ...e,
+                  exercise_snapshot: {
+                    ...e.exercise_snapshot,
+                    modality: 'duration_distance',
+                  } as never,
+                  sets: e.sets.map((s) => ({ ...s, duration: null, distance: null })),
+                }
+              : e,
+          ),
+        };
+      }
+
+      it('adopts planned duration AND distance into an untouched cardio set on completion', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeCardioSession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [
+            [
+              { weight: null, reps: null, duration: 1500, distance: 5 },
+              { weight: null, reps: null, duration: 1500, distance: 5 },
+            ],
+          ],
+        });
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.duration).toBe(1500);
+        expect(set0.distance).toBe(5);
+      });
+
+      it('fills only the empty cardio cell — a typed duration is kept, distance still adopts', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeCardioSession(), {
+          createdByLiveStart: true,
+          plannedSetValues: [[{ weight: null, reps: null, duration: 1500, distance: 5 }]],
+        });
+        useActiveWorkoutStore.getState().updateSetField('101', { duration: 1800 });
+
+        useActiveWorkoutStore.getState().completeSet('101');
+
+        const set0 = useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        expect(set0.duration).toBe(1800);
+        expect(set0.distance).toBe(5);
       });
     });
 

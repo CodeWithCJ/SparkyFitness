@@ -19,7 +19,7 @@ interface WorkoutPlaybackExercisesListProps {
   onUncompleteSet: (pointer: WorkoutSetPointer) => void;
   onSetFieldChange: (
     pointer: WorkoutSetPointer,
-    field: 'reps' | 'weight' | 'rest_time' | 'set_type' | 'notes',
+    field: 'reps' | 'weight' | 'duration' | 'rest_time' | 'set_type' | 'notes',
     value: number | string | null
   ) => void;
   onOpenRestEditor: (pointer: WorkoutSetPointer) => void;
@@ -49,6 +49,12 @@ const WorkoutPlaybackExercisesList = ({
   return (
     <div className="space-y-2">
       {exercises.map((exercise, exerciseIndex) => {
+        const isTimedExercise = exercise.modality
+          ? exercise.modality === 'duration' ||
+            exercise.modality === 'duration_distance'
+          : exercise.sets.some(
+              (set) => set.duration != null && set.reps == null
+            );
         const completedSets = exercise.sets.filter(
           (set) => set.completed
         ).length;
@@ -118,15 +124,26 @@ const WorkoutPlaybackExercisesList = ({
                       <div className="flex justify-center px-3">
                         {t('exercise.workoutPlaybackPage.columnType', 'Type')}
                       </div>
-                      <div className="flex justify-center px-3">
-                        {t('exercise.workoutPlaybackPage.columnReps', 'Reps')}
-                      </div>
-                      <div className="flex justify-center px-3">
-                        {t(
-                          'exercise.workoutPlaybackPage.columnWeight',
-                          'Weight'
-                        )}
-                      </div>
+                      {isTimedExercise ? (
+                        <div className="flex justify-center px-3 sm:col-span-2">
+                          {t('workout.durationSec', 'Duration (s)')}
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-center px-3">
+                            {t(
+                              'exercise.workoutPlaybackPage.columnReps',
+                              'Reps'
+                            )}
+                          </div>
+                          <div className="flex justify-center px-3">
+                            {t(
+                              'exercise.workoutPlaybackPage.columnWeight',
+                              'Weight'
+                            )}
+                          </div>
+                        </>
+                      )}
                       <div className="flex justify-center px-3">
                         {t('exercise.workoutPlaybackPage.columnRest', 'Rest')}
                       </div>
@@ -146,8 +163,10 @@ const WorkoutPlaybackExercisesList = ({
                         setIndex={setIndex}
                         setNumber={set.set_number}
                         setType={set.set_type}
+                        isTimedExercise={isTimedExercise}
                         reps={set.reps}
                         weight={set.weight}
+                        duration={set.duration}
                         restTime={set.rest_time}
                         notes={set.notes}
                         completed={set.completed}

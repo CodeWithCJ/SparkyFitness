@@ -1986,7 +1986,8 @@ CREATE TABLE public.food_entries (
     source character varying(50),
     source_id character varying(255),
     entry_time time without time zone,
-    CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL))))
+    CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
+    CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
 );
 
 
@@ -2113,6 +2114,7 @@ CREATE TABLE public.food_variants (
     traces text[],
     CONSTRAINT food_variants_ai_confidence_check CHECK (((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL))),
     CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
+    CONSTRAINT food_variants_serving_size_positive CHECK ((serving_size > (0)::numeric)),
     CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))
 );
 
@@ -3490,8 +3492,8 @@ CREATE TABLE public.user_preferences (
     time_format text DEFAULT 'h:mm A'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
-    CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text]))),
-    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
+    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text))),
+    CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text])))
 );
 
 

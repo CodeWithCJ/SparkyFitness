@@ -32,7 +32,7 @@ import {
 import { useCopyFoodEntriesFromYesterdayMutation } from '@/hooks/Diary/useFoodEntries';
 import type { Food, FoodEntry, GlycemicIndex } from '@/types/food';
 import type { Meal, FoodEntryMeal } from '@/types/meal';
-import { toHourMinute } from '@workspace/shared';
+import { formatTimeOfDayString } from '@/utils/timeFormatters';
 interface MealTotals {
   calories: number;
   protein: number;
@@ -120,8 +120,12 @@ const MealCard = ({
   customNutrients = [], // Default to empty array
 }: MealCardProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, nutrientDisplayPreferences, getDateRelationToToday } =
-    usePreferences();
+  const {
+    loggingLevel,
+    nutrientDisplayPreferences,
+    getDateRelationToToday,
+    timeFormat,
+  } = usePreferences();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
 
@@ -464,7 +468,10 @@ const MealCard = ({
                               <>
                                 <span aria-hidden="true">&bull;</span>
                                 <span className="font-medium text-blue-600 dark:text-blue-400">
-                                  {toHourMinute(item.entry_time)}
+                                  {formatTimeOfDayString(
+                                    item.entry_time,
+                                    timeFormat
+                                  )}
                                 </span>
                               </>
                             )}
@@ -610,7 +617,7 @@ const MealCard = ({
                         </span>
                         {item.entry_time && (
                           <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
-                            {toHourMinute(item.entry_time)}
+                            {formatTimeOfDayString(item.entry_time, timeFormat)}
                           </span>
                         )}
                         {isFromMealPlan && (

@@ -52,10 +52,12 @@ jest.mock('../../src/components/ActiveWorkoutSetRow', () => {
       previousSet,
       assumed,
       displayNumber,
+      distanceUnit,
     }: any) => (
       <View
         testID={`set-row-${set.id}`}
         displayNumber={displayNumber}
+        distanceUnit={distanceUnit}
         assumed={assumed == null ? 'none' : `${assumed.weight}x${assumed.reps}`}
         accessibilityLabel={`row ${set.id} ${state}${mode === 'view' ? ' read-only' : ''}${completedBadge ? ' badged' : ''}${isFocused ? ' focused' : ''}`}
         accessibilityHint={`next:${nextSetId ?? 'none'} entry:${entryId ?? 'none'}`}
@@ -264,6 +266,42 @@ describe('ActiveWorkoutExerciseCard', () => {
       });
       expect(utils.getByText('Sec')).toBeTruthy();
       expect(utils.queryByText('Duration (min)')).toBeNull();
+      expect(utils.queryByText('Km')).toBeNull();
+    });
+
+    it('adds a distance column to the view-mode cardio table', () => {
+      const base = withModality('duration_distance');
+      const utils = renderCard(true, {
+        mode: 'view',
+        exercise: {
+          ...base,
+          sets: [base.sets[0], { ...base.sets[0], id: 102, set_number: 2 }],
+        },
+      });
+      expect(utils.getByText('Km')).toBeTruthy();
+    });
+
+    it('labels the view-mode distance column Mi and forwards the unit to rows', () => {
+      const base = withModality('duration_distance');
+      const utils = renderCard(true, {
+        mode: 'view',
+        distanceUnit: 'miles',
+        exercise: {
+          ...base,
+          sets: [base.sets[0], { ...base.sets[0], id: 102, set_number: 2 }],
+        },
+      });
+      expect(utils.getByText('Mi')).toBeTruthy();
+      expect(utils.getByTestId('set-row-101').props.distanceUnit).toBe('miles');
+    });
+
+    it('omits the distance column on plain duration view tables', () => {
+      const utils = renderCard(true, {
+        mode: 'view',
+        exercise: withModality('duration'),
+      });
+      expect(utils.getByText('Sec')).toBeTruthy();
+      expect(utils.queryByText('Km')).toBeNull();
     });
 
     it('keeps the Sec table for cardio when the form is disabled (preset surfaces)', () => {

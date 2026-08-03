@@ -824,6 +824,11 @@ const options = {
               nullable: true,
               description: 'Duration in seconds',
             },
+            distance: {
+              type: 'number',
+              nullable: true,
+              description: 'Distance in km (cardio sets)',
+            },
             rest_time: {
               type: 'integer',
               nullable: true,

@@ -14,6 +14,27 @@ const SETTINGS_COLS = `id, user_id, enabled, mode, avg_cycle_length_override, av
 const LOG_COLS = `id, user_id, entry_date, flow_level, product_usage, cervical_mucus,
   unusual_discharge, energy, libido, notes, intercourse, intercourse_protected, cervical_position, custom_fields, created_at, updated_at`;
 
+const LOG_WRITABLE_COLS = [
+  'flow_level',
+  'product_usage',
+  'cervical_mucus',
+  'unusual_discharge',
+  'energy',
+  'libido',
+  'notes',
+  'intercourse',
+  'intercourse_protected',
+  'cervical_position',
+  'custom_fields',
+] as const;
+
+type LogWritableCol = (typeof LOG_WRITABLE_COLS)[number];
+
+const LOG_JSONB_COLS = new Set<LogWritableCol>([
+  'product_usage',
+  'custom_fields',
+]);
+
 const CYCLE_COLS = `id, user_id, start_date, end_date, period_length, cycle_length, is_excluded,
   source, birth_control_method, created_at, updated_at`;
 
@@ -139,41 +160,24 @@ async function upsertLog(
 ) {
   const client = await getClient(userId);
   try {
+    // Only the fields the caller sent are written. An omitted field keeps its
+    // stored value; an explicit null clears it, so the UI can un-log an entry.
+    const cols = LOG_WRITABLE_COLS.filter((col) => col in data);
+    const values = cols.map((col) => {
+      const value = data[col];
+      if (value === null || value === undefined) return null;
+      return LOG_JSONB_COLS.has(col) ? JSON.stringify(value) : value;
+    });
+    const placeholders = cols.map((_, i) => `$${i + 3}`);
+    const assignments = cols.map((col, i) => `${col} = $${i + 3}`);
+
     const result = await client.query(
-      `INSERT INTO cycle_daily_entries (
-         user_id, entry_date, flow_level, product_usage, cervical_mucus,
-         unusual_discharge, energy, libido, notes, intercourse, intercourse_protected, cervical_position, custom_fields)
-       VALUES ($1, $2, $3, COALESCE($4, '{}'::jsonb), $5,
-         COALESCE($6::text[], '{}'), $7, $8, $9, $10, $11, $12, COALESCE($13, '{}'::jsonb))
+      `INSERT INTO cycle_daily_entries (user_id, entry_date${cols.map((col) => `, ${col}`).join('')})
+       VALUES ($1, $2${placeholders.map((p) => `, ${p}`).join('')})
        ON CONFLICT (user_id, entry_date) DO UPDATE SET
-         flow_level = COALESCE($3, cycle_daily_entries.flow_level),
-         product_usage = COALESCE($4, cycle_daily_entries.product_usage),
-         cervical_mucus = COALESCE($5, cycle_daily_entries.cervical_mucus),
-         unusual_discharge = COALESCE($6::text[], cycle_daily_entries.unusual_discharge),
-         energy = COALESCE($7, cycle_daily_entries.energy),
-         libido = COALESCE($8, cycle_daily_entries.libido),
-         notes = COALESCE($9, cycle_daily_entries.notes),
-         intercourse = COALESCE($10, cycle_daily_entries.intercourse),
-         intercourse_protected = COALESCE($11, cycle_daily_entries.intercourse_protected),
-         cervical_position = COALESCE($12, cycle_daily_entries.cervical_position),
-         custom_fields = COALESCE($13, cycle_daily_entries.custom_fields),
-         updated_at = NOW()
+         ${[...assignments, 'updated_at = NOW()'].join(',\n         ')}
        RETURNING ${LOG_COLS}`,
-      [
-        userId,
-        date,
-        data.flow_level ?? null,
-        data.product_usage ? JSON.stringify(data.product_usage) : null,
-        data.cervical_mucus ?? null,
-        data.unusual_discharge ?? null,
-        data.energy ?? null,
-        data.libido ?? null,
-        data.notes ?? null,
-        data.intercourse ?? null,
-        data.intercourse_protected ?? null,
-        data.cervical_position ?? null,
-        data.custom_fields ? JSON.stringify(data.custom_fields) : null,
-      ]
+      [userId, date, ...values]
     );
     return result.rows[0];
   } finally {

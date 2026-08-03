@@ -1,4 +1,10 @@
-import type { MedicationEntry } from '@workspace/shared';
+import type { MedicationDetail, MedicationEntry, SharedScheduleRule } from '@workspace/shared';
+
+/** A scheduled dose slot on a given day, as produced by getDueDosesForDate. */
+export interface DueDose {
+  medication: MedicationDetail;
+  schedule: SharedScheduleRule & { id: string };
+}
 
 /**
  * True when a logged entry belongs to the given dose slot.
@@ -20,6 +26,15 @@ export function entryMatchesDose(
     );
   }
   return entry.medication_id === medicationId && !entry.schedule_id;
+}
+
+export type DoseSlotStatus = 'pending' | 'taken' | 'skipped';
+
+/** Maps a slot's matched entry (if any) to its display status. */
+export function doseSlotStatus(entry: MedicationEntry | undefined): DoseSlotStatus {
+  if (entry?.status === 'taken' || entry?.status === 'prn_taken') return 'taken';
+  if (entry?.status === 'skipped') return 'skipped';
+  return 'pending';
 }
 
 /** True when the dose slot already has a terminal (taken or skipped) entry. */

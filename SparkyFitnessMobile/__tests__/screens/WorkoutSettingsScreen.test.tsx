@@ -82,4 +82,22 @@ describe('WorkoutSettingsScreen', () => {
     expect(useAppPreferencesStore.getState().defaultRestSec).toBe(150);
     expect(getByText('2:30')).toBeTruthy();
   });
+
+  it('toggles the rest timer sound preference from the switch', () => {
+    const { getAllByRole } = renderScreen();
+    const [soundToggle] = getAllByRole('switch');
+    expect(soundToggle.props.value).toBe(true);
+
+    fireEvent(soundToggle, 'valueChange', false);
+    expect(useAppPreferencesStore.getState().restTimerSoundEnabled).toBe(false);
+  });
+
+  it('toggles the keep screen awake preference from the switch', () => {
+    const { getAllByRole } = renderScreen();
+    const [, keepAwakeToggle] = getAllByRole('switch');
+    expect(keepAwakeToggle.props.value).toBe(false);
+
+    fireEvent(keepAwakeToggle, 'valueChange', true);
+    expect(useAppPreferencesStore.getState().workoutKeepAwakeEnabled).toBe(true);
+  });
 });

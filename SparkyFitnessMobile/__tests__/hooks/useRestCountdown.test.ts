@@ -9,7 +9,7 @@ import {
 jest.mock('../../src/services/notifications', () => ({
   scheduleRestNotification: jest.fn(async () => 'notif-abc'),
   cancelScheduledNotification: jest.fn(async () => undefined),
-  fireRestCompleteHaptic: jest.fn(),
+  fireRestCompleteCue: jest.fn(),
 }));
 
 jest.mock('../../src/services/haptics', () => ({

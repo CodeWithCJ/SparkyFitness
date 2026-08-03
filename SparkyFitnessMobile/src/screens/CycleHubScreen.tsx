@@ -12,6 +12,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
+import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import SegmentedControl from '../components/SegmentedControl';
 import CycleCalendarGrid from '../components/wellness/CycleCalendarGrid';
 import CycleHistoryList from '../components/wellness/CycleHistoryList';
@@ -46,17 +47,30 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
     }
   }, [isModeLoading, enabled, onboardedAt, navigation]);
 
-  // Selected Date State
-  const [selectedDate, setSelectedDate] = useState(getTodayDate);
+  // Anchor date for predictions, alerts, and the header log action
+  const [selectedDate] = useState(getTodayDate);
 
-  // Tabs State: 'insights' | 'history'
-  const [activeTab, setActiveTab] = useState<'insights' | 'history'>('insights');
+  // Tabs State. The middle segment is mode-specific: cycle/TTC gets Trends,
+  // pregnancy gets Tools; a middle-tab selection left over from the other mode
+  // falls back to Overview.
+  const [activeTab, setActiveTab] = useState<'overview' | 'trends' | 'tools' | 'history'>('overview');
+  const middleTab =
+    mode === 'pregnant'
+      ? ({ key: 'tools', label: 'Tools' } as const)
+      : ({ key: 'trends', label: 'Trends' } as const);
+  const currentTab =
+    (activeTab === 'trends' || activeTab === 'tools') && activeTab !== middleTab.key
+      ? 'overview'
+      : activeTab;
 
-  // Queries
+  // Queries. Logs feed the History calendar, so the range follows the month
+  // it is showing, padded to cover the adjacent-month days the grid renders.
   const { cycles, isLoading: isHistoryLoading } = useCycleHistory();
+  const [visibleMonth, setVisibleMonth] = useState(() => selectedDate.slice(0, 7));
+  const monthStart = `${visibleMonth}-01`;
   const { logs, isLoading: isLogsLoading } = useCycleLogsRange({
-    startDate: useMemo(() => addDays(selectedDate, -60), [selectedDate]),
-    endDate: useMemo(() => addDays(selectedDate, 60), [selectedDate]),
+    startDate: useMemo(() => addDays(monthStart, -7), [monthStart]),
+    endDate: useMemo(() => addDays(monthStart, 45), [monthStart]),
   });
 
   const isLoading = isModeLoading || isSettingsLoading || isHistoryLoading || isLogsLoading;
@@ -106,6 +120,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       kind: 'icon',
       ionicon: 'add-outline',
       sfSymbol: 'plus',
+      role: 'primary',
       accessibilityLabel: 'Log Entry',
       onPress: () => navigation.navigate('CycleLogModal', { date: selectedDate }),
     },
@@ -130,10 +145,11 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       <View className="px-4 py-2 bg-background z-10 border-b border-border-subtle">
         <SegmentedControl
           segments={[
-            { key: 'insights', label: 'Insights' },
+            { key: 'overview', label: 'Overview' },
+            middleTab,
             { key: 'history', label: 'History' },
           ]}
-          activeKey={activeTab}
+          activeKey={currentTab}
           onSelect={setActiveTab}
         />
       </View>
@@ -145,11 +161,11 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
           paddingBottom: insets.bottom + 80,
         }}
       >
-        {activeTab === 'insights' && (
+        {currentTab === 'overview' && (
           <View className="gap-3">
-            {/* Pregnancy View or Cycle Insights */}
+            {/* Pregnancy Overview or Cycle Overview */}
             {mode === 'pregnant' ? (
-              <PregnancyOverviewView />
+              <PregnancyOverviewView section="overview" />
             ) : (
               <>
                 {/* Cycle Ring Visualisation */}
@@ -174,29 +190,41 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
 
                 {/* TTC: fertility summary */}
                 {mode === 'ttc' && <FertilityCard date={selectedDate} />}
-
-                <CycleInsightsView />
               </>
             )}
           </View>
         )}
 
-        {activeTab === 'history' && (
+        {currentTab === 'trends' && (
+          <View className="gap-3">
+            <CycleInsightsView />
+          </View>
+        )}
+
+        {currentTab === 'tools' && (
+          <View className="gap-3">
+            <PregnancyOverviewView section="tools" />
+          </View>
+        )}
+
+        {currentTab === 'history' && (
           <View className="gap-6">
             <CycleCalendarGrid
-              selectedDate={selectedDate}
-              onSelectDate={(date) => {
-                setSelectedDate(date);
-                navigation.navigate('CycleLogModal', { date });
-              }}
+              initialDate={selectedDate}
+              onDayPress={(date) => navigation.navigate('CycleLogModal', { date })}
               cycles={cycles}
               logs={logs}
               settings={settings}
+              onMonthChange={setVisibleMonth}
             />
-            <View className="border-t border-border-subtle my-2" />
+            <View className="border-t border-border-subtle" />
             <CycleHistoryList />
           </View>
         )}
+
+        <View className="mt-6 px-2">
+          <MedicalDisclaimer />
+        </View>
       </ScrollView>
     </View>
   );

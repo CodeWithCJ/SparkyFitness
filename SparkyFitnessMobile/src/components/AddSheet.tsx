@@ -292,7 +292,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
                 {renderCard(cards[3])}
               </View>
               {showCycleCard && onOpenCycle
-                ? renderSecondaryRow(cycleLabel ?? 'Wellness', cycleIcon ?? 'wellness', onOpenCycle)
+                ? renderSecondaryRow(cycleLabel ?? 'Wellness', cycleIcon ?? 'wellness-filled', onOpenCycle)
                 : null}
               {renderSecondaryRow('Ask Sparky', 'sparkles', onAskSparky)}
               {renderSecondaryRow('Sync Health Data', 'sync', onSyncHealthData)}

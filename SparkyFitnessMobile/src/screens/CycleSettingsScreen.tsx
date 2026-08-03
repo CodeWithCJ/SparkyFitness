@@ -14,7 +14,8 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
-import StepperInput from '../components/StepperInput';
+import StepperInput, { useStepperDraft } from '../components/StepperInput';
+import { CYCLE_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 
 import {
   BIRTH_CONTROL_METHODS,
@@ -140,10 +141,36 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
     }
   }, []);
 
-  const discreetMode = useDiscreetMode();
+  const cycleLengthVal = settings?.avg_cycle_length_override || CYCLE_DEFAULTS.cycleLength;
+  const periodLengthVal = settings?.avg_period_length_override || CYCLE_DEFAULTS.periodLength;
+  const lutealLengthVal = settings?.luteal_phase_length || CYCLE_DEFAULTS.lutealLength;
+
+  const cycleLengthProps = useStepperDraft({
+    value: cycleLengthVal,
+    ...CYCLE_SETTING_LIMITS.cycleLength,
+    onCommit: (value) => updateSettings({ avg_cycle_length_override: value }),
+    onClear: () => updateSettings({ avg_cycle_length_override: null }),
+  });
+
+  const periodLengthProps = useStepperDraft({
+    value: periodLengthVal,
+    ...CYCLE_SETTING_LIMITS.periodLength,
+    onCommit: (value) => updateSettings({ avg_period_length_override: value }),
+    onClear: () => updateSettings({ avg_period_length_override: null }),
+  });
+
+  const lutealLengthProps = useStepperDraft({
+    value: lutealLengthVal,
+    ...CYCLE_SETTING_LIMITS.lutealLength,
+    onCommit: (value) => updateSettings({ luteal_phase_length: value }),
+  });
+
+  const { discreetMode } = useDiscreetMode();
+  const headerTitle = discreetMode ? 'Wellness Settings' : 'Cycle & Pregnancy';
 
   const header = useScreenHeader({
-    title: discreetMode ? 'Wellness Settings' : 'Cycle Settings',
+    title: headerTitle,
+    nativeTitle: headerTitle,
     left: { kind: 'back' },
   });
 
@@ -154,10 +181,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
       </View>
     );
   }
-
-  const cycleLengthVal = settings.avg_cycle_length_override || CYCLE_DEFAULTS.cycleLength;
-  const periodLengthVal = settings.avg_period_length_override || CYCLE_DEFAULTS.periodLength;
-  const lutealLengthVal = settings.luteal_phase_length || CYCLE_DEFAULTS.lutealLength;
 
   return (
     <View
@@ -222,48 +245,21 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                 title="Average Cycle Length"
                 subtitle={settings.avg_cycle_length_override ? 'Custom override' : 'Default/History'}
                 rightAccessory={
-                  <StepperInput
-                    value={String(cycleLengthVal)}
-                    onChangeText={(text) => {
-                      const v = parseInt(text, 10);
-                      updateSettings({ avg_cycle_length_override: isNaN(v) ? null : v });
-                    }}
-                    onIncrement={() => updateSettings({ avg_cycle_length_override: cycleLengthVal + 1 })}
-                    onDecrement={() => updateSettings({ avg_cycle_length_override: Math.max(15, cycleLengthVal - 1) })}
-                    keyboardType="number-pad"
-                  />
+                  <StepperInput {...cycleLengthProps} keyboardType="number-pad" />
                 }
               />
               <SettingsRow
                 title="Average Period Length"
                 subtitle={settings.avg_period_length_override ? 'Custom override' : 'Default/History'}
                 rightAccessory={
-                  <StepperInput
-                    value={String(periodLengthVal)}
-                    onChangeText={(text) => {
-                      const v = parseInt(text, 10);
-                      updateSettings({ avg_period_length_override: isNaN(v) ? null : v });
-                    }}
-                    onIncrement={() => updateSettings({ avg_period_length_override: periodLengthVal + 1 })}
-                    onDecrement={() => updateSettings({ avg_period_length_override: Math.max(1, periodLengthVal - 1) })}
-                    keyboardType="number-pad"
-                  />
+                  <StepperInput {...periodLengthProps} keyboardType="number-pad" />
                 }
               />
               <SettingsRow
                 title="Luteal Phase Length"
                 subtitle="Days post-ovulation (default 14)"
                 rightAccessory={
-                  <StepperInput
-                    value={String(lutealLengthVal)}
-                    onChangeText={(text) => {
-                      const v = parseInt(text, 10);
-                      updateSettings({ luteal_phase_length: isNaN(v) ? 14 : v });
-                    }}
-                    onIncrement={() => updateSettings({ luteal_phase_length: lutealLengthVal + 1 })}
-                    onDecrement={() => updateSettings({ luteal_phase_length: Math.max(1, lutealLengthVal - 1) })}
-                    keyboardType="number-pad"
-                  />
+                  <StepperInput {...lutealLengthProps} keyboardType="number-pad" />
                 }
               />
             </SettingsRowGroup>

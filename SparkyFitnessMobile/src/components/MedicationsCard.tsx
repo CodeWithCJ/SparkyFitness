@@ -1,29 +1,19 @@
-import React, { useCallback, useMemo, useRef } from 'react';
-import { View, Text, Pressable, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useCSSVariable } from 'uniwind';
-import Toast from 'react-native-toast-message';
-import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import type { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import Icon from './Icon';
-import { useMedications, useMedicationEntries, useCreateMedicationEntry, useUpdateMedicationEntry, useDeleteMedicationEntry } from '../hooks/useMedications';
+import DoseRow from './medications/DoseRow';
+import { useMedications, useMedicationEntries, useLogDose } from '../hooks/useMedications';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import {
-  getDueDosesForDate,
-  type SharedScheduleRule,
-  type Medication,
-  type MedicationDetail,
-  type MedicationEntry,
-  type MedicationEntryStatus,
-} from '@workspace/shared';
+import { getDueDosesForDate, formatDose, formatTimeOfDay } from '@workspace/shared';
 import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { MEDICATION_TYPES } from '../types/medications';
-import { entryMatchesDose } from '../utils/medications';
-import { addLog } from '../services/LogService';
+import { doseSlotStatus } from '../utils/medications';
 
 type MedicationsCardNavigation = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'Dashboard'>,
@@ -34,133 +24,17 @@ interface MedicationsCardProps {
   navigation: MedicationsCardNavigation;
 }
 
-interface DueDose {
-  medication: MedicationDetail;
-  schedule: SharedScheduleRule & { id: string };
-}
-
-const ACTION_WIDTH = 80;
-
-const SwipeableMedRow: React.FC<{
-  due: DueDose;
-  entry: MedicationEntry | undefined;
-  onTake: (due: DueDose) => void;
-  onSkip: (due: DueDose) => void;
-  onToggleTaken: (due: DueDose) => void;
-  onNavigate: (medicationId: string) => void;
-}> = ({ due, entry, onTake, onSkip, onToggleTaken, onNavigate }) => {
-  const swipeableRef = useRef<SwipeableMethods | null>(null);
-  const taken = entry?.status === 'taken' || entry?.status === 'prn_taken';
-  const skipped = entry?.status === 'skipped';
-  const completed = taken || skipped;
-
-  const [successBg, iconSuccess, iconDecorative, iconWarning, bgWarning] = useCSSVariable([
-    '--color-bg-success',
-    '--color-icon-success',
-    '--color-icon-decorative',
-    '--color-icon-warning',
-    '--color-bg-warning',
-  ]) as [string, string, string, string, string];
-
-  const handleTake = () => {
-    swipeableRef.current?.close();
-    onTake(due);
-  };
-
-  const handleSkip = () => {
-    swipeableRef.current?.close();
-    onSkip(due);
-  };
-
-  const renderRightActions = () => (
-    <View style={{ flexDirection: 'row' }}>
-      <TouchableOpacity
-        className="justify-center items-center"
-        style={{ width: ACTION_WIDTH, backgroundColor: successBg }}
-        onPress={handleTake}
-        activeOpacity={0.7}
-      >
-        <Icon name="checkmark" size={20} color="#FFFFFF" />
-        <Text className="text-white font-semibold text-xs mt-0.5">Take</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        className="justify-center items-center"
-        style={{ width: ACTION_WIDTH, backgroundColor: bgWarning }}
-        onPress={handleSkip}
-        activeOpacity={0.7}
-      >
-        <Icon name="close" size={20} color="#FFFFFF" />
-        <Text className="text-white font-semibold text-xs mt-0.5">Skip</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const timeLabel = due.schedule.time_of_day
-    ? (() => {
-        const [h, m] = due.schedule.time_of_day.split(':').map(Number);
-        return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-      })()
-    : '';
-  const med = due.medication;
-  const typeLabel = MEDICATION_TYPES.find((t) => t.id === med.type_id)?.label ?? '';
-  const doseLabel = med.dose_amount != null ? `${med.dose_amount} ${med.dose_unit ?? ''}`.trim() : '';
-
-  return (
-      <ReanimatedSwipeable
-        ref={swipeableRef}
-        renderRightActions={renderRightActions}
-        overshootRight={false}
-        rightThreshold={40}
-      >
-        <Pressable
-          className="py-2.5 px-1 flex-row items-center bg-surface"
-          onPress={() => onNavigate(med.id)}
-        >
-          <Pressable
-            onPress={() => onToggleTaken(due)}
-            className="w-6 h-6 rounded-full items-center justify-center mr-3"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{
-              backgroundColor: 'transparent',
-              borderWidth: 1.5,
-              borderColor: taken ? iconSuccess : skipped ? iconWarning : iconDecorative,
-            }}
-          >
-            {taken && <Icon name="checkmark" size={14} color={iconSuccess} />}
-            {skipped && <Icon name="close" size={14} color={iconWarning} />}
-          </Pressable>
-          <View className="flex-1">
-            <Text className={`text-base ${completed ? 'text-text-muted' : 'text-text-primary'}`} numberOfLines={1}>
-              {med.name}
-            </Text>
-            <View className="flex-row items-center mt-0.5">
-              {typeLabel ? (
-                <Text className="text-xs text-text-secondary" numberOfLines={1}>{typeLabel}</Text>
-              ) : null}
-              {doseLabel ? (
-                <Text className="text-xs text-text-secondary ml-2" numberOfLines={1}>{doseLabel}</Text>
-              ) : null}
-              {timeLabel ? (
-                <Text className="text-xs text-text-muted ml-2">{timeLabel}</Text>
-              ) : null}
-            </View>
-          </View>
-          <Icon name="chevron-forward" size={16} color={iconDecorative} />
-        </Pressable>
-      </ReanimatedSwipeable>
-  );
-};
+const typeLabelFor = (typeId: string | null): string =>
+  MEDICATION_TYPES.find((t) => t.id === typeId)?.label ?? '';
 
 const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
 
   const { data: medications, isLoading: isLoadingMeds } = useMedications({ activeOnly: true });
   const { data: entries, isLoading: isLoadingEntries } = useMedicationEntries({ fromDate: selectedDate, toDate: selectedDate });
-  const createEntryMutation = useCreateMedicationEntry();
-  const updateEntryMutation = useUpdateMedicationEntry();
-  const deleteEntryMutation = useDeleteMedicationEntry();
+  const { entryForDue, logDose, toggleTaken, logPrn } = useLogDose(selectedDate, entries);
 
-  const [accentPrimary, iconSuccess, iconDecorative] = useCSSVariable(['--color-accent-primary', '--color-icon-success', '--color-icon-decorative']) as [string, string, string];
+  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
 
   const dueDoses = useMemo(() => {
     if (!medications) return [];
@@ -176,116 +50,11 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     });
   }, [medications]);
 
-  const entryForDue = useCallback(
-    (due: DueDose) => entries?.find((e) => entryMatchesDose(e, due.medication.id, due.schedule.id)),
-    [entries],
-  );
-
-  const showEntryError = useCallback((message: string, error: Error) => {
-    addLog(`${message}: ${error.message}`, 'ERROR');
-    Toast.show({ type: 'error', text1: message });
-  }, []);
-
-  const logDose = useCallback(
-    (due: DueDose, status: 'taken' | 'skipped') => {
-      const isTaken = status === 'taken';
-      const existing = entryForDue(due);
-
-      // Repeating the same action undoes the log instead of re-creating it.
-      const undone = isTaken
-        ? existing?.status === 'taken' || existing?.status === 'prn_taken'
-        : existing?.status === 'skipped';
-      if (existing && undone) {
-        deleteEntryMutation.mutate(existing.id, {
-          onSuccess: () =>
-            Toast.show({ type: 'info', text1: `${due.medication.name} ${isTaken ? 'unmarked' : 'unskipped'}` }),
-          onError: (error) => showEntryError(`Failed to unmark ${due.medication.name}`, error),
-        });
-        return;
-      }
-
-      const showLoggedToast = () =>
-        Toast.show({
-          type: isTaken ? 'success' : 'info',
-          text1: `${due.medication.name} ${isTaken ? 'taken' : 'skipped'}`,
-        });
-
-      if (existing) {
-        // Re-attributes schedule-less (web-logged) entries to the slot being
-        // acted on; taken_at records when the current status was set.
-        updateEntryMutation.mutate(
-          {
-            id: existing.id,
-            body: {
-              schedule_id: due.schedule.id,
-              status,
-              taken_at: new Date().toISOString(),
-            },
-          },
-          {
-            onSuccess: showLoggedToast,
-            onError: (error) => showEntryError(`Failed to update ${due.medication.name}`, error),
-          },
-        );
-      } else {
-        createEntryMutation.mutate(
-          {
-            medication_id: due.medication.id,
-            schedule_id: due.schedule.id,
-            status,
-            entry_date: selectedDate,
-            taken_at: isTaken ? new Date().toISOString() : undefined,
-          },
-          {
-            onSuccess: showLoggedToast,
-            onError: (error) => showEntryError(`Failed to log ${due.medication.name}`, error),
-          },
-        );
-      }
-    },
-    [entryForDue, createEntryMutation, updateEntryMutation, deleteEntryMutation, selectedDate, showEntryError],
-  );
-
-  const handleTake = useCallback((due: DueDose) => logDose(due, 'taken'), [logDose]);
-  const handleSkip = useCallback((due: DueDose) => logDose(due, 'skipped'), [logDose]);
-
-  const handleToggleTaken = useCallback(
-    (due: DueDose) => {
-      const existing = entryForDue(due);
-      if (existing) {
-        deleteEntryMutation.mutate(existing.id, {
-          onError: (error) => showEntryError(`Failed to update ${due.medication.name}`, error),
-        });
-        return;
-      }
-      handleTake(due);
-    },
-    [entryForDue, deleteEntryMutation, handleTake, showEntryError],
-  );
-
-  const handleLogPrn = useCallback(
-    (med: Medication) => {
-      createEntryMutation.mutate(
-        {
-          medication_id: med.id,
-          status: 'prn_taken' as MedicationEntryStatus,
-          entry_date: selectedDate,
-          taken_at: new Date().toISOString(),
-        },
-        {
-          onSuccess: () => Toast.show({ type: 'success', text1: `${med.name} logged` }),
-          onError: (error) => showEntryError(`Failed to log ${med.name}`, error),
-        },
-      );
-    },
-    [createEntryMutation, selectedDate, showEntryError],
-  );
-
   if (isLoadingMeds || isLoadingEntries) {
     return (
       <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
         <View className="flex-row items-center justify-between">
-          <Text className="text-md font-bold text-text-secondary">Medications</Text>
+          <Text className="font-bold text-text-secondary">Medications</Text>
           <ActivityIndicator size="small" color={accentPrimary} />
         </View>
       </View>
@@ -296,81 +65,59 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <View className="flex-row items-center justify-between mb-2">
-        <TouchableOpacity
-          onPress={() => navigation.navigate('MedicationsList')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Go to medications list"
-        >
-          <Text className="text-md font-bold text-text-secondary">Medications</Text>
-        </TouchableOpacity>
-      </View>
-
-      {dueDoses.length > 0 && (
-        <View>
-          {dueDoses.map((due, index) => (
-            <SwipeableMedRow
-              key={`${due.medication.id}-${due.schedule.id}-${index}`}
-              due={due}
-              entry={entryForDue(due)}
-              onTake={handleTake}
-              onSkip={handleSkip}
-              onToggleTaken={handleToggleTaken}
-              onNavigate={(medId) => navigation.navigate('MedicationDetail', { medicationId: medId })}
-            />
-          ))}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('MedicationsList')}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityRole="button"
+        accessibilityLabel="View all medications"
+        className="flex-row items-center justify-between mb-2"
+      >
+        <Text className="font-bold text-text-secondary">Medications</Text>
+        <View className="flex-row items-center">
+          <Text className="text-accent-primary font-medium">View all</Text>
+          <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
         </View>
-      )}
+      </TouchableOpacity>
 
-      {prnMeds.length > 0 && (
-        <View>
-          {prnMeds.map((med) => {
-            const prnCount = entries?.filter(
-              (e) => e.medication_id === med.id && e.status === 'prn_taken' && e.entry_date === selectedDate,
-            ).length ?? 0;
-            const typeMeta = MEDICATION_TYPES.find((t) => t.id === med.type_id);
-            return (
-              <Pressable
-                key={med.id}
-                className="py-2.5 px-1 flex-row items-center"
-                onPress={() => navigation.navigate('MedicationDetail', { medicationId: med.id })}
-              >
-                <View className="w-6 h-6 rounded-full items-center justify-center mr-3" style={{ backgroundColor: 'transparent', borderWidth: 1.5, borderColor: prnCount > 0 ? iconSuccess : iconDecorative }}>
-                  {prnCount > 0 ? (
-                    <Text className="text-xs font-bold" style={{ color: iconSuccess }}>{prnCount}</Text>
-                  ) : null}
-                </View>
-                <View className="flex-1">
-                  <Text className={`text-base ${prnCount > 0 ? 'text-text-muted' : 'text-text-primary'}`} numberOfLines={1}>
-                    {med.name}
-                  </Text>
-                  <View className="flex-row items-center mt-0.5">
-                    {typeMeta ? (
-                      <Text className="text-xs text-text-secondary" numberOfLines={1}>{typeMeta.label}</Text>
-                    ) : null}
-                    {med.dose_amount != null && med.dose_unit ? (
-                      <Text className="text-xs text-text-secondary ml-2">{med.dose_amount} {med.dose_unit}</Text>
-                    ) : null}
-                  </View>
-                </View>
-                <TouchableOpacity
-                  onPress={() => handleLogPrn(med)}
-                  hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
-                  activeOpacity={0.6}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Log ${med.name}`}
-                  className="rounded-full px-3 py-1"
-                  style={{ backgroundColor: accentPrimary + '18' }}
-                >
-                  <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Log</Text>
-                </TouchableOpacity>
-                <Icon name="chevron-forward" size={16} color={iconDecorative} style={{ marginLeft: 6 }} />
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
+      {dueDoses.map((due) => {
+        const med = due.medication;
+        const subtitle = [
+          typeLabelFor(med.type_id),
+          formatDose(med, due.schedule),
+        ].filter(Boolean).join(' · ');
+        return (
+          <DoseRow
+            key={`${med.id}-${due.schedule.id}`}
+            kind="scheduled"
+            status={doseSlotStatus(entryForDue(due))}
+            onToggle={() => toggleTaken(due)}
+            onTake={() => logDose(due, 'taken')}
+            onSkip={() => logDose(due, 'skipped')}
+            title={med.name}
+            time={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : undefined}
+            subtitle={subtitle}
+            onPress={() => navigation.navigate('MedicationDetail', { medicationId: med.id })}
+          />
+        );
+      })}
+
+      {prnMeds.map((med) => {
+        const prnCount = entries?.filter(
+          (e) => e.medication_id === med.id && e.status === 'prn_taken' && e.entry_date === selectedDate,
+        ).length ?? 0;
+        const subtitle = [typeLabelFor(med.type_id), formatDose(med)].filter(Boolean).join(' · ');
+        return (
+          <DoseRow
+            key={med.id}
+            kind="prn"
+            count={prnCount}
+            onLog={() => logPrn(med)}
+            title={med.name}
+            subtitle={subtitle}
+            onPress={() => navigation.navigate('MedicationDetail', { medicationId: med.id })}
+          />
+        );
+      })}
     </View>
   );
 };

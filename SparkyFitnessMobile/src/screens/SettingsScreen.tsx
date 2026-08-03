@@ -37,7 +37,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { isConnected } = useServerConnection();
   const { activeConfig } = useServerConfigs();
   const { preferences: userPreferences } = usePreferences({ enabled: isConnected });
-  const discreetMode = useDiscreetMode();
+  const { discreetMode } = useDiscreetMode();
   const [isSharing, setIsSharing] = useState<boolean>(false);
   const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
 
@@ -163,18 +163,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             />
 
             <SettingsRowGroup>
-              {isConnected && activeConfig?.authType === 'session' && (
-                <SettingsRow
-                  icon="fingerprint"
-                  title="Passkeys"
-                  onPress={() => navigation.navigate('PasskeySettings')}
-                  iconColor={catSlate}
-                />
-              )}
+              <SettingsRow
+                icon="app-settings"
+                title="App Settings"
+                onPress={() => navigation.navigate('AppSettings')}
+                iconColor={catViolet}
+              />
               {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"
-                  title="Calorie & BMR Settings"
+                  title="Calories & BMR"
                   onPress={() => navigation.navigate('CalorieSettings')}
                   iconColor={catCalories}
                 />
@@ -182,7 +180,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="food-search-settings"
-                  title="Food Settings"
+                  title="Food"
                   onPress={() => navigation.navigate('FoodSettings')}
                   iconColor={catOrange}
                 />
@@ -190,7 +188,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="dashboard-settings"
-                  title="Dashboard Settings"
+                  title="Dashboard"
                   onPress={() => navigation.navigate('DashboardSettings')}
                   iconColor={macroGreen}
                 />
@@ -198,7 +196,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="diary-settings"
-                  title="Diary Settings"
+                  title="Diary"
                   onPress={() => navigation.navigate('DiarySettings')}
                   iconColor={catTeal}
                 />
@@ -206,22 +204,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="wellness"
-                  title={discreetMode ? 'Wellness Settings' : 'Cycle & Pregnancy'}
+                  title={discreetMode ? 'Wellness' : 'Cycle & Pregnancy'}
                   onPress={() => navigation.navigate('CycleSettings')}
                   iconColor={catPink}
                 />
               )}
               <SettingsRow
                 icon="workout-settings"
-                title="Workout Settings"
+                title="Workout"
                 onPress={() => navigation.navigate('WorkoutSettings')}
                 iconColor={catBlue}
-              />
-              <SettingsRow
-                icon="app-settings"
-                title="App Settings"
-                onPress={() => navigation.navigate('AppSettings')}
-                iconColor={catViolet}
               />
             </SettingsRowGroup>
 

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,12 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -37,6 +32,12 @@ import { useHealthDataImport } from '@/hooks/CheckIn/useHealthDataImport';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getMoodDisplay } from '@/utils/moodUtils';
 import AliasChipInput from '@/components/Foods/AliasChipInput';
+import { useCsvFormat } from '@/hooks/useCsvFormat';
+import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
+import CsvFormatPreview from '@/components/CsvImport/CsvFormatPreview';
+import CsvImportResultPanel from '@/components/CsvImport/CsvImportResultPanel';
+import CsvHeaderMappingDialog from '@/components/CsvImport/CsvHeaderMappingDialog';
+import { NUMERIC_COLUMNS_BY_CATEGORY } from '@/utils/healthDataImport';
 
 // Calendar date-picker cell, matching the compact popover pattern used by
 // DayNavigator, so the date column respects the user's date-format
@@ -136,12 +137,14 @@ const MoodTagsCell = ({
 
 const HealthDataImportCSV = () => {
   const { t } = useTranslation();
+  const csvFormat = useCsvFormat();
   const {
     category,
     setCategory,
     config,
     csvData,
     headers,
+    loadedText,
     loading,
     result,
     showMapping,
@@ -159,7 +162,18 @@ const HealthDataImportCSV = () => {
     handleAddNewRow,
     clearData,
     handleSubmit,
-  } = useHealthDataImport();
+  } = useHealthDataImport(csvFormat.options);
+
+  const numericColumns = NUMERIC_COLUMNS_BY_CATEGORY[category];
+  const preview = useMemo(
+    () => (loadedText ? csvFormat.parse(loadedText, { numericColumns }) : null),
+    [loadedText, csvFormat, numericColumns]
+  );
+
+  const handleFileUploadWithReset: typeof handleFileUpload = (event) => {
+    csvFormat.resetForNewInput();
+    handleFileUpload(event);
+  };
 
   const copyToClipboard = (value: string) => {
     navigator.clipboard.writeText(value);
@@ -268,9 +282,42 @@ const HealthDataImportCSV = () => {
             ref={fileInputRef}
             type="file"
             accept=".csv"
-            onChange={handleFileUpload}
+            onChange={handleFileUploadWithReset}
             className="hidden"
           />
+          <CsvFormatBar
+            capabilities={{
+              delimiter: true,
+              decimal: true,
+              quote: true,
+              // No date control: mapRowsToHealthItems passes the `date` cell
+              // through verbatim, so a non-ISO date would preview correctly
+              // under the chosen format and then fail at conversion.
+              date: false,
+            }}
+            value={csvFormat.options}
+            onChange={csvFormat.setOptions}
+            detection={
+              preview
+                ? {
+                    delimiter: preview.detectedDelimiter,
+                    delimiterFailed: preview.delimiterDetectionFailed,
+                    decimal: preview.decimal,
+                  }
+                : undefined
+            }
+          />
+          {preview && (
+            <CsvFormatPreview
+              headers={preview.headers}
+              rows={preview.rows}
+              options={csvFormat.options}
+              decimalDetection={preview.decimal}
+              numericColumns={numericColumns}
+              totalRowCount={preview.rows.length}
+              totalRowCountIsPartial={preview.previewTruncated}
+            />
+          )}
           {csvData.length > 0 && (
             <div className="text-sm text-green-600">
               {t('healthDataImport.loadedRecords', 'Loaded {{count}} rows.', {
@@ -279,59 +326,16 @@ const HealthDataImportCSV = () => {
             </div>
           )}
 
-          <Dialog open={showMapping} onOpenChange={setShowMapping}>
-            <DialogContent
-              requireConfirmation
-              className="max-w-4xl max-h-[80vh] overflow-y-auto"
-            >
-              <DialogHeader>
-                <DialogTitle>
-                  {t('healthDataImport.mapHeaders', 'Map CSV Headers')}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-1 gap-4">
-                {config.requiredHeaders.map((req) => (
-                  <div
-                    key={req}
-                    className="flex flex-col sm:flex-row sm:items-center gap-2"
-                  >
-                    <label className="font-medium capitalize">
-                      {req.replace(/_/g, ' ')}:
-                    </label>
-                    <Select
-                      value={headerMapping[req] || 'none'}
-                      onValueChange={(val) =>
-                        setHeaderMapping((prev) => ({
-                          ...prev,
-                          [req]: val === 'none' ? '' : val,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="w-full sm:w-50">
-                        <SelectValue placeholder="Select header" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {fileHeaders.map((h) => (
-                          <SelectItem key={h} value={h}>
-                            {h}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button onClick={handleConfirmMapping}>
-                  {t('healthDataImport.confirmMapping', 'Confirm')}
-                </Button>
-                <Button variant="outline" onClick={handleCancelMapping}>
-                  {t('healthDataImport.cancel', 'Cancel')}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <CsvHeaderMappingDialog
+            open={showMapping}
+            onOpenChange={setShowMapping}
+            requiredHeaders={config.requiredHeaders}
+            fileHeaders={fileHeaders}
+            headerMapping={headerMapping}
+            onHeaderMappingChange={setHeaderMapping}
+            onConfirm={handleConfirmMapping}
+            onCancel={handleCancelMapping}
+          />
 
           {csvData.length > 0 && (
             <div className="overflow-x-auto">
@@ -426,44 +430,7 @@ const HealthDataImportCSV = () => {
             </div>
           )}
 
-          {result && (
-            <div className="p-4 border rounded-lg space-y-3">
-              <div className="flex flex-wrap gap-4 text-sm">
-                <span className="text-green-600 font-medium">
-                  {t('healthDataImport.resultImported', 'Imported')}:{' '}
-                  {result.processed.length}
-                </span>
-                <span className="text-muted-foreground">
-                  {t('healthDataImport.resultSkipped', 'Skipped')}:{' '}
-                  {result.skipped.length}
-                </span>
-                <span className="text-red-600">
-                  {t('healthDataImport.resultFailed', 'Failed')}:{' '}
-                  {result.errors.length}
-                </span>
-              </div>
-              {result.errors.length > 0 && (
-                <details className="text-sm">
-                  <summary className="cursor-pointer font-medium">
-                    {t('healthDataImport.viewErrors', 'View failed rows')}
-                  </summary>
-                  <div className="mt-2 max-h-64 overflow-y-auto space-y-1">
-                    {result.errors.map((err, i) => (
-                      <div
-                        key={i}
-                        className="p-2 rounded bg-red-500/10 text-red-700 dark:text-red-300"
-                      >
-                        <div>{err.error}</div>
-                        <pre className="text-xs overflow-x-auto">
-                          {JSON.stringify(err.entry)}
-                        </pre>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
-          )}
+          <CsvImportResultPanel result={result} />
 
           <Button
             type="submit"

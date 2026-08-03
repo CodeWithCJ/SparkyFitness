@@ -1,4 +1,4 @@
-import { entryMatchesDose, isDoseLogged } from '../../src/utils/medications';
+import { entryMatchesDose, isDoseLogged, doseSlotStatus } from '../../src/utils/medications';
 import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
 
 function buildEntry(overrides: Partial<MedicationEntry> = {}): MedicationEntry {
@@ -72,5 +72,20 @@ describe('isDoseLogged', () => {
     expect(isDoseLogged([buildEntry({ schedule_id: 'sched-other' })], 'med-1', 'sched-1')).toBe(
       false,
     );
+  });
+});
+
+describe('doseSlotStatus', () => {
+  it.each([
+    ['taken', 'taken'],
+    ['prn_taken', 'taken'],
+    ['skipped', 'skipped'],
+    ['snoozed', 'pending'],
+  ] as [MedicationEntryStatus, string][])('maps a %s entry to %s', (status, expected) => {
+    expect(doseSlotStatus(buildEntry({ status }))).toBe(expected);
+  });
+
+  it('maps no entry to pending', () => {
+    expect(doseSlotStatus(undefined)).toBe('pending');
   });
 });

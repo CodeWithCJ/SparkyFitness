@@ -35,10 +35,16 @@
         sparkyfitness-frontend = pkgs.callPackage ./nix/frontend.nix {
           inherit nodejs pnpm fetchPnpmDeps pnpmConfigHook;
         };
+
+        sparkyfitness-garmin = pkgs.callPackage ./nix/garmin.nix { };
       in
       {
         packages = {
-          inherit sparkyfitness-server sparkyfitness-frontend;
+          inherit
+            sparkyfitness-server
+            sparkyfitness-frontend
+            sparkyfitness-garmin
+            ;
           default = sparkyfitness-server;
         };
 
@@ -51,7 +57,11 @@
         };
 
         checks = {
-          inherit sparkyfitness-server sparkyfitness-frontend;
+          inherit
+            sparkyfitness-server
+            sparkyfitness-frontend
+            sparkyfitness-garmin
+            ;
         };
       }
     )
@@ -71,6 +81,7 @@
           config.services.sparkyfitness = {
             backendPackage = self.packages.${pkgs.system}.sparkyfitness-server;
             frontendPackage = self.packages.${pkgs.system}.sparkyfitness-frontend;
+            garmin.package = self.packages.${pkgs.system}.sparkyfitness-garmin;
           };
         };
     };

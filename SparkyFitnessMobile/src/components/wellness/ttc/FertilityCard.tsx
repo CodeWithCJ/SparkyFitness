@@ -73,23 +73,23 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm border-0 gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-primary text-sm font-semibold">Fertility</Text>
+        <Text className="text-text-secondary text-sm font-semibold">Fertility</Text>
         {isFertileToday && (
-          <View className="rounded-full bg-emerald-500/15 px-3 py-1">
-            <Text className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold">Fertile window</Text>
+          <View className="rounded-full bg-bg-success px-3 py-1">
+            <Text className="text-text-success text-sm font-semibold">Est. fertile window</Text>
           </View>
         )}
       </View>
 
       <View className="flex-row justify-between">
         <View>
-          <Text className="text-text-secondary text-xs">Est. ovulation</Text>
+          <Text className="text-text-secondary text-sm">Est. ovulation</Text>
           <Text className="text-text-primary text-base font-bold">
             {effectiveOvulationDate ? formatDate(effectiveOvulationDate) : '—'}
           </Text>
         </View>
         <View className="items-end">
-          <Text className="text-text-secondary text-xs">Next period in</Text>
+          <Text className="text-text-secondary text-sm">Next period in</Text>
           <Text className="text-text-primary text-base font-bold">
             {daysUntilNextPeriod != null ? `${daysUntilNextPeriod} days` : '—'}
           </Text>
@@ -98,17 +98,21 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
 
       {dpo !== null && (
         <View className="rounded-xl bg-raised p-3">
-          <Text className="text-text-secondary text-xs mb-0.5">Two-week wait</Text>
+          <Text className="text-text-secondary text-sm mb-0.5">Two-week wait</Text>
           <Text className="text-text-primary text-sm font-semibold">
             {dpo === 0 ? 'Ovulation day' : `${dpo} ${dpo === 1 ? 'day' : 'days'} past ovulation`}
           </Text>
           {dpo >= 1 && dpo < 14 && (
-            <Text className="text-text-secondary text-xs mt-1">
-              A test is typically most accurate around 12–14 DPO.
+            <Text className="text-text-secondary text-sm mt-1">
+              Home tests are usually most accurate 12 to 14 days past ovulation.
             </Text>
           )}
         </View>
       )}
+
+      <Text className="text-text-secondary text-sm">
+        Estimates from your logged data. Not medical advice.
+      </Text>
     </View>
   );
 };

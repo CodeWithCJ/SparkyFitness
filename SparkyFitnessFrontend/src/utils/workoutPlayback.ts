@@ -1,5 +1,10 @@
-import type { CreatePresetSessionRequest } from '@workspace/shared';
-import { instantHourMinute, setsDurationMinutes } from '@workspace/shared';
+import {
+  instantHourMinute,
+  resolveExerciseModality,
+  setsDurationMinutes,
+  type CreatePresetSessionRequest,
+  type ExerciseModality,
+} from '@workspace/shared';
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 
 export const DEFAULT_REST_SECONDS = 90;
@@ -26,6 +31,7 @@ export interface WorkoutPlaybackSetDraft extends WorkoutPresetSet {
 export interface WorkoutPlaybackExerciseDraft {
   exercise_id: string;
   exercise_name: string;
+  modality?: ExerciseModality;
   image_url?: string;
   notes: string | null;
   started_at?: string | null;
@@ -301,6 +307,10 @@ export function createWorkoutPlaybackDraftFromPreset(
         exercise.exercise?.name ||
         `Exercise ${exerciseIndex + 1}`,
       image_url: exercise.image_url || exercise.exercise?.images?.[0],
+      modality: resolveExerciseModality(
+        exercise.modality ?? exercise.exercise?.modality,
+        exercise.category ?? exercise.exercise?.category
+      ),
       notes: null,
       started_at: null,
       ended_at: null,
@@ -310,6 +320,7 @@ export function createWorkoutPlaybackDraftFromPreset(
         reps: set.reps ?? null,
         weight: set.weight ?? null,
         duration: set.duration ?? null,
+        distance: set.distance ?? null,
         rest_time: set.rest_time ?? DEFAULT_REST_SECONDS,
         notes: set.notes ?? null,
         rpe: set.rpe ?? null,
@@ -511,6 +522,7 @@ export function addWorkoutSetToExercise(
     reps: lastSet?.reps ?? null,
     weight: lastSet?.weight ?? null,
     duration: lastSet?.duration ?? null,
+    distance: lastSet?.distance ?? null,
     rest_time: lastSet?.rest_time ?? DEFAULT_REST_SECONDS,
     notes: lastSet?.notes ?? null,
     rpe: lastSet?.rpe ?? null,
@@ -733,6 +745,7 @@ export function buildPresetSessionCreateRequestFromDraft(
           reps: toNullableNumber(set.reps),
           weight: toNullableNumber(set.weight),
           duration: toNullableNumber(set.duration),
+          distance: toNullableNumber(set.distance),
           rest_time: toNullableNumber(set.rest_time),
           notes: set.notes ?? null,
           rpe: toNullableNumber(set.rpe),

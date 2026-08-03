@@ -38,6 +38,7 @@ import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { WorkoutDraftSet } from '../types/drafts';
 import type { ExerciseEntrySetResponse } from '@workspace/shared';
+import { canEditGroupedWorkout } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'ActivityDetail'>;
 
@@ -62,7 +63,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const { getImageSource } = useExerciseImageSource();
 
-  const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
+  const sourceLabel = getSourceLabel(session.source);
+  const canEditSource = canEditGroupedWorkout(session.source);
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
   const { name, duration, calories } = getWorkoutSummary(session);
@@ -502,7 +504,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           accessibilityLabel: 'Save',
           identifier: 'activity-detail-save',
         }
-      : isSparky
+      : canEditSource
         ? {
             kind: 'text',
             label: 'Edit',

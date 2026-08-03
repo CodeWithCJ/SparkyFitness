@@ -55,6 +55,17 @@ function reloadOnceForGatewayInterception(): void {
   window.location.reload();
 }
 
+// A blob response is always a Blob, never the caller's generic T — the overload
+// keeps `responseType: 'blob'` callers from having to assert.
+export function apiCall(
+  endpoint: string,
+  options: ApiCallOptions & { responseType: 'blob' }
+): Promise<Blob>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function apiCall<T = any>(
+  endpoint: string,
+  options?: ApiCallOptions
+): Promise<T>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function apiCall<T = any>(
   endpoint: string,
@@ -250,9 +261,23 @@ export async function apiCall<T = any>(
   }
 }
 
+interface ApiGet {
+  (
+    endpoint: string,
+    options: ApiCallOptions & { responseType: 'blob' }
+  ): Promise<Blob>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (endpoint: string, options?: ApiCallOptions): Promise<any>;
+}
+
+const get: ApiGet = (
+  endpoint: string,
+  options?: ApiCallOptions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> => apiCall(endpoint, { ...options, method: 'GET' });
+
 export const api = {
-  get: (endpoint: string, options?: ApiCallOptions) =>
-    apiCall(endpoint, { ...options, method: 'GET' }),
+  get,
   post: (endpoint: string, options?: ApiCallOptions) =>
     apiCall(endpoint, { ...options, method: 'POST' }),
   put: (endpoint: string, options?: ApiCallOptions) =>

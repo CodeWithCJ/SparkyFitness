@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseSessionResponse } from '@workspace/shared';
+import { canEditGroupedWorkout } from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
 import {
@@ -122,7 +123,8 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   );
 
   const { name, duration, calories } = getWorkoutSummary(session);
-  const { label: sourceLabel, isSparky } = getSourceLabel(session.source);
+  const sourceLabel = getSourceLabel(session.source);
+  const canEdit = canEditGroupedWorkout(session.source);
   const iconName = getWorkoutIcon(session);
   const firstImage = getFirstImage(session);
   const imageSource = firstImage && getImageSource ? getImageSource(firstImage) : null;
@@ -160,11 +162,11 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
                 <View className="flex-row items-center gap-2">
                   <View
                     className="rounded-full px-1.5 py-0.5"
-                    style={{ backgroundColor: isSparky ? `${accentPrimary}20` : `${textMuted}20` }}
+                    style={{ backgroundColor: canEdit ? `${accentPrimary}20` : `${textMuted}20` }}
                   >
                     <Text
                       className="text-xs font-medium"
-                      style={{ color: isSparky ? accentPrimary : textSecondary }}
+                      style={{ color: canEdit ? accentPrimary : textSecondary }}
                     >
                       {sourceLabel}
                     </Text>

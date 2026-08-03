@@ -63,6 +63,7 @@
       --color-cat-amber:         hsl(40, 88%, 43%);
 
       --color-progress-track:    hsl(218, 29%, 92%);
+      --color-progress-rail:     hsl(218, 29%, 95%);
       --color-progress-overfill: hsl(215, 28%, 17%);
 
       --color-bg-success:        hsl(162, 64%, 88%);
@@ -137,6 +138,7 @@
       --color-cat-amber:         hsl(40, 60%, 58%);
 
       --color-progress-track:    hsl(218, 41%, 23%);
+      --color-progress-rail:     hsl(218, 41%, 16%);
       --color-progress-overfill: hsl(357, 66%, 65%);
 
       --color-bg-success:        hsl(159, 35%, 19%);
@@ -210,6 +212,7 @@
       --color-cat-amber:         hsl(40, 60%, 58%);
 
       --color-progress-track:    hsl(218, 41%, 15%);
+      --color-progress-rail:     hsl(218, 41%, 9%);
       --color-progress-overfill: hsl(357, 66%, 65%);
 
       --color-bg-success:        hsl(159, 40%, 14%);

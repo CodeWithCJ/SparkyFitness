@@ -44,6 +44,73 @@ function getModeTitle(mode?: string, discreetMode?: boolean): string {
   }
 }
 
+export interface CycleRingContentInfo {
+  day: number;
+  phase: string;
+  avgCycleLength: number;
+  avgPeriodLength: number;
+  fertileStartDay: number | null;
+  fertileEndDay: number | null;
+  ovulationDay: number | null;
+  nextPeriodStart?: string;
+  daysLate: number;
+}
+
+// Cycle-state card body (title, phase readout, ring, disclosure chevron) for
+// the non-discreet cycle layout. Exported so DevTools can render a fake-data
+// gallery of every phase.
+export const CycleCardRingContent: React.FC<{
+  title: string;
+  info: CycleRingContentInfo;
+}> = ({ title, info }) => {
+  const tokens = useWellnessTokens();
+  const [textAccent] = useCSSVariable(['--color-accent-primary']) as [string];
+  const phaseName = getPhaseDisplayName(info.phase, false);
+  const phaseColor = getPhaseColor(info.phase, tokens);
+
+  return (
+    <View className="flex-row items-center gap-3">
+      {/* Details on Left: stretched to the ring's height so the title sits
+          at the card top; the phase block centers in the space below it */}
+      <View className="flex-1 self-stretch">
+        <Text className="text-md font-bold text-text-secondary">{title}</Text>
+
+        <View className="flex-1 justify-center">
+          <Text className="text-base font-semibold" style={{ color: phaseColor }}>
+            {phaseName}
+          </Text>
+
+          {info.daysLate > 0 ? (
+            <Text className="text-sm font-semibold text-text-primary mt-0.5">
+              Period {info.daysLate} {info.daysLate === 1 ? 'day' : 'days'} late
+            </Text>
+          ) : info.nextPeriodStart ? (
+            <Text className="text-sm text-text-secondary mt-0.5">
+              Next period est. {formatDate(info.nextPeriodStart)}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Visual Cycle Ring Chart on Right */}
+      <CycleRing
+        cycleDay={info.day > 0 ? info.day : null}
+        cycleLength={info.avgCycleLength}
+        periodLength={info.avgPeriodLength}
+        fertileStartDay={info.fertileStartDay}
+        fertileEndDay={info.fertileEndDay}
+        ovulationDay={info.ovulationDay}
+        centerLabel=""
+        centerValue={info.day > 0 ? `Day ${info.day}` : 'Active'}
+        centerSub=""
+        size={98}
+        strokeWidth={7.5}
+      />
+      <Icon name="chevron-forward" size={18} color={textAccent} />
+    </View>
+  );
+};
+
 const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
   const { discreetMode } = useDiscreetMode();
@@ -73,6 +140,9 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
 
   const isSetup = !!settings.onboarded_at && !!settings.enabled;
   const title = getModeTitle(settings.mode, discreetMode);
+  // The cycle-ring state renders its own title so the ring can span the full
+  // card height; every other state keeps the shared header row.
+  const showsRingLayout = !discreetMode && !isPregnant && !!cycleInfo;
 
   if (!isSetup) {
     return (
@@ -108,7 +178,6 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
           <Text className="text-base font-semibold text-text-primary">
             {activeDay ? `Day ${activeDay}` : 'Wellness Tracking Active'}
           </Text>
-          <Text className="text-sm text-text-secondary">Tap to view details</Text>
         </View>
       );
     }
@@ -161,53 +230,7 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
     }
 
     if (cycleInfo) {
-      const phaseName = getPhaseDisplayName(cycleInfo.phase, discreetMode);
-      const phaseColor = getPhaseColor(cycleInfo.phase, tokens);
-
-      return (
-        <View className="flex-row items-center justify-between gap-4 mt-2">
-          {/* Details on Left */}
-          <View className="flex-1 justify-center">
-            <View className="flex-row items-center flex-wrap gap-2 mb-1">
-              <View
-                className="px-2.5 py-0.5 rounded-full self-start"
-                style={{ backgroundColor: `${phaseColor}25` }}
-              >
-                <Text className="text-xs font-bold" style={{ color: phaseColor }}>
-                  {phaseName}
-                </Text>
-              </View>
-            </View>
-
-            {cycleInfo.daysLate > 0 ? (
-              <View className="bg-surface border border-border-subtle rounded-lg px-2.5 py-1.5 mt-1.5 self-start">
-                <Text className="text-xs font-semibold text-text-primary">
-                  Period {cycleInfo.daysLate} {cycleInfo.daysLate === 1 ? 'day' : 'days'} late
-                </Text>
-              </View>
-            ) : cycleInfo.nextPeriodStart ? (
-              <Text className="text-sm text-text-secondary mt-1">
-                Next period expected {formatDate(cycleInfo.nextPeriodStart)}
-              </Text>
-            ) : null}
-          </View>
-
-          {/* Visual Cycle Ring Chart on Right */}
-          <CycleRing
-            cycleDay={cycleInfo.day > 0 ? cycleInfo.day : null}
-            cycleLength={cycleInfo.avgCycleLength}
-            periodLength={cycleInfo.avgPeriodLength}
-            fertileStartDay={cycleInfo.fertileStartDay}
-            fertileEndDay={cycleInfo.fertileEndDay}
-            ovulationDay={cycleInfo.ovulationDay}
-            centerLabel=""
-            centerValue={cycleInfo.day > 0 ? `Day ${cycleInfo.day}` : 'Active'}
-            centerSub=""
-            size={88}
-            strokeWidth={7.5}
-          />
-        </View>
-      );
+      return <CycleCardRingContent title={title} info={cycleInfo} />;
     }
 
     return (
@@ -229,14 +252,16 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
       accessibilityRole="button"
       accessibilityLabel="Open cycle and pregnancy tracking hub"
     >
-      <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-md font-bold text-text-secondary">{title}</Text>
+      {!showsRingLayout && (
+        <View className="flex-row items-center justify-between mb-2">
+          <Text className="text-md font-bold text-text-secondary">{title}</Text>
 
-        <View className="flex-row items-center">
-          <Text className="text-md text-accent-primary font-medium">Hub</Text>
-          <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
+          <View className="flex-row items-center">
+            <Text className="text-md text-accent-primary font-medium">Hub</Text>
+            <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
+          </View>
         </View>
-      </View>
+      )}
 
       {renderCardContent()}
     </Pressable>

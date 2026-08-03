@@ -171,8 +171,8 @@ export async function reconcileMedicationReminders(
 
       const [hours, minutes] = timeOfDay.split(':').map(Number);
       const body = hideNames
-        ? 'Time to take your medication'
-        : `Time to take ${due.medication.name}${due.medication.dose_amount != null ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})` : ''}`;
+        ? 'You have a scheduled dose'
+        : `Scheduled dose: ${due.medication.name}${due.medication.dose_amount != null ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})` : ''}`;
       const data = {
         medicationId: due.medication.id,
         scheduleId: due.schedule.id,

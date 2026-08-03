@@ -128,10 +128,7 @@ export const cycleDisplayPreferencesQueryKey = ['cycleDisplayPreferences'] as co
 
 export const pregnancyCurrentQueryKey = ['pregnancyCurrent'] as const;
 export const pregnancyOverviewQueryKey = ['pregnancyOverview'] as const;
-export const pregnancyKicksQueryKey = (sessionId?: string) => ['pregnancyKicks', sessionId ?? 'current'] as const;
-export const pregnancyContractionsQueryKey = ['pregnancyContractions'] as const;
 export const pregnancyChecklistQueryKey = ['pregnancyChecklist'] as const;
-export const pregnancyAppointmentsQueryKey = ['healthAppointments'] as const;
 export const pregnancyPhotosQueryKey = ['pregnancyPhotos'] as const;
 
 export const symptomEntriesQueryKey = (fromDate: string, toDate: string) => ['symptomEntries', fromDate, toDate] as const;

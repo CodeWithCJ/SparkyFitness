@@ -1,13 +1,15 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { BUILT_IN_CYCLE_SYMPTOMS, type CycleSymptomDef } from '@workspace/shared';
-import { useSymptomEntries, useSymptomMutations } from '../../hooks/useSymptoms';
 import CycleIcon from './CycleIcon';
 
 import { useCycleMode } from '../../hooks/useCycleMode';
 
 interface CycleSymptomPickerProps {
-  date: string;
+  /** Draft selection of symptom display names; owned by the parent form. */
+  selected: string[];
+  onToggle: (symptom: CycleSymptomDef) => void;
+  loading?: boolean;
 }
 
 const PREGNANCY_TOP_SYMPTOMS = [
@@ -40,16 +42,16 @@ const STANDARD_TOP_SYMPTOMS = [
   'spotting',
 ];
 
-const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ date }) => {
-  const { entries, isLoading } = useSymptomEntries({ fromDate: date, toDate: date });
-  const { createEntry, deleteEntry } = useSymptomMutations(date, date);
+/**
+ * Presentational symptom chip grid. Selection state lives in the parent form
+ * and is persisted by the screen-level Save action, not on tap.
+ */
+const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ selected, onToggle, loading }) => {
   const { mode } = useCycleMode();
   const isPregnant = mode === 'pregnant';
   const [showAll, setShowAll] = React.useState(false);
 
-  const activeSymptomSnapshots = entries
-    .filter((e) => e.source === 'cycle')
-    .map((e) => e.symptom_name_snapshot.toLowerCase());
+  const activeSymptomSnapshots = selected.map((s) => s.toLowerCase());
 
   const displayedSymptoms = React.useMemo(() => {
     const topList = isPregnant ? PREGNANCY_TOP_SYMPTOMS : STANDARD_TOP_SYMPTOMS;
@@ -65,25 +67,7 @@ const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ date }) => {
     );
   }, [isPregnant, showAll, activeSymptomSnapshots]);
 
-  const handleToggleSymptom = (symptom: CycleSymptomDef) => {
-    const name = symptom.displayName.toLowerCase();
-    const existing = entries.find(
-      (e) => e.source === 'cycle' && e.symptom_name_snapshot.toLowerCase() === name
-    );
-
-    if (existing && existing.id) {
-      deleteEntry(existing.id);
-    } else {
-      createEntry({
-        symptom_name_snapshot: symptom.displayName,
-        severity: 3,
-        source: 'cycle',
-        entry_date: date,
-      });
-    }
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
       <View className="py-4 items-center justify-center">
         <ActivityIndicator size="small" />
@@ -96,8 +80,8 @@ const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ date }) => {
       <View className="flex-row items-center justify-between mb-1">
         <Text className="text-text-primary text-sm font-semibold">Symptoms</Text>
         <TouchableOpacity onPress={() => setShowAll((v) => !v)} activeOpacity={0.7}>
-          <Text className="text-accent-primary text-xs font-semibold">
-            {showAll ? 'Show less' : '+ Show all'}
+          <Text className="text-accent-primary text-sm font-semibold">
+            {showAll ? 'Show less' : 'Show all'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -109,15 +93,15 @@ const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ date }) => {
           return (
             <TouchableOpacity
               key={s.name}
-              onPress={() => handleToggleSymptom(s)}
+              onPress={() => onToggle(s)}
               activeOpacity={0.7}
-              className={`flex-row items-center rounded-full px-3 py-1.5 border ${
+              className={`flex-row items-center rounded-full px-3.5 py-2 border ${
                 isActive ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-border-subtle'
               }`}
             >
-              <CycleIcon id={s.icon} size={16} />
+              <CycleIcon id={s.icon} size={20} />
               <Text
-                className={`text-xs ml-1.5 ${
+                className={`text-sm ml-2 ${
                   isActive ? 'text-text-primary font-bold' : 'text-text-secondary font-medium'
                 }`}
               >

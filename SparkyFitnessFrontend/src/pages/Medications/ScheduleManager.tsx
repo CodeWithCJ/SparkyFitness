@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Settings, Clock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { todayInZone } from '@workspace/shared';
+import { todayInZone, formatDose } from '@workspace/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,6 +35,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
   const timezone =
     preferencesContext?.timezone ||
     Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const timeFormat = preferencesContext?.timeFormat ?? 'h:mm A';
 
   const [open, setOpen] = useState(false);
   const [scheduleTypeId, setScheduleTypeId] = useState('daily');
@@ -421,15 +422,11 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <span className="font-medium text-foreground">
-                      {formatScheduleDescription(sched)}
+                      {formatScheduleDescription(sched, timeFormat)}
                     </span>
-                    {sched.dose_amount && (
+                    {sched.dose_amount != null && (
                       <span className="text-xs text-muted-foreground ml-2">
-                        ({sched.dose_amount}{' '}
-                        {sched.dose_amount === 1
-                          ? med.type_id
-                          : `${med.type_id}s`}
-                        )
+                        ({formatDose(med, sched)})
                       </span>
                     )}
                   </div>

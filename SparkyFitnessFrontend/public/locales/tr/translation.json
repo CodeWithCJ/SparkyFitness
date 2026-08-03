@@ -878,7 +878,7 @@
         "errorDeleting": "Küresel AI hizmeti silinemedi",
         "successDeleting": "Küresel AI hizmeti başarıyla silindi",
         "errorSyncing": "Ortam değişkenlerinden eşleme başarısız oldu",
-        "successSyncing": "Ortam değişkenleri başarıyla senkronize edildi",
+        "successSyncing": "Ortam değişkenleri başarıyla eşlendi",
         "errorUpdatingConfig": "Kullanıcı AI yapılandırma ayarı güncellenemedi",
         "successUpdatingConfig": "Kullanıcı AI yapılandırma ayarı başarıyla güncellendi",
         "errorOriginalNotFound": "Orijinal hizmet bulunamadı.",
@@ -2612,7 +2612,7 @@
   "cycle": {
     "hub": "Bisiklet ve Gebelik Merkezi",
     "pregnancyHub": "Hamilelik Merkezi",
-    "hubSubtitle": "Vücudunuzu takip edin, anlayın ve senkronize edin.",
+    "hubSubtitle": "Vücudunuzu takip edin, anlayın ve eşleyin.",
     "tabs": {
       "today": "Bugün",
       "calendar": "Takvim",
@@ -2710,6 +2710,24 @@
       "energy": "Enerji",
       "notes": "Notlar",
       "notesPlaceholder": "Dikkat edilmesi gereken başka bir şey…"
+    }
+  },
+  "foodCsvImport": {
+    "title": "Besin Verisini İçe Aktar",
+    "addRow": "Satır Ekle",
+    "uploadCsv": "CSV Yükle",
+    "downloadTemplate": "Taslağı İndir",
+    "clearData": "Temizle",
+    "pastePlaceholder": "Ya da CSV'yi buraya yapıştırın...",
+    "parseText": "Metni Yapıştır",
+    "recordsLoaded": "{{count}} kayıt başarıyla yüklendi.",
+    "actions": "Eylemler",
+    "deleteRow": "Satırı Sil",
+    "overrideLabel": "Varolan besin verilerinin üzerine yaz"
+  },
+  "chat": {
+    "toolCategories": {
+      "food": "Besin & Su"
     }
   }
 }
