@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
@@ -91,6 +92,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), [setSelectedDate]);
   const usesNativeTabs = useNativeIOSTabsActive();
+  const insets = useSafeAreaInsets();
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const syncNativeHeaderDatePicker = useCallback(() => {
     if (!usesNativeTabs) return;
@@ -205,7 +207,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       return (
         <View className="flex-1">
           {!usesNativeTabs && (
-            <View className="px-4 pt-4 pb-5">
+            <View className="px-4 pb-5" style={{ paddingTop: insets.top + 16 }}>
               <Text className="text-2xl font-bold text-text-primary">Dashboard</Text>
             </View>
           )}
