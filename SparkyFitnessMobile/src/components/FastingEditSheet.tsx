@@ -20,7 +20,6 @@ import { dateTypeToDate } from './TimeSheet';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
 
-/** Normalizes the picker's 6-way `DateType` into a JS `Date`, preserving time. */
 export interface FastingEditSheetRef {
   present: (fast: FastingLog) => void;
   dismiss: () => void;
@@ -41,7 +40,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
       '--color-accent-primary',
       '--color-text-primary',
       '--color-text-secondary',
-      '--color-bg-danger',
+      '--color-icon-danger',
     ]) as [string, string, string, string, string, string];
 
     const [fastId, setFastId] = useState<string | null>(null);
@@ -264,7 +263,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
           {openPicker === 'end' && renderInlinePicker(endDate, handleEndChange)}
 
           {!isValid && (
-            <Text className="text-bg-danger text-sm mt-3 text-center">
+            <Text className="text-text-danger-subtle text-sm mt-3 text-center">
               Start time must be before the end time.
             </Text>
           )}
@@ -289,7 +288,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
             }`}
           >
             <Icon name="trash" size={15} color={danger} />
-            <Text className="text-bg-danger text-base font-semibold ml-2">
+            <Text className="text-icon-danger text-base font-semibold ml-2">
               {isDeletePending ? 'Deleting...' : 'Delete fast'}
             </Text>
           </Pressable>

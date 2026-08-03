@@ -231,7 +231,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
         {openPicker === 'end' && renderInlinePicker(endDate, handleEndChange)}
 
         {!isValid && (
-          <Text className="text-bg-danger text-sm mt-3 text-center">
+          <Text className="text-text-danger-subtle text-sm mt-3 text-center">
             Start time must be before the end time.
           </Text>
         )}
