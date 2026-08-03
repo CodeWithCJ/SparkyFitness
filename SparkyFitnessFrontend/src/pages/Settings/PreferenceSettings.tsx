@@ -62,11 +62,20 @@ export const PreferenceSettings = () => {
   } = usePreferences();
 
   const [localLoggingLevel, setLocalLoggingLevel] = useState(loggingLevel);
+  const [minimalTopBar, setMinimalTopBar] = useState(
+    () => localStorage.getItem('minimalTopBar') === 'true'
+  );
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     setLocalLoggingLevel(loggingLevel);
   }, [loggingLevel]);
+
+  const handleMinimalTopBarToggle = (checked: boolean) => {
+    setMinimalTopBar(checked);
+    localStorage.setItem('minimalTopBar', String(checked));
+    window.dispatchEvent(new Event('minimalTopBarChanged'));
+  };
 
   const handlePreferencesUpdate = async () => {
     if (!user) return;
@@ -443,7 +452,7 @@ export const PreferenceSettings = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center justify-between col-span-2 py-2">
+          <div className="flex items-center justify-between col-span-full py-2">
             <div className="space-y-0.5">
               <Label htmlFor="auto-scale-openfoodfacts">
                 {t(
@@ -483,6 +492,24 @@ export const PreferenceSettings = () => {
               id="auto-scale-online-imports"
               checked={autoScaleOnlineImports}
               onCheckedChange={setAutoScaleOnlineImports}
+            />
+          </div>
+          <div className="flex items-center justify-between col-span-full py-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="minimal-top-bar">
+                {t('settings.preferences.minimalTopBar', 'Minimal Top Bar')}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  'settings.preferences.minimalTopBarHint',
+                  'Hide the GitHub star and sponsor buttons, and use a smaller logo and title.'
+                )}
+              </p>
+            </div>
+            <Switch
+              id="minimal-top-bar"
+              checked={minimalTopBar}
+              onCheckedChange={handleMinimalTopBarToggle}
             />
           </div>
         </div>
