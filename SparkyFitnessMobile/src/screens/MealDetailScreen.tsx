@@ -16,6 +16,7 @@ import type { Meal, MealFood } from '../types/meals';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useTranslation } from 'react-i18next';
 
 type MealDetailScreenProps = RootStackScreenProps<'MealDetail'>;
 
@@ -99,6 +100,7 @@ function buildMealDisplayValues(
 }
 
 const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const { mealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -287,9 +289,9 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
             onSelect={setViewMode}
           />
           <Text className="text-text-muted text-xs text-center">
-            Makes {meal.total_servings || 1}{' '}
+             Makes {meal.total_servings || 1}{' '}
             {(meal.total_servings || 1) === 1 ? 'serving' : 'servings'} ·{' '}
-            {foodCount} {foodCount === 1 ? 'ingredient' : 'ingredients'}
+             {foodCount} {foodCount === 1 ? t('foodMealScreens.serving') : t('foodMealScreens.servings')}
           </Text>
         </View>
 
@@ -302,9 +304,9 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">
           <View className="flex-row items-center mb-3">
-            <Text className="text-base font-bold text-text-secondary flex-1">Foods in Meal</Text>
+             <Text className="text-base font-bold text-text-secondary flex-1">{t('foodMealScreens.foodsInMeal')}</Text>
             <Text className="text-xs text-text-muted font-medium">
-              {meal.foods.length} {meal.foods.length === 1 ? 'item' : 'items'}
+               {meal.foods.length} {meal.foods.length === 1 ? t('mealLibrary.item_one') : t('mealLibrary.item_other')}
             </Text>
           </View>
           {meal.foods.map((food, index) => {
@@ -328,7 +330,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                     }`}
                     numberOfLines={1}
                   >
-                    {isLinkedMeal ? food.child_meal_name || food.food_name : food.food_name || 'Food'}
+                     {isLinkedMeal ? food.child_meal_name || food.food_name : food.food_name || t('foodMealScreens.foods')}
                     {food.brand ? (
                       <Text className="text-text-secondary font-normal">
                         {' · '}
@@ -339,7 +341,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                   {isLinkedMeal ? (
                     <View className="flex-row items-center gap-1 mt-1">
                       <Icon name="link" size={12} color={textMuted} />
-                      <Text className="text-text-muted text-xs font-medium">Linked meal</Text>
+                     <Text className="text-text-muted text-xs font-medium">{t('foodMealScreens.linkedMeal')}</Text>
                     </View>
                   ) : null}
                   <Text className="text-text-muted text-sm mt-1">
@@ -381,7 +383,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           variant="primary"
           onPress={() => navigation.navigate('FoodEntryAdd', { item: mealToFoodInfo(meal) })}
         >
-          <Text className="text-white text-base font-semibold">Log Meal</Text>
+           <Text className="text-white text-base font-semibold">{t('foodMealScreens.logMeal')}</Text>
         </Button>
 
         {canManageMeal ? (
@@ -393,7 +395,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
             disabled={isDeletePending}
             textClassName="text-bg-danger font-medium"
           >
-            {isDeletePending ? 'Deleting...' : 'Delete Meal'}
+             {isDeletePending ? t('foodMealScreens.deleting') : t('foodMealScreens.deleteMeal')}
           </Button>
         ) : null}
       </ScrollView>

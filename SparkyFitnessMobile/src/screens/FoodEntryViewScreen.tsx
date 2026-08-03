@@ -55,6 +55,7 @@ import {
 } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import VerifiedBadge from '../components/VerifiedBadge';
+import { useTranslation } from 'react-i18next';
 
 type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
 
@@ -113,6 +114,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   navigation,
   route,
 }) => {
+  const { t } = useTranslation();
   const [entry, setEntry] = useState(route.params.entry);
   const [createdVariantOverride, setCreatedVariantOverride] =
     useState<FoodUnitVariant | null>(null);
@@ -708,8 +710,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const editDisplayCarbs = editUseNetCarbs
     ? getNetCarbsValue(displayValues.carbs, displayValues.fiber)
     : displayValues.carbs;
-  const viewCarbsLabel = viewUseNetCarbs ? 'Net Carbs' : 'Carbs';
-  const editCarbsLabel = editUseNetCarbs ? 'Net Carbs' : 'Carbs';
+  const viewCarbsLabel = viewUseNetCarbs ? t('diarySummary.netCarbs') : t('foodMealScreens.carbs');
+  const editCarbsLabel = editUseNetCarbs ? t('diarySummary.netCarbs') : t('foodMealScreens.carbs');
 
   const viewProteinCals = viewProtein * 4;
   const viewCarbsCals = viewDisplayCarbs * 4;

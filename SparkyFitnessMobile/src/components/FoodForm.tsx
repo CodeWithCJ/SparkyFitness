@@ -13,6 +13,7 @@ import { useServerConnection } from '../hooks';
 import { useUserAiConfigAllowed } from '../hooks/useUserAiConfigAllowed';
 import { requestAiUnitConversion } from '../services/api/aiConversionApi';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 import type {
   EquivalentUnit,
   FoodUnitSelectionResult,
@@ -464,6 +465,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
   textMuted,
   accentColor,
 }) => {
+  const { t } = useTranslation();
   const updateRow = (index: number, patch: Partial<EquivalentUnit>) => {
     const next = items.slice();
     next[index] = { ...next[index], ...patch };
@@ -486,7 +488,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
   return (
     <View className="gap-2 mt-1.5" pointerEvents={disabled ? 'none' : 'auto'} style={disabled ? { opacity: 0.5 } : undefined}>
       <Text className="text-text-secondary text-sm font-medium">
-        Equivalent sizes
+         {t('foodMeals.equivalentSizes')}
       </Text>
       {items.map((item, index) => {
         const sizeText =
@@ -516,8 +518,8 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
                 value={item.serving_unit}
                 sections={SERVING_UNIT_SECTIONS}
                 onSelect={(value) => updateRow(index, { serving_unit: value })}
-                title="Select Unit"
-                placeholder="unit"
+                 title={t('foodMeals.selectUnit')}
+                 placeholder={t('foodMeals.unit')}
                 renderTrigger={({ onPress, selectedOption }) => (
                   <TouchableOpacity
                     onPress={onPress}
@@ -529,7 +531,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
                       className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
                       style={{ fontSize: 16 }}
                     >
-                      {selectedOption?.label ?? 'unit'}
+                       {selectedOption?.label ?? t('foodMeals.unit')}
                     </Text>
                     <Icon
                       name="chevron-down"
@@ -544,7 +546,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
             <TouchableOpacity
               onPress={() => removeRow(index)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel="Remove equivalent"
+               accessibilityLabel={t('foodMeals.removeEquivalent')}
             >
               <Icon name="remove-circle" size={22} color={textMuted} />
             </TouchableOpacity>
@@ -558,7 +560,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
         className="self-start py-0 px-0"
       >
         <Text style={{ color: accentColor }} className="text-sm font-medium">
-          + Add equivalent
+           {t('foodMeals.addEquivalent')}
         </Text>
       </Button>
     </View>
@@ -570,7 +572,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   onSubmit,
   submitRequestRef,
   onServingChange,
-  submitLabel = 'Add Food',
+  submitLabel,
   isSubmitting = false,
   hideSubmitButton = false,
   showAutoScaleNutrition = false,
@@ -583,6 +585,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   customNutrients: customNutrientsProp,
   onCustomNutrientsChange,
 }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState<FoodFormData>(() =>
     buildDisplayFormState(initialValues),
   );
@@ -1099,8 +1102,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!(Number.isFinite(anchor.serving_size) && anchor.serving_size > 0)) {
       Toast.show({
         type: 'error',
-        text1: "Couldn't estimate",
-        text2: 'The food has no trusted default to scale from.',
+        text1: t('foodMeals.couldNotEstimate'),
+        text2: t('foodMeals.noTrustedDefault'),
       });
       return;
     }
@@ -1110,7 +1113,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!Number.isFinite(fromAmount) || fromAmount <= 0) {
       Toast.show({
         type: 'error',
-        text1: 'Set a serving size first',
+        text1: t('foodMeals.setServingFirst'),
       });
       return;
     }
@@ -1219,7 +1222,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         err instanceof Error ? err.message : 'AI estimate failed.';
       Toast.show({
         type: 'error',
-        text1: "Couldn't estimate",
+        text1: t('foodMeals.couldNotEstimate'),
         text2: message,
       });
     } finally {
@@ -1294,15 +1297,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
 
     Alert.alert(
-      'Manual Nutrition Update',
-      "Can't convert between units. Update nutrition values manually before saving.",
+      t('foodMeals.manualNutritionUpdate'),
+      t('foodMeals.manualNutritionMessage'),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Save Anyway',
+          text: t('foodMeals.saveAnyway'),
           onPress: submitForm,
         },
       ],
@@ -1327,8 +1330,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
         {headerChildren}
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
           {/* Food info */}
-          {renderTextField('Food Name', 'name', 'e.g. Chicken Breast', true, 'brand')}
-          {renderTextField('Brand', 'brand', 'Optional', false, 'servingSize')}
+          {renderTextField(t('foodMeals.foodName'), 'name', t('foodMeals.foodNamePlaceholder'), true, 'brand')}
+          {renderTextField(t('foodMeals.brand'), 'brand', t('foodMeals.optional'), false, 'servingSize')}
 
           {/* Serving */}
           <View className="flex-row gap-3">
@@ -1410,9 +1413,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
           {showAutoScaleNutrition ? (
             <View className="flex-row items-center justify-between mt-1.5">
-              <Text className="text-text-secondary text-base">Auto Scale Nutrition</Text>
+              <Text className="text-text-secondary text-base">{t('foodMeals.autoScaleNutrition')}</Text>
               <Switch
-                accessibilityLabel="Auto Scale Nutrition"
+                accessibilityLabel={t('foodMeals.autoScaleNutrition')}
                 value={autoScaleNutrition}
                 onValueChange={(value) => {
                   hasTouchedAutoScaleRef.current = true;
@@ -1623,7 +1626,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           {isSubmitting ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text className="text-white text-base font-semibold">{submitLabel}</Text>
+            <Text className="text-white text-base font-semibold">{submitLabel ?? t('foodMeals.addFood')}</Text>
           )}
         </Button>
         )}

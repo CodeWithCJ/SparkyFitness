@@ -21,7 +21,8 @@
     "collapseSection": "Collapse this section",
     "favorite": "Favorite",
     "dismiss": "Dismiss",
-    "continue": "Continue"
+    "continue": "Continue",
+    "tryAgain": "Please try again."
   },
   "batch": {
     "about": "About", "version": "Version {{version}} ({{build}})", "aboutApp": "About this app", "aboutDescription": "SparkyFitness is an open-source nutrition, exercise, and health-data tracker that syncs to your own server. This app is the mobile companion for logging meals, workouts, and measurements on the go.", "github": "Project on GitHub", "documentation": "Documentation", "trendTitle": "{{nutrient}} Trends", "trendLoadFailed": "Failed to load trend data", "connectionRetry": "Please check your connection and try again.", "summary": "Summary Statistics", "dailyAverage": "Daily Average", "highestDay": "Highest Intake Day", "targetGoal": "Target Daily Goal", "averageTarget": "Average vs. Target", "percentOfGoal": "{{percent}}% of goal"
@@ -738,9 +739,292 @@
     "snacks": "Snacks",
     "other": "Other"
   },
+  "foodMeals": {
+    "unknownFood": "Unknown food",
+    "adjustServing": "Adjust serving",
+    "lastIngredientWarning": "This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.",
+    "removeFoodTitle": "Remove {{foodName}}?",
+    "remove": "Remove",
+    "editFood": "Edit {{foodName}}",
+    "selectUnit": "Select Unit",
+    "unitUpdateFailed": "Could not update that unit",
+    "aiEstimate": "AI estimate",
+    "savedCustomUnits": "Saved Custom Units",
+    "noServerMealNutrition": "Configure your server connection in Settings to view meal nutrition.",
+    "loadingMeal": "Loading meal...",
+    "failedToLoadMeal": "Failed to load meal",
+    "noMealFoods": "No {{meal}} foods",
+    "noFoodsLogged": "{{date}} has no foods logged for this meal.",
+    "targetCalories": "{{date}} · Target: {{calories}} Cal",
+    "copyMealToDay": "Copy meal to another day"
+    ,"failedToUpdateSetting": "Failed to update setting."
+    ,"mealTypes": "Meal Types"
+    ,"manageMealTypes": "Add, edit, reorder, or delete custom meal categories"
+    ,"showNetCarbs": "Show Net Carbs"
+    ,"netCarbsDescription": "When enabled, carbohydrate summaries display net carbs (total carbs − fiber), and a Total Carbs row is added in nutrient breakdowns."
+    ,"defaultFoodSource": "Default Food Source"
+    ,"searchProvider": "Search Provider"
+    ,"firstAvailable": "First available"
+    ,"foodSourceDescription": "Used when searching for foods by name."
+    ,"adjustOpenFoodFacts": "Adjust Open Food Facts Values"
+    ,"openFoodFactsDescription": "Open Food Facts uses values per 100g. This converts them to the product’s serving size."
+    ,"barcodeScanning": "Barcode Scanning"
+    ,"provider": "Provider"
+    ,"barcodeProvider": "Barcode Provider"
+    ,"default": "Default"
+    ,"retryOpenFoodFacts": "Retry with Open Food Facts"
+    ,"retryOpenFoodFactsDescription": "If no result is found, try Open Food Facts automatically."
+    ,"updated": "Updated"
+    ,"mealCategoryTimeUpdated": "Meal category time updated."
+    ,"failedMealCategoryTime": "Failed to update meal category time."
+    ,"suggestedMealTimes": "Suggested Meal Times"
+    ,"suggestedMealTimesDescription": "Set target start times for your meal categories (e.g. 07:30, 12:00, 17:00). The app suggests meal types dynamically based on these times when logging food."
+    ,"invalidTime": "Invalid Time"
+    ,"invalidTimeDescription": "Please enter time in 24-hour HH:MM format (e.g., 07:30, 17:00)."
+    ,"foodSharedPublicly": "Food shared publicly"
+    ,"foodMadePrivate": "Food made private"
+    ,"failedToUpdateSharing": "Failed to update sharing"
+    ,"makePublicTitle": "Make public?"
+    ,"makeFoodPublicMessage": "This food will become visible to all users on this server."
+    ,"makePublic": "Make Public"
+    ,"removeFavorite": "Remove from favorites"
+    ,"addFavorite": "Add to favorites"
+    ,"makePrivate": "Make private"
+    ,"sharePublic": "Share with public"
+    ,"editFoodLabel": "Edit food"
+    ,"noServerFoodDetails": "Configure your server connection in Settings to view food details."
+    ,"serving": "Serving"
+    ,"selectServing": "Select Serving"
+    ,"servingOptions": "Serving options"
+    ,"loadingServingOptions": "Loading serving options..."
+    ,"servingOptionsLoadFailed": "Some serving options could not be loaded right now."
+    ,"barcode": "Barcode"
+    ,"notSet": "Not set"
+    ,"logFood": "Log Food"
+    ,"deletingFood": "Deleting..."
+    ,"deleteFood": "Delete Food"
+    ,"equivalentSizes": "Equivalent sizes"
+    ,"unit": "unit"
+    ,"removeEquivalent": "Remove equivalent"
+    ,"addEquivalent": "+ Add equivalent"
+    ,"addFood": "Add Food"
+    ,"couldNotEstimate": "Couldn't estimate"
+    ,"noTrustedDefault": "The food has no trusted default to scale from."
+    ,"setServingFirst": "Set a serving size first"
+    ,"untitledFood": "Untitled food"
+    ,"manualNutritionUpdate": "Manual Nutrition Update"
+    ,"manualNutritionMessage": "Can't convert between units. Update nutrition values manually before saving."
+    ,"saveAnyway": "Save Anyway"
+    ,"foodName": "Food Name"
+    ,"foodNamePlaceholder": "e.g. Chicken Breast"
+    ,"brand": "Brand"
+    ,"optional": "Optional"
+    ,"autoScaleNutrition": "Auto Scale Nutrition"
+    ,"searchMeals": "Search meals..."
+    ,"noMatchingMeals": "No matching meals found"
+    ,"changeOwnershipFilter": "Try changing your ownership filter."
+    ,"noMealsFound": "No meals found"
+    ,"tryDifferentMealSearch": "Try a different search term to find saved meals."
+    ,"mealsAppearHere": "Meals you create will appear here."
+    ,"noServerMealLibrary": "Configure your server connection in Settings to view your meal library."
+    ,"loadingMeals": "Loading meals..."
+    ,"failedSearchMeals": "Failed to search meals"
+    ,"failedLoadMeals": "Failed to load meals"
+    ,"all": "All"
+    ,"mine": "Mine"
+    ,"family": "Family"
+    ,"public": "Public"
+  },
   "foodSearch": {
     "bestMatches": "Best matches",
     "searchFoods": "Search foods..."
+  },
+  "foodMealScreens": {
+    "serving": "serving",
+    "servings": "servings",
+    "perServing": "per serving",
+    "selectServing": "Select Serving",
+    "selectMeal": "Select Meal",
+    "date": "Date",
+    "meal": "Meal",
+    "time": "Time",
+    "clear": "Clear",
+    "none": "None",
+    "calories": "calories",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "unknownFood": "Unknown food",
+    "adjustNutrition": "Adjust nutrition",
+    "saveFood": "Save Food",
+    "saveEntryChanges": "Save food entry changes",
+    "editFoodEntry": "Edit food entry",
+    "tapToEditNutrition": "Tap to edit nutrition",
+    "hideExtraNutrients": "Hide extra nutrients",
+    "showMoreNutrients": "Show more nutrients",
+    "deleting": "Deleting...",
+    "deleteEntry": "Delete Entry",
+    "invalidAmount": "Invalid amount",
+    "amountPositive": "Amount must be greater than zero.",
+    "failedAddFood": "Failed to add food",
+    "tryAgain": "Please try again.",
+    "mealsNotSupported": "Meals not supported here",
+    "selectFoodInstead": "Select a food instead of another meal.",
+    "someUnitsNotSaved": "Some equivalent units could not be saved",
+    "foodSaved": "Food saved",
+    "foods": "Foods",
+    "meals": "Meals",
+    "searchFoodsPlaceholder": "Search foods...",
+    "all": "All",
+    "mine": "Mine",
+    "family": "Family",
+    "public": "Public",
+    "noMatchingFoods": "No matching foods found",
+    "noFoods": "No foods found",
+    "tryDifferentFoodSearch": "Try a different search term to find saved foods.",
+    "foodsAppearHere": "Foods you save or log will appear here.",
+    "noServer": "No server configured",
+    "foodLibrarySubtitle": "Configure your server connection in Settings to view your food library.",
+    "loadingFoods": "Loading foods...",
+    "failedFoods": "Failed to load foods",
+    "failedMoreFoods": "Failed to load more foods.",
+    "connectionRetry": "Please check your connection and try again.",
+    "showAllResults": "Show all {{count}} {{name}} results",
+    "showAllFoods": "Show all {{count}} foods",
+    "showAllMeals": "Show all {{count}} meals",
+    "topMatches": "Top Matches",
+    "bySource": "By Source",
+    "onlineResults": "Online Results",
+    "allSources": "All Sources",
+    "onlineProvider": "Online provider",
+    "sourceChange": "Source {{source}}, tap to change",
+    "couldNotLoad": "Couldn't load",
+    "noResults": "No results",
+    "failedMoreRetry": "Failed to load more. Tap to retry",
+    "loadMore": "Load More",
+    "noOnlineResults": "No online results from {{provider}}",
+    "searchingSavedFoods": "Searching saved foods",
+    "searchingSavedFoodsMeals": "Searching saved foods and meals",
+    "barcode": "Barcode",
+    "label": "Label",
+    "photo": "Photo",
+    "cameraPermission": "We need your permission to show the camera",
+    "grantPermission": "Grant Permission",
+    "error": "Error",
+    "captureFailed": "Failed to capture photo.",
+    "noPhoto": "No photo returned by picker.",
+    "analyzingLabel": "Analyzing label...",
+    "retake": "Retake",
+    "usePhoto": "Use Photo",
+    "lookupFailed": "Lookup failed",
+    "noBarcodeMatch": "No match for barcode",
+    "scanLabelOrManual": "You can scan the nutrition label or enter it manually.",
+    "scanNutritionLabel": "Scan Nutrition Label",
+    "addFoodManually": "Add Food Manually",
+    "frameWholeMeal": "Frame the whole meal",
+    "photoSetupTitle": "AI photo estimates aren't set up",
+    "photoSetupBody": "Open SparkyFitness in a browser and visit Settings → AI to add an AI provider, then return here.",
+    "logManually": "Log manually",
+    "notNow": "Not now",
+    "typeBarcode": "Type Barcode Instead",
+    "choosePhoto": "Choose photo from library",
+    "photoHelp": "How photo estimation works",
+    "enterBarcode": "Enter Barcode",
+    "barcodeNumber": "Barcode number",
+    "lookUp": "Look Up",
+    "useBarcode": "Use Barcode",
+    "photoEstimateTitle": "Estimate nutrition from a photo",
+    "photoEstimateSubtitle": "Turn a meal photo into an editable nutrition estimate.",
+    "addWeight": "Add weight when you know it",
+    "weightHelp": "A total meal weight helps with portions, calories, and macros.",
+    "addDescription": "Add a short description",
+    "descriptionHelp": "Mention sauces, oils, toppings, restaurant names, or anything hidden.",
+    "reviewBeforeSaving": "Review before saving",
+    "reviewHelp": "Photo estimates are a starting point. You'll be able to edit everything before it's logged.",
+    "continue": "Continue",
+    "logManuallyInstead": "Log manually instead",
+    "reviewEstimate": "Review estimate",
+    "next": "Next",
+    "totalEstimatedWeight": "Total estimated weight: {{weight}}",
+    "hideDetectedIngredients": "Hide detected ingredients ▴",
+    "showDetectedIngredients": "Show detected ingredients ▾",
+    "improveEstimate": "Improve estimate",
+    "removeImage": "Remove image {{number}}",
+    "addAnotherImage": "Add another image",
+    "add": "Add",
+    "improveHint": "Add anything the {{photos}} might not make obvious.",
+    "photoSingular": "photo",
+    "photoPlural": "photos",
+    "totalWeightOptional": "Total weight (optional)",
+    "descriptionOptional": "Description (optional)",
+    "descriptionHint": "Include oils, butter, cream, sauces, toppings, sides, or restaurant names.",
+    "generateEstimate": "Generate estimate",
+    "takePhoto": "Take photo",
+    "chooseFromLibrary": "Choose from library",
+    "readingPhoto": "Reading your photo…",
+    "readingPhotos": "Reading your photos…",
+    "identifyingIngredients": "Identifying ingredients…",
+    "estimatingPortions": "Estimating portions…",
+    "calculatingNutrition": "Calculating nutrition…",
+    "almostThere": "Almost there…",
+    "mealName": "Meal name",
+    "mealNameRequired": "Meal Name *",
+    "mealNamePlaceholder": "e.g. Chicken Rice Bowl",
+    "descriptionPlaceholder": "Notes about this meal",
+    "totalServings": "Total Servings *",
+    "totalAmount": "Total Amount ({{unit}}) *",
+    "servingSize": "Serving Size ({{unit}}) *",
+    "unit": "Unit",
+    "foodsInMeal": "Foods in Meal",
+    "linkedMeal": "Linked meal",
+    "mealTotal": "Meal total",
+    "delete": "Delete",
+    "addFood": "Add Food",
+    "missingMealName": "Missing meal name",
+    "mealNameRequiredMessage": "Please enter a name for your meal.",
+    "invalidServingSize": "Invalid serving size",
+    "servingSizePositive": "Default serving size must be greater than zero.",
+    "invalidTotalServings": "Invalid total servings",
+    "invalidTotalAmount": "Invalid total amount",
+    "totalServingsPositive": "Total servings must be greater than zero.",
+    "totalAmountPositive": "Total amount must be greater than zero.",
+    "noIngredients": "No ingredients yet",
+    "addIngredientBeforeSave": "Add at least one food before saving this meal.",
+    "missingIngredientData": "Missing ingredient data",
+    "missingVariant": "One of the selected foods is missing a serving variant. Please re-add it.",
+    "linkedMealInfo": "Linked meal",
+    "editSubmealWeb": "Edit this sub-meal ingredient in the web app.",
+    "foodsInThisMeal": "Foods in this meal",
+    "noFoodsInMeal": "No foods in this meal yet.",
+    "mealNameLabel": "Meal name",
+    "servingsLabel": "Servings",
+    "deleteMeal": "Delete Meal",
+    "mealTypeCreated": "Meal type created",
+    "failedCreateMealType": "Failed to create meal type",
+    "failedUpdate": "Failed to update",
+    "mealTypeDeleted": "Meal type deleted",
+    "failedDelete": "Failed to delete",
+    "deleteMealType": "Delete Meal Type",
+    "deleteMealTypeConfirm": "Delete '{{name}}'?",
+    "addMealType": "Add Meal Type",
+    "renameMealType": "Rename Meal Type",
+    "name": "Name",
+    "save": "Save",
+    "systemTypes": "System Types",
+    "customTypes": "Custom Types",
+    "custom": "Custom",
+    "system": "System",
+    "order": "Order: {{order}}",
+    "visible": "Visible",
+    "quick": "Quick",
+    "loadingMealTypes": "Loading meal types...",
+    "failedMealTypes": "Failed to load meal types.",
+    "noMealTypes": "No meal types found",
+    "mealTypePlaceholder": "e.g. Pre-Workout",
+    "saveMeal": "Save meal",
+    "logMeal": "Log Meal",
+    "deleteLoggedMeal": "Delete Meal",
+    "noLoggedMealFoods": "No foods in this meal yet."
   },
   "healthConnect": {
     "title": "Health Connect"

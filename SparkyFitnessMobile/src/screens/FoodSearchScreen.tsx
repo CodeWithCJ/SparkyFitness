@@ -70,6 +70,7 @@ import type { LandingEntry } from '../utils/landingLists';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useTranslation } from 'react-i18next';
 
 type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 
@@ -151,6 +152,7 @@ const filterItems = <T extends { user_id?: string | null; userId?: string | null
 };
 
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const isMealBuilderMode = pickerMode === 'meal-builder';
@@ -319,7 +321,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }));
     // Offer the aggregated view only when there is more than one provider.
     if (providers.length > 1) {
-      opts.unshift({ label: 'All Sources', value: ALL_PROVIDERS_VALUE });
+      opts.unshift({ label: t('foodMealScreens.allSources'), value: ALL_PROVIDERS_VALUE });
     }
     return opts;
   }, [providers]);
@@ -1024,8 +1026,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       activeOpacity={0.7}
       onPress={() => handleSelectProvider(provider.id)}
     >
-      <Text className="text-sm font-medium" style={{ color: accentColor }}>
-        Show all {count} {provider.provider_name} results
+           <Text className="text-sm font-medium" style={{ color: accentColor }}>
+         {t('foodMealScreens.showAllResults', { count, name: provider.provider_name })}
       </Text>
     </TouchableOpacity>
   );

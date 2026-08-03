@@ -21,7 +21,8 @@
     "collapseSection": "Zwiń tę sekcję",
     "favorite": "W ulubionych",
     "dismiss": "Zamknij",
-    "continue": "Kontynuuj"
+    "continue": "Kontynuuj",
+    "tryAgain": "Spróbuj ponownie."
   },
   "batch": {
     "about": "Informacje", "version": "Wersja {{version}} ({{build}})", "aboutApp": "O aplikacji", "aboutDescription": "SparkyFitness to open-source'owy rejestr odżywiania, ćwiczeń i danych zdrowotnych, który synchronizuje się z własnym serwerem. Ta aplikacja mobilna pomaga zapisywać posiłki, treningi i pomiary.", "github": "Projekt na GitHubie", "documentation": "Dokumentacja", "trendTitle": "Trendy: {{nutrient}}", "trendLoadFailed": "Nie udało się załadować danych trendu", "connectionRetry": "Sprawdź połączenie i spróbuj ponownie.", "summary": "Podsumowanie statystyk", "dailyAverage": "Średnia dzienna", "highestDay": "Dzień z najwyższym spożyciem", "targetGoal": "Dzienny cel", "averageTarget": "Średnia względem celu", "percentOfGoal": "{{percent}}% celu"
@@ -750,9 +751,108 @@
     "snacks": "Przekąski",
     "other": "Inne"
   },
+  "foodMeals": {
+    "unknownFood": "Nieznany produkt",
+    "adjustServing": "Dostosuj porcję",
+    "lastIngredientWarning": "To ostatni składnik. Dodaj kolejny przed zapisaniem lub użyj opcji Usuń posiłek, aby usunąć cały posiłek.",
+    "removeFoodTitle": "Usunąć {{foodName}}?",
+    "remove": "Usuń",
+    "editFood": "Edytuj {{foodName}}",
+    "selectUnit": "Wybierz jednostkę",
+    "unitUpdateFailed": "Nie udało się zaktualizować tej jednostki",
+    "aiEstimate": "Szacunek AI",
+    "savedCustomUnits": "Zapisane własne jednostki",
+    "noServerMealNutrition": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić wartości odżywcze posiłku.",
+    "loadingMeal": "Ładowanie posiłku...",
+    "failedToLoadMeal": "Nie udało się załadować posiłku",
+    "noMealFoods": "Brak produktów dla: {{meal}}",
+    "noFoodsLogged": "{{date}} nie zapisano produktów dla tego posiłku.",
+    "targetCalories": "{{date}} · Cel: {{calories}} Cal",
+    "copyMealToDay": "Kopiuj posiłek na inny dzień"
+    ,"failedToUpdateSetting": "Nie udało się zaktualizować ustawienia."
+    ,"mealTypes": "Typy posiłków"
+    ,"manageMealTypes": "Dodawaj, edytuj, porządkuj lub usuwaj własne kategorie posiłków"
+    ,"showNetCarbs": "Pokaż węglowodany netto"
+    ,"netCarbsDescription": "Po włączeniu podsumowania węglowodanów pokazują wartości netto (łącznie minus błonnik), a w rozbiciu składników pojawia się wiersz wszystkich węglowodanów."
+    ,"defaultFoodSource": "Domyślne źródło produktów"
+    ,"searchProvider": "Dostawca wyszukiwania"
+    ,"firstAvailable": "Pierwszy dostępny"
+    ,"foodSourceDescription": "Używane podczas wyszukiwania produktów po nazwie."
+    ,"adjustOpenFoodFacts": "Dostosuj wartości Open Food Facts"
+    ,"openFoodFactsDescription": "Open Food Facts używa wartości na 100 g. Są one przeliczane na porcję produktu."
+    ,"barcodeScanning": "Skanowanie kodów kreskowych"
+    ,"provider": "Dostawca"
+    ,"barcodeProvider": "Dostawca kodów kreskowych"
+    ,"default": "Domyślne"
+    ,"retryOpenFoodFacts": "Spróbuj ponownie z Open Food Facts"
+    ,"retryOpenFoodFactsDescription": "Jeśli nie znaleziono wyniku, automatycznie spróbuj Open Food Facts."
+    ,"updated": "Zaktualizowano"
+    ,"mealCategoryTimeUpdated": "Zaktualizowano godzinę kategorii posiłku."
+    ,"failedMealCategoryTime": "Nie udało się zaktualizować godziny kategorii posiłku."
+    ,"suggestedMealTimes": "Sugerowane godziny posiłków"
+    ,"suggestedMealTimesDescription": "Ustaw docelowe godziny rozpoczęcia kategorii posiłków (np. 07:30, 12:00, 17:00). Aplikacja dynamicznie sugeruje typ posiłku podczas zapisywania jedzenia."
+    ,"invalidTime": "Nieprawidłowa godzina"
+    ,"invalidTimeDescription": "Wpisz godzinę w formacie 24-godzinnym HH:MM (np. 07:30, 17:00)."
+    ,"foodSharedPublicly": "Udostępniono produkt publicznie"
+    ,"foodMadePrivate": "Produkt jest prywatny"
+    ,"failedToUpdateSharing": "Nie udało się zaktualizować udostępniania"
+    ,"makePublicTitle": "Udostępnić publicznie?"
+    ,"makeFoodPublicMessage": "Ten produkt będzie widoczny dla wszystkich użytkowników tego serwera."
+    ,"makePublic": "Udostępnij publicznie"
+    ,"removeFavorite": "Usuń z ulubionych"
+    ,"addFavorite": "Dodaj do ulubionych"
+    ,"makePrivate": "Ustaw jako prywatne"
+    ,"sharePublic": "Udostępnij publicznie"
+    ,"editFoodLabel": "Edytuj produkt"
+    ,"noServerFoodDetails": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić szczegóły produktu."
+    ,"serving": "Porcja"
+    ,"selectServing": "Wybierz porcję"
+    ,"servingOptions": "Opcje porcji"
+    ,"loadingServingOptions": "Ładowanie opcji porcji..."
+    ,"servingOptionsLoadFailed": "Niektórych opcji porcji nie można teraz załadować."
+    ,"barcode": "Kod kreskowy"
+    ,"notSet": "Nie ustawiono"
+    ,"logFood": "Zapisz produkt"
+    ,"deletingFood": "Usuwanie..."
+    ,"deleteFood": "Usuń produkt"
+    ,"equivalentSizes": "Równoważne rozmiary"
+    ,"unit": "jednostka"
+    ,"removeEquivalent": "Usuń odpowiednik"
+    ,"addEquivalent": "+ Dodaj odpowiednik"
+    ,"addFood": "Dodaj produkt"
+    ,"couldNotEstimate": "Nie udało się oszacować"
+    ,"noTrustedDefault": "Produkt nie ma zaufanej wartości domyślnej, na podstawie której można go przeliczyć."
+    ,"setServingFirst": "Najpierw ustaw wielkość porcji"
+    ,"untitledFood": "Produkt bez nazwy"
+    ,"manualNutritionUpdate": "Ręczna aktualizacja wartości odżywczych"
+    ,"manualNutritionMessage": "Nie można przeliczyć między jednostkami. Przed zapisaniem zaktualizuj wartości odżywcze ręcznie."
+    ,"saveAnyway": "Zapisz mimo to"
+    ,"foodName": "Nazwa produktu"
+    ,"foodNamePlaceholder": "np. pierś z kurczaka"
+    ,"brand": "Marka"
+    ,"optional": "Opcjonalne"
+    ,"autoScaleNutrition": "Automatycznie przelicz wartości odżywcze"
+    ,"searchMeals": "Szukaj posiłków..."
+    ,"noMatchingMeals": "Brak pasujących posiłków"
+    ,"changeOwnershipFilter": "Spróbuj zmienić filtr własności."
+    ,"noMealsFound": "Nie znaleziono posiłków"
+    ,"tryDifferentMealSearch": "Spróbuj innego hasła, aby znaleźć zapisane posiłki."
+    ,"mealsAppearHere": "Utworzone posiłki pojawią się tutaj."
+    ,"noServerMealLibrary": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić bibliotekę posiłków."
+    ,"loadingMeals": "Ładowanie posiłków..."
+    ,"failedSearchMeals": "Nie udało się wyszukać posiłków"
+    ,"failedLoadMeals": "Nie udało się załadować posiłków"
+    ,"all": "Wszystkie"
+    ,"mine": "Moje"
+    ,"family": "Rodzinne"
+    ,"public": "Publiczne"
+  },
   "foodSearch": {
     "bestMatches": "Najlepsze dopasowania",
     "searchFoods": "Szukaj produktów..."
+  },
+  "foodMealScreens": {
+    "serving": "porcja", "servings": "porcji", "perServing": "na porcję", "selectServing": "Wybierz porcję", "selectMeal": "Wybierz posiłek", "date": "Data", "meal": "Posiłek", "time": "Godzina", "clear": "Wyczyść", "none": "Brak", "calories": "kalorii", "protein": "Białko", "carbs": "Węglowodany", "fat": "Tłuszcz", "unknownFood": "Nieznany produkt", "adjustNutrition": "Dostosuj wartości odżywcze", "saveFood": "Zapisz produkt", "saveEntryChanges": "Zapisz zmiany wpisu żywieniowego", "editFoodEntry": "Edytuj wpis żywieniowy", "tapToEditNutrition": "Dotknij, aby edytować wartości odżywcze", "hideExtraNutrients": "Ukryj dodatkowe składniki", "showMoreNutrients": "Pokaż więcej składników", "deleting": "Usuwanie...", "deleteEntry": "Usuń wpis", "invalidAmount": "Nieprawidłowa ilość", "amountPositive": "Ilość musi być większa od zera.", "failedAddFood": "Nie udało się dodać produktu", "tryAgain": "Spróbuj ponownie.", "mealsNotSupported": "Posiłki nie są tu obsługiwane", "selectFoodInstead": "Wybierz produkt zamiast kolejnego posiłku.", "someUnitsNotSaved": "Nie udało się zapisać niektórych jednostek", "foodSaved": "Produkt zapisany", "foods": "Produkty", "meals": "Posiłki", "searchFoodsPlaceholder": "Szukaj produktów...", "all": "Wszystkie", "mine": "Moje", "family": "Rodzinne", "public": "Publiczne", "noMatchingFoods": "Nie znaleziono pasujących produktów", "noFoods": "Nie znaleziono produktów", "tryDifferentFoodSearch": "Spróbuj innego hasła, aby znaleźć zapisane produkty.", "foodsAppearHere": "Zapisane lub zarejestrowane produkty pojawią się tutaj.", "noServer": "Brak skonfigurowanego serwera", "foodLibrarySubtitle": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić bibliotekę produktów.", "loadingFoods": "Ładowanie produktów...", "failedFoods": "Nie udało się załadować produktów", "failedMoreFoods": "Nie udało się załadować kolejnych produktów.", "connectionRetry": "Sprawdź połączenie i spróbuj ponownie.", "showAllResults": "Pokaż wszystkie {{count}} wyniki: {{name}}", "showAllFoods": "Pokaż wszystkie {{count}} produktów", "showAllMeals": "Pokaż wszystkie {{count}} posiłków", "topMatches": "Najlepsze dopasowania", "bySource": "Według źródła", "onlineResults": "Wyniki online", "allSources": "Wszystkie źródła", "onlineProvider": "Dostawca online", "sourceChange": "Źródło {{source}}, dotknij, aby zmienić", "couldNotLoad": "Nie udało się załadować", "noResults": "Brak wyników", "failedMoreRetry": "Nie udało się załadować więcej. Dotknij, aby spróbować ponownie", "loadMore": "Wczytaj więcej", "noOnlineResults": "Brak wyników online z {{provider}}", "searchingSavedFoods": "Wyszukiwanie zapisanych produktów", "searchingSavedFoodsMeals": "Wyszukiwanie zapisanych produktów i posiłków", "barcode": "Kod kreskowy", "label": "Etykieta", "photo": "Zdjęcie", "cameraPermission": "Potrzebujemy pozwolenia na użycie aparatu", "grantPermission": "Nadaj uprawnienie", "error": "Błąd", "captureFailed": "Nie udało się zrobić zdjęcia.", "noPhoto": "Selektor nie zwrócił zdjęcia.", "analyzingLabel": "Analizowanie etykiety...", "retake": "Zrób ponownie", "usePhoto": "Użyj zdjęcia", "lookupFailed": "Wyszukiwanie nie powiodło się", "noBarcodeMatch": "Brak produktu dla kodu", "scanLabelOrManual": "Możesz zeskanować etykietę wartości odżywczych lub wpisać dane ręcznie.", "scanNutritionLabel": "Skanuj etykietę wartości odżywczych", "addFoodManually": "Dodaj produkt ręcznie", "frameWholeMeal": "Obejmij cały posiłek", "photoSetupTitle": "Szacunki ze zdjęcia AI nie są skonfigurowane", "photoSetupBody": "Otwórz SparkyFitness w przeglądarce i przejdź do Ustawienia → AI, aby dodać dostawcę AI, a następnie wróć tutaj.", "logManually": "Zapisz ręcznie", "notNow": "Nie teraz", "typeBarcode": "Wpisz kod zamiast skanować", "choosePhoto": "Wybierz zdjęcie z biblioteki", "photoHelp": "Jak działają szacunki ze zdjęcia", "enterBarcode": "Wpisz kod kreskowy", "barcodeNumber": "Numer kodu kreskowego", "lookUp": "Wyszukaj", "useBarcode": "Użyj kodu", "photoEstimateTitle": "Oszacuj wartości odżywcze ze zdjęcia", "photoEstimateSubtitle": "Zamień zdjęcie posiłku w edytowalny szacunek wartości odżywczych.", "addWeight": "Dodaj znaną masę", "weightHelp": "Łączna masa posiłku pomaga określić porcje, kalorie i makroskładniki.", "addDescription": "Dodaj krótki opis", "descriptionHelp": "Wspomnij o sosach, olejach, dodatkach, nazwie restauracji lub innych ukrytych składnikach.", "reviewBeforeSaving": "Sprawdź przed zapisaniem", "reviewHelp": "Szacunki ze zdjęcia to punkt wyjścia. Przed zapisaniem możesz wszystko edytować.", "continue": "Kontynuuj", "logManuallyInstead": "Zapisz ręcznie", "reviewEstimate": "Sprawdź szacunek", "next": "Dalej", "totalEstimatedWeight": "Łączna szacowana masa: {{weight}}", "hideDetectedIngredients": "Ukryj wykryte składniki ▴", "showDetectedIngredients": "Pokaż wykryte składniki ▾", "improveEstimate": "Ulepsz szacunek", "removeImage": "Usuń obraz {{number}}", "addAnotherImage": "Dodaj kolejny obraz", "add": "Dodaj", "improveHint": "Dodaj informacje, których {{photos}} mogą nie pokazywać jednoznacznie.", "photoSingular": "zdjęcie", "photoPlural": "zdjęcia", "totalWeightOptional": "Łączna masa (opcjonalnie)", "descriptionOptional": "Opis (opcjonalnie)", "descriptionHint": "Uwzględnij oleje, masło, śmietanę, sosy, dodatki, przystawki lub nazwę restauracji.", "generateEstimate": "Wygeneruj szacunek", "takePhoto": "Zrób zdjęcie", "chooseFromLibrary": "Wybierz z biblioteki", "readingPhoto": "Odczytywanie zdjęcia…", "readingPhotos": "Odczytywanie zdjęć…", "identifyingIngredients": "Rozpoznawanie składników…", "estimatingPortions": "Szacowanie porcji…", "calculatingNutrition": "Obliczanie wartości odżywczych…", "almostThere": "Prawie gotowe…", "mealName": "Nazwa posiłku", "mealNameRequired": "Nazwa posiłku *", "mealNamePlaceholder": "np. miska ryżu z kurczakiem", "descriptionPlaceholder": "Notatki o tym posiłku", "totalServings": "Łączna liczba porcji *", "totalAmount": "Łączna ilość ({{unit}}) *", "servingSize": "Wielkość porcji ({{unit}}) *", "unit": "Jednostka", "foodsInMeal": "Produkty w posiłku", "linkedMeal": "Połączony posiłek", "mealTotal": "Suma posiłku", "delete": "Usuń", "addFood": "Dodaj produkt", "missingMealName": "Brak nazwy posiłku", "mealNameRequiredMessage": "Wpisz nazwę posiłku.", "invalidServingSize": "Nieprawidłowa wielkość porcji", "servingSizePositive": "Domyślna wielkość porcji musi być większa od zera.", "invalidTotalServings": "Nieprawidłowa liczba porcji", "invalidTotalAmount": "Nieprawidłowa ilość całkowita", "totalServingsPositive": "Łączna liczba porcji musi być większa od zera.", "totalAmountPositive": "Łączna ilość musi być większa od zera.", "noIngredients": "Brak składników", "addIngredientBeforeSave": "Dodaj co najmniej jeden produkt przed zapisaniem posiłku.", "missingIngredientData": "Brak danych składnika", "missingVariant": "Jeden z wybranych produktów nie ma wariantu porcji. Dodaj go ponownie.", "linkedMealInfo": "Połączony posiłek", "editSubmealWeb": "Edytuj ten składnik będący podposiłkiem w aplikacji webowej.", "foodsInThisMeal": "Produkty w tym posiłku", "noFoodsInMeal": "Brak produktów w tym posiłku.", "mealNameLabel": "Nazwa posiłku", "servingsLabel": "Porcje", "deleteMeal": "Usuń posiłek", "mealTypeCreated": "Utworzono typ posiłku", "failedCreateMealType": "Nie udało się utworzyć typu posiłku", "failedUpdate": "Nie udało się zaktualizować", "mealTypeDeleted": "Usunięto typ posiłku", "failedDelete": "Nie udało się usunąć", "deleteMealType": "Usuń typ posiłku", "deleteMealTypeConfirm": "Usunąć „{{name}}”?", "addMealType": "Dodaj typ posiłku", "renameMealType": "Zmień nazwę typu posiłku", "name": "Nazwa", "save": "Zapisz", "systemTypes": "Typy systemowe", "customTypes": "Własne typy", "custom": "Własny", "system": "Systemowy", "order": "Kolejność: {{order}}", "visible": "Widoczny", "quick": "Szybki", "loadingMealTypes": "Ładowanie typów posiłków...", "failedMealTypes": "Nie udało się załadować typów posiłków.", "noMealTypes": "Nie znaleziono typów posiłków", "mealTypePlaceholder": "np. przed treningiem", "saveMeal": "Zapisz posiłek", "logMeal": "Zapisz posiłek", "deleteLoggedMeal": "Usuń posiłek", "noLoggedMealFoods": "Brak produktów w tym posiłku."
   },
   "healthConnect": {
     "title": "Health Connect"

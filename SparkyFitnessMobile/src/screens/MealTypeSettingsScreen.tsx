@@ -30,10 +30,12 @@ import { addLog } from '../services/LogService';
 import Icon from '../components/Icon';
 import type { MealType } from '../types/mealTypes';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
 
 type MealTypeSettingsScreenProps = RootStackScreenProps<'MealTypeSettings'>;
 
 const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -63,11 +65,11 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     mutationFn: (name: string) => createMealType({ name, sort_order: 99 }),
     onSuccess: () => {
       invalidate();
-      Toast.show({ type: 'success', text1: 'Meal type created' });
+       Toast.show({ type: 'success', text1: t('foodMealScreens.mealTypeCreated') });
     },
     onError: (err: Error) => {
       addLog(`Failed to create meal type: ${err.message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to create meal type' });
+       Toast.show({ type: 'error', text1: t('foodMealScreens.failedCreateMealType') });
     },
   });
 
@@ -77,7 +79,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     onSuccess: () => invalidate(),
     onError: (err: Error) => {
       addLog(`Failed to update meal type: ${err.message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to update' });
+       Toast.show({ type: 'error', text1: t('foodMealScreens.failedUpdate') });
     },
   });
 
@@ -85,19 +87,19 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     mutationFn: (id: string) => deleteMealType(id),
     onSuccess: () => {
       invalidate();
-      Toast.show({ type: 'success', text1: 'Meal type deleted' });
+       Toast.show({ type: 'success', text1: t('foodMealScreens.mealTypeDeleted') });
     },
     onError: (err: Error) => {
       addLog(`Failed to delete meal type: ${err.message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to delete' });
+       Toast.show({ type: 'error', text1: t('foodMealScreens.failedDelete') });
     },
   });
 
   const handleDelete = useCallback(
     (mt: MealType) => {
-      Alert.alert('Delete Meal Type', `Delete '${mt.name}'?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate(mt.id) },
+       Alert.alert(t('foodMealScreens.deleteMealType'), t('foodMealScreens.deleteMealTypeConfirm', { name: mt.name }), [
+         { text: t('common.cancel'), style: 'cancel' },
+         { text: t('common.delete'), style: 'destructive', onPress: () => deleteMutation.mutate(mt.id) },
       ]);
     },
     [deleteMutation],
@@ -141,7 +143,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   }, [mealTypes]);
 
   const header = useScreenHeader({
-    title: 'Meal Types',
+     title: t('foodMeals.mealTypes'),
     left: { kind: 'back' },
     right: {
       kind: 'icon',
@@ -152,7 +154,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         setNewName('');
         setAddModalVisible(true);
       },
-      accessibilityLabel: 'Add meal type',
+       accessibilityLabel: t('foodMealScreens.addMealType'),
       identifier: 'meal-types-add',
     },
   });
@@ -169,13 +171,13 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       >
         <Text className="text-base text-text-primary font-medium">{mt.name}</Text>
         <Text className="text-xs text-text-muted mt-0.5">
-          {isCustom ? 'Custom' : 'System'}
-          {mt.sort_order != null ? ` · Order: ${mt.sort_order}` : ''}
+           {isCustom ? t('foodMealScreens.custom') : t('foodMealScreens.system')}
+           {mt.sort_order != null ? ` · ${t('foodMealScreens.order', { order: mt.sort_order })}` : ''}
         </Text>
       </TouchableOpacity>
       <View className="flex-row items-center gap-3">
         <View className="items-center">
-          <Text className="text-[10px] text-text-muted mb-0.5">Visible</Text>
+           <Text className="text-[10px] text-text-muted mb-0.5">{t('foodMealScreens.visible')}</Text>
           <Switch
             value={mt.is_visible}
             onValueChange={(val) =>
@@ -186,7 +188,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           />
         </View>
         <View className="items-center">
-          <Text className="text-[10px] text-text-muted mb-0.5">Quick</Text>
+           <Text className="text-[10px] text-text-muted mb-0.5">{t('foodMealScreens.quick')}</Text>
           <Switch
             value={mt.show_in_quick_log}
             onValueChange={(val) =>
@@ -200,7 +202,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           <TouchableOpacity
             onPress={() => handleDelete(mt)}
             className="p-2"
-            accessibilityLabel={`Delete ${mt.name}`}
+             accessibilityLabel={t('common.delete')}
           >
             <Icon name="trash" size={18} color="#EF4444" />
           </TouchableOpacity>
@@ -217,13 +219,13 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       {header}
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-text-muted text-base">Loading meal types...</Text>
+           <Text className="text-text-muted text-base">{t('foodMealScreens.loadingMealTypes')}</Text>
         </View>
       ) : isError ? (
         <View className="flex-1 items-center justify-center p-8">
-          <Text className="text-text-muted text-base text-center">Failed to load meal types.</Text>
+           <Text className="text-text-muted text-base text-center">{t('foodMealScreens.failedMealTypes')}</Text>
           <TouchableOpacity onPress={() => void refetch()} className="mt-4">
-            <Text className="text-accent-primary text-base font-medium">Retry</Text>
+             <Text className="text-accent-primary text-base font-medium">{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -239,7 +241,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           {systemTypes.length > 0 && (
             <View className="mb-4">
               <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide px-4 pt-4 pb-1">
-                System Types
+                 {t('foodMealScreens.systemTypes')}
               </Text>
               <View className="bg-surface rounded-xl mx-4 overflow-hidden shadow-sm">
                 {systemTypes.map((mt) => renderMealTypeRow(mt, false))}
@@ -250,7 +252,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           {customTypes.length > 0 && (
             <View className="mb-4">
               <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide px-4 pt-4 pb-1">
-                Custom Types
+                 {t('foodMealScreens.customTypes')}
               </Text>
               <View className="bg-surface rounded-xl mx-4 overflow-hidden shadow-sm">
                 {customTypes.map((mt) => renderMealTypeRow(mt, true))}
@@ -260,7 +262,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
 
           {!isLoading && systemTypes.length === 0 && customTypes.length === 0 && (
             <View className="items-center justify-center py-16 px-8">
-              <Text className="text-text-muted text-lg text-center">No meal types found</Text>
+               <Text className="text-text-muted text-lg text-center">{t('foodMealScreens.noMealTypes')}</Text>
             </View>
           )}
         </ScrollView>
@@ -275,11 +277,11 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             className="bg-surface rounded-xl w-full max-w-sm p-6"
             onPress={() => {}}
           >
-            <Text className="text-lg font-bold text-text-primary mb-4">Add Meal Type</Text>
+             <Text className="text-lg font-bold text-text-primary mb-4">{t('foodMealScreens.addMealType')}</Text>
             <TextInput
               value={newName}
               onChangeText={setNewName}
-              placeholder="e.g. Pre-Workout"
+               placeholder={t('foodMealScreens.mealTypePlaceholder')}
               placeholderTextColor="#9CA3AF"
               className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base"
               autoFocus
@@ -291,13 +293,13 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
                 onPress={() => setAddModalVisible(false)}
                 className="px-4 py-2"
               >
-                <Text className="text-text-secondary text-base">Cancel</Text>
+                 <Text className="text-text-secondary text-base">{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleAdd}
                 className="px-4 py-2 bg-accent-primary rounded-lg"
               >
-                <Text className="text-white font-semibold text-base">Add</Text>
+                 <Text className="text-white font-semibold text-base">{t('foodMealScreens.add')}</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -313,11 +315,11 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             className="bg-surface rounded-xl w-full max-w-sm p-6"
             onPress={() => {}}
           >
-            <Text className="text-lg font-bold text-text-primary mb-4">Rename Meal Type</Text>
+             <Text className="text-lg font-bold text-text-primary mb-4">{t('foodMealScreens.renameMealType')}</Text>
             <TextInput
               value={editName}
               onChangeText={setEditName}
-              placeholder="Name"
+               placeholder={t('foodMealScreens.name')}
               placeholderTextColor="#9CA3AF"
               className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base"
               autoFocus
@@ -329,13 +331,13 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
                 onPress={() => setEditModalVisible(false)}
                 className="px-4 py-2"
               >
-                <Text className="text-text-secondary text-base">Cancel</Text>
+                 <Text className="text-text-secondary text-base">{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleEditSave}
                 className="px-4 py-2 bg-accent-primary rounded-lg"
               >
-                <Text className="text-white font-semibold text-base">Save</Text>
+                 <Text className="text-white font-semibold text-base">{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </Pressable>

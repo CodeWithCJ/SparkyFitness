@@ -14,6 +14,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodItem } from '../types/foods';
+import { useTranslation } from 'react-i18next';
 
 const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
   items: T[],
@@ -41,6 +42,7 @@ const filterItems = <T extends { user_id?: string | null; userId?: string | null
 type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
 
 const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -85,10 +87,10 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       return (
         <View className="px-6 py-10 items-center">
           <Text className="text-text-primary text-base font-medium text-center">
-            No matching foods found
+            {t('foodMealScreens.noMatchingFoods')}
           </Text>
           <Text className="text-text-secondary text-sm mt-2 text-center">
-            Try changing your ownership filter.
+            {t('foodMeals.changeOwnershipFilter')}
           </Text>
         </View>
       );
@@ -96,12 +98,12 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     return (
       <View className="px-6 py-10 items-center">
         <Text className="text-text-primary text-base font-medium text-center">
-          {searchText.trim().length > 0 ? 'No matching foods found' : 'No foods found'}
+          {searchText.trim().length > 0 ? t('foodMealScreens.noMatchingFoods') : t('foodMealScreens.noFoods')}
         </Text>
         <Text className="text-text-secondary text-sm mt-2 text-center">
           {searchText.trim().length > 0
-            ? 'Try a different search term to find saved foods.'
-            : 'Foods you save or log will appear here.'}
+            ? t('foodMealScreens.tryDifferentFoodSearch')
+            : t('foodMealScreens.foodsAppearHere')}
         </Text>
       </View>
     );
@@ -114,15 +116,15 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your food library."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+           title={t('foodMealScreens.noServer')}
+           subtitle={t('foodMealScreens.foodLibrarySubtitle')}
+           action={{ label: t('dashboard.goToSettings'), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading foods..." />;
+      return <StatusView loading title={t('foodMealScreens.loadingFoods')} />;
     }
 
     if (isError) {
@@ -131,9 +133,9 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title="Failed to load foods"
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+           title={t('foodMealScreens.failedFoods')}
+           subtitle={t('foodMealScreens.connectionRetry')}
+           action={{ label: t('common.retry'), onPress: () => refetch(), variant: 'primary' }}
         />
       );
     }
@@ -155,7 +157,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more foods."
+             errorMessage={t('foodMealScreens.failedMoreFoods')}
             onRetry={loadMore}
           />
         }
@@ -174,7 +176,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     );
   };
 
-  const header = useScreenHeader({ title: 'Foods', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('foodMealScreens.foods'), left: { kind: 'back' } });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -184,16 +186,16 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           <LibrarySearchBar
             value={searchText}
             onChangeText={setSearchText}
-            placeholder="Search foods..."
+             placeholder={t('foodMealScreens.searchFoodsPlaceholder')}
             isSearching={isSearching}
           />
           <View className="px-4 pb-2 border-b border-border-subtle">
             <SegmentedControl
               segments={[
-                { key: 'all', label: 'All' },
-                { key: 'mine', label: 'Mine' },
-                { key: 'family', label: 'Family' },
-                { key: 'public', label: 'Public' },
+                 { key: 'all', label: t('foodMealScreens.all') },
+                 { key: 'mine', label: t('foodMealScreens.mine') },
+                 { key: 'family', label: t('foodMealScreens.family') },
+                 { key: 'public', label: t('foodMealScreens.public') },
               ]}
               activeKey={ownershipFilter}
               onSelect={setOwnershipFilter}

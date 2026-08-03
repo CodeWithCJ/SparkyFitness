@@ -15,6 +15,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { FullWindowOverlay } from 'react-native-screens';
 import { useCSSVariable, useUniwind } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import type {
   FoodUnitSelectionResult,
@@ -72,7 +73,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   variants,
   selectedVariantId,
   selectedSelection,
-  title = 'Select Unit',
+  title,
   renderTrigger,
   onSelect,
 }) => {
@@ -82,6 +83,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   const isPresentingRef = useRef(false);
   const presentFrameRef = useRef<number | null>(null);
   const { theme } = useUniwind();
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t('foodMeals.selectUnit');
   const [
     surfaceBg,
     raisedBg,
@@ -232,8 +235,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       } catch {
         Toast.show({
           type: 'error',
-          text1: 'Could not update that unit',
-          text2: 'Please try again.',
+           text1: t('foodMeals.unitUpdateFailed'),
+           text2: t('common.tryAgain'),
         });
       } finally {
         setIsSubmitting(false);
@@ -255,8 +258,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       if (!manualVariant) {
         Toast.show({
           type: 'error',
-          text1: 'Could not update that unit',
-          text2: 'Please try again.',
+           text1: t('foodMeals.unitUpdateFailed'),
+           text2: t('common.tryAgain'),
         });
         return;
       }
@@ -271,8 +274,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       } catch {
         Toast.show({
           type: 'error',
-          text1: 'Could not update that unit',
-          text2: 'Please try again.',
+           text1: t('foodMeals.unitUpdateFailed'),
+           text2: t('common.tryAgain'),
         });
       } finally {
         setIsSubmitting(false);
@@ -305,8 +308,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         } catch {
           Toast.show({
             type: 'error',
-            text1: 'Could not update that unit',
-            text2: 'Please try again.',
+             text1: t('foodMeals.unitUpdateFailed'),
+             text2: t('common.tryAgain'),
           });
         } finally {
           setIsSubmitting(false);
@@ -363,7 +366,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     const aiSparkleColor = aiTone ? aiSparkleColorByTone[aiTone] : textMuted;
     const aiAccessibilityLabel = aiConfidence
       ? `AI estimate (${OVERALL_CONFIDENCE_LABELS[aiConfidence]} confidence)`
-      : 'AI estimate';
+       : t('foodMeals.aiEstimate');
 
     return (
       <TouchableOpacity
@@ -420,7 +423,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       : textMuted;
     const matchedAiAccessibilityLabel = matchedAiConfidence
       ? `AI estimate (${OVERALL_CONFIDENCE_LABELS[matchedAiConfidence]} confidence)`
-      : 'AI estimate';
+       : t('foodMeals.aiEstimate');
     const compatible = canAutoConvertToUnit(variants, selectedVariant, unit);
     const isSelected = selectedUnitKey === normalizeUnitKey(unit);
 
@@ -480,7 +483,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         <View className="flex-1">
           <View className="px-4 py-4 border-b border-border-subtle">
             <Text className="text-lg font-semibold text-center text-text-primary">
-              {title}
+               {resolvedTitle}
             </Text>
           </View>
 
@@ -489,7 +492,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
               <>
                 <View className="px-4 py-2 bg-surface">
                   <Text className="text-xs font-semibold uppercase text-text-muted">
-                    Saved Custom Units
+                     {t('foodMeals.savedCustomUnits')}
                   </Text>
                 </View>
                 {customSavedVariants.map(renderCustomVariantRow)}

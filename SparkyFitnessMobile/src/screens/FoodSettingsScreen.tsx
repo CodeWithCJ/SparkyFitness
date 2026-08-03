@@ -28,10 +28,12 @@ import type { UserPreferences } from '../types/preferences';
 import type { MealType } from '../types/mealTypes';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
 
 type FoodSettingsScreenProps = RootStackScreenProps<'FoodSettings'>;
 
 const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -80,8 +82,8 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
       }
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update setting.',
+         text1: t('common.error'),
+         text2: t('foodMeals.failedToUpdateSetting'),
       });
     },
     onSettled: () => {
@@ -118,7 +120,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
   );
 
   const header = useScreenHeader({
-    title: 'Food Settings',
+     title: t('screens.foodSettings'),
     left: { kind: 'back' },
   });
 
@@ -142,8 +144,8 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
         <SettingsRowGroup>
           <SettingsRow
             icon="meal-snack"
-            title="Meal Types"
-            subtitle="Add, edit, reorder, or delete custom meal categories"
+             title={t('foodMeals.mealTypes')}
+             subtitle={t('foodMeals.manageMealTypes')}
             onPress={() => navigation.navigate('MealTypeSettings')}
           />
         </SettingsRowGroup>
@@ -152,7 +154,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base font-semibold text-text-primary flex-shrink">
-              Show Net Carbs
+               {t('foodMeals.showNetCarbs')}
             </Text>
             <Switch
               onValueChange={handleShowNetCarbsToggle}
@@ -162,8 +164,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
             />
           </View>
           <Text className="text-text-secondary text-sm mt-4">
-            When enabled, carbohydrate summaries display net carbs (total carbs
-            − fiber), and a Total Carbs row is added in nutrient breakdowns.
+             {t('foodMeals.netCarbsDescription')}
           </Text>
         </View>
 
@@ -171,19 +172,19 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-semibold text-text-primary">
-              Default Food Source
+               {t('foodMeals.defaultFoodSource')}
             </Text>
             <BottomSheetPicker
               value={foodDataProviderId}
               options={providerOptions}
               onSelect={handleFoodProviderChange}
-              title="Search Provider"
-              placeholder="First available"
+               title={t('foodMeals.searchProvider')}
+               placeholder={t('foodMeals.firstAvailable')}
               containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
             />
           </View>
           <Text className="text-text-secondary text-sm mt-4">
-            Used when searching for foods by name.
+             {t('foodMeals.foodSourceDescription')}
           </Text>
         </View>
 
@@ -191,7 +192,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base font-semibold text-text-primary flex-shrink">
-              Adjust Open Food Facts Values
+               {t('foodMeals.adjustOpenFoodFacts')}
             </Text>
             <Switch
               onValueChange={handleAutoScaleToggle}
@@ -201,32 +202,31 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
             />
           </View>
           <Text className="text-text-secondary text-sm mt-4">
-            Open Food Facts uses values per 100g. This converts them to the
-            product’s serving size.
+             {t('foodMeals.openFoodFactsDescription')}
           </Text>
         </View>
 
         {/* Barcode Scanning */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <Text className="text-base font-semibold text-text-primary mb-3">
-            Barcode Scanning
+             {t('foodMeals.barcodeScanning')}
           </Text>
 
           <View className="flex-row items-center justify-between">
-            <Text className="text-sm text-text-primary">Provider</Text>
+             <Text className="text-sm text-text-primary">{t('foodMeals.provider')}</Text>
             <BottomSheetPicker
               value={barcodeProviderId}
               options={barcodeProviderOptions}
               onSelect={handleBarcodeProviderChange}
-              title="Barcode Provider"
-              placeholder="Default"
+               title={t('foodMeals.barcodeProvider')}
+               placeholder={t('foodMeals.default')}
               containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
             />
           </View>
 
           <View className="flex-row justify-between items-center mt-4">
             <Text className="text-sm text-text-primary flex-shrink">
-              Retry with Open Food Facts
+               {t('foodMeals.retryOpenFoodFacts')}
             </Text>
             <Switch
               onValueChange={handleBarcodeFallbackToggle}
@@ -236,7 +236,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">
-            If no result is found, try Open Food Facts automatically.
+             {t('foodMeals.retryOpenFoodFactsDescription')}
           </Text>
         </View>
 
@@ -248,6 +248,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
 };
 
 const SuggestedMealTimesSection: React.FC = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { mealTypes, isLoading } = useMealTypes();
 
@@ -263,15 +264,15 @@ const SuggestedMealTimesSection: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: mealTypesQueryKey });
       Toast.show({
         type: 'success',
-        text1: 'Updated',
-        text2: 'Meal category time updated.',
+         text1: t('foodMeals.updated'),
+         text2: t('foodMeals.mealCategoryTimeUpdated'),
       });
     },
     onError: () => {
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update meal category time.',
+         text1: t('common.error'),
+         text2: t('foodMeals.failedMealCategoryTime'),
       });
     },
   });
@@ -281,12 +282,10 @@ const SuggestedMealTimesSection: React.FC = () => {
   return (
     <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
       <Text className="text-base font-semibold text-text-primary mb-1">
-        Suggested Meal Times
+         {t('foodMeals.suggestedMealTimes')}
       </Text>
       <Text className="text-text-secondary text-sm mb-3">
-        Set target start times for your meal categories (e.g. 07:30, 12:00,
-        17:00). The app suggests meal types dynamically based on these times
-        when logging food.
+         {t('foodMeals.suggestedMealTimesDescription')}
       </Text>
 
       {mealTypes.map(mt => (
@@ -306,6 +305,7 @@ const MealTypeTimeRow: React.FC<{
   mealType: MealType;
   onSave: (time: string | null) => void;
 }> = ({ mealType, onSave }) => {
+  const { t } = useTranslation();
   const initialValue = toHourMinute(mealType.default_time) || '';
   const [val, setVal] = useState(initialValue);
 
@@ -323,9 +323,8 @@ const MealTypeTimeRow: React.FC<{
     } else {
       Toast.show({
         type: 'error',
-        text1: 'Invalid Time',
-        text2:
-          'Please enter time in 24-hour HH:MM format (e.g., 07:30, 17:00).',
+         text1: t('foodMeals.invalidTime'),
+         text2: t('foodMeals.invalidTimeDescription'),
       });
       setVal(initialValue);
     }
@@ -354,7 +353,7 @@ const MealTypeTimeRow: React.FC<{
             }}
             className="px-1.5 py-1"
           >
-            <Text className="text-xs text-text-secondary">Clear</Text>
+             <Text className="text-xs text-text-secondary">{t('common.close')}</Text>
           </TouchableOpacity>
         ) : null}
       </View>

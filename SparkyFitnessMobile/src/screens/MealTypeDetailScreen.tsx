@@ -17,6 +17,7 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel } from '../utils/dateUtils';
+import { formatLocalizedNumber } from '../localization';
 import {
   calculateEntryNutrition,
   calculateMealNutrition,
@@ -49,11 +50,17 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const translationKey = mealTypes.length > 0
-    ? getMealTypeSystemKey(mealType)
-    : '';
-  const label = mealLabel
-    ?? (translationKey ? t(translationKey) : mealType);
+  const systemMealType = getMealTypeSystemKey(mealType);
+  let translatedMealType: string;
+  switch (systemMealType) {
+    case 'breakfast': translatedMealType = t('mealTypes.breakfast'); break;
+    case 'lunch': translatedMealType = t('mealTypes.lunch'); break;
+    case 'dinner': translatedMealType = t('mealTypes.dinner'); break;
+    case 'snacks': translatedMealType = t('mealTypes.snacks'); break;
+    case 'other': translatedMealType = t('mealTypes.other'); break;
+    default: translatedMealType = mealType;
+  }
+  const label = mealLabel ?? translatedMealType;
   const entries = useMemo(
     () => filterFoodEntriesByMealType(summary?.foodEntries ?? [], mealType, mealTypes),
     [summary?.foodEntries, mealType, mealTypes],
@@ -86,9 +93,9 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view meal nutrition."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+           title={t('dashboard.noServerTitle')}
+           subtitle={t('foodMeals.noServerMealNutrition')}
+           action={{ label: t('dashboard.goToSettings'), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
@@ -97,7 +104,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       return (
         <View className="flex-1 items-center justify-center p-8">
           <ActivityIndicator size="large" color={accentColor} />
-          <Text className="text-text-muted text-base mt-4">Loading meal...</Text>
+           <Text className="text-text-muted text-base mt-4">{t('foodMeals.loadingMeal')}</Text>
         </View>
       );
     }
@@ -107,17 +114,17 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
         <View className="flex-1 items-center justify-center p-8">
           <Icon name="alert-circle" size={64} color="#EF4444" />
           <Text className="text-text-muted text-lg text-center mt-4">
-            Failed to load meal
+             {t('foodMeals.failedToLoadMeal')}
           </Text>
           <Text className="text-text-muted text-sm text-center mt-2">
-            Please check your connection and try again.
+             {t('batch.connectionRetry')}
           </Text>
           <Button
             variant="primary"
             className="px-6 mt-6"
             onPress={() => refetch()}
           >
-            Retry
+             {t('common.retry')}
           </Button>
         </View>
       );
@@ -129,8 +136,8 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="food"
           iconColor="#9CA3AF"
           iconSize={64}
-          title={`No ${label.toLowerCase()} foods`}
-          subtitle={`${formatDateLabel(date)} has no foods logged for this meal.`}
+           title={t('foodMeals.noMealFoods', { meal: label.toLowerCase() })}
+           subtitle={t('foodMeals.noFoodsLogged', { date: formatDateLabel(date) })}
         />
       );
     }
@@ -147,7 +154,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       >
         <FoodNutritionSummary
           name={label}
-          brand={targetCalories > 0 ? `${formatDateLabel(date)} · Target: ${targetCalories} Cal` : formatDateLabel(date)}
+           brand={targetCalories > 0 ? t('foodMeals.targetCalories', { date: formatDateLabel(date), calories: targetCalories }) : formatDateLabel(date)}
           values={nutrition.values}
           showNetCarbs={showNetCarbs}
           customNutrients={Object.keys(nutrition.customNutrients).length > 0 ? nutrition.customNutrients : null}
@@ -156,9 +163,9 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">
           <View className="flex-row items-center mb-3">
-            <Text className="text-base font-bold text-text-secondary flex-1">Foods</Text>
+             <Text className="text-base font-bold text-text-secondary flex-1">{t('library.foods')}</Text>
             <Text className="text-xs text-text-muted font-medium">
-              {entries.length} {entries.length === 1 ? 'item' : 'items'}
+               {formatLocalizedNumber(entries.length)} {t('mealLibrary.item', { count: entries.length })}
             </Text>
           </View>
           {entries.map((entry, index) => (
@@ -183,7 +190,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           ionicon: 'copy-outline',
           role: 'secondary',
           onPress: () => copySheetRef.current?.present(date, mealType),
-          accessibilityLabel: 'Copy meal to another day',
+           accessibilityLabel: t('foodMeals.copyMealToDay'),
           identifier: 'meal-type-detail-copy',
         }
       : null,

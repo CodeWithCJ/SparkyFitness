@@ -19,6 +19,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Meal } from '../types/meals';
+import { useTranslation } from 'react-i18next';
 
 const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
   items: T[],
@@ -46,6 +47,7 @@ const filterItems = <T extends { user_id?: string | null; userId?: string | null
 type MealsLibraryScreenProps = RootStackScreenProps<'MealsLibrary'>;
 
 const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -112,7 +114,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
           <TextInput
             className="text-text-primary"
             style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-            placeholder="Search meals..."
+             placeholder={t('foodMeals.searchMeals')}
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -135,10 +137,10 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
       return (
         <View className="px-6 py-10 items-center">
           <Text className="text-text-primary text-base font-medium text-center">
-            No matching meals found
+             {t('foodMeals.noMatchingMeals')}
           </Text>
           <Text className="text-text-secondary text-sm mt-2 text-center">
-            Try changing your ownership filter.
+             {t('foodMeals.changeOwnershipFilter')}
           </Text>
         </View>
       );
@@ -146,12 +148,12 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
     return (
       <View className="px-6 py-10 items-center">
         <Text className="text-text-primary text-base font-medium text-center">
-          {isSearchActive ? 'No matching meals found' : 'No meals found'}
+           {isSearchActive ? t('foodMeals.noMatchingMeals') : t('foodMeals.noMealsFound')}
         </Text>
         <Text className="text-text-secondary text-sm mt-2 text-center">
           {isSearchActive
-            ? 'Try a different search term to find saved meals.'
-            : 'Meals you create will appear here.'}
+             ? t('foodMeals.tryDifferentMealSearch')
+             : t('foodMeals.mealsAppearHere')}
         </Text>
       </View>
     );
@@ -164,15 +166,15 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
           icon="cloud-offline"
           iconColor="#9CA3AF"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your meal library."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+           title={t('dashboard.noServerTitle')}
+           subtitle={t('foodMeals.noServerMealLibrary')}
+           action={{ label: t('dashboard.goToSettings'), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading meals..." />;
+       return <StatusView loading title={t('foodMeals.loadingMeals')} />;
     }
 
     if (isError) {
@@ -181,9 +183,9 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconColor="#EF4444"
           iconSize={64}
-          title={isSearchActive ? 'Failed to search meals' : 'Failed to load meals'}
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => void (isSearchActive ? refetchSearch() : refetchMeals()), variant: 'primary' }}
+           title={isSearchActive ? t('foodMeals.failedSearchMeals') : t('foodMeals.failedLoadMeals')}
+           subtitle={t('batch.connectionRetry')}
+           action={{ label: t('common.retry'), onPress: () => void (isSearchActive ? refetchSearch() : refetchMeals()), variant: 'primary' }}
         />
       );
     }
@@ -210,7 +212,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
     );
   };
 
-  const header = useScreenHeader({ title: 'Meals', left: { kind: 'back' } });
+   const header = useScreenHeader({ title: t('library.meals'), left: { kind: 'back' } });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -221,10 +223,10 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
           <View className="px-4 pb-2 border-b border-border-subtle">
             <SegmentedControl
               segments={[
-                { key: 'all', label: 'All' },
-                { key: 'mine', label: 'Mine' },
-                { key: 'family', label: 'Family' },
-                { key: 'public', label: 'Public' },
+                 { key: 'all', label: t('foodMeals.all') },
+                 { key: 'mine', label: t('foodMeals.mine') },
+                 { key: 'family', label: t('foodMeals.family') },
+                 { key: 'public', label: t('foodMeals.public') },
               ]}
               activeKey={ownershipFilter}
               onSelect={setOwnershipFilter}

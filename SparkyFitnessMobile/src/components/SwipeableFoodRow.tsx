@@ -14,6 +14,7 @@ import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import type { FoodEntry } from '../types/foodEntries';
 import type { EntryNutrition } from '../utils/mealNutrition';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { useTranslation } from 'react-i18next';
 
 interface SwipeableFoodRowProps {
   entry: FoodEntry;
@@ -26,6 +27,7 @@ const DELETE_ACTION_WIDTH = 80;
 
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, onAdjustServing }) => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const swipeableRef = useRef<any>(null);
   const rowHeight = useSharedValue<number | null>(null);
   const isRemoving = useSharedValue(false);
@@ -95,12 +97,12 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
       onPress={confirmAndDelete}
       activeOpacity={0.7}
     >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+       <Text className="text-text-danger font-semibold text-sm">{t('common.delete')}</Text>
     </TouchableOpacity>
   );
 
   const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
-  const name = entry.food_name || 'Unknown food';
+   const name = entry.food_name || t('foodMeals.unknownFood');
   const timeLabel = formatTimeLabel(entry.entry_time);
 
   const handlePress = () => {
@@ -118,10 +120,10 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
       onPress?: () => void;
     }[] = [];
     if (canQuickAdjust) {
-      buttons.push({ text: 'Adjust serving', onPress: () => onAdjustServing!(entry) });
+       buttons.push({ text: t('foodMeals.adjustServing'), onPress: () => onAdjustServing!(entry) });
     }
-    buttons.push({ text: 'Delete', style: 'destructive', onPress: deleteEntry });
-    buttons.push({ text: 'Cancel', style: 'cancel' });
+     buttons.push({ text: t('common.delete'), style: 'destructive', onPress: deleteEntry });
+     buttons.push({ text: t('common.cancel'), style: 'cancel' });
     Alert.alert(name, undefined, buttons);
   };
 
@@ -162,11 +164,11 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
               className="py-0 px-0"
               textClassName="text-sm text-text-secondary font-medium"
             >
-              {`${nutrition.calories} Cal ▾`}
+               {`${nutrition.calories} ${t('units.calShort')} ▾`}
             </Button>
           ) : (
             <Text className="text-sm text-text-secondary font-medium mr-2">
-              {nutrition.calories} Cal
+               {nutrition.calories} {t('units.calShort')}
             </Text>
           )}
         </View>

@@ -86,6 +86,7 @@ import {
 import { buildMealIngredientDraft } from '../utils/mealBuilderDraft';
 import { persistExternalVariants } from '../utils/persistExternalVariants';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import { useTranslation } from 'react-i18next';
 
 type FoodEntryAddScreenProps = RootStackScreenProps<'FoodEntryAdd'>;
 const EXTERNAL_DRAFT_VARIANT_ID = '__draft-external-unit__';
@@ -180,6 +181,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   navigation,
   route,
 }) => {
+  const { t } = useTranslation();
   const { item, date: initialDate } = route.params;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const returnDepth = route.params?.returnDepth ?? 1;
@@ -896,7 +898,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               ),
             );
           } catch {
-            Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+            Toast.show({ type: 'error', text1: t('foodMealScreens.someUnitsNotSaved') });
           }
         }
         invalidateCache(selectedDate);
@@ -943,8 +945,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     if (quantity <= 0) {
       Toast.show({
         type: 'error',
-        text1: 'Invalid amount',
-        text2: 'Amount must be greater than zero.',
+        text1: t('foodMealScreens.invalidAmount'),
+        text2: t('foodMealScreens.amountPositive'),
       });
       return;
     }
