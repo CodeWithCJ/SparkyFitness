@@ -201,15 +201,14 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         {/* Water count display */}
         <div className="text-center mb-3">
           <div className="text-xl font-bold">
-            {convertMlToSelectedUnit(
-              waterMl,
-              currentContainer?.unit || water_display_unit
-            ).toFixed(currentContainer?.unit === 'ml' ? 0 : 2)}{' '}
-            /{' '}
-            {convertMlToSelectedUnit(
-              waterGoalMl,
-              currentContainer?.unit || water_display_unit
-            ).toFixed(currentContainer?.unit === 'ml' ? 0 : 2)}
+            {(() => {
+              const activeUnit = currentContainer?.unit || water_display_unit;
+              const val = convertMlToSelectedUnit(waterMl, activeUnit);
+              const goalVal = convertMlToSelectedUnit(waterGoalMl, activeUnit);
+              const decimals =
+                activeUnit === 'oz' ? 1 : activeUnit === 'liter' ? 2 : 0;
+              return `${parseFloat(val.toFixed(decimals))} / ${parseFloat(goalVal.toFixed(decimals))}`;
+            })()}
           </div>
           <div className="text-gray-500 text-xs">
             {currentContainer?.unit || water_display_unit}
@@ -395,10 +394,19 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="font-medium text-blue-600 dark:text-blue-400">
-                        {convertMlToSelectedUnit(
-                          Number(entry.water_ml),
-                          displayUnit
-                        ).toFixed(displayUnit === 'ml' ? 0 : 1)}{' '}
+                        {(() => {
+                          const val = convertMlToSelectedUnit(
+                            Number(entry.water_ml),
+                            displayUnit
+                          );
+                          const decimals =
+                            displayUnit === 'oz'
+                              ? 1
+                              : displayUnit === 'liter'
+                                ? 2
+                                : 0;
+                          return parseFloat(val.toFixed(decimals));
+                        })()}{' '}
                         {displayUnit}
                       </span>
                       <Button

@@ -106,9 +106,13 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
 
   const convertedConsumed = convertFromMl(consumed, unit);
   const convertedGoal = convertFromMl(goal, unit);
-  const useDecimals = unit === 'liter' || unit === 'oz';
-  const displayConsumed = useDecimals ? parseFloat(convertedConsumed.toFixed(1)) : Math.round(convertedConsumed);
-  const displayGoal = useDecimals ? parseFloat(convertedGoal.toFixed(1)) : Math.round(convertedGoal);
+  const formatUnitVolume = (val: number, u: string): string => {
+    if (u === 'oz') return parseFloat(val.toFixed(1)).toString();
+    if (u === 'liter') return val.toFixed(2);
+    return Math.round(val).toString();
+  };
+  const displayConsumed = formatUnitVolume(convertedConsumed, unit);
+  const displayGoal = formatUnitVolume(convertedGoal, unit);
   const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
 
   const showButtons = !!onIncrement || !!onDecrement;
@@ -154,10 +158,10 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
         </View>
         <View className="flex-1 items-center mr-2">
           <Text className="text-2xl font-bold text-text-primary">
-            {displayConsumed.toLocaleString()} {unitLabel}
+            {displayConsumed} {unitLabel}
           </Text>
           <Text className="text-sm text-text-secondary mt-0.5">
-            of {displayGoal.toLocaleString()} {unitLabel}
+            of {displayGoal} {unitLabel}
           </Text>
           {showChips && (
             <View className="flex-row flex-wrap justify-center mt-2 gap-1">

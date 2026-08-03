@@ -527,10 +527,8 @@ async function upsertWaterIntake(
         authenticatedUserId,
         entryDate
       );
-      const entriesToRemove = Math.min(
-        Math.abs(changeDrinks),
-        logEntries.length
-      );
+      const requestedDrinks = Math.abs(changeDrinks);
+      const entriesToRemove = Math.min(requestedDrinks, logEntries.length);
       let actualMlRemoved = 0;
       for (let i = 0; i < entriesToRemove; i++) {
         const entry = logEntries[i];
@@ -542,6 +540,11 @@ async function upsertWaterIntake(
           );
         }
       }
+      // If there weren't enough individual log entries, remove remaining requested volume
+      if (entriesToRemove < requestedDrinks) {
+        const remainingDrinks = requestedDrinks - entriesToRemove;
+        actualMlRemoved += remainingDrinks * amountPerDrink;
+      }
       await measurementRepository.incrementWaterData(
         authenticatedUserId,
         actingUserId,
@@ -550,12 +553,10 @@ async function upsertWaterIntake(
         'manual'
       );
     }
-    // Return the latest record after the upsert
+    // Return the latest aggregated record across all sources after the upsert
     const finalRecord = await measurementRepository.getWaterIntakeByDate(
       authenticatedUserId,
-      entryDate,
-      // @ts-expect-error TS(2345): Argument of type '"manual"' is not assignable to p... Remove this comment to see the full error message
-      'manual'
+      entryDate
     );
     return finalRecord;
   } catch (error) {
