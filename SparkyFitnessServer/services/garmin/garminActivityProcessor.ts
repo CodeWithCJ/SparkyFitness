@@ -217,7 +217,8 @@ export async function processActivitiesAndWorkouts(
       userId,
       startDate,
       endDate,
-      'garmin'
+      'garmin',
+      'Active Calories'
     );
     await exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDateWithClient(
       client,

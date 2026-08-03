@@ -35,6 +35,7 @@ from service import (
     grams_to_kg,
     map_garmin_stress_to_mood,
     meters_to_km,
+    project_daily_calorie_metrics,
     safe_convert,
     seconds_to_minutes,
 )
@@ -236,7 +237,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
         for current_date in dates_to_fetch:
             logger.info(f"[GARMIN_SYNC] Fetching data for date: {current_date}")
 
-            # Daily Summary (steps, total_distance, highly_active_seconds, active_seconds, sedentary_seconds, body_battery)
+            # Daily Summary (steps, distance, activity time, calories, body battery)
             if any(
                 metric in metric_types_to_fetch
                 for metric in [
@@ -245,6 +246,9 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                     "highly_active_seconds",
                     "active_seconds",
                     "sedentary_seconds",
+                    "active_calories",
+                    "bmr_calories",
+                    "total_calories",
                     "body_battery",
                     "daily_summary",
                 ]
@@ -316,6 +320,13 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                 ),
                             }
                         )
+                    calorie_metrics = project_daily_calorie_metrics(
+                        summary_data,
+                        current_date,
+                        set(metric_types_to_fetch),
+                    )
+                    for metric, records in calorie_metrics.items():
+                        health_data[metric].extend(records)
                     # Body Battery from user_summary (preferred source)
                     if "body_battery" in metric_types_to_fetch:
                         bb_highest = summary_data.get("bodyBatteryHighestValue")

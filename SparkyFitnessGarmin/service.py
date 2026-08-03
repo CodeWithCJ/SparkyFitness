@@ -1,6 +1,7 @@
-import os
 import json
 import logging
+import math
+import os
 import time
 from datetime import date, timedelta
 
@@ -27,6 +28,9 @@ ALL_HEALTH_METRICS = [
     "highly_active_seconds",
     "active_seconds",
     "sedentary_seconds",
+    "active_calories",
+    "bmr_calories",
+    "total_calories",
     # Health metrics
     "heart_rates",
     "sleep",
@@ -53,6 +57,42 @@ ALL_HEALTH_METRICS = [
     "training_load",
     "acute_load",
 ]
+
+DAILY_CALORIE_FIELD_ALIASES = {
+    "active_calories": ("activeKilocalories", "activeCalories"),
+    "bmr_calories": ("bmrKilocalories", "bmrCalories"),
+    "total_calories": ("totalKilocalories", "totalCalories"),
+}
+
+
+def extract_daily_calories(summary_data):
+    """Normalize Garmin daily-summary calorie fields across known API aliases."""
+    normalized = {}
+    for metric, aliases in DAILY_CALORIE_FIELD_ALIASES.items():
+        for alias in aliases:
+            value = summary_data.get(alias)
+            if value is None or isinstance(value, bool):
+                continue
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError):
+                continue
+            if not math.isfinite(numeric_value) or numeric_value < 0:
+                continue
+            normalized[metric] = numeric_value
+            break
+    return normalized
+
+
+def project_daily_calorie_metrics(summary_data, current_date, requested_metrics):
+    """Build health-data records for requested Garmin daily calorie metrics."""
+    normalized = extract_daily_calories(summary_data)
+    return {
+        metric: [{"date": current_date, "value": value}]
+        for metric, value in normalized.items()
+        if metric in requested_metrics
+    }
+
 
 MFA_STATE_STORE: dict[str, dict] = {}
 MFA_TTL_SECONDS = 5 * 60  # 5 minutes

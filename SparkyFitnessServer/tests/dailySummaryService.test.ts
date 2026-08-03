@@ -155,6 +155,49 @@ describe('dailySummaryService', () => {
     vi.useRealTimers();
   });
 
+  test('does not double-count Garmin active calories with workouts and steps', async () => {
+    const garminActiveCalories: ExerciseSessionResponse = {
+      ...activeCaloriesSession,
+      calories_burned: 2180,
+      source: 'garmin',
+    };
+    const garminWorkout: ExerciseSessionResponse = {
+      ...activeCaloriesSession,
+      id: 'garmin-workout-entry',
+      exercise_id: 'garmin-walking',
+      calories_burned: 347,
+      source: 'garmin',
+      name: 'Walking',
+      steps: 6603,
+    };
+    vi.mocked(getExerciseEntriesByDateV2).mockResolvedValue([
+      garminActiveCalories,
+      garminWorkout,
+    ]);
+    vi.mocked(measurementRepository.getStepCaloriesForDate).mockResolvedValue(
+      250
+    );
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      bmr_algorithm: 'Mifflin-St Jeor',
+      activity_level: 'not_much',
+      calorie_goal_adjustment_mode: 'dynamic',
+      exercise_calorie_percentage: 100,
+      include_bmr_in_net_calories: false,
+      tdee_allow_negative_adjustment: false,
+      timezone: 'UTC',
+    });
+
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+    expect(result.calorieBalance.burned).toBe(2180);
+    expect(result.calorieBalance.exerciseSource).toBe('active');
+  });
+
   test('returns the TDEE projection used for remaining calories', async () => {
     const result = await getDailySummary({
       actorUserId,
