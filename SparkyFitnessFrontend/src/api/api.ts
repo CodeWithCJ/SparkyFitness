@@ -55,20 +55,22 @@ function reloadOnceForGatewayInterception(): void {
   window.location.reload();
 }
 
+// A blob response is always a Blob, never the caller's generic T — the overload
+// keeps `responseType: 'blob'` callers from having to assert.
 export function apiCall(
   endpoint: string,
   options: ApiCallOptions & { responseType: 'blob' }
 ): Promise<Blob>;
-export function apiCall(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function apiCall<T = any>(
   endpoint: string,
   options?: ApiCallOptions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any>;
-export async function apiCall(
+): Promise<T>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function apiCall<T = any>(
   endpoint: string,
   options?: ApiCallOptions
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> {
+): Promise<T> {
   const userLoggingLevel = getUserLoggingLevel();
   const isAbsoluteUrl = /^https?:\/\//.test(endpoint);
   const isExternal = options?.externalApi || isAbsoluteUrl;
@@ -186,7 +188,7 @@ export async function apiCall(
           userLoggingLevel,
           `Frontend workaround triggered for ${endpoint}: Backend returned 400. Returning empty array.`
         );
-        return []; // Return empty array to gracefully handle 400 errors on these endpoints
+        return [] as unknown as T; // Return empty array to gracefully handle 400 errors on these endpoints
       }
 
       // Special handling for 404 errors on exercise search endpoints
@@ -198,7 +200,7 @@ export async function apiCall(
           userLoggingLevel,
           `Frontend workaround triggered for ${endpoint}: Backend returned 404. Returning empty array.`
         );
-        return []; // Return empty array to gracefully handle 404 errors on exercise search
+        return [] as unknown as T; // Return empty array to gracefully handle 404 errors on exercise search
       }
 
       // Suppress toast for 404 errors if suppress404Toast is true
@@ -207,7 +209,7 @@ export async function apiCall(
           userLoggingLevel,
           `API call returned 404 for ${endpoint}, toast suppressed. Returning null.`
         );
-        return null; // Return null for 404 with suppression
+        return null as unknown as T; // Return null for 404 with suppression
       } else {
         toast({
           title: 'API Error',
@@ -231,7 +233,7 @@ export async function apiCall(
         userLoggingLevel,
         `API Call: Received blob response from ${url}.`
       );
-      return blobResponse;
+      return blobResponse as unknown as T;
     }
     // Handle cases where the response might be empty (e.g., DELETE requests)
     const text = await response.text();

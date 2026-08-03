@@ -363,7 +363,10 @@ const Reports = () => {
               nutritionData={nutritionData}
               tabularData={tabularData}
               exerciseEntries={exerciseEntries}
-              measurementData={measurementData}
+              measurementData={measurementData.map((m) => ({
+                entry_date: m.entry_date,
+                weight: m.weight ?? null,
+              }))}
               customCategories={customCategories}
               customMeasurementsData={customMeasurementsData}
               sleepAnalyticsData={sleepAnalyticsData}

@@ -79,6 +79,14 @@ const authPool = new Pool({
   // @ts-expect-error
   port: process.env.SPARKY_FITNESS_DB_PORT || 5432,
 });
+// Better Auth holds this pool instance for the process lifetime, so it cannot be
+// swapped or ended the way poolManager's pools are during a restore. Without a
+// listener, an idle client dying (e.g. pg_terminate_backend while the restore
+// flow wipes the database) becomes an unhandled 'error' event and kills the
+// process mid-restore. Log and let pg discard the client; it reconnects lazily.
+authPool.on('error', (err) => {
+  log('error', 'Unexpected error on idle Better Auth client', err);
+});
 // Persistent array reference for trusted providers
 // Mutation of this array will be visible to Better Auth since it holds the reference
 // @ts-expect-error

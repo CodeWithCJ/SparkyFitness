@@ -19,6 +19,32 @@
       "medications": "Medications"
     }
   },
+  "workoutLaps": {
+    "title": "Workout Split Intervals & Laps",
+    "lapsCount": "{{count}} Laps",
+    "lap": "Lap",
+    "distance": "Distance",
+    "time": "Time",
+    "pace": "Pace (/{{unit}})",
+    "avgMaxHr": "Avg / Max HR",
+    "resp": "Resp (brpm)",
+    "cadence": "Cadence",
+    "power": "Power"
+  },
+  "dailyHealthMetrics": {
+    "title": "Daily Wearable Health Summary",
+    "bodyBattery": "Body Battery",
+    "peak": "peak",
+    "low": "low: {{val}}",
+    "avgStress": "Avg Stress",
+    "max": "Max: {{val}}",
+    "restingHr": "Resting HR",
+    "recovery": "Recovery: {{val}}",
+    "vo2Max": "VO2 Max",
+    "fitnessAge": "Fit Age: {{val}}",
+    "readiness": "Readiness",
+    "recHours": "Rec: {{val}}"
+  },
   "foodCsvImport": {
     "title": "Import Food Data",
     "addRow": "Add Row",
@@ -992,7 +1018,7 @@
         "title": "Delete synced data",
         "description": "Remove all entries that were synced or imported from a specific source (e.g. Apple Health, Garmin). This affects only synced data — entries you added manually are never touched. This cannot be undone.",
         "scopeNoteTitle": "What this removes",
-        "scopeIncludes": "Deletes synced diary entries: food, exercise/workout sessions, sleep, water, and custom check-in measurements.",
+        "scopeIncludes": "Deletes synced diary entries (food, exercise/workout sessions, sleep, water, custom check-in measurements) and that provider's wearable telemetry (heart rate, HRV, respiration, SpO2, vitals, and daily wellness metrics).",
         "scopeExcludesLibrary": "Does NOT delete your food or exercise database (the reusable food/exercise definitions) — only the logged entries.",
         "scopeExcludesCheckin": "Does NOT delete standard check-in measurements (weight, steps, body fat, height) — those merge all providers into one daily value and cannot be removed by source here.",
         "scopeExcludesManual": "Does NOT delete anything you created yourself — entries you typed in, logged via the Sparky assistant, or workouts from a saved preset or plan are always kept.",

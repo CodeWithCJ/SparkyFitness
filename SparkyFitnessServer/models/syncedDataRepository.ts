@@ -6,12 +6,8 @@ import { log } from '../config/logging.js';
 // sleep_entry_stages, exercise_entries linked to a preset entry), so a single
 // `DELETE ... WHERE user_id AND source` cleans up the whole subtree.
 //
-// This list is a hardcoded whitelist and is the ONLY place table identifiers
-// are interpolated into SQL below — never widen it with caller-provided input.
-//
-// Order matters for deletion: exercise_preset_entries must be removed before
-// exercise_entries so the preset session and its cascade-linked child entries
-// are cleaned up first, avoiding orphaned preset rows.
+// See SYNCED_PROVIDER_TABLES below for the telemetry tables, which spell the
+// same concept `source_provider`; SYNCED_TABLE_COLUMNS joins the two.
 const SYNCED_SOURCE_TABLES = [
   'food_entries',
   'exercise_preset_entries',
@@ -22,7 +18,39 @@ const SYNCED_SOURCE_TABLES = [
   'water_intake_entries',
 ] as const;
 
-type SyncedSourceTable = (typeof SYNCED_SOURCE_TABLES)[number];
+// Wearable telemetry tables. Identical purpose to the list above, but they spell
+// the provenance column `source_provider` rather than `source`, so they need
+// their own list and cannot simply be appended to SYNCED_SOURCE_TABLES.
+//
+// Without these, deleting a provider left orphans behind: the wellness tables
+// reference exercise/sleep entries with ON DELETE SET NULL (not CASCADE), so
+// removing the diary rows only nulled the links and the readings themselves
+// survived. daily_health_metrics has no FK to anything and survived outright.
+//
+// NOTE: exercise_entry_gps_points / _laps / _hr_zones are deliberately absent —
+// they carry no provenance column and already CASCADE from exercise_entries.
+const SYNCED_PROVIDER_TABLES = [
+  'health_metric_samples',
+  'vitals_entries',
+  'daily_health_metrics',
+] as const;
+
+type SyncedSourceTable =
+  | (typeof SYNCED_SOURCE_TABLES)[number]
+  | (typeof SYNCED_PROVIDER_TABLES)[number];
+
+// Every synced table paired with the column holding its provider name. Both the
+// table and column identifiers are interpolated into SQL below, so this must
+// stay a hardcoded whitelist — never widen it with caller-provided input.
+//
+// Order is significant: exercise_preset_entries must precede exercise_entries so
+// preset sessions and their cascade-linked child entries are removed first.
+const SYNCED_TABLE_COLUMNS: ReadonlyArray<
+  readonly [SyncedSourceTable, 'source' | 'source_provider']
+> = [
+  ...SYNCED_SOURCE_TABLES.map((t) => [t, 'source'] as const),
+  ...SYNCED_PROVIDER_TABLES.map((t) => [t, 'source_provider'] as const),
+];
 
 // Source values that represent data the USER created themselves (not synced or
 // imported from an external provider), and so must never be surfaced or deleted
@@ -69,14 +97,14 @@ async function getSyncedSourceSummary(
   const client = await getClient(userId);
   try {
     const summary = new Map<string, SyncedSourceSummary>();
-    for (const table of SYNCED_SOURCE_TABLES) {
+    for (const [table, column] of SYNCED_TABLE_COLUMNS) {
       const result = await client.query(
-        `SELECT source, COUNT(*)::int AS count
+        `SELECT ${column} AS source, COUNT(*)::int AS count
            FROM ${table}
           WHERE user_id = $1
-            AND source IS NOT NULL
-            AND LOWER(source) <> ALL($2::text[])
-          GROUP BY source`,
+            AND ${column} IS NOT NULL
+            AND LOWER(${column}) <> ALL($2::text[])
+          GROUP BY ${column}`,
         [userId, USER_ORIGINATED_SOURCES]
       );
       for (const row of result.rows) {
@@ -118,9 +146,9 @@ async function deleteSyncedDataBySource(
     await client.query('BEGIN');
     const byTable: Record<string, number> = {};
     let totalDeleted = 0;
-    for (const table of SYNCED_SOURCE_TABLES) {
+    for (const [table, column] of SYNCED_TABLE_COLUMNS) {
       const result = await client.query(
-        `DELETE FROM ${table} WHERE user_id = $1 AND source = $2`,
+        `DELETE FROM ${table} WHERE user_id = $1 AND ${column} = $2`,
         [userId, source]
       );
       const deleted = result.rowCount ?? 0;
@@ -149,6 +177,8 @@ async function deleteSyncedDataBySource(
 
 export {
   SYNCED_SOURCE_TABLES,
+  SYNCED_PROVIDER_TABLES,
+  SYNCED_TABLE_COLUMNS,
   USER_ORIGINATED_SOURCES,
   isUserOriginatedSource,
   getSyncedSourceSummary,

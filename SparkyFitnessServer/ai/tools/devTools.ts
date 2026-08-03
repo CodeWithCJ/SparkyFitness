@@ -10,6 +10,38 @@ const inspectSchemaInput = z.object({
   table: z.string().min(1).describe('Name of the database table to inspect'),
 });
 
+const queryTableInput = z.object({
+  table: z.string().min(1).describe('Name of the database table to query'),
+  select: z
+    .string()
+    .optional()
+    .default('*')
+    .describe('Columns to select (default "*")'),
+  where: z
+    .string()
+    .optional()
+    .describe('Optional WHERE clause (e.g. "entry_date = \'2026-07-28\'")'),
+  orderBy: z
+    .string()
+    .optional()
+    .describe('Optional ORDER BY clause (e.g. "created_at DESC")'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .optional()
+    .default(20)
+    .describe('Max rows to return (1-100, default 20)'),
+});
+
+const executeSqlInput = z.object({
+  query: z
+    .string()
+    .min(1)
+    .describe('Read-only SELECT or WITH SQL statement to execute'),
+});
+
 const emptyInput = z.object({});
 
 // Defense-in-depth gate re-checked on every call (the route already gates
@@ -24,6 +56,40 @@ async function assertDevAccess(userId: string): Promise<string | null> {
     return ERRORS.FORBIDDEN('Admin access required');
   }
   return null;
+}
+
+// Read-only enforcement for the two SQL-running dev tools. These run on
+// getSystemClient(), which bypasses RLS, so the guarantee has to come from
+// Postgres rather than from keyword matching on the query text: a blocklist
+// both over-blocks (a literal containing "create") and under-blocks
+// (pg_read_file, dblink, lo_import, pg_sleep). BEGIN READ ONLY makes the
+// engine reject any write, and statement_timeout caps runaway queries.
+const READ_ONLY_STATEMENT_TIMEOUT = '10s';
+
+async function runReadOnlyQuery(
+  sql: string
+): Promise<Record<string, unknown>[]> {
+  const client = await getSystemClient();
+  try {
+    await client.query('BEGIN READ ONLY');
+    await client.query(
+      `SET LOCAL statement_timeout = '${READ_ONLY_STATEMENT_TIMEOUT}'`
+    );
+    const result = await client.query(sql);
+    await client.query('ROLLBACK');
+    return result.rows;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Connection already unusable; releasing below is all we can do.
+    }
+    throw error;
+  } finally {
+    if (client && typeof client.release === 'function') {
+      client.release();
+    }
+  }
 }
 
 // The admin/debug tools, kept out of buildChatbotTools so the chatbot never
@@ -82,7 +148,9 @@ export function buildDevTools(userId: string) {
           log('error', '[Dev Tool] inspectSchema error:', error);
           return ERRORS.DB_ERROR(error);
         } finally {
-          client.release();
+          if (client && typeof client.release === 'function') {
+            client.release();
+          }
         }
       },
     }),
@@ -117,7 +185,9 @@ export function buildDevTools(userId: string) {
           log('error', '[Dev Tool] getUserInfo error:', error);
           return ERRORS.DB_ERROR(error);
         } finally {
-          client.release();
+          if (client && typeof client.release === 'function') {
+            client.release();
+          }
         }
       },
     }),
@@ -134,6 +204,83 @@ export function buildDevTools(userId: string) {
           return formatSuccess(getPoolStats(), 'Database Pool Stats');
         } catch (error) {
           log('error', '[Dev Tool] getDbStats error:', error);
+          return ERRORS.DB_ERROR(error);
+        }
+      },
+    }),
+
+    sparky_query_table: tool({
+      description:
+        'Execute a read-only query on a database table for troubleshooting. Requires admin access and DEV_TOOLS_ENABLED=true.',
+      inputSchema: queryTableInput,
+      execute: async (rawArgs) => {
+        const denied = await assertDevAccess(userId);
+        if (denied) return denied;
+
+        const parsed = queryTableInput.safeParse(rawArgs);
+        if (!parsed.success) {
+          return formatZodError(parsed.error);
+        }
+        const { table, select, where, orderBy, limit } = parsed.data;
+
+        if (!/^[a-zA-Z0-9_.]+$/i.test(table)) {
+          return ERRORS.VALIDATION('Invalid table name');
+        }
+
+        const sqlParts = [
+          `SELECT ${select} FROM "${table.replace(/"/g, '""')}"`,
+        ];
+        if (where) sqlParts.push(`WHERE ${where}`);
+        if (orderBy) sqlParts.push(`ORDER BY ${orderBy}`);
+        sqlParts.push(`LIMIT ${limit}`);
+
+        const querySql = sqlParts.join(' ');
+        try {
+          const rows = await runReadOnlyQuery(querySql);
+          return formatSuccess(
+            { table, rows, row_count: rows.length },
+            `Query Table: ${table}`
+          );
+        } catch (error) {
+          log('error', '[Dev Tool] queryTable error:', error);
+          return ERRORS.DB_ERROR(error);
+        }
+      },
+    }),
+
+    sparky_execute_read_only_sql: tool({
+      description:
+        'Execute a custom read-only SQL query (SELECT or WITH statements) against Postgres for troubleshooting. Requires admin access and DEV_TOOLS_ENABLED=true.',
+      inputSchema: executeSqlInput,
+      execute: async (rawArgs) => {
+        const denied = await assertDevAccess(userId);
+        if (denied) return denied;
+
+        const parsed = executeSqlInput.safeParse(rawArgs);
+        if (!parsed.success) {
+          return formatZodError(parsed.error);
+        }
+        const { query } = parsed.data;
+        const trimmedQuery = query.trim();
+
+        if (!/^(SELECT|WITH)\b/i.test(trimmedQuery)) {
+          return ERRORS.FORBIDDEN(
+            'Query must be a read-only SELECT or WITH statement'
+          );
+        }
+
+        try {
+          const rows = await runReadOnlyQuery(trimmedQuery);
+          return formatSuccess(
+            {
+              query: trimmedQuery,
+              rows,
+              row_count: rows.length,
+            },
+            'Execute Read-Only SQL'
+          );
+        } catch (error) {
+          log('error', '[Dev Tool] executeReadOnlySql error:', error);
           return ERRORS.DB_ERROR(error);
         }
       },

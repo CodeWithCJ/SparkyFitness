@@ -8,6 +8,19 @@ export const checkInMeasurementsResponseSchema = checkInMeasurementsSchema
   .extend({
     entry_date: z.string(),
     updated_at: z.string(),
+    // Widen from base schema's .nullable() to .nullish() — the server
+    // should always return these, but defensive against any code path
+    // that omits a column entirely.
+    weight: z.number().nullish(),
+    neck: z.number().nullish(),
+    waist: z.number().nullish(),
+    hips: z.number().nullish(),
+    steps: z.number().nullish(),
+    height: z.number().nullish(),
+    body_fat_percentage: z.number().nullish(),
+    muscle_mass_kg: z.number().nullish(),
+    bone_mass_kg: z.number().nullish(),
+    body_water_percentage: z.number().nullish(),
   })
   .omit({
     created_at: true,
@@ -21,6 +34,9 @@ export const recentCheckInMeasurementsSchema = z.object({
   steps: z.number().nullish(),
   height: z.number().nullish(),
   body_fat_percentage: z.number().nullish(),
+  muscle_mass_kg: z.number().nullish(),
+  bone_mass_kg: z.number().nullish(),
+  body_water_percentage: z.number().nullish(),
 });
 
 export const updateCheckInMeasurementsRequestSchema =

@@ -1860,7 +1860,10 @@ describe('_createExerciseEntryWithClient id threading', () => {
     sets: [],
   };
 
-  it('inserts the client-provided uuid into the id column as $32', async () => {
+  // Base columns (31) + telemetry columns (40, added across the generic-health-tables
+  // and complete-workout-telemetry migrations) = 71; the id column, when a client uuid
+  // is supplied, is appended as the 72nd placeholder.
+  it('inserts the client-provided uuid into the id column as the last placeholder', async () => {
     const client = makeClient();
     await create(
       client,
@@ -1874,11 +1877,12 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).toContain('$32');
-    expect(insert!.sql).toContain('modality, id');
-    // $32 is the last param — the client uuid.
-    expect(insert!.params).toHaveLength(32);
-    expect(insert!.params[31]).toBe('client-uuid-1');
+    expect(insert!.sql).toContain('$72');
+    expect(insert!.sql).toContain('modality');
+    expect(insert!.sql).toContain(', id)');
+    // $72 is the last param — the client uuid.
+    expect(insert!.params).toHaveLength(72);
+    expect(insert!.params[71]).toBe('client-uuid-1');
   });
 
   it('omits the id column when no id is provided (defaults to gen_random_uuid)', async () => {
@@ -1895,8 +1899,8 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).not.toContain('$32');
-    expect(insert!.sql).not.toContain('modality, id');
-    expect(insert!.params).toHaveLength(31);
+    expect(insert!.sql).not.toContain('$72');
+    expect(insert!.sql).not.toMatch(/modality, id\)/);
+    expect(insert!.params).toHaveLength(71);
   });
 });

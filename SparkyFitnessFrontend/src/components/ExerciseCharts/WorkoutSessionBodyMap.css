@@ -1,0 +1,48 @@
+/* Styling for the per-session muscle-summary body map in WorkoutSessionBreakdown.
+   Mirrors the color roles used by BodyMapFilter.css but as its own scoped classes
+   (active-primary/active-secondary/inactive) since this map isn't interactive
+   (no hover/select states) and needs dark-mode-aware fill colors. */
+
+.workout-session-body-map svg {
+  width: 100%;
+  height: auto;
+}
+
+.workout-session-body-map path {
+  stroke: #d1d5db;
+  stroke-width: 0.5;
+  transition:
+    fill 0.2s ease-in-out,
+    stroke 0.2s ease-in-out;
+}
+
+.workout-session-body-map path.inactive {
+  fill: #f3f4f6;
+}
+
+.workout-session-body-map path.active-primary {
+  fill: #e11d48;
+  stroke: #e11d48;
+}
+
+.workout-session-body-map path.active-secondary {
+  fill: #eab308;
+  stroke: #eab308;
+}
+
+@media (prefers-color-scheme: dark) {
+  .workout-session-body-map path.inactive {
+    fill: #374151;
+    stroke: #4b5563;
+  }
+}
+
+:root[data-theme='dark'] .workout-session-body-map path.inactive {
+  fill: #374151;
+  stroke: #4b5563;
+}
+
+:root[data-theme='light'] .workout-session-body-map path.inactive {
+  fill: #f3f4f6;
+  stroke: #d1d5db;
+}

@@ -10,8 +10,15 @@ import type {
 } from '../integrations/garminfit/fitActivityTransform.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
+import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
 import { getOrCreateGarminExercise } from './garminService.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import {
+  extractGarminLaps,
+  extractGarminGpsPoints,
+  extractGarminHrZones,
+  extractGarminTelemetryFields,
+} from './garmin/garminTelemetryExtractors.js';
 
 // Distinct from the Connect sync's 'garmin' so its range-delete-and-recreate
 // re-sync never wipes FIT imports.
@@ -36,7 +43,8 @@ async function persistFitEntry(
   targetUserId: string,
   actingUserId: string,
   entryData: FitEntryData & { exercise_id: string; entry_date: string },
-  detailData: FitDetailData
+  detailData: FitDetailData,
+  entryDate: string
 ): Promise<PersistedFitEntry> {
   const client = await getClient(targetUserId, actingUserId);
   try {
@@ -63,6 +71,56 @@ async function persistFitEntry(
       created_by_user_id: actingUserId,
       updated_by_user_id: actingUserId,
     });
+    // Telemetry belongs to the same unit of work as the entry itself. These
+    // used to run after COMMIT on their own connections, so a failure part-way
+    // left a committed activity with only some of its laps/GPS/zones attached.
+    const detailRecord = detailData as unknown as Record<string, unknown>;
+    await exerciseEntryRepository._updateExerciseEntryTelemetryOnlyWithClient(
+      client,
+      entry.id,
+      targetUserId,
+      extractGarminTelemetryFields(detailRecord)
+    );
+    const laps = extractGarminLaps(detailRecord);
+    if (laps.length > 0) {
+      await workoutTelemetryRepo._bulkInsertExerciseEntryLapsWithClient(
+        client,
+        targetUserId,
+        laps.map(({ startMs: _s, endMs: _e, ...lap }) => ({
+          user_id: targetUserId,
+          exercise_entry_id: entry.id,
+          entry_date: entryDate,
+          ...lap,
+        }))
+      );
+    }
+    const gpsPoints = extractGarminGpsPoints(detailRecord);
+    if (gpsPoints.length > 0) {
+      await workoutTelemetryRepo._bulkInsertExerciseEntryGpsPointsWithClient(
+        client,
+        targetUserId,
+        gpsPoints.map(({ timestampMs: _t, ...pt }) => ({
+          user_id: targetUserId,
+          exercise_entry_id: entry.id,
+          entry_date: entryDate,
+          ...pt,
+        }))
+      );
+    }
+    const hrZones = extractGarminHrZones(detailRecord);
+    if (hrZones.length > 0) {
+      await workoutTelemetryRepo._bulkInsertExerciseEntryHrZonesWithClient(
+        client,
+        targetUserId,
+        hrZones.map((zone) => ({
+          user_id: targetUserId,
+          exercise_entry_id: entry.id,
+          entry_date: entryDate,
+          ...zone,
+        }))
+      );
+    }
+
     await client.query('COMMIT');
     return { entry, operation };
   } catch (error) {
@@ -133,7 +191,8 @@ async function importSingleFitFile(
         exercise_id: exercise.id,
         entry_date: entryDate,
       },
-      transformed.detailData
+      transformed.detailData,
+      entryDate
     );
 
     const result: ImportFitFileResult = {

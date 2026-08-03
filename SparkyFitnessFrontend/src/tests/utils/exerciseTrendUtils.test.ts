@@ -3,6 +3,7 @@ import {
   extractGarminActivityEntries,
 } from '@/utils/exerciseTrendUtils';
 import type { ExerciseProgressResponse } from '@workspace/shared';
+import { format } from 'date-fns';
 
 const parseISO = (dateString: string) => new Date(`${dateString}T00:00:00Z`);
 const formatDate = (date: Date) => date.toISOString().slice(0, 10);
@@ -21,6 +22,72 @@ const makeEntry = (
   provider_name: 'garmin',
   sets: [],
   ...overrides,
+});
+
+describe('weekly bucketing keeps years apart', () => {
+  // The weekly label was 'MMM dd', so the week of Jan 06 2025 and the week of
+  // Jan 05 2026 produced the same key and collapsed into a single bucket. This
+  // uses a formatter that actually honours the format string — the plain
+  // `formatDate` stub above always yields YYYY-MM-DD and so cannot see the bug.
+  const formatWithPattern = (date: Date, formatStr: string) =>
+    format(date, formatStr);
+
+  it('does not merge the same week from different years', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Squat: [
+        makeEntry({
+          exercise_entry_id: 'e-2025',
+          entry_date: '2025-01-06',
+          sets: [{ set_number: 1, reps: 5, weight: 100 }],
+        }),
+        makeEntry({
+          exercise_entry_id: 'e-2026',
+          entry_date: '2026-01-05',
+          sets: [{ set_number: 1, reps: 5, weight: 200 }],
+        }),
+      ] as ExerciseProgressResponse[],
+    };
+
+    const trend = calculateMaxWeightTrendData(
+      data,
+      {},
+      formatWithPattern,
+      parseISO,
+      'weekly'
+    );
+
+    expect(trend).toHaveLength(2);
+    expect(new Set(trend.map((t) => t.date)).size).toBe(2);
+    trend.forEach((t) => expect(t.date).toMatch(/\d{4}/));
+  });
+
+  // Mid-week dates on purpose: parseISO here builds UTC midnight, which lands
+  // on the previous local day, so a Monday date would snap to the prior week.
+  it('still merges two entries from the same week', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Squat: [
+        makeEntry({
+          entry_date: '2026-01-07',
+          sets: [{ set_number: 1, reps: 5, weight: 100 }],
+        }),
+        makeEntry({
+          entry_date: '2026-01-09',
+          sets: [{ set_number: 1, reps: 5, weight: 120 }],
+        }),
+      ] as ExerciseProgressResponse[],
+    };
+
+    const trend = calculateMaxWeightTrendData(
+      data,
+      {},
+      formatWithPattern,
+      parseISO,
+      'weekly'
+    );
+
+    expect(trend).toHaveLength(1);
+    expect(trend[0]?.maxWeight).toBe(120);
+  });
 });
 
 describe('calculateMaxWeightTrendData', () => {
@@ -102,10 +169,25 @@ describe('extractGarminActivityEntries', () => {
     ]);
   });
 
+  it('matches telemetry providers regardless of casing', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Tennis: [
+        // The Strava pipeline writes 'Strava'; the Garmin ones write lowercase.
+        makeEntry({ provider_name: 'Strava', exercise_entry_id: 'strava-1' }),
+        makeEntry({ provider_name: 'strava', exercise_entry_id: 'strava-2' }),
+      ],
+    };
+    expect(
+      extractGarminActivityEntries(data, 'All', parseISO).map(
+        (e) => e.exercise_entry_id
+      )
+    ).toEqual(['strava-1', 'strava-2']);
+  });
+
   it('ignores entries from other providers and entries without an id', () => {
     const data: Record<string, ExerciseProgressResponse[]> = {
       Tennis: [
-        makeEntry({ provider_name: 'strava' }),
+        makeEntry({ provider_name: 'fitbit' }),
         makeEntry({ provider_name: null }),
         makeEntry({
           provider_name: 'garmin_fit',

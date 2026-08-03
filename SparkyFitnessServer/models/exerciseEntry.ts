@@ -226,6 +226,123 @@ function toJsonColumnText(value: unknown): string | null {
   return typeof value === 'string' ? value : JSON.stringify(value);
 }
 
+// Workout telemetry columns added by 20260730000000_create_generic_health_and_workout_tables.sql
+// and 20260731000000_complete_workout_telemetry.sql. Every provider sync path (currently Garmin)
+// populates a subset of these keys on entryData/mergedData by name; keeping the INSERT/UPDATE
+// column list driven off this single array is what stops a future addition from being silently
+// dropped the way the original 26 columns were.
+const EXERCISE_ENTRY_TELEMETRY_COLUMNS = [
+  'max_heart_rate',
+  'heart_rate_recovery_1min',
+  'avg_respiration_brpm',
+  'max_respiration_brpm',
+  'avg_speed_mps',
+  'max_speed_mps',
+  'avg_cadence',
+  'max_cadence',
+  'avg_power_watts',
+  'max_power_watts',
+  'normalized_power_watts',
+  'tss_score',
+  'intensity_factor',
+  'ground_contact_time_ms',
+  'vertical_oscillation_mm',
+  'stride_length_cm',
+  'avg_temperature_celsius',
+  'max_temperature_celsius',
+  'elevation_gain_meters',
+  'elevation_loss_meters',
+  'floors_climbed',
+  'stroke_count',
+  'training_load',
+  'aerobic_training_effect',
+  'anaerobic_training_effect',
+  'vo2_max_estimate',
+  'moving_time_seconds',
+  'elapsed_time_seconds',
+  'work_time_seconds',
+  'resting_calories',
+  'active_calories',
+  'avg_moving_speed_mps',
+  'min_elevation_meters',
+  'max_elevation_meters',
+  'weather_temp_celsius',
+  'weather_condition',
+  'weather_wind_speed_mps',
+  'weather_humidity_percentage',
+  'gear_name',
+  'gear_external_id',
+] as const;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function telemetryValuesFrom(source: any): unknown[] {
+  return EXERCISE_ENTRY_TELEMETRY_COLUMNS.map((column) => {
+    const value = source?.[column];
+    return value === undefined ? null : value;
+  });
+}
+
+/**
+ * Targeted update of ONLY the telemetry columns on an existing exercise_entries row —
+ * unlike updateExerciseEntry (a separate, older function that unconditionally nulls
+ * every non-telemetry column it isn't given), this touches nothing else. Used by the
+ * workout-telemetry backfill script to re-derive telemetry from the stored raw JSON
+ * backup without disturbing the rest of the row.
+ */
+/** Column names this module is allowed to write via the telemetry-only update. */
+type TelemetryColumn = (typeof EXERCISE_ENTRY_TELEMETRY_COLUMNS)[number];
+
+/** Partial telemetry payload: any subset of the telemetry columns. */
+export type TelemetryFields = Partial<Record<TelemetryColumn, unknown>>;
+
+/** Minimal pg client surface needed to run a parameterised statement. */
+export interface TelemetryUpdateClient {
+  query: (text: string, values?: unknown[]) => Promise<unknown>;
+}
+
+async function _updateExerciseEntryTelemetryOnlyWithClient(
+  client: TelemetryUpdateClient,
+  id: string,
+  userId: string,
+  telemetryFields: TelemetryFields
+) {
+  // Only the columns actually supplied are written. Previously every telemetry
+  // column was included, with absent ones coerced to null, so a partial payload
+  // (a provider that reports power but not running dynamics, say) wiped the
+  // columns it had nothing to say about.
+  const columns = EXERCISE_ENTRY_TELEMETRY_COLUMNS.filter(
+    (column) => telemetryFields?.[column] !== undefined
+  );
+  if (columns.length === 0) return;
+
+  const setClause = columns
+    .map((column, index) => `${column} = $${index + 1}`)
+    .join(', ');
+  await client.query(
+    `UPDATE exercise_entries SET ${setClause}, updated_at = now()
+     WHERE id = $${columns.length + 1} AND user_id = $${columns.length + 2}`,
+    [...columns.map((column) => telemetryFields[column]), id, userId]
+  );
+}
+
+async function updateExerciseEntryTelemetryOnly(
+  id: string,
+  userId: string,
+  telemetryFields: TelemetryFields
+) {
+  const client = await getClient(userId);
+  try {
+    await _updateExerciseEntryTelemetryOnlyWithClient(
+      client,
+      id,
+      userId,
+      telemetryFields
+    );
+  } finally {
+    client.release();
+  }
+}
+
 async function _updateExerciseEntryWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -350,6 +467,20 @@ async function _updateExerciseEntryWithClient(
     mergedData.instructions = exercise.instructions;
     mergedData.images = exercise.images;
   }
+  // Telemetry columns: prefer an explicitly-provided updateData value, otherwise keep
+  // whatever is already on the row. Using a raw object spread for these would let an
+  // `undefined` key present in updateData (e.g. a metric Garmin didn't compute for this
+  // activity type) silently blank out a previously-synced value.
+  for (const column of EXERCISE_ENTRY_TELEMETRY_COLUMNS) {
+    mergedData[column] =
+      updateData[column] !== undefined
+        ? updateData[column]
+        : currentEntry[column];
+  }
+  const telemetryParams = telemetryValuesFrom(mergedData);
+  const telemetrySetClause = EXERCISE_ENTRY_TELEMETRY_COLUMNS.map(
+    (column, index) => `${column} = $${32 + index}`
+  ).join(',\n      ');
   await client.query(
     `UPDATE exercise_entries SET
       exercise_id = $1,
@@ -381,6 +512,7 @@ async function _updateExerciseEntryWithClient(
       superset_group = $27,
       entry_time = $30,
       modality = $31,
+      ${telemetrySetClause},
       updated_at = now()
     WHERE id = $28 AND user_id = $29
     RETURNING id`,
@@ -416,6 +548,7 @@ async function _updateExerciseEntryWithClient(
       userId,
       mergedData.entry_time ?? null,
       mergedData.modality ?? null,
+      ...telemetryParams,
     ]
   );
   // Handle sets update
@@ -579,20 +712,25 @@ async function _createExerciseEntryWithClient(
         entryData.superset_group ?? null,
         entryData.entry_time ?? null,
         snapshot.modality,
+        ...telemetryValuesFrom(entryData),
       ];
       const hasClientId = entryData.id !== undefined && entryData.id !== null;
       const idColumn = hasClientId ? ', id' : '';
-      const idPlaceholder = hasClientId ? ', $32' : '';
       if (hasClientId) entryValues.push(entryData.id);
+      const baseColumns =
+        'user_id, exercise_id, duration_minutes, calories_burned, entry_date, notes, ' +
+        'workout_plan_assignment_id, image_url, created_by_user_id, ' +
+        'exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic, ' +
+        'equipment, primary_muscles, secondary_muscles, instructions, images, ' +
+        'distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated, ' +
+        'superset_group, entry_time, modality';
+      const allColumns = `${baseColumns}, ${EXERCISE_ENTRY_TELEMETRY_COLUMNS.join(', ')}${idColumn}`;
+      const placeholders = entryValues
+        .map((_, index) => `$${index + 1}`)
+        .join(', ');
       const entryResult = await client.query(
-        `INSERT INTO exercise_entries (
-           user_id, exercise_id, duration_minutes, calories_burned, entry_date, notes,
-           workout_plan_assignment_id, image_url, created_by_user_id,
-           exercise_name, calories_per_hour, category, source, source_id, force, level, mechanic,
-           equipment, primary_muscles, secondary_muscles, instructions, images,
-           distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated,
-           superset_group, entry_time, modality${idColumn}
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31${idPlaceholder}) RETURNING id`,
+        `INSERT INTO exercise_entries (${allColumns})
+         VALUES (${placeholders}) RETURNING id`,
         entryValues
       );
       newEntryId = entryResult.rows[0].id;
@@ -704,79 +842,24 @@ async function updateExerciseEntry(
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-    await client.query(
-      `UPDATE exercise_entries SET
-        exercise_id = $1,
-        duration_minutes = $2,
-        calories_burned = $3,
-        entry_date = $4,
-        notes = $5,
-        workout_plan_assignment_id = $6,
-        image_url = $7,
-        distance = $8,
-        avg_heart_rate = $9,
-        steps = $10,
-        sort_order = $11,
-        exercise_name = $12,
-        superset_group = $13,
-        updated_by_user_id = $14,
-        entry_time = $17,
-        updated_at = now()
-      WHERE id = $15 AND user_id = $16
-      RETURNING id`,
-      [
-        updateData.exercise_id ?? null,
-        updateData.duration_minutes ?? null,
-        updateData.calories_burned ?? null,
-        updateData.entry_date ?? null,
-        updateData.notes ?? null,
-        updateData.workout_plan_assignment_id ?? null,
-        updateData.image_url ?? null,
-        updateData.distance ?? null,
-        updateData.avg_heart_rate ?? null,
-        updateData.steps ?? null,
-        updateData.sort_order ?? null,
-        updateData.exercise_name ?? null,
-        updateData.superset_group ?? null,
-        actingUserId,
-        id,
-        userId,
-        updateData.entry_time ?? null,
-      ]
+    // Pass the caller's source through as-is (possibly undefined). Defaulting
+    // to 'manual' here reassigned every provider-synced entry to 'manual' on
+    // any diary edit, which silently broke "delete my <provider> data" for that
+    // row. _updateExerciseEntryWithClient already falls back to the entry's
+    // existing source when this is absent.
+    const updatedEntry = await _updateExerciseEntryWithClient(
+      client,
+      id,
+      userId,
+      updateData,
+      actingUserId,
+      updateData.source
     );
-    // Only modify sets if they are explicitly provided in the update
-    if (updateData.sets !== undefined) {
-      // Delete old sets for the entry
-      await client.query(
-        'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1',
-        [id]
-      );
-      // Insert new sets if provided and not empty
-      if (Array.isArray(updateData.sets) && updateData.sets.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const setsValues = updateData.sets.map((set: any) => [
-          id,
-          set.set_number,
-          set.set_type,
-          set.reps,
-          set.weight,
-          set.duration,
-          set.rest_time,
-          set.notes,
-          set.rpe,
-          set.completed_at ?? null,
-          set.is_pr ?? false,
-          set.distance ?? null,
-        ]);
-        const setsQuery = format(
-          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, completed_at, is_pr, distance) VALUES %L',
-          setsValues
-        );
-        await client.query(setsQuery);
-      }
-    }
     await client.query('COMMIT');
-    return getExerciseEntryById(id, userId); // Refetch to get full data
+    return updatedEntry;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
@@ -1017,11 +1100,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
            ), '[]'::json
           ) AS sets,
           ee.distance,
-          ee.avg_heart_rate,
-          (SELECT json_agg(ead)
-           FROM exercise_entry_activity_details ead
-           WHERE ead.exercise_entry_id = ee.id
-          ) AS activity_details
+          ee.avg_heart_rate
         FROM exercise_entries ee
         WHERE ee.user_id = $1 AND ee.entry_date = $2
         ORDER BY ee.sort_order ASC, ee.created_at ASC`,
@@ -1046,16 +1125,28 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         total_duration_minutes: 0, // Initialize total duration for the preset
       });
     });
+    // Batched lookup of activity details for every entry/preset on this day in one
+    // query, instead of one query per entry. Raw provider sync dumps (Garmin's
+    // full_activity_data/full_workout_data) come back with detail_data stripped —
+    // the diary only needs to know a raw dump exists (to offer it as an on-demand
+    // reference), not ship it inline; calculations must use the relational columns.
+    const {
+      byEntryId: activityDetailsByEntryId,
+      byPresetEntryId: activityDetailsByPresetId,
+    } =
+      await activityDetailsRepository.getActivityDetailsSummaryForEntriesAndPresets(
+        userId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        allExerciseEntries.map((row: any) => row.id),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        presetEntries.map((preset: any) => preset.id)
+      );
+
     // Process individual exercise entries
-    const entriesWithDetails = await Promise.all(
+    const entriesWithDetails =
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      allExerciseEntries.map(async (row: any) => {
-        const activityDetails =
-          await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
-            userId,
-            row.id,
-            null
-          );
+      allExerciseEntries.map((row: any) => {
+        const activityDetails = activityDetailsByEntryId.get(row.id) || [];
 
         const {
           exercise_name,
@@ -1099,12 +1190,12 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
           },
           activity_details: activityDetails,
         };
-      })
-    );
+      });
     // Group exercises under their respective preset entries or as individual entries
     const finalEntriesMap = new Map(); // Use a Map to ensure unique top-level entries
     // Process individual exercise entries first, associating them with presets
-    entriesWithDetails.forEach((entry) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    entriesWithDetails.forEach((entry: any) => {
       if (
         entry.exercise_preset_entry_id &&
         groupedEntries.has(entry.exercise_preset_entry_id)
@@ -1130,14 +1221,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
     });
     // Now add the preset entries (which now contain their associated exercises) to the final list
     for (const preset of groupedEntries.values()) {
-      // Fetch activity details for the preset entry itself
-      const presetActivityDetails =
-        await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
-          userId,
-          null,
-          preset.id
-        );
-      preset.activity_details = presetActivityDetails;
+      preset.activity_details = activityDetailsByPresetId.get(preset.id) || [];
       finalEntriesMap.set(preset.id, preset); // Add preset to map, overwriting if already present (shouldn't happen for presets)
     }
     const finalEntries = Array.from(finalEntriesMap.values()); // Convert map values to an array
@@ -1195,6 +1279,8 @@ async function getExerciseProgressData(
          ee.distance,
          ee.avg_heart_rate,
          ee.source AS provider_name,
+         ee.exercise_preset_entry_id,
+         epe.name AS exercise_preset_entry_name,
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
@@ -1205,6 +1291,7 @@ async function getExerciseProgressData(
            ), '[]'::json
          ) AS sets
        FROM exercise_entries ee
+       LEFT JOIN exercise_preset_entries epe ON epe.id = ee.exercise_preset_entry_id
        WHERE ee.user_id = $1
          AND ee.exercise_id = $2
          AND ee.entry_date BETWEEN $3 AND $4
@@ -1362,73 +1449,83 @@ async function getRecentSessionsForExercise(
     client.release();
   }
 }
+async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
+  client: PoolClient,
+  userId: string,
+  startDate: string,
+  endDate: string,
+  entrySource: string
+) {
+  // Get IDs of exercise entries to be deleted
+  const entryIdsResult = await client.query(
+    `SELECT id FROM exercise_entries
+     WHERE user_id = $1
+       AND entry_date BETWEEN $2 AND $3
+       AND source = $4`,
+    [userId, startDate, endDate, entrySource]
+  );
+  const entryIds = entryIdsResult.rows.map((row: { id: string }) => row.id);
+  if (entryIds.length > 0) {
+    // Delete associated activity details
+    await client.query(
+      'DELETE FROM exercise_entry_activity_details WHERE exercise_entry_id = ANY($1::uuid[])',
+      [entryIds]
+    );
+    log(
+      'info',
+      `[exerciseEntry] Deleted activity details for ${entryIds.length} exercise entries.`
+    );
+    // Delete associated sets
+    await client.query(
+      'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = ANY($1::uuid[])',
+      [entryIds]
+    );
+    log(
+      'info',
+      `[exerciseEntry] Deleted sets for ${entryIds.length} exercise entries.`
+    );
+    // Delete the exercise entries themselves
+    const result = await client.query(
+      'DELETE FROM exercise_entries WHERE id = ANY($1::uuid[])',
+      [entryIds]
+    );
+    log(
+      'info',
+      `[exerciseEntry] Deleted ${result.rowCount} exercise entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`
+    );
+    return result.rowCount;
+  }
+  log(
+    'info',
+    `[exerciseEntry] No exercise entries with source '${entrySource}' found for user ${userId} from ${startDate} to ${endDate}.`
+  );
+  return 0;
+}
+
 async function deleteExerciseEntriesByEntrySourceAndDate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entrySource: any
+  userId: string,
+  startDate: string,
+  endDate: string,
+  entrySource: string
 ) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-    // Get IDs of exercise entries to be deleted
-    const entryIdsResult = await client.query(
-      `SELECT id FROM exercise_entries
-       WHERE user_id = $1
-         AND entry_date BETWEEN $2 AND $3
-         AND source = $4`,
-      [userId, startDate, endDate, entrySource]
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const entryIds = entryIdsResult.rows.map((row: any) => row.id);
-    if (entryIds.length > 0) {
-      // Delete associated activity details
-      await client.query(
-        'DELETE FROM exercise_entry_activity_details WHERE exercise_entry_id = ANY($1::uuid[])',
-        [entryIds]
+    const deletedCount =
+      await deleteExerciseEntriesByEntrySourceAndDateWithClient(
+        client,
+        userId,
+        startDate,
+        endDate,
+        entrySource
       );
-      log(
-        'info',
-        `[exerciseEntry] Deleted activity details for ${entryIds.length} exercise entries.`
-      );
-      // Delete associated sets
-      await client.query(
-        'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = ANY($1::uuid[])',
-        [entryIds]
-      );
-      log(
-        'info',
-        `[exerciseEntry] Deleted sets for ${entryIds.length} exercise entries.`
-      );
-      // Delete the exercise entries themselves
-      const result = await client.query(
-        'DELETE FROM exercise_entries WHERE id = ANY($1::uuid[])',
-        [entryIds]
-      );
-      log(
-        'info',
-        `[exerciseEntry] Deleted ${result.rowCount} exercise entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`
-      );
-      await client.query('COMMIT');
-      return result.rowCount;
-    } else {
-      log(
-        'info',
-        `[exerciseEntry] No exercise entries with source '${entrySource}' found for user ${userId} from ${startDate} to ${endDate}.`
-      );
-      await client.query('COMMIT');
-      return 0;
-    }
+    await client.query('COMMIT');
+    return deletedCount;
   } catch (error) {
     await client.query('ROLLBACK');
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error deleting exercise entries by source and date: ${error.message}`,
+      `Error deleting exercise entries by source and date: ${error instanceof Error ? error.message : String(error)}`,
       { userId, startDate, endDate, entrySource, error }
     );
     throw error;
@@ -1599,6 +1696,8 @@ export { createExerciseEntry };
 export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };
 export { updateExerciseEntry };
+export { updateExerciseEntryTelemetryOnly };
+export { _updateExerciseEntryTelemetryOnlyWithClient };
 export { updateExerciseEntriesDateByPresetEntryIdWithClient };
 export { getWorkoutPlanAssignmentIdByPresetEntryIdWithClient };
 export { deleteExerciseEntriesByPresetEntryIdWithClient };
@@ -1610,6 +1709,7 @@ export { getBestSetForExercise };
 export { getLastSetForExercise };
 export { getRecentSessionsForExercise };
 export { deleteExerciseEntriesByEntrySourceAndDate };
+export { deleteExerciseEntriesByEntrySourceAndDateWithClient };
 export { getDailyExerciseTotalsRange };
 export { getExerciseDiaryRange };
 export { getRecentExerciseEntries };
@@ -1626,6 +1726,8 @@ export default {
   getExerciseEntryById,
   getExerciseEntryOwnerId,
   updateExerciseEntry,
+  updateExerciseEntryTelemetryOnly,
+  _updateExerciseEntryTelemetryOnlyWithClient,
   updateExerciseEntriesDateByPresetEntryIdWithClient,
   getWorkoutPlanAssignmentIdByPresetEntryIdWithClient,
   deleteExerciseEntriesByPresetEntryIdWithClient,
@@ -1637,6 +1739,7 @@ export default {
   getLastSetForExercise,
   getRecentSessionsForExercise,
   deleteExerciseEntriesByEntrySourceAndDate,
+  deleteExerciseEntriesByEntrySourceAndDateWithClient,
   getDailyExerciseTotalsRange,
   getExerciseDiaryRange,
   getRecentExerciseEntries,

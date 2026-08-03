@@ -78,7 +78,7 @@ const WorkoutHeatmap = ({ workoutDates }: WorkoutHeatmapProps) => {
   ];
 
   return (
-    <Card>
+    <Card className="h-full border shadow-sm">
       <CardHeader>
         <CardTitle>
           {t('exerciseReportsDashboard.workoutHeatmap', 'Workout Heatmap')}

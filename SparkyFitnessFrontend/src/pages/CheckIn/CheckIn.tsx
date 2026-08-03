@@ -29,6 +29,9 @@ const CheckIn = () => {
 
   const {
     bodyFatPercentage,
+    boneMassKg,
+    bodyWaterPercentage,
+    muscleMassKg,
     customCategories,
     customNotes,
     customValues,
@@ -46,6 +49,9 @@ const CheckIn = () => {
     recentMeasurements,
     selectedDate,
     setBodyFatPercentage,
+    setBoneMassKg,
+    setBodyWaterPercentage,
+    setMuscleMassKg,
     setCustomNotes,
     setCustomValues,
     setHeight,
@@ -203,6 +209,9 @@ const CheckIn = () => {
         >
           <CheckInForm
             bodyFatPercentage={bodyFatPercentage}
+            boneMassKg={boneMassKg}
+            bodyWaterPercentage={bodyWaterPercentage}
+            muscleMassKg={muscleMassKg}
             customCategories={customCategories}
             customNotes={customNotes}
             customValues={customValues}
@@ -214,6 +223,9 @@ const CheckIn = () => {
             neck={neck}
             placeholders={placeholders}
             setBodyFatPercentage={setBodyFatPercentage}
+            setBoneMassKg={setBoneMassKg}
+            setBodyWaterPercentage={setBodyWaterPercentage}
+            setMuscleMassKg={setMuscleMassKg}
             setCustomNotes={setCustomNotes}
             setCustomValues={setCustomValues}
             setHeight={setHeight}

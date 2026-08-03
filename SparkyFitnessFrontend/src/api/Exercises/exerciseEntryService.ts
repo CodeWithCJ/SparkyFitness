@@ -15,6 +15,8 @@ import {
   ExerciseProgressResponse,
   exerciseSnapshotResponseSchema,
   ExerciseSnapshotResponse,
+  PresetSessionResponse,
+  presetSessionResponseSchema,
 } from '@workspace/shared';
 import z from 'zod';
 import { parseJsonArray } from './exerciseService';
@@ -118,6 +120,22 @@ export const createPresetSession = async (
     body: JSON.stringify(payload),
     headers: { 'Content-Type': 'application/json' },
   });
+};
+
+/**
+ * Fetches a grouped workout session (a strength/multi-exercise Garmin session, or any
+ * other preset-backed workout) with every child exercise entry, its sets, and its
+ * relational muscle snapshot (`exercise_snapshot.primary_muscles`/`secondary_muscles`).
+ * This is the relational replacement for parsing the raw provider JSON blob to build a
+ * session's exercise/muscle breakdown.
+ */
+export const getGroupedWorkoutSession = async (
+  presetEntryId: string
+): Promise<PresetSessionResponse> => {
+  const data = await apiCall(`/exercise-preset-entries/${presetEntryId}`, {
+    method: 'GET',
+  });
+  return presetSessionResponseSchema.parse(data);
 };
 
 export const deleteExerciseEntry = async (entryId: string): Promise<void> => {
@@ -250,14 +268,25 @@ export const fetchExerciseDetails = async (
   return exerciseSnapshotResponseSchema.parse(parsedResponse);
 };
 
+export const fetchExerciseEntryById = async (
+  entryId: string
+): Promise<ExerciseEntryResponse> => {
+  return apiCall(`/exercise-entries/${entryId}`, {
+    method: 'GET',
+  });
+};
+
+// suppress404Toast means apiCall resolves to null when the provider has no
+// stored details, so the signature has to admit that.
 export const getActivityDetails = async (
   exerciseEntryId: string,
   providerName: string
-): Promise<ActivityDetailsResponse> => {
+): Promise<ActivityDetailsResponse | null> => {
   return apiCall(
     `/exercises/activity-details/${exerciseEntryId}/${providerName}`,
     {
       method: 'GET',
+      suppress404Toast: true,
     }
   );
 };

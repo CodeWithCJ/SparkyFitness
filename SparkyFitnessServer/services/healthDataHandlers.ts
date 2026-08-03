@@ -602,7 +602,12 @@ function prepareCheckInMeasurement(
     }
     case 'neck':
     case 'waist':
-    case 'hips': {
+    case 'hips':
+    case 'muscle_mass_kg':
+    case 'bone_mass_kg': {
+      // The smart-scale masses (muscle/bone) are always stored in kg;
+      // providers normalize before dispatch — Garmin via grams_to_kg in the
+      // Python service, Withings via its kg-denominated measure types.
       const numericValue = parseFloat(entry.value);
       if (isNaN(numericValue) || numericValue <= 0) {
         return {
@@ -611,8 +616,17 @@ function prepareCheckInMeasurement(
       }
       return { measurements: { [canonical]: numericValue } };
     }
+    case 'body_water_percentage': {
+      const numericValue = parseFloat(entry.value);
+      if (isNaN(numericValue) || numericValue <= 0 || numericValue > 100) {
+        return {
+          error: `Invalid value for ${entry.type}. Must be greater than 0 and at most 100.`,
+        };
+      }
+      return { measurements: { body_water_percentage: numericValue } };
+    }
     default:
-      // Unreachable: only the four check-in handlers route here.
+      // Unreachable: only the check-in handlers route here.
       return { error: `Unsupported check-in measurement type: ${entry.type}` };
   }
 }
@@ -777,6 +791,24 @@ const waistHandler: HealthTypeHandler = {
 };
 
 const hipsHandler: HealthTypeHandler = {
+  handle: handleCheckInEntry,
+  handleBatch: checkInHandleBatch,
+};
+
+// Smart-scale composition. Shares the check-in write path so provider-synced
+// values land in check_in_measurements alongside weight and body fat, rather
+// than falling through to per-provider custom_measurements categories.
+const muscleMassHandler: HealthTypeHandler = {
+  handle: handleCheckInEntry,
+  handleBatch: checkInHandleBatch,
+};
+
+const boneMassHandler: HealthTypeHandler = {
+  handle: handleCheckInEntry,
+  handleBatch: checkInHandleBatch,
+};
+
+const bodyWaterHandler: HealthTypeHandler = {
   handle: handleCheckInEntry,
   handleBatch: checkInHandleBatch,
 };
@@ -1295,6 +1327,9 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   neck: neckHandler,
   waist: waistHandler,
   hips: hipsHandler,
+  muscle_mass_kg: muscleMassHandler,
+  bone_mass_kg: boneMassHandler,
+  body_water_percentage: bodyWaterHandler,
   SleepSession: sleepSessionHandler,
   Stress: stressHandler,
   Workout: workoutHandler,
@@ -1311,6 +1346,12 @@ export const TYPE_ALIASES: Record<string, string> = {
   'Active Calories': 'active_calories',
   ActiveCaloriesBurned: 'active_calories',
   body_fat_percentage: 'body_fat',
+  // Health Connect spellings for bone mass; both already arrive in kg.
+  // LeanBodyMass is deliberately absent — it is not muscle mass and stays a
+  // custom measurement.
+  bone_mass: 'bone_mass_kg',
+  BoneMass: 'bone_mass_kg',
+  muscle_mass: 'muscle_mass_kg',
   Height: 'height',
   ExerciseSession: 'Workout',
   mood: 'Mood',

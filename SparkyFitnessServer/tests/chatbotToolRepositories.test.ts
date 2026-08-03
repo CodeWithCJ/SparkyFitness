@@ -453,6 +453,7 @@ describe('exerciseEntry range/usage queries', () => {
   });
 
   it('updateExerciseEntry persists steps', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ id: 'ee-1' }] });
     await exerciseEntryRepository.updateExerciseEntry(
       'ee-1',
       'user-1',
@@ -464,8 +465,8 @@ describe('exerciseEntry range/usage queries', () => {
     );
     expect(updateCall).toBeDefined();
     const [sql, params] = updateCall!;
-    expect(sql).toContain('steps = $10');
-    expect(params[9]).toBe(1234);
+    expect(sql).toContain('steps = $25');
+    expect(params[24]).toBe(1234);
   });
 });
 

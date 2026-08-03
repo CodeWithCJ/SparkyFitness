@@ -1,18 +1,58 @@
 import { ExerciseProgressResponse } from '@workspace/shared';
 
+/**
+ * Returns the Monday (week start) of the week containing the given date.
+ */
+const getWeekStart = (date: Date): Date => {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday
+  const diff = day === 0 ? -6 : 1 - day; // offset to Monday
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const getTrendDateFormat = (aggregationLevel?: string) => {
+  if (aggregationLevel === 'weekly' || aggregationLevel === 'week') {
+    // Year included: without it, the week of Jan 05 2025 and Jan 05 2026 produce
+    // the same label, so they collide into one bucket and sort against each other.
+    return 'MMM dd, yyyy'; // applied to week-start date
+  }
+  if (aggregationLevel === 'monthly' || aggregationLevel === 'month') {
+    return 'MMM yyyy';
+  }
+  if (aggregationLevel === 'yearly' || aggregationLevel === 'year') {
+    return 'yyyy';
+  }
+  return 'MMM dd, yyyy';
+};
+
+/**
+ * Given an entry date and aggregation level, returns the Date to use as the bucket key.
+ * For weekly aggregation this snaps to the Monday of that week.
+ */
+const getBucketDate = (date: Date, aggregationLevel: string): Date => {
+  if (aggregationLevel === 'weekly' || aggregationLevel === 'week') {
+    return getWeekStart(date);
+  }
+  return date;
+};
+
 export const calculateVolumeTrendData = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
-  parseISO: (dateString: string) => Date
+  parseISO: (dateString: string) => Date,
+  aggregationLevel: string = 'daily'
 ) => {
+  const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
-          parseISO(entry.entry_date),
-          'MMM dd, yyyy'
+          getBucketDate(parseISO(entry.entry_date), aggregationLevel),
+          formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
 
@@ -49,15 +89,17 @@ export const calculateMaxWeightTrendData = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
-  parseISO: (dateString: string) => Date
+  parseISO: (dateString: string) => Date,
+  aggregationLevel: string = 'daily'
 ) => {
+  const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
-          parseISO(entry.entry_date),
-          'MMM dd, yyyy'
+          getBucketDate(parseISO(entry.entry_date), aggregationLevel),
+          formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
 
@@ -100,15 +142,17 @@ export const calculateEstimated1RMTrendData = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   comparisonExerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   formatDateInUserTimezone: (date: Date, formatStr: string) => string,
-  parseISO: (dateString: string) => Date
+  parseISO: (dateString: string) => Date,
+  aggregationLevel: string = 'daily'
 ) => {
+  const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
-          parseISO(entry.entry_date),
-          'MMM dd, yyyy'
+          getBucketDate(parseISO(entry.entry_date), aggregationLevel),
+          formatStr
         );
         let existingEntry = acc.find((item) => item.date === date);
 
@@ -207,29 +251,49 @@ export const extractGarminActivityEntries = (
   parseISO: (dateString: string) => Date
 ) => {
   const allGarminActivityEntries: ExerciseProgressResponse[] = [];
+  const seenPresetIds = new Set<string>();
+
+  // Every provider listed here now writes relational telemetry (laps at minimum) on
+  // sync/import — see garminActivityProcessor.ts, fitImportService.ts, and
+  // stravaDataProcessor.ts — so the activity detail view has real data to show for all
+  // of them, not just Garmin.
+  //
+  // Matched case-insensitively: provider_name casing is not consistent across
+  // the ingest paths (Strava writes 'Strava', Garmin writes 'garmin'), and an
+  // exact-match set silently hides a provider's activities the moment one side
+  // changes case.
+  const TELEMETRY_PROVIDERS = new Set(['garmin', 'garmin_fit', 'strava']);
+
+  const processEntry = (entry: ExerciseProgressResponse) => {
+    if (
+      entry.provider_name &&
+      TELEMETRY_PROVIDERS.has(entry.provider_name.toLowerCase()) &&
+      entry.exercise_entry_id
+    ) {
+      const presetId = (entry as Record<string, unknown>)[
+        'exercise_preset_entry_id'
+      ] as string | undefined;
+
+      if (presetId) {
+        if (!seenPresetIds.has(presetId)) {
+          seenPresetIds.add(presetId);
+          allGarminActivityEntries.push(entry);
+        }
+      } else {
+        if (!seenPresetIds.has(entry.exercise_entry_id)) {
+          seenPresetIds.add(entry.exercise_entry_id);
+          allGarminActivityEntries.push(entry);
+        }
+      }
+    }
+  };
 
   if (selectedExercise === 'All') {
     Object.values(exerciseProgressData).forEach((dataArray) => {
-      dataArray.forEach((entry) => {
-        if (
-          (entry.provider_name === 'garmin' ||
-            entry.provider_name === 'garmin_fit') &&
-          entry.exercise_entry_id
-        ) {
-          allGarminActivityEntries.push(entry);
-        }
-      });
+      dataArray.forEach(processEntry);
     });
   } else if (selectedExercise && exerciseProgressData[selectedExercise]) {
-    exerciseProgressData[selectedExercise].forEach((entry) => {
-      if (
-        (entry.provider_name === 'garmin' ||
-          entry.provider_name === 'garmin_fit') &&
-        entry.exercise_entry_id
-      ) {
-        allGarminActivityEntries.push(entry);
-      }
-    });
+    exerciseProgressData[selectedExercise].forEach(processEntry);
   }
 
   return allGarminActivityEntries.sort(

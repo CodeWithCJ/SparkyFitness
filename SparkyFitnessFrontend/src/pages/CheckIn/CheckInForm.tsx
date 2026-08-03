@@ -47,6 +47,11 @@ const UseLastButton: React.FC<UseLastButtonProps> = ({
 
 interface CheckInFormProps {
   bodyFatPercentage: string;
+  // Required, not optional: optional props plus `set...?.()` calls previously let
+  // these render as permanently-empty inputs without failing typecheck.
+  muscleMassKg: string;
+  boneMassKg: string;
+  bodyWaterPercentage: string;
   customCategories: CustomCategoriesResponse[];
   customNotes: Record<string, string>;
   customValues: Record<string, string>;
@@ -58,6 +63,9 @@ interface CheckInFormProps {
   neck: string;
   placeholders: CheckInPlaceholders;
   setBodyFatPercentage: (value: string) => void;
+  setMuscleMassKg: (value: string) => void;
+  setBoneMassKg: (value: string) => void;
+  setBodyWaterPercentage: (value: string) => void;
   setCustomNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setCustomValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setHeight: (value: string) => void;
@@ -76,6 +84,9 @@ interface CheckInFormProps {
 
 export const CheckInForm: React.FC<CheckInFormProps> = ({
   bodyFatPercentage,
+  muscleMassKg,
+  boneMassKg,
+  bodyWaterPercentage,
   customNotes,
   customCategories,
   customValues,
@@ -87,6 +98,9 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
   neck,
   placeholders,
   setBodyFatPercentage,
+  setMuscleMassKg,
+  setBoneMassKg,
+  setBodyWaterPercentage,
   setCustomNotes,
   setCustomValues,
   setHeight,
@@ -291,6 +305,54 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                   {t('checkIn.calculate', 'Calculate')}
                 </Button>
               </div>
+            </div>
+
+            {/* Smart Scale Composition Metrics. Masses go through UnitInput so
+                they follow the user's weight-unit preference like weight does;
+                state stays metric (kg). BMI is intentionally not a field here —
+                it is derived from weight and height at the point of use. */}
+            <div>
+              <Label htmlFor="muscleMass">
+                {t('checkIn.muscleMass', 'Muscle Mass')}
+              </Label>
+              <UnitInput
+                id="muscleMass"
+                type="weight"
+                unit={defaultWeightUnit}
+                value={muscleMassKg}
+                onChange={(val) =>
+                  setMuscleMassKg(val !== null ? val.toString() : '')
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="boneMass">
+                {t('checkIn.boneMass', 'Bone Mass')}
+              </Label>
+              <UnitInput
+                id="boneMass"
+                type="weight"
+                unit={defaultWeightUnit}
+                value={boneMassKg}
+                onChange={(val) =>
+                  setBoneMassKg(val !== null ? val.toString() : '')
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="bodyWater">
+                {t('checkIn.bodyWater', 'Body Water %')}
+              </Label>
+              <Input
+                id="bodyWater"
+                type="number"
+                step="0.1"
+                value={bodyWaterPercentage}
+                onChange={(e) => setBodyWaterPercentage(e.target.value)}
+                placeholder="0.0"
+              />
             </div>
             {/* Custom Categories */}
 
