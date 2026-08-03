@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, Platform } from 'react-native';
+import { View, Text } from 'react-native';
 import { CartesianChart, Bar } from 'victory-native';
-import { matchFont, Line as SkiaLine } from '@shopify/react-native-skia';
+import { Line as SkiaLine } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
+import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
 import type { TrendRange } from '../hooks/useNutritionTrends';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
@@ -38,37 +39,12 @@ const X_TICK_COUNT: Record<TrendRange, number> = {
   '90d': 5,
 };
 
-const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
-const font = matchFont({ fontFamily, fontSize: 11 });
+const font = makeChartFont(11);
 
 const formatYLabel = (value: number) => {
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
   if (value % 1 !== 0) return value.toFixed(1);
   return String(value);
-};
-
-const formatXLabel7d = (day: string): string => {
-  if (typeof day !== 'string') return '';
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'short' });
-};
-
-const formatXLabel30d90d = (day: string): string => {
-  if (typeof day !== 'string') return '';
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
-const formatTooltipDate = (day: string): string => {
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
 };
 
 const DEFAULT_TOOLTIP = 'Press a bar for details';

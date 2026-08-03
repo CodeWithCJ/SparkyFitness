@@ -7,7 +7,7 @@ import Button from './ui/Button';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 
 /** Normalizes the picker's 6-way `DateType` into a JS `Date`. */
-function dateTypeToDate(date: DateType): Date | null {
+export function dateTypeToDate(date: DateType): Date | null {
   if (!date) return null;
   if (date instanceof Date) return date;
   if (typeof date === 'object' && 'toDate' in date) return date.toDate();

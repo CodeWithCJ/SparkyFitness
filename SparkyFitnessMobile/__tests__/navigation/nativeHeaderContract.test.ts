@@ -154,7 +154,9 @@ function usesScreenHeaderAbstraction(source: string): boolean {
   return (
     /\buseScreenHeader\(/.test(source) ||
     /<ScreenHeader\b/.test(source) ||
-    source.includes('FormScreenChrome')
+    // JSX usage only: importing footer chrome (e.g. FooterSaveBar) from the
+    // FormScreenChrome module does not give a screen a header.
+    /<FormScreenChrome\b/.test(source)
   );
 }
 

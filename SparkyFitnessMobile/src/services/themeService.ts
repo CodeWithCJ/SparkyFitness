@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Uniwind, useUniwind } from 'uniwind';
+import { addLog } from './LogService';
 
 const THEME_KEY = '@HealthConnect:appTheme';
 
@@ -36,7 +37,7 @@ export async function initializeTheme(): Promise<void> {
     const preference = savedTheme ? (savedTheme as ThemePreference) : 'System';
     Uniwind.setTheme(toUniwindTheme(preference));
   } catch (error) {
-    console.error('Failed to load theme preference:', error);
+    addLog(`Failed to load theme preference: ${error}`, 'ERROR');
     Uniwind.setTheme('system');
   }
 }
@@ -49,7 +50,7 @@ export async function setThemePreference(preference: ThemePreference): Promise<v
     await AsyncStorage.setItem(THEME_KEY, preference);
     Uniwind.setTheme(toUniwindTheme(preference));
   } catch (error) {
-    console.error('Failed to save theme preference:', error);
+    addLog(`Failed to save theme preference: ${error}`, 'ERROR');
   }
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, Switch, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, Alert, TouchableOpacity } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -10,6 +10,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
+import Switch from '../components/ui/Switch';
 import type { RootStackScreenProps } from '../types/navigation';
 import { MEDICATION_TYPES } from '../types/medications';
 
@@ -71,11 +72,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [formEnabled, formDisabled, textMuted] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-    '--color-text-muted',
-  ]) as [string, string, string];
+  const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
 
   const { data: existingMed } = useMedicationDetail(medicationId ?? '', { enabled: isEditing });
   const createMedication = useCreateMedication();
@@ -298,8 +295,6 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
           <Switch
             value={form.isActive}
             onValueChange={(v) => updateField('isActive', v)}
-            trackColor={{ false: formDisabled, true: formEnabled }}
-            thumbColor="#FFFFFF"
           />
         </View>
       </KeyboardAwareScrollView>

@@ -54,10 +54,13 @@ export const requestHealthPermissions = async (
     );
 
     if (allGranted) {
-      console.log('[HealthConnectService] All requested permissions granted.');
+      addLog('[HealthConnectService] All requested permissions granted.', 'INFO');
       return true;
     } else {
-      console.log('[HealthConnectService] Not all requested permissions granted.', { requested: permissionsToRequest, granted: grantedPermissions });
+      addLog('[HealthConnectService] Not all requested permissions granted.', 'WARNING', [
+        `requested: ${JSON.stringify(permissionsToRequest)}`,
+        `granted: ${JSON.stringify(grantedPermissions)}`,
+      ]);
       return false;
     }
   } catch (error) {

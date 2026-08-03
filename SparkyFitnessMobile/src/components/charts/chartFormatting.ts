@@ -1,0 +1,33 @@
+import { Platform } from 'react-native';
+import { matchFont } from '@shopify/react-native-skia';
+
+const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
+
+/** Skia label font shared by the dashboard/wellness charts. */
+export const makeChartFont = (fontSize: number) => matchFont({ fontFamily, fontSize });
+
+export const formatXLabel7d = (day: string): string => {
+  if (typeof day !== 'string') return '';
+  const [year, month, d] = day.split('-').map(Number);
+  const date = new Date(year, month - 1, d);
+  return date.toLocaleDateString('en-US', { weekday: 'short' });
+};
+
+export const formatXLabel30d90d = (day: string): string => {
+  if (typeof day !== 'string') return '';
+  const [year, month, d] = day.split('-').map(Number);
+  const date = new Date(year, month - 1, d);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+export const formatTooltipDate = (day: string): string => {
+  const parts = day.split('-');
+  if (parts.length < 3) return day;
+  const [year, month, d] = parts.map(Number);
+  const date = new Date(year, (month || 1) - 1, d || 1);
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+};

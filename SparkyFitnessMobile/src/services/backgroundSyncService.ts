@@ -74,7 +74,6 @@ export const performBackgroundSync = async (taskId: string): Promise<void> => {
 };
 
 const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
-  console.log('[BackgroundSync] taskId', taskId);
   addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'INFO');
 
   const lastSyncedTimeStr = await loadLastSyncedTime();

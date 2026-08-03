@@ -4,6 +4,22 @@ import type { FastingLog, FastingStats } from '../types/fasting';
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 
+/** Formats an ISO timestamp's local time of day, e.g. "6:32 PM". */
+export function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+/** Formats a Date as a short weekday + date + time label, e.g. "Mon, Jun 3, 6:32 PM". */
+export function formatDateTime(date: Date): string {
+  return date.toLocaleString([], {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 /** Formats an elapsed duration as HH:MM:SS (hours are not capped at 24). */
 export function formatElapsedClock(ms: number): string {
   const total = Math.max(0, Math.floor(ms / 1000));

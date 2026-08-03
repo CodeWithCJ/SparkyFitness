@@ -2,7 +2,7 @@ import type { FoodItem, TopFoodItem } from './foods';
 import type { ExternalFoodItem, ExternalFoodVariant } from './externalFoods';
 import type { Meal, MealIngredientDraft } from './meals';
 import type { BarcodeFood } from '../services/api/externalFoodSearchApi';
-import { parseDecimalInput } from '../utils/numericInput';
+import { parseDecimalInput, toFiniteNumber } from '../utils/numericInput';
 
 /** Convert a numeric value to a form-compatible string. Returns '' for null/undefined. */
 export const toFormString = (v: number | null | undefined): string =>
@@ -11,17 +11,6 @@ export const toFormString = (v: number | null | undefined): string =>
 /** Parse an optional form string to a number. Returns undefined for empty strings. */
 export const parseOptional = (s: string): number | undefined =>
   s === '' ? undefined : (parseDecimalInput(s) || 0);
-
-function toFiniteNumber(value: unknown): number {
-  const numericValue =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string'
-        ? Number(value)
-        : Number.NaN;
-
-  return Number.isFinite(numericValue) ? numericValue : 0;
-}
 
 function toOptionalFiniteNumber(value: unknown): number | undefined {
   if (value == null || value === '') {

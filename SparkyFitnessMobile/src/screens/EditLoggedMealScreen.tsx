@@ -508,11 +508,10 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
         {/* Delete meal */}
         <Button
-          variant="ghost"
+          variant="destructive"
           onPress={confirmAndDelete}
           disabled={isRowBusy}
           className="mt-2"
-          textClassName="text-bg-danger font-medium"
         >
           {isDeletePending ? 'Deleting...' : 'Delete Meal'}
         </Button>

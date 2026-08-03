@@ -75,8 +75,3 @@ async function handleNotificationAction(
     addLog(`[MedicationNotificationAction] Failed to log medication: ${(error as Error).message}`, 'ERROR');
   }
 }
-
-/** Test-only helper — resets module-level state. */
-export function __resetMedicationNotificationStateForTests(): void {
-  initialized = false;
-}

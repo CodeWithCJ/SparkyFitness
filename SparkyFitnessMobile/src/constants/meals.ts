@@ -38,19 +38,6 @@ export function getMealTypeLabel(name: string): string {
 }
 
 /**
- * Returns the icon for a meal type name. Known types get their specific icon,
- * custom/unknown types fall back to 'meal-snack'.
- */
-export function getMealTypeIcon(name: string): IconName {
-  const key = name.toLowerCase();
-  if (key === 'breakfast') return 'meal-breakfast';
-  if (key === 'lunch') return 'meal-lunch';
-  if (key === 'dinner') return 'meal-dinner';
-  if (key === 'snack' || key === 'snacks') return 'meal-snack';
-  return 'meal-snack';
-}
-
-/**
  * Returns the id of the best matching meal type based on the current time of day
  * and configured meal type default_time values.
  * Falls back to the first meal type's id, or null if the list is empty.

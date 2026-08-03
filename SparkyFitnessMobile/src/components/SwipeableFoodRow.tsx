@@ -3,12 +3,9 @@ import { Alert, View, Text, TouchableOpacity } from 'react-native';
 import Button from './ui/Button';
 import { useNavigation } from '@react-navigation/native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  runOnJS,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { DeleteRowAction } from './SwipeableDeleteRow';
+import { useRowCollapse } from '../hooks/useRowCollapse';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import type { FoodEntry } from '../types/foodEntries';
@@ -21,30 +18,19 @@ interface SwipeableFoodRowProps {
   onAdjustServing?: (entry: FoodEntry) => void;
 }
 
-const ROW_COLLAPSE_DURATION = 300;
-const DELETE_ACTION_WIDTH = 80;
-
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, onAdjustServing }) => {
   const navigation = useNavigation();
   const swipeableRef = useRef<any>(null);
-  const rowHeight = useSharedValue<number | null>(null);
-  const isRemoving = useSharedValue(false);
   const invalidateCacheRef = useRef<() => void>(() => {});
+  const { collapse, handleLayout, animatedStyle } = useRowCollapse(() =>
+    invalidateCacheRef.current(),
+  );
 
   const isMealComponent = !!entry.food_entry_meal_id;
 
-  const handleAnimationEnd = () => {
-    invalidateCacheRef.current();
-  };
-
   const onDeleteSuccess = () => {
     swipeableRef.current?.close();
-    isRemoving.value = true;
-    rowHeight.value = withTiming(0, { duration: ROW_COLLAPSE_DURATION }, (finished) => {
-      if (finished) {
-        runOnJS(handleAnimationEnd)();
-      }
-    });
+    collapse();
   };
 
   const foodEntryDelete = useDeleteFoodEntry({
@@ -62,41 +48,16 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
   const confirmAndDelete = isMealComponent ? mealDelete.confirmAndDelete : foodEntryDelete.confirmAndDelete;
   const deleteEntry = isMealComponent ? mealDelete.deleteEntry : foodEntryDelete.deleteEntry;
 
-  // Keep the latest invalidateCache in a ref so the post-collapse animation
-  // callback (`handleAnimationEnd`, run via runOnJS after the delete) always
-  // invokes the current one. Written in an effect rather than during render so
-  // the value stays mutable to React's compiler.
+  // Keep the latest invalidateCache in a ref so the post-collapse callback
+  // (run via runOnJS after the delete) always invokes the current one. Written
+  // in an effect rather than during render so the value stays mutable to
+  // React's compiler.
   useEffect(() => {
     invalidateCacheRef.current = isMealComponent ? mealDelete.invalidateCache : foodEntryDelete.invalidateCache;
   }, [isMealComponent, mealDelete.invalidateCache, foodEntryDelete.invalidateCache]);
 
-  // Declared before useAnimatedStyle so the rowHeight mutation here is not seen
-  // as modifying a value already consumed by a hook (a React compiler bailout).
-  const handleLayout = (event: { nativeEvent: { layout: { height: number } } }) => {
-    if (rowHeight.value === null) {
-      rowHeight.value = event.nativeEvent.layout.height;
-    }
-  };
-
-  const animatedStyle = useAnimatedStyle(() => {
-    if (!isRemoving.value || rowHeight.value === null) {
-      return {};
-    }
-    return {
-      height: rowHeight.value,
-      overflow: 'hidden' as const,
-    };
-  });
-
   const renderRightActions = () => (
-    <TouchableOpacity
-      className="bg-bg-danger justify-center items-center ml-4"
-      style={{ width: DELETE_ACTION_WIDTH }}
-      onPress={confirmAndDelete}
-      activeOpacity={0.7}
-    >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
-    </TouchableOpacity>
+    <DeleteRowAction onPress={confirmAndDelete} className="ml-4" />
   );
 
   const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;

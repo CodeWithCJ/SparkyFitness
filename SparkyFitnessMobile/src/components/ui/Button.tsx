@@ -1,8 +1,15 @@
 import React from 'react';
-import { Pressable, Text, type PressableProps, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, Text, type PressableProps, type ViewStyle } from 'react-native';
 import { preview } from 'radon-ide';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'header' | 'link';
+type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'ghost'
+  | 'header'
+  | 'link'
+  | 'destructive';
 type ButtonTone = 'accent' | 'neutral';
 
 interface ButtonProps extends Omit<PressableProps, 'children'> {
@@ -15,6 +22,12 @@ interface ButtonProps extends Omit<PressableProps, 'children'> {
    * explicitly when the child is an icon.
    */
   tone?: ButtonTone;
+  /**
+   * Swaps the button's children for a spinner and blocks presses. The spinner
+   * replaces the label rather than overlaying it, so the button keeps whatever
+   * width its container gives it.
+   */
+  loading?: boolean;
   children: React.ReactNode;
   className?: string;
   textClassName?: string;
@@ -57,12 +70,22 @@ const variantClasses: Record<ButtonVariant, { container: string; text: string; p
     container: 'bg-transparent',
     text: 'text-text-link font-semibold',
     pressed: 'opacity-70',
-  }
+  },
+  // Red text on a transparent container, for the delete/remove action at the
+  // bottom of a detail screen. `bg-danger` rather than the foreground
+  // `text-danger-subtle` token because that is the red these actions have
+  // always rendered.
+  destructive: {
+    container: 'bg-transparent rounded-xl',
+    text: 'text-bg-danger font-medium',
+    pressed: 'opacity-70',
+  },
 };
 
 const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   tone = 'accent',
+  loading = false,
   children,
   className = '',
   textClassName = '',
@@ -74,19 +97,22 @@ const Button: React.FC<ButtonProps> = ({
     tone === 'neutral' && neutralToneText[variant] ? neutralToneText[variant]! : styles.text;
 
   const basePadding = variant === 'header' ? '' : 'py-3.5 px-4';
+  const isDisabled = Boolean(disabled) || loading;
 
   return (
     <Pressable
-      className={`${basePadding} items-center justify-center ${styles.container} ${disabled ? 'opacity-50' : ''} ${className}`}
-      disabled={disabled}
+      className={`${basePadding} items-center justify-center ${styles.container} ${isDisabled ? 'opacity-50' : ''} ${className}`}
+      disabled={isDisabled}
       {...(variant === 'header' && !rest.hitSlop ? { hitSlop: { top: 10, bottom: 10, left: 10, right: 10 } } : {})}
       {...rest}
       style={({ pressed }) => [
-        pressed && !disabled ? { opacity: 0.8 } : {},
+        pressed && !isDisabled ? { opacity: 0.8 } : {},
         typeof rest.style === 'function' ? rest.style({ pressed }) : (rest.style as ViewStyle),
       ]}
     >
-      {typeof children === 'string' ? (
+      {loading ? (
+        <ActivityIndicator size="small" color="#fff" />
+      ) : typeof children === 'string' ? (
         <Text className={`text-base ${textClass} ${textClassName}`}>{children}</Text>
       ) : (
         children
@@ -104,5 +130,9 @@ preview(<Button variant="outline">Outline Button</Button>);
 preview(<Button variant="ghost">Ghost Button</Button>);
 
 preview(<Button variant="link">Link Button</Button>);
+
+preview(<Button variant="destructive">Destructive Button</Button>);
+
+preview(<Button variant="primary" loading>Loading Button</Button>);
 
 export default Button;

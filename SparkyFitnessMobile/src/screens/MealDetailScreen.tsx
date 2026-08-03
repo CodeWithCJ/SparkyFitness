@@ -386,12 +386,11 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
 
         {canManageMeal ? (
           <Button
-            variant="ghost"
+            variant="destructive"
             onPress={() => {
               void confirmAndDelete();
             }}
             disabled={isDeletePending}
-            textClassName="text-bg-danger font-medium"
           >
             {isDeletePending ? 'Deleting...' : 'Delete Meal'}
           </Button>

@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Switch } from 'react-native';
+import { Alert, View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from './BottomSheetPicker';
 import Button from './ui/Button';
+import EquivalentsSection from './EquivalentsSection';
 import FormInput from './FormInput';
 import Icon from './Icon';
 import FoodUnitSelectorSheet from './FoodUnitSelectorSheet';
+import Switch from './ui/Switch';
 import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
 import { useCustomNutrients } from '../hooks/useCustomNutrients';
 import { usePreferences } from '../hooks/usePreferences';
@@ -19,10 +21,30 @@ import type {
   FoodUnitVariant,
 } from '../types/foodUnitVariants';
 import { formatFoodFormNumber } from '../utils/foodDetails';
+import {
+  FORM_DRAFT_UNIT_ID,
+  NUMERIC_FOOD_FORM_FIELDS,
+  NUMERIC_FOOD_FORM_FIELD_SET,
+  NUTRITION_FIELDS,
+  SERVING_UNIT_SECTIONS,
+  applyCompatibleDraftToFormState,
+  applyVariantToFormState,
+  applyVariantUnitToFormState,
+  buildDisplayFormState,
+  buildPreciseNumericValues,
+  buildPreciseNumericValuesFromVariant,
+  formatScaledInput,
+  getScaledVariantNumericValue,
+  isPositiveNumber,
+  normalizeSelectedUnitSelection,
+  scaleCompatibleDraftVariant,
+  toPreciseFormString,
+  type FoodFormData,
+  type NumericFoodFormField,
+} from '../utils/foodFormState';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import {
   CONFIDENCE_TONES,
-  FOOD_FORM_UNIT_GROUPS,
   OVERALL_CONFIDENCE_LABELS,
   getConversionFactor,
   shouldOfferAiConversion,
@@ -30,27 +52,7 @@ import {
   type ConfidenceTone,
 } from '@workspace/shared';
 
-export interface FoodFormData {
-  name: string;
-  brand: string;
-  servingSize: string;
-  servingUnit: string;
-  calories: string;
-  protein: string;
-  carbs: string;
-  fat: string;
-  fiber: string;
-  saturatedFat: string;
-  transFat: string;
-  sodium: string;
-  sugars: string;
-  potassium: string;
-  cholesterol: string;
-  calcium: string;
-  iron: string;
-  vitaminA: string;
-  vitaminC: string;
-}
+export type { FoodFormData };
 
 export interface FoodFormProps {
   initialValues?: Partial<FoodFormData>;
@@ -97,93 +99,6 @@ export interface FoodFormProps {
   onCustomNutrientsChange?: (values: Record<string, number>) => void;
 }
 
-type NumericFoodFormField =
-  | 'servingSize'
-  | 'calories'
-  | 'protein'
-  | 'carbs'
-  | 'fat'
-  | 'fiber'
-  | 'saturatedFat'
-  | 'transFat'
-  | 'sodium'
-  | 'sugars'
-  | 'potassium'
-  | 'cholesterol'
-  | 'calcium'
-  | 'iron'
-  | 'vitaminA'
-  | 'vitaminC';
-
-const NUMERIC_FOOD_FORM_FIELDS: NumericFoodFormField[] = [
-  'servingSize',
-  'calories',
-  'protein',
-  'carbs',
-  'fat',
-  'fiber',
-  'saturatedFat',
-  'transFat',
-  'sodium',
-  'sugars',
-  'potassium',
-  'cholesterol',
-  'calcium',
-  'iron',
-  'vitaminA',
-  'vitaminC',
-];
-
-const NUMERIC_FOOD_FORM_FIELD_SET = new Set<keyof FoodFormData>(
-  NUMERIC_FOOD_FORM_FIELDS,
-);
-
-const SERVING_UNIT_SECTIONS = FOOD_FORM_UNIT_GROUPS.map((group) => ({
-  title: group.label,
-  options: group.units.map((unit) => ({ label: unit, value: unit })),
-}));
-
-const NUTRITION_FIELDS: (keyof FoodFormData)[] = [
-  'calories',
-  'protein',
-  'carbs',
-  'fat',
-  'fiber',
-  'saturatedFat',
-  'transFat',
-  'sodium',
-  'sugars',
-  'potassium',
-  'cholesterol',
-  'calcium',
-  'iron',
-  'vitaminA',
-  'vitaminC',
-];
-
-const EMPTY_FORM: FoodFormData = {
-  name: '',
-  brand: '',
-  servingSize: '',
-  servingUnit: '',
-  calories: '',
-  protein: '',
-  carbs: '',
-  fat: '',
-  fiber: '',
-  saturatedFat: '',
-  transFat: '',
-  sodium: '',
-  sugars: '',
-  potassium: '',
-  cholesterol: '',
-  calcium: '',
-  iron: '',
-  vitaminA: '',
-  vitaminC: '',
-};
-
-const FORM_DRAFT_UNIT_ID = '__food-form-draft-unit__';
 const androidSparkleStyle =
   Platform.OS === 'android'
     ? ({ transform: [{ scaleX: 0.86 }, { scaleY: 0.9 }] } as const)
@@ -191,379 +106,6 @@ const androidSparkleStyle =
 
 // Confidence tone colors for the inline post-estimate AI badge; mirrors the picker sheet.
 type AiToneColors = Record<ConfidenceTone, string>;
-
-function buildDisplayFormState(
-  initialValues?: Partial<FoodFormData>,
-): FoodFormData {
-  const merged = { ...EMPTY_FORM, ...initialValues };
-  const formatInitialNumericValue = (
-    rawValue: string | undefined,
-    kind: 'servingSize' | 'calories' | 'nutrient',
-  ) => {
-    const parsedValue = parseDecimalInput(rawValue ?? '');
-    return Number.isFinite(parsedValue)
-      ? formatFoodFormNumber(parsedValue, kind)
-      : '';
-  };
-
-  return {
-    ...merged,
-    servingSize: formatInitialNumericValue(
-      initialValues?.servingSize,
-      'servingSize',
-    ),
-    calories: formatInitialNumericValue(initialValues?.calories, 'calories'),
-    protein: formatInitialNumericValue(initialValues?.protein, 'nutrient'),
-    carbs: formatInitialNumericValue(initialValues?.carbs, 'nutrient'),
-    fat: formatInitialNumericValue(initialValues?.fat, 'nutrient'),
-    fiber: formatInitialNumericValue(initialValues?.fiber, 'nutrient'),
-    saturatedFat: formatInitialNumericValue(
-      initialValues?.saturatedFat,
-      'nutrient',
-    ),
-    transFat: formatInitialNumericValue(initialValues?.transFat, 'nutrient'),
-    sodium: formatInitialNumericValue(initialValues?.sodium, 'nutrient'),
-    sugars: formatInitialNumericValue(initialValues?.sugars, 'nutrient'),
-    potassium: formatInitialNumericValue(initialValues?.potassium, 'nutrient'),
-    cholesterol: formatInitialNumericValue(
-      initialValues?.cholesterol,
-      'nutrient',
-    ),
-    calcium: formatInitialNumericValue(initialValues?.calcium, 'nutrient'),
-    iron: formatInitialNumericValue(initialValues?.iron, 'nutrient'),
-    vitaminA: formatInitialNumericValue(initialValues?.vitaminA, 'nutrient'),
-    vitaminC: formatInitialNumericValue(initialValues?.vitaminC, 'nutrient'),
-  };
-}
-
-function buildPreciseNumericValues(
-  initialValues?: Partial<FoodFormData>,
-): Partial<Record<NumericFoodFormField, number>> {
-  const preciseValues: Partial<Record<NumericFoodFormField, number>> = {};
-
-  NUMERIC_FOOD_FORM_FIELDS.forEach((field) => {
-    const parsed = parseDecimalInput(initialValues?.[field] ?? '');
-    if (Number.isFinite(parsed)) {
-      preciseValues[field] = parsed;
-    }
-  });
-
-  return preciseValues;
-}
-
-function toPreciseFormString(value: number | undefined): string {
-  if (!Number.isFinite(value)) return '';
-  if (Object.is(value, -0)) return '0';
-  return String(value);
-}
-
-function normalizeSelectedUnitSelection(
-  selection?: FoodUnitSelectionResult | null,
-): FoodUnitSelectionResult | null {
-  if (!selection) return null;
-  if (selection.kind === 'existing' || selection.variant.id) {
-    return selection;
-  }
-
-  return {
-    ...selection,
-    variant: {
-      ...selection.variant,
-      id: FORM_DRAFT_UNIT_ID,
-    },
-  };
-}
-
-function applyVariantToFormState(
-  previous: FoodFormData,
-  variant: FoodUnitVariant,
-): FoodFormData {
-  return {
-    ...previous,
-    servingSize: formatFoodFormNumber(variant.serving_size, 'servingSize'),
-    servingUnit: variant.serving_unit,
-    calories: formatFoodFormNumber(variant.calories, 'calories'),
-    protein: formatFoodFormNumber(variant.protein, 'nutrient'),
-    carbs: formatFoodFormNumber(variant.carbs, 'nutrient'),
-    fat: formatFoodFormNumber(variant.fat, 'nutrient'),
-    fiber: formatFoodFormNumber(variant.dietary_fiber, 'nutrient'),
-    saturatedFat: formatFoodFormNumber(variant.saturated_fat, 'nutrient'),
-    transFat: formatFoodFormNumber(variant.trans_fat, 'nutrient'),
-    sodium: formatFoodFormNumber(variant.sodium, 'nutrient'),
-    sugars: formatFoodFormNumber(variant.sugars, 'nutrient'),
-    potassium: formatFoodFormNumber(variant.potassium, 'nutrient'),
-    cholesterol: formatFoodFormNumber(variant.cholesterol, 'nutrient'),
-    calcium: formatFoodFormNumber(variant.calcium, 'nutrient'),
-    iron: formatFoodFormNumber(variant.iron, 'nutrient'),
-    vitaminA: formatFoodFormNumber(variant.vitamin_a, 'nutrient'),
-    vitaminC: formatFoodFormNumber(variant.vitamin_c, 'nutrient'),
-  };
-}
-
-function applyVariantUnitToFormState(
-  previous: FoodFormData,
-  variant: FoodUnitVariant,
-): FoodFormData {
-  return {
-    ...previous,
-    servingUnit: variant.serving_unit,
-  };
-}
-
-function applyCompatibleDraftToFormState(
-  previous: FoodFormData,
-  variant: FoodUnitVariant,
-  scaledVariant: FoodUnitVariant,
-): FoodFormData {
-  return {
-    ...previous,
-    servingUnit: variant.serving_unit,
-    calories: formatFoodFormNumber(scaledVariant.calories, 'calories'),
-    protein: formatFoodFormNumber(scaledVariant.protein, 'nutrient'),
-    carbs: formatFoodFormNumber(scaledVariant.carbs, 'nutrient'),
-    fat: formatFoodFormNumber(scaledVariant.fat, 'nutrient'),
-    fiber: formatFoodFormNumber(scaledVariant.dietary_fiber, 'nutrient'),
-    saturatedFat: formatFoodFormNumber(scaledVariant.saturated_fat, 'nutrient'),
-    transFat: formatFoodFormNumber(scaledVariant.trans_fat, 'nutrient'),
-    sodium: formatFoodFormNumber(scaledVariant.sodium, 'nutrient'),
-    sugars: formatFoodFormNumber(scaledVariant.sugars, 'nutrient'),
-    potassium: formatFoodFormNumber(scaledVariant.potassium, 'nutrient'),
-    cholesterol: formatFoodFormNumber(scaledVariant.cholesterol, 'nutrient'),
-    calcium: formatFoodFormNumber(scaledVariant.calcium, 'nutrient'),
-    iron: formatFoodFormNumber(scaledVariant.iron, 'nutrient'),
-    vitaminA: formatFoodFormNumber(scaledVariant.vitamin_a, 'nutrient'),
-    vitaminC: formatFoodFormNumber(scaledVariant.vitamin_c, 'nutrient'),
-  };
-}
-
-function buildPreciseNumericValuesFromVariant(
-  variant: FoodUnitVariant,
-): Partial<Record<NumericFoodFormField, number>> {
-  return buildPreciseNumericValues({
-    servingSize: toPreciseFormString(variant.serving_size),
-    calories: toPreciseFormString(variant.calories),
-    protein: toPreciseFormString(variant.protein),
-    carbs: toPreciseFormString(variant.carbs),
-    fat: toPreciseFormString(variant.fat),
-    fiber: toPreciseFormString(variant.dietary_fiber),
-    saturatedFat: toPreciseFormString(variant.saturated_fat),
-    transFat: toPreciseFormString(variant.trans_fat),
-    sodium: toPreciseFormString(variant.sodium),
-    sugars: toPreciseFormString(variant.sugars),
-    potassium: toPreciseFormString(variant.potassium),
-    cholesterol: toPreciseFormString(variant.cholesterol),
-    calcium: toPreciseFormString(variant.calcium),
-    iron: toPreciseFormString(variant.iron),
-    vitaminA: toPreciseFormString(variant.vitamin_a),
-    vitaminC: toPreciseFormString(variant.vitamin_c),
-  });
-}
-
-function isPositiveNumber(value: number): boolean {
-  return Number.isFinite(value) && value > 0;
-}
-
-function scaleCompatibleDraftVariant(
-  variant: FoodUnitVariant,
-  servingSize: number,
-): FoodUnitVariant {
-  const ratio =
-    variant.serving_size > 0 && Number.isFinite(servingSize)
-      ? servingSize / variant.serving_size
-      : 1;
-
-  return {
-    ...variant,
-    calories: (variant.calories ?? 0) * ratio,
-    protein: (variant.protein ?? 0) * ratio,
-    carbs: (variant.carbs ?? 0) * ratio,
-    fat: (variant.fat ?? 0) * ratio,
-    saturated_fat: (variant.saturated_fat ?? 0) * ratio,
-    trans_fat: (variant.trans_fat ?? 0) * ratio,
-    sodium: (variant.sodium ?? 0) * ratio,
-    sugars: (variant.sugars ?? 0) * ratio,
-    potassium: (variant.potassium ?? 0) * ratio,
-    cholesterol: (variant.cholesterol ?? 0) * ratio,
-    calcium: (variant.calcium ?? 0) * ratio,
-    iron: (variant.iron ?? 0) * ratio,
-    vitamin_a: (variant.vitamin_a ?? 0) * ratio,
-    vitamin_c: (variant.vitamin_c ?? 0) * ratio,
-    dietary_fiber: (variant.dietary_fiber ?? 0) * ratio,
-    polyunsaturated_fat: (variant.polyunsaturated_fat ?? 0) * ratio,
-    monounsaturated_fat: (variant.monounsaturated_fat ?? 0) * ratio,
-    glycemic_index: variant.glycemic_index,
-    custom_nutrients: Object.fromEntries(
-      Object.entries(variant.custom_nutrients || {}).map(([key, value]) => [
-        key,
-        (Number(value) || 0) * ratio,
-      ]),
-    ),
-  };
-}
-
-function getScaledVariantNumericValue(
-  field: Exclude<NumericFoodFormField, 'servingSize'>,
-  variant: FoodUnitVariant,
-): number {
-  switch (field) {
-    case 'calories':
-      return variant.calories ?? 0;
-    case 'protein':
-      return variant.protein ?? 0;
-    case 'carbs':
-      return variant.carbs ?? 0;
-    case 'fat':
-      return variant.fat ?? 0;
-    case 'fiber':
-      return variant.dietary_fiber ?? 0;
-    case 'saturatedFat':
-      return variant.saturated_fat ?? 0;
-    case 'transFat':
-      return variant.trans_fat ?? 0;
-    case 'sodium':
-      return variant.sodium ?? 0;
-    case 'sugars':
-      return variant.sugars ?? 0;
-    case 'potassium':
-      return variant.potassium ?? 0;
-    case 'cholesterol':
-      return variant.cholesterol ?? 0;
-    case 'calcium':
-      return variant.calcium ?? 0;
-    case 'iron':
-      return variant.iron ?? 0;
-    case 'vitaminA':
-      return variant.vitamin_a ?? 0;
-    case 'vitaminC':
-      return variant.vitamin_c ?? 0;
-  }
-}
-
-function formatScaledInput(value: number): string {
-  return formatFoodFormNumber(value, 'nutrient') || '0';
-}
-
-let equivalentKeyCounter = 0;
-function makeEquivalentKey(): string {
-  equivalentKeyCounter += 1;
-  return `eq-${equivalentKeyCounter}`;
-}
-
-interface EquivalentsSectionProps {
-  items: EquivalentUnit[];
-  onChange: (next: EquivalentUnit[]) => void;
-  disabled?: boolean;
-  textMuted: string;
-  accentColor: string;
-}
-
-const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
-  items,
-  onChange,
-  disabled = false,
-  textMuted,
-  accentColor,
-}) => {
-  const updateRow = (index: number, patch: Partial<EquivalentUnit>) => {
-    const next = items.slice();
-    next[index] = { ...next[index], ...patch };
-    onChange(next);
-  };
-
-  const removeRow = (index: number) => {
-    const next = items.slice();
-    next.splice(index, 1);
-    onChange(next);
-  };
-
-  const addRow = () => {
-    onChange([
-      ...items,
-      { serving_size: 0, serving_unit: '', _clientKey: makeEquivalentKey() },
-    ]);
-  };
-
-  return (
-    <View className="gap-2 mt-1.5" pointerEvents={disabled ? 'none' : 'auto'} style={disabled ? { opacity: 0.5 } : undefined}>
-      <Text className="text-text-secondary text-sm font-medium">
-        Equivalent sizes
-      </Text>
-      {items.map((item, index) => {
-        const sizeText =
-          item._sizeText ?? (item.serving_size > 0 ? String(item.serving_size) : '');
-        return (
-          <View
-            key={item.id ?? item._clientKey ?? `idx-${index}`}
-            className="flex-row gap-2 items-center"
-          >
-            <View className="flex-1">
-              <FormInput
-                placeholder="0"
-                value={sizeText}
-                onChangeText={(text) => {
-                  if (!DECIMAL_INPUT_REGEX.test(text)) return;
-                  updateRow(index, {
-                    _sizeText: text,
-                    serving_size: parseDecimalInput(text) || 0,
-                  });
-                }}
-                keyboardType="decimal-pad"
-                returnKeyType="done"
-              />
-            </View>
-            <View className="flex-1">
-              <BottomSheetPicker
-                value={item.serving_unit}
-                sections={SERVING_UNIT_SECTIONS}
-                onSelect={(value) => updateRow(index, { serving_unit: value })}
-                title="Select Unit"
-                placeholder="unit"
-                renderTrigger={({ onPress, selectedOption }) => (
-                  <TouchableOpacity
-                    onPress={onPress}
-                    activeOpacity={0.7}
-                    className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
-                    style={{ height: 44 }}
-                  >
-                    <Text
-                      className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
-                      style={{ fontSize: 16 }}
-                    >
-                      {selectedOption?.label ?? 'unit'}
-                    </Text>
-                    <Icon
-                      name="chevron-down"
-                      size={12}
-                      color={textMuted}
-                      weight="medium"
-                    />
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-            <TouchableOpacity
-              onPress={() => removeRow(index)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel="Remove equivalent"
-            >
-              <Icon name="remove-circle" size={22} color={textMuted} />
-            </TouchableOpacity>
-          </View>
-        );
-      })}
-      <Button
-        variant="ghost"
-        onPress={addRow}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="self-start py-0 px-0"
-      >
-        <Text style={{ color: accentColor }} className="text-sm font-medium">
-          + Add equivalent
-        </Text>
-      </Button>
-    </View>
-  );
-};
 
 const FoodForm: React.FC<FoodFormProps> = ({
   initialValues,
@@ -674,15 +216,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
       ? unitSelector.selectedSelection.variant.id
       : unitSelector?.variants[0]?.id,
   );
-  const [textMuted, textPrimary, accentColor, formEnabled, formDisabled, infoBg, infoText] = useCSSVariable([
+  const [textMuted, textPrimary, accentColor, infoBg, infoText] = useCSSVariable([
     '--color-text-muted',
     '--color-text-primary',
     '--color-accent-primary',
-    '--color-form-enabled',
-    '--color-form-disabled',
     '--color-bg-info',
     '--color-text-info',
-  ]) as [string, string, string, string, string, string, string];
+  ]) as [string, string, string, string, string];
   const preciseNumericValuesRef = useRef<
     Partial<Record<NumericFoodFormField, number>>
   >(buildPreciseNumericValues(initialValues));
@@ -1418,8 +958,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   hasTouchedAutoScaleRef.current = true;
                   setAutoScaleNutrition(value);
                 }}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
               />
             </View>
           ) : null}
@@ -1617,14 +1155,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
         <Button
           variant="primary"
           className="mt-2"
-          disabled={isSubmitting}
+          loading={isSubmitting}
           onPress={handleSubmitPress}
         >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text className="text-white text-base font-semibold">{submitLabel}</Text>
-          )}
+          {submitLabel}
         </Button>
         )}
       </ScrollView>
