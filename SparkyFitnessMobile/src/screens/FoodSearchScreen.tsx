@@ -42,7 +42,7 @@ import {
   useFavorites,
   useProfile,
 } from '../hooks';
-import { deriveShareStatus } from '../utils/shareStatus';
+import { deriveShareStatus, filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
 import { ExternalProvider } from '../types/externalProviders';
 import Toast from 'react-native-toast-message';
@@ -127,29 +127,6 @@ const LOCAL_RESULT_CAP = 6;
 // item_display_limit preference is unset. Matches the web food-search landing.
 const LANDING_ITEM_LIMIT = 10;
 
-const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
-  items: T[],
-  filter: 'all' | 'mine' | 'family' | 'public',
-  currentUserId?: string
-) => {
-  if (filter === 'all') return items;
-  return items.filter((item) => {
-    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
-    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
-    
-    if (filter === 'mine') {
-      return isOwner;
-    }
-    if (filter === 'family') {
-      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
-    }
-    if (filter === 'public') {
-      return isPublic;
-    }
-    return true;
-  });
-};
-
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
@@ -169,7 +146,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const { isConnected } = useServerConnection();
   const { profile } = useProfile();
-  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({
     enabled: isConnected,
@@ -631,15 +608,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }
   }, [providerPopoverVisible, onlineHeaderVisible]);
 
-  const filteredFavoriteFoods = useMemo(() => filterItems(favoriteFoods, ownershipFilter, profile?.id), [favoriteFoods, ownershipFilter, profile?.id]);
-  const filteredFavoriteMeals = useMemo(() => filterItems(favoriteMeals, ownershipFilter, profile?.id), [favoriteMeals, ownershipFilter, profile?.id]);
-  const filteredRecentFoods = useMemo(() => filterItems(recentFoods, ownershipFilter, profile?.id), [recentFoods, ownershipFilter, profile?.id]);
-  const filteredTopFoods = useMemo(() => filterItems(topFoods, ownershipFilter, profile?.id), [topFoods, ownershipFilter, profile?.id]);
-  const filteredRecentMeals = useMemo(() => filterItems(recentMeals, ownershipFilter, profile?.id), [recentMeals, ownershipFilter, profile?.id]);
-  const filteredTopMeals = useMemo(() => filterItems(topMeals, ownershipFilter, profile?.id), [topMeals, ownershipFilter, profile?.id]);
+  const filteredFavoriteFoods = useMemo(() => filterByOwnership(favoriteFoods, ownershipFilter, profile?.id), [favoriteFoods, ownershipFilter, profile?.id]);
+  const filteredFavoriteMeals = useMemo(() => filterByOwnership(favoriteMeals, ownershipFilter, profile?.id), [favoriteMeals, ownershipFilter, profile?.id]);
+  const filteredRecentFoods = useMemo(() => filterByOwnership(recentFoods, ownershipFilter, profile?.id), [recentFoods, ownershipFilter, profile?.id]);
+  const filteredTopFoods = useMemo(() => filterByOwnership(topFoods, ownershipFilter, profile?.id), [topFoods, ownershipFilter, profile?.id]);
+  const filteredRecentMeals = useMemo(() => filterByOwnership(recentMeals, ownershipFilter, profile?.id), [recentMeals, ownershipFilter, profile?.id]);
+  const filteredTopMeals = useMemo(() => filterByOwnership(topMeals, ownershipFilter, profile?.id), [topMeals, ownershipFilter, profile?.id]);
 
-  const filteredSearchResults = useMemo(() => filterItems(searchResults, ownershipFilter, profile?.id), [searchResults, ownershipFilter, profile?.id]);
-  const filteredMealResults = useMemo(() => filterItems(mealResults, ownershipFilter, profile?.id), [mealResults, ownershipFilter, profile?.id]);
+  const filteredSearchResults = useMemo(() => filterByOwnership(searchResults, ownershipFilter, profile?.id), [searchResults, ownershipFilter, profile?.id]);
+  const filteredMealResults = useMemo(() => filterByOwnership(mealResults, ownershipFilter, profile?.id), [mealResults, ownershipFilter, profile?.id]);
 
   // Favorites: the first landing section, starred foods and meals intermixed,
   // most recently starred first. Modelled as LandingEntry so every landing

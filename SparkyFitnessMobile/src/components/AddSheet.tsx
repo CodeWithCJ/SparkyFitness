@@ -1,14 +1,10 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { View, Text, Pressable, LayoutAnimation } from 'react-native';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import { useUniwind, useCSSVariable } from 'uniwind';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useCSSVariable } from 'uniwind';
 import Icon, { type IconName } from './Icon';
 import Button from './ui/Button';
+import { useSheetBackdrop } from './ui/sheetChrome';
 
 export interface AddSheetRef {
   present: (options?: { initialMenu?: 'exercise' }) => void;
@@ -50,8 +46,6 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const pendingInitialMenuRef = useRef<'exercise' | null>(null);
     const presentFrameRef = useRef<number | null>(null);
     const [showExerciseMenu, setShowExerciseMenu] = useState(false);
-    const { theme } = useUniwind();
-    const isDarkMode = theme === 'dark' || theme === 'amoled';
 
     const [surfaceBg, textMuted, accentPrimary, raisedBg, textSecondary] =
       useCSSVariable([
@@ -116,17 +110,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       };
     }, [clearScheduledPresent]);
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          opacity={isDarkMode ? 0.7 : 0.5}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [isDarkMode]
-    );
+    const renderBackdrop = useSheetBackdrop();
 
     const handleAction = useCallback((action?: () => void) => {
       pendingPresentRef.current = false;

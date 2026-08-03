@@ -8,14 +8,13 @@ import {
 } from 'react';
 import { Text, View } from 'react-native';
 import {
-  BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetTextInput,
   BottomSheetView,
-  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { useCSSVariable, useUniwind } from 'uniwind';
+import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
+import { useSheetBackdrop } from './ui/sheetChrome';
 import StepperInput from './StepperInput';
 import { formatDuration } from '../utils/workoutSession';
 
@@ -37,12 +36,10 @@ interface WorkoutDurationSheetProps {
 const WorkoutDurationSheet = forwardRef<WorkoutDurationSheetRef, WorkoutDurationSheetProps>(
   ({ onSave }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const { theme } = useUniwind();
     const [surfaceBg, textMuted] = useCSSVariable([
       '--color-surface',
       '--color-text-muted',
     ]) as [string, string];
-    const isDarkMode = theme === 'dark' || theme === 'amoled';
 
     const [currentValue, setCurrentValue] = useState<number>(60);
     const [maxMinutes, setMaxMinutes] = useState<number>(60);
@@ -96,17 +93,7 @@ const WorkoutDurationSheet = forwardRef<WorkoutDurationSheetRef, WorkoutDuration
       bottomSheetRef.current?.dismiss();
     };
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          opacity={isDarkMode ? 0.7 : 0.5}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [isDarkMode],
-    );
+    const renderBackdrop = useSheetBackdrop();
 
     return (
       <BottomSheetModal

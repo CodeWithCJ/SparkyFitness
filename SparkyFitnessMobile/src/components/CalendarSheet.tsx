@@ -1,23 +1,11 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { Platform } from 'react-native';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useUniwind, useCSSVariable } from 'uniwind';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
-
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
-    : undefined;
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 
 export interface CalendarSheetRef {
   present: () => void;
@@ -32,8 +20,6 @@ interface CalendarSheetProps {
 const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
   ({ selectedDate, onSelectDate }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const { theme } = useUniwind();
-    const isDarkMode = theme === 'dark' || theme === 'amoled';
 
     const [
       surfaceBg,
@@ -61,17 +47,7 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
       };
     }, []);
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          opacity={isDarkMode ? 0.7 : 0.5}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [isDarkMode]
-    );
+    const renderBackdrop = useSheetBackdrop();
 
     // Parse YYYY-MM-DD without timezone shifting
     const [year, month, day] = selectedDate.split('-').map(Number);
