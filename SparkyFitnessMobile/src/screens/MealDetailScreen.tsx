@@ -241,7 +241,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
           title="No server configured"
           subtitle="Configure your server connection in Settings to view meal details."
@@ -262,7 +262,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
       return (
         <StatusView
           icon="alert-circle"
-          iconColor="#EF4444"
+          iconTone="danger"
           iconSize={64}
           title="Failed to load meal"
           subtitle="Please check your connection and try again."

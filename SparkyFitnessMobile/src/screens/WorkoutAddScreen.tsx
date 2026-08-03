@@ -16,6 +16,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import StatusView from '../components/StatusView';
 import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
 } from '../components/WorkoutFormExerciseList';
@@ -56,12 +57,11 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
   const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
 
-  const [accentPrimary, textMuted, textPrimary, borderSubtle] = useCSSVariable([
-    '--color-accent-primary',
+  const [textMuted, textPrimary, borderSubtle] = useCSSVariable([
     '--color-text-muted',
     '--color-text-primary',
     '--color-border-subtle',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const [isNameEditing, setIsNameEditing] = useState(false);
@@ -327,9 +327,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {isInitializingEditForm ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={accentPrimary} />
-        </View>
+        <StatusView loading />
       ) : (
         <>
           {header}

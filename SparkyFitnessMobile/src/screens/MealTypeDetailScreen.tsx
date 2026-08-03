@@ -1,9 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import Icon from '../components/Icon';
-import Button from '../components/ui/Button';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import CopyMealSheet, { type CopyMealSheetRef } from '../components/CopyMealSheet';
@@ -77,7 +75,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
           title="No server configured"
           subtitle="Configure your server connection in Settings to view meal nutrition."
@@ -87,32 +85,19 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
     }
 
     if (isLoading || isConnectionLoading) {
-      return (
-        <View className="flex-1 items-center justify-center p-8">
-          <ActivityIndicator size="large" color={accentColor} />
-          <Text className="text-text-muted text-base mt-4">Loading meal...</Text>
-        </View>
-      );
+      return <StatusView loading title="Loading meal..." />;
     }
 
     if (isError) {
       return (
-        <View className="flex-1 items-center justify-center p-8">
-          <Icon name="alert-circle" size={64} color="#EF4444" />
-          <Text className="text-text-muted text-lg text-center mt-4">
-            Failed to load meal
-          </Text>
-          <Text className="text-text-muted text-sm text-center mt-2">
-            Please check your connection and try again.
-          </Text>
-          <Button
-            variant="primary"
-            className="px-6 mt-6"
-            onPress={() => refetch()}
-          >
-            Retry
-          </Button>
-        </View>
+        <StatusView
+          icon="alert-circle"
+          iconTone="danger"
+          iconSize={64}
+          title="Failed to load meal"
+          subtitle="Please check your connection and try again."
+          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+        />
       );
     }
 
@@ -120,7 +105,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       return (
         <StatusView
           icon="food"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
           title={`No ${label.toLowerCase()} foods`}
           subtitle={`${formatDateLabel(date)} has no foods logged for this meal.`}

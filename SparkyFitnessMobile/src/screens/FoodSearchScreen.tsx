@@ -27,6 +27,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import AnchoredMenu, { AnchorRect } from '../components/AnchoredMenu';
 import Popover from '../components/Popover';
 import SegmentedControl from '../components/SegmentedControl';
+import StatusView from '../components/StatusView';
 import {
   useServerConnection,
   useFoods,
@@ -1430,11 +1431,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     // Landing (no/short query): recent + top foods.
     if (isLandingLoading) {
-      return (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color={accentColor} />
-        </View>
-      );
+      return <StatusView loading />;
     }
     if (isError) {
       return (

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, RefreshControl } from 'react-native';
+import { View, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import LibrarySearchBar from '../components/LibrarySearchBar';
@@ -61,27 +61,21 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const renderEmpty = () => {
     if (foods.length > 0 && filteredFoods.length === 0) {
       return (
-        <View className="px-6 py-10 items-center">
-          <Text className="text-text-primary text-base font-medium text-center">
-            No matching foods found
-          </Text>
-          <Text className="text-text-secondary text-sm mt-2 text-center">
-            Try changing your ownership filter.
-          </Text>
-        </View>
+        <StatusView
+          inline
+          title="No matching foods found"
+          subtitle="Try changing your ownership filter."
+        />
       );
     }
     return (
-      <View className="px-6 py-10 items-center">
-        <Text className="text-text-primary text-base font-medium text-center">
-          {searchText.trim().length > 0 ? 'No matching foods found' : 'No foods found'}
-        </Text>
-        <Text className="text-text-secondary text-sm mt-2 text-center">
-          {searchText.trim().length > 0
-            ? 'Try a different search term to find saved foods.'
-            : 'Foods you save or log will appear here.'}
-        </Text>
-      </View>
+      <StatusView
+        inline
+        title={searchText.trim().length > 0 ? 'No matching foods found' : 'No foods found'}
+        subtitle={searchText.trim().length > 0
+          ? 'Try a different search term to find saved foods.'
+          : 'Foods you save or log will appear here.'}
+      />
     );
   };
 
@@ -90,7 +84,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
           title="No server configured"
           subtitle="Configure your server connection in Settings to view your food library."
@@ -107,7 +101,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       return (
         <StatusView
           icon="alert-circle"
-          iconColor="#EF4444"
+          iconTone="danger"
           iconSize={64}
           title="Failed to load foods"
           subtitle="Please check your connection and try again."

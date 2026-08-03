@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
-import Button from '../components/ui/Button';
+import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
@@ -212,7 +211,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           )}
           <StatusView
             icon="cloud-offline"
-            iconColor="#9CA3AF"
+            iconTone="muted"
             iconSize={64}
             title="No server configured"
             subtitle="Configure your server connection in Settings to view your daily summary."
@@ -224,33 +223,20 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
     // Loading state
     if (isLoading || isConnectionLoading || isPreferencesLoading || isMeasurementsLoading) {
-      return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text className="text-text-muted text-base mt-4">Loading summary...</Text>
-        </View>
-      );
+      return <StatusView loading title="Loading summary..." />;
     }
 
     // Error state
     if (isError || isPreferencesError || isMeasurementsError) {
       return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <Icon name="alert-circle" size={64} color="#EF4444" />
-          <Text className="text-text-muted text-lg text-center mt-4">
-            Failed to load summary
-          </Text>
-          <Text className="text-text-muted text-sm text-center mt-2">
-            Please check your connection and try again.
-          </Text>
-          <Button
-            variant="primary"
-            className="px-6 mt-6"
-            onPress={() => refetch()}
-          >
-            Retry
-          </Button>
-        </View>
+        <StatusView
+          icon="alert-circle"
+          iconTone="danger"
+          iconSize={64}
+          title="Failed to load summary"
+          subtitle="Please check your connection and try again."
+          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+        />
       );
     }
 
