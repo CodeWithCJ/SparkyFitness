@@ -295,6 +295,7 @@ describe('Aggregated health metric default units', () => {
     ['apple_move_time', 'seconds'],
     ['apple_exercise_time', 'seconds'],
     ['apple_stand_time', 'seconds'],
+    ['apple_stand_hour', 'count'],
     ['dietary_protein', 'g'],
     ['dietary_sodium', 'mg'],
     // Chunk 6: Audio exposure

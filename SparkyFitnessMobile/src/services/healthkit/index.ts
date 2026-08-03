@@ -103,6 +103,7 @@ const SUPPORTED_HK_TYPES = new Set<string>([
   'HKCategoryTypeIdentifierIntermenstrualBleeding',
   'HKCategoryTypeIdentifierMenstrualFlow',
   'HKCategoryTypeIdentifierOvulationTestResult',
+  'HKCategoryTypeIdentifierAppleStandHour',
   'HKQuantityTypeIdentifierBloodAlcoholContent',
   'HKQuantityTypeIdentifierPushCount',
   'HKQuantityTypeIdentifierBasalBodyTemperature',
@@ -126,7 +127,6 @@ const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierHeadphoneAudioExposure',
   'HKQuantityTypeIdentifierAppleMoveTime',
   'HKQuantityTypeIdentifierAppleExerciseTime',
-  'HKQuantityTypeIdentifierAppleStandTime',
 ]);
 
 // Map record types to the unit we want HealthKit to return values in.
@@ -202,7 +202,7 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   'HeadphoneAudioExposure': 'HKQuantityTypeIdentifierHeadphoneAudioExposure',
   'AppleMoveTime': 'HKQuantityTypeIdentifierAppleMoveTime',
   'AppleExerciseTime': 'HKQuantityTypeIdentifierAppleExerciseTime',
-  'AppleStandTime': 'HKQuantityTypeIdentifierAppleStandTime',
+  'AppleStandHour': 'HKCategoryTypeIdentifierAppleStandHour',
 };
 
 
@@ -318,8 +318,81 @@ interface AggregationConfig {
   unit: string;
   type: string;
   logLabel: string;
+  queryFn?: (dayStart: Date, dayEnd: Date) => Promise<AggregationQueryResult | null>;
 }
 
+interface AggregationQueryResult {
+  value: number;
+  hasData: boolean;
+}
+
+// Query function for total calories (basal + active)
+const queryTotalCalories = async (
+  dayStart: Date,
+  dayEnd: Date
+): Promise<AggregationQueryResult | null> => {
+  try {
+    const [basalBuckets, activeBuckets] = await Promise.all([
+      queryDayStatistics(
+        'HKQuantityTypeIdentifierBasalEnergyBurned',
+        ['cumulativeSum'],
+        dayStart,
+        dayEnd,
+        'kcal'
+      ),
+      queryDayStatistics(
+        'HKQuantityTypeIdentifierActiveEnergyBurned',
+        ['cumulativeSum'],
+        dayStart,
+        dayEnd,
+        'kcal'
+      ),
+    ]);
+
+    const basal = basalBuckets[0]?.sumQuantity?.quantity || 0;
+    const active = activeBuckets[0]?.sumQuantity?.quantity || 0;
+
+    if (basal > 0 || active > 0) {
+      return { value: Math.round(basal + active), hasData: true };
+    }
+    return { value: 0, hasData: false };
+  } catch (error) {
+    if (isDatabaseInaccessibleError(error)) {
+      databaseInaccessibleCount++;
+      addLog('[HealthKitService] Total calories query failed: database inaccessible (device likely locked)', 'WARNING');
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Failed to query total calories: ${message}`, 'ERROR');
+    }
+    return null;
+  }
+};
+
+const queryAppleStandHours = async (
+  dayStart: Date,
+  dayEnd: Date
+): Promise<AggregationQueryResult | null> => {
+  try {
+    const samples = await queryCategorySamples('HKCategoryTypeIdentifierAppleStandHour', {
+      ascending: false,
+      limit: 0,
+      filter: { date: { startDate: dayStart, endDate: dayEnd } },
+    });
+
+    const stoodCount = samples.filter(sample => sample.value === 0).length;
+
+    return { value: stoodCount, hasData: stoodCount > 0 };
+  } catch (error) {
+    if (isDatabaseInaccessibleError(error)) {
+      databaseInaccessibleCount++;
+      addLog('[HealthKitService] Apple stand hour query failed: database inaccessible (device likely locked)', 'WARNING');
+    } else {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[HealthKitService] Failed to query apple stand hours: ${message}`, 'ERROR');
+    }
+    return null;
+  }
+};
 const AGGREGATION_CONFIGS: Record<string, AggregationConfig> = {
   steps: {
     identifier: 'HKQuantityTypeIdentifierStepCount',
@@ -344,6 +417,26 @@ const AGGREGATION_CONFIGS: Record<string, AggregationConfig> = {
     unit: 'count',
     type: 'floors_climbed',
     logLabel: 'floors',
+  },
+  totalCalories: {
+    identifier: '', // Not used - custom queryFn handles both metrics
+    unit: 'kcal',
+    type: 'total_calories',
+    logLabel: 'total calories',
+    queryFn: queryTotalCalories,
+  },
+  appleExerciseTime: {
+    identifier: 'HKQuantityTypeIdentifierAppleExerciseTime',
+    unit: 'min',
+    type: 'apple_exercise_time',
+    logLabel: 'apple exercise time',
+  },
+  appleStandHour: {
+    identifier: 'HKCategoryTypeIdentifierAppleStandHour',
+    unit: 'count',
+    type: 'apple_stand_hour',
+    logLabel: 'apple stand hours',
+    queryFn: queryAppleStandHours,
   },
 };
 
@@ -410,13 +503,41 @@ const getAggregatedDataByDateDetailed = async (
   }
 
   try {
+    if (config.queryFn) {
+      const deviceTz = getDeviceTimezone();
+      const currentDate = new Date(startDate);
+      const records: AggregatedHealthRecord[] = [];
+
+      while (currentDate <= endDate) {
+        const dayStart = startOfLocalDay(currentDate);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+        dayEnd.setMilliseconds(dayEnd.getMilliseconds() - 1);
+
+        const result = await config.queryFn(dayStart, dayEnd);
+        if (result === null) {
+          return { records: [], error: `Aggregated ${config.logLabel} query failed` };
+        }
+        if (result.hasData) {
+          records.push({
+            date: toLocalDateString(dayStart),
+            value: result.value,
+            type: config.type,
+            record_timezone: deviceTz,
+          });
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      return { records };
+    }
+
     const buckets = await queryDayStatistics(config.identifier, ['cumulativeSum'], startDate, endDate, config.unit);
     const deviceTz = getDeviceTimezone();
     const records: AggregatedHealthRecord[] = [];
     for (const bucket of buckets) {
       const sum = bucket.sumQuantity?.quantity ?? 0;
-      // Compare before rounding so a 0 < sum < 0.5 day still emits (as 0), matching the
-      // per-day loop this replaced.
       if (sum > 0) {
         records.push({
           date: toLocalDateString(new Date(bucket.startDate as Date)),
@@ -653,6 +774,18 @@ export const readMinMaxAvgByDayDetailed = async (
     return { records: [], error: recordReadError(error, `${metric.recordType} day statistics query`) };
   }
 };
+
+const getAggregatedDataByDate = (startDate: Date, endDate: Date, config: AggregationConfig) =>
+  getAggregatedDataByDateDetailed(startDate, endDate, config).then(result => result.records);
+
+export const getAggregatedAppleExerciseTimeByDate = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.appleExerciseTime);
+
+export const getAggregatedAppleStandHoursByDateDetailed = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDateDetailed(startDate, endDate, AGGREGATION_CONFIGS.appleStandHour);
+
+export const getAggregatedAppleStandHoursByDate = (startDate: Date, endDate: Date) =>
+  getAggregatedDataByDate(startDate, endDate, AGGREGATION_CONFIGS.appleStandHour);
 
 // ============================================================================
 // Record Handlers - modular handlers for different HealthKit record types

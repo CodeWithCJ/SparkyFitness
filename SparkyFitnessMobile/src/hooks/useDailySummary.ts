@@ -26,6 +26,17 @@ export interface DailySummaryRawData {
   waterIntake: WaterIntake;
   stepCalories: number;
   calorieBalance?: CalorieBalance;
+  adjustedGoals?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null;
+  appleExerciseTime?: number | null;
+  appleMoveTime?: number | null;
+  /** @deprecated Backward-compat alias; use appleStandHours. */
+  appleStandTime?: number | null;
+  appleStandHours?: number | null;
 }
 
 interface UseDailySummaryOptions {
@@ -40,6 +51,8 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
       const data = await fetchDailySummary(date);
       const foodEntries = await resolveCollapsedFoodEntries(date, data.foodEntries);
 
+      const resolvedAppleStandHours = data.appleStandHours ?? data.appleStandTime ?? null;
+
       return {
         goals: data.goals,
         foodEntries,
@@ -48,16 +61,31 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         stepCalories: data.stepCalories ?? 0,
         calorieBalance: data.calorieBalance,
         adjustedGoals: data.adjustedGoals ?? null,
+        appleExerciseTime: data.appleExerciseTime,
+        appleMoveTime: data.appleMoveTime,
+        appleStandTime: resolvedAppleStandHours,
+        appleStandHours: resolvedAppleStandHours,
       };
     },
     select: (raw): DailySummary => {
-      const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories, calorieBalance, adjustedGoals } = raw;
+      const {
+        goals,
+        foodEntries,
+        exerciseEntries,
+        waterIntake,
+        stepCalories,
+        calorieBalance,
+        adjustedGoals,
+      } = raw;
 
       const calorieGoal = adjustedGoals?.calories ?? goals.calories ?? 0;
       const caloriesConsumed = calculateCaloriesConsumed(foodEntries);
       const exerciseStats = calculateExerciseStats(exerciseEntries);
       const { caloriesBurned, activeCalories, otherExerciseCalories } = exerciseStats;
-      const exerciseMinutes = exerciseStats.durationMinutes;
+      const exerciseMinutes =
+        raw.appleExerciseTime === null || raw.appleExerciseTime === undefined
+          ? exerciseStats.durationMinutes
+          : raw.appleExerciseTime / 60;
       const netCalories = caloriesConsumed - caloriesBurned;
       const remainingCalories = calorieGoal - netCalories;
 
@@ -124,6 +152,10 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
               ]),
             )
           : ({} as Record<string, number>),
+        appleExerciseTime: raw.appleExerciseTime,
+        appleMoveTime: raw.appleMoveTime,
+        appleStandTime: raw.appleStandHours,
+        appleStandHours: raw.appleStandHours,
       };
     },
     enabled,

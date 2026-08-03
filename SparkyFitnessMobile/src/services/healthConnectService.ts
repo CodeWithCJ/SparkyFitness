@@ -56,6 +56,15 @@ export { healthReadProvider, readCumulativeByDay };
 
 export const alignToLocalDayStart = HealthConnect.alignToLocalDayStart;
 
+export const getAggregatedAppleStandHoursByDateDetailed = async (
+  _startDate: Date,
+  _endDate: Date,
+): Promise<{ records: AggregatedHealthRecord[]; error?: string }> => ({ records: [] });
+
+export const getAggregatedAppleStandHoursByDate = async (
+  _startDate: Date,
+  _endDate: Date,
+): Promise<AggregatedHealthRecord[]> => [];
 // Android handles sleep aggregation in its transformation layer, so this is a passthrough
 export const aggregateSleepSessions = (records: unknown[]): unknown[] => records;
 

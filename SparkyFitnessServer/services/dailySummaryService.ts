@@ -29,6 +29,44 @@ interface DailySummaryOptions {
   includeCheckin: boolean;
 }
 
+interface AppleRingSummary {
+  appleExerciseTime: number | null;
+  appleMoveTime: number | null;
+  /** @deprecated Legacy duration metric; blue ring should use appleStandHours. */
+  appleStandTime: number | null;
+  appleStandHours: number | null;
+}
+
+function extractAppleRingSummary(
+  entries: Array<{
+    value?: string | number | null;
+    custom_categories?: { name?: string } | null;
+  }>
+): AppleRingSummary {
+  const summary: AppleRingSummary = {
+    appleExerciseTime: null,
+    appleMoveTime: null,
+    appleStandTime: null,
+    appleStandHours: null,
+  };
+
+  for (const entry of entries) {
+    const name = entry.custom_categories?.name;
+    const parsed =
+      entry.value === null || entry.value === undefined
+        ? NaN
+        : parseFloat(String(entry.value));
+    if (!name || Number.isNaN(parsed)) continue;
+
+    if (name === 'apple_exercise_time') summary.appleExerciseTime = parsed;
+    if (name === 'apple_move_time') summary.appleMoveTime = parsed;
+    if (name === 'apple_stand_time') summary.appleStandTime = parsed;
+    if (name === 'apple_stand_hour') summary.appleStandHours = parsed;
+  }
+
+  return summary;
+}
+
 /**
  * Extracts activeCalories, otherCalories, and activitySteps from exercise sessions.
  */
@@ -248,6 +286,7 @@ export async function getDailySummary({
     userProfile,
     userPreferences,
     measurements,
+    customMeasurements,
   ] = await Promise.all([
     goalService.getUserGoals(targetUserId, date, undefined, false),
     goalService.getUserGoals(targetUserId, date, undefined, true),
@@ -279,6 +318,18 @@ export async function getDailySummary({
             return null;
           })
       : null,
+    includeCheckin
+      ? measurementRepository
+          .getCustomMeasurementEntriesByDate(targetUserId, date)
+          .catch((error: unknown) => {
+            log(
+              'warn',
+              `Custom measurements fetch failed for user ${targetUserId} on ${date}:`,
+              error
+            );
+            return [];
+          })
+      : [],
   ]);
 
   const stepCalories = includeCheckin
@@ -337,6 +388,9 @@ export async function getDailySummary({
         }
       : null;
 
+  const appleRingSummary = extractAppleRingSummary(customMeasurements);
+  const resolvedAppleStandHours = appleRingSummary.appleStandHours;
+
   return {
     goals,
     foodEntries,
@@ -345,5 +399,10 @@ export async function getDailySummary({
     stepCalories,
     calorieBalance,
     adjustedGoals: computedAdjustedGoals,
+    appleExerciseTime: appleRingSummary.appleExerciseTime,
+    appleMoveTime: appleRingSummary.appleMoveTime,
+    // Keep legacy field for older clients, but point it at the stand-hour value.
+    appleStandTime: resolvedAppleStandHours,
+    appleStandHours: resolvedAppleStandHours,
   };
 }

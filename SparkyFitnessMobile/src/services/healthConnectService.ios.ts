@@ -52,8 +52,14 @@ export const getAggregatedFloorsClimbedByDate = HealthKit.getAggregatedFloorsCli
 export const getAggregatedFloorsClimbedByDateDetailed = HealthKit.getAggregatedFloorsClimbedByDateDetailed;
 export const getAggregatedBasalEnergyByDate = HealthKit.getAggregatedBasalEnergyByDate;
 export const getAggregatedBasalEnergyByDateDetailed = HealthKit.getAggregatedBasalEnergyByDateDetailed;
+export const getAggregatedAppleStandHoursByDate = HealthKit.getAggregatedAppleStandHoursByDate;
 
 export { healthReadProvider, readCumulativeByDay };
+
+export const getAggregatedAppleStandHoursByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+) => HealthKit.getAggregatedAppleStandHoursByDateDetailed(startDate, endDate);
 
 export const aggregateSleepSessions = HealthKitAggregation.aggregateSleepSessions;
 

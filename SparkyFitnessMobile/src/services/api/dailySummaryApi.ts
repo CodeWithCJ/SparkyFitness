@@ -10,7 +10,17 @@ interface DailySummaryApiResponse {
   waterIntake: number;
   stepCalories?: number;
   calorieBalance?: CalorieBalance;
-  adjustedGoals?: { calories: number; protein: number; carbs: number; fat: number } | null;
+  adjustedGoals?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  } | null;
+  appleExerciseTime?: number | null;
+  appleMoveTime?: number | null;
+  /** @deprecated Backward-compat alias; use appleStandHours. */
+  appleStandTime?: number | null;
+  appleStandHours?: number | null;
 }
 
 export const fetchDailySummary = (date: string): Promise<DailySummaryApiResponse> =>

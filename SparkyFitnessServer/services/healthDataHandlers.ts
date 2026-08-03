@@ -152,6 +152,7 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   apple_move_time: 'seconds',
   apple_exercise_time: 'seconds',
   apple_stand_time: 'seconds',
+  apple_stand_hour: 'count',
   dietary_fat_total: 'g',
   dietary_protein: 'g',
   dietary_sodium: 'mg',

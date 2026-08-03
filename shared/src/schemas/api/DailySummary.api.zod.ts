@@ -41,6 +41,11 @@ export const dailySummaryResponseSchema = z.object({
   stepCalories: z.number(),
   calorieBalance: calorieBalanceSchema,
   adjustedGoals: adjustedGoalsSchema.nullable(),
+  appleExerciseTime: z.number().nullable().optional(),
+  appleMoveTime: z.number().nullable().optional(),
+  // Backward-compat alias; clients should prefer appleStandHours.
+  appleStandTime: z.number().nullable().optional(),
+  appleStandHours: z.number().nullable().optional(),
 });
 
 export type DailySummaryResponse = z.infer<typeof dailySummaryResponseSchema>;

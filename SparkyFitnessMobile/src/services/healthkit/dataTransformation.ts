@@ -318,7 +318,8 @@ const SIMPLE_VALUE_TYPES_START_TIME = [
   'RunningVerticalOscillation', 'RunningSpeed',
   'CyclingSpeed', 'CyclingPower', 'CyclingCadence', 'CyclingFunctionalThresholdPower',
   'EnvironmentalAudioExposure', 'HeadphoneAudioExposure',
-  'AppleMoveTime', 'AppleExerciseTime', 'AppleStandTime',
+  'AppleMoveTime', 'AppleExerciseTime', 'AppleStandHour',
+  'DietaryFatTotal', 'DietaryProtein', 'DietarySodium',
 ];
 
 SIMPLE_VALUE_TYPES_START_TIME.forEach(type => {

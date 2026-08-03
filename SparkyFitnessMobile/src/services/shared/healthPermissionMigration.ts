@@ -1,7 +1,10 @@
 import { addLog } from '../LogService';
 import type { PermissionRequest, HealthMetricStates } from '../../types/healthRecords';
 
-const REQUIRED_HEALTH_PERMISSION_VERSION = 2;
+// Bump when enabled metrics gain new underlying HealthKit/Health Connect permissions.
+// Apple Stand Hour reuses an existing toggle state key, so older installs need a
+// fresh permission migration to request HKCategoryTypeIdentifierAppleStandHour.
+const REQUIRED_HEALTH_PERMISSION_VERSION = 3;
 const REQUIRED_HEALTH_PERMISSION_VERSION_KEY = 'healthPermissionsVersion';
 
 type PermissionedMetric = {

@@ -31,6 +31,7 @@ vi.mock('../models/measurementRepository.js', () => ({
     getLatestCheckInMeasurementsOnOrBeforeDate: vi.fn(),
     getStepCaloriesForDate: vi.fn(),
     getExternalBmrForDate: vi.fn(),
+    getCustomMeasurementEntriesByDate: vi.fn(),
   },
 }));
 
@@ -132,6 +133,9 @@ describe('dailySummaryService', () => {
     vi.mocked(measurementRepository.getStepCaloriesForDate).mockResolvedValue(
       40
     );
+    vi.mocked(
+      measurementRepository.getCustomMeasurementEntriesByDate
+    ).mockResolvedValue([]);
     vi.mocked(userRepository.getUserProfile).mockResolvedValue({
       date_of_birth: '1990-01-01',
       gender: 'male',
@@ -388,6 +392,36 @@ describe('dailySummaryService', () => {
       ).not.toHaveBeenCalled();
       expect(result.calorieBalance.bmr).toBe(1800);
     });
+  });
+
+  test('returns apple ring metrics without confusing stand hours with exercise minutes', async () => {
+    vi.mocked(
+      measurementRepository.getCustomMeasurementEntriesByDate
+    ).mockResolvedValue([
+      {
+        value: '42',
+        custom_categories: { name: 'apple_exercise_time' },
+      },
+      {
+        value: '9',
+        custom_categories: { name: 'apple_stand_hour' },
+      },
+      {
+        value: '600',
+        custom_categories: { name: 'apple_stand_time' },
+      },
+    ]);
+
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+    expect(result.appleExerciseTime).toBe(42);
+    expect(result.appleStandHours).toBe(9);
+    expect(result.appleStandTime).toBe(9);
   });
 
   describe('adjustedGoals', () => {

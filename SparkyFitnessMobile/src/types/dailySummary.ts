@@ -34,4 +34,9 @@ export interface DailySummary {
   customNutrientTotals: Record<string, number>;
   /** Per-custom-nutrient goals (name → goal value); empty when none are set. */
   customNutrientGoals: Record<string, number>;
+  appleExerciseTime?: number | null;
+  appleMoveTime?: number | null;
+  /** @deprecated Backward-compat alias; use appleStandHours. */
+  appleStandTime?: number | null;
+  appleStandHours?: number | null;
 }
