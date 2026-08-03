@@ -5,6 +5,7 @@ import { useCycleHistory } from '../../hooks/useCycleHistory';
 import CycleBarGlyph from './CycleBarGlyph';
 import Icon from '../Icon';
 import Button from '../ui/Button';
+import SwipeableDeleteRow from '../SwipeableDeleteRow';
 import CalendarSheet, { type CalendarSheetRef } from '../CalendarSheet';
 import { getTodayDate, formatDate } from '../../utils/dateUtils';
 import { useTranslation } from 'react-i18next';
@@ -13,12 +14,10 @@ import { formatLocalizedNumber } from '../../localization';
 const CycleHistoryList: React.FC = () => {
   const { cycles, createCycle, deleteCycle } = useCycleHistory();
   const { t } = useTranslation();
+  const maxCycleLength = cycles.reduce((max, c) => Math.max(max, c.cycle_length || 0), 0);
   const [showAddForm, setShowAddForm] = useState(false);
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
-  const [accentColor, dangerColor] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-icon-danger',
-  ]) as [string, string];
+  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
 
   // Form State
   const [startDate, setStartDate] = useState(getTodayDate());
@@ -116,38 +115,32 @@ const CycleHistoryList: React.FC = () => {
       ) : (
         <View className="bg-surface rounded-xl border-0 shadow-sm overflow-hidden">
           {cycles.map((c, idx) => (
-            <View
+            <SwipeableDeleteRow
               key={c.id || c.start_date}
-              className={`p-3.5 flex-row justify-between items-center ${
-                idx < cycles.length - 1 ? 'border-b border-border-subtle' : ''
-              }`}
+               title={t('mobileComponents.cycleHistory.startedTitle', { date: c.start_date })}
+              onConfirmDelete={() => c.id && deleteCycle(c.id)}
+              className={`p-3.5 ${idx < cycles.length - 1 ? 'border-b border-border-subtle' : ''}`}
             >
-              <View className="flex-1 mr-4">
+              <View className="flex-1">
                 <Text className="text-text-primary font-semibold text-sm">
                   {t('mobileComponents.cycleHistory.started', { date: formatDate(c.start_date) })}
                 </Text>
-                <Text className="text-text-secondary text-xs mt-1">
+                <Text className="text-text-secondary text-sm mt-1">
                   {c.cycle_length
-                     ? t('mobileComponents.cycleHistory.dayCycle', { count: c.cycle_length, formattedCount: formatLocalizedNumber(c.cycle_length) })
-                     : t('mobileComponents.cycleHistory.currentCycle')} • {t('mobileComponents.cycleHistory.dayPeriod', { count: c.period_length || 5, formattedCount: formatLocalizedNumber(c.period_length || 5) })}
+                    ? t('mobileComponents.cycleHistory.dayCycle', { count: c.cycle_length, formattedCount: formatLocalizedNumber(c.cycle_length) })
+                    : t('mobileComponents.cycleHistory.currentCycle')} • {t('mobileComponents.cycleHistory.dayPeriod', { count: c.period_length || 5, formattedCount: formatLocalizedNumber(c.period_length || 5) })}
                 </Text>
-                {c.cycle_length && c.period_length && (
-                  <View className="mt-2">
-                    <CycleBarGlyph
-                      cycleLength={c.cycle_length}
-                      periodLength={c.period_length}
-                    />
-                  </View>
-                )}
+              {c.cycle_length && c.period_length && (
+                <View className="mt-2">
+                  <CycleBarGlyph
+                    cycleLength={c.cycle_length}
+                    periodLength={c.period_length}
+                    maxLength={maxCycleLength}
+                  />
+                </View>
+              )}
               </View>
-
-              <TouchableOpacity
-                onPress={() => c.id && deleteCycle(c.id)}
-                className="p-2 bg-surface rounded-full border border-border-subtle"
-              >
-                <Icon name="trash" size={16} color={dangerColor} />
-              </TouchableOpacity>
-            </View>
+            </SwipeableDeleteRow>
           ))}
         </View>
       )}

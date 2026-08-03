@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, Platform, ActivityIndicator } from 'react-native';
 import { checklistForWeek, CHECKLIST_TEMPLATES } from '@workspace/shared';
 import { usePregnancyChecklist, usePregnancyChecklistMutations } from '../../../hooks/usePregnancyChecklist';
-import SettingsRow, { SettingsRowGroup } from '../../SettingsRow';
 import Icon from '../../Icon';
 import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
@@ -29,10 +28,11 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
   const { items, isLoading } = usePregnancyChecklist(pregnancyId);
   const { toggleAsync } = usePregnancyChecklistMutations();
   const { t } = useTranslation();
-  const [accentColor, textMuted] = useCSSVariable([
+  const [accentColor, iconSuccess, iconDecorative] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-muted',
-  ]) as [string, string];
+    '--color-icon-success',
+    '--color-icon-decorative',
+  ]) as [string, string, string];
 
   const rows = useMemo<ChecklistRow[]>(() => {
     const inWindow = checklistForWeek(currentWeek);
@@ -88,22 +88,32 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
           {t('mobileComponents.checklist.empty')}
         </Text>
       ) : (
-        <SettingsRowGroup>
-          {rows.map((row) => (
-            <SettingsRow
-              key={row.key}
-              title={row.title}
-              onPress={() => handleToggle(row)}
-              rightAccessory={
-                <Icon
-                  name={row.completed ? 'checkmark-circle-filled' : 'checkmark-circle'}
-                  size={24}
-                  color={row.completed ? accentColor : textMuted}
-                />
-              }
-            />
-          ))}
-        </SettingsRowGroup>
+        rows.map((row) => (
+          <Pressable
+            key={row.key}
+            onPress={() => handleToggle(row)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: row.completed }}
+            accessibilityLabel={row.title}
+            className="py-2 flex-row items-center"
+          >
+            <View
+              className="w-6 h-6 rounded-full items-center justify-center mr-3"
+              style={{ borderWidth: 1.5, borderColor: row.completed ? iconSuccess : iconDecorative }}
+            >
+              {row.completed && (
+                <Icon name="checkmark" size={Platform.OS === 'ios' ? 12 : 16} color={iconSuccess} />
+              )}
+            </View>
+            <Text
+              className={`flex-1 text-base ${
+                row.completed ? 'text-text-secondary line-through' : 'text-text-primary'
+              }`}
+            >
+              {row.title}
+            </Text>
+          </Pressable>
+        ))
       )}
     </View>
   );

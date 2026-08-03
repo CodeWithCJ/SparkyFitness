@@ -1,7 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import Papa from 'papaparse';
 import { toast } from '../use-toast';
 import {
   ImportCategory,
@@ -19,13 +18,20 @@ import {
 } from '@/api/CheckIn/checkInService';
 import { moodKeys } from '@/api/keys/checkin';
 import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
+import {
+  parseCsvHeaders,
+  suggestHeaderMapping,
+  MAX_CSV_FILE_SIZE_BYTES,
+  type CsvFormatOptions,
+} from '@workspace/shared';
 
 // Rows are POSTed in chunks so a large historical import stays within the
 // server's 5000-row cap and body-size limits.
 const CHUNK_SIZE = 1000;
-// Guard against reading a pathologically large file fully into memory (which
-// can freeze the tab). 25MB of CSV is well beyond any realistic export.
-const MAX_FILE_SIZE = 25 * 1024 * 1024;
+
+// Debounce for the reparse-on-format-change effects below — collapses rapid
+// format-bar clicks into a single re-parse instead of one per click.
+const REPARSE_DEBOUNCE_MS = 400;
 
 const chunk = <T>(arr: T[], size: number): T[][] => {
   const out: T[][] = [];
@@ -33,7 +39,7 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
   return out;
 };
 
-export function useHealthDataImport() {
+export function useHealthDataImport(csvFormat: CsvFormatOptions) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const invalidateDiaryQueries = useDiaryInvalidation();
@@ -48,6 +54,15 @@ export function useHealthDataImport() {
     {}
   );
   const [rawCsvText, setRawCsvText] = useState('');
+  // Kept independent of rawCsvText (only set on the mapping-required branch)
+  // so the page can drive the format-bar's live preview off whatever file
+  // was most recently loaded, regardless of which branch it took.
+  const [loadedText, setLoadedText] = useState('');
+  // Tracks whether csvData currently reflects the header-mapping path, so
+  // the reparse-on-format-change effects below know whether to re-run
+  // parseHealthCSV against loadedText with no mapping, or against
+  // rawCsvText with headerMapping.
+  const [mappingConfirmed, setMappingConfirmed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const config = useMemo(() => getCategoryConfig(category), [category]);
@@ -56,6 +71,8 @@ export function useHealthDataImport() {
   const clearData = () => {
     setCsvData([]);
     setResult(null);
+    setLoadedText('');
+    setMappingConfirmed(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -64,13 +81,45 @@ export function useHealthDataImport() {
     setCsvData([]);
     setResult(null);
     setShowMapping(false);
+    setLoadedText('');
+    setMappingConfirmed(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const lastEvaluatedKeyRef = useRef<string>('');
+
+  // Decides whether `text` parses directly under the current format, or
+  // needs the header-mapping dialog, and acts on that decision. Shared by
+  // the initial upload and the reparse-on-format-change effect below, so a
+  // delimiter fix after Cancel re-evaluates from scratch instead of either
+  // blindly parsing invalid columns or requiring a fresh re-upload — this
+  // is the mapping dialog's "escape hatch back to the bar": adjusting the
+  // format bar after Cancel is enough, because the decision itself reruns.
+  const evaluateAndParse = (text: string) => {
+    lastEvaluatedKeyRef.current = `${category}|${text}|${JSON.stringify(csvFormat)}`;
+    const { headers: parsedFileHeaders } = parseCsvHeaders(text, csvFormat);
+    const headersValid = config.requiredHeaders.every((req) =>
+      parsedFileHeaders.includes(req)
+    );
+    if (headersValid) {
+      setMappingConfirmed(false);
+      setShowMapping(false);
+      setCsvData(parseHealthCSV(text, category, undefined, csvFormat));
+      setResult(null);
+    } else {
+      setFileHeaders(parsedFileHeaders);
+      setHeaderMapping(
+        suggestHeaderMapping(config.requiredHeaders, parsedFileHeaders)
+      );
+      setRawCsvText(text);
+      setShowMapping(true);
+    }
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > MAX_FILE_SIZE) {
+    if (file.size > MAX_CSV_FILE_SIZE_BYTES) {
       toast({
         title: t('healthDataImport.importError', 'Import Error'),
         description: t(
@@ -96,41 +145,58 @@ export function useHealthDataImport() {
         });
         return;
       }
-      const { meta } = Papa.parse(text, {
-        header: true,
-        preview: 1,
-        skipEmptyLines: true,
-      });
-      const parsedFileHeaders = meta.fields || [];
-      const headersValid = config.requiredHeaders.every((req) =>
-        parsedFileHeaders.includes(req)
-      );
-      if (headersValid) {
-        setCsvData(parseHealthCSV(text, category));
-        setResult(null);
-      } else {
-        const initialMapping: Record<string, string> = {};
-        config.requiredHeaders.forEach((required) => {
-          const normalized = required.toLowerCase().replace(/[_ ]/g, '');
-          const match = parsedFileHeaders.find(
-            (h) => h.toLowerCase().replace(/[_ ]/g, '') === normalized
-          );
-          if (match) initialMapping[required] = match;
-        });
-        setFileHeaders(parsedFileHeaders);
-        setHeaderMapping(initialMapping);
-        setRawCsvText(text);
-        setShowMapping(true);
-      }
+      setLoadedText(text);
+      evaluateAndParse(text);
     };
     reader.readAsText(file);
   };
 
   const handleConfirmMapping = () => {
-    setCsvData(parseHealthCSV(rawCsvText, category, headerMapping));
+    setCsvData(parseHealthCSV(rawCsvText, category, headerMapping, csvFormat));
     setResult(null);
     setShowMapping(false);
+    setMappingConfirmed(true);
   };
+
+  // Re-evaluates the already-loaded file whenever the user changes the
+  // format bar (delimiter/decimal/quote) after upload, including after
+  // Cancelling out of the mapping dialog — a delimiter fix can flip a file
+  // from "needs mapping" to "parses directly" or vice versa, so this reruns
+  // the full decision. Decimal alone would already self-correct at submit
+  // time (mapRowsToHealthItems re-detects it from csvData), but
+  // delimiter/quote directly control how csvData's columns were split.
+  //
+  // Deliberately NOT keyed on showMapping/mappingConfirmed — they're read
+  // only as a guard, not a trigger. Cancel flips showMapping true->false,
+  // and if that were a dependency this effect would immediately re-fire
+  // with the unchanged format and silently reopen the dialog just closed.
+  useEffect(() => {
+    if (!loadedText || showMapping || mappingConfirmed) return;
+    const currentKey = `${category}|${loadedText}|${JSON.stringify(csvFormat)}`;
+    if (lastEvaluatedKeyRef.current === currentKey) return;
+    const timer = setTimeout(() => {
+      evaluateAndParse(loadedText);
+    }, REPARSE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [csvFormat, loadedText, category]);
+
+  useEffect(() => {
+    if (!mappingConfirmed || showMapping) return;
+    const timer = setTimeout(() => {
+      setCsvData(
+        parseHealthCSV(rawCsvText, category, headerMapping, csvFormat)
+      );
+    }, REPARSE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [
+    csvFormat,
+    rawCsvText,
+    headerMapping,
+    category,
+    mappingConfirmed,
+    showMapping,
+  ]);
 
   const handleCancelMapping = () => {
     setShowMapping(false);
@@ -186,7 +252,8 @@ export function useHealthDataImport() {
     e.preventDefault();
     const { items, errors: clientErrors } = mapRowsToHealthItems(
       category,
-      csvData
+      csvData,
+      csvFormat.decimal
     );
     if (items.length === 0 && clientErrors.length === 0) {
       toast({
@@ -283,6 +350,7 @@ export function useHealthDataImport() {
     config,
     csvData,
     headers,
+    loadedText,
     loading,
     result,
     showMapping,

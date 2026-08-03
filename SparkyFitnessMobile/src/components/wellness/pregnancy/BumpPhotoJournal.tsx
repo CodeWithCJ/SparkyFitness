@@ -7,6 +7,7 @@ import { useCSSVariable } from 'uniwind';
 import { usePregnancyPhotos, usePregnancyPhotoMutations } from '../../../hooks/usePregnancyPhotos';
 import { useServerConfigs } from '../../../hooks/useServerConfigs';
 import { normalizeUrl } from '../../../services/api/apiClient';
+import { getApiErrorMessage } from '../../../services/api/errors';
 import { formatDate } from '../../../utils/dateUtils';
 import ActionSheet, { type ActionSheetRef } from '../../ActionSheet';
 import Icon from '../../Icon';
@@ -62,8 +63,9 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       }
       await uploadAsync({ pregnancyId, week: currentWeek, uri });
        Toast.show({ type: 'success', text1: t('mobileComponents.wellness.photos.added') });
-    } catch {
+     } catch (err) {
        Toast.show({ type: 'error', text1: t('mobileComponents.wellness.photos.uploadError') });
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.photos.uploadError'), text2: getApiErrorMessage(err) ?? undefined });
     } finally {
       pickerLock.current = false;
     }
@@ -79,13 +81,14 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
   };
 
   return (
-    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
+    <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
       <View className="flex-row items-center justify-between">
          <Text className="text-text-primary text-base font-bold">{t('mobileComponents.wellness.photos.title')}</Text>
         <TouchableOpacity
           disabled={isUploading}
           onPress={() => actionSheetRef.current?.present()}
-          className="flex-row items-center gap-1 rounded-full bg-raised px-3 py-1.5"
+          hitSlop={8}
+          className="flex-row items-center"
         >
           {isUploading ? (
             <ActivityIndicator size="small" color={accentColor} />

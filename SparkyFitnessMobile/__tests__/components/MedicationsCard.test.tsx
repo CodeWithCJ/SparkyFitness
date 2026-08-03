@@ -127,7 +127,7 @@ describe('MedicationsCard', () => {
     expect(screen.getByText('Lisinopril')).toBeTruthy();
     expect(screen.getByText('8:00 AM')).toBeTruthy();
     expect(screen.getByText('8:00 AM · Pill · 1 tablet', { exact: false })).toBeTruthy();
-    fireEvent.press(screen.getByText('Take'));
+    fireEvent.press(screen.getByText('Log'));
     expect(mockLogDose).toHaveBeenCalledWith(
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
       'taken',
@@ -174,11 +174,11 @@ describe('MedicationsCard', () => {
     expect(screen.getByText('8:00 AM · Pill · 2 tablet', { exact: false })).toBeTruthy();
   });
 
-  it('logs PRN medications from the circle and the Take button', () => {
+  it('logs PRN medications from the circle and the Log button', () => {
     const med = buildMedication({ id: 'med-prn', name: 'Ibuprofen', schedules: [] });
     const screen = setupCard([med]);
 
-    fireEvent.press(screen.getByText('Take'));
+    fireEvent.press(screen.getByText('Log'));
     expect(mockLogPrn).toHaveBeenCalledWith(expect.objectContaining({ id: 'med-prn' }));
   });
 

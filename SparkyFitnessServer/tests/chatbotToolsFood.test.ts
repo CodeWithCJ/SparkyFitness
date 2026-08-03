@@ -1595,6 +1595,84 @@ describe('log_external_food', () => {
 });
 
 describe('create_food', () => {
+  it('splits a count-bearing unit ("4 pieces") into serving_size + bare unit', async () => {
+    // Regression: quantity=1, unit="4 pieces" used to store serving_size=1,
+    // serving_unit="4 pieces", which rendered as the nonsense "14 pieces" and
+    // scaled wrong. It must become serving_size=4, serving_unit="pieces".
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Chicken Fingers',
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 4,
+        serving_unit: 'pieces',
+        calories: 520,
+      },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'create_food',
+        food_name: 'Chicken Fingers',
+        calories: 520,
+        protein: 40,
+        carbs: 30,
+        fat: 26,
+        quantity: 1,
+        unit: '4 pieces',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Food "Chicken Fingers" created with 520 kcal per 4pieces.'
+    );
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ serving_size: 4, serving_unit: 'pieces' })
+    );
+  });
+
+  it.each([
+    { unit: '250 ml', serving_size: 250, serving_unit: 'ml' },
+    { unit: '0.5 cup', serving_size: 0.5, serving_unit: 'cup' },
+  ])(
+    'uses a base quantity of 1 for the numeric-prefixed unit "$unit"',
+    async ({ unit, serving_size, serving_unit }) => {
+      // Without an explicit quantity, a bare mass/volume unit defaults to 100.
+      // A numeric prefix already states the serving size, so the base must be 1
+      // — otherwise "250 ml" would store 100 * 250 = 25,000 ml.
+      vi.mocked(foodCoreService.createFood).mockResolvedValue({
+        id: FOOD_ID,
+        name: 'Milk',
+        default_variant: {
+          id: VARIANT_ID,
+          serving_size,
+          serving_unit,
+          calories: 120,
+        },
+      });
+
+      await tools.sparky_manage_food.execute!(
+        {
+          action: 'create_food',
+          food_name: 'Milk',
+          calories: 120,
+          protein: 8,
+          carbs: 12,
+          fat: 5,
+          unit,
+        },
+        opts
+      );
+
+      expect(foodCoreService.createFood).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ serving_size, serving_unit })
+      );
+    }
+  );
+
   it('applies count-unit defaults and the 0-becomes-null storage quirk', async () => {
     vi.mocked(foodCoreService.createFood).mockResolvedValue({
       id: FOOD_ID,

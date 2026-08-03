@@ -57,6 +57,30 @@ export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
   }
 }
 
+/**
+ * Updates the rest-timer notification toggle. Turning it off also cancels any
+ * pending rest-complete ping so one scheduled mid-rest doesn't still fire.
+ */
+export async function setRestTimerNotificationsEnabled(enabled: boolean): Promise<void> {
+  useAppPreferencesStore.getState().setRestTimerNotificationsEnabled(enabled);
+  if (!enabled) {
+    await cancelScheduledRestNotifications();
+  }
+}
+
+async function cancelScheduledRestNotifications(): Promise<void> {
+  try {
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      pending
+        .filter((n) => n.content.categoryIdentifier === REST_COMPLETE_CATEGORY)
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    );
+  } catch (err) {
+    addLog(`cancelScheduledRestNotifications failed: ${(err as Error).message}`, 'ERROR');
+  }
+}
+
 export async function initNotifications(): Promise<void> {
   if (initialized) return;
   initialized = true;
@@ -108,7 +132,7 @@ export async function initNotifications(): Promise<void> {
     await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
       {
         identifier: MEDICATION_TAKEN_ACTION,
-        buttonTitle: 'Take',
+        buttonTitle: 'Log as taken',
         options: { opensAppToForeground: false },
       },
       {
@@ -235,7 +259,8 @@ export async function scheduleRestNotification(
   seconds: number,
   content?: { title?: string; body?: string },
 ): Promise<string | null> {
-  if (!useAppPreferencesStore.getState().notificationsEnabled) return null;
+  const prefs = useAppPreferencesStore.getState();
+  if (!prefs.notificationsEnabled || !prefs.restTimerNotificationsEnabled) return null;
 
   const granted = await ensureNotificationPermission();
   if (!granted) return null;
@@ -311,7 +336,8 @@ export function addNotificationResponseListener(
 export async function scheduleFastGoalNotification(
   targetEndTime: string,
 ): Promise<string | null> {
-  if (!useAppPreferencesStore.getState().notificationsEnabled) return null;
+  const prefs = useAppPreferencesStore.getState();
+  if (!prefs.notificationsEnabled || !prefs.fastingGoalNotificationsEnabled) return null;
 
   const target = new Date(targetEndTime);
   if (Number.isNaN(target.getTime()) || target.getTime() <= Date.now()) {

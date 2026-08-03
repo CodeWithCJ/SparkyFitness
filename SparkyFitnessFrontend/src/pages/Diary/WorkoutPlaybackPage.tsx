@@ -321,7 +321,13 @@ const WorkoutPlaybackPage = () => {
   const handleSetFieldChange = useCallback(
     (
       pointer: WorkoutSetPointer,
-      field: 'reps' | 'weight' | 'rest_time' | 'set_type' | 'notes',
+      field:
+        | 'reps'
+        | 'weight'
+        | 'duration'
+        | 'rest_time'
+        | 'set_type'
+        | 'notes',
       value: number | string | null
     ) => {
       updateDraft((currentDraft) =>

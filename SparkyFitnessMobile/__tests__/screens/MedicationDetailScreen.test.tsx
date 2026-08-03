@@ -203,11 +203,11 @@ describe('MedicationDetailScreen', () => {
     expect(screen.queryByText(/per/)).toBeNull();
   });
 
-  it('offers Take and Skip on a pending scheduled dose', () => {
+  it('offers Log and Skip on a pending scheduled dose', () => {
     const screen = setupScreen(buildMedication());
 
     expect(screen.getByText('8:00 AM')).toBeTruthy();
-    fireEvent.press(screen.getByText('Take'));
+    fireEvent.press(screen.getByText('Log'));
     expect(mockLogDose).toHaveBeenCalledWith(
       expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
       'taken',
@@ -232,7 +232,7 @@ describe('MedicationDetailScreen', () => {
     const screen = setupScreen(buildMedication());
 
     expect(screen.getByText('Taken')).toBeTruthy();
-    expect(screen.queryByText('Take')).toBeNull();
+    expect(screen.queryByText('Log')).toBeNull();
   });
 
   it('logs and counts PRN doses for schedule-less medications', () => {
@@ -244,7 +244,7 @@ describe('MedicationDetailScreen', () => {
 
     expect(screen.getByText('As needed')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
-    fireEvent.press(screen.getByText('Take'));
+    fireEvent.press(screen.getByText('Log'));
     expect(mockLogPrn).toHaveBeenCalledWith(expect.objectContaining({ id: 'med-1' }));
   });
 
@@ -283,14 +283,14 @@ describe('MedicationDetailScreen', () => {
 
     expect(screen.getByText('Inactive')).toBeTruthy();
     expect(screen.queryByText('As needed')).toBeNull();
-    expect(screen.queryByText('Take')).toBeNull();
+    expect(screen.queryByText('Log')).toBeNull();
   });
 
   it('shows the schedules card with an Add action even when no schedules exist', () => {
     const screen = setupScreen(buildMedication({ schedules: [] }));
 
     expect(screen.getByText('Schedules')).toBeTruthy();
-    expect(screen.getByText('No schedules. Take as needed.')).toBeTruthy();
+    expect(screen.getByText('No schedule. Doses are logged as needed.')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Add schedule'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('MedicationScheduleForm', {

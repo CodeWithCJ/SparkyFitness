@@ -33,9 +33,15 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
   const { t } = useTranslation();
   const pct = Math.max(0, Math.min(1, ga.progress));
 
+  const dueLabel = !discreetMode && (
+    <Text className="text-text-secondary text-sm">
+      {t('mobileComponents.pregnancy.due')} <Text className="text-accent-primary font-semibold">{formatDate(dueDate)}</Text>
+    </Text>
+  );
+
   return (
-    <View className="bg-surface rounded-xl p-5 shadow-sm border-0 gap-3">
-      <View className="flex-row items-start justify-between">
+    <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
+      <View className="flex-row items-end justify-between">
         <View>
           <Text className="text-text-secondary text-xs">
             {discreetMode ? t('mobileComponents.pregnancy.wellnessProgress') : trimesterLabel(ga.trimester, t)}
@@ -45,12 +51,7 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
           </Text>
         </View>
         <View className="flex-row items-center gap-3">
-          {!discreetMode && (
-            <View className="items-end">
-              <Text className="text-text-secondary text-xs">{t('mobileComponents.pregnancy.due')}</Text>
-              <Text className="text-text-primary text-sm font-semibold">{formatDate(dueDate)}</Text>
-            </View>
-          )}
+          {!discreetMode && dueLabel}
           {onEdit && (
             <TouchableOpacity onPress={onEdit} hitSlop={8} testID="week-banner-edit">
               <Icon name="pencil" size={16} color={textMuted} />
@@ -60,7 +61,7 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
       </View>
 
       {/* Progress bar across the 280-day term */}
-      <View className="h-2 rounded-full bg-raised overflow-hidden">
+      <View className="h-2 rounded-full bg-progress-track overflow-hidden">
         <View
           className="h-full rounded-full"
           style={{ width: `${pct * 100}%`, backgroundColor: tokens.phasePregnant }}

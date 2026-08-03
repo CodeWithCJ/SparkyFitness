@@ -20,11 +20,13 @@ import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 import {
   deriveExerciseModality,
+  canEditGroupedWorkout,
   setsDistanceKm,
   setsDurationMinutes,
+  toNumber,
+  parseCsv,
+  DEFAULT_CSV_FORMAT,
 } from '@workspace/shared';
-
-import papa from 'papaparse';
 import {
   getGroupedExerciseSessionById,
   getGroupedExerciseSessionByIdWithClient,
@@ -1545,15 +1547,38 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
   const failedRows = [];
   try {
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    const { data, errors } = papa.parse(fileContent, {
-      header: true,
-      skipEmptyLines: true,
+    // parseCsv (shared, not a raw papa.parse call) so delimiter detection
+    // failures and parse issues are logged and included in warnings/failedRows
+    // naming the actual problem, instead of a blanket "CSV parsing failed".
+    const {
+      rows: data,
+      resolvedDecimal,
+      warnings,
+      fatal,
+    } = parseCsv(fileContent, DEFAULT_CSV_FORMAT, {
+      numericColumns: ['calories_per_hour'],
     });
-    if (errors.length > 0) {
-      log('error', 'CSV parsing errors:', errors);
-      throw new Error('CSV parsing failed. Please check file format.');
+    if (fatal) {
+      log('error', 'CSV parsing error:', fatal);
+      throw new Error(fatal.message);
     }
-    for (const row of data as Record<string, string>[]) {
+    const warningRowIndices = new Set<number>();
+    if (warnings.length > 0) {
+      log('warn', 'CSV parsing warnings:', warnings);
+      for (const w of warnings) {
+        if (w.row !== undefined) {
+          warningRowIndices.add(w.row);
+        }
+        failedRows.push({
+          row: w.row !== undefined ? { row: w.row } : {},
+          reason: w.message,
+        });
+        failedCount++;
+      }
+    }
+    for (let i = 0; i < data.length; i++) {
+      if (warningRowIndices.has(i)) continue;
+      const row = data[i];
       try {
         const exerciseName = row.name ? row.name.trim() : null;
         if (!exerciseName) {
@@ -1591,8 +1616,11 @@ async function importExercisesFromCSV(authenticatedUserId: any, filePath: any) {
             ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
               row.secondary_muscles.split(',').map((m: any) => m.trim())
             : [],
+          // toNumber (not parseFloat) so a locale-comma decimal like "300,5"
+          // parses to 300.5 instead of parseFloat's silent truncation at the
+          // comma — the same #1960 bug already fixed client-side.
           calories_per_hour: row.calories_per_hour
-            ? parseFloat(row.calories_per_hour)
+            ? (toNumber(row.calories_per_hour, resolvedDecimal) ?? null)
             : null,
           user_id: authenticatedUserId,
           is_custom: true,
@@ -1939,10 +1967,10 @@ async function updateGroupedWorkoutSession(
     );
     const targetEntryDate = updateData.entry_date || existingSession.entry_date;
     if (updateData.exercises !== undefined) {
-      if (!['manual', 'sparky'].includes(existingSession.source)) {
+      if (!canEditGroupedWorkout(existingSession.source)) {
         throw createServiceError(
           409,
-          'Nested exercise editing is only supported for manual or sparky workouts.'
+          'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.'
         );
       }
 
@@ -1962,6 +1990,17 @@ async function updateGroupedWorkoutSession(
       const useReconcile =
         withId === incomingExercises.length && incomingExercises.length > 0;
 
+      // Capture the workout plan assignment before any child rows are deleted:
+      // the assignment id lives on exercise_entries, so once delete-and-recreate
+      // removes them there is nothing left to recover it from. Returns null for
+      // sessions that never came from a workout plan.
+      const workoutPlanAssignmentId =
+        await exerciseEntryDb.getWorkoutPlanAssignmentIdByPresetEntryIdWithClient(
+          client,
+          userId,
+          presetEntryId
+        );
+
       if (!useReconcile) {
         await exerciseEntryDb.deleteExerciseEntriesByPresetEntryIdWithClient(
           client,
@@ -1978,6 +2017,7 @@ async function updateGroupedWorkoutSession(
           incomingExercises,
           {
             entrySource: existingSession.source,
+            workoutPlanAssignmentId,
           }
         );
       } else {
@@ -2020,6 +2060,7 @@ async function updateGroupedWorkoutSession(
               [ex],
               {
                 entrySource: existingSession.source,
+                workoutPlanAssignmentId,
               }
             );
             continue;
@@ -2067,7 +2108,7 @@ async function updateGroupedWorkoutSession(
               entry_time: ex.entry_time ?? null,
             },
             actingUserId,
-            existingSession.source
+            existingById.get(ex.id)?.source ?? existingSession.source
           );
 
           await exerciseEntryDb._reconcileExerciseEntrySetsWithClient(
@@ -2317,9 +2358,15 @@ async function importExercisesFromJson(
           ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
             exerciseData.secondary_muscles.split(',').map((m: any) => m.trim())
           : [],
-        calories_per_hour: exerciseData.calories_per_hour
-          ? parseFloat(exerciseData.calories_per_hour)
-          : null,
+        // toNumber (not parseFloat) so a locale-comma decimal parses
+        // correctly instead of silently truncating — same fix as the CSV
+        // import path above.
+        calories_per_hour:
+          exerciseData.calories_per_hour !== undefined &&
+          exerciseData.calories_per_hour !== null &&
+          exerciseData.calories_per_hour !== ''
+            ? (toNumber(String(exerciseData.calories_per_hour)) ?? null)
+            : null,
         user_id: authenticatedUserId,
         is_custom: exerciseData.is_custom === true,
         shared_with_public: exerciseData.shared_with_public === true,

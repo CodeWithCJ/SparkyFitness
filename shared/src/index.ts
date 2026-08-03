@@ -1,4 +1,5 @@
 export * from "./schemas/api/AiServiceSettings.api.zod.ts";
+export * from "./schemas/api/Backup.api.zod.ts";
 export * from "./schemas/api/CustomCategories.api.zod.ts";
 export * from "./schemas/api/CustomMeasurements.api.zod.ts";
 export * from "./schemas/api/CheckInMeasurements.api.zod.ts";
@@ -93,6 +94,9 @@ export * from "./utils/calorieCalculations.ts";
 export * from "./utils/servingSizeConversions.ts";
 export * from "./utils/nutrientMatching.ts";
 export * from "./utils/search.ts";
+export * from "./utils/csvValue.ts";
+export * from "./utils/csvFormat.ts";
+export * from "./utils/parseCsv.ts";
 export * from "./ai/unitConversion.ts";
 export * from "./ai/confidenceLabels.ts";
 export * from "./medications/contracts.ts";

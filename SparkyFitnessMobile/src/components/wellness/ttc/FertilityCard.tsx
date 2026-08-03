@@ -112,6 +112,10 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
           )}
         </View>
       )}
+
+      <Text className="text-text-secondary text-sm">
+         {t('mobileComponents.wellness.fertility.disclaimer')}
+      </Text>
     </View>
   );
 };

@@ -1,6 +1,6 @@
 ---
 id: sparky-5k-stars
-active: true
+active: false
 title: SparkyFitness Reaches 5K GitHub Stars! 🌟
 ---
 

@@ -406,6 +406,50 @@ const WorkoutMockup: React.FC = () => {
   );
 };
 
+const MedicationsMockup: React.FC = () => {
+  const { t } = useTranslation();
+  const [catTeal, textSecondary] = useCSSVariable([
+    '--color-cat-teal',
+    '--color-text-secondary',
+  ]) as [string, string];
+
+  return (
+    <View
+      className="h-44 items-center justify-center overflow-hidden"
+      style={{ backgroundColor: `${catTeal}20` }}
+    >
+      <View
+        className="bg-surface rounded-2xl shadow-md justify-center px-4 py-3 border border-border-subtle"
+        style={{ width: 220, height: 110 }}
+      >
+        <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center gap-2">
+            <View
+              className="w-7 h-7 rounded-full items-center justify-center"
+              style={{ backgroundColor: `${catTeal}30` }}
+            >
+              <Icon name="medication" size={14} color={catTeal} />
+            </View>
+            <Text className="text-xs font-bold text-text-primary">{t('screenCopy.whatsNew.medicationName')}</Text>
+          </View>
+          <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: `${catTeal}25` }}>
+            <Text className="text-[10px] font-semibold" style={{ color: catTeal }}>
+              {t('screenCopy.whatsNew.medicationTime')}
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
+          <Text className="text-[11px]" style={{ color: textSecondary }}>
+            {t('screenCopy.whatsNew.medicationDose')}
+          </Text>
+          <Text className="text-[11px] font-medium text-text-primary">{t('screenCopy.whatsNew.medicationTaken')}</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -421,9 +465,19 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
     {
-       eyebrow: t('screenCopy.whatsNew.cycleEyebrow'),
-       headline: t('screenCopy.whatsNew.cycleHeadline'),
-       body: t('screenCopy.whatsNew.cycleBody'),
+      eyebrow: t('screenCopy.whatsNew.medicationsEyebrow'),
+      headline: t('screenCopy.whatsNew.medicationsHeadline'),
+      body: t('screenCopy.whatsNew.medicationsBody'),
+      hero: <MedicationsMockup />,
+      cta: {
+        label: t('screenCopy.whatsNew.medicationsSetup'),
+        onPress: () => navigation.navigate('MedicationsList'),
+      },
+    },
+    {
+      eyebrow: t('screenCopy.whatsNew.cycleEyebrow'),
+      headline: t('screenCopy.whatsNew.cycleHeadline'),
+      body: t('screenCopy.whatsNew.cycleBody'),
       hero: <CycleMockup />,
     },
     {

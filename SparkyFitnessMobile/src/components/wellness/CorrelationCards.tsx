@@ -72,7 +72,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
               <Text className="w-20 text-text-secondary text-xs">
                 {phaseLabel(p.phase, t)}
               </Text>
-              <View className="flex-1 h-2 rounded-full bg-raised overflow-hidden">
+              <View className="flex-1 h-2 rounded-full bg-progress-rail overflow-hidden">
                 <View
                   className="h-full bg-accent-primary rounded-full"
                   style={{ width: `${percentage}%` }}
@@ -135,10 +135,10 @@ const CorrelationCards: React.FC = () => {
       {flags.map((f) => (
         <View
           key={f.key}
-          className="flex-row items-start p-3 bg-surface rounded-xl border-none"
+          className="flex-row items-start p-3 bg-surface rounded-xl border-none shadow-sm"
         >
           <View className="mr-2 mt-0.5">
-            <Icon name="warning" size={16} color={warningColor} />
+            <Icon name="warning" size={18} color={warningColor} />
           </View>
           <Text className="flex-1 text-xs text-text-primary leading-normal">
              {conditionLabel(f.key, t)}

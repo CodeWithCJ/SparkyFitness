@@ -1,5 +1,10 @@
-import type { CreatePresetSessionRequest } from '@workspace/shared';
-import { instantHourMinute, setsDurationMinutes } from '@workspace/shared';
+import {
+  instantHourMinute,
+  resolveExerciseModality,
+  setsDurationMinutes,
+  type CreatePresetSessionRequest,
+  type ExerciseModality,
+} from '@workspace/shared';
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 
 export const DEFAULT_REST_SECONDS = 90;
@@ -26,6 +31,7 @@ export interface WorkoutPlaybackSetDraft extends WorkoutPresetSet {
 export interface WorkoutPlaybackExerciseDraft {
   exercise_id: string;
   exercise_name: string;
+  modality?: ExerciseModality;
   image_url?: string;
   notes: string | null;
   started_at?: string | null;
@@ -301,6 +307,10 @@ export function createWorkoutPlaybackDraftFromPreset(
         exercise.exercise?.name ||
         `Exercise ${exerciseIndex + 1}`,
       image_url: exercise.image_url || exercise.exercise?.images?.[0],
+      modality: resolveExerciseModality(
+        exercise.modality ?? exercise.exercise?.modality,
+        exercise.category ?? exercise.exercise?.category
+      ),
       notes: null,
       started_at: null,
       ended_at: null,

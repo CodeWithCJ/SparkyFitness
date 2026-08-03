@@ -4,11 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCSSVariable } from 'uniwind';
-import { useCurrentPregnancy, usePregnancyOverview } from '../../../hooks/usePregnancy';
-import VitalsCard from './VitalsCard';
-import KickCounter from './KickCounter';
-import ContractionTimer from './ContractionTimer';
-import BumpPhotoJournal from './BumpPhotoJournal';
+import { useCurrentPregnancy } from '../../../hooks/usePregnancy';
 import Button from '../../ui/Button';
 import type { RootStackParamList } from '../../../types/navigation';
 import { getTodayDate } from '../../../utils/dateUtils';
@@ -18,21 +14,34 @@ import CycleTodayView from '../CycleTodayView';
 interface PregnancyLogViewProps {
   date?: string;
   onSaveSuccess?: () => void;
+  /** Parent-triggered save: forwarded to CycleTodayView. */
+  saveRequestRef?: React.MutableRefObject<(() => void) | null>;
+  /** Reports saving state so a parent-owned save button can mirror it. */
+  onSavingChange?: (saving: boolean) => void;
+  /** Opens the parent's calendar sheet from the in-form date row. */
+  onDatePress?: () => void;
+  hideSaveButton?: boolean;
 }
 
 /**
- * Active Pregnancy Logging View for CycleLogModalScreen.
- * Contains interactive tools: Vitals logging (weight/BP), kick counter, contraction timer,
- * bump photos, and pregnancy symptoms/notes.
+ * Pregnancy logging form for CycleLogModalScreen: weight, symptoms, and notes
+ * for the selected date, saved through the screen-level Save action. Live
+ * tools (bump photos, safety search) live on the Pregnancy Hub.
  */
-const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({ date = getTodayDate(), onSaveSuccess }) => {
+const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({
+  date = getTodayDate(),
+  onSaveSuccess,
+  saveRequestRef,
+  onSavingChange,
+  onDatePress,
+  hideSaveButton,
+}) => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const { t } = useTranslation();
 
   const { pregnancy, isLoading: isPregnancyLoading } = useCurrentPregnancy();
   const hasActive = !!pregnancy && pregnancy.status === 'active';
-  const { overview } = usePregnancyOverview(undefined, hasActive);
 
   if (isPregnancyLoading) {
     return (
@@ -56,28 +65,15 @@ const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({ date = getTodayDate
     );
   }
 
-  const currentWeek = overview?.gestation?.week ?? 0;
-
   return (
-    <View className="gap-4">
-      {/* Vitals (Weight & BP) */}
-      {pregnancy && <VitalsCard pregnancy={pregnancy} />}
-
-      {/* Kick Counter, Contraction Timer & Bump Photos */}
-      {pregnancy?.id && (
-        <>
-          <KickCounter pregnancyId={pregnancy.id} />
-          <ContractionTimer pregnancyId={pregnancy.id} />
-          <BumpPhotoJournal
-            pregnancyId={pregnancy.id}
-            currentWeek={currentWeek}
-          />
-        </>
-      )}
-
-      {/* Daily symptom & notes log for selected date */}
-      <CycleTodayView date={date} onSaveSuccess={onSaveSuccess} />
-    </View>
+    <CycleTodayView
+      date={date}
+      onSaveSuccess={onSaveSuccess}
+      saveRequestRef={saveRequestRef}
+      onSavingChange={onSavingChange}
+      onDatePress={onDatePress}
+      hideSaveButton={hideSaveButton}
+    />
   );
 };
 

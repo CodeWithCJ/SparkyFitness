@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useCSSVariable } from 'uniwind';
 import { lookupSafety, FOOD_SAFETY, MED_SAFETY } from '@workspace/shared';
 import type { SafetyItem, SafetyStatus } from '@workspace/shared';
 import FormInput from '../../FormInput';
 import SegmentedControl from '../../SegmentedControl';
-import { useCSSVariable } from 'uniwind';
 
 const STATUS_STYLE: Record<SafetyStatus, { bg: string; text: string }> = {
   safe: { bg: 'bg-green-100', text: 'text-green-700' },
@@ -68,13 +68,16 @@ const FoodMedSafetySearch: React.FC = () => {
            {t('mobileComponents.wellness.safety.none')}
         </Text>
       ) : (
-        <View className="gap-2">
-          {results.map((item) => {
+        <View>
+          {results.map((item, idx) => {
             const style = STATUS_STYLE[item.status];
             return (
-              <View key={item.name} className="rounded-xl bg-raised p-3 gap-1">
+              <View
+                key={item.name}
+                className={`py-2 gap-1 ${idx < results.length - 1 ? 'border-b border-border-subtle' : ''}`}
+              >
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-text-primary text-sm font-semibold flex-1 mr-2">
+                  <Text className="text-text-primary text-base font-semibold flex-1 mr-2">
                     {item.name}
                   </Text>
                   <View className={`rounded-full px-2.5 py-0.5 ${style.bg}`}>
@@ -87,6 +90,10 @@ const FoodMedSafetySearch: React.FC = () => {
           })}
         </View>
       )}
+
+      <Text className="text-text-secondary text-sm">
+         {t('mobileComponents.wellness.safety.guidance')}
+      </Text>
     </View>
   );
 };

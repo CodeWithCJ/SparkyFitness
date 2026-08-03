@@ -2756,15 +2756,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/utils/workoutSession.ts",
-      "value": "Sparky",
-      "context": {
-        "prop": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/utils/workoutSession.ts:Sparky:{\"prop\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/WritebackMetrics.ts",
       "value": "Hydration",
       "context": {
@@ -3060,7 +3051,6 @@
     "hardcoded-ui-text:src/utils/nativeHeaderDatePicker.ts:{{dynamic}} ▾:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/utils/nativeHeaderDatePicker.ts:{{dynamic}}: next day:{\"prop\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/utils/nativeHeaderDatePicker.ts:{{dynamic}}: previous day:{\"prop\":\"accessibilityLabel\"}": 1,
-    "hardcoded-ui-text:src/utils/workoutSession.ts:Sparky:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/WritebackMetrics.ts:Hydration:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/WritebackMetrics.ts:Nutrition:{\"prop\":\"label\"}": 1
   }

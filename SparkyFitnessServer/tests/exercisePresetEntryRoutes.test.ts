@@ -3,6 +3,10 @@ import { z } from 'zod';
 import exerciseService from '../services/exerciseService.js';
 import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
 import exercisePresetEntryRoutes from '../routes/exercisePresetEntryRoutes.js';
+// @ts-expect-error no supertest types
+import request from 'supertest';
+import express from 'express';
+import errorHandler from '../middleware/errorHandler.js';
 
 vi.mock('@workspace/shared', () => ({
   createPresetSessionRequestSchema: {
@@ -375,7 +379,7 @@ describe('exercisePresetEntryRoutes', () => {
   });
   it('surfaces 409 conflicts from grouped workout updates', async () => {
     const conflictError = new Error(
-      'Nested exercise editing is only supported for manual or sparky workouts.'
+      'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.'
     );
     // @ts-expect-error TS(2339): Property 'status' does not exist on type 'Error'.
     conflictError.status = 409;
@@ -399,7 +403,7 @@ describe('exercisePresetEntryRoutes', () => {
     expect(response.statusCode).toBe(409);
     expect(response.body).toEqual({
       message:
-        'Nested exercise editing is only supported for manual or sparky workouts.',
+        'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.',
     });
   });
   it('deletes grouped workout sessions', async () => {
@@ -417,5 +421,132 @@ describe('exercisePresetEntryRoutes', () => {
       groupedSessionFixture.id,
       '99999999-9999-4999-8999-999999999999'
     );
+  });
+});
+
+const app = express();
+
+app.use(express.json());
+
+app.use((req: any, _res, next) => {
+  req.userId = '99999999-9999-4999-8999-999999999999';
+  req.originalUserId = '99999999-9999-4999-8999-999999999999';
+  next();
+});
+
+app.use('/exercise-preset-entries', exercisePresetEntryRoutes);
+app.use(errorHandler);
+
+describe('exercisePresetEntryRoutes http (supertest)', () => {
+  const sessionId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const exerciseEntryId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const exerciseId = '11111111-1111-4111-8111-111111111111';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('accepts nested updates for Workout Plan sessions over http', async () => {
+    const planSession = {
+      ...groupedSessionFixture,
+      source: 'Workout Plan',
+      exercises: [
+        {
+          ...groupedSessionFixture.exercises[0],
+          source: 'Workout Plan',
+        },
+      ],
+    };
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exerciseService.updateGroupedWorkoutSession.mockResolvedValue(planSession);
+
+    const response = await request(app)
+      .put(`/exercise-preset-entries/${sessionId}`)
+      .send({
+        exercises: [
+          {
+            id: exerciseEntryId,
+            exercise_id: exerciseId,
+            sort_order: 0,
+            duration_minutes: 12,
+            sets: [
+              {
+                id: 1,
+                set_number: 1,
+                reps: 12,
+                weight: 60,
+                completed_at: '2026-03-12T10:00:00.000Z',
+                is_pr: true,
+              },
+            ],
+          },
+        ],
+      });
+
+    expect(response.statusCode).toBe(200);
+    expect(exerciseService.updateGroupedWorkoutSession).toHaveBeenCalledWith(
+      '99999999-9999-4999-8999-999999999999',
+      '99999999-9999-4999-8999-999999999999',
+      sessionId,
+      expect.objectContaining({
+        exercises: [
+          expect.objectContaining({
+            id: exerciseEntryId,
+            exercise_id: exerciseId,
+            duration_minutes: 12,
+            sets: [
+              expect.objectContaining({
+                id: 1,
+                reps: 12,
+                weight: 60,
+                completed_at: '2026-03-12T10:00:00.000Z',
+                is_pr: true,
+              }),
+            ],
+          }),
+        ],
+      })
+    );
+    expect(response.body).toEqual(planSession);
+  });
+
+  it('returns http 409 when grouped workout update rejects a non-editable session', async () => {
+    const error = Object.assign(
+      new Error(
+        'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.'
+      ),
+      { status: 409 }
+    );
+    // @ts-expect-error TS(2339): Property 'mockRejectedValue' does not exist on typ... Remove this comment to see the full error message
+    exerciseService.updateGroupedWorkoutSession.mockRejectedValue(error);
+
+    const response = await request(app)
+      .put(`/exercise-preset-entries/${sessionId}`)
+      .send({
+        exercises: [
+          {
+            id: exerciseEntryId,
+            exercise_id: exerciseId,
+            sort_order: 0,
+            duration_minutes: 12,
+            sets: [
+              {
+                id: 1,
+                set_number: 1,
+                reps: 12,
+                weight: 60,
+                completed_at: '2026-03-12T10:00:00.000Z',
+                is_pr: true,
+              },
+            ],
+          },
+        ],
+      });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.body).toEqual({
+      message:
+        'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.',
+    });
   });
 });

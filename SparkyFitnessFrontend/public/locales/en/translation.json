@@ -45,11 +45,18 @@
     "successTitle": "Success",
     "loadedRowsFromText": "Loaded {{count}} rows from text.",
     "emptyFile": "The selected file is empty.",
-    "headersMismatchFile": "The CSV headers do not match the required format or order. Please download the template.",
+    "headersMismatchFile": "The CSV headers do not match the required format. Please map the fields to continue.",
     "noDataTitle": "No Data Found",
     "noDataText": "The CSV file contains headers but no data rows.",
     "validationErrorTitle": "Validation Error",
-    "nameRequired": "The 'name' field cannot be empty."
+    "nameRequired": "The 'name' field cannot be empty.",
+    "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB.",
+    "defaultVariantNote": "At least one variant per food must be set as the default unit (Is Default = True).",
+    "upfrontNote": "Note: Each food must have at least one variant set as the default unit (Is Default = True).",
+    "missingDefaultWarning": "Warning: {{count}} food(s) do not have a default variant set. Please set at least one variant as default (highlighted in yellow below).",
+    "missingDefaultValidationError": "At least one variant per food must be set as the default unit.",
+    "filterMissingDefault": "Show Missing Default ({{count}})",
+    "showAllRows": "Show All Rows ({{count}})"
   },
   "foods": {
     "providerVerified": "Verified food"
@@ -84,7 +91,10 @@
       "wed": "Wed",
       "thu": "Thu",
       "fri": "Fri",
-      "sat": "Sat"
+      "sat": "Sat",
+      "loggedCount_one": "{{count}} logged symptom",
+      "loggedCount_other": "{{count}} logged symptoms",
+      "maxSeverity": "Max severity: {{n}}"
     },
     "common": {
       "logging": "Logging…",
@@ -158,11 +168,6 @@
     },
     "bodymap": {
       "label": "Injection site body map"
-    },
-    "calendar": {
-      "loggedCount_one": "{{count}} logged symptom",
-      "loggedCount_other": "{{count}} logged symptoms",
-      "maxSeverity": "Max severity: {{n}}"
     },
     "gi": {
       "title": "GI sub-tracker",
@@ -635,7 +640,8 @@
       "validationError": "Validation Error",
       "nameEmptyError": "The 'name' field cannot be empty.",
       "copied": "Copied!",
-      "copiedToClipboard": "'{{value}}' copied to clipboard."
+      "copiedToClipboard": "'{{value}}' copied to clipboard.",
+      "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB."
     },
     "playbackModal": {
       "voiceLabel": "Voice:",
@@ -660,6 +666,15 @@
       "statusCreated": "Imported",
       "statusUpdated": "Updated",
       "statusFailed": "Failed"
+    },
+    "importHistoryCSV": {
+      "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB.",
+      "pasteFirst": "Please paste some CSV data first.",
+      "pastePlaceholder": "Or paste CSV content here...",
+      "parseText": "Parse Text",
+      "rowsRejected": "{{failed}} of {{total}} rows could not be imported — see details below.",
+      "headersMapped": "Headers Mapped",
+      "mapRequiredFields": "Your CSV headers do not match the required format. Please map the fields to continue."
     }
   },
   "workoutPresetsManager": {
@@ -1257,6 +1272,7 @@
     "backupSettings": {
       "title": "Backup Settings",
       "description": "Configure scheduled backups and restore options",
+      "error": "Error",
       "loadingSettings": "Loading settings...",
       "errorLoadingSettings": "Could not load global backup settings.",
       "enableScheduledBackups": "Enable Scheduled Backups:",
@@ -1267,6 +1283,21 @@
       "lastBackupStatus": "Last Backup Status:",
       "saveSettings": "Save Settings",
       "runManualBackup": "Run Manual Backup Now",
+      "downloadBackup": "Download Backup",
+      "availableBackups": "Available Backups",
+      "availableBackupsDescription": "Choose a backup file to download.",
+      "noBackupsFound": "No backup files found.",
+      "backupCount_one": "{{count}} backup",
+      "backupCount_other": "{{count}} backups",
+      "backupFileName": "File Name",
+      "backupDate": "Started",
+      "backupCompletedDate": "Completed",
+      "backupSize": "Size",
+      "download": "Download",
+      "downloadBackupFile": "Download {{fileName}}",
+      "downloadBackupSuccess": "Backup downloaded successfully.",
+      "failedToDownloadBackup": "Failed to download backup.",
+      "failedToFetchBackups": "Failed to fetch backup files.",
       "backupSuccess": "Backup completed successfully.",
       "backupFailed": "Manual backup failed.",
       "restoreBackup": "Restore Backup",
@@ -2974,5 +3005,53 @@
       "notes": "Notes",
       "notesPlaceholder": "Anything else to note…"
     }
+  },
+  "healthDataImport": {
+    "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB."
+  },
+  "diaryCsvImport": {
+    "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB.",
+    "headersMismatch": "The CSV is missing required columns. Please map the fields to continue."
+  },
+  "csvImport": {
+    "changeFormat": "Change",
+    "hideOptions": "Hide format options",
+    "delimiterLabel": "Delimiter",
+    "decimalLabel": "Number format",
+    "dateLabel": "Date format",
+    "quoteLabel": "Quote character",
+    "advanced": "Advanced",
+    "delimiterDetectionFailed": "Couldn't detect a delimiter — pick one below.",
+    "decimalDetected": "Detected: {{format}} (from \"{{evidence}}\")",
+    "decimalNotConfident": "No ambiguous numbers found; using US.",
+    "previewSummary": "{{columns}} columns, {{rows}} rows detected.",
+    "resultImported": "Imported",
+    "resultSkipped": "Skipped",
+    "resultFailed": "Failed",
+    "viewErrors": "View failed rows",
+    "summary": {
+      "auto": "Auto-detect",
+      "autoDelimiter": "Auto-detect ({{label}})",
+      "autoDecimal": "Auto decimals"
+    },
+    "decimal": {
+      "auto": "Auto-detect",
+      "us": "1,234.56 (US)",
+      "eu": "1.234,56 (EU)",
+      "usShort": "1,234.56 (US)",
+      "euShort": "1.234,56 (EU)"
+    },
+    "delimiter": {
+      "comma": "Comma",
+      "semicolon": "Semicolon",
+      "tab": "Tab",
+      "pipe": "Pipe"
+    },
+    "mapHeaders": "Map CSV Headers",
+    "mapHeadersDescription": "Your file's columns don't match the expected names. Pair each required field with the column that holds it, or Cancel and adjust the delimiter above if the columns above look wrong.",
+    "selectHeader": "Select header",
+    "none": "None",
+    "confirmMapping": "Confirm",
+    "cancel": "Cancel"
   }
 }

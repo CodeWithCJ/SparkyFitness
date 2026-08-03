@@ -21,10 +21,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
-import { localDateToDay } from '@workspace/shared';
+import {
+  localDateToDay,
+  isBlank,
+  toNumber,
+  parseCsv,
+  parseCsvHeaders,
+  suggestHeaderMapping,
+  MAX_CSV_FILE_SIZE_BYTES,
+  type DecimalFormat,
+  type CsvFormatOptions,
+} from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
+import { useCsvFormat } from '@/hooks/useCsvFormat';
+import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
+import CsvFormatPreview from '@/components/CsvImport/CsvFormatPreview';
+import CsvImportResultPanel from '@/components/CsvImport/CsvImportResultPanel';
+import CsvHeaderMappingDialog from '@/components/CsvImport/CsvHeaderMappingDialog';
 import type {
   FoodDiaryImportRow,
   FoodDiaryImportScope,
@@ -81,6 +96,10 @@ const unitOptions = [
 
 const FALLBACK_MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks'];
 
+// Debounce for the reparse-on-format-change effect below — collapses rapid
+// format-bar clicks into a single re-parse instead of one per click.
+const REPARSE_DEBOUNCE_MS = 400;
+
 const NUTRIENT_HEADERS = [
   'calories',
   'protein',
@@ -115,13 +134,18 @@ const BASE_HEADERS = [
 ];
 const BASE_HEADER_SET = new Set(BASE_HEADERS);
 
+// The base columns that are free numbers rather than text/dropdown/calendar
+// cells. These are sent to the server as strings (FoodDiaryImportRow types
+// them that way) and parsed there with plain Number() — so a locale-comma
+// value like "80,2" needs to be normalized to "80.2" here first, or the
+// server-side Number() call will silently drop it the same way toNumber was
+// introduced to prevent client-side (issue #1960).
+const BASE_NUMERIC_HEADERS = ['quantity', ...NUTRIENT_HEADERS];
+
 // Columns that are NOT free numbers: date is a calendar picker, meal_type/unit
 // are dropdowns, and these three are free text. Everything else (quantity,
 // standard nutrients, custom-nutrient columns) is numeric.
 const TEXT_HEADERS = new Set(['meal_name', 'food_name', 'brand']);
-
-const isBlank = (v: string | undefined) =>
-  v === undefined || v === null || v.trim() === '';
 
 // Keeps only digits and a single decimal point, so number cells reject 'e',
 // '+', '-', and stray dots while still allowing decimals.
@@ -136,21 +160,43 @@ const sanitizeNumericInput = (value: string): string => {
   return cleaned;
 };
 
-const parseCSV = (text: string, headers: string[]): CSVRow[] => {
-  const lines = text.split('\n').filter((line) => line.trim() !== '');
-  if (lines.length < 2) return [];
-  const fileHeaders = lines[0]?.split(',').map((h) => h.trim()) ?? [];
-  const data: CSVRow[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i]?.split(',').map((v) => v.trim());
-    const row: CSVRow = { id: generateUniqueId() };
-    headers.forEach((header) => {
-      const idx = fileHeaders.indexOf(header);
-      row[header] = idx >= 0 && values ? values[idx] || '' : '';
-    });
-    data.push(row);
-  }
-  return data;
+// Header row only, via the shared parser (delimiter/quote-char driven by
+// the user's format choice instead of Papa's silent auto-detect).
+const getCsvHeaders = (
+  text: string,
+  options: CsvFormatOptions
+): string[] | undefined => parseCsvHeaders(text, options).headers;
+
+// parseCsv (shared, not a raw Papa.parse call): it handles quoted fields (a
+// food or meal name containing a comma), RFC 4180 escaped quotes, and stray
+// delimiters inside free-text columns, none of which line.split(',') gets
+// right. `headers` may include columns (e.g. a custom nutrient) the file
+// doesn't have — those come back as '' rather than being omitted.
+//
+// When `mapping` is given (after the header-mapping dialog is confirmed),
+// each canonical BASE_HEADERS entry reads from its mapped file column
+// instead of a column of the same name; custom-nutrient columns are never
+// in `mapping` so they keep reading by their own name, same as before.
+const parseCSV = (
+  text: string,
+  headers: string[],
+  options: CsvFormatOptions,
+  mapping?: Record<string, string>
+): { rows: CSVRow[]; resolvedDecimal: DecimalFormat } => {
+  const { rows: rawRows, resolvedDecimal } = parseCsv(text, options, {
+    numericColumns: BASE_NUMERIC_HEADERS,
+  });
+  return {
+    resolvedDecimal,
+    rows: rawRows.map((rawRow) => {
+      const row: CSVRow = { id: generateUniqueId() };
+      headers.forEach((header) => {
+        const fileColumn = mapping?.[header] ?? header;
+        row[header] = (rawRow[fileColumn] ?? '').trim();
+      });
+      return row;
+    }),
+  };
 };
 
 const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
@@ -158,16 +204,45 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
   const { formatDate, parseDateInUserTimezone } = usePreferences();
   const { data: mealTypes } = useMealTypes();
   const { data: customNutrients } = useCustomNutrients();
+  const csvFormat = useCsvFormat();
 
   const [loading, setLoading] = useState(false);
   const [csvData, setCsvData] = useState<CSVRow[]>([]);
   const [csvText, setCsvText] = useState('');
+  // Independent of csvText (cleared on successful parse) so the format
+  // bar's live preview reflects whatever was most recently loaded, from
+  // either the file input or the paste textarea.
+  const [loadedText, setLoadedText] = useState('');
   const [includeFamily, setIncludeFamily] = useState(false);
   const [includePublic, setIncludePublic] = useState(false);
   const [overrideNutrition, setOverrideNutrition] = useState(false);
   const [uploadedHeaders, setUploadedHeaders] = useState<string[] | null>(null);
   const [result, setResult] = useState<FoodDiaryImportResult | null>(null);
+  const [showMapping, setShowMapping] = useState(false);
+  const [fileHeaders, setFileHeaders] = useState<string[]>([]);
+  const [headerMapping, setHeaderMapping] = useState<Record<string, string>>(
+    {}
+  );
+  const [rawCsvText, setRawCsvText] = useState('');
+  // Tracks whether csvData currently reflects the header-mapping path, so
+  // the reparse-on-format-change effects below know whether to re-run
+  // parseCSV against loadedText with no mapping, or against rawCsvText
+  // with headerMapping.
+  const [mappingConfirmed, setMappingConfirmed] = useState(false);
+  // Decimal format resolved over the *whole* file by the last full parse.
+  // The format bar's preview only sees the first 1000 rows, so a file whose
+  // only disambiguating value sits past that would submit under the wrong
+  // format if we reused the preview's answer here.
+  const [resolvedDecimal, setResolvedDecimal] = useState<DecimalFormat>('us');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const preview = useMemo(
+    () =>
+      loadedText
+        ? csvFormat.parse(loadedText, { numericColumns: BASE_NUMERIC_HEADERS })
+        : null,
+    [loadedText, csvFormat]
+  );
 
   const mealTypeOptions = useMemo(
     () =>
@@ -176,6 +251,8 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
         : FALLBACK_MEAL_TYPES,
     [mealTypes]
   );
+
+  const lastEvaluatedKeyRef = useRef<string>('');
 
   // Base columns plus one column per user-defined custom nutrient (by name).
   const defaultHeaders = useMemo(
@@ -201,33 +278,143 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
   const validateHeaders = (fileHeaders: string[] | undefined) =>
     !!fileHeaders && BASE_HEADERS.every((h) => fileHeaders.includes(h));
 
-  const loadCsvText = (text: string, source: 'file' | 'text') => {
-    const fileHeaders = text
-      .split('\n')[0]
-      ?.split(',')
-      .map((h) => h.trim());
-    if (!validateHeaders(fileHeaders)) {
-      toast({
-        title: t('diaryCsvImport.invalidFormatTitle', 'Invalid CSV Format'),
-        description: t(
-          'diaryCsvImport.headersMismatch',
-          'The CSV is missing required columns. Please download the template.'
-        ),
-        variant: 'destructive',
-      });
+  // Decides whether `text` parses directly under the current format, or
+  // needs the header-mapping dialog, and acts on that decision. Shared by
+  // the initial load and the reparse-on-format-change effect below, so a
+  // delimiter fix after Cancel re-evaluates from scratch instead of either
+  // blindly parsing invalid columns or being stuck needing a fresh
+  // re-upload.
+  const evaluateAndParse = (
+    text: string,
+    {
+      source,
+      silent = false,
+      // Callers that reset the format bar in the same tick must pass the
+      // fresh options — `csvFormat.options` is still the outgoing file's.
+      options = csvFormat.options,
+    }: {
+      source?: 'file' | 'text';
+      silent?: boolean;
+      options?: CsvFormatOptions;
+    } = {}
+  ) => {
+    lastEvaluatedKeyRef.current = `${text}|${JSON.stringify(options)}`;
+    const parsedFileHeaders = getCsvHeaders(text, options);
+    if (!validateHeaders(parsedFileHeaders)) {
+      setFileHeaders(parsedFileHeaders ?? []);
+      setHeaderMapping(
+        suggestHeaderMapping(BASE_HEADERS, parsedFileHeaders ?? [])
+      );
+      setRawCsvText(text);
+      setShowMapping(true);
+      if (!silent) {
+        toast({
+          title: t('diaryCsvImport.invalidFormatTitle', 'Invalid CSV Format'),
+          description: t(
+            'diaryCsvImport.headersMismatch',
+            'The CSV is missing required columns. Please map the fields to continue.'
+          ),
+        });
+      }
       if (source === 'file' && fileInputRef.current)
         fileInputRef.current.value = '';
       return;
     }
+    setMappingConfirmed(false);
+    setShowMapping(false);
     // Extra columns beyond the base set are kept as custom-nutrient columns.
     const headers = [
       ...BASE_HEADERS,
-      ...fileHeaders!.filter((h) => !BASE_HEADER_SET.has(h)),
+      ...parsedFileHeaders!.filter((h) => !BASE_HEADER_SET.has(h)),
     ];
     setUploadedHeaders(headers);
-    setCsvData(parseCSV(text, headers));
+    const parsed = parseCSV(text, headers, options);
+    setCsvData(parsed.rows);
+    setResolvedDecimal(parsed.resolvedDecimal);
     setResult(null);
   };
+
+  const handleConfirmMapping = () => {
+    const mappedFileColumns = new Set(
+      Object.values(headerMapping).filter(Boolean)
+    );
+    // File columns not used by the mapping are kept as custom nutrients,
+    // reading by their own (file) name, same as the direct-parse path.
+    const extraColumns = fileHeaders.filter((h) => !mappedFileColumns.has(h));
+    const headers = [...BASE_HEADERS, ...extraColumns];
+    const parsedData = parseCSV(
+      rawCsvText,
+      headers,
+      csvFormat.options,
+      headerMapping
+    );
+    setUploadedHeaders(headers);
+    setCsvData(parsedData.rows);
+    setResolvedDecimal(parsedData.resolvedDecimal);
+    setResult(null);
+    setShowMapping(false);
+    setMappingConfirmed(true);
+  };
+
+  const handleCancelMapping = () => {
+    setShowMapping(false);
+    setFileHeaders([]);
+    setHeaderMapping({});
+    setRawCsvText('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Re-evaluates the already-loaded file whenever the user changes the
+  // format bar (delimiter/decimal/quote) after loading, including after
+  // Cancelling out of the mapping dialog — a delimiter fix can flip a file
+  // from "needs mapping" to "parses directly" or vice versa. Decimal alone
+  // would already self-correct at submit time (buildEntries re-resolves it
+  // from the live preview), but delimiter/quote directly control how
+  // csvData's columns were split.
+  //
+  // Deliberately NOT keyed on showMapping/mappingConfirmed — see the
+  // matching comment in useExerciseImport.ts for why.
+  useEffect(() => {
+    if (!loadedText || showMapping || mappingConfirmed) return;
+    const currentKey = `${loadedText}|${JSON.stringify(csvFormat.options)}`;
+    if (lastEvaluatedKeyRef.current === currentKey) return;
+    const timer = setTimeout(() => {
+      evaluateAndParse(loadedText, { silent: true });
+    }, REPARSE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [csvFormat.options, loadedText]);
+
+  // Same reparse-on-format-change behavior for files that went through the
+  // header-mapping dialog — must use rawCsvText + headerMapping, not
+  // loadedText with no mapping, or headers would no longer line up.
+  useEffect(() => {
+    if (!mappingConfirmed || showMapping) return;
+    const timer = setTimeout(() => {
+      const mappedFileColumns = new Set(
+        Object.values(headerMapping).filter(Boolean)
+      );
+      const extraColumns = fileHeaders.filter((h) => !mappedFileColumns.has(h));
+      const headers = [...BASE_HEADERS, ...extraColumns];
+      setUploadedHeaders(headers);
+      const parsed = parseCSV(
+        rawCsvText,
+        headers,
+        csvFormat.options,
+        headerMapping
+      );
+      setCsvData(parsed.rows);
+      setResolvedDecimal(parsed.resolvedDecimal);
+    }, REPARSE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [
+    csvFormat.options,
+    rawCsvText,
+    headerMapping,
+    fileHeaders,
+    mappingConfirmed,
+    showMapping,
+  ]);
 
   const handleTextImport = () => {
     if (!csvText.trim()) {
@@ -241,13 +428,28 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
       });
       return;
     }
-    loadCsvText(csvText, 'text');
+    const options = csvFormat.resetForNewInput();
+    setLoadedText(csvText);
+    evaluateAndParse(csvText, { source: 'text', options });
     setCsvText('');
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_CSV_FILE_SIZE_BYTES) {
+      toast({
+        title: t('diaryCsvImport.importErrorTitle', 'Import Error'),
+        description: t(
+          'diaryCsvImport.fileTooLarge',
+          'The selected file is too large. Please upload a file smaller than 25MB.'
+        ),
+        variant: 'destructive',
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    const options = csvFormat.resetForNewInput();
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -262,7 +464,8 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
         });
         return;
       }
-      loadCsvText(text, 'file');
+      setLoadedText(text);
+      evaluateAndParse(text, { source: 'file', options });
     };
     reader.readAsText(file);
   };
@@ -321,21 +524,38 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
     setCsvData([]);
     setResult(null);
     setUploadedHeaders(null);
+    setLoadedText('');
+    setMappingConfirmed(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const buildEntries = (): FoodDiaryImportRow[] =>
+  const buildEntries = (format: DecimalFormat = 'us'): FoodDiaryImportRow[] =>
     csvData.map((row) => {
       const { id: _id, ...rest } = row;
       const entry: FoodDiaryImportRow = {
         ...(rest as unknown as FoodDiaryImportRow),
       };
+      // Base numeric fields go to the server as strings and are parsed there
+      // with plain Number(), so normalize a locale-comma cell like "80,2" to
+      // "80.2" here — otherwise the server-side Number() call silently drops
+      // it the same way toNumber exists to prevent client-side (#1960).
+      for (const col of BASE_NUMERIC_HEADERS) {
+        const raw = row[col];
+        if (isBlank(raw)) continue;
+        const num = toNumber(raw, format);
+        if (num !== undefined) {
+          (entry as Record<string, unknown>)[col] = String(num);
+        }
+      }
       const cn: Record<string, number> = {};
       for (const col of customCols) {
         const raw = row[col];
         if (!isBlank(raw)) {
-          const num = Number(raw);
-          if (Number.isFinite(num)) cn[col] = num;
+          // toNumber (not Number/parseFloat) so a locale-comma decimal like
+          // "80,2" parses to 80.2 instead of Number's NaN silently dropping
+          // the whole custom-nutrient value (issue #1960).
+          const num = toNumber(raw, format);
+          if (num !== undefined) cn[col] = num;
         }
         delete (entry as Record<string, unknown>)[col];
       }
@@ -366,7 +586,11 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
         family: includeFamily,
         public: includePublic,
       };
-      const res = await onSave(buildEntries(), scope, overrideNutrition);
+      const res = await onSave(
+        buildEntries(resolvedDecimal),
+        scope,
+        overrideNutrition
+      );
       setResult(res);
       if (res.errors.length === 0) {
         clearData();
@@ -562,6 +786,46 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
               onChange={handleFileUpload}
               className="hidden"
             />
+            <CsvFormatBar
+              capabilities={{
+                delimiter: true,
+                decimal: true,
+                quote: true,
+                date: false,
+              }}
+              value={csvFormat.options}
+              onChange={csvFormat.setOptions}
+              detection={
+                preview
+                  ? {
+                      delimiter: preview.detectedDelimiter,
+                      delimiterFailed: preview.delimiterDetectionFailed,
+                      decimal: preview.decimal,
+                    }
+                  : undefined
+              }
+            />
+            {preview && (
+              <CsvFormatPreview
+                headers={preview.headers}
+                rows={preview.rows}
+                options={csvFormat.options}
+                decimalDetection={preview.decimal}
+                numericColumns={BASE_NUMERIC_HEADERS}
+                totalRowCount={preview.rows.length}
+                totalRowCountIsPartial={preview.previewTruncated}
+              />
+            )}
+            <CsvHeaderMappingDialog
+              open={showMapping}
+              onOpenChange={setShowMapping}
+              requiredHeaders={BASE_HEADERS}
+              fileHeaders={fileHeaders}
+              headerMapping={headerMapping}
+              onHeaderMappingChange={setHeaderMapping}
+              onConfirm={handleConfirmMapping}
+              onCancel={handleCancelMapping}
+            />
             {csvData.length > 0 && (
               <div className="text-sm text-green-600">
                 {t('diaryCsvImport.recordsLoaded', {
@@ -718,40 +982,7 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
             </div>
           )}
 
-          {result && (
-            <div className="p-4 border rounded-lg space-y-3">
-              <div className="flex flex-wrap gap-4 text-sm">
-                <span className="text-green-600 font-medium">
-                  {t('diaryCsvImport.resultImported', 'Imported')}:{' '}
-                  {result.processed.length}
-                </span>
-                <span className="text-red-600">
-                  {t('diaryCsvImport.resultFailed', 'Failed')}:{' '}
-                  {result.errors.length}
-                </span>
-              </div>
-              {result.errors.length > 0 && (
-                <details className="text-sm">
-                  <summary className="cursor-pointer font-medium">
-                    {t('diaryCsvImport.viewErrors', 'View failed rows')}
-                  </summary>
-                  <div className="mt-2 max-h-64 overflow-y-auto space-y-1">
-                    {result.errors.map((err, i) => (
-                      <div
-                        key={i}
-                        className="p-2 rounded bg-red-500/10 text-red-700 dark:text-red-300"
-                      >
-                        <div>{err.error}</div>
-                        <pre className="text-xs overflow-x-auto">
-                          {JSON.stringify(err.entry)}
-                        </pre>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
-          )}
+          <CsvImportResultPanel result={result} />
 
           <Button
             type="submit"

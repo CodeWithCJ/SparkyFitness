@@ -17,6 +17,7 @@ import {
   scheduleFastGoalNotification,
 } from '../services/notifications';
 import { addLog } from '../services/LogService';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import {
   fastingCurrentQueryKey,
@@ -253,11 +254,29 @@ export function useFastingGoalReconciler(
   isLoading: boolean,
   refetch: () => void,
 ): void {
+  const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
+  const fastingGoalNotificationsEnabled = useAppPreferencesStore(
+    (s) => s.fastingGoalNotificationsEnabled,
+  );
+  const goalNotificationsActive = notificationsEnabled && fastingGoalNotificationsEnabled;
+
   useEffect(() => {
     if (isLoading) return;
+    // Disabling the toggle cancels a goal ping that may be scheduled days out;
+    // re-enabling reschedules it for the still-active fast.
+    if (!goalNotificationsActive) {
+      void cancelFastGoalNotification();
+      return;
+    }
     void reconcileFastGoalNotification(currentFast ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, currentFast?.id, currentFast?.target_end_time, currentFast?.status]);
+  }, [
+    isLoading,
+    goalNotificationsActive,
+    currentFast?.id,
+    currentFast?.target_end_time,
+    currentFast?.status,
+  ]);
 
   // On resume, refetch so a fast started/edited on another device is seen. The
   // fresh data then flows through the effect above, which reconciles the goal

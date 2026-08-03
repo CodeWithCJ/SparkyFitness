@@ -155,11 +155,11 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           {strengthLabel != null && (
             <Text className="text-sm text-text-secondary mt-0.5">{strengthLabel}</Text>
           )}
-          {!med.is_active && (
-            <View className="self-start rounded-full px-2.5 py-0.5 mt-2 border border-chrome-border">
-              <Text className="text-xs text-text-muted">{t('medications.inactiveLabel')}</Text>
-            </View>
-          )}
+{!med.is_active && (
+              <View className="self-start rounded-full px-2.5 py-0.5 mt-2 border border-chrome-border">
+                <Text className="text-xs text-text-muted">{t('medications.inactiveLabel')}</Text>
+              </View>
+            )}
         </View>
 
         {med.is_active && (
@@ -256,7 +256,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                   <View className="flex-1">
                     <Text className="text-base text-text-primary">{describeSchedule(sched)}</Text>
                     {subtitle !== '' && (
-                      <Text className="text-xs text-text-muted mt-0.5">{subtitle}</Text>
+                      <Text className="text-sm text-text-muted mt-0.5">{subtitle}</Text>
                     )}
                   </View>
                   <Icon name="chevron-forward" size={16} color={textSecondary} />
@@ -264,9 +264,9 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
               </View>
             );
           })}
-          {(!med.schedules || med.schedules.length === 0) && (
-            <Text className="text-sm self-center text-text-muted">{t('medications.noSchedules')}</Text>
-          )}
+{(!med.schedules || med.schedules.length === 0) && (
+              <Text className="text-sm self-center text-text-muted">{t('medications.noSchedules')}</Text>
+            )}
         </View>
 
         {(med.prescriber || med.pharmacy || med.rx_number || med.notes) && (

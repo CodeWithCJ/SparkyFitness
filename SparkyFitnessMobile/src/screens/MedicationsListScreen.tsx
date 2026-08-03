@@ -8,6 +8,7 @@ import { useMedications } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
+import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import MedicationRow from '../components/medications/MedicationRow';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Medication } from '@workspace/shared';
@@ -84,9 +85,9 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
           </TouchableOpacity>
         </View>
       ) : active.length === 0 && inactive.length === 0 ? (
-        <View className="flex-1 items-center justify-center p-8">
-          <Icon name="wellness" size={48} color={iconDecorative} />
-          <Text className="text-text-muted text-lg mt-4 text-center">{t('medications.emptyTitle')}</Text>
+<View className="flex-1 items-center justify-center p-8">
+              <Icon name="medication" size={48} color={iconDecorative} />
+              <Text className="text-text-muted text-lg mt-4 text-center">{t('medications.emptyTitle')}</Text>
           <Text className="text-text-muted text-sm mt-2 text-center">
             {t('medications.emptyDescription')}
           </Text>
@@ -123,6 +124,11 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
                 />
               </TouchableOpacity>
             ) : null
+          }
+          ListFooterComponent={
+            <View className="px-4 pt-6">
+              <MedicalDisclaimer />
+            </View>
           }
           contentContainerStyle={{
             paddingTop: 8,

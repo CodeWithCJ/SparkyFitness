@@ -1,15 +1,9 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -28,8 +22,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useExerciseHistoryImport } from '@/hooks/Exercises/useExerciseHistoryImport';
-import { DATE_FORMATS } from '@/constants/exercises';
+import {
+  useExerciseHistoryImport,
+  requiredHeaders,
+} from '@/hooks/Exercises/useExerciseHistoryImport';
+import { useCsvFormat } from '@/hooks/useCsvFormat';
+import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
+import CsvFormatPreview from '@/components/CsvImport/CsvFormatPreview';
+import CsvImportResultPanel from '@/components/CsvImport/CsvImportResultPanel';
+import CsvHeaderMappingDialog from '@/components/CsvImport/CsvHeaderMappingDialog';
 
 interface ExerciseEntryHistoryImportCSVProps {
   onImportComplete: () => void;
@@ -40,23 +41,50 @@ const ExerciseEntryHistoryImportCSV = ({
 }: ExerciseEntryHistoryImportCSVProps) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { dateFormat: preferredDateFormat } = usePreferences();
+  const csvFormat = useCsvFormat({ defaultDateFormat: preferredDateFormat });
   const {
     loading,
     file,
+    csvText,
+    loadedText,
     groupedEntries,
-    selectedDateFormat,
-    setSelectedDateFormat,
+    result,
     dropdownOptions,
+    numericColumns,
+    showMapping,
+    setShowMapping,
+    fileHeaders,
+    headerMapping,
+    setHeaderMapping,
     handleFileChange,
+    handleTextChange,
     handleProcessFile,
+    handleProcessText,
+    handleConfirmMapping,
+    handleCancelMapping,
     handleImportSubmit,
     handleClearData,
     handleAddNewEntry,
     handleDownloadTemplate,
     getSetDisplay,
     getActivityDetailsDisplay,
-  } = useExerciseHistoryImport(fileInputRef, onImportComplete);
+  } = useExerciseHistoryImport(
+    fileInputRef,
+    onImportComplete,
+    csvFormat.options
+  );
   const { dateFormat, weightUnit, distanceUnit } = usePreferences();
+
+  const preview = useMemo(
+    () => (loadedText ? csvFormat.parse(loadedText, { numericColumns }) : null),
+    [loadedText, csvFormat, numericColumns]
+  );
+
+  const handleFileChangeWithReset: typeof handleFileChange = (event) => {
+    csvFormat.resetForNewInput();
+    handleFileChange(event);
+  };
 
   return (
     <Card>
@@ -162,34 +190,60 @@ const ExerciseEntryHistoryImportCSV = ({
               type="file"
               accept=".csv"
               ref={fileInputRef}
-              onChange={handleFileChange}
+              onChange={handleFileChangeWithReset}
               className="grow"
             />
-            <Select
-              onValueChange={setSelectedDateFormat}
-              value={selectedDateFormat}
-            >
-              {/* Use value instead of defaultValue for controlled component */}
-              <SelectTrigger className="w-52">
-                <SelectValue
-                  placeholder={t(
-                    'exercise.importHistoryCSV.selectDateFormat',
-                    'Select Date Format'
-                  )}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {DATE_FORMATS.map((formatOption) => (
-                  <SelectItem
-                    key={formatOption.value}
-                    value={formatOption.value}
-                  >
-                    {formatOption.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
+          <div className="flex gap-2 items-center">
+            <Textarea
+              placeholder={t(
+                'exercise.importHistoryCSV.pastePlaceholder',
+                'Or paste CSV content here...'
+              )}
+              value={csvText}
+              onChange={(e) => handleTextChange(e.target.value)}
+              className="min-h-[80px]"
+            />
+            <Button
+              type="button"
+              onClick={handleProcessText}
+              variant="secondary"
+              className="whitespace-nowrap h-[40px]"
+            >
+              {t('exercise.importHistoryCSV.parseText', 'Parse Text')}
+            </Button>
+          </div>
+          <CsvFormatBar
+            capabilities={{
+              delimiter: true,
+              decimal: true,
+              quote: true,
+              date: true,
+            }}
+            value={csvFormat.options}
+            onChange={csvFormat.setOptions}
+            detection={
+              preview
+                ? {
+                    delimiter: preview.detectedDelimiter,
+                    delimiterFailed: preview.delimiterDetectionFailed,
+                    decimal: preview.decimal,
+                  }
+                : undefined
+            }
+          />
+          {preview && (
+            <CsvFormatPreview
+              headers={preview.headers}
+              rows={preview.rows}
+              options={csvFormat.options}
+              decimalDetection={preview.decimal}
+              numericColumns={numericColumns}
+              dateColumn="entry_date"
+              totalRowCount={preview.rows.length}
+              totalRowCountIsPartial={preview.previewTruncated}
+            />
+          )}
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={handleProcessFile}
@@ -235,6 +289,17 @@ const ExerciseEntryHistoryImportCSV = ({
               {t('exercise.importHistoryCSV.addEmptyEntry', 'Add Empty Entry')}
             </Button>
           </div>
+          <CsvImportResultPanel result={result} />
+          <CsvHeaderMappingDialog
+            open={showMapping}
+            onOpenChange={setShowMapping}
+            requiredHeaders={requiredHeaders}
+            fileHeaders={fileHeaders}
+            headerMapping={headerMapping}
+            onHeaderMappingChange={setHeaderMapping}
+            onConfirm={handleConfirmMapping}
+            onCancel={handleCancelMapping}
+          />
         </div>
 
         {groupedEntries.length > 0 && (

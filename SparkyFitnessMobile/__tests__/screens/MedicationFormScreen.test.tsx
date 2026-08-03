@@ -225,7 +225,7 @@ describe('MedicationFormScreen — optional text fields', () => {
     );
     const screen = renderScreen();
 
-    fireEvent.changeText(screen.getByPlaceholderText('Lisinopril'), 'Metformin');
+    fireEvent.changeText(screen.getByPlaceholderText('Ipsumol'), 'Metformin');
 
     pressAction(screen, mockNavigation, 'Save');
 

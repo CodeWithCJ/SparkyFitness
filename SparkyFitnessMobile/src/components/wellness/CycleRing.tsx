@@ -20,6 +20,12 @@ interface CycleRingProps {
 }
 
 const TRACK_COLOR = 'rgba(150, 150, 150, 0.15)';
+// How far the day-marker dot pokes out past each edge of the ring stroke.
+const MARKER_OVERHANG = 4;
+const MARKER_STROKE_WIDTH = 1;
+const MARKER_OUTLINE_COLOR = 'rgba(354, 0, 0, 0.8)';
+const TICK_WIDTH = 3;
+const TICK_OVERHANG = 1;
 
 const CycleRing: React.FC<CycleRingProps> = ({
   cycleDay,
@@ -35,7 +41,12 @@ const CycleRing: React.FC<CycleRingProps> = ({
   strokeWidth = 16,
 }) => {
   const tokens = useWellnessTokens();
-  const radius = (size - strokeWidth) / 2;
+  const markerRadius = strokeWidth / 2 + MARKER_OVERHANG;
+  // The canvas clips anything past its edge into a visible flat chord, so the
+  // radius must leave room for the widest overhang (marker dot, ovulation
+  // tick) plus 1 for edge antialiasing.
+  const inset = Math.max(strokeWidth / 2 + TICK_OVERHANG, markerRadius) + 1;
+  const radius = size / 2 - inset;
   const center = size / 2;
   const len = Math.max(cycleLength, periodLength + 1, 14);
 
@@ -77,17 +88,18 @@ const CycleRing: React.FC<CycleRingProps> = ({
     return builder.build();
   });
 
-  // Ovulation Path (draw as a small arc or tick)
-  const ovulationPath = useDerivedValue(() => {
+  // Ovulation Tick: a radial notch crossing the ring at the ovulation day
+  const ovulationPath = useMemo(() => {
     const builder = Skia.PathBuilder.Make();
     if (ovulationDay) {
-      const startAngle = -90 + ((ovulationDay - 1) / len) * 360;
-      // Small 2 degree sweep to render as a distinct indicator line
-      const sweep = 2 * progress.value;
-      builder.addArc(oval, startAngle, sweep);
+      const angle = ((-90 + ((ovulationDay - 1) / len) * 360) * Math.PI) / 180;
+      const rInner = radius - strokeWidth / 2 - TICK_OVERHANG;
+      const rOuter = radius + strokeWidth / 2 + TICK_OVERHANG;
+      builder.moveTo(center + rInner * Math.cos(angle), center + rInner * Math.sin(angle));
+      builder.lineTo(center + rOuter * Math.cos(angle), center + rOuter * Math.sin(angle));
     }
     return builder.build();
-  });
+  }, [ovulationDay, len, radius, strokeWidth, center]);
 
   // Marker Positions
   const markerX = useDerivedValue(() => {
@@ -138,19 +150,29 @@ const CycleRing: React.FC<CycleRingProps> = ({
         <Path
           path={ovulationPath}
           style="stroke"
-          strokeWidth={strokeWidth + 4}
+          strokeWidth={TICK_WIDTH}
           color={getPhaseColor('ovulation', tokens)}
-          strokeCap="round"
+          opacity={progress}
         />
         {/* Day Marker */}
         {cycleDay !== null && (
-          <SkiaCircle
-            cx={markerX}
-            cy={markerY}
-            r={8}
-            color="#FFFFFF"
-            style="fill"
-          />
+          <>
+            <SkiaCircle
+              cx={markerX}
+              cy={markerY}
+              r={markerRadius}
+              color="#FFFFFF"
+              style="fill"
+            />
+            <SkiaCircle
+              cx={markerX}
+              cy={markerY}
+              r={markerRadius - 1}
+              style="stroke"
+              strokeWidth={MARKER_STROKE_WIDTH}
+              color={MARKER_OUTLINE_COLOR}
+            />
+          </>
         )}
       </Canvas>
 

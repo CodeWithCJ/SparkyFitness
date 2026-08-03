@@ -1,13 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { act, renderHook, waitFor } from '@testing-library/react-native';
 import {
   reconcileFastGoalNotification,
   cancelFastGoalNotification,
+  useFastingGoalReconciler,
   __resetFastingReconcileStateForTests,
 } from '../../src/hooks/useFasting';
 import {
   scheduleFastGoalNotification,
   cancelScheduledNotification,
 } from '../../src/services/notifications';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
 import type { FastingLog } from '../../src/types/fasting';
 
 jest.mock('../../src/services/notifications', () => ({
@@ -159,5 +165,65 @@ describe('cancelFastGoalNotification', () => {
   test('no-ops when nothing is stored', async () => {
     await cancelFastGoalNotification();
     expect(mockCancel).not.toHaveBeenCalled();
+  });
+});
+
+describe('useFastingGoalReconciler notification preferences', () => {
+  beforeEach(async () => {
+    __resetFastingReconcileStateForTests();
+    __resetAppPreferencesStoreForTests();
+    await AsyncStorage.clear();
+    mockSchedule.mockReset().mockResolvedValue('notif-1');
+    mockCancel.mockReset().mockResolvedValue(undefined);
+  });
+
+  test('disabling the fasting toggle cancels the goal ping; re-enabling reschedules it', async () => {
+    const fast = activeFast();
+    renderHook(() => useFastingGoalReconciler(fast, false, jest.fn()));
+
+    await waitFor(() => expect(mockSchedule).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      useAppPreferencesStore.getState().setFastingGoalNotificationsEnabled(false);
+    });
+
+    await waitFor(() => expect(mockCancel).toHaveBeenCalledWith('notif-1'));
+    expect(await AsyncStorage.getItem(GOAL_NOTIF_STORAGE_KEY)).toBeNull();
+
+    mockSchedule.mockResolvedValueOnce('notif-2');
+    act(() => {
+      useAppPreferencesStore.getState().setFastingGoalNotificationsEnabled(true);
+    });
+
+    await waitFor(() => expect(mockSchedule).toHaveBeenCalledTimes(2));
+    const stored = await AsyncStorage.getItem(GOAL_NOTIF_STORAGE_KEY);
+    expect(JSON.parse(stored as string).notificationId).toBe('notif-2');
+  });
+
+  test('disabling the master notifications toggle also cancels the goal ping', async () => {
+    const fast = activeFast();
+    renderHook(() => useFastingGoalReconciler(fast, false, jest.fn()));
+
+    await waitFor(() => expect(mockSchedule).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      useAppPreferencesStore.getState().setNotificationsEnabled(false);
+    });
+
+    await waitFor(() => expect(mockCancel).toHaveBeenCalledWith('notif-1'));
+    expect(await AsyncStorage.getItem(GOAL_NOTIF_STORAGE_KEY)).toBeNull();
+  });
+
+  test('does not schedule while the fasting toggle is off', async () => {
+    useAppPreferencesStore.getState().setFastingGoalNotificationsEnabled(false);
+    renderHook(() => useFastingGoalReconciler(activeFast(), false, jest.fn()));
+
+    // Flush the effect's async cancel pass (a no-op with nothing stored).
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mockCancel).not.toHaveBeenCalled();
+    expect(mockSchedule).not.toHaveBeenCalled();
   });
 });

@@ -427,8 +427,6 @@ void gestationalAge;
 
 router.get('/current', getCurrent);
 router.post('/', createPregnancy);
-router.put('/:id', updatePregnancy);
-router.delete('/:id', deletePregnancy);
 router.get('/overview', getOverview);
 
 router.post('/kicks/start', startKick);
@@ -451,5 +449,11 @@ router.post('/appointments', createAppointment);
 router.put('/appointments/:id', updateAppointmentHandler);
 router.get('/appointments', listAppointmentsHandler);
 router.delete('/appointments/:id', deleteAppointmentHandler);
+
+// Catch-all `/:id` routes go last: Express matches in registration order, so
+// registering these earlier would swallow single-segment paths like
+// PUT /checklist as `:id` values and reject them at the UUID check.
+router.put('/:id', updatePregnancy);
+router.delete('/:id', deletePregnancy);
 
 export default router;

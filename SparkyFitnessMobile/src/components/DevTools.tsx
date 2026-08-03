@@ -28,6 +28,7 @@ import {
   openHealthConnectDataManagement,
   getGrantedPermissions,
 } from 'react-native-health-connect';
+import { CycleCardRingContent, type CycleRingContentInfo } from './CycleCard';
 
 function getPopoverResetLabel(
   t: TFunction,
@@ -40,6 +41,39 @@ function getPopoverResetLabel(
       return t('devTools.popovers.provider');
     default:
       return popover.resetLabel;
+  }
+}
+
+const CYCLE_GALLERY_BASE: Omit<CycleRingContentInfo, 'day' | 'phase'> = {
+  avgCycleLength: 28,
+  avgPeriodLength: 5,
+  fertileStartDay: 10,
+  fertileEndDay: 15,
+  ovulationDay: 14,
+  nextPeriodStart: '2026-08-28',
+  daysLate: 0,
+};
+
+const CYCLE_GALLERY_STATES: { info: CycleRingContentInfo }[] = [
+  { info: { ...CYCLE_GALLERY_BASE, day: 2, phase: 'menstrual' } },
+  { info: { ...CYCLE_GALLERY_BASE, day: 8, phase: 'follicular' } },
+  { info: { ...CYCLE_GALLERY_BASE, day: 12, phase: 'fertile' } },
+  { info: { ...CYCLE_GALLERY_BASE, day: 14, phase: 'ovulation' } },
+  { info: { ...CYCLE_GALLERY_BASE, day: 21, phase: 'luteal' } },
+  {
+    info: { ...CYCLE_GALLERY_BASE, day: 31, phase: 'luteal', daysLate: 3 },
+  },
+];
+
+function cycleGalleryLabel(info: CycleRingContentInfo, t: (key: string) => string): string {
+  if (info.daysLate > 0) return t('devTools.gallery.state.late');
+  switch (info.phase) {
+    case 'menstrual': return t('devTools.gallery.state.menstrual');
+    case 'follicular': return t('devTools.gallery.state.follicular');
+    case 'fertile': return t('devTools.gallery.state.fertile');
+    case 'ovulation': return t('devTools.gallery.state.ovulation');
+    case 'luteal': return t('devTools.gallery.state.luteal');
+    default: return t('devTools.gallery.state.late');
   }
 }
 
@@ -396,6 +430,23 @@ const DevTools: React.FC = () => {
             );
           })}
         </View>
+      </View>
+
+      <View className="mt-5">
+        <Text className="text-sm text-text-primary">
+          {t('devTools.gallery.title')}
+        </Text>
+        <Text className="text-text-muted mb-3 text-[13px]">
+          {t('devTools.gallery.description')}
+        </Text>
+        {CYCLE_GALLERY_STATES.map(({ info }) => (
+          <View key={`${info.phase}-${info.day}`} className="mb-3">
+            <Text className="text-xs text-text-muted mb-1">{cycleGalleryLabel(info, t)}</Text>
+            <View className="border border-border-subtle rounded-xl p-4">
+              <CycleCardRingContent title={t('devTools.gallery.cycleTracking')} info={info} />
+            </View>
+          </View>
+        ))}
       </View>
     </View>
   );

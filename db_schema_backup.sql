@@ -1825,7 +1825,8 @@ CREATE TABLE public.food_entries (
     source character varying(50),
     source_id character varying(255),
     entry_time time without time zone,
-    CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL))))
+    CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
+    CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
 );
 
 
@@ -1952,6 +1953,7 @@ CREATE TABLE public.food_variants (
     traces text[],
     CONSTRAINT food_variants_ai_confidence_check CHECK (((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL))),
     CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
+    CONSTRAINT food_variants_serving_size_positive CHECK ((serving_size > (0)::numeric)),
     CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))
 );
 

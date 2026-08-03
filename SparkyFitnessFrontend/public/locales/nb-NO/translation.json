@@ -1,0 +1,31 @@
+{
+  "chat": {
+    "toolCategories": {
+      "tooltip": "Velg verktøy for chatbot",
+      "title": "Verktøy for chatbot",
+      "description": "Færre verktøy hjelper mindre lokale modeller svare mer pålitelig.",
+      "presetFull": "Hel",
+      "presetCore": "Kjerne",
+      "clearAll": "Fjern alle",
+      "emptyHint": "Ingen kategorier valgt - chatbotten vil bruke standard verktøysett.",
+      "food": "Mat og vann",
+      "exercise": "Trening",
+      "checkin": "Kropp og innsjekk",
+      "goals": "Mål",
+      "reports": "Rapporter og analyser",
+      "coaching": "Coaching",
+      "vision": "Visjon",
+      "profile": "Profil og vaner"
+    }
+  },
+  "foodCsvImport": {
+    "title": "Importer matdata",
+    "addRow": "Legg til rad",
+    "uploadCsv": "Last opp CSV",
+    "downloadTemplate": "Last ned mal",
+    "clearData": "Fjern data",
+    "pastePlaceholder": "Eller lim inn CSV innhold her.",
+    "parseText": "Sjekk tekst",
+    "recordsLoaded": "Suksess! {{count}} loggføringer lastet opp."
+  }
+}

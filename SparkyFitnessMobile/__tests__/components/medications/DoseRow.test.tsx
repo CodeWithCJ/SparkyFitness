@@ -25,7 +25,7 @@ describe('DoseRow', () => {
 
       expect(screen.getByText('8:00 AM')).toBeTruthy();
       expect(screen.getByText('1 tablet')).toBeTruthy();
-      fireEvent.press(screen.getByText('Take'));
+      fireEvent.press(screen.getByText('Log'));
       expect(onTake).toHaveBeenCalled();
       fireEvent.press(screen.getByText('Skip'));
       expect(onSkip).toHaveBeenCalled();
@@ -61,10 +61,10 @@ describe('DoseRow', () => {
       );
 
       expect(screen.getByText('Taken')).toBeTruthy();
-      expect(screen.queryByText('Take')).toBeNull();
+      expect(screen.queryByText('Log')).toBeNull();
       expect(screen.queryByText('Skip')).toBeNull();
-      // Hidden sizer keeps the actions column at the Take/Skip pair width.
-      expect(screen.getByText('Take', { includeHiddenElements: true })).toBeTruthy();
+      // Hidden sizer keeps the actions column at the Log/Skip pair width.
+      expect(screen.getByText('Log', { includeHiddenElements: true })).toBeTruthy();
       expect(screen.getByText('Skip', { includeHiddenElements: true })).toBeTruthy();
       expect(screen.getByText('8:00 AM').props.className).toContain('text-text-secondary');
       expect(screen.getByText('8:00 AM').props.className).toContain('line-through');
@@ -137,11 +137,11 @@ describe('DoseRow', () => {
       expect(onLog).toHaveBeenCalled();
     });
 
-    it('logs from the Take button', () => {
+    it('logs from the Log button', () => {
       const onLog = jest.fn();
       const screen = render(<DoseRow kind="prn" count={0} onLog={onLog} title="Ibuprofen" />);
 
-      fireEvent.press(screen.getByText('Take'));
+      fireEvent.press(screen.getByText('Log'));
       expect(onLog).toHaveBeenCalled();
     });
 

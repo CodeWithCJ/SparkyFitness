@@ -122,7 +122,7 @@ const CycleInsightsView: React.FC = () => {
                   <Text className="text-text-secondary text-[10px] font-bold uppercase tracking-wider">
                      {index === 0 ? t('mobileComponents.wellness.insights.upcoming') : t('mobileComponents.wellness.insights.following')}
                   </Text>
-                  <Text className="text-text-secondary text-xs font-medium">
+                  <Text className="text-text-secondary text-sm font-medium">
                     {formatShortDate(c.periodStart)} – {formatShortDate(c.periodEnd)}
                   </Text>
                 </View>
@@ -130,14 +130,14 @@ const CycleInsightsView: React.FC = () => {
                 <View className="flex-row gap-2.5">
                   {/* Next Period Tile */}
                   <View className="flex-1 bg-surface rounded-xl p-3 flex-row items-center gap-2.5 shadow-sm">
-                    <View className="w-8 h-8 rounded-xl bg-raised items-center justify-center">
-                      <CycleIcon id="flow-medium" size={18} />
+                    <View className="w-8 h-8 items-center justify-center">
+                      <CycleIcon id="flow-medium" size={32} />
                     </View>
                     <View className="flex-1">
                       <Text className="text-text-secondary text-[10px] font-semibold uppercase">
                          {t('mobileComponents.wellness.insights.nextPeriod')}
                       </Text>
-                      <Text className="text-text-primary text-xs font-bold mt-0.5">
+                      <Text className="text-text-primary text-sm font-bold mt-0.5">
                         {formatShortDate(c.periodStart)}
                       </Text>
                     </View>
@@ -146,14 +146,14 @@ const CycleInsightsView: React.FC = () => {
                   {/* Est. Ovulation Tile */}
                   {c.ovulation && (
                     <View className="flex-1 bg-surface rounded-xl p-3 flex-row items-center gap-2.5 shadow-sm">
-                      <View className="w-8 h-8 rounded-xl bg-raised items-center justify-center">
-                        <Icon name="sparkles" size={16} color={accentColor} />
+                      <View className="w-8 h-8 items-center justify-center">
+                        <CycleIcon id="ovulation" size={32} />
                       </View>
                       <View className="flex-1">
                         <Text className="text-text-secondary text-[10px] font-semibold uppercase">
                            {t('mobileComponents.wellness.insights.ovulation')}
                         </Text>
-                        <Text className="text-accent-primary text-xs font-bold mt-0.5">
+                        <Text className="text-text-primary text-sm font-bold mt-0.5">
                           {formatShortDate(c.ovulation)}
                         </Text>
                       </View>
@@ -174,12 +174,12 @@ const CycleInsightsView: React.FC = () => {
             {anomalies.map((anom: { message: string }, idx: number) => (
               <View
                 key={idx}
-                className="flex-row items-start p-3 bg-raised rounded-xl"
+                className="flex-row items-start p-2"
               >
                 <View className="mr-2.5 mt-0.5">
-                  <Icon name="warning" size={16} color={dangerColor} />
+                  <Icon name="warning" size={18} color={dangerColor} />
                 </View>
-                <Text className="flex-1 text-xs text-text-primary leading-normal">
+                <Text className="flex-1 text-sm text-text-primary leading-normal">
                   {anom.message}
                 </Text>
               </View>
@@ -190,7 +190,7 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 4. BBT Chart */}
       <View className="gap-2">
-         <Text className="text-text-primary text-base font-bold px-1">{t('mobileComponents.wellness.insights.bbt')}</Text>
+        <Text className="text-text-primary text-base font-bold px-1">{t('mobileComponents.wellness.insights.bbt')}</Text>
         <BBTLineChart data={bbtData} isLoading={isLoading} />
       </View>
 
@@ -205,8 +205,8 @@ const CycleInsightsView: React.FC = () => {
           <View className="gap-2">
             {forecastEntries.map((f) => (
               <View key={f.date} className="flex-row justify-between items-start py-1 gap-3">
-                <Text className="text-text-primary text-sm font-semibold">{formatDate(f.date)}</Text>
-                <Text className="flex-1 text-right text-text-secondary text-xs capitalize">
+                <Text className="text-text-secondary text-sm font-semibold">{formatDate(f.date)}</Text>
+                <Text className="flex-1 text-right text-text-primary text-sm capitalize">
                   {f.symptoms.join(', ')}
                 </Text>
               </View>

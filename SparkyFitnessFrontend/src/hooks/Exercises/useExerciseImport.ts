@@ -1,13 +1,23 @@
 import { ExerciseCSVData } from '@/pages/Exercises/ExerciseImportCSV';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from '../use-toast';
 import { requiredHeaders } from '@/constants/exercises';
 import { parseCSV, generateUniqueId } from '@/utils/exercises';
-import Papa from 'papaparse';
+import {
+  parseCsvHeaders,
+  suggestHeaderMapping,
+  MAX_CSV_FILE_SIZE_BYTES,
+  type CsvFormatOptions,
+} from '@workspace/shared';
+
+// Debounce for the reparse-on-format-change effects below — collapses rapid
+// format-bar clicks into a single re-parse instead of one per click.
+const REPARSE_DEBOUNCE_MS = 400;
 
 export function useExerciseImport(
-  onSave: (data: Omit<ExerciseCSVData, 'id'>[]) => Promise<void>
+  onSave: (data: Omit<ExerciseCSVData, 'id'>[]) => Promise<void>,
+  csvFormat: CsvFormatOptions
 ) {
   const { t } = useTranslation();
 
@@ -20,11 +30,87 @@ export function useExerciseImport(
     {}
   );
   const [rawCsvText, setRawCsvText] = useState<string>('');
+  // Loaded file text kept around (independent of rawCsvText, which is only
+  // set on the header-mapping-required branch) so the page can drive the
+  // format-bar's live preview off whatever was last loaded.
+  const [loadedText, setLoadedText] = useState<string>('');
+  // Tracks whether csvData currently reflects the header-mapping path (so
+  // the reparse-on-format-change effects below know whether to re-run
+  // parseCSV against loadedText with no mapping, or against rawCsvText
+  // with headerMapping — using the wrong one would silently produce empty
+  // or misaligned rows).
+  const [mappingConfirmed, setMappingConfirmed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Decides whether `text` parses directly under the current format, or
+  // needs the header-mapping dialog, and acts on that decision. Shared by
+  // the initial upload and the reparse-on-format-change effect below, so a
+  // delimiter fix after Cancel re-evaluates from scratch instead of either
+  // blindly parsing invalid columns or being stuck needing a fresh
+  // re-upload — this is the mapping dialog's "escape hatch back to the
+  // bar": adjusting the format bar after Cancel is enough, no separate
+  // button needed, because the decision itself re-runs.
+  const evaluateAndParse = (text: string, { silent = false } = {}) => {
+    const { headers: parsedFileHeaders } = parseCsvHeaders(text, csvFormat);
+    const areHeadersValid = requiredHeaders.every((req) =>
+      parsedFileHeaders.includes(req)
+    );
+    if (areHeadersValid) {
+      setMappingConfirmed(false);
+      setShowMapping(false);
+      const parsedData = parseCSV(text, undefined, csvFormat);
+      const header = parsedData[0];
+      if (parsedData.length > 0 && header) {
+        setHeaders(Object.keys(header).filter((key) => key !== 'id'));
+        setCsvData(parsedData);
+      } else if (!silent) {
+        toast({
+          title: t('exercise.exerciseImportCSV.noDataFound', 'No Data Found'),
+          description: t(
+            'exercise.exerciseImportCSV.noDataFoundDescription',
+            'The CSV file contains headers but no data rows.'
+          ),
+          variant: 'destructive',
+        });
+      }
+    } else {
+      if (parsedFileHeaders) setFileHeaders(parsedFileHeaders);
+      setHeaderMapping(
+        suggestHeaderMapping(requiredHeaders, parsedFileHeaders ?? [])
+      );
+      setRawCsvText(text);
+      setShowMapping(true);
+      if (!silent) {
+        toast({
+          title: t(
+            'exercise.exerciseImportCSV.headersMapped',
+            'Headers Mapped'
+          ),
+          description: t(
+            'exercise.exerciseImportCSV.mapRequiredFields',
+            'Your CSV headers do not match the required format. Please map the fields to continue.'
+          ),
+          variant: 'default',
+        });
+      }
+    }
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_CSV_FILE_SIZE_BYTES) {
+      toast({
+        title: t('exercise.exerciseImportCSV.importError', 'Import Error'),
+        description: t(
+          'exercise.exerciseImportCSV.fileTooLarge',
+          'The selected file is too large. Please upload a file smaller than 25MB.'
+        ),
+        variant: 'destructive',
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -41,63 +127,65 @@ export function useExerciseImport(
         });
         return;
       }
-
-      const { meta } = Papa.parse(text, {
-        header: true,
-        preview: 1,
-        skipEmptyLines: true,
+      setLoadedText(text);
+      evaluateAndParse(text);
+    };
+    reader.onerror = () => {
+      toast({
+        title: t('exercise.exerciseImportCSV.importError', 'Import Error'),
+        description: t(
+          'exercise.exerciseImportCSV.readError',
+          'Failed to read the selected file.'
+        ),
+        variant: 'destructive',
       });
-      const parsedFileHeaders = meta.fields || [];
-
-      const areHeadersValid = requiredHeaders.every((req) =>
-        parsedFileHeaders.includes(req)
-      );
-      if (areHeadersValid) {
-        const parsedData = parseCSV(text);
-        const header = parsedData[0];
-        if (parsedData.length > 0 && header) {
-          setHeaders(Object.keys(header).filter((key) => key !== 'id'));
-          setCsvData(parsedData);
-        } else {
-          toast({
-            title: t('exercise.exerciseImportCSV.noDataFound', 'No Data Found'),
-            description: t(
-              'exercise.exerciseImportCSV.noDataFoundDescription',
-              'The CSV file contains headers but no data rows.'
-            ),
-            variant: 'destructive',
-          });
-        }
-      } else {
-        const initialMapping: Record<string, string> = {};
-        requiredHeaders.forEach((required) => {
-          const normalizedRequired = required
-            .toLowerCase()
-            .replace(/[_ ]/g, '');
-          const match = parsedFileHeaders?.find(
-            (h) => h.toLowerCase().replace(/[_ ]/g, '') === normalizedRequired
-          );
-          if (match) initialMapping[required] = match;
-        });
-        if (parsedFileHeaders) setFileHeaders(parsedFileHeaders);
-        setHeaderMapping(initialMapping);
-        setRawCsvText(text);
-        setShowMapping(true);
-        toast({
-          title: t(
-            'exercise.exerciseImportCSV.headersMapped',
-            'Headers Mapped'
-          ),
-          description: t(
-            'exercise.exerciseImportCSV.mapRequiredFields',
-            'Your CSV headers do not match the required format. Please map the fields to continue.'
-          ),
-          variant: 'default',
-        });
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
   };
+
+  // Re-evaluates the already-loaded file whenever the user changes the
+  // format bar (delimiter/decimal/quote) after upload, including after
+  // Cancelling out of the mapping dialog — a delimiter fix can flip a file
+  // from "needs mapping" to "parses directly" or vice versa, so this reruns
+  // the full decision, not just a blind reparse. Skipped once mapping has
+  // been explicitly confirmed (see the effect below, which reparses with
+  // the confirmed mapping instead of re-deciding).
+  //
+  // Deliberately NOT keyed on showMapping/mappingConfirmed — they're read
+  // only as a guard, not a trigger. Cancel flips showMapping true->false,
+  // and if that were a dependency this effect would immediately re-fire
+  // with the unchanged format and silently reopen the very dialog the user
+  // just closed. It should only run again once csvFormat/loadedText change.
+  //
+  // Debounced: a full re-parse is real work on a large file, and each
+  // format-bar click would otherwise trigger one immediately. React cancels
+  // the pending timeout (via the cleanup) whenever a dependency changes
+  // again before it fires, so rapid clicks collapse into a single parse.
+  useEffect(() => {
+    if (!loadedText || showMapping || mappingConfirmed) return;
+    const timer = setTimeout(() => {
+      evaluateAndParse(loadedText, { silent: true });
+    }, REPARSE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [csvFormat, loadedText]);
+
+  // Same reparse-on-format-change behavior for files that went through the
+  // header-mapping dialog — must use rawCsvText + headerMapping, not
+  // loadedText with no mapping, or headers would no longer line up.
+  useEffect(() => {
+    if (!mappingConfirmed || showMapping) return;
+    const timer = setTimeout(() => {
+      const parsedData = parseCSV(rawCsvText, headerMapping, csvFormat);
+      const header = parsedData[0];
+      if (parsedData.length > 0 && header) {
+        setHeaders(Object.keys(header).filter((key) => key !== 'id'));
+        setCsvData(parsedData);
+      }
+    }, REPARSE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [csvFormat, rawCsvText, headerMapping, mappingConfirmed, showMapping]);
 
   const handleDownloadTemplate = () => {
     const sampleData: Omit<ExerciseCSVData, 'id'>[] = [
@@ -193,6 +281,8 @@ export function useExerciseImport(
   const clearData = () => {
     setCsvData([]);
     setHeaders([]);
+    setLoadedText('');
+    setMappingConfirmed(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -208,12 +298,13 @@ export function useExerciseImport(
   };
 
   const parseWithMapping = () => {
-    const parsedData = parseCSV(rawCsvText, headerMapping);
+    const parsedData = parseCSV(rawCsvText, headerMapping, csvFormat);
     const header = parsedData[0];
     if (parsedData.length > 0 && header) {
       setHeaders(Object.keys(header).filter((key) => key !== 'id'));
       setCsvData(parsedData);
       setShowMapping(false);
+      setMappingConfirmed(true);
       toast({
         title: t(
           'exercise.exerciseImportCSV.parseSuccessful',
@@ -270,6 +361,7 @@ export function useExerciseImport(
     loading,
     csvData,
     headers,
+    loadedText,
     showMapping,
     setShowMapping,
     fileHeaders,

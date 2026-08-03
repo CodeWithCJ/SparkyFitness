@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,12 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Plus, Download, Upload, Trash2, Copy } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -33,7 +28,14 @@ import {
   arrayFields,
   DROPDOWN_GUIDES,
 } from '@/constants/exercises';
+import { EXERCISE_NUMERIC_COLUMNS } from '@/utils/exercises';
 import { useExerciseImport } from '@/hooks/Exercises/useExerciseImport';
+import { useCsvFormat } from '@/hooks/useCsvFormat';
+import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
+import CsvFormatPreview from '@/components/CsvImport/CsvFormatPreview';
+import CsvHeaderMappingDialog from '@/components/CsvImport/CsvHeaderMappingDialog';
+
+const NUMERIC_COLUMNS = EXERCISE_NUMERIC_COLUMNS;
 
 export interface ExerciseCSVData {
   id: string;
@@ -48,10 +50,15 @@ interface ImportFromCSVProps {
 const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const { t } = useTranslation();
 
+  // Exercise definitions have no date column, so this importer's format bar
+  // never renders a date control (capabilities.date is false below).
+  const csvFormat = useCsvFormat();
+
   const {
     loading,
     csvData,
     headers,
+    loadedText,
     showMapping,
     setShowMapping,
     fileHeaders,
@@ -67,7 +74,20 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     handleConfirmMapping,
     handleCancelMapping,
     handleSubmit,
-  } = useExerciseImport(onSave);
+  } = useExerciseImport(onSave, csvFormat.options);
+
+  const preview = useMemo(
+    () =>
+      loadedText
+        ? csvFormat.parse(loadedText, { numericColumns: NUMERIC_COLUMNS })
+        : null,
+    [loadedText, csvFormat]
+  );
+
+  const handleFileUploadWithReset: typeof handleFileUpload = (event) => {
+    csvFormat.resetForNewInput();
+    handleFileUpload(event);
+  };
 
   const copyToClipboard = (value: string) => {
     navigator.clipboard.writeText(value);
@@ -260,9 +280,38 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
               ref={fileInputRef}
               type="file"
               accept=".csv"
-              onChange={handleFileUpload}
+              onChange={handleFileUploadWithReset}
               className="hidden"
             />
+            <CsvFormatBar
+              capabilities={{
+                delimiter: true,
+                decimal: true,
+                quote: true,
+                date: false,
+              }}
+              value={csvFormat.options}
+              onChange={csvFormat.setOptions}
+              detection={
+                preview
+                  ? {
+                      delimiter: preview.detectedDelimiter,
+                      delimiterFailed: preview.delimiterDetectionFailed,
+                      decimal: preview.decimal,
+                    }
+                  : undefined
+              }
+            />
+            {preview && (
+              <CsvFormatPreview
+                headers={preview.headers}
+                rows={preview.rows}
+                options={csvFormat.options}
+                decimalDetection={preview.decimal}
+                numericColumns={NUMERIC_COLUMNS}
+                totalRowCount={csvData.length}
+              />
+            )}
             {csvData.length > 0 && (
               <div className="text-sm text-green-600">
                 {t(
@@ -274,62 +323,16 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
             )}
           </div>
 
-          <Dialog open={showMapping} onOpenChange={setShowMapping}>
-            <DialogContent
-              requireConfirmation
-              className="max-w-4xl max-h-[80vh] overflow-y-auto"
-            >
-              <DialogHeader>
-                <DialogTitle>
-                  {t(
-                    'exercise.exerciseImportCSV.mapHeaders',
-                    'Map CSV Headers'
-                  )}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-1 gap-4">
-                {requiredHeaders.map((req) => (
-                  <div
-                    key={req}
-                    className="flex flex-col sm:flex-row sm:items-center gap-2"
-                  >
-                    <label className="font-medium capitalize">
-                      {req.replace(/_/g, ' ')}:
-                    </label>
-                    <Select
-                      value={headerMapping[req] || 'none'}
-                      onValueChange={(val) =>
-                        setHeaderMapping((prev) => ({
-                          ...prev,
-                          [req]: val === 'none' ? '' : val,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="w-full sm:w-50">
-                        <SelectValue placeholder="Select header" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {fileHeaders.map((h) => (
-                          <SelectItem key={h} value={h}>
-                            {h}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button onClick={handleConfirmMapping}>
-                  {t('exercise.exerciseImportCSV.confirmMapping', 'Confirm')}
-                </Button>
-                <Button variant="outline" onClick={handleCancelMapping}>
-                  {t('exercise.exerciseImportCSV.cancel', 'Cancel')}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <CsvHeaderMappingDialog
+            open={showMapping}
+            onOpenChange={setShowMapping}
+            requiredHeaders={requiredHeaders}
+            fileHeaders={fileHeaders}
+            headerMapping={headerMapping}
+            onHeaderMappingChange={setHeaderMapping}
+            onConfirm={handleConfirmMapping}
+            onCancel={handleCancelMapping}
+          />
 
           {csvData.length > 0 && (
             <div className="overflow-x-auto">

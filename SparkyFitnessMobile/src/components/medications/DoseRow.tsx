@@ -105,7 +105,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             accessibilityRole="button"
             className="rounded-full px-3 py-1 bg-raised"
           >
-             <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>{t('medications.take')}</Text>
+            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>{t('medications.take')}</Text>
           </TouchableOpacity>
         </SizedActionColumn>
       );
@@ -118,10 +118,10 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.6}
             accessibilityRole="button"
-             accessibilityLabel={t('medications.takeNamed', { title })}
+            accessibilityLabel={t('medications.takeNamed', { title })}
             className="rounded-full px-3 py-1 bg-raised"
           >
-             <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>{t('medications.take')}</Text>
+            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>{t('medications.take')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={props.onSkip}
@@ -174,7 +174,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
           {title}
         </Text>
         {(showTime || showSubtitle) && (
-          <Text className={`text-xs ${completed ? 'text-text-muted' : 'text-text-secondary'} mt-0.5`} numberOfLines={1}>
+          <Text className={`text-sm ${completed ? 'text-text-muted' : 'text-text-secondary'} mt-0.5`} numberOfLines={1}>
             {showTime && (
               <Text className={`${completed ? 'text-text-muted' : 'text-text-primary'}`}>
                 {time}

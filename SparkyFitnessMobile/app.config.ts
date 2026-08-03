@@ -127,6 +127,8 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       appleTeamId: isDev ? DEV_APPLE_TEAM_ID : PROD_APPLE_TEAM_ID,
       supportsTablet: false,
       infoPlist: {
+        NSLocalNetworkUsageDescription:
+          'SparkyFitness connects to self-hosted servers on your local network.',
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: false,
         },

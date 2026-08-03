@@ -23,7 +23,7 @@ import FoodLibraryRow from '../components/FoodLibraryRow';
 import Icon from '../components/Icon';
 import MealLibraryRow from '../components/MealLibraryRow';
 import StatusView from '../components/StatusView';
-import { useFavorites, useFoods, useMeals, useRecentMeals, useServerConnection, useSuggestedExercises } from '../hooks';
+import { useFavorites, useFoods, useMeals, useMedications, useRecentMeals, useServerConnection, useSuggestedExercises } from '../hooks';
 import { fetchExercisesCount } from '../services/api/exerciseApi';
 import { fetchFoodsPage } from '../services/api/foodsApi';
 import { fetchWorkoutPresetsPage } from '../services/api/workoutPresetsApi';
@@ -76,6 +76,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
     refetch: refetchRecentMeals,
   } = useRecentMeals({ enabled: isConnected, limit: RECENT_LIMIT });
   const { meals, refetch: refetchMeals } = useMeals({ enabled: isConnected });
+  const { data: medications, refetch: refetchMedications } = useMedications({ enabled: isConnected });
   const {
     recentExercises,
     isLoading: isRecentExercisesLoading,
@@ -116,6 +117,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
         refetchExercisesCount(),
         refetchPresetsCount(),
         refetchRecentExercises(),
+        refetchMedications(),
       ]);
     } finally {
       setIsRefreshing(false);
@@ -129,6 +131,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
     refetchExercisesCount,
     refetchPresetsCount,
     refetchRecentExercises,
+    refetchMedications,
   ]);
 
   const recentItems = useMemo<RecentItem[]>(() => {
@@ -306,13 +309,24 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             </View>
           </Pressable>
           <Pressable
-            className="px-4 py-4 flex-row items-center justify-between"
+            className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
             onPress={() => navigation.navigate('WorkoutPresetsLibrary')}
             style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
           >
             <Text className="text-base font-semibold text-text-primary">{t('library.workoutPresets')}</Text>
             <View className="flex-row items-center">
               <Text className="text-text-secondary text-base mr-2">{presetsCount ?? '-'}</Text>
+              <Icon name="chevron-forward" size={20} color="#999" />
+            </View>
+          </Pressable>
+          <Pressable
+            className="px-4 py-4 flex-row items-center justify-between"
+            onPress={() => navigation.navigate('MedicationsList')}
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+          >
+            <Text className="text-base font-semibold text-text-primary">{t('screens.medications')}</Text>
+            <View className="flex-row items-center">
+              <Text className="text-text-secondary text-base mr-2">{medications?.length ?? '-'}</Text>
               <Icon name="chevron-forward" size={20} color="#999" />
             </View>
           </Pressable>

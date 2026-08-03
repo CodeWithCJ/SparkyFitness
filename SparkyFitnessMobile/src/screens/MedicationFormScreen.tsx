@@ -178,9 +178,9 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
         <View className="gap-4">
           <View className="gap-1.5">
              <Text className="text-text-secondary text-sm font-medium">{t('medications.nameRequiredLabel')}</Text>
-            <FormInput
-               placeholder={t('medications.namePlaceholder')}
-              value={form.name}
+              <FormInput
+                placeholder={t('medications.namePlaceholder')}
+                value={form.name}
               onChangeText={(v) => updateField('name', v)}
               autoCapitalize="words"
             />

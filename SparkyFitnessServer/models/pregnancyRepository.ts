@@ -371,8 +371,8 @@ async function upsertChecklistItem(
     if (data.id) {
       const result = await client.query(
         `UPDATE pregnancy_checklist_state SET
-           completed_at = CASE WHEN $3 IS NULL THEN completed_at
-                               WHEN $3 THEN NOW() ELSE NULL END,
+           completed_at = CASE WHEN $3::boolean IS NULL THEN completed_at
+                               WHEN $3::boolean THEN NOW() ELSE NULL END,
            dismissed = COALESCE($4, dismissed),
            custom_title = COALESCE($5, custom_title),
            updated_at = NOW()

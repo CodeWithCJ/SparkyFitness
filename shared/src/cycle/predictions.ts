@@ -645,7 +645,7 @@ export function detectAnomalies(
       anomalies.push({
         key: "irregular_cycles",
         severity: "attention",
-        message: "Your cycle length variation is high (SD > 5 days), which may indicate cycle irregularity.",
+        message: "Your cycle lengths have varied by more than a few days recently. If this is new for you, it may be worth mentioning to a clinician.",
       });
     }
   }
@@ -674,7 +674,7 @@ export function detectAnomalies(
     anomalies.push({
       key: "heavy_bleeding",
       severity: "attention",
-      message: "Your logs indicate heavy menstrual bleeding (HMB), either due to high estimated flow volume or periods lasting longer than 7 days.",
+      message: "Your recent logs show heavier flow than usual or periods lasting longer than 7 days. If this continues, consider mentioning it to a clinician.",
     });
   }
 
