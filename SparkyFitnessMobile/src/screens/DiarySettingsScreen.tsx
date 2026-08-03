@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Switch, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -31,6 +32,7 @@ const MAX_DIARY_CUSTOM_NUTRIENTS = 4;
 const SERVER_DEFAULT_DIARY_NUTRIENTS: string[] = [];
 
 const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
@@ -90,7 +92,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       if (context?.previous) {
         queryClient.setQueryData(nutrientDisplayPreferencesQueryKey, context.previous);
       }
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update setting.' });
+      Toast.show({ type: 'error', text1: t('common.error'), text2: t('foodMeals.failedToUpdateSetting') });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: nutrientDisplayPreferencesQueryKey });
@@ -102,14 +104,14 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       if (value && base.length >= MAX_DIARY_CUSTOM_NUTRIENTS) {
         Toast.show({
           type: 'info',
-          text1: 'Limit reached',
-          text2: `Up to ${MAX_DIARY_CUSTOM_NUTRIENTS} custom nutrients can be shown here.`,
+          text1: t('common.error'),
+          text2: t('screenCopy.diarySettings.limit', { count: MAX_DIARY_CUSTOM_NUTRIENTS }),
         });
         return;
       }
       mutation.mutate(toggleNutrientVisibility(base, name, value));
     },
-    [base, mutation],
+    [base, mutation, t],
   );
 
   const renderContent = () => {
@@ -125,11 +127,10 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       return (
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <Text className="text-base font-semibold text-text-primary mb-2">
-            No custom nutrients
+             {t('screenCopy.diarySettings.none')}
           </Text>
           <Text className="text-text-secondary text-sm">
-            Custom nutrients are created in the SparkyFitness web app. Once you add
-            some, they will appear here so you can choose which show on your Diary.
+             {t('screenCopy.diarySettings.noneDescription')}
           </Text>
         </View>
       );
@@ -156,7 +157,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
     );
   };
 
-  const header = useScreenHeader({ title: 'Diary Settings', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('screenCopy.diarySettings.title'), left: { kind: 'back' } });
 
   return (
     <View
@@ -174,8 +175,8 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       >
         <SettingsRowGroup>
           <SettingsRow
-            title="Diary Summary"
-            subtitle="Show calories and macronutrients"
+            title={t('screenCopy.diarySettings.summary')}
+            subtitle={t('screenCopy.diarySettings.summaryDescription')}
             rightAccessory={
               <Switch
                 value={diarySummaryVisible}
@@ -188,7 +189,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
         </SettingsRowGroup>
 
         <Text className="text-base font-semibold text-text-primary mb-4">
-          Custom Nutrient Display
+          {t('screenCopy.diarySettings.customTitle')}
         </Text>
 
         {renderContent()}

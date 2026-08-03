@@ -251,7 +251,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (ingredient.item_type === 'meal') {
       Toast.show({
         type: 'info',
-         text1: t('foodMealScreens.linkedMealInfo'),
+                         text1: t('foodMealScreens.linkedMealInfo'),
          text2: t('foodMealScreens.editSubmealWeb'),
       });
       return;
@@ -495,8 +495,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                   <Text className="text-text-secondary text-sm font-medium">
                      {t('foodMealScreens.totalServings')}
                   </Text>
-                  <FormInput
-                    placeholder="1"
+              <FormInput
+                placeholder="1"
                     value={totalServingsText}
                     onChangeText={updateTotalServings}
                     keyboardType="decimal-pad"
@@ -647,16 +647,16 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                             </View>
                           ) : null}
                           <Text className="text-text-muted text-sm mt-1">
-                            {ingredientProtein}g protein{' \u00b7 '}{ingredientCarbs}g carbs{' \u00b7 '}{ingredientFat}g fat
+                            {ingredientProtein}g {t('foodMealScreens.protein')}{' \u00b7 '}{ingredientCarbs}g {t('foodMealScreens.carbs')}{' \u00b7 '}{ingredientFat}g {t('foodMealScreens.fat')}
                           </Text>
                         </View>
                         <View className="items-end">
                           <Text className="text-text-primary text-base font-semibold">
-                            {ingredientCalories} cal
+                            {ingredientCalories} {t('foodSearchUi.cal')}
                           </Text>
                           <Text className="text-text-muted text-sm mt-1">
                             {formatServingSizeDisplay(quantity)}{' '}
-                            {ingredient.unit || ingredient.serving_unit || 'serving'}
+                            {ingredient.unit || ingredient.serving_unit || t('foodMealScreens.serving')}
                           </Text>
                         </View>
                       </View>
@@ -672,7 +672,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               variant="ghost"
               onPress={openIngredientPicker}
               className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
-              accessibilityLabel="Add Food"
+              accessibilityLabel={t('foodMealScreens.addFood')}
             >
               <Icon name="add" size={16} color={accentColor} />
              <Text className="text-accent-primary text-sm font-semibold">{t('foodMealScreens.addFood')}</Text>
@@ -685,13 +685,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                 <View className="flex-row items-center justify-between">
                    <Text className="text-text-secondary text-base font-medium">{t('foodMealScreens.mealTotal')}</Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                    {formatCaloriesDisplay(totals.calories)} cal
+                    {formatCaloriesDisplay(totals.calories)} {t('foodSearchUi.cal')}
                   </Text>
                 </View>
                 <View className="flex-row items-start gap-2 mt-1">
-                  <MacroStat color={proteinColor} value={formatMacroDisplay(totals.protein)} label="g protein" />
-                  <MacroStat color={carbsColor} value={formatMacroDisplay(totals.carbs)} label="g carbs" />
-                  <MacroStat color={fatColor} value={formatMacroDisplay(totals.fat)} label="g fat" />
+                  <MacroStat color={proteinColor} value={formatMacroDisplay(totals.protein)} label={t('foodMealScreens.protein')} />
+                  <MacroStat color={carbsColor} value={formatMacroDisplay(totals.carbs)} label={t('foodMealScreens.carbs')} />
+                  <MacroStat color={fatColor} value={formatMacroDisplay(totals.fat)} label={t('foodMealScreens.fat')} />
                 </View>
               </View>
               {showPerServing ? (
@@ -699,24 +699,24 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                   <View className="flex-row items-center justify-between">
                      <Text className="text-text-secondary text-base font-medium">{t('foodMealScreens.perServing')}</Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                      {formatCaloriesDisplay(totals.calories / totalServingsCount)} cal
+                      {formatCaloriesDisplay(totals.calories / totalServingsCount)} {t('foodSearchUi.cal')}
                     </Text>
                   </View>
                   <View className="flex-row items-start gap-2 mt-1">
                     <MacroStat
                       color={proteinColor}
                       value={formatMacroDisplay(totals.protein / totalServingsCount)}
-                      label="g protein"
+                      label={t('foodMealScreens.protein')}
                     />
                     <MacroStat
                       color={carbsColor}
                       value={formatMacroDisplay(totals.carbs / totalServingsCount)}
-                      label="g carbs"
+                      label={t('foodMealScreens.carbs')}
                     />
                     <MacroStat
                       color={fatColor}
                       value={formatMacroDisplay(totals.fat / totalServingsCount)}
-                      label="g fat"
+                      label={t('foodMealScreens.fat')}
                     />
                   </View>
                 </View>

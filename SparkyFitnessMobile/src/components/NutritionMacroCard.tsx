@@ -143,11 +143,11 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
             </View>
             {calorieGoal && calorieGoal > 0 ? (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} kcal ({goalPercentages?.calories}%)
+                {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} {t('units.kcalShort')} ({goalPercentages?.calories}%)
               </Text>
             ) : (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                {formatLocalizedNumber(Math.round(calories))} kcal
+                {formatLocalizedNumber(Math.round(calories))} {t('units.kcalShort')}
               </Text>
             )}
           </View>

@@ -30,13 +30,11 @@ import { addLog } from '../services/LogService';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 import { mapEstimateError } from '../utils/foodPhotoEstimate';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 type Props = FoodPhotoFlowScreenProps<'Improve'>;
 
-const WEIGHT_UNITS: Segment<'g' | 'oz'>[] = [
-  { key: 'g', label: 'grams' },
-  { key: 'oz', label: 'ounces' },
-];
+const WEIGHT_UNIT_KEYS: ('g' | 'oz')[] = ['g', 'oz'];
 
 const DESCRIPTION_MAX = 500;
 
@@ -89,28 +87,25 @@ function resolveMimeType(img: StagedImage): string {
 const FADE_IN_MS = 200;
 const FADE_OUT_MS = 150;
 
-const PENDING_MESSAGES: { startsAt: number; text: string }[] = [
-  { startsAt: 0, text: 'Reading your photo…' },
-  { startsAt: 6, text: 'Identifying ingredients…' },
-  { startsAt: 15, text: 'Estimating portions…' },
-  { startsAt: 28, text: 'Calculating nutrition…' },
-  { startsAt: 45, text: 'Almost there…' },
-];
-
-function pendingMessageFor(elapsedSec: number, imageCount: number): string {
-  let current = PENDING_MESSAGES[0].text;
-  for (const m of PENDING_MESSAGES) {
-    if (elapsedSec >= m.startsAt) current = m.text;
-  }
+function pendingMessageFor(t: TFunction, elapsedSec: number, imageCount: number): string {
+  let current = t('foodMealScreens.readingPhoto');
+  if (elapsedSec >= 6) current = t('foodMealScreens.identifyingIngredients');
+  if (elapsedSec >= 15) current = t('foodMealScreens.estimatingPortions');
+  if (elapsedSec >= 28) current = t('foodMealScreens.calculatingNutrition');
+  if (elapsedSec >= 45) current = t('foodMealScreens.almostThere');
   // Pluralize the first ("Reading your photo…") message for multi-image sets.
-  if (imageCount > 1 && current === PENDING_MESSAGES[0].text) {
-    return 'Reading your photos…';
+  if (imageCount > 1 && elapsedSec < 6) {
+    return t('foodMealScreens.readingPhotos');
   }
   return current;
 }
 
 const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
+  const localizedWeightUnits: Segment<'g' | 'oz'>[] = WEIGHT_UNIT_KEYS.map((key) => ({
+    key,
+    label: key === 'g' ? t('foodPhotoUnit.grams') : t('foodPhotoUnit.ounces'),
+  }));
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [accentPrimary, textPrimary, dangerColor] = useCSSVariable([
@@ -201,8 +196,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       if (!permission.granted) {
         Toast.show({
           type: 'error',
-          text1: 'Camera permission needed',
-          text2: 'Enable camera access to add a photo.',
+           text1: t('photoImprove.cameraPermission'),
+           text2: t('photoImprove.cameraPermissionMessage'),
         });
         return;
       }
@@ -285,8 +280,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       if (descriptionTooLong) {
         Toast.show({
           type: 'error',
-          text1: 'Description too long',
-          text2: `Keep it under ${DESCRIPTION_MAX} characters.`,
+           text1: t('photoImprove.descriptionTooLong'),
+           text2: t('photoImprove.descriptionLimit', { count: DESCRIPTION_MAX }),
         });
         return;
       }
@@ -381,7 +376,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const isPending = mutation.isPending;
-  const pendingMessage = pendingMessageFor(elapsedSec, images.length);
+  const pendingMessage = pendingMessageFor(t, elapsedSec, images.length);
 
   return (
     <View
@@ -488,7 +483,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             <View className="flex-row items-center gap-2 mb-2">
               <FormInput
                 className="flex-1"
-                placeholder="e.g. 350"
+                 placeholder={t('photoImprove.weightPlaceholder')}
                 keyboardType="decimal-pad"
                 value={totalWeight}
                 onChangeText={handleWeightChange}
@@ -497,7 +492,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
             <View className="mb-4">
               <SegmentedControl
-                segments={WEIGHT_UNITS}
+                 segments={localizedWeightUnits}
                 activeKey={weightUnit}
                 onSelect={setWeightUnit}
               />
@@ -511,7 +506,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             </Text>
             <FormInput
               className="mb-1"
-              placeholder='e.g. salmon with lemon dill cream sauce'
+               placeholder={t('photoImprove.descriptionPlaceholder')}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -578,7 +573,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         <Pressable
           className="flex-1 justify-end bg-black/50"
           onPress={() => setSheetVisible(false)}
-          accessibilityLabel="Dismiss"
+           accessibilityLabel={t('common.dismiss')}
         >
           <Pressable
             // Tap-absorbing wrapper only; hide it from screen readers so they

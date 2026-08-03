@@ -184,7 +184,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
     if (Platform.OS === 'android' && !isActive) {
       Alert.alert(
         item.url,
-        'Select an action',
+        t('serverSettings.selectAction'),
         [
            { text: t('serverSettings.setActive'), onPress: () => handleSetActiveConfig(item.id) },
            { text: t('common.edit'), onPress: () => handleConfigureServer(item) },
@@ -229,8 +229,8 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
             <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
             <Pressable
               onPress={() => showConfigMenu(activeConfig)}
-              accessibilityLabel={`Options for ${activeConfig.url}`}
-              accessibilityHint={isConnected ? 'Connected' : 'Connection failed'}
+               accessibilityLabel={t('serverCopy.options', { url: activeConfig.url })}
+               accessibilityHint={isConnected ? t('serverCopy.connected') : t('serverCopy.failed')}
               accessibilityRole="button"
               className="flex-row items-center"
             >
@@ -293,7 +293,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
                   key={cfg.id}
                   onPress={() => showConfigMenu(cfg)}
                   className={`p-4 flex-row items-center justify-between${i > 0 ? ' border-t border-border-subtle' : ''}`}
-                  accessibilityLabel={`Options for ${cfg.url}`}
+                   accessibilityLabel={t('serverCopy.options', { url: cfg.url })}
                   accessibilityRole="button"
                 >
                   <View className="flex-1 mr-3">

@@ -42,10 +42,10 @@ type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
 type ScanMode = 'barcode' | 'label' | 'photo';
 
-const SCAN_SEGMENTS: Segment<ScanMode>[] = [
-  { key: 'barcode', label: 'Barcode' },
-  { key: 'label', label: 'Label' },
-  { key: 'photo', label: 'Photo' },
+const SCAN_SEGMENT_KEYS: ScanMode[] = [
+  'barcode',
+  'label',
+  'photo',
 ];
 
 const GUIDE_WIDTH = 280;
@@ -62,6 +62,10 @@ const CORNER_STYLE = {
 
 const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) => {
   const { t } = useTranslation();
+  const localizedScanSegments: Segment<ScanMode>[] = SCAN_SEGMENT_KEYS.map((key) => ({
+    key,
+    label: key === 'barcode' ? t('foodMealScreens.barcode') : key === 'label' ? t('foodMealScreens.label') : t('foodMealScreens.photo'),
+  }));
   const insets = useSafeAreaInsets();
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const [permission, requestPermission] = useCameraPermissions();
@@ -109,12 +113,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   // capture-barcode mode is barcode-only.
   const scanSegments = useMemo(() => {
     if (isCaptureBarcodeMode) {
-      return SCAN_SEGMENTS.filter((segment) => segment.key === 'barcode');
+      return localizedScanSegments.filter((segment) => segment.key === 'barcode');
     }
     return isMealBuilderMode
-      ? SCAN_SEGMENTS.filter((segment) => segment.key !== 'photo')
-      : SCAN_SEGMENTS;
-  }, [isCaptureBarcodeMode, isMealBuilderMode]);
+       ? localizedScanSegments.filter((segment) => segment.key !== 'photo')
+       : localizedScanSegments;
+   }, [isCaptureBarcodeMode, isMealBuilderMode, localizedScanSegments]);
 
   const aiSettingQuery = useActiveAiServiceSetting({
     // Skip the AI gating fetch in capture-barcode mode — Photo segment is
@@ -426,7 +430,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         params: { date, photo: { uri: photo.uri } },
       });
     } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+      Toast.show({ type: 'error', text1: t('foodMealScreens.error'), text2: t('foodMealScreens.captureFailed') });
     }
   };
 

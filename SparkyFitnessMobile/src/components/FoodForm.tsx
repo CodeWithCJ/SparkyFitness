@@ -1335,15 +1335,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
           {/* Serving */}
           <View className="flex-row gap-3">
-            {renderNumericField('Serving Size', 'servingSize', undefined, false, 'calories')}
+              {renderNumericField(t('foodMeals.serving'), 'servingSize', undefined, false, 'calories')}
             <View className="gap-1.5 flex-1">
-              <Text className="text-text-secondary text-sm font-medium">Serving Unit</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('foodMeals.unit')}</Text>
               {unitSelector ? (
                 <FoodUnitSelectorSheet
                   variants={unitSelector.variants}
                   selectedVariantId={selectedSavedVariantId}
                   selectedSelection={selectedUnitSelection}
-                  title="Select Unit"
+                   title={t('foodMeals.selectUnit')}
                   onSelect={handleUnitSelectorSelection}
                   renderTrigger={({ onPress }) => (
                     <TouchableOpacity
@@ -1357,7 +1357,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         style={{ fontSize: 16 }}
                         numberOfLines={1}
                       >
-                        {form.servingUnit || 'unit'}
+                         {form.servingUnit || t('foodMeals.unit')}
                       </Text>
                       <Icon
                         name="chevron-down"
@@ -1373,8 +1373,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   value={form.servingUnit}
                   sections={SERVING_UNIT_SECTIONS}
                   onSelect={(v) => update('servingUnit', v)}
-                  title="Select Unit"
-                  placeholder="unit"
+                   title={t('foodMeals.selectUnit')}
+                   placeholder={t('foodMeals.unit')}
                   renderTrigger={({ onPress, selectedOption }) => (
                     <TouchableOpacity
                       onPress={onPress}
@@ -1386,7 +1386,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
                         style={{ fontSize: 16 }}
                       >
-                        {selectedOption?.label ?? 'unit'}
+                         {selectedOption?.label ?? t('foodMeals.unit')}
                       </Text>
                       <Icon
                         name="chevron-down"
@@ -1450,7 +1450,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   className="text-sm font-medium flex-1"
                   style={{ color: infoText }}
                 >
-                  {"Can't convert between units. Update nutrition values manually."}
+                  {t('foodMeals.manualNutritionMessage')}
                 </Text>
               </View>
               {canAiConvert ? (
@@ -1464,7 +1464,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     <View className="flex-row items-center gap-2">
                       <ActivityIndicator size="small" color={textPrimary} />
                       <Text className="text-text-primary font-semibold">
-                        Estimating…
+                        {t('foodMealScreens.estimatingPortions')}
                       </Text>
                     </View>
                   ) : (
@@ -1476,7 +1476,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         style={androidSparkleStyle}
                       />
                       <Text className="text-text-primary font-semibold">
-                        Convert with AI
+                        {t('foodMeals.aiEstimate')}
                       </Text>
                     </View>
                   )}
@@ -1515,15 +1515,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     selectedUnitSelection.variant
                       .ai_confidence as AiConfidence
                   ]
-                }{' '}
-                estimate
+                 }{' '}
+                 {t('foodMeals.aiEstimate')}
               </Text>
             </View>
           ) : null}
 
           <View className="gap-1.5 mt-1.5">
             <Text className="text-text-primary text-sm font-bold">
-              Calories (kcal) *
+               {t('foodMealScreens.calories')}
             </Text>
             <FormInput
               ref={fieldRefs.calories}

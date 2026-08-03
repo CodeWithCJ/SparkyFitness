@@ -22,6 +22,7 @@ import {
 } from '../utils/workoutSession';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import { useDeleteExerciseEntry, useDeleteWorkout } from '../hooks/useExerciseMutations';
+import { useTranslation } from 'react-i18next';
 
 interface SwipeableExerciseRowProps {
   session: ExerciseSessionResponse;
@@ -43,6 +44,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   weightUnit = 'kg',
   distanceUnit = 'km',
 }) => {
+  const { t } = useTranslation();
   const swipeableRef = useRef<SwipeableMethods | null>(null);
   const rowHeight = useSharedValue<number | null>(null);
   const isRemoving = useSharedValue(false);
@@ -115,9 +117,9 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
       onPress={confirmAndDelete}
       activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel="Delete exercise"
+       accessibilityLabel={t('common.delete')}
     >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+       <Text className="text-text-danger font-semibold text-sm">{t('common.delete')}</Text>
     </TouchableOpacity>
   );
 
@@ -130,8 +132,8 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
 
   const handleLongPress = () => {
     Alert.alert(name, undefined, [
-      { text: 'Delete', style: 'destructive', onPress: deleteEntry },
-      { text: 'Cancel', style: 'cancel' },
+       { text: t('common.delete'), style: 'destructive', onPress: deleteEntry },
+       { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 

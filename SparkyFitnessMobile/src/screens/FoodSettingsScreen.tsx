@@ -340,7 +340,7 @@ const MealTypeTimeRow: React.FC<{
           value={val}
           onChangeText={setVal}
           onBlur={handleBlur}
-          placeholder="HH:MM"
+          placeholder={t('foodMealScreens.time')}
           placeholderTextColor="#9CA3AF"
           className="bg-background border border-border text-text-primary text-xs px-2 py-1 rounded w-20 text-center"
           keyboardType="numbers-and-punctuation"

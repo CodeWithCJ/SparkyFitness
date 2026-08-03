@@ -680,7 +680,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                     <View className="mb-3">
                       <Text className="text-sm mb-2 text-text-secondary">{t('auth.email')}</Text>
                       <FormInput
-                        placeholder="email@example.com"
+                         placeholder={t('auth.email')}
                         value={email}
                         onChangeText={setEmail}
                         autoCapitalize="none"
@@ -774,7 +774,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   <FormInput
                     ref={apiKeyInputRef}
                     className="flex-1 rounded-lg"
-                    placeholder="Uds3d8i..."
+                     placeholder={t('auth.apiKey')}
                     value={apiKey}
                     onChangeText={setApiKey}
                     secureTextEntry={!showApiKey}

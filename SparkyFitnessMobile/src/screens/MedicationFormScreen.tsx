@@ -209,7 +209,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
             <View className="flex-1 gap-1.5">
                <Text className="text-text-secondary text-sm font-medium">{t('medications.unit')}</Text>
               <FormInput
-                placeholder="mg"
+                 placeholder={t('medications.unit')}
                 value={form.strengthUnit}
                 onChangeText={(v) => updateField('strengthUnit', v)}
               />
@@ -229,7 +229,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
             <View className="flex-1 gap-1.5">
                <Text className="text-text-secondary text-sm font-medium">{t('medications.unit')}</Text>
               <FormInput
-                placeholder="tablet"
+                 placeholder={t('medications.type')}
                 value={form.doseUnit}
                 onChangeText={(v) => updateField('doseUnit', v)}
               />
@@ -255,7 +255,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
             <View className="gap-1.5">
                <Text className="text-text-secondary text-sm font-medium">{t('medications.reason')}</Text>
               <FormInput
-                placeholder="Blood pressure"
+                 placeholder={t('medications.reason')}
                 value={form.reason}
                 onChangeText={(v) => updateField('reason', v)}
               />
@@ -264,7 +264,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
             <View className="gap-1.5">
                <Text className="text-text-secondary text-sm font-medium">{t('medications.prescriber')}</Text>
               <FormInput
-                placeholder="Dr. Ipsum"
+                 placeholder={t('medications.prescriber')}
                 value={form.prescriber}
                 onChangeText={(v) => updateField('prescriber', v)}
               />
@@ -273,7 +273,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
             <View className="gap-1.5">
                <Text className="text-text-secondary text-sm font-medium">{t('medications.pharmacy')}</Text>
               <FormInput
-                placeholder="Sunny Pharmacy"
+                 placeholder={t('medications.pharmacy')}
                 value={form.pharmacy}
                 onChangeText={(v) => updateField('pharmacy', v)}
               />

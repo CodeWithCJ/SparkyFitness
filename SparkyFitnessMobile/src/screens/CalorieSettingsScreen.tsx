@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Switch, ScrollView, Platform } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,22 +22,6 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type CalorieSettingsScreenProps = RootStackScreenProps<'CalorieSettings'>;
 
-const modeOptions = [
-  { label: 'Adaptive Goal', value: 'adaptive' },
-  { label: 'Dynamic Goal', value: 'dynamic' },
-  { label: 'Fixed Goal', value: 'fixed' },
-  { label: 'Percentage Earn-Back', value: 'percentage' },
-  { label: 'Device Projection', value: 'tdee' },
-];
-
-const activityLevelOptions = [
-  { label: 'None (x1.0)', value: 'none' },
-  { label: 'Sedentary (x1.2)', value: 'not_much' },
-  { label: 'Lightly Active (x1.375)', value: 'light' },
-  { label: 'Moderately Active (x1.55)', value: 'moderate' },
-  { label: 'Very Active (x1.725)', value: 'heavy' },
-];
-
 // Apple Health and Health Connect use different terms for the same baseline-energy value.
 const bmrMetricName = Platform.OS === 'ios' ? 'Resting Energy' : 'BMR';
 
@@ -53,6 +38,58 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
 }
 
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
+  const { t } = useTranslation();
+  const copy = (key: string, options?: Record<string, string | number>) => {
+    switch (key) {
+      case 'title': return t('screenCopy.calorie.title', options);
+      case 'mode': return t('screenCopy.calorie.mode', options);
+      case 'adjustmentMode': return t('screenCopy.calorie.adjustmentMode', options);
+      case 'modeDescription': return t('screenCopy.calorie.modeDescription', options);
+      case 'exerciseApplied': return t('screenCopy.calorie.exerciseApplied', options);
+      case 'exerciseDescription': return t('screenCopy.calorie.exerciseDescription', options);
+      case 'activityLevel': return t('screenCopy.calorie.activityLevel', options);
+      case 'baseline': return t('screenCopy.calorie.baseline', options);
+      case 'fallback': return t('screenCopy.calorie.fallback', options);
+      case 'negative': return t('screenCopy.calorie.negative', options);
+      case 'negativeDescription': return t('screenCopy.calorie.negativeDescription', options);
+      case 'resting': return t('screenCopy.calorie.resting', options);
+      case 'restingDescription': return t('screenCopy.calorie.restingDescription', options);
+      case 'howWorks': return t('screenCopy.calorie.howWorks', options);
+      case 'burned': return t('screenCopy.calorie.burned', options);
+      case 'activityBmr': return t('screenCopy.calorie.activityBmr', options);
+      case 'activityOnly': return t('screenCopy.calorie.activityOnly', options);
+      case 'net': return t('screenCopy.calorie.net', options);
+      case 'netFormula': return t('screenCopy.calorie.netFormula', options);
+      case 'remaining': return t('screenCopy.calorie.remaining', options);
+      case 'goalNet': return t('screenCopy.calorie.goalNet', options);
+      case 'goalGrows': return t('screenCopy.calorie.goalGrows', options);
+      case 'percentageBmrFormula': return t('screenCopy.calorie.percentageBmrFormula', options);
+      case 'percentageFormula': return t('screenCopy.calorie.percentageFormula', options);
+      case 'projectionFormula': return t('screenCopy.calorie.projectionFormula', options);
+      case 'projectionNote': return t('screenCopy.calorie.projectionNote', options);
+      case 'adaptiveFormula': return t('screenCopy.calorie.adaptiveFormula', options);
+      case 'adaptiveNote': return t('screenCopy.calorie.adaptiveNote', options);
+      case 'fixedNote': return t('screenCopy.calorie.fixedNote', options);
+      case 'external': return t('screenCopy.calorie.external', options);
+      case 'externalDescription': return t('screenCopy.calorie.externalDescription', options);
+      case 'externalIosNote': return t('screenCopy.calorie.externalIosNote', options);
+      default: return '';
+    }
+  };
+  const modeOptions = useMemo(() => [
+    { label: t('calorieModes.adaptive'), value: 'adaptive' },
+    { label: t('calorieModes.dynamic'), value: 'dynamic' },
+    { label: t('calorieModes.fixed'), value: 'fixed' },
+    { label: t('calorieModes.percentage'), value: 'percentage' },
+    { label: t('calorieModes.tdee'), value: 'tdee' },
+  ], [t]);
+  const activityLevelOptions = useMemo(() => [
+    { label: t('activityLevels.none'), value: 'none' },
+    { label: t('activityLevels.not_much'), value: 'not_much' },
+    { label: t('activityLevels.light'), value: 'light' },
+    { label: t('activityLevels.moderate'), value: 'moderate' },
+    { label: t('activityLevels.heavy'), value: 'heavy' },
+  ], [t]);
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -95,7 +132,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
       if (context?.previous) {
         queryClient.setQueryData(preferencesQueryKey, context.previous);
       }
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update setting.' });
+       Toast.show({ type: 'error', text1: t('common.error'), text2: t('foodMeals.failedToUpdateSetting') });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dailySummary'] });
@@ -147,43 +184,41 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     const bmr = normalized.includeBmrInNetCalories;
     const pct = normalized.exerciseCaloriePercentage;
 
-    const burned = bmr
-      ? 'Activity + BMR'
-      : 'Activity only (exercise + steps)';
+     const burned = bmr ? copy('activityBmr') : copy('activityOnly');
 
-    const net = 'Eaten \u2212 Burned';
+     const net = copy('netFormula');
 
     let remainingFormula: string;
     let remainingNote: string | null;
     switch (mode) {
       case 'dynamic':
-        remainingFormula = 'Goal \u2212 Net Energy';
-        remainingNote = 'Goal grows as you move';
+         remainingFormula = copy('goalNet');
+         remainingNote = copy('goalGrows');
         break;
       case 'percentage':
         remainingFormula = bmr
-          ? `Goal \u2212 Eaten + BMR + ${pct}% of Exercise`
-          : `Goal \u2212 Eaten + ${pct}% of Exercise`;
+           ? copy('percentageBmrFormula', { pct })
+           : copy('percentageFormula', { pct });
         remainingNote = null;
         break;
       case 'tdee':
-        remainingFormula = 'Goal \u2212 Eaten + (Projection \u2212 TDEE)';
-        remainingNote = 'Projection converges at midnight';
+         remainingFormula = copy('projectionFormula');
+         remainingNote = copy('projectionNote');
         break;
       case 'adaptive':
-        remainingFormula = 'Goal \u2212 Eaten';
-        remainingNote = 'Goal = Adaptive TDEE';
+         remainingFormula = copy('adaptiveFormula');
+         remainingNote = copy('adaptiveNote');
         break;
       default:
-        remainingFormula = 'Goal \u2212 Eaten';
-        remainingNote = 'Activity does not change your budget';
+         remainingFormula = copy('adaptiveFormula');
+         remainingNote = copy('fixedNote');
         break;
     }
 
     return { burned, net, remainingFormula, remainingNote };
-  }, [normalized.mode, normalized.includeBmrInNetCalories, normalized.exerciseCaloriePercentage]);
+  }, [normalized.mode, normalized.includeBmrInNetCalories, normalized.exerciseCaloriePercentage, copy]);
 
-  const header = useScreenHeader({ title: 'Calorie & BMR Settings', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: copy('title'), left: { kind: 'back' } });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -195,17 +230,17 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
         {/* Mode */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">Calorie Mode</Text>
+            <Text className="text-base font-semibold text-text-primary">{copy('mode')}</Text>
             <BottomSheetPicker
               value={normalized.mode}
-              options={modeOptions}
+                options={modeOptions}
               onSelect={handleModeChange}
-              title="Adjustment Mode"
+              title={copy('adjustmentMode')}
               containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
             />
           </View>
           <Text className="text-text-secondary text-sm mt-3">
-            Controls how your daily calorie goal adjusts based on activity.
+            {copy('modeDescription')}
           </Text>
         </View>
 
@@ -215,7 +250,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           {showPercentage && (
             <Animated.View layout={optionsLayout}>
               <Text className="text-base font-semibold text-text-primary mb-2">
-                Exercise Calories Applied
+                {copy('exerciseApplied')}
               </Text>
               <FormInput
                 value={percentageText}
@@ -226,7 +261,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                 returnKeyType="done"
               />
               <Text className="text-text-secondary text-sm mt-3">
-                How much of your exercise calories are added back to your daily goal.
+                {copy('exerciseDescription')}
               </Text>
               <View className="border-t border-border-subtle my-3" />
             </Animated.View>
@@ -236,21 +271,21 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           {showActivityLevel && (
             <Animated.View layout={optionsLayout}>
               <View className="flex-row items-center justify-between">
-                <Text className="text-base font-semibold text-text-primary">Activity Level</Text>
+                <Text className="text-base font-semibold text-text-primary">{copy('activityLevel')}</Text>
                 <BottomSheetPicker
                   value={normalized.activityLevel}
-                  options={activityLevelOptions}
+                    options={activityLevelOptions}
                   onSelect={handleActivityLevelChange}
-                  title="Activity Level"
+                  title={copy('activityLevel')}
                   containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
                 />
               </View>
               <Text className="text-text-secondary text-sm mt-1">
-                Used as a baseline for TDEE.
+                {copy('baseline')}
               </Text>
               {normalized.mode === 'adaptive' && (
                 <Text className="text-text-secondary text-sm mt-3">
-                  Acts as a fallback until you have enough tracking data.
+                  {copy('fallback')}
                 </Text>
               )}
               <View className="border-t border-border-subtle my-3" />
@@ -261,7 +296,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           {showNegativeAdjustment && (
             <Animated.View layout={optionsLayout}>
               <View className="flex-row justify-between items-center">
-                <Text className="text-base font-semibold text-text-primary">Allow Negative Adjustment</Text>
+                <Text className="text-base font-semibold text-text-primary">{copy('negative')}</Text>
                 <Switch
                   onValueChange={handleNegativeAdjustmentToggle}
                   value={normalized.tdeeAllowNegativeAdjustment}
@@ -270,7 +305,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                 />
               </View>
               <Text className="text-text-secondary text-sm mt-3">
-                Lower your daily goal when you burn less than expected.
+                {copy('negativeDescription')}
               </Text>
               <View className="border-t border-border-subtle my-3" />
             </Animated.View>
@@ -279,7 +314,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           {/* BMR Toggle */}
           <Animated.View layout={optionsLayout}>
             <View className="flex-row justify-between items-center">
-              <Text className="text-base font-semibold text-text-primary">Include Resting Calories</Text>
+              <Text className="text-base font-semibold text-text-primary">{copy('resting')}</Text>
               <Switch
                 onValueChange={handleBmrToggle}
                 value={normalized.includeBmrInNetCalories}
@@ -288,7 +323,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               />
             </View>
             <Text className="text-text-secondary text-sm mt-3">
-              Include your baseline energy (BMR) in net calculations.
+              {copy('restingDescription')}
             </Text>
           </Animated.View>
         </Animated.View>
@@ -302,13 +337,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           <View className="flex-row items-center mb-4">
             <Icon name="info-circle" size={18} color={accentPrimary} />
             <Text className="text-base font-semibold text-text-primary ml-2">
-              How this works
+              {copy('howWorks')}
             </Text>
           </View>
 
           <Animated.View className="items-center" layout={pipelineLayout}>
             {/* Step 1: Burned */}
-            <Text className="text-base font-semibold text-text-primary">Burned Calories</Text>
+            <Text className="text-base font-semibold text-text-primary">{copy('burned')}</Text>
             <Animated.View
               key={`burned-${explanation.burned}`}
               layout={pipelineLayout}
@@ -319,7 +354,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             <Text className="text-text-muted text-lg my-1">{'\u2193'}</Text>
 
             {/* Step 2: Net */}
-            <Text className="text-base font-semibold text-text-primary">Net Energy</Text>
+            <Text className="text-base font-semibold text-text-primary">{copy('net')}</Text>
             <Animated.View
               key={`net-${explanation.net}`}
               layout={pipelineLayout}
@@ -330,7 +365,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             <Text className="text-text-muted text-lg my-1">{'\u2193'}</Text>
 
             {/* Step 3: Remaining */}
-            <Text className="text-base font-semibold text-text-primary">Remaining Calories</Text>
+            <Text className="text-base font-semibold text-text-primary">{copy('remaining')}</Text>
             <Animated.View
               key={`remaining-${explanation.remainingFormula}`}
               layout={pipelineLayout}
@@ -352,7 +387,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">
             <Text className="text-base font-semibold text-text-primary flex-1 mr-3">
-              Use {bmrMetricName} from {healthSourceName}
+              {copy('external', { metric: bmrMetricName, source: healthSourceName })}
             </Text>
             <Switch
               onValueChange={handleExternalBmrToggle}
@@ -362,16 +397,14 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             />
           </View>
           <Text className="text-text-secondary text-sm mt-3">
-            Uses {healthSourceName} {bmrMetricName} when available. Otherwise, the selected
-            formula will be used.
+            {copy('externalDescription', { metric: bmrMetricName, source: healthSourceName })}
           </Text>
           {normalized.useExternalBmr && (
             <View className="mt-3">
               <HealthSourceLabel />
               {Platform.OS === 'ios' && (
                 <Text className="text-text-secondary text-xs mt-3">
-                  The synced value already includes light daily activity, so you may want to set
-                  your Activity Level to None (×1.0) to avoid counting it twice.
+                  {copy('externalIosNote')}
                 </Text>
               )}
             </View>

@@ -20,7 +20,7 @@ const OSDeniedWarningCard: React.FC<Props> = ({ onPress, actionLabel }) => {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${title}. ${body} ${actionLabel}.`}
+      accessibilityLabel={actionLabel}
       className="bg-surface rounded-xl p-4 mb-4 shadow-sm flex-row items-start"
     >
       <Icon name="warning" size={20} color={iconWarning} style={{ marginTop: 2 }} />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator, AppState } from 'react-native';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
@@ -66,18 +67,21 @@ interface TimeRangeOption {
   value: TimeRange;
 }
 
+type SyncCopyOptions = Record<string, string | number> | undefined;
+
 const timeRangeOptions: TimeRangeOption[] = [
-  { label: "Today", value: "today" },
-  { label: "Last 24 Hours", value: "24h" },
-  { label: "Last 3 Days", value: "3d" },
-  { label: "Last 7 Days", value: "7d" },
-  { label: "Last 30 Days", value: "30d" },
-  { label: "Last 90 Days", value: "90d" },
-  { label: "Last 6 Months", value: "180d" },
-  { label: "Last Year", value: "365d" },
+  { label: '', value: 'today' },
+  { label: '', value: '24h' },
+  { label: '', value: '3d' },
+  { label: '', value: '7d' },
+  { label: '', value: '30d' },
+  { label: '', value: '90d' },
+  { label: '', value: '180d' },
+  { label: '', value: '365d' },
 ];
 
 const SyncScreen: React.FC<SyncScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
@@ -95,7 +99,57 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   const [isLoadingHealthData, setIsLoadingHealthData] = useState(true);
   const [healthDataRefreshKey, setHealthDataRefreshKey] = useState(0);
   const isAndroid = Platform.OS === 'android';
-  const healthSettingsName = isAndroid ? 'Health Connect settings' : 'Health app settings';
+  const healthSettingsName = isAndroid ? t('healthDataSync.healthConnect') : t('healthDataSync.appleHealth');
+  const copy = {
+    permissionRequired: (o?: SyncCopyOptions) => t('screenCopy.sync.permissionRequired', o),
+    backgroundPermission: (o?: SyncCopyOptions) => t('screenCopy.sync.backgroundPermission', o),
+    permissionError: (o?: SyncCopyOptions) => t('screenCopy.sync.permissionError', o),
+    permissionDeniedTitle: (o?: SyncCopyOptions) => t('screenCopy.sync.permissionDeniedTitle', o),
+    permissionDenied: (o?: SyncCopyOptions) => t('screenCopy.sync.permissionDenied', o),
+    requestPermissionError: (o?: SyncCopyOptions) => t('screenCopy.sync.requestPermissionError', o),
+    writePermission: (o?: SyncCopyOptions) => t('screenCopy.sync.writePermission', o),
+    writePermissionError: (o?: SyncCopyOptions) => t('screenCopy.sync.writePermissionError', o),
+    removed: (o?: SyncCopyOptions) => t('screenCopy.sync.removed', o),
+    removedData: (o?: SyncCopyOptions) => t('screenCopy.sync.removedData', o),
+    partiallyRemoved: (o?: SyncCopyOptions) => t('screenCopy.sync.partiallyRemoved', o),
+    someNotDeleted: (o?: SyncCopyOptions) => t('screenCopy.sync.someNotDeleted', o),
+    couldNotRemove: (o?: SyncCopyOptions) => t('screenCopy.sync.couldNotRemove', o),
+    removeAllTitle: (o?: SyncCopyOptions) => t('screenCopy.sync.removeAllTitle', o),
+    removeAllMessage: (o?: SyncCopyOptions) => t('screenCopy.sync.removeAllMessage', o),
+    permissionsRequired: (o?: SyncCopyOptions) => t('screenCopy.sync.permissionsRequired', o),
+    permissionsMessage: (o?: SyncCopyOptions) => t('screenCopy.sync.permissionsMessage', o),
+    allPermissionError: (o?: SyncCopyOptions) => t('screenCopy.sync.allPermissionError', o),
+    reportError: (o?: SyncCopyOptions) => t('screenCopy.sync.reportError', o),
+    range: () => t('screenCopy.sync.range'),
+    selectRange: () => t('screenCopy.sync.selectRange'),
+    rangeDescription: () => t('screenCopy.sync.rangeDescription'),
+    largeRange: () => t('screenCopy.sync.largeRange'),
+    syncing: () => t('screenCopy.sync.syncing'),
+    syncNow: () => t('screenCopy.sync.syncNow'),
+    sendData: () => t('screenCopy.sync.sendData'),
+    healthUnavailableAndroid: () => t('screenCopy.sync.healthUnavailableAndroid'),
+    healthUnavailableIos: () => t('screenCopy.sync.healthUnavailableIos'),
+    lastSynced: () => t('screenCopy.sync.lastSynced'),
+    notMedical: () => t('screenCopy.sync.notMedical'),
+    medicalAdvice: () => t('screenCopy.sync.medicalAdvice'),
+    generating: () => t('screenCopy.sync.generating'),
+    report: () => t('screenCopy.sync.report'),
+    reportDescription: () => t('screenCopy.sync.reportDescription'),
+    reportNotice: () => t('screenCopy.sync.reportNotice'),
+  };
+  const localizedTimeRangeOptions = useMemo(
+    () => [
+      { ...timeRangeOptions[0], label: t('commonDates.today') },
+      { ...timeRangeOptions[1], label: t('sync.last24Hours') },
+      { ...timeRangeOptions[2], label: t('sync.last3Days') },
+      { ...timeRangeOptions[3], label: t('sync.last7Days') },
+      { ...timeRangeOptions[4], label: t('sync.last30Days') },
+      { ...timeRangeOptions[5], label: t('sync.last90Days') },
+      { ...timeRangeOptions[6], label: t('sync.last6Months') },
+      { ...timeRangeOptions[7], label: t('sync.lastYear') },
+    ],
+    [t],
+  );
 
   const [isSharingReport, setIsSharingReport] = useState(false);
 
@@ -188,14 +242,14 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         ]);
         if (!granted) {
           Alert.alert(
-            'Permission Required',
-            'Background access permission is required for background sync. Please grant the permission in Health Connect settings.'
+             copy.permissionRequired(),
+              copy.backgroundPermission()
           );
           return;
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        Alert.alert('Permission Error', `Failed to request background access permission: ${errorMessage}`);
+        Alert.alert(copy.permissionRequired(), copy.permissionError({ message: errorMessage }));
         addLog(`[SyncScreen] Background access permission error: ${errorMessage}`, 'ERROR');
         return;
       }
@@ -254,7 +308,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
       try {
         const granted = await requestHealthPermissions(metric.permissions);
         if (!granted) {
-          Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in ${healthSettingsName}.`);
+           Alert.alert(copy.permissionDeniedTitle(), copy.permissionDenied({ metric: metric.label.toLowerCase(), settings: healthSettingsName }));
           setHealthMetricStates(prevStates => ({
             ...prevStates,
             [metric.stateKey]: false,
@@ -267,7 +321,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
-        Alert.alert('Permission Error', `Failed to request ${metric.label.toLowerCase()} permissions: ${errorMessage}`);
+         Alert.alert(copy.permissionRequired(), copy.requestPermissionError({ metric: metric.label.toLowerCase(), message: errorMessage }));
         setHealthMetricStates(prevStates => ({
           ...prevStates,
           [metric.stateKey]: false,
@@ -293,10 +347,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
     try {
       const granted = await requestHealthPermissions([metric.permission]);
       if (!granted) {
-        Alert.alert(
-          'Permission Denied',
-          `Please grant ${metric.label.toLowerCase()} write permission in ${healthSettingsName}.`
-        );
+           Alert.alert(copy.permissionDeniedTitle(), copy.writePermission({ metric: metric.label.toLowerCase(), settings: healthSettingsName }));
         setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
         await saveHealthPreference(metric.preferenceKey, false);
         addLog(`Writeback permission denied: ${metric.label}.`, 'WARNING');
@@ -306,10 +357,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
     } catch (permissionError) {
       const errorMessage =
         permissionError instanceof Error ? permissionError.message : String(permissionError);
-      Alert.alert(
-        'Permission Error',
-        `Failed to request ${metric.label.toLowerCase()} write permission: ${errorMessage}`
-      );
+       Alert.alert(copy.permissionRequired(), copy.writePermissionError({ metric: metric.label.toLowerCase(), message: errorMessage }));
       setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
       await saveHealthPreference(metric.preferenceKey, false);
       addLog(`Writeback permission request error for ${metric.label}: ${errorMessage}`, 'ERROR');
@@ -328,14 +376,14 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
       if (ok) {
         Toast.show({
           type: 'success',
-          text1: 'Removed',
-          text2: `Deleted SparkyFitness data from ${writebackStoreName}.`,
+            text1: copy.removed(),
+            text2: copy.removedData({ store: writebackStoreName }),
         });
       } else {
         Toast.show({
           type: 'error',
-          text1: 'Partially removed',
-          text2: `Some records couldn't be deleted from ${writebackStoreName}.`,
+            text1: copy.partiallyRemoved(),
+            text2: copy.someNotDeleted({ store: writebackStoreName }),
         });
       }
     } catch (error) {
@@ -343,8 +391,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
       addLog(`[SyncScreen] Failed to remove writeback data: ${errorMessage}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: `Could not remove data from ${writebackStoreName}.`,
+         text1: t('common.error'),
+          text2: copy.couldNotRemove({ store: writebackStoreName }),
       });
     }
   };
@@ -352,11 +400,11 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
   // Full purge → confirm (it's destructive and turns writeback off).
   const handleRemoveAllData = (): void => {
     Alert.alert(
-      `Remove all ${writebackStoreName} data`,
-      `Delete every nutrition and hydration record SparkyFitness wrote to ${writebackStoreName}, and turn writeback off? Your SparkyFitness diary and records from other apps are not affected.`,
+       copy.removeAllTitle({ store: writebackStoreName }),
+       copy.removeAllMessage({ store: writebackStoreName }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => doRemoveWritebackData(null) },
+         { text: t('common.cancel'), style: 'cancel' },
+         { text: t('common.delete'), style: 'destructive', onPress: () => doRemoveWritebackData(null) },
       ],
       { cancelable: true }
     );
@@ -384,8 +432,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
 
         if (!granted) {
           Alert.alert(
-            'Permissions Required',
-            `Some permissions were not granted. Please enable all required health permissions in the ${healthSettingsName} to sync all data.`
+              copy.permissionsRequired(),
+              copy.permissionsMessage({ settings: healthSettingsName })
           );
           HEALTH_METRICS.forEach(metric => {
             newHealthMetricStates[metric.stateKey] = false;
@@ -396,7 +444,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
-        Alert.alert('Permission Error', `An error occurred while requesting health permissions: ${errorMessage}`);
+          Alert.alert(copy.permissionRequired(), copy.allPermissionError({ message: errorMessage }));
         HEALTH_METRICS.forEach(metric => {
           newHealthMetricStates[metric.stateKey] = false;
         });
@@ -438,7 +486,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
       await shareHealthDiagnosticReport();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Error', `Failed to generate health data report: ${errorMessage}`);
+        Alert.alert(t('common.error'), copy.reportError({ message: errorMessage }));
     }
     setIsSharingReport(false);
   };
@@ -448,7 +496,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
     syncMutation.mutate({ timeRange: selectedTimeRange, healthMetricStates });
   };
 
-  const header = useScreenHeader({ title: 'Health Data Sync', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('healthDataSync.title'), left: { kind: 'back' } });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -460,21 +508,21 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         {/* Sync Range */}
         <View className="bg-surface rounded-xl p-4 py-3 mb-4 shadow-sm">
           <View className="flex-row items-center justify-between">
-            <Text className="text-base font-semibold text-text-primary">Sync Range</Text>
+             <Text className="text-base font-semibold text-text-primary">{copy.range()}</Text>
             <BottomSheetPicker
               value={selectedTimeRange}
-              options={timeRangeOptions}
+               options={localizedTimeRangeOptions}
               onSelect={async (value) => {
                 setSelectedTimeRange(value);
                 await saveTimeRange(value);
               }}
-              title="Select Sync Range"
+                title={copy.selectRange()}
               containerStyle={{ flex: 1, maxWidth: 180, marginLeft: 16 }}
             />
           </View>
-          <Text className="text-text-secondary text-xs mt-1">Controls how much data will be included in the next sync</Text>
+           <Text className="text-text-secondary text-xs mt-1">{copy.rangeDescription()}</Text>
           {(selectedTimeRange === '180d' || selectedTimeRange === '365d') && (
-            <Text className="text-text-secondary text-xs mt-2">Large time ranges may take a while.</Text>
+              <Text className="text-text-secondary text-xs mt-2">{copy.largeRange()}</Text>
           )}
         </View>
         {/* Sync Now Button */}
@@ -490,8 +538,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
             tintColor="#fff"
           />
           <View className="flex-1">
-            <Text className="text-white text-lg font-semibold">{syncMutation.isPending ? "Syncing..." : "Sync Now"}</Text>
-            <Text className="text-white/80 text-sm mt-0.5">Send your health data to your server</Text>
+            <Text className="text-white text-lg font-semibold">{syncMutation.isPending ? copy.syncing() : copy.syncNow()}</Text>
+            <Text className="text-white/80 text-sm mt-0.5">{copy.sendData()}</Text>
           </View>
         </Button>
 
@@ -499,8 +547,8 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         {!isHealthConnectInitialized && (
           <Text className="text-red-500 mt-2.5 text-center">
             {isAndroid
-              ? 'Health Connect is not available. Please make sure it is installed and enabled.'
-              : 'Health data (HealthKit) is not available. Please enable Health access in the iOS Health app.'}
+                ? copy.healthUnavailableAndroid()
+                : copy.healthUnavailableIos()}
           </Text>
         )}
 
@@ -509,7 +557,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
           <Text className="text-text-muted text-center mb-2">
             {lastSyncedTimeLoaded
               ? (lastSyncedTime
-                ? <><Text className="font-bold">Last synced:</Text> {formatRelativeTime(new Date(lastSyncedTime))}</>
+                ? <><Text className="font-bold">{copy.lastSynced()}</Text> {formatRelativeTime(new Date(lastSyncedTime))}</>
                 : formatRelativeTime(null))
               : ' '}
           </Text>
@@ -519,7 +567,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
         {/* Health Disclaimer */}
         {Platform.OS === 'android' && (
           <Text className="text-text-secondary text-sm text-center mb-4 mt-2">
-            <Text className="font-semibold">Not medical advice.</Text> Consult a healthcare professional for medical advice, diagnosis, or treatment.
+              <Text className="font-semibold">{copy.notMedical()}</Text> {copy.medicalAdvice()}
           </Text>
         )}
         <SyncFrequency
@@ -564,16 +612,15 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
               )}
               <View className="flex-1 ml-3">
                 <Text className="text-accent-primary text-base font-semibold">
-                  {isSharingReport ? 'Generating...' : 'Health Data Report'}
+                    {isSharingReport ? copy.generating() : copy.report()}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-0.5">
-                  Export anonymized health data for bug reports
+                    {copy.reportDescription()}
                 </Text>
               </View>
             </Button>
             <Text className="text-text-muted text-xs px-2 mt-2">
-              Reads the last 4 hours of data from Health Connect for troubleshooting.
-              Values are rounded for privacy. Nothing is sent automatically.
+               {copy.reportNotice()}
             </Text>
           </View>
         )}

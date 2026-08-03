@@ -970,8 +970,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         } catch {
           Toast.show({
             type: 'error',
-            text1: 'Failed to add food',
-            text2: 'Please try again.',
+            text1: t('foodMealScreens.failedAddFood'),
+            text2: t('common.tryAgain'),
           });
         }
         return;
@@ -1035,8 +1035,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         } catch {
           Toast.show({
             type: 'error',
-            text1: 'Failed to add food',
-            text2: 'Please try again.',
+            text1: t('foodMealScreens.failedAddFood'),
+            text2: t('common.tryAgain'),
           });
         }
         return;
@@ -1044,8 +1044,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       case 'meal':
         Toast.show({
           type: 'error',
-          text1: 'Meals not supported here',
-          text2: 'Select a food instead of another meal.',
+            text1: t('foodMealScreens.mealsNotSupported'),
+            text2: t('foodMealScreens.selectFoodInstead'),
         });
         return;
     }
@@ -1068,8 +1068,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         } catch {
           Toast.show({
             type: 'error',
-            text1: 'Saved food, but not the new unit',
-            text2: 'You can still add the food, then try saving that unit again.',
+            text1: t('foodMealScreens.foodSaved'),
+            text2: t('common.tryAgain'),
           });
         }
       }
@@ -1296,7 +1296,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                     role: 'secondary',
                     disabled: isActionPending,
                     onPress: handleAdjustNutrition,
-                    accessibilityLabel: 'Adjust nutrition',
+                    accessibilityLabel: t('foodMealScreens.adjustNutrition'),
                     identifier: 'food-entry-add-edit',
                   } as const,
                   ...(showSaveExternalAction
@@ -1309,7 +1309,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                           busy: isSavePending || isCreateVariantPending,
                           disabled: isActionPending,
                           onPress: () => void handleSaveExternalFood(),
-                          accessibilityLabel: 'Save Food',
+                           accessibilityLabel: t('foodMealScreens.saveFood'),
                           identifier: 'food-entry-add-save',
                         } as const,
                       ]
@@ -1376,7 +1376,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                   value: variant.id ?? '',
                 }))}
                 onSelect={handleVariantChange}
-                title="Select Serving"
+                 title={t('foodMealScreens.selectServing')}
                 renderTrigger={({ onPress }) => (
                   <TouchableOpacity
                     onPress={onPress}
@@ -1386,8 +1386,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                   >
                     <Text className="text-text-secondary text-sm">
                       {' · '}
-                      {perServingLabel} per
-                      serving
+                       {perServingLabel} {t('foodMealScreens.perServing')}
                     </Text>
                     {isCreateVariantPending ? (
                       <ActivityIndicator
@@ -1410,8 +1409,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             ) : (
               <Text className="text-text-secondary text-sm">
                 {' · '}
-                {perServingLabel} per
-                serving
+                 {perServingLabel} {t('foodMealScreens.perServing')}
               </Text>
               ))}
             {/* Serving-unit meals: surface the meal's yield count as a
@@ -1422,7 +1420,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               item.source === 'meal' &&
               (item.mealTotalServings ?? 1) > 1 && (
                 <Text className="text-text-secondary text-sm">
-                  {' \u00b7 '}meal makes {item.mealTotalServings}
+                   {' \u00b7 '}{t('foodMealScreens.mealMakes', { count: item.mealTotalServings })}
                 </Text>
               )}
           </View>
@@ -1436,7 +1434,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 activeOpacity={0.7}
                 className="flex-row items-center"
               >
-                <Text className="text-text-secondary text-base">Date</Text>
+                 <Text className="text-text-secondary text-base">{t('foodMealScreens.date')}</Text>
                 <Text className="text-text-primary text-base font-medium mx-1.5">
                   {formatDateLabel(selectedDate)}
                 </Text>
@@ -1453,14 +1451,14 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                   className="flex-row items-center mx-4"
                   onPress={() => setSelectedDate(addDays(getTodayDate(), -1))}
                 >
-                  <Text className="text-text-link text-sm font-medium mx-1.5">Use Yesterday</Text>
+                   <Text className="text-text-link text-sm font-medium mx-1.5">{t('workout.useYesterday')}</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity activeOpacity={0.7}
                   className="flex-row items-center mx-4"
                   onPress={() => setSelectedDate(getTodayDate())}
                 >
-                  <Text className="text-text-link text-sm font-medium mx-1.5">Use Today</Text>
+                   <Text className="text-text-link text-sm font-medium mx-1.5">{t('workout.useToday')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -1471,9 +1469,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 activeOpacity={0.7}
                 className="flex-row items-center"
               >
-                <Text className="text-text-secondary text-base">Time</Text>
+                 <Text className="text-text-secondary text-base">{t('foodMealScreens.time')}</Text>
                 <Text className="text-text-primary text-base font-medium mx-1.5">
-                  {formatTimeLabel(entryTime) ?? 'None'}
+                   {formatTimeLabel(entryTime) ?? t('foodMealScreens.none')}
                 </Text>
                 <Icon
                   name="chevron-down"
@@ -1488,7 +1486,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 className="flex-row items-center mx-4"
                 onPress={handleSetEntryTimeNow}
               >
-                <Text className="text-text-link text-sm font-medium mx-1.5">Now</Text>
+                 <Text className="text-text-link text-sm font-medium mx-1.5">{t('foodMealScreens.now')}</Text>
               </TouchableOpacity>
 
               {entryTime !== '' && (
@@ -1497,19 +1495,19 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                   className="flex-row items-center"
                   onPress={() => handleSelectEntryTime('')}
                 >
-                  <Text className="text-text-link text-sm font-medium mx-1.5">Clear</Text>
+                   <Text className="text-text-link text-sm font-medium mx-1.5">{t('foodMealScreens.clear')}</Text>
                 </TouchableOpacity>
               )}
             </View>
 
             {selectedMealType ? (
               <View className="flex-row items-center mt-2">
-                <Text className="text-text-secondary text-base">Meal</Text>
+                 <Text className="text-text-secondary text-base">{t('foodMealScreens.meal')}</Text>
                 <BottomSheetPicker
                   value={effectiveMealId!}
                   options={mealPickerOptions}
                   onSelect={setSelectedMealId}
-                  title="Select Meal"
+                   title={t('foodMealScreens.selectMeal')}
                   renderTrigger={({ onPress }) => (
                     <TouchableOpacity
                       onPress={onPress}
@@ -1599,7 +1597,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text className="text-white text-base font-semibold">
-              {activeItem.source === 'meal' ? 'Add Meal' : 'Add Food'}
+              {activeItem.source === 'meal' ? t('foodMealScreens.logMeal') : t('foodMealScreens.addFood')}
             </Text>
           )}
         </Button>

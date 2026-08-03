@@ -433,19 +433,19 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       const parsed = parseDecimalInput(trimmed);
       if (Number.isNaN(parsed)) {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: 'Enter a number.' });
+         Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label }), text2: t('measurementsCopy.number') });
         return { kind: 'invalid' };
       }
       if (parsed < 0) {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: 'Value must be 0 or greater.' });
+         Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label }), text2: t('measurementsCopy.nonNegative') });
         return { kind: 'invalid' };
       }
       if (opts?.integer && !Number.isInteger(parsed)) {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: `${label} must be a whole number.` });
+         Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label }), text2: t('measurementsCopy.whole', { label }) });
         return { kind: 'invalid' };
       }
       if (opts?.max != null && parsed > opts.max) {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: opts.maxMessage ?? `Must be ${opts.max} or less.` });
+         Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label }), text2: opts.maxMessage ?? t('measurementsCopy.max', { max: opts.max }) });
         return { kind: 'invalid' };
       }
       return { kind: 'value', value: parsed };
@@ -484,11 +484,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         const stones = stRaw === '' ? 0 : parseDecimalInput(stRaw);
         const lbs = lbRaw === '' ? 0 : parseDecimalInput(lbRaw);
         if (Number.isNaN(stones) || Number.isNaN(lbs)) {
-          Toast.show({ type: 'error', text1: 'Invalid weight', text2: 'Enter a number for stones and lbs.' });
+           Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label: t('measurements.weight') }), text2: t('measurementsCopy.weightNumber') });
           return;
         }
         if (stones < 0 || lbs < 0) {
-          Toast.show({ type: 'error', text1: 'Invalid weight', text2: 'Values must be 0 or greater.' });
+           Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label: t('measurements.weight') }), text2: t('measurementsCopy.unitValues') });
           return;
         }
         payload.weight = stonesLbsToKg(stones, lbs);
@@ -511,11 +511,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         const feet = feetRaw === '' ? 0 : parseDecimalInput(feetRaw);
         const inches = inchesRaw === '' ? 0 : parseDecimalInput(inchesRaw);
         if (Number.isNaN(feet) || Number.isNaN(inches)) {
-          Toast.show({ type: 'error', text1: 'Invalid height', text2: 'Enter a number for feet and inches.' });
+           Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label: t('measurements.height') }), text2: t('measurementsCopy.heightNumber') });
           return;
         }
         if (feet < 0 || inches < 0) {
-          Toast.show({ type: 'error', text1: 'Invalid height', text2: 'Values must be 0 or greater.' });
+           Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label: t('measurements.height') }), text2: t('measurementsCopy.unitValues') });
           return;
         }
         payload.height = feetInchesToCm(feet, inches);
@@ -529,7 +529,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         'bodyFatPercentage',
         evaluateField('bodyFatPercentage', 'body fat %', {
           max: 100,
-          maxMessage: 'Body fat % must be between 0 and 100.',
+           maxMessage: t('measurementsCopy.max', { max: 100 }),
         }),
         (v) => v,
       )
@@ -568,14 +568,14 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       form: customForm,
       dirtyKeys: new Set(dirtyCustomKeysRef.current),
       onInvalid: (label) => {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: 'Enter a number.' });
+         Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label }), text2: t('measurementsCopy.number') });
       },
     });
     if (!customResult.ok) return;
     const customOps = customResult.operations;
 
     if (!hasAnyField && customOps.length === 0) {
-      Toast.show({ type: 'info', text1: 'Nothing to save', text2: 'Enter or clear at least one value.' });
+       Toast.show({ type: 'info', text1: t('measurementsCopy.nothing'), text2: t('measurementsCopy.nothingDescription') });
       return;
     }
 
@@ -892,7 +892,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.weightStones}
                       onChangeText={(v) => updateField('weightStones', v)}
                       keyboardType="number-pad"
-                      placeholder="st"
+                       placeholder={t('measurements.weightStLabel')}
                       returnKeyType="done"
                     />
                   </View>
@@ -901,7 +901,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.weight}
                       onChangeText={(v) => updateField('weight', v)}
                       keyboardType="decimal-pad"
-                      placeholder="lb"
+                       placeholder={t('measurements.weightStLabel')}
                       returnKeyType="done"
                     />
                   </View>
@@ -939,7 +939,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.heightFeet}
                       onChangeText={(v) => updateField('heightFeet', v)}
                       keyboardType="number-pad"
-                      placeholder="ft"
+                       placeholder={t('measurements.height')}
                       returnKeyType="done"
                     />
                   </View>
@@ -948,7 +948,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.height}
                       onChangeText={(v) => updateField('height', v)}
                       keyboardType="decimal-pad"
-                      placeholder="in"
+                       placeholder={t('measurements.height')}
                       returnKeyType="done"
                     />
                   </View>
@@ -1033,7 +1033,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
               customCategories.length > 0 && (
                 <View className="mt-4 mb-2">
                   <Text className="text-text-primary text-base font-semibold mb-3">
-                    Custom Measurements
+                     {t('screenCopy.dashboardSettings.customTitle')}
                   </Text>
                   {customCategories.map(renderCustomCategory)}
                 </View>

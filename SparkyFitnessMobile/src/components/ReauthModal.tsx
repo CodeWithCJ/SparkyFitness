@@ -414,7 +414,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                     <View className="mb-3">
                       <Text className="text-sm mb-2 text-text-secondary">{t('auth.email')}</Text>
                       <FormInput
-                        placeholder="email@example.com"
+                         placeholder={t('auth.email')}
                         value={email}
                         onChangeText={setEmail}
                         autoCapitalize="none"

@@ -763,18 +763,18 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       ? isEditing
         ? {
             kind: 'primary',
-            label: 'Done',
+            label: t('common.done'),
             disabled: isUpdatePending || quantity <= 0,
             onPress: handleSave,
-            accessibilityLabel: 'Save food entry changes',
+            accessibilityLabel: t('foodMealScreens.saveEntryChanges'),
             identifier: 'food-entry-view-done',
           }
         : {
             kind: 'text',
-            label: 'Edit',
+            label: t('common.edit'),
             role: 'secondary',
             onPress: () => updateEdit({ isEditing: true }),
-            accessibilityLabel: 'Edit food entry',
+            accessibilityLabel: t('foodMealScreens.editFoodEntry'),
             identifier: 'food-entry-view-edit',
           }
       : null,
@@ -824,7 +824,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     {editServings % 1 === 0
                       ? editServings
                       : parseFloat(editServings.toFixed(2))}{' '}
-                    {editServings === 1 ? 'serving' : 'servings'}
+                       {editServings === 1 ? t('foodMealScreens.serving') : t('foodMealScreens.servings')}
                   </Text>
                   {variantPickerOptions.length > 1 ? (
                     <BottomSheetPicker
@@ -834,7 +834,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         value: variant.id,
                       }))}
                       onSelect={handleVariantChange}
-                      title="Select Serving"
+                       title={t('foodMealScreens.selectServing')}
                       renderTrigger={({ onPress }) => (
                         <TouchableOpacity
                           onPress={onPress}
@@ -843,8 +843,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         >
                           <Text className="text-text-secondary text-sm">
                             {' - '}
-                            {displayValues.servingSize} {formatServingUnit(displayValues.servingUnit)} per
-                            serving
+                             {displayValues.servingSize} {formatServingUnit(displayValues.servingUnit)} {t('foodMealScreens.perServing')}
                           </Text>
                           <Icon
                             name="chevron-down"
@@ -859,8 +858,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   ) : (
                     <Text className="text-text-secondary text-sm">
                       {' - '}
-                      {displayValues.servingSize} {formatServingUnit(displayValues.servingUnit)} per
-                      serving
+                       {displayValues.servingSize} {formatServingUnit(displayValues.servingUnit)} {t('foodMealScreens.perServing')}
                     </Text>
                   )}
                 </View>
@@ -891,7 +889,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     : viewCalories}
                 </Text>
                 <Text className="text-text-secondary text-base mt-1">
-                  calories
+                  {t('foodMealScreens.calories')}
                 </Text>
               </View>
               <Animated.View
@@ -901,7 +899,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 {(isEditing
                   ? [
                       {
-                        label: 'Protein',
+                         label: t('foodMealScreens.protein'),
                         value: displayValues.protein,
                         color: proteinColor,
                         calFactor: 4,
@@ -917,7 +915,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         displayValue: Math.round(scaled(editDisplayCarbs)),
                       },
                       {
-                        label: 'Fat',
+                         label: t('foodMealScreens.fat'),
                         value: displayValues.fat,
                         color: fatColor,
                         calFactor: 9,
@@ -927,7 +925,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     ]
                   : [
                       {
-                        label: 'Protein',
+                         label: t('foodMealScreens.protein'),
                         value: viewProtein,
                         color: proteinColor,
                         calFactor: 4,
@@ -943,7 +941,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         displayValue: viewDisplayCarbs,
                       },
                       {
-                        label: 'Fat',
+                         label: t('foodMealScreens.fat'),
                         value: viewFat,
                         color: fatColor,
                         calFactor: 9,
@@ -989,7 +987,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
             {isEditing && (
               <FadeView>
                 <Text className="text-text-secondary text-xs text-center mt-4">
-                  Tap to edit nutrition
+                  {t('foodMealScreens.tapToEditNutrition')}
                 </Text>
               </FadeView>
             )}
@@ -1074,8 +1072,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 >
                   <Text style={{ color: accentColor }} className="text-sm font-medium">
                     {showMoreNutrients
-                      ? 'Hide extra nutrients'
-                      : 'Show more nutrients'}
+                       ? t('foodMealScreens.hideExtraNutrients')
+                       : t('foodMealScreens.showMoreNutrients')}
                   </Text>
                 </Button>
               </Animated.View>
@@ -1088,7 +1086,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           className="mt-2 flex-row items-center"
         >
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">Date</Text>
+            <Text className="text-text-secondary text-base mr-2">{t('foodMealScreens.date')}</Text>
             {isEditing ? (
               <TouchableOpacity
                 onPress={() => calendarRef.current?.present()}
@@ -1114,13 +1112,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           </View>
 
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">Meal</Text>
+            <Text className="text-text-secondary text-base mr-2">{t('foodMealScreens.meal')}</Text>
             {isEditing && selectedMealType ? (
               <BottomSheetPicker
                 value={effectiveMealId!}
                 options={mealPickerOptions}
                 onSelect={(id) => updateEdit({ selectedMealId: id })}
-                title="Select Meal"
+              title={t('foodMealScreens.selectMeal')}
                 renderTrigger={({ onPress }) => (
                   <TouchableOpacity
                     onPress={onPress}
@@ -1152,7 +1150,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           layout={LinearTransition.duration(300)}
           className="mt-2 flex-row items-center"
         >
-          <Text className="text-text-secondary text-base mr-2">Time</Text>
+          <Text className="text-text-secondary text-base mr-2">{t('foodMealScreens.time')}</Text>
           {isEditing ? (
             <>
               <TouchableOpacity
@@ -1177,7 +1175,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   className="flex-row items-center ml-4"
                   onPress={() => updateEdit({ entryTime: '' })}
                 >
-                  <Text className="text-text-link text-sm font-medium">Clear</Text>
+                  <Text className="text-text-link text-sm font-medium">{t('foodMealScreens.clear')}</Text>
                 </TouchableOpacity>
               )}
             </>
@@ -1196,7 +1194,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
             className="mt-2"
             textClassName="text-bg-danger font-medium"
           >
-            {isDeletePending ? 'Deleting...' : 'Delete Entry'}
+            {isDeletePending ? t('foodMealScreens.deleting') : t('foodMealScreens.deleteEntry')}
           </Button>
         </Animated.View>
       </ScrollView>

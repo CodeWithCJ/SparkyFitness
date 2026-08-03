@@ -108,7 +108,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
 
   const handleSubmit = (data: FoodFormData) => {
     if (!data.name.trim()) {
-       Toast.show({ type: 'error', text1: t('foodMeals.foodName'), text2: t('foodMealScreens.missingMealName') });
+           Toast.show({ type: 'error', text1: t('foodMealScreens.missingMealName'), text2: t('foodEditor.foodNameRequired') });
       return;
     }
 
@@ -124,8 +124,8 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     ) {
       Toast.show({
         type: 'error',
-        text1: t('foodMealScreens.invalidServingSize'),
-        text2: t('foodMealScreens.amountPositive'),
+         text1: t('foodMealScreens.invalidServingSize'),
+         text2: t('foodMealScreens.amountPositive'),
       });
       return;
     }
@@ -232,7 +232,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         className={`flex-row items-center justify-between rounded-lg p-3 ${TONE_BG_CLASS[overallTone]}`}
       >
         <Text className={`text-sm font-semibold ${TONE_TEXT_CLASS[overallTone]}`}>
-          {overallLabel} estimate
+           {overallLabel} {t('foodMealScreens.photoEstimateTitle')}
         </Text>
         <Icon
           name={showConfidenceReason ? 'chevron-down' : 'chevron-forward'}

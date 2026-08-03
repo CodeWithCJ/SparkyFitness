@@ -51,6 +51,7 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useTranslation } from 'react-i18next';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import type { TFunction } from 'i18next';
 
 type FoodFormScreenProps = RootStackScreenProps<'FoodForm'>;
 
@@ -118,43 +119,43 @@ function equivalentsDiffer(a: EquivalentUnit[], b: EquivalentUnit[]): boolean {
   return false;
 }
 
-function confirmDiscardEquivalents(): Promise<boolean> {
+function confirmDiscardEquivalents(t: TFunction): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(
-      'Discard unsaved equivalents?',
-      'You have unsaved equivalent sizes. Discard them to continue?',
+      t('foodEditor.discardEquivalentsTitle'),
+      t('foodEditor.discardEquivalentsMessage'),
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Discard', style: 'destructive', onPress: () => resolve(true) },
+        { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+        { text: t('workout.discard'), style: 'destructive', onPress: () => resolve(true) },
       ],
       { onDismiss: () => resolve(false) },
     );
   });
 }
 
-function confirmVariantOverwrite(unitLabel: string): Promise<'overwrite' | 'new' | 'cancel'> {
+function confirmVariantOverwrite(t: TFunction, unitLabel: string): Promise<'overwrite' | 'new' | 'cancel'> {
   return new Promise((resolve) => {
     Alert.alert(
-      'Save nutrition',
-      `"${unitLabel}" is already a saved variant. Do you want to update it with these values, or save as a new variant?`,
+      t('foodEditor.saveNutrition'),
+      t('foodEditor.variantExists', { unit: unitLabel }),
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
-        { text: 'Save as new', onPress: () => resolve('new') },
-        { text: 'Update existing', style: 'destructive', onPress: () => resolve('overwrite') },
+        { text: t('common.cancel'), style: 'cancel', onPress: () => resolve('cancel') },
+        { text: t('foodEditor.saveAsNew'), onPress: () => resolve('new') },
+        { text: t('foodEditor.updateExisting'), style: 'destructive', onPress: () => resolve('overwrite') },
       ],
       { onDismiss: () => resolve('cancel') },
     );
   });
 }
 
-function validateFoodForm(data: FoodFormData): boolean {
+function validateFoodForm(t: TFunction, data: FoodFormData): boolean {
   if (!data.name.trim()) {
-    Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
+    Toast.show({ type: 'error', text1: t('foodEditor.missingName'), text2: t('foodEditor.foodNameRequired') });
     return false;
   }
 
   if (!parseDecimalInput(data.servingSize)) {
-    Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
+    Toast.show({ type: 'error', text1: t('foodMealScreens.invalidServingSize'), text2: t('foodEditor.invalidServingSizeMessage') });
     return false;
   }
 
@@ -430,11 +431,12 @@ function BarcodeField({
   onScan: () => void;
   textSecondary: string;
 }) {
+  const { t } = useTranslation();
   const trimmed = value.trim();
   const isInvalid = trimmed !== '' && !BARCODE_REGEX.test(trimmed);
   return (
     <View className="bg-surface rounded-xl p-4 gap-2 shadow-sm">
-      <Text className="text-text-secondary text-sm font-medium">Barcode</Text>
+      <Text className="text-text-secondary text-sm font-medium">{t('foodEditor.barcode')}</Text>
       <FormInput
         placeholder="012345678905"
         keyboardType="number-pad"
@@ -446,15 +448,15 @@ function BarcodeField({
       />
       {isInvalid ? (
         <Text className="text-sm" style={{ color: '#dc2626' }}>
-          Barcode must be 8-14 digits.
+          {t('foodEditor.barcodeFormat')}
         </Text>
       ) : (
         <Text className="text-xs" style={{ color: textSecondary }}>
-          Optional. Standard barcodes are 8 to 14 digits.
+          {t('foodEditor.barcodeOptional')}
         </Text>
       )}
       <Button variant="ghost" onPress={onScan} className="self-start py-0 px-0">
-        Scan with camera
+        {t('foodEditor.scanCamera')}
       </Button>
     </View>
   );
@@ -521,7 +523,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
       if (isSavingRef.current) return;
       if (!equivalentsDiffer(equivalentDraft, equivalentBaselineRef.current)) return;
       e.preventDefault();
-      void confirmDiscardEquivalents().then((ok) => {
+      void confirmDiscardEquivalents(t).then((ok) => {
         if (ok) navigation.dispatch(e.data.action);
       });
     });
@@ -618,16 +620,16 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
 
   const handleSubmit = async (data: FoodFormData) => {
     if (!data.name.trim()) {
-      Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
+      Toast.show({ type: 'error', text1: t('foodEditor.missingName'), text2: t('foodEditor.foodNameRequired') });
       return;
     }
     if (!parseDecimalInput(data.servingSize)) {
-      Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
+      Toast.show({ type: 'error', text1: t('foodMealScreens.invalidServingSize'), text2: t('foodEditor.invalidServingSizeMessage') });
       return;
     }
     const trimmedBarcode = barcodeInput.trim();
     if (showBarcodeField && trimmedBarcode !== '' && !BARCODE_REGEX.test(trimmedBarcode)) {
-      Toast.show({ type: 'error', text1: 'Invalid barcode', text2: 'Barcode must be 8-14 digits.' });
+      Toast.show({ type: 'error', text1: t('foodEditor.invalidBarcode'), text2: t('foodEditor.barcodeFormat') });
       return;
     }
     const resolvedBarcode = showBarcodeField
@@ -694,7 +696,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
           }),
         ),
       ).catch(() => {
-        Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+        Toast.show({ type: 'error', text1: t('foodMealScreens.someUnitsNotSaved') });
       });
     };
 
@@ -722,7 +724,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
         const savedFood = await saveFoodAsync(saveFoodPayload);
         isSavingRef.current = true;
         saveEquivalentsAsync(savedFood.id);
-        Toast.show({ type: 'success', text1: 'Food saved' });
+        Toast.show({ type: 'success', text1: t('foodMealScreens.foodSaved') });
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.
@@ -731,11 +733,11 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
     }
 
     if (!quantity) {
-      Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Amount must be greater than zero.' });
+      Toast.show({ type: 'error', text1: t('foodEditor.invalidAmount'), text2: t('foodEditor.amountPositive') });
       return;
     }
     if (!effectiveMealId) {
-      Toast.show({ type: 'error', text1: 'No meal type', text2: 'No meal types are available. Please check your account settings.' });
+      Toast.show({ type: 'error', text1: t('foodEditor.noMealType'), text2: t('foodEditor.noMealTypes') });
       return;
     }
 
@@ -815,7 +817,7 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
               activeOpacity={0.7}
               className="flex-1 flex-row items-center"
             >
-              <Text className="text-text-secondary text-base mr-3">Date</Text>
+              <Text className="text-text-secondary text-base mr-3">{t('foodMealScreens.date')}</Text>
               <Text className="text-text-primary text-base font-medium mx-1.5">
                 {formatDateLabel(selectedDate)}
               </Text>
@@ -825,12 +827,12 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
             {/* Meal */}
             {selectedMealType ? (
               <View className="flex-1 flex-row items-center">
-                <Text className="text-text-secondary text-base mx-3">Meal</Text>
+                <Text className="text-text-secondary text-base mx-3">{t('foodMealScreens.meal')}</Text>
                 <BottomSheetPicker
                   value={effectiveMealId!}
                   options={mealPickerOptions}
                   onSelect={setSelectedMealId}
-                  title="Select Meal"
+                  title={t('foodMealScreens.selectMeal')}
                   renderTrigger={({ onPress }) => (
                     <TouchableOpacity
                       onPress={onPress}
@@ -863,12 +865,12 @@ function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodPa
             </View>
             <Text className="text-text-secondary text-sm mt-2">
               {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
-              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} per serving
+              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} {t('foodMealScreens.perServing')}
             </Text>
           </View>
           {/* Save to Database */}
           <View className="flex-row items-center justify-between">
-            <Text className="text-text-secondary text-base">Save to Database</Text>
+            <Text className="text-text-secondary text-base">{t('foodEditor.saveDatabase')}</Text>
             <Switch
               value={saveToDatabase}
               onValueChange={setSaveToDatabase}
@@ -980,7 +982,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
       if (isSavingRef.current) return;
       if (!equivalentsDiffer(equivalentDraft, equivalentBaseline)) return;
       e.preventDefault();
-      void confirmDiscardEquivalents().then((ok) => {
+      void confirmDiscardEquivalents(t).then((ok) => {
         if (ok) navigation.dispatch(e.data.action);
       });
     });
@@ -1037,7 +1039,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
   const showEquivalents = canUpdateVariant || params.returnTo === 'FoodEntryAdd';
 
   const handleSubmit = async (data: FoodFormData) => {
-    if (!validateFoodForm(data)) {
+    if (!validateFoodForm(t, data)) {
       return;
     }
 
@@ -1054,7 +1056,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
     ) {
       Toast.show({
         type: 'error',
-        text1: 'Still loading food details. Try again in a moment.',
+        text1: t('foodEditor.loadingDetails'),
       });
       return;
     }
@@ -1086,7 +1088,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
         setPendingUnitSelection(nextUnitSelection);
         setCurrentVariantId(createdVariant.id);
       } catch {
-        Toast.show({ type: 'error', text1: 'Could not save new unit' });
+        Toast.show({ type: 'error', text1: t('foodEditor.saveUnitFailed') });
         return;
       }
     }
@@ -1129,7 +1131,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
                 } as CreateFoodVariantPayload),
               ),
             ).catch(() => {
-              Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+              Toast.show({ type: 'error', text1: t('foodMealScreens.someUnitsNotSaved') });
             }).finally(() => {
               invalidateFoodCaches(queryClient, foodId);
             });
@@ -1171,6 +1173,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
           let saveVariantId = nextVariantId;
           if (existingSelection && nutritionChanged && foodId) {
             const choice = await confirmVariantOverwrite(
+              t,
               `${existingSelection.variant.serving_size} ${existingSelection.variant.serving_unit}`,
             );
             if (choice === 'cancel') return;
@@ -1202,14 +1205,14 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
                       } as CreateFoodVariantPayload),
                     ),
                   ).catch(() => {
-                    Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+                    Toast.show({ type: 'error', text1: t('foodMealScreens.someUnitsNotSaved') });
                   }).finally(() => {
                     invalidateFoodCaches(queryClient, foodId);
                   });
                   setEquivalentBaseline(equivalentDraft);
                 }
               } catch {
-                Toast.show({ type: 'error', text1: 'Could not save new variant' });
+                Toast.show({ type: 'error', text1: t('foodEditor.saveVariantFailed') });
                 return;
               }
               // Fall through to persistFoodEdits with the new variant ID so the
@@ -1334,7 +1337,7 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
           setEquivalentBaseline(equivalentDraft);
         }
       } catch {
-        Toast.show({ type: 'error', text1: 'Could not save nutrition for future use' });
+        Toast.show({ type: 'error', text1: t('foodEditor.saveFutureFailed') });
       }
     }
 
@@ -1408,10 +1411,10 @@ function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionPa
           <View className="bg-surface rounded-xl p-4 shadow-sm">
             <View className="flex-row items-center justify-between">
               <Text className="text-text-secondary text-base">
-                Save nutrition for future use
+                {t('foodEditor.saveFuture')}
               </Text>
               <Switch
-                accessibilityLabel="Save nutrition for future use"
+                accessibilityLabel={t('foodEditor.saveFuture')}
                 value={updateFoodToggle}
                 onValueChange={setUpdateFoodToggle}
                 trackColor={{ false: formDisabled, true: formEnabled }}
@@ -1534,7 +1537,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       if (isSavingRef.current) return;
       if (!equivalentsDiffer(equivalentDraft, equivalentBaseline)) return;
       e.preventDefault();
-      void confirmDiscardEquivalents().then((ok) => {
+      void confirmDiscardEquivalents(t).then((ok) => {
         if (ok) navigation.dispatch(e.data.action);
       });
     });
@@ -1553,7 +1556,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
         isSwappingActive &&
         equivalentsDiffer(equivalentDraft, equivalentBaseline)
       ) {
-        const confirmed = await confirmDiscardEquivalents();
+        const confirmed = await confirmDiscardEquivalents(t);
         if (!confirmed) {
           return pendingUnitSelection ?? selection;
         }
@@ -1609,7 +1612,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
   );
 
   const handleSubmit = async (data: FoodFormData) => {
-    if (!validateFoodForm(data)) {
+    if (!validateFoodForm(t, data)) {
       return;
     }
 
@@ -1620,7 +1623,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
       // row would be misclassified as a create and duplicate the existing variant.
       Toast.show({
         type: 'error',
-        text1: 'Still loading food details. Try again in a moment.',
+        text1: t('foodEditor.loadingDetails'),
       });
       return;
     }
@@ -1707,7 +1710,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
           const unitLabel = activeVariant
             ? `${activeVariant.serving_size} ${activeVariant.serving_unit}`
             : data.servingUnit;
-          const choice = await confirmVariantOverwrite(unitLabel);
+          const choice = await confirmVariantOverwrite(t, unitLabel);
           if (choice === 'cancel') {
             setIsSubmitting(false);
             return;
@@ -1735,7 +1738,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
             invalidateFoodCaches(queryClient, foodId);
             // Skip the diff/overwrite path ??? new variant is already saved.
             setEquivalentBaseline(equivalentDraft);
-            Toast.show({ type: 'success', text1: 'Saved as new variant' });
+            Toast.show({ type: 'success', text1: t('foodEditor.savedNewVariant') });
             isSavingRef.current = true;
             navigation.dispatch({
               ...CommonActions.setParams({
@@ -1804,7 +1807,7 @@ function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigati
 
       navigation.goBack();
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not update food' });
+      Toast.show({ type: 'error', text1: t('foodEditor.updateFailed') });
     } finally {
       setIsSubmitting(false);
     }

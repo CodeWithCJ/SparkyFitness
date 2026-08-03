@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -19,6 +20,7 @@ import type { FoodEntry } from '../types/foodEntries';
 type DailyNutritionDetailsScreenProps = RootStackScreenProps<'DailyNutritionDetails'>;
 
 const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = ({ route, navigation }) => {
+  const { t } = useTranslation();
   const { date } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -36,7 +38,7 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
 
   // Configure screen header
   const header = useScreenHeader({
-    title: 'Nutrition Details',
+    title: t('screenCopy.nutritionDetails.title'),
     left: { kind: 'back' },
   });
 
@@ -176,10 +178,10 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
     return (
       <View className="flex-1 bg-background justify-center items-center p-4">
         <Text className="text-text-primary text-base font-semibold mb-2">
-          Failed to load nutrition details
+          {t('screenCopy.nutritionDetails.loadFailed')}
         </Text>
         <Text className="text-text-secondary text-sm text-center">
-          Please check your connection and try again.
+          {t('screenCopy.nutritionDetails.connection')}
         </Text>
       </View>
     );
@@ -301,7 +303,7 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
         {/* Predefined Nutrients Section */}
         {displayGroups && displayGroups.standardItems.length > 0 && (
           <View className="bg-surface rounded-xl p-4 mt-4 shadow-sm">
-            <Text className="text-text-primary text-base font-bold mb-2">Nutrient Breakdown</Text>
+            <Text className="text-text-primary text-base font-bold mb-2">{t('screenCopy.nutritionDetails.breakdown')}</Text>
             {displayGroups.standardItems.map(renderNutrientRow)}
           </View>
         )}
@@ -309,7 +311,7 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
         {/* Custom Nutrients Section */}
         {displayGroups && displayGroups.customItems.length > 0 && (
           <View className="bg-surface rounded-xl p-4 mt-4 shadow-sm">
-            <Text className="text-text-primary text-base font-bold mb-2">Custom Tracked Nutrients</Text>
+            <Text className="text-text-primary text-base font-bold mb-2">{t('screenCopy.nutritionDetails.custom')}</Text>
             {displayGroups.customItems.map(renderNutrientRow)}
           </View>
         )}
