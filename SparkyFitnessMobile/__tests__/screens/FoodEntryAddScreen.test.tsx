@@ -84,15 +84,15 @@ jest.mock('../../src/components/Icon', () => {
 
 jest.mock('../../src/components/ui/Button', () => {
   const React = require('react');
-  const { Pressable } = require('react-native');
+  const { Pressable, Text } = require('react-native');
   return {
     __esModule: true,
-    default: ({ children, onPress, disabled, accessibilityLabel }: any) => (
+    default: ({ children, onPress, disabled, loading, accessibilityLabel }: any) => (
       <Pressable
-        onPress={disabled ? undefined : onPress}
+        onPress={disabled || loading ? undefined : onPress}
         accessibilityLabel={accessibilityLabel}
       >
-        {children}
+        {typeof children === 'string' ? <Text>{children}</Text> : children}
       </Pressable>
     ),
   };

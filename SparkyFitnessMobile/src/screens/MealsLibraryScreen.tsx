@@ -1,15 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
-  TextInput,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
+import LibrarySearchBar from '../components/LibrarySearchBar';
 import MealLibraryRow from '../components/MealLibraryRow';
 import SegmentedControl from '../components/SegmentedControl';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -26,15 +24,11 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentColor, textMuted] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-text-muted',
-  ]) as [string, string];
+  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { profile } = useProfile();
@@ -79,32 +73,12 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   }, [isSearchActive, refetchMeals, refetchSearch]);
 
   const renderSearchBar = () => (
-    <View className="px-4 pb-3">
-      <View
-        className="flex-row items-center bg-raised rounded-lg px-3 py-2.5"
-        style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : 'transparent' }}
-      >
-        <Icon name="search" size={18} color={textMuted} />
-        <View className="flex-1 ml-2">
-          <TextInput
-            className="text-text-primary"
-            style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-            placeholder="Search meals..."
-            placeholderTextColor={textMuted}
-            value={searchText}
-            onChangeText={setSearchText}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-        </View>
-        {isSearching ? (
-          <ActivityIndicator size="small" color={accentColor} />
-        ) : null}
-      </View>
-    </View>
+    <LibrarySearchBar
+      value={searchText}
+      onChangeText={setSearchText}
+      placeholder="Search meals..."
+      isSearching={isSearching}
+    />
   );
 
   const renderEmpty = () => {

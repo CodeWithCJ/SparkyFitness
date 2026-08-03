@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -18,6 +17,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import StatusView from '../components/StatusView';
+import { FooterSaveBar } from '../components/FormScreenChrome';
 import Icon from '../components/Icon';
 import { useCreateMeal, useMeal, useUpdateMeal } from '../hooks';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
@@ -31,7 +31,7 @@ import {
   formatServingSizeDisplay,
 } from '../utils/foodDetails';
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
-import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import { DECIMAL_INPUT_REGEX, parseDecimalInput, toFiniteNumber } from '../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 
@@ -54,17 +54,6 @@ interface MacroStatProps {
   color: string;
   value: string;
   label: string;
-}
-
-function toFiniteNumber(value: unknown): number {
-  const numericValue =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string'
-        ? Number(value)
-        : Number.NaN;
-
-  return Number.isFinite(numericValue) ? numericValue : 0;
 }
 
 const MacroStat: React.FC<MacroStatProps> = ({ color, value, label }) => (
@@ -106,15 +95,14 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const editMealId = isEditMode ? route.params.mealId : undefined;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [accentColor, textMuted, proteinColor, carbsColor, fatColor, borderSubtle] =
+  const [accentColor, textMuted, proteinColor, carbsColor, fatColor] =
     useCSSVariable([
       '--color-accent-primary',
       '--color-text-muted',
       '--color-macro-protein',
       '--color-macro-carbs',
       '--color-macro-fat',
-      '--color-border-subtle',
-    ]) as [string, string, string, string, string, string];
+    ]) as [string, string, string, string, string];
 
   const [mealName, setMealName] = useState('');
   const [description, setDescription] = useState('');
@@ -729,30 +717,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
       {!usesNativeHeader && (
         /* Sticky footer */
-        <View
-          className="px-4 py-3"
-          style={{
-            paddingBottom: Math.max(insets.bottom, 12),
-            borderTopWidth: 1,
-            borderTopColor: borderSubtle,
+        <FooterSaveBar
+          onPress={() => {
+            void handleSaveMeal();
           }}
-        >
-          <Button
-            variant="primary"
-            onPress={() => {
-              void handleSaveMeal();
-            }}
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text className="text-white text-base font-semibold">
-                {SAVE_LABEL}
-              </Text>
-            )}
-          </Button>
-        </View>
+          disabled={isSaving}
+          busy={isSaving}
+        />
       )}
     </View>
   );

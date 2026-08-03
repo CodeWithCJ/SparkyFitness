@@ -666,10 +666,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
               {canManageExercise && (
                 <Button
-                  variant="ghost"
+                  variant="destructive"
                   onPress={confirmAndDelete}
                   disabled={isDeletePending}
-                  textClassName="text-bg-danger font-medium"
                 >
                   {isDeletePending ? 'Deleting...' : 'Delete Exercise'}
                 </Button>

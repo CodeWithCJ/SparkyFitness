@@ -8,12 +8,9 @@ import React, {
 import {
   View,
   Text,
-  TouchableOpacity,
-  Pressable,
   ActivityIndicator,
   SectionList,
   TextInput,
-  Keyboard,
   Platform,
   useWindowDimensions,
 } from 'react-native';
@@ -21,13 +18,17 @@ import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import VerifiedBadge from '../components/VerifiedBadge';
-import MealLibraryRow from '../components/MealLibraryRow';
-import BottomSheetPicker from '../components/BottomSheetPicker';
 import AnchoredMenu, { AnchorRect } from '../components/AnchoredMenu';
 import Popover from '../components/Popover';
 import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
+import LandingEntryRow from '../components/foodSearch/LandingEntryRow';
+import FoodSearchResultRow from '../components/foodSearch/FoodSearchResultRow';
+import FoodSearchSectionHeader, {
+  SectionTitleHeader,
+} from '../components/foodSearch/FoodSearchSectionHeader';
+import OnlineSectionFooter from '../components/foodSearch/OnlineSectionFooter';
+import type { ResultRow, ResultSection } from '../components/foodSearch/types';
 import {
   useServerConnection,
   useFoods,
@@ -43,27 +44,20 @@ import {
   useFavorites,
   useProfile,
 } from '../hooks';
-import { deriveShareStatus, filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
-import ShareStatusBadge from '../components/ShareStatusBadge';
-import { ExternalProvider } from '../types/externalProviders';
+import { filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
 import Toast from 'react-native-toast-message';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
-import { FoodItem, TopFoodItem } from '../types/foods';
+import { FoodItem } from '../types/foods';
 import { ExternalFoodItem } from '../types/externalFoods';
 import { Meal } from '../types/meals';
-import {
-  foodItemToFoodInfo,
-  externalFoodItemToFoodInfo,
-  mealToFoodInfo,
-} from '../types/foodInfo';
+import { externalFoodItemToFoodInfo } from '../types/foodInfo';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
   searchSourcesPopover,
   providerSelectorPopover,
 } from '../services/foodSearchPreferences';
-import { formatServingDescription, formatServingUnit } from '../utils/foodDetails';
 import { useProviderColor } from '../utils/providerColor';
 import { interleaveTopMatches } from '../utils/topMatches';
 import { mergeRecent, mergeFrequent, landingKey } from '../utils/landingLists';
@@ -79,42 +73,6 @@ type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 type LandingSection = {
   title: string;
   data: LandingEntry[];
-};
-
-// A row in the unified search results. The local foods + meals and the online
-// provider results are all rendered in one sectioned list.
-type ResultRow =
-  | { type: 'food'; food: FoodItem }
-  | { type: 'meal'; meal: Meal }
-  | { type: 'online'; online: ExternalFoodItem; providerId?: string }
-  | {
-      type: 'online-top';
-      online: ExternalFoodItem;
-      providerName: string;
-      providerId?: string;
-    }
-  | { type: 'show-all'; provider: ExternalProvider; count: number }
-  | { type: 'show-all-local'; section: 'foods' | 'meals'; count: number }
-  | { type: 'provider-skeleton' }
-  | { type: 'local-status'; pending: boolean };
-
-type ResultSection = {
-  key: string;
-  title: string | null;
-  kind:
-    | 'food'
-    | 'meal'
-    | 'online'
-    | 'online-top'
-    | 'online-provider'
-    | 'label'
-    | 'status';
-  data: ResultRow[];
-  provider?: ExternalProvider;
-  count?: number;
-  providerLoading?: boolean;
-  providerError?: boolean;
-  onRetry?: () => void;
 };
 
 // Sentinel provider id for the aggregated "All Providers" mode.
@@ -340,6 +298,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     setShowAllFoods(false);
     setShowAllMeals(false);
   }, [searchText]);
+  const handleShowAllLocal = useCallback((section: 'foods' | 'meals') => {
+    if (section === 'foods') setShowAllFoods(true);
+    else setShowAllMeals(true);
+  }, []);
 
   // Single-provider online search (disabled while All Providers is active).
   const {
@@ -860,431 +822,61 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     ownershipFilter,
   ]);
 
-  // --- Row renderers (shared between landing and results) ---
-
-  const renderFoodRow = (item: FoodItem | TopFoodItem) => {
-    const status = deriveShareStatus(item.user_id, item.shared_with_public, profile?.id);
-    return (
-      <TouchableOpacity
-        className="px-4 py-2 border-b border-border-subtle"
-        activeOpacity={0.7}
-        onPress={() => showFoodInfo(foodItemToFoodInfo(item))}
-      >
-        <View className="flex-row justify-between items-center">
-          <View className="flex-1 mr-3">
-            <View className="flex-row items-start gap-1">
-              <Text className="text-text-primary text-base font-medium flex-shrink">
-                {item.name}
-              </Text>
-              {item.provider_verified ? <VerifiedBadge size="sm" style={{ marginTop: 2 }} /> : null}
-              <ShareStatusBadge status={status} />
-            </View>
-            {item.brand ? (
-              <Text className="text-text-secondary text-sm mt-0.5">{item.brand}</Text>
-            ) : null}
-          </View>
-        <View className="items-end">
-          <View className="flex-row items-center gap-1">
-            {favoriteKeys.has(landingKey('food', item.id)) && (
-              <Icon
-                name="star"
-                size={13}
-                color={favoriteGold}
-                style={{ marginTop: 1 }}
-                accessibilityLabel="Favorite"
-              />
-            )}
-            <Text className="text-text-primary text-base font-semibold">
-              {item.default_variant.calories} cal
-            </Text>
-          </View>
-          <Text className="text-text-secondary text-xs">
-            {`${item.default_variant.serving_size} ${formatServingUnit(item.default_variant.serving_unit)}`}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
-  // A landing row is either a food or a saved meal (tagged with a "Meal" badge
-  // so it reads as distinct from a food in the merged list).
-  const renderLandingEntry = (entry: LandingEntry) => {
-    if (entry.kind === 'meal') {
-      return (
-        <MealLibraryRow
-          meal={entry.meal}
-          showBadge
-          showDivider
-          isFavorite={favoriteKeys.has(landingKey('meal', entry.meal.id))}
-          onPress={() => showFoodInfo(mealToFoodInfo(entry.meal))}
-        />
-      );
-    }
-    return renderFoodRow(entry.food);
-  };
-
-  const renderOnlineRow = (
-    item: ExternalFoodItem,
-    badge?: string,
-    providerId?: string,
-  ) => (
-    <TouchableOpacity
-      className="px-4 py-2 border-b border-border-subtle"
-      activeOpacity={0.7}
-      disabled={loadingFoodId !== null}
-      onPress={() => {
-        void handleExternalFoodTap(item, providerId);
-      }}
-    >
-      <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-3">
-          <View className="flex-row items-start gap-1">
-            <Text className="text-text-primary text-base font-medium flex-shrink">
-              {item.name}
-            </Text>
-            {item.provider_verified ? <VerifiedBadge size="sm" style={{ marginTop: 2 }} /> : null}
-          </View>
-          {badge || item.brand ? (
-            <View className="flex-row items-center gap-1.5 mt-0.5">
-              {badge ? (
-                <View className="px-1.5 py-0.5 rounded overflow-hidden">
-                  <View
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: getProviderColor(providerId),
-                      opacity: 0.07,
-                    }}
-                  />
-                  <Text
-                    className="text-xs font-semibold"
-                    style={{ color: getProviderColor(providerId) }}
-                  >
-                    {badge}
-                  </Text>
-                </View>
-              ) : null}
-              {item.brand ? (
-                <Text className="text-text-secondary text-sm">{item.brand}</Text>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-        <View className="items-end">
-          {loadingFoodId === item.id ? (
-            <ActivityIndicator size="small" color={accentColor} />
-          ) : (
-            <>
-              <Text className="text-text-primary text-base font-semibold">
-                {item.calories} cal
-              </Text>
-              <Text className="text-text-secondary text-xs">
-                {item.serving_description
-                  ? formatServingDescription(item.serving_description)
-                  : `${item.serving_size} ${formatServingUnit(item.serving_unit)}`}
-              </Text>
-            </>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  // "Show all N <provider> results" → switch into single-provider mode for that
-  // provider, which shows the full paginated list.
-  const renderShowAllRow = (provider: ExternalProvider, count: number) => (
-    <TouchableOpacity
-      className="px-4 py-3 border-b border-border-subtle"
-      activeOpacity={0.7}
-      onPress={() => handleSelectProvider(provider.id)}
-    >
-      <Text className="text-sm font-medium" style={{ color: accentColor }}>
-        Show all {count} {provider.provider_name} results
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const renderLocalShowAllRow = (section: 'foods' | 'meals', count: number) => (
-    <TouchableOpacity
-      className="px-4 py-3 border-b border-border-subtle"
-      activeOpacity={0.7}
-      onPress={() =>
-        section === 'foods' ? setShowAllFoods(true) : setShowAllMeals(true)
-      }
-    >
-      <Text className="text-sm font-medium" style={{ color: accentColor }}>
-        Show all {count} {section === 'foods' ? 'foods' : 'meals'}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const renderProviderSkeleton = () => (
-    <View className="px-4 py-3 gap-2">
-      {[0.8, 0.6, 0.7].map((w, i) => (
-        <View
-          key={i}
-          className="h-4 rounded"
-          style={{
-            width: `${w * 100}%`,
-            backgroundColor: textMuted,
-            opacity: 0.15,
-          }}
-        />
-      ))}
-    </View>
-  );
-
-  const renderSectionHeaderTitle = (title: string) => (
-    <View className="px-4 py-1 bg-surface">
-      <Text className="text-text-muted text-xs font-bold uppercase">{title}</Text>
-    </View>
-  );
-
   // --- Results list renderers ---
 
-  const renderResultRow = ({ item }: { item: ResultRow }) => {
-    switch (item.type) {
-      case 'food':
-        return renderFoodRow(item.food);
-      case 'meal':
-        return (
-          <MealLibraryRow
-            meal={item.meal}
-            showDivider
-            isFavorite={favoriteKeys.has(landingKey('meal', item.meal.id))}
-            onPress={() => showFoodInfo(mealToFoodInfo(item.meal))}
-          />
-        );
-      case 'online':
-        return renderOnlineRow(item.online, undefined, item.providerId);
-      case 'online-top':
-        return renderOnlineRow(item.online, item.providerName, item.providerId);
-      case 'show-all':
-        return renderShowAllRow(item.provider, item.count);
-      case 'show-all-local':
-        return renderLocalShowAllRow(item.section, item.count);
-      case 'provider-skeleton':
-        return renderProviderSkeleton();
-      case 'local-status':
-        return (
-          <View className="px-4 py-6 items-center justify-center">
-            <Text
-              className="text-text-secondary text-base text-center"
-              style={{ opacity: item.pending ? 0 : 1 }}
-              importantForAccessibility={item.pending ? 'no' : 'yes'}
-              accessibilityElementsHidden={item.pending}
-            >
-              {isMealBuilderMode
-                ? 'No saved foods found'
-                : 'No saved foods or meals found'}
-            </Text>
-            {item.pending ? (
-              <View
-                className="absolute inset-0 items-center justify-center"
-                accessible
-                accessibilityRole="progressbar"
-                accessibilityLabel={
-                  isMealBuilderMode
-                    ? 'Searching saved foods'
-                    : 'Searching saved foods and meals'
-                }
-              >
-                <ActivityIndicator size="small" color={accentColor} />
-              </View>
-            ) : null}
-          </View>
-        );
-    }
-  };
+  const renderResultRow = ({ item }: { item: ResultRow }) => (
+    <FoodSearchResultRow
+      row={item}
+      profileId={profile?.id}
+      favoriteKeys={favoriteKeys}
+      favoriteGold={favoriteGold}
+      accentColor={accentColor}
+      textMuted={textMuted}
+      loadingFoodId={loadingFoodId}
+      isMealBuilderMode={isMealBuilderMode}
+      getProviderColor={getProviderColor}
+      onSelectFood={showFoodInfo}
+      onSelectOnlineFood={handleExternalFoodTap}
+      onSelectProvider={handleSelectProvider}
+      onShowAllLocal={handleShowAllLocal}
+    />
+  );
 
-  const renderResultSectionHeader = ({ section }: { section: ResultSection }) => {
-    if (!section.title) return null;
-
-    // The External Results / Top Matches header doubles as the source switcher:
-    // a single provider, or "All Providers" for the aggregated view. The current
-    // value is shown in the accent colour with a double-arrow selector icon so it
-    // reads as a switchable control; the icon becomes a spinner while loading.
-    if (section.kind === 'online' || section.kind === 'online-top') {
-      const canSwitch = providerOptions.length > 1;
-      const label =
-        section.kind === 'online-top' ? 'Top Matches' : 'Online Results';
-      const value = isAllProviders ? 'All Sources' : selectedProviderName;
-      const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
-      const header = (
-        <View
-          ref={onlineHeaderRef}
-          collapsable={false}
-          className="px-4 py-1 bg-surface flex-row items-center justify-between"
-        >
-          <Text className="text-text-muted text-xs font-bold uppercase">
-            {label}
-          </Text>
-          <View className="flex-row items-center gap-1">
-            <Text
-              className="text-sm font-bold"
-              style={{ color: canSwitch ? accentColor : textSecondary }}
-            >
-              {value}
-            </Text>
-            {loading ? (
-              <ActivityIndicator size="small" color={accentColor} />
-            ) : canSwitch ? (
-              <Icon name="chevron-down" size={16} color={accentColor} />
-            ) : null}
-          </View>
-        </View>
-      );
-      if (!canSwitch) return header;
-      return (
-        <BottomSheetPicker
-          value={selectedProvider ?? ''}
-          options={providerOptions}
-          onSelect={handleSelectProvider}
-          title="Online provider"
-          renderTrigger={({ onPress }) => (
-            <Pressable
-              onPress={() => {
-                // Drop the search keyboard first so the sheet isn't hidden
-                // behind it as it animates up.
-                Keyboard.dismiss();
-                onPress();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={`Source ${value}, tap to change`}
-            >
-              {header}
-            </Pressable>
-          )}
-        />
-      );
-    }
-
-    // By Source: a tappable accordion header per provider, with a result-count
-    // badge and a per-provider loading spinner.
-    if (section.kind === 'online-provider' && section.provider) {
-      const provider = section.provider;
-      const expanded = expandedProviders.has(provider.id);
-      const color = getProviderColor(provider.id);
-      const loading = !!section.providerLoading;
-      const errored = !!section.providerError && !loading;
-      const count = section.count ?? 0;
-      const empty = !loading && !errored && count === 0;
-      const expandable = !loading && !errored && count > 0;
-      const onPress = errored
-        ? section.onRetry
-        : expandable
-          ? () => toggleProvider(provider.id)
-          : undefined;
-      return (
-        <Pressable
-          onPress={onPress}
-          disabled={!onPress}
-          className="px-4 py-2.5 bg-surface flex-row items-center justify-between border-t border-border-subtle"
-          accessibilityRole="button"
-          accessibilityLabel={
-            errored
-              ? `${provider.provider_name}, could not load, tap to retry`
-              : empty
-                ? `${provider.provider_name}, no results`
-                : expandable
-                  ? `${provider.provider_name}, ${count} results, tap to ${
-                      expanded ? 'collapse' : 'expand'
-                    }`
-                  : provider.provider_name
-          }
-        >
-          <View className="flex-row items-center gap-2">
-            <View
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: color }}
-            />
-            <Text className="text-text-primary text-base font-semibold">
-              {provider.provider_name}
-            </Text>
-            {expandable ? (
-              <View className="px-1.5 py-0.5 rounded-full bg-background">
-                <Text className="text-text-secondary text-xs">{count}</Text>
-              </View>
-            ) : null}
-          </View>
-          {loading ? (
-            <ActivityIndicator size="small" color={textMuted} />
-          ) : errored ? (
-            <View className="flex-row items-center gap-1">
-              <Text className="text-text-muted text-xs">Couldn&apos;t load</Text>
-              <Icon name="sync" size={14} color={textMuted} />
-            </View>
-          ) : empty ? (
-            <Text className="text-text-muted text-xs">No results</Text>
-          ) : (
-            <Icon
-              name={expanded ? 'chevron-down' : 'chevron-forward'}
-              size={16}
-              color={textMuted}
-            />
-          )}
-        </Pressable>
-      );
-    }
-
-    return renderSectionHeaderTitle(section.title);
-  };
+  const renderResultSectionHeader = ({ section }: { section: ResultSection }) => (
+    <FoodSearchSectionHeader
+      section={section}
+      onlineHeaderRef={onlineHeaderRef}
+      providerOptions={providerOptions}
+      selectedProvider={selectedProvider}
+      selectedProviderName={selectedProviderName}
+      isAllProviders={isAllProviders}
+      anyProviderLoading={anyProviderLoading}
+      isOnlineSearching={isOnlineSearching}
+      expandedProviders={expandedProviders}
+      getProviderColor={getProviderColor}
+      accentColor={accentColor}
+      textMuted={textMuted}
+      textSecondary={textSecondary}
+      onSelectProvider={handleSelectProvider}
+      onToggleProvider={toggleProvider}
+    />
+  );
 
   const renderResultSectionFooter = ({ section }: { section: ResultSection }) => {
     if (section.kind !== 'online') return null;
 
-    if (isOnlineSearching && visibleOnlineResults.length === 0) {
-      return (
-        <View className="py-4 items-center">
-          <ActivityIndicator size="small" color={accentColor} />
-        </View>
-      );
-    }
-    if (isFetchNextPageError) {
-      return (
-        <Button
-          variant="ghost"
-          onPress={() => fetchNextPage()}
-          className="py-3"
-          textClassName="text-sm"
-        >
-          Failed to load more. Tap to retry
-        </Button>
-      );
-    }
-    if (isFetchingNextPage) {
-      return (
-        <View className="py-3 items-center">
-          <ActivityIndicator size="small" color={accentColor} />
-        </View>
-      );
-    }
-    if (hasNextPage) {
-      return (
-        <Button
-          variant="ghost"
-          onPress={() => fetchNextPage()}
-          className="py-4 mb-4"
-          textClassName="text-sm"
-        >
-          Load More
-        </Button>
-      );
-    }
-    if (visibleOnlineResults.length === 0 && !isOnlineSearching) {
-      return (
-        <View className="px-4 py-4">
-          <Text className="text-text-secondary text-sm text-center">
-            No online results from {selectedProviderName}
-          </Text>
-        </View>
-      );
-    }
-    return null;
+    return (
+      <OnlineSectionFooter
+        isOnlineSearching={isOnlineSearching}
+        visibleOnlineResultCount={visibleOnlineResults.length}
+        isFetchNextPageError={isFetchNextPageError}
+        isFetchingNextPage={isFetchingNextPage}
+        hasNextPage={hasNextPage}
+        selectedProviderName={selectedProviderName}
+        accentColor={accentColor}
+        onFetchNextPage={fetchNextPage}
+      />
+    );
   };
 
   const resultKeyExtractor = (item: ResultRow, index: number) => {
@@ -1460,8 +1052,18 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       <SectionList
         sections={landingSections}
         keyExtractor={(item) => item.key}
-        renderItem={({ item }) => renderLandingEntry(item)}
-        renderSectionHeader={({ section }) => renderSectionHeaderTitle(section.title)}
+        renderItem={({ item }) => (
+          <LandingEntryRow
+            entry={item}
+            profileId={profile?.id}
+            favoriteKeys={favoriteKeys}
+            favoriteGold={favoriteGold}
+            onSelect={showFoodInfo}
+          />
+        )}
+        renderSectionHeader={({ section }) => (
+          <SectionTitleHeader title={section.title} />
+        )}
         stickySectionHeadersEnabled
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"

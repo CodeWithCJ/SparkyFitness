@@ -52,6 +52,7 @@ import {
   formatVariantLabel,
   resolveLocalPickerVariantId,
   unitVariantToDisplayValues,
+  nextQuantity,
 } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import VerifiedBadge from '../components/VerifiedBadge';
@@ -507,15 +508,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   };
 
   const adjustQuantity = (delta: number) => {
-    const step = displayValues.servingSize;
-    const increment = step * 0.5 || 1;
-    const boundary =
-      delta > 0
-        ? Math.ceil(quantity / increment) * increment
-        : Math.floor(quantity / increment) * increment;
-    const next =
-      boundary !== quantity ? boundary : quantity + delta * increment;
-    updateEdit({ quantityText: String(Math.max(increment, next)) });
+    updateEdit({
+      quantityText: String(nextQuantity(quantity, delta, displayValues.servingSize)),
+    });
   };
 
   const navigateToNutritionForm = () => {
@@ -1188,11 +1183,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
 
         <Animated.View layout={LinearTransition.duration(300)}>
           <Button
-            variant="ghost"
+            variant="destructive"
             onPress={confirmAndDelete}
             disabled={isDeletePending}
             className="mt-2"
-            textClassName="text-bg-danger font-medium"
           >
             {isDeletePending ? 'Deleting...' : 'Delete Entry'}
           </Button>

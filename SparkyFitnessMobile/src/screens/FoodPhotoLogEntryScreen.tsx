@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
   Platform,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -17,6 +16,7 @@ import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { usePreferences } from '../hooks';
@@ -279,27 +279,13 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </KeyboardAwareScrollView>
 
-      <View
-        className="px-4 gap-3 border-t border-border-subtle pt-3"
-        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-      >
-        <Button
-          variant="primary"
-          disabled={isPending}
-          onPress={() => {
-            void handleSave();
-          }}
-        >
-          {isPending ? (
-            <View className="flex-row items-center gap-2">
-              <ActivityIndicator size="small" color="#fff" />
-              <Text className="text-white font-semibold">Saving…</Text>
-            </View>
-          ) : (
-            'Save'
-          )}
-        </Button>
-      </View>
+      <FooterSaveBar
+        onPress={() => {
+          void handleSave();
+        }}
+        disabled={isPending}
+        busy={isPending}
+      />
 
       <CalendarSheet
         ref={calendarRef}

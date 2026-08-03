@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ActivityIndicator, Pressable, Platform } from 'react-native';
+import { View, Text, Pressable, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import Button from './ui/Button';
 import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
@@ -119,13 +119,10 @@ const DevTools: React.FC = () => {
           variant="primary"
           className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
           onPress={() => handleSeedData(7)}
-          disabled={isSeeding}
+          loading={isSeeding}
+          textClassName="font-bold"
         >
-          {isSeeding ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text className="text-white text-base font-bold">7 Days</Text>
-          )}
+          7 Days
         </Button>
 
         <Button
@@ -181,13 +178,10 @@ const DevTools: React.FC = () => {
             variant="primary"
             className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
             onPress={handleTriggerSync}
-            disabled={isSyncing}
+            loading={isSyncing}
+            textClassName="font-bold"
           >
-            {isSyncing ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text className="text-white text-base font-bold">Trigger Sync</Text>
-            )}
+            Trigger Sync
           </Button>
           {Platform.OS === 'android' && (
             <Button

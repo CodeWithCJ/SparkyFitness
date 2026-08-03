@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, Platform } from 'react-native';
+import { View, Text } from 'react-native';
 import { CartesianChart, Bar } from 'victory-native';
-import { matchFont } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
+import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
 import type { StepsDataPoint, StepsRange } from '../hooks/useMeasurementsRange';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
@@ -30,36 +30,11 @@ const X_TICK_COUNT: Record<StepsRange, number> = {
   '90d': 5,
 };
 
-const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
-const font = matchFont({ fontFamily, fontSize: 12 });
+const font = makeChartFont(12);
 
 const formatYLabel = (value: number) => {
   if (value >= 1000) return `${Math.round(value / 1000)}k`;
   return String(value);
-};
-
-const formatXLabel7d = (day: string): string => {
-  if (typeof day !== 'string') return '';
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'short' });
-};
-
-const formatXLabel30d90d = (day: string): string => {
-  if (typeof day !== 'string') return '';
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
-const formatTooltipDate = (day: string): string => {
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
 };
 
 const DEFAULT_TOOLTIP = 'Press a bar for details';

@@ -8,7 +8,6 @@ import {
   ScrollView,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import Button from '../components/ui/Button';
 import { StackActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -20,7 +19,7 @@ import { FoodNutritionHeader, FoodNutrientBreakdown } from '../components/FoodNu
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
-import { addDays, getTodayDate, getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
+import { addDays, getTodayDate, getDeviceTimezone } from '../utils/dateUtils';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { prefillEntryTime, userHourMinute } from '@workspace/shared';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
@@ -46,6 +45,8 @@ import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
 import { useAddFoodEntryMeal } from '../hooks/useAddFoodEntryMeal';
 import type { FoodEntryMealCreateData } from '../types/foodEntryMeals';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import DateSelectRow from '../components/DateSelectRow';
+import { FooterSaveBar } from '../components/FormScreenChrome';
 import type { FoodFormData } from '../components/FoodForm';
 import type { Meal, MealIngredientDraft } from '../types/meals';
 import type {
@@ -82,6 +83,7 @@ import {
   toPersistedServingUnit,
   unitVariantToDisplayValues,
   type FoodDisplayValues,
+  nextQuantity,
 } from '../utils/foodDetails';
 import { buildMealIngredientDraft } from '../utils/mealBuilderDraft';
 import { persistExternalVariants } from '../utils/persistExternalVariants';
@@ -736,25 +738,16 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   };
 
   const adjustQuantity = (delta: number) => {
-    const step = displayValues.servingSize;
-    const increment = step * 0.5 || 1;
-    const boundary =
-      delta > 0
-        ? Math.ceil(quantity / increment) * increment
-        : Math.floor(quantity / increment) * increment;
-    const next =
-      boundary !== quantity ? boundary : quantity + delta * increment;
-    setQuantityText(String(Math.max(increment, next)));
+    setQuantityText(String(nextQuantity(quantity, delta, displayValues.servingSize)));
   };
 
   const scaled = (value: number) => value * servings;
 
   const insets = useSafeAreaInsets();
-  const [accentColor, textPrimary, borderSubtle] = useCSSVariable([
+  const [accentColor, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-primary',
-    '--color-border-subtle',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const buildSaveFoodPayload = useCallback(
     () => {
@@ -1429,22 +1422,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         {!isMealBuilderMode ? (
           <>
             <View className="flex-row items-center mt-2">
-              <TouchableOpacity
+              <DateSelectRow
+                date={selectedDate}
                 onPress={() => calendarRef.current?.present()}
-                activeOpacity={0.7}
-                className="flex-row items-center"
-              >
-                <Text className="text-text-secondary text-base">Date</Text>
-                <Text className="text-text-primary text-base font-medium mx-1.5">
-                  {formatDateLabel(selectedDate)}
-                </Text>
-                <Icon
-                  name="chevron-down"
-                  size={12}
-                  color={textPrimary}
-                  weight="medium"
-                />
-              </TouchableOpacity>
+              />
 
               {selectedDate === getTodayDate() ? (
                 <TouchableOpacity activeOpacity={0.7}
@@ -1541,22 +1522,15 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       </ScrollView>
 
       {/* Sticky footer */}
-      <View
-        className="px-4 py-3"
-        style={{
-          paddingBottom: Math.max(insets.bottom, 12),
-          borderTopWidth: 1,
-          borderTopColor: borderSubtle,
-        }}
-      >
-        <Button
-          variant="primary"
-          disabled={
-            isActionPending ||
-            (!isMealBuilderMode && !effectiveMealId) ||
-            quantity <= 0
-          }
-          onPress={() => {
+      <FooterSaveBar
+        label={activeItem.source === 'meal' ? 'Add Meal' : 'Add Food'}
+        busy={isActionPending}
+        disabled={
+          isActionPending ||
+          (!isMealBuilderMode && !effectiveMealId) ||
+          quantity <= 0
+        }
+        onPress={() => {
             if (isMealBuilderMode) {
               void handleMealBuilderAdd();
               return;
@@ -1592,16 +1566,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               createEntryPayload: buildFoodEntryPayload(),
             });
           }}
-        >
-          {isActionPending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text className="text-white text-base font-semibold">
-              {activeItem.source === 'meal' ? 'Add Meal' : 'Add Food'}
-            </Text>
-          )}
-        </Button>
-      </View>
+      />
 
       <CalendarSheet
         ref={calendarRef}

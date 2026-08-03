@@ -231,10 +231,9 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
 
         {currentBarcode != null ? (
           <Button
-            variant="ghost"
+            variant="destructive"
             onPress={handleRemove}
             disabled={mutation.isPending}
-            textClassName="text-bg-danger font-medium"
           >
             Remove barcode
           </Button>

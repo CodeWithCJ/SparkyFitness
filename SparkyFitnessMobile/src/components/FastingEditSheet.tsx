@@ -15,29 +15,12 @@ import Toast from 'react-native-toast-message';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import { useUpdateFast, useDeleteFast } from '../hooks/useFasting';
-import { formatHoursMinutes } from '../utils/fasting';
+import { formatHoursMinutes, formatDateTime } from '../utils/fasting';
+import { dateTypeToDate } from './TimeSheet';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
 
 /** Normalizes the picker's 6-way `DateType` into a JS `Date`, preserving time. */
-function dateTypeToDate(date: DateType): Date | null {
-  if (!date) return null;
-  if (date instanceof Date) return date;
-  if (typeof date === 'object' && 'toDate' in date) return date.toDate();
-  if (typeof date === 'string') return new Date(date);
-  return new Date(date);
-}
-
-function formatDateTime(date: Date): string {
-  return date.toLocaleString([], {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
 export interface FastingEditSheetRef {
   present: (fast: FastingLog) => void;
   dismiss: () => void;

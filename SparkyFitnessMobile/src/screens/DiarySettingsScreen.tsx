@@ -1,13 +1,13 @@
 import React, { useCallback } from 'react';
-import { View, Text, Switch, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import Switch from '../components/ui/Switch';
 import { useServerConnection, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
 import {
   updateNutrientDisplayPreference,
@@ -34,10 +34,6 @@ const SERVER_DEFAULT_DIARY_NUTRIENTS: string[] = [];
 const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const diarySummaryVisible = useAppPreferencesStore((s) => s.diarySummaryVisible);
@@ -142,8 +138,6 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
               <Switch
                 value={base.includes(cn.name)}
                 onValueChange={(value) => handleToggle(cn.name, value)}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
               />
             }
           />
@@ -176,8 +170,6 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
               <Switch
                 value={diarySummaryVisible}
                 onValueChange={setDiarySummaryVisible}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
               />
             }
           />

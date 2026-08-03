@@ -766,14 +766,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing && (
           <FadeView>
             <Button
-              variant="ghost"
+              variant="destructive"
               onPress={() => deleteWorkout.confirmAndDelete()}
               disabled={isDeleting}
               className="mt-6"
             >
-              <Text className="text-bg-danger text-base font-medium">
-                {isDeleting ? 'Deleting...' : 'Delete Workout'}
-              </Text>
+              {isDeleting ? 'Deleting...' : 'Delete Workout'}
             </Button>
           </FadeView>
         )}

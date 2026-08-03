@@ -11,21 +11,17 @@ import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 
 import Icon from './Icon';
+import { DeleteRowAction } from './SwipeableDeleteRow';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import FastingEditSheet, { type FastingEditSheetRef } from './FastingEditSheet';
 import { FastingProtocolBadge } from './FastingSharedComponents';
 import { useFastingHistory, useDeleteFast } from '../hooks/useFasting';
-import { formatHoursMinutes, relativeDayLabel } from '../utils/fasting';
+import { formatHoursMinutes, relativeDayLabel, formatTime } from '../utils/fasting';
 import { toLocalDateString } from '../utils/dateUtils';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
-
 const PAGE_SIZE = 25;
-const DELETE_ACTION_WIDTH = 80;
 
 interface FastingHistoryRowProps {
   fast: FastingLog;
@@ -50,14 +46,7 @@ const FastingHistoryRow: React.FC<FastingHistoryRowProps> = ({
     : formatTime(fast.start_time);
 
   const renderRightActions = () => (
-    <TouchableOpacity
-      className="bg-bg-danger justify-center items-center ml-4"
-      style={{ width: DELETE_ACTION_WIDTH }}
-      onPress={() => onDelete(fast)}
-      activeOpacity={0.7}
-    >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
-    </TouchableOpacity>
+    <DeleteRowAction onPress={() => onDelete(fast)} className="ml-4" />
   );
 
   return (

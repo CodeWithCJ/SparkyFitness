@@ -15,7 +15,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCurrentFast, useFastingStats } from '../hooks/useFasting';
 import { useFastingTimer } from '../hooks/useFastingTimer';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
-import { formatFastingStats } from '../utils/fasting';
+import { formatFastingStats, formatTime } from '../utils/fasting';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
 import {
   METABOLIC_STAGES,
@@ -28,10 +28,6 @@ import type { RootStackScreenProps } from '../types/navigation';
 type Props = RootStackScreenProps<'FastingDetail'>;
 
 const RING_SIZE = 240;
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
 
 const DetailRow: React.FC<{ label: string; value: string; isLast?: boolean }> = ({
   label,

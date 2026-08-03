@@ -14,6 +14,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
+import { dateTypeToDate } from './TimeSheet';
 import Toast from 'react-native-toast-message';
 
 import Button from './ui/Button';
@@ -34,14 +35,6 @@ const MAX_CUSTOM_HOURS = 72;
 const DEFAULT_CUSTOM_HOURS = 12;
 
 /** Normalizes the picker's 6-way `DateType` into a JS `Date`, preserving time. */
-function dateTypeToDate(date: DateType): Date | null {
-  if (!date) return null;
-  if (date instanceof Date) return date;
-  if (typeof date === 'object' && 'toDate' in date) return date.toDate();
-  if (typeof date === 'string') return new Date(date);
-  return new Date(date);
-}
-
 export interface FastingProtocolSheetRef {
   present: (initialPresetId?: string) => void;
   dismiss: () => void;

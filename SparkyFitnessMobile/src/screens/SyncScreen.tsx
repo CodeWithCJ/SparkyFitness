@@ -218,7 +218,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
 
           performBackgroundSync('healthkit-observer')
             .catch(error => {
-              console.error('[SyncScreen] Observer-triggered sync failed:', error);
+              addLog(`[SyncScreen] Observer-triggered sync failed: ${error}`, 'ERROR');
             })
             .finally(() => {
               release();

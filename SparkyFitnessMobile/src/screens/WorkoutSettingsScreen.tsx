@@ -1,13 +1,13 @@
 import React, { useRef } from 'react';
-import { View, ScrollView, Switch } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 
 import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
 import { PickerTrigger } from '../components/BottomSheetPicker';
 import { formatRestLabel } from '../components/RestPeriodChip';
 import SettingsRow from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import Switch from '../components/ui/Switch';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -27,11 +27,6 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
   const workoutKeepAwakeEnabled = useAppPreferencesStore((s) => s.workoutKeepAwakeEnabled);
   const setWorkoutKeepAwakeEnabled = useAppPreferencesStore((s) => s.setWorkoutKeepAwakeEnabled);
   const restSheetRef = useRef<RestPeriodSheetRef>(null);
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
-
   const header = useScreenHeader({ title: 'Workout Settings', left: { kind: 'back' } });
 
   return (
@@ -66,8 +61,6 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
             <Switch
               value={restTimerSoundEnabled}
               onValueChange={setRestTimerSoundEnabled}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
               accessibilityLabel="Rest timer sound"
             />
           }
@@ -81,8 +74,6 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
             <Switch
               value={workoutKeepAwakeEnabled}
               onValueChange={setWorkoutKeepAwakeEnabled}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
               accessibilityLabel="Keep screen awake"
             />
           }

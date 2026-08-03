@@ -6,6 +6,7 @@ import { ssoClient } from '@better-auth/sso/client';
 import * as WebBrowser from 'expo-web-browser';
 import { clearSessionToken, ServerConfig } from '../storage';
 import { addLog } from '../LogService';
+import { normalizeUrl } from '../../utils/serverUrl';
 import { LoginError } from './authErrors';
 import {
   CONNECTION_CHECK_TIMEOUT_MS,
@@ -95,10 +96,6 @@ export const getAuthHeaders = (config: ServerConfig): Record<string, string> => 
   return { Authorization: `Bearer ${config.apiKey}` };
 };
 
-/** Inline URL normalization to avoid circular dependency with apiClient. */
-const normalizeUrl = (url: string): string => {
-  return url.endsWith('/') ? url.slice(0, -1) : url;
-};
 
 const getJsonHeaders = (): Record<string, string> => ({
   'Content-Type': 'application/json',
@@ -167,7 +164,7 @@ const getTrustedAuthOrigin = async (serverUrl: string): Promise<string | undefin
       trustedOrigin = normalizeOrigin(body.trusted_origin);
     }
   } catch (error) {
-    console.warn('[AuthService] Failed to fetch auth settings for MFA.', error);
+    addLog(`[AuthService] Failed to fetch auth settings for MFA: ${error}`, 'WARNING');
   }
 
   if (!trustedOrigin) {
@@ -228,7 +225,7 @@ export const clearAuthCookies = async (): Promise<void> => {
         resolve();
       }
     } catch (error) {
-      console.warn('[AuthService] Failed to clear auth cookies.', error);
+      addLog(`[AuthService] Failed to clear auth cookies: ${error}`, 'WARNING');
       resolve();
     }
   });
@@ -414,7 +411,7 @@ export const verifyEmailOtp = async (
 export const logout = async (configId: string): Promise<void> => {
   await clearSessionToken(configId);
   await clearAuthCookies();
-  console.log(`[AuthService] Session token cleared for config ${configId}`);
+  addLog(`[AuthService] Session token cleared for config ${configId}`, 'INFO');
 };
 
 export interface OidcProvider {

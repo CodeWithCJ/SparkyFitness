@@ -1,7 +1,6 @@
 import React, { useCallback } from 'react';
-import { View, Switch, ScrollView, Alert } from 'react-native';
+import { View, ScrollView, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 import * as Sharing from 'expo-sharing';
 import { File, Paths } from 'expo-file-system';
@@ -17,6 +16,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import StepperInput, { useStepperDraft } from '../components/StepperInput';
+import Switch from '../components/ui/Switch';
 import { CYCLE_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 
 import {
@@ -50,10 +50,6 @@ const TERMINOLOGY_OPTIONS = [
 const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const {
@@ -201,8 +197,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               <Switch
                 value={settings.enabled}
                 onValueChange={handleToggleEnabled}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
               />
             }
           />
@@ -273,8 +267,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                     <Switch
                       value={settings.conditions?.includes(cond.value) || false}
                       onValueChange={(val) => handleToggleCondition(cond.value, val)}
-                      trackColor={{ false: formDisabled, true: formEnabled }}
-                      thumbColor="#FFFFFF"
                     />
                   }
                 />
@@ -289,8 +281,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                   <Switch
                     value={settings.show_fertile_window}
                     onValueChange={handleToggleFertileWindow}
-                    trackColor={{ false: formDisabled, true: formEnabled }}
-                    thumbColor="#FFFFFF"
                   />
                 }
               />
@@ -301,8 +291,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                   <Switch
                     value={settings.discreet_mode}
                     onValueChange={handleToggleDiscreetMode}
-                    trackColor={{ false: formDisabled, true: formEnabled }}
-                    thumbColor="#FFFFFF"
                   />
                 }
               />

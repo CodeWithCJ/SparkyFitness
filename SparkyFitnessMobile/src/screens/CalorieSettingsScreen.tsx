@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, Switch, ScrollView, Platform } from 'react-native';
+import { View, Text, ScrollView, Platform } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -11,6 +11,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import HealthSourceLabel, { healthSourceName } from '../components/HealthSourceLabel';
+import Switch from '../components/ui/Switch';
 import { usePreferences } from '../hooks/usePreferences';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -56,11 +57,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string, string];
+  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
 
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
@@ -265,8 +262,6 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                 <Switch
                   onValueChange={handleNegativeAdjustmentToggle}
                   value={normalized.tdeeAllowNegativeAdjustment}
-                  trackColor={{ false: formDisabled, true: formEnabled }}
-                  thumbColor="#FFFFFF"
                 />
               </View>
               <Text className="text-text-secondary text-sm mt-3">
@@ -283,8 +278,6 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               <Switch
                 onValueChange={handleBmrToggle}
                 value={normalized.includeBmrInNetCalories}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
               />
             </View>
             <Text className="text-text-secondary text-sm mt-3">
@@ -357,8 +350,6 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             <Switch
               onValueChange={handleExternalBmrToggle}
               value={normalized.useExternalBmr}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
             />
           </View>
           <Text className="text-text-secondary text-sm mt-3">
