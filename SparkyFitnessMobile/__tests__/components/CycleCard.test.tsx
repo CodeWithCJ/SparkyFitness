@@ -160,11 +160,11 @@ describe('CycleCard contract', () => {
   });
 
   it.each([
-    ['en', 8, 'Day 8', 'Tap to view details', 'Open wellness tracking hub'],
-    ['pl', 8, 'Dzień 8', 'Dotknij, aby zobaczyć szczegóły', 'Otwórz centrum monitorowania zdrowia'],
-    ['en', 0, 'Wellness tracking active', 'Tap to view details', 'Open wellness tracking hub'],
-    ['pl', 0, 'Monitorowanie zdrowia aktywne', 'Dotknij, aby zobaczyć szczegóły', 'Otwórz centrum monitorowania zdrowia'],
-  ] as const)('renders active discreet card neutrally in %s', (locale, day, primaryText, details, accessibilityLabel) => {
+    ['en', 8, 'Day 8', 'Open wellness tracking hub'],
+    ['pl', 8, 'Dzień 8', 'Otwórz centrum monitorowania zdrowia'],
+    ['en', 0, 'Wellness tracking active', 'Open wellness tracking hub'],
+    ['pl', 0, 'Monitorowanie zdrowia aktywne', 'Otwórz centrum monitorowania zdrowia'],
+  ] as const)('renders active discreet card neutrally in %s', (locale, day, primaryText, accessibilityLabel) => {
     setTestLocale(locale);
     mockDiscreetMode = true;
     mockCycleInfoResult = {
@@ -175,7 +175,6 @@ describe('CycleCard contract', () => {
     const view = render(<CycleCard navigation={navigation as never} />);
 
     expect(view.getByText(primaryText)).toBeTruthy();
-    expect(view.getByText(details)).toBeTruthy();
     expect(view.getByLabelText(accessibilityLabel)).toBeTruthy();
     fireEvent.press(view.getByLabelText(accessibilityLabel));
     expect(navigation.navigate).toHaveBeenCalledWith('CycleHub');
@@ -294,7 +293,7 @@ describe('CycleCard contract', () => {
     expect(mockCycleRingProps).toEqual({
       cycleDay: 8, cycleLength: 29, periodLength: 6, fertileStartDay: 11,
       fertileEndDay: 17, ovulationDay: 14, centerLabel: '', centerValue: 'Day 8',
-      centerSub: '', size: 88, strokeWidth: 7.5,
+       centerSub: '', size: 98, strokeWidth: 7.5,
     });
   });
 

@@ -49,7 +49,6 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
       <View className="flex-row items-center justify-evenly gap-4">
         <WombScene scene={info.wombScene} size={96} />
         <View className="flex-1 gap-1">
-           <Text className="text-text-primary text-sm font-semibold">{t('mobileComponents.wellness.pregnancy.babyThisWeek')}</Text>
           <Text className="text-sm font-semibold" style={{ color: tokens.phasePregnant }}>
              {t('mobileComponents.wellness.pregnancy.sizeOf', { value: info.comparison })}
           </Text>
