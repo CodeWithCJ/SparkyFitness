@@ -102,7 +102,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
          { text: t('common.delete'), style: 'destructive', onPress: () => deleteMutation.mutate(mt.id) },
       ]);
     },
-    [deleteMutation],
+    [deleteMutation, t],
   );
 
   const handleAdd = useCallback(() => {

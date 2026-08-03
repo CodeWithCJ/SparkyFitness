@@ -202,6 +202,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     accentColor,
     getImageSource,
     profile,
+    t,
   ]);
 
   const renderSearchResults = () => {

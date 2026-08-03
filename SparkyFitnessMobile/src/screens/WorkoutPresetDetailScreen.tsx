@@ -145,7 +145,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     } else {
       void runUpdate();
     }
-  }, [preset.id, isPublic, updatePresetAsync, navigation]);
+  }, [preset.id, isPublic, updatePresetAsync, navigation, t]);
 
   const { confirmAndDelete, isPending: isDeletePending } = useDeleteWorkoutPreset({
     presetId: preset.id,
@@ -203,7 +203,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         },
       ],
     );
-  }, [navigateToPresetWorkout, navigation]);
+  }, [navigateToPresetWorkout, navigation, t]);
 
   const handleEdit = useCallback(() => {
     navigation.navigate('WorkoutPresetForm', {

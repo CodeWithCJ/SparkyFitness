@@ -329,6 +329,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
     createScheduleMutation,
     updateScheduleMutation,
     navigation,
+    t,
   ]);
 
   const handleDelete = useCallback(() => {
@@ -352,7 +353,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         },
       },
     ]);
-  }, [isEditing, scheduleId, existing, medicationId, deleteScheduleMutation, navigation]);
+  }, [isEditing, scheduleId, existing, medicationId, deleteScheduleMutation, navigation, t]);
 
   const header = useScreenHeader({
     title: isEditing ? t('medicationScheduleEditor.editTitle') : t('medicationScheduleEditor.newTitle'),
@@ -384,7 +385,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
       { label: formatWithMeal('with'), value: 'with' },
       { label: formatWithMeal('after'), value: 'after' },
     ],
-    [],
+    [t],
   );
 
   const type = form.scheduleTypeId;

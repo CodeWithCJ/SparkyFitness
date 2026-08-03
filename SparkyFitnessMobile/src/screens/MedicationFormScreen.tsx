@@ -147,7 +147,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
         },
       );
     }
-  }, [form, isEditing, medicationId, createMedication, updateMedication, navigation]);
+  }, [form, isEditing, medicationId, createMedication, updateMedication, navigation, t]);
 
   const header = useScreenHeader({
     title: isEditing ? t('medications.edit') : t('medications.new'),

@@ -90,7 +90,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         },
       ],
     );
-  }, [med, deleteMedicationMutation, navigation]);
+  }, [med, deleteMedicationMutation, navigation, t]);
 
   const handleRemoveDose = useCallback(
     (entry: MedicationEntry) => {
@@ -113,7 +113,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         ],
       );
     },
-    [deleteEntryMutation],
+    [deleteEntryMutation, t],
   );
 
   const header = useScreenHeader({
