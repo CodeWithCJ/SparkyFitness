@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict pLUYKLQc4gBS2ZWmc6itBBKykGrPv19fmMJL8lLsjm5uUBbvUbOUc6ObUqms4s1
+\restrict UK2vb2gfdaW09yZcXqlm0ZueUsjAQH9HYf4K0bUukTh5NeuHiY4zr9iY7KHaudD
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1660,7 +1660,8 @@ CREATE TABLE public.exercise_entry_gps_points (
     exercise_entry_id uuid CONSTRAINT exercise_entry_gps_points_new_exercise_entry_id_not_null NOT NULL,
     entry_date date CONSTRAINT exercise_entry_gps_points_new_entry_date_not_null NOT NULL,
     points jsonb DEFAULT '[]'::jsonb CONSTRAINT exercise_entry_gps_points_new_points_not_null NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -1677,7 +1678,8 @@ CREATE TABLE public.exercise_entry_hr_zones (
     zone_lower_bpm integer,
     zone_upper_bpm integer,
     seconds_in_zone integer NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -1706,7 +1708,8 @@ CREATE TABLE public.exercise_entry_laps (
     avg_power_watts numeric(6,2),
     elevation_gain_meters numeric(7,2),
     elevation_loss_meters numeric(7,2),
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -3484,8 +3487,10 @@ CREATE TABLE public.user_preferences (
     measurement_decimal_places integer DEFAULT 0 NOT NULL,
     active_vision_ai_service_id uuid,
     added_sugar_algorithm text DEFAULT 'WHO_IDEAL'::text NOT NULL,
+    time_format text DEFAULT 'h:mm A'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
+    CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
 );
 
@@ -3679,7 +3684,8 @@ CREATE TABLE public.vitals_entries (
     source_provider text NOT NULL,
     device_name text,
     external_id text,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -3869,7 +3875,8 @@ CREATE TABLE public.workout_preset_exercise_sets (
     rest_time integer,
     notes text,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    distance numeric
 );
 
 
@@ -4889,6 +4896,14 @@ ALTER TABLE ONLY public.health_metric_samples
 
 
 --
+-- Name: vitals_entries uq_vitals_entry; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vitals_entries
+    ADD CONSTRAINT uq_vitals_entry UNIQUE (user_id, source_provider, "timestamp");
+
+
+--
 -- Name: user_allergen_preferences user_allergen_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5339,13 +5354,6 @@ CREATE INDEX idx_cycles_user_start ON public.cycles USING btree (user_id, start_
 
 
 --
--- Name: idx_daily_health_metrics_user_date; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_daily_health_metrics_user_date ON public.daily_health_metrics USING btree (user_id, entry_date DESC);
-
-
---
 -- Name: idx_daily_sleep_need_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5388,24 +5396,10 @@ CREATE INDEX idx_exercise_entry_gps_points_user_date ON public.exercise_entry_gp
 
 
 --
--- Name: idx_exercise_entry_hr_zones_entry; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_exercise_entry_hr_zones_entry ON public.exercise_entry_hr_zones USING btree (exercise_entry_id, zone_index);
-
-
---
 -- Name: idx_exercise_entry_hr_zones_user_date; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_exercise_entry_hr_zones_user_date ON public.exercise_entry_hr_zones USING btree (user_id, entry_date DESC);
-
-
---
--- Name: idx_exercise_entry_laps_entry; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_exercise_entry_laps_entry ON public.exercise_entry_laps USING btree (exercise_entry_id, lap_index);
 
 
 --
@@ -5539,13 +5533,6 @@ CREATE INDEX idx_health_appointments_scheduled ON public.health_appointments USI
 --
 
 CREATE INDEX idx_health_appointments_user_id ON public.health_appointments USING btree (user_id);
-
-
---
--- Name: idx_health_metric_samples_user_date; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_health_metric_samples_user_date ON public.health_metric_samples USING btree (user_id, metric, entry_date DESC);
 
 
 --
@@ -6193,6 +6180,27 @@ CREATE TRIGGER update_daily_health_metrics_updated_at BEFORE UPDATE ON public.da
 
 
 --
+-- Name: exercise_entry_gps_points update_exercise_entry_gps_points_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_exercise_entry_gps_points_updated_at BEFORE UPDATE ON public.exercise_entry_gps_points FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: exercise_entry_hr_zones update_exercise_entry_hr_zones_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_exercise_entry_hr_zones_updated_at BEFORE UPDATE ON public.exercise_entry_hr_zones FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: exercise_entry_laps update_exercise_entry_laps_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_exercise_entry_laps_updated_at BEFORE UPDATE ON public.exercise_entry_laps FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: exercise_entry_sets update_exercise_entry_sets_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -6253,6 +6261,13 @@ CREATE TRIGGER update_oidc_providers_updated_at BEFORE UPDATE ON public.oidc_pro
 --
 
 CREATE TRIGGER update_user_oidc_links_updated_at BEFORE UPDATE ON public.user_oidc_links FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: vitals_entries update_vitals_entries_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_vitals_entries_updated_at BEFORE UPDATE ON public.vitals_entries FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -10613,5 +10628,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict pLUYKLQc4gBS2ZWmc6itBBKykGrPv19fmMJL8lLsjm5uUBbvUbOUc6ObUqms4s1
+\unrestrict UK2vb2gfdaW09yZcXqlm0ZueUsjAQH9HYf4K0bUukTh5NeuHiY4zr9iY7KHaudD
 

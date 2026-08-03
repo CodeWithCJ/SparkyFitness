@@ -36,6 +36,16 @@ interface MetricDescriptor {
 
 interface LapDto {
   lapIndex: number;
+  /**
+   * ISO-8601 UTC instant. extractGarminLaps drops any lap without a usable
+   * start time (exercise_entry_laps.start_time is NOT NULL), so omitting this
+   * silently discarded every lap in every FIT import. Named *GMT — not *Local —
+   * because it is a real UTC instant: the Garmin Connect *Local variants are
+   * naive wall-clock strings the extractor has to guess a zone for.
+   */
+  startTimeGMT?: string;
+  /** ISO-8601 UTC instant; LapMesg.timestamp is the lap's end, not its start. */
+  endTimeGMT?: string;
   distance?: number;
   duration?: number;
   movingDuration?: number;
@@ -146,6 +156,7 @@ function buildRecordMetrics(
   let hasSpeed = false;
   let hasElevation = false;
   let hasCadence = false;
+  let hasPosition = false;
   for (const record of records) {
     if (record.heartRate !== undefined) hasHeartRate = true;
     if (record.distance !== undefined) hasDistance = true;
@@ -154,12 +165,23 @@ function buildRecordMetrics(
     if (record.enhancedAltitude !== undefined || record.altitude !== undefined)
       hasElevation = true;
     if (record.cadence !== undefined) hasCadence = true;
+    if (record.positionLat !== undefined && record.positionLong !== undefined)
+      hasPosition = true;
   }
 
   const metricDescriptors: MetricDescriptor[] = [];
   const addDescriptor = (key: string) =>
     metricDescriptors.push({ key, metricsIndex: metricDescriptors.length });
   addDescriptor('directTimestamp');
+  // Coordinates must ride along in activityDetailMetrics, not only in the
+  // polyline below. extractGarminGpsPoints takes the activityDetailMetrics
+  // branch whenever it is non-empty and never falls through to
+  // geoPolylineDTO.polyline, so a FIT file whose coordinates lived only in the
+  // polyline stored a full track of (0, 0) points.
+  if (hasPosition) {
+    addDescriptor('directLatitude');
+    addDescriptor('directLongitude');
+  }
   if (hasHeartRate) addDescriptor('directHeartRate');
   if (hasDistance) addDescriptor('sumDistance');
   if (hasSpeed) addDescriptor('directSpeed');
@@ -171,7 +193,17 @@ function buildRecordMetrics(
   for (const record of records) {
     const timestampMs = fitTimeToMs(record.timestamp);
     if (timestampMs === null) continue;
+    const hasRecordPosition =
+      record.positionLat !== undefined && record.positionLong !== undefined;
     const metrics: (number | null)[] = [timestampMs];
+    if (hasPosition) {
+      metrics.push(
+        hasRecordPosition ? semicirclesToDegrees(record.positionLat!) : null
+      );
+      metrics.push(
+        hasRecordPosition ? semicirclesToDegrees(record.positionLong!) : null
+      );
+    }
     if (hasHeartRate) metrics.push(record.heartRate ?? null);
     if (hasDistance) metrics.push(record.distance ?? null);
     if (hasSpeed) metrics.push(record.enhancedSpeed ?? record.speed ?? null);
@@ -185,10 +217,10 @@ function buildRecordMetrics(
           : null
       );
     activityDetailMetrics.push({ metrics });
-    if (record.positionLat !== undefined && record.positionLong !== undefined) {
+    if (hasRecordPosition) {
       polyline.push({
-        lat: semicirclesToDegrees(record.positionLat),
-        lon: semicirclesToDegrees(record.positionLong),
+        lat: semicirclesToDegrees(record.positionLat!),
+        lon: semicirclesToDegrees(record.positionLong!),
       });
     }
   }
@@ -198,6 +230,10 @@ function buildRecordMetrics(
 function buildLapDtos(laps: LapMesg[], cadenceMultiplier: number): LapDto[] {
   return laps.map((lap, index) => {
     const dto: LapDto = { lapIndex: index + 1 };
+    const startMs = fitTimeToMs(lap.startTime);
+    if (startMs !== null) dto.startTimeGMT = new Date(startMs).toISOString();
+    const endMs = fitTimeToMs(lap.timestamp);
+    if (endMs !== null) dto.endTimeGMT = new Date(endMs).toISOString();
     if (lap.totalDistance !== undefined) dto.distance = lap.totalDistance;
     if (lap.totalTimerTime !== undefined) {
       dto.duration = lap.totalTimerTime;

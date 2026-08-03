@@ -60,6 +60,49 @@ export function firstValue(record: UnknownRecord, keys: string[]): unknown {
   return undefined;
 }
 
+/**
+ * Parses a Garmin lap boundary into a real instant.
+ *
+ * Garmin Connect sends naive wall-clock strings ("2026-07-30 06:12:34.0") with
+ * no zone marker, which `new Date(...)` resolves against the *server's* zone.
+ * That silently shifts every lap boundary by the server's UTC offset — invisible
+ * on a UTC host, hours off on any host with TZ set. So a naive string is pinned
+ * to UTC explicitly here, and callers must hand this the GMT field rather than
+ * the Local one (see pickLapInstant below).
+ *
+ * Values that already carry a zone (ISO strings with Z/offset, epoch numbers,
+ * Date objects) are unambiguous and pass through untouched.
+ */
+function toLapInstant(raw: unknown): Date | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  let value = raw as string | number | Date;
+  if (typeof value === 'string') {
+    const naive = value
+      .trim()
+      .match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2}(?:\.\d+)?)$/);
+    if (naive) value = `${naive[1]}T${naive[2]}Z`;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * Picks a lap boundary, preferring the unambiguous GMT field over the naive
+ * local one. `startTimeLocal` is only reached when a payload carries no GMT
+ * variant at all; it is a wall-clock reading with no offset attached, so
+ * toLapInstant can do no better than read it as UTC.
+ */
+function pickLapInstant(
+  lap: UnknownRecord,
+  gmtKeys: string[],
+  localKeys: string[]
+): Date | null {
+  return (
+    toLapInstant(firstValue(lap, gmtKeys)) ??
+    toLapInstant(firstValue(lap, localKeys))
+  );
+}
+
 export interface ExtractedLap {
   lap_index: number;
   start_time: Date;
@@ -115,21 +158,19 @@ export function extractGarminLaps(payload: UnknownRecord): ExtractedLap[] {
     // A lap with no usable start time is skipped rather than stamped with the
     // import time: exercise_entry_laps.start_time is NOT NULL, and a fabricated
     // "now" is indistinguishable from a real reading once stored.
-    const rawStart = firstValue(lap, ['startTimeLocal', 'startTimeGMT']);
-    if (rawStart === undefined || rawStart === null) return [];
-    const startTime = new Date(rawStart as string | number | Date);
-    if (Number.isNaN(startTime.getTime())) return [];
+    const startTime = pickLapInstant(
+      lap,
+      ['start_time', 'startTimeGMT'],
+      ['startTimeLocal']
+    );
+    if (startTime === null) return [];
 
     const durationSeconds = Math.round(
       firstNum(lap, ['duration_seconds', 'duration', 'elapsedDuration']) ?? 0
     );
-    const endTimeLocal = firstValue(lap, ['endTimeLocal']);
-    const endTimeGMT = firstValue(lap, ['endTimeGMT']);
-    const endTime = endTimeLocal
-      ? new Date(endTimeLocal as string | number | Date)
-      : endTimeGMT
-        ? new Date(endTimeGMT as string | number | Date)
-        : new Date(startTime.getTime() + durationSeconds * 1000);
+    const endTime =
+      pickLapInstant(lap, ['end_time', 'endTimeGMT'], ['endTimeLocal']) ??
+      new Date(startTime.getTime() + durationSeconds * 1000);
 
     return [
       {

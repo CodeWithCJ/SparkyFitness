@@ -8,6 +8,7 @@ import mealTypeRepository from '../../models/mealType.js';
 import * as genericHealthRepo from '../../models/genericHealthRepository.js';
 import { getClient } from '../../db/poolManager.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
+import { num, str } from './garminTelemetryExtractors.js';
 import {
   localDateTimeToUtc,
   instantToDay,
@@ -581,7 +582,58 @@ export async function processGarminHealthAndWellnessData(
     }> = [];
     if (healthData.hrv && Array.isArray(healthData.hrv)) {
       for (const item of healthData.hrv) {
-        if (item.hrvSummary && item.date) {
+        // The Python service (SparkyFitnessGarmin/routes.py, the "# HRV" block)
+        // sends a per-day object shaped:
+        //   { date, hrvValue: [{ time, data }], last_night_avg, weekly_avg,
+        //     status, average_overnight_hrv, ... }
+        // It never sends a nested `hrvSummary` object nor flat
+        // timestamp/rmssd keys, so neither branch below used to match and no
+        // hrv row was ever written — while the per-reading overnight series in
+        // `hrvValue` was fetched and then dropped on the floor. Both are handled
+        // here: the readings first, then the nightly summary.
+        const readings = Array.isArray(item.hrvValue) ? item.hrvValue : [];
+        for (const reading of readings) {
+          const rawTime = reading?.time ?? reading?.t;
+          const rmssd = Number(reading?.data ?? reading?.value);
+          if (!rawTime || !Number.isFinite(rmssd)) continue;
+          const timestamp = new Date(rawTime);
+          if (Number.isNaN(timestamp.getTime())) continue;
+          hrvSamples.push({
+            entry_date: item.date || instantToDay(timestamp, userTz),
+            timestamp,
+            ...tagActivity(timestamp),
+            device_name: item.device_name || 'Garmin Device',
+            // Garmin's hrvReadings are 5-minute RMSSD averages in ms.
+            rmssd_ms: rmssd,
+          });
+        }
+
+        // Nightly summary, sent as flat keys alongside the readings above.
+        const lastNightAvg = num(
+          item.last_night_avg ?? item.average_overnight_hrv
+        );
+        const weeklyAvg = num(item.weekly_avg);
+        const summaryStatus = str(item.status ?? item.hrv_status);
+        if (
+          item.date &&
+          (lastNightAvg !== null ||
+            weeklyAvg !== null ||
+            summaryStatus !== null)
+        ) {
+          // Garmin's nightly HRV summary has no intraday timestamp; anchor at
+          // 05:00 UTC, matching this ingest's prior behavior, so it sorts with
+          // the overnight sleep window rather than the following day.
+          const timestamp = new Date(`${item.date}T05:00:00Z`);
+          hrvSamples.push({
+            entry_date: item.date,
+            timestamp,
+            ...tagActivity(timestamp),
+            device_name: item.device_name || 'Garmin Device',
+            rmssd_ms: lastNightAvg ?? undefined,
+            sdnn_ms: weeklyAvg ?? undefined,
+            status: summaryStatus ?? 'balanced',
+          });
+        } else if (item.hrvSummary && item.date) {
           // Garmin's nightly HRV summary has no intraday timestamp; anchor at
           // 05:00 UTC, matching this ingest's prior behavior, so it sorts with
           // the overnight sleep window rather than the following day.
@@ -664,6 +716,47 @@ export async function processGarminHealthAndWellnessData(
             brpm: item.breaths_per_minute,
             context: item.context || 'unspecified',
           });
+        } else if (item.date) {
+          // What the Python service actually sends (routes.py, the
+          // "# Respiration" block): daily averages, no intraday series and no
+          // respirationValuesArray. Neither branch above matched it, so Garmin
+          // respiration never produced a row. Each average is stored as its own
+          // sample, distinguished by `context`, anchored at a fixed hour so the
+          // day's samples keep a stable order.
+          const dailyAverages: Array<{
+            key: string;
+            context: string;
+            hour: string;
+          }> = [
+            {
+              key: 'sleep_respiration_avg',
+              context: 'sleep',
+              hour: '05:00:00',
+            },
+            {
+              key: 'awake_respiration_avg',
+              context: 'awake',
+              hour: '12:00:00',
+            },
+            {
+              key: 'average_respiration_rate',
+              context: 'daily_average',
+              hour: '23:59:00',
+            },
+          ];
+          for (const { key, context, hour } of dailyAverages) {
+            const brpm = num(item[key]);
+            if (brpm === null) continue;
+            const timestamp = new Date(`${item.date}T${hour}Z`);
+            respSamples.push({
+              entry_date: item.date,
+              timestamp,
+              ...tagActivity(timestamp),
+              device_name: item.device_name || 'Garmin Device',
+              brpm,
+              context,
+            });
+          }
         }
       }
     }

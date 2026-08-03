@@ -1,4 +1,5 @@
 import { getClient } from '../db/poolManager.js';
+import { addDays, daysBetween } from '@workspace/shared';
 import type {
   ExerciseStatsSummaryQuery,
   ExerciseStatsSummaryResponse,
@@ -295,17 +296,13 @@ async function getExerciseStatsSummary(
       };
     });
 
-    const startDt = new Date(startDateStr);
-    const endDt = new Date(endDateStr);
-    const diffDays = Math.max(
-      1,
-      Math.ceil((endDt.getTime() - startDt.getTime()) / (1000 * 3600 * 24))
-    );
-
-    const prevEndDt = new Date(startDt);
-    prevEndDt.setDate(prevEndDt.getDate() - 1);
-    const prevStartDt = new Date(prevEndDt);
-    prevStartDt.setDate(prevStartDt.getDate() - diffDays);
+    // Day-string arithmetic, not Date arithmetic. `new Date('2026-07-30')`
+    // parses as UTC midnight while toDayString reads local getters, so on any
+    // server with TZ set west of UTC the round trip lands a day early and the
+    // whole comparison window slides by one day.
+    const diffDays = Math.max(1, daysBetween(startDateStr, endDateStr));
+    const prevEndDay = addDays(startDateStr, -1);
+    const prevStartDay = addDays(prevEndDay, -diffDays);
 
     const prevSql = `
       SELECT 
@@ -321,13 +318,8 @@ async function getExerciseStatsSummary(
         ${query.category ? 'AND LOWER(category) = LOWER($4)' : ''}
     `;
     const prevParams = query.category
-      ? [
-          targetUserId,
-          toDayString(prevStartDt),
-          toDayString(prevEndDt),
-          query.category,
-        ]
-      : [targetUserId, toDayString(prevStartDt), toDayString(prevEndDt)];
+      ? [targetUserId, prevStartDay, prevEndDay, query.category]
+      : [targetUserId, prevStartDay, prevEndDay];
     const prevResult = await client.query(prevSql, prevParams);
     const prevRow: SqlRow = prevResult.rows[0] || {};
     const prevDistance = parseFloat(String(prevRow.total_distance_km || '0'));
@@ -497,10 +489,21 @@ async function queryExerciseActivities(
     const sortOrder = request.sortOrder === 'asc' ? 'ASC' : 'DESC';
 
     params.push(pageSize, offset);
+    // hasGpsTrack is answered from the stored track, not from a source
+    // allowlist. The allowlist was also wrong: it tested source = 'strava'
+    // while the ingest pipeline writes 'Strava' (stravaDataProcessor.ts), so
+    // every Strava activity reported no GPS. Asking the telemetry table cannot
+    // drift out of sync with provider naming, and it correctly returns false
+    // for an indoor Garmin workout that genuinely has no track.
     const itemsSql = `
-      SELECT 
+      SELECT
         id, user_id, exercise_name, category, entry_date, entry_time,
-        duration_minutes, distance, avg_heart_rate, calories_burned, source, notes
+        duration_minutes, distance, avg_heart_rate, calories_burned, source, notes,
+        EXISTS (
+          SELECT 1 FROM public.exercise_entry_gps_points g
+          WHERE g.exercise_entry_id = exercise_entries.id
+            AND jsonb_array_length(g.points) > 0
+        ) as has_gps_track
       FROM public.exercise_entries
       WHERE ${whereSql}
       ORDER BY ${sortCol} ${sortOrder} NULLS LAST, created_at DESC
@@ -551,10 +554,7 @@ async function queryExerciseActivities(
             : null,
           source: row.source ? String(row.source) : null,
           notes: row.notes ? String(row.notes) : null,
-          hasGpsTrack:
-            row.source === 'garmin_fit' ||
-            row.source === 'strava' ||
-            row.source === 'garmin',
+          hasGpsTrack: row.has_gps_track === true,
         };
       }
     );
@@ -701,17 +701,28 @@ async function getPersonalRecordMatrix(
       }
     }
 
+    // DISTINCT ON, not GROUP BY with independent MAX()s. Aggregating weight,
+    // reps, and date separately reports a set that was never performed: the
+    // heaviest weight paired with the highest rep count from some other set,
+    // dated by the most recent session rather than the session the record was
+    // set in. This picks the one real row with the best Epley estimate, so
+    // weight, reps, and date all describe the same set.
     const strengthPrSql = `
-      SELECT 
-        e.exercise_name,
-        MAX(s.weight * (1 + s.reps / 30.0)) as estimated_one_rm,
-        MAX(s.weight) as max_weight,
-        MAX(s.reps) as max_reps,
-        MAX(e.entry_date) as last_date
-      FROM public.exercise_entry_sets s
-      JOIN public.exercise_entries e ON s.exercise_entry_id = e.id
-      WHERE e.user_id = $1 AND s.weight > 0
-      GROUP BY e.exercise_name
+      WITH best_set AS (
+        SELECT DISTINCT ON (e.exercise_name)
+          e.exercise_name,
+          s.weight * (1 + s.reps / 30.0) as estimated_one_rm,
+          s.weight as weight_kg,
+          s.reps as reps,
+          e.entry_date as achieved_on
+        FROM public.exercise_entry_sets s
+        JOIN public.exercise_entries e ON s.exercise_entry_id = e.id
+        WHERE e.user_id = $1 AND s.weight > 0 AND s.reps > 0
+        -- Ties broken by the earliest date: that is when the record was first
+        -- reached, not the last time it was equalled.
+        ORDER BY e.exercise_name, estimated_one_rm DESC, e.entry_date ASC
+      )
+      SELECT * FROM best_set
       ORDER BY estimated_one_rm DESC
       LIMIT 10
     `;
@@ -721,12 +732,12 @@ async function getPersonalRecordMatrix(
       exerciseName: String(row.exercise_name || 'Strength Exercise'),
       estimatedOneRMKg:
         Math.round(parseFloat(String(row.estimated_one_rm || '0')) * 10) / 10,
-      weightKg: parseFloat(String(row.max_weight || '0')),
-      reps: parseInt(String(row.max_reps || '0'), 10),
+      weightKg: parseFloat(String(row.weight_kg || '0')),
+      reps: parseInt(String(row.reps || '0'), 10),
       achievedAt:
-        row.last_date instanceof Date
-          ? toDayString(row.last_date)
-          : String(row.last_date),
+        row.achieved_on instanceof Date
+          ? toDayString(row.achieved_on)
+          : String(row.achieved_on),
     }));
 
     return {

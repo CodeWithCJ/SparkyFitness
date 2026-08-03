@@ -22,7 +22,7 @@ import {
 /**
  * One flat trackpoint row as every current caller (garminActivityProcessor.ts,
  * fitImportService.ts, the backfill script) already builds it — same shape as the
- * pre-20260801000000 per-row table. bulkInsertExerciseEntryGpsPoints groups these
+ * pre-20260730000000 per-row table. bulkInsertExerciseEntryGpsPoints groups these
  * by exercise_entry_id and writes one JSONB row per workout; callers do not need
  * to change.
  */

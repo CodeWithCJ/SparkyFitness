@@ -91,7 +91,11 @@ CREATE TABLE IF NOT EXISTS exercise_entry_laps (
     CONSTRAINT uq_exercise_entry_lap UNIQUE (exercise_entry_id, lap_index)
 );
 
-CREATE INDEX IF NOT EXISTS idx_exercise_entry_laps_entry ON exercise_entry_laps(exercise_entry_id, lap_index);
+-- No idx_..._entry index here: uq_exercise_entry_lap already backs
+-- (exercise_entry_id, lap_index) with a unique btree index. The DROP is for
+-- databases that ran an earlier revision of this migration, which did create
+-- it; on a fresh install it is a no-op.
+DROP INDEX IF EXISTS idx_exercise_entry_laps_entry;
 CREATE INDEX IF NOT EXISTS idx_exercise_entry_laps_user_date ON exercise_entry_laps(user_id, entry_date DESC);
 
 -- ============================================================================
@@ -111,7 +115,9 @@ CREATE TABLE IF NOT EXISTS exercise_entry_hr_zones (
     CONSTRAINT uq_exercise_entry_hr_zone UNIQUE (exercise_entry_id, zone_index)
 );
 
-CREATE INDEX IF NOT EXISTS idx_exercise_entry_hr_zones_entry ON exercise_entry_hr_zones(exercise_entry_id, zone_index);
+-- No idx_..._entry index here: uq_exercise_entry_hr_zone already backs
+-- (exercise_entry_id, zone_index) with a unique btree index.
+DROP INDEX IF EXISTS idx_exercise_entry_hr_zones_entry;
 CREATE INDEX IF NOT EXISTS idx_exercise_entry_hr_zones_user_date ON exercise_entry_hr_zones(user_id, entry_date DESC);
 
 -- ============================================================================
@@ -149,7 +155,10 @@ CREATE TABLE IF NOT EXISTS health_metric_samples (
     ))
 );
 
-CREATE INDEX IF NOT EXISTS idx_health_metric_samples_user_date ON health_metric_samples(user_id, metric, entry_date DESC);
+-- No separate (user_id, metric, entry_date) index: uq_health_metric_samples is
+-- (user_id, metric, entry_date, source_provider), and its unique btree already
+-- serves every leading-column lookup we issue.
+DROP INDEX IF EXISTS idx_health_metric_samples_user_date;
 
 -- ============================================================================
 -- 7. vitals_entries (Blood pressure, blood glucose, temperature)
@@ -228,7 +237,9 @@ CREATE TABLE IF NOT EXISTS daily_health_metrics (
     CONSTRAINT uq_daily_health_metrics UNIQUE (user_id, entry_date, source_provider)
 );
 
-CREATE INDEX IF NOT EXISTS idx_daily_health_metrics_user_date ON daily_health_metrics(user_id, entry_date DESC);
+-- No separate (user_id, entry_date) index: uq_daily_health_metrics is
+-- (user_id, entry_date, source_provider) and its unique btree covers the prefix.
+DROP INDEX IF EXISTS idx_daily_health_metrics_user_date;
 
 -- ============================================================================
 -- 9. updated_at maintenance across the new tables
@@ -302,11 +313,12 @@ EXECUTE FUNCTION update_updated_at_column();
 -- Depends on the muscle_mass_kg / bone_mass_kg / body_water_percentage columns
 -- added in section 2, so it must stay after that.
 --
--- Garmin and Withings historically wrote muscle mass, bone mass, and body water
--- to auto-created custom_measurements categories. Both now write these columns
--- directly, so this moves their existing history across to keep each user's
--- charts continuous. Re-running is a no-op: migrated rows are gone from
--- custom_measurements, so the second pass matches nothing.
+-- Garmin, Withings, and the Health Connect mobile sync historically wrote
+-- muscle mass, bone mass, and body water to auto-created custom_measurements
+-- categories. All of them now write these columns directly, so this moves their
+-- existing history across to keep each user's charts continuous. Re-running is
+-- a no-op: migrated rows are gone from custom_measurements, so the second pass
+-- matches nothing.
 --
 -- Scoping is by cm.source, NOT by category measurement_type:
 --   * measurement_type is unreliable here. Withings hardcodes 'health' when
@@ -317,6 +329,8 @@ EXECUTE FUNCTION update_updated_at_column();
 --     provider mapping that guarantees kg. Manual rows are whatever unit the
 --     user had in mind, so they are never touched — a hand-kept "Muscle Mass"
 --     category in lbs survives this migration intact.
+--   * the in-scope sources differ per metric (see the VALUES list below), so
+--     each row carries its own source allowlist rather than sharing one.
 --
 -- Safety properties:
 --   * COALESCE on conflict: an existing check-in value always wins. This only
@@ -340,17 +354,35 @@ BEGIN
   FOR metric IN
     SELECT *
     FROM (VALUES
-      -- category name,             target column,            max plausible value
+      -- category names (lowercased), target column, max plausible value, sources
+      --
+      -- Category names are matched lowercased because each writer named the
+      -- category differently: the provider mappings use a display name
+      -- ('Bone Mass'), while the mobile health-data path names the category
+      -- after the raw incoming type (customMeasurementHandleBatch passes
+      -- entry.type straight to resolveCategory), so Health Connect bone mass
+      -- landed under 'bone_mass'.
+      --
       -- The mass ceilings are the largest value numeric(5,2) can hold. A higher
       -- bound would let an out-of-range provider value pass the filter and then
       -- fail the INSERT with a numeric overflow, aborting the whole migration.
-      ('Muscle Mass',           'muscle_mass_kg',       999.99::numeric),
-      ('Bone Mass',             'bone_mass_kg',         999.99::numeric),
+      (ARRAY['muscle mass', 'muscle_mass'],
+       'muscle_mass_kg',        999.99::numeric,
+       ARRAY['garmin', 'withings']),
+      -- Health Connect is in scope for bone mass only: BoneMass is the one
+      -- smart-scale record type the mobile app syncs (SparkyFitnessMobile/src/
+      -- HealthMetrics.ts), it is Android-only (HealthKit has no equivalent),
+      -- and it always arrives in kg.
+      (ARRAY['bone mass', 'bone_mass', 'bonemass'],
+       'bone_mass_kg',          999.99::numeric,
+       ARRAY['garmin', 'withings', 'health connect']),
       -- Garmin-only. Withings reports water as MASS in kg ('Hydration', and
       -- 'Body Water Breakdown' for extra/intracellular), never a percentage,
       -- so those categories are deliberately out of scope here.
-      ('Body Water Percentage', 'body_water_percentage',  100::numeric)
-    ) AS t(category_name, column_name, max_value)
+      (ARRAY['body water percentage', 'body_water_percentage'],
+       'body_water_percentage',   100::numeric,
+       ARRAY['garmin'])
+    ) AS t(category_names, column_name, max_value, sources)
   LOOP
     -- 1. Copy the latest provider value per user and day into the column.
     EXECUTE format(
@@ -362,8 +394,8 @@ BEGIN
                CASE WHEN cm.value ~ %L THEN round(cm.value::numeric, 2) END AS value
         FROM custom_measurements cm
         JOIN custom_categories cc ON cc.id = cm.category_id
-        WHERE cc.name = %L
-          AND lower(cm.source) IN ('garmin', 'withings')
+        WHERE lower(cc.name) = ANY(%L::text[])
+          AND lower(cm.source) = ANY(%L::text[])
       ),
       picked AS (
         SELECT DISTINCT ON (user_id, entry_date) user_id, entry_date, value
@@ -376,7 +408,7 @@ BEGIN
       ON CONFLICT (user_id, entry_date) DO UPDATE
         SET %I = COALESCE(check_in_measurements.%I, EXCLUDED.%I)
       $sql$,
-      numeric_pattern, metric.category_name, metric.max_value,
+      numeric_pattern, metric.category_names, metric.sources, metric.max_value,
       metric.column_name, metric.column_name, metric.column_name, metric.column_name
     );
 
@@ -386,14 +418,15 @@ BEGIN
       DELETE FROM custom_measurements cm
       USING custom_categories cc, check_in_measurements ci
       WHERE cc.id = cm.category_id
-        AND cc.name = %L
-        AND lower(cm.source) IN ('garmin', 'withings')
+        AND lower(cc.name) = ANY(%L::text[])
+        AND lower(cm.source) = ANY(%L::text[])
         AND ci.user_id = cm.user_id
         AND ci.entry_date = cm.entry_date
         AND ci.%I IS NOT NULL
         AND ci.%I = round((CASE WHEN cm.value ~ %L THEN cm.value END)::numeric, 2)
       $sql$,
-      metric.category_name, metric.column_name, metric.column_name, numeric_pattern
+      metric.category_names, metric.sources, metric.column_name,
+      metric.column_name, numeric_pattern
     );
   END LOOP;
 END $$;

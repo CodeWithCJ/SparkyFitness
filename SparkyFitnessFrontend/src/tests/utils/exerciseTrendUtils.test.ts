@@ -169,10 +169,25 @@ describe('extractGarminActivityEntries', () => {
     ]);
   });
 
+  it('matches telemetry providers regardless of casing', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Tennis: [
+        // The Strava pipeline writes 'Strava'; the Garmin ones write lowercase.
+        makeEntry({ provider_name: 'Strava', exercise_entry_id: 'strava-1' }),
+        makeEntry({ provider_name: 'strava', exercise_entry_id: 'strava-2' }),
+      ],
+    };
+    expect(
+      extractGarminActivityEntries(data, 'All', parseISO).map(
+        (e) => e.exercise_entry_id
+      )
+    ).toEqual(['strava-1', 'strava-2']);
+  });
+
   it('ignores entries from other providers and entries without an id', () => {
     const data: Record<string, ExerciseProgressResponse[]> = {
       Tennis: [
-        makeEntry({ provider_name: 'strava' }),
+        makeEntry({ provider_name: 'fitbit' }),
         makeEntry({ provider_name: null }),
         makeEntry({
           provider_name: 'garmin_fit',

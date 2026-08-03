@@ -3,7 +3,8 @@ import { z } from "zod";
 export const healthMetricSamplesIdSchema = z.string();
 
 // Kept in sync BY HAND with the chk_health_metric_samples_metric CHECK
-// constraint added in db/migrations/20260801000000_consolidate_health_metric_samples.sql.
+// constraint added in
+// db/migrations/20260730000000_create_generic_health_and_workout_tables.sql.
 // Both must govern the same six values, deliberately, at two different layers:
 //   - the DB CHECK constraint is the backstop, guarding against bad data from
 //     ANY writer (a future migration, a script, a bug that bypasses this schema);

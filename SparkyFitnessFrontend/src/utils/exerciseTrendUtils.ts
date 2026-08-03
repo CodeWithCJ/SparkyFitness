@@ -257,12 +257,17 @@ export const extractGarminActivityEntries = (
   // sync/import — see garminActivityProcessor.ts, fitImportService.ts, and
   // stravaDataProcessor.ts — so the activity detail view has real data to show for all
   // of them, not just Garmin.
-  const TELEMETRY_PROVIDERS = new Set(['garmin', 'garmin_fit', 'Strava']);
+  //
+  // Matched case-insensitively: provider_name casing is not consistent across
+  // the ingest paths (Strava writes 'Strava', Garmin writes 'garmin'), and an
+  // exact-match set silently hides a provider's activities the moment one side
+  // changes case.
+  const TELEMETRY_PROVIDERS = new Set(['garmin', 'garmin_fit', 'strava']);
 
   const processEntry = (entry: ExerciseProgressResponse) => {
     if (
       entry.provider_name &&
-      TELEMETRY_PROVIDERS.has(entry.provider_name) &&
+      TELEMETRY_PROVIDERS.has(entry.provider_name.toLowerCase()) &&
       entry.exercise_entry_id
     ) {
       const presetId = (entry as Record<string, unknown>)[

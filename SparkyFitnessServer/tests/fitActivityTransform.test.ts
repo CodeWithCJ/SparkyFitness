@@ -110,27 +110,34 @@ describe('transformFitActivity — fixture end-to-end', () => {
 
   it('emits one metric row per record with ms-epoch timestamps and null gaps', () => {
     const { details } = transformFixture().detailData;
+    // Latitude/longitude ride in activityDetailMetrics, not only in the
+    // polyline: extractGarminGpsPoints stops at activityDetailMetrics whenever
+    // it is non-empty, so coordinates carried solely by geoPolylineDTO produced
+    // a whole track of (0, 0) points.
     expect(details.metricDescriptors).toEqual([
       { key: 'directTimestamp', metricsIndex: 0 },
-      { key: 'directHeartRate', metricsIndex: 1 },
-      { key: 'sumDistance', metricsIndex: 2 },
-      { key: 'directSpeed', metricsIndex: 3 },
-      { key: 'directElevation', metricsIndex: 4 },
-      { key: 'directDoubleCadence', metricsIndex: 5 },
+      { key: 'directLatitude', metricsIndex: 1 },
+      { key: 'directLongitude', metricsIndex: 2 },
+      { key: 'directHeartRate', metricsIndex: 3 },
+      { key: 'sumDistance', metricsIndex: 4 },
+      { key: 'directSpeed', metricsIndex: 5 },
+      { key: 'directElevation', metricsIndex: 6 },
+      { key: 'directDoubleCadence', metricsIndex: 7 },
     ]);
     expect(details.activityDetailMetrics).toHaveLength(5);
     // fractionalCadence 0.5 is added to cadence 12.
-    expect(details.activityDetailMetrics[0].metrics).toEqual([
-      START_MS,
-      80,
-      0,
-      0,
-      10,
-      12.5,
-    ]);
-    // Record 4 has no heart rate — the slot must be null, not dropped.
+    const first = details.activityDetailMetrics[0].metrics;
+    expect(first[0]).toBe(START_MS);
+    expect(first[1]).toBeCloseTo(45, 6);
+    expect(first[2]).toBeCloseTo(-90, 6);
+    expect(first.slice(3)).toEqual([80, 0, 0, 10, 12.5]);
+    // Record 4 has no heart rate — the slot must be null, not dropped. It also
+    // has no position, so both coordinate slots are null rather than 0: a
+    // literal (0, 0) is a real place off the coast of Africa.
     expect(details.activityDetailMetrics[3].metrics).toEqual([
       START_MS + 3000,
+      null,
+      null,
       null,
       30,
       3.5,
@@ -153,6 +160,11 @@ describe('transformFitActivity — fixture end-to-end', () => {
     expect(splits.lapDTOs).toEqual([
       {
         lapIndex: 1,
+        // Without these, extractGarminLaps drops the lap outright
+        // (exercise_entry_laps.start_time is NOT NULL), so no FIT import ever
+        // stored a single lap. LapMesg.timestamp is the lap's END.
+        startTimeGMT: '2026-01-15T02:00:00.000Z',
+        endTimeGMT: '2026-01-15T03:01:40.000Z',
         distance: 1200.5,
         duration: 3600.5,
         movingDuration: 3600.5,

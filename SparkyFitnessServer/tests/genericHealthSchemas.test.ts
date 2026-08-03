@@ -19,7 +19,8 @@ describe('Generic Health & Workout Zod Schemas', () => {
     const validEntry = {
       id: '11111111-1111-1111-1111-111111111111' as ExerciseEntries['id'],
       user_id: '22222222-2222-2222-2222-222222222222',
-      exercise_id: null,
+      // NOT NULL in the database; the schema used to allow null and disagreed.
+      exercise_id: '33333333-3333-3333-3333-333333333333',
       duration_minutes: 45,
       calories_burned: 450,
       entry_date: new Date('2026-07-29'),
