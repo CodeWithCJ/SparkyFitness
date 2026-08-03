@@ -10,6 +10,7 @@ import { useCycleSettings } from '../hooks/useCycleSettings';
 import { usePregnancyMutations, useCurrentPregnancy } from '../hooks/usePregnancy';
 import { bulkPutLogs } from '../services/api/cycleApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { addLog } from '../services/LogService';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -154,7 +155,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
       // Navigate to CycleHub
       navigation.replace('CycleHub');
     } catch (error) {
-      console.log('[Onboarding] Failed to complete setup:', error);
+      addLog(`Failed to complete cycle onboarding: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
         text1: 'Setup failed',

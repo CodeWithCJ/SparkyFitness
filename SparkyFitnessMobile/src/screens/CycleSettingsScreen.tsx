@@ -12,6 +12,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { addLog } from '../services/LogService';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -336,11 +337,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
       </ScrollView>
     </View>
   );
-};
-
-// Helper logger placeholder inside component scope
-const addLog = (msg: string, level: 'INFO' | 'ERROR') => {
-  console.log(`[CycleSettings] [${level}] ${msg}`);
 };
 
 export default CycleSettingsScreen;

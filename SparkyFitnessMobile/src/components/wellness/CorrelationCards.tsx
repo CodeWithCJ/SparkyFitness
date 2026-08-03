@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { useCycleCorrelations } from '../../hooks/useCycleInsights';
-import type { CorrelationResult, ConditionFlag } from '@workspace/shared';
+import type { CorrelationResult } from '@workspace/shared';
 import Icon from '../Icon';
 
 const METRIC_LABELS: Record<string, string> = {
@@ -93,12 +93,8 @@ const CorrelationCards: React.FC = () => {
   ]) as [string, string];
   if (!correlations) return null;
 
-  // Since correlations on server comes as an array of CorrelationResult or similar inside correlations object,
-  // let's cast or handle correlations.correlations.
-  const list = ((correlations as any).correlations || []) as CorrelationResult[];
-  const flags = ((correlations as any).conditionFlags || []) as ConditionFlag[];
-
-  const usable = list.filter((c) => c.hasEnoughData);
+  const flags = correlations.conditionFlags;
+  const usable = correlations.correlations.filter((c) => c.hasEnoughData);
 
   if (usable.length === 0 && flags.length === 0) {
     return (
