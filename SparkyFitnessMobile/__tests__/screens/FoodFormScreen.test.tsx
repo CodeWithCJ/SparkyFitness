@@ -656,6 +656,87 @@ describe('FoodFormScreen', () => {
     );
   });
 
+  it('ignores a second save press while adjust-nutrition writes are in flight', async () => {
+    let resolveCreate: (variant: unknown) => void;
+    mockCreateVariant.mockImplementation(
+      () => new Promise((resolve) => { resolveCreate = resolve; }),
+    );
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      servingUnit: 'oz',
+    };
+
+    const screen = renderScreen({
+      mode: 'adjust-entry-nutrition',
+      initialValues: {
+        name: 'Greek Yogurt',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+      },
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      customNutrients: null,
+      availableUnitVariants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      ],
+      selectedUnitSelection: {
+        kind: 'existing',
+        variant: {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      },
+    });
+
+    fireEvent.press(screen.getByText('Select Converted Unit'));
+    fireEvent(
+      screen.getByLabelText('Save nutrition for future use'),
+      'valueChange',
+      true,
+    );
+
+    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByText('Save'));
+
+    // The second press must not start a second variant POST.
+    expect(mockCreateVariant).toHaveBeenCalledTimes(1);
+
+    resolveCreate!({
+      id: 'variant-oz',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'oz',
+      calories: 200,
+      protein: 10,
+      carbs: 20,
+      fat: 5,
+    });
+
+    await waitFor(() => {
+      expect(navigation.dispatch).toHaveBeenCalledTimes(1);
+    });
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(mockCreateVariant).toHaveBeenCalledTimes(1);
+  });
+
   it('defers local manual-only unit creation until submit', async () => {
     mockUnitSelectionResult = {
       kind: 'draft',

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from './LogService';
+import { getErrorMessage } from '../utils/errors';
 
 /**
  * In-memory lock shared by the observer-triggered background sync and the
@@ -47,7 +48,7 @@ export const shouldRunForegroundResumeAutoSync = async (configId: string): Promi
 
     return Date.now() - lastAutoSyncAt >= AUTO_SYNC_COOLDOWN_MS;
   } catch (error) {
-    addLog(`[AutoSyncCoordinator] Failed to load auto-sync cooldown: ${error}`, 'ERROR');
+    addLog(`[AutoSyncCoordinator] Failed to load auto-sync cooldown: ${getErrorMessage(error)}`, 'ERROR');
     return true;
   }
 };
@@ -56,6 +57,6 @@ export const recordAutoSyncTime = async (configId: string): Promise<void> => {
   try {
     await AsyncStorage.setItem(autoSyncKeyForConfig(configId), Date.now().toString());
   } catch (error) {
-    addLog(`[AutoSyncCoordinator] Failed to record auto-sync time: ${error}`, 'ERROR');
+    addLog(`[AutoSyncCoordinator] Failed to record auto-sync time: ${getErrorMessage(error)}`, 'ERROR');
   }
 };

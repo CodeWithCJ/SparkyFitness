@@ -51,6 +51,7 @@ import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { formatRelativeTime } from '../utils/dateUtils';
+import { getErrorMessage } from '../utils/errors';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetric } from '../HealthMetrics';
 import type { HealthMetricStates, HealthDataDisplayState } from '../types/healthRecords';
@@ -218,7 +219,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
 
           performBackgroundSync('healthkit-observer')
             .catch(error => {
-              addLog(`[SyncScreen] Observer-triggered sync failed: ${error}`, 'ERROR');
+              addLog(`[SyncScreen] Observer-triggered sync failed: ${getErrorMessage(error)}`, 'ERROR');
             })
             .finally(() => {
               release();

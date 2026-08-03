@@ -80,7 +80,10 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
       await initNotifications();
     };
 
-    initializeApp();
+    initializeApp().catch(error => {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[App] Failed to initialize app startup state: ${message}`, 'ERROR');
+    });
 
     initWorkoutNotificationActions();
     initMedicationNotificationActions();

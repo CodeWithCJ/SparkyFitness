@@ -124,6 +124,13 @@ function resolveRootStackScreenFiles(appSource: string, safeScreensSource: strin
     const screenFile = importPaths.get(importedComponent);
     if (screenFile) {
       screenFiles.set(routeName, screenFile);
+    } else if (safeComponents.has(routeName)) {
+      // A silently dropped route would exempt its screen from every check
+      // below, so a Safe* route that cannot be traced to a screen file is
+      // itself a contract violation.
+      throw new Error(
+        `Route "${routeName}" wraps "${importedComponent}" in withErrorBoundary, but its screen import was not found in App.tsx or safeScreens.tsx`,
+      );
     }
   }
 

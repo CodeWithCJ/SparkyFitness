@@ -38,9 +38,8 @@ describe('filterByOwnership', () => {
     ]);
   });
 
-  it('treats every item as not mine when no current user id is given', () => {
+  it('matches nothing for mine and family when no current user id is given', () => {
     expect(filterByOwnership(items, 'mine', undefined)).toEqual([]);
-    const familyResult = filterByOwnership(items, 'family', undefined);
-    expect(familyResult.map((item) => item.id)).toEqual(['mine', 'mine-camel', 'family', 'family-camel']);
+    expect(filterByOwnership(items, 'family', undefined)).toEqual([]);
   });
 });

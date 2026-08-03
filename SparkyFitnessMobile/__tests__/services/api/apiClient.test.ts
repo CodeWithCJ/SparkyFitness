@@ -444,14 +444,15 @@ describe('apiClient', () => {
     });
 
     describe('HTTPS enforcement', () => {
-      const originalDev = (global as any).__DEV__;
+      const devGlobal = globalThis as typeof globalThis & { __DEV__: boolean };
+      const originalDev = devGlobal.__DEV__;
 
       afterEach(() => {
-        (global as any).__DEV__ = originalDev;
+        devGlobal.__DEV__ = originalDev;
       });
 
       test('rejects HTTP URLs in production', async () => {
-        (global as any).__DEV__ = false;
+        devGlobal.__DEV__ = false;
         mockGetActiveServerConfig.mockResolvedValue({
           ...testConfig,
           url: 'http://example.com',
@@ -469,7 +470,7 @@ describe('apiClient', () => {
       });
 
       test('rejects HTTP URLs regardless of casing in production', async () => {
-        (global as any).__DEV__ = false;
+        devGlobal.__DEV__ = false;
         mockGetActiveServerConfig.mockResolvedValue({
           ...testConfig,
           url: 'HTTP://example.com',
@@ -487,7 +488,7 @@ describe('apiClient', () => {
       });
 
       test('allows HTTP URLs in development mode', async () => {
-        (global as any).__DEV__ = true;
+        devGlobal.__DEV__ = true;
         mockGetActiveServerConfig.mockResolvedValue({
           ...testConfig,
           url: 'http://localhost:3000',
@@ -508,7 +509,7 @@ describe('apiClient', () => {
       });
 
       test('allows HTTPS URLs in production', async () => {
-        (global as any).__DEV__ = false;
+        devGlobal.__DEV__ = false;
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,

@@ -247,7 +247,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     const cleanEquivalents = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
 
     // Schedules equivalent-variant creation after the food is saved. Fires
-    // and forgets ??? navigation has already occurred. Any failures are shown
+    // and forgets — navigation has already occurred. Any failures are shown
     // via toast; missing equivalents can be added later via the food detail
     // edit screen (same recovery path as EditFoodMode).
     const saveEquivalentsAsync = (foodId: string) => {
@@ -454,6 +454,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
           <View className="flex-row items-center justify-between">
             <Text className="text-text-secondary text-base">Save to Database</Text>
             <Switch
+              accessibilityLabel="Save to Database"
               value={saveToDatabase}
               onValueChange={setSaveToDatabase}
             />

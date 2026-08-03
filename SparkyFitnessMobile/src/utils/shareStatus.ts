@@ -21,7 +21,9 @@ export const filterByOwnership = <T extends { user_id?: string | null; userId?: 
       return isOwner;
     }
     if (filter === 'family') {
-      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
+      // Without a current user id, "not mine" cannot be proven — a private
+      // item could belong to the current user, so show none rather than all.
+      return !!currentUserId && !isOwner && !isPublic && (item.user_id != null || item.userId != null);
     }
     if (filter === 'public') {
       return isPublic;
