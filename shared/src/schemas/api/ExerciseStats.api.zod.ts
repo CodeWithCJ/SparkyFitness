@@ -89,10 +89,6 @@ export const exerciseActivityQueryRequestSchema = z.object({
     .optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  minPaceSecondsPerKm: z.number().optional(),
-  maxPaceSecondsPerKm: z.number().optional(),
-  minAvgHeartRate: z.number().optional(),
-  maxAvgHeartRate: z.number().optional(),
   searchKeyword: z.string().optional(),
   unitSystem: z.enum(["metric", "imperial"]).optional().default("metric"),
   sortBy: z

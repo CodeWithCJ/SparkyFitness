@@ -1228,8 +1228,21 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                         bp_value = f"{systolic}/{diastolic}"
                                         if pulse is not None:
                                             bp_value += f", {pulse} bpm"
+                                        # Carry the reading's own instant so two
+                                        # measurements on the same day don't
+                                        # collapse onto the fixed noon anchor
+                                        # garminHealthProcessor falls back to.
+                                        measurement_timestamp = bp_entry.get(
+                                            "measurementTimestampGMT"
+                                        ) or bp_entry.get(
+                                            "measurementTimestampLocal"
+                                        )
                                         health_data["blood_pressure"].append(
-                                            {"date": current_date, "value": bp_value}
+                                            {
+                                                "date": current_date,
+                                                "value": bp_value,
+                                                "timestamp": measurement_timestamp,
+                                            }
                                         )
                                     else:
                                         logger.warning(

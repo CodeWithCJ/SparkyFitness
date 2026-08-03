@@ -492,6 +492,12 @@ export async function processGarminHealthAndWellnessData(
           `Error storing daily health metrics for user ${userId} on ${dateStr}:`,
           err
         );
+        errors.push({
+          type: 'daily_health_metrics',
+          status: 'error',
+          date: dateStr,
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
@@ -933,10 +939,20 @@ export async function processGarminHealthAndWellnessData(
         if (!item.date || typeof item.value !== 'string') continue;
         const match = bpPattern.exec(item.value);
         if (!match) continue;
+        // Prefer the reading's own instant (routes.py now sends it as
+        // `timestamp`); without it, two same-day readings both stamped
+        // T12:00:00Z would upsert onto the same (user, provider, timestamp)
+        // row and one would be lost. Fall back to the noon anchor only for
+        // older payloads that lack it.
+        const rawTimestamp = item.timestamp ? new Date(item.timestamp) : null;
+        const timestamp =
+          rawTimestamp && !Number.isNaN(rawTimestamp.getTime())
+            ? rawTimestamp
+            : new Date(`${item.date}T12:00:00Z`);
         vitalsEntriesToInsert.push({
           user_id: userId,
           entry_date: item.date,
-          timestamp: new Date(`${item.date}T12:00:00Z`),
+          timestamp,
           systolic_mmhg: Number(match[1]),
           diastolic_mmhg: Number(match[2]),
           source_provider: 'garmin',

@@ -9,6 +9,7 @@ import { PrProgressionChart } from './PrProgressionChart';
 import ExerciseVarietyScore from './ExerciseVarietyScore';
 import SetPerformanceAnalysisChart from './SetPerformanceAnalysisChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { parseISO } from 'date-fns';
 import { useExerciseProgressQueries } from '@/hooks/Exercises/useExercises';
 import {
@@ -128,15 +129,23 @@ const ExerciseReportsDashboard = ({
     'day' | 'week' | 'month' | 'year'
   >('day');
 
+  const { activeUserId } = useActiveUser();
+
   const { data: statsSummary } = useExerciseStatsSummary(
     statsInterval,
     startDate,
     endDate,
-    undefined,
+    activeUserId ?? undefined,
     unitSystem
   );
-  const { data: prMatrix } = useExercisePRs(undefined, unitSystem);
-  const { data: matchedCourses } = useMatchedCourses(undefined, unitSystem);
+  const { data: prMatrix } = useExercisePRs(
+    activeUserId ?? undefined,
+    unitSystem
+  );
+  const { data: matchedCourses } = useMatchedCourses(
+    activeUserId ?? undefined,
+    unitSystem
+  );
 
   const { data: availableEquipment = [], isLoading: equipmentLoading } =
     useAvailableEquipment();

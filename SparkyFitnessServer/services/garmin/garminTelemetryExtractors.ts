@@ -269,9 +269,9 @@ export function extractGarminGpsPoints(
   );
   if (activityDetailMetrics.length > 0) {
     const descriptors = asArray<UnknownRecord>(details?.metricDescriptors);
-    const getMetricIdx = (key: string, altKey?: string) => {
-      const desc = descriptors.find(
-        (d: UnknownRecord) => d.key === key || (altKey && d.key === altKey)
+    const getMetricIdx = (...keys: string[]) => {
+      const desc = descriptors.find((d: UnknownRecord) =>
+        keys.includes(d.key as string)
       );
       const idx = num(desc?.metricsIndex);
       return idx !== null ? idx : -1;
@@ -282,7 +282,15 @@ export function extractGarminGpsPoints(
     const altIdx = getMetricIdx('directElevation', 'elevation');
     const hrIdx = getMetricIdx('directHeartRate', 'heartRate');
     const speedIdx = getMetricIdx('directSpeed', 'speed');
-    const cadIdx = getMetricIdx('directRunCadence', 'cadence');
+    // directDoubleCadence is what our own FIT importer emits
+    // (fitActivityTransform.ts); directRunCadence/cadence cover Garmin
+    // Connect's REST payload shapes.
+    const cadIdx = getMetricIdx(
+      'directDoubleCadence',
+      'directRunCadence',
+      'directBikeCadence',
+      'cadence'
+    );
     const tsIdx = getMetricIdx('directTimestamp', 'timestamp');
 
     return activityDetailMetrics.flatMap((metricRow: UnknownRecord) => {
@@ -353,9 +361,16 @@ export function extractGarminHrZones(
 
   const normalized = rawZones
     .map((zone: UnknownRecord) => ({
-      zone_index:
-        firstInt(zone, ['zone_index', 'zoneNumber', 'zone_number', 'zone']) ??
-        0,
+      // Keep this nullable rather than defaulting to 0: a missing zone-index
+      // key and a genuine zero-indexed zone are otherwise indistinguishable,
+      // and the old `?? 0` sentinel dropped every zone 0 for sources that
+      // index zones from 0 (filtered out below by `zone_index > 0`).
+      zone_index: firstInt(zone, [
+        'zone_index',
+        'zoneNumber',
+        'zone_number',
+        'zone',
+      ]),
       zone_lower_bpm: firstNum(zone, [
         'zone_lower_bpm',
         'zoneLowBoundary',
@@ -365,7 +380,10 @@ export function extractGarminHrZones(
       seconds_in_zone:
         firstInt(zone, ['seconds_in_zone', 'secsInZone', 'secs_in_zone']) ?? 0,
     }))
-    .filter((zone) => zone.zone_index > 0)
+    .filter(
+      (zone): zone is typeof zone & { zone_index: number } =>
+        zone.zone_index !== null && zone.zone_index >= 0
+    )
     .sort((a, b) => a.zone_index - b.zone_index);
 
   return normalized.map((zone, index) => ({

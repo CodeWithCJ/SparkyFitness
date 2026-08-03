@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -478,13 +478,26 @@ const EditExerciseEntryDialog = ({
   );
 
   const providerName = providerDumps[0]?.provider_name || 'Garmin';
-  const { data: activityData } = useActivityDetailsQuery(
-    open ? entry.id : '',
-    providerName
-  );
+  const { data: activityData, isFetched: activityDataFetched } =
+    useActivityDetailsQuery(open ? entry.id : '', providerName);
+
+  // Seed the telemetry inputs once per dialog opening, not on every
+  // `activityData` identity change. TanStack Query can refetch
+  // useActivityDetailsQuery in the background (refocus, revalidation) while
+  // the dialog stays open; without this guard, that refetch re-runs the
+  // whole seeding block below and overwrites any field the user has already
+  // typed into but not yet saved.
+  const hasSeededRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      hasSeededRef.current = false;
+      return;
+    }
+  }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || hasSeededRef.current || !activityDataFetched) return;
+    hasSeededRef.current = true;
     const extracted = extractTelemetry(entry, activityData);
     if (extracted.maxHeartRate !== '')
       setMaxHeartRateInput(extracted.maxHeartRate);
@@ -552,7 +565,7 @@ const EditExerciseEntryDialog = ({
     if (entry.duration_minutes != null && entry.duration_minutes > 0) {
       setDurationInput(Math.round(Number(entry.duration_minutes) * 100) / 100);
     }
-  }, [open, entry, activityData]);
+  }, [open, entry, activityData, activityDataFetched]);
 
   const { mutateAsync: updateExerciseEntry, isPending: loading } =
     useUpdateExerciseEntryMutation();

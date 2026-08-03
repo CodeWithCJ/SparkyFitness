@@ -167,6 +167,57 @@ describe('exerciseStatsService', () => {
       });
     });
 
+    it('filters the strength (lifted volume) totals by category, not just the cardio totals', async () => {
+      // strengthSql previously had no category clause, so
+      // totalLiftedVolumeKg/totalReps summed every category regardless of the
+      // `category` filter passed in.
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            total_distance_km: '0',
+            total_duration_minutes: '60',
+            total_calories_burned: '200',
+            workout_count: '1',
+            avg_heart_rate: null,
+            total_elevation_gain_meters: '0',
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ total_volume: '1000', total_reps: '50' }],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            total_distance_km: '0',
+            total_duration_minutes: '0',
+            total_calories_burned: '0',
+            workout_count: '0',
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      await exerciseStatsService.getExerciseStatsSummary('user-123', {
+        interval: 'month',
+        startDate: '2026-07-01',
+        endDate: '2026-07-31',
+        unitSystem: 'metric',
+        category: 'strength',
+      });
+
+      const strengthCall = mockClient.query.mock.calls[1];
+      expect(strengthCall[0]).toMatch(/LOWER\(e\.category\) = LOWER\(\$4\)/);
+      expect(strengthCall[1]).toEqual([
+        'user-123',
+        '2026-07-01',
+        '2026-07-31',
+        'strength',
+      ]);
+    });
+
     it('should release the client and propagate the error when the query fails', async () => {
       const dbError = new Error('DB connection lost');
       mockClient.query.mockRejectedValueOnce(dbError);

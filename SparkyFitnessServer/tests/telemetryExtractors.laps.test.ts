@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   extractGarminLaps,
   extractGarminGpsPoints,
+  extractGarminHrZones,
 } from '../services/garmin/garminTelemetryExtractors.js';
 import { extractStravaLaps } from '../integrations/strava/stravaTelemetryExtractors.js';
 
@@ -139,5 +140,54 @@ describe('GPS points without a usable timestamp are skipped', () => {
         gps_points: [{ timestamp: 'not-a-date', latitude: 1, longitude: 2 }],
       })
     ).toHaveLength(0);
+  });
+});
+
+// fitActivityTransform.ts emits the descriptor key `directDoubleCadence` for
+// FIT imports, not `directRunCadence`/`cadence` (Garmin Connect's REST shape).
+// Before this fix, cadIdx never matched a FIT payload's descriptor and
+// cadence was null on every trackpoint from a FIT import.
+describe('activityDetailMetrics cadence resolves across provider shapes', () => {
+  const payload = (cadenceKey: string) => ({
+    details: {
+      metricDescriptors: [
+        { key: 'directTimestamp', metricsIndex: 0 },
+        { key: 'directLatitude', metricsIndex: 1 },
+        { key: 'directLongitude', metricsIndex: 2 },
+        { key: cadenceKey, metricsIndex: 3 },
+      ],
+      activityDetailMetrics: [{ metrics: [1785225600000, 1, 2, 180] }],
+    },
+  });
+
+  it('reads directDoubleCadence (our own FIT importer)', () => {
+    const [result] = extractGarminGpsPoints(payload('directDoubleCadence'));
+    expect(result.cadence).toBe(180);
+  });
+
+  it('reads directRunCadence (Garmin Connect REST)', () => {
+    const [result] = extractGarminGpsPoints(payload('directRunCadence'));
+    expect(result.cadence).toBe(180);
+  });
+});
+
+describe('extractGarminHrZones keeps a zero-indexed zone 1', () => {
+  it('does not drop zone 0 when zones are 0-indexed', () => {
+    const zones = extractGarminHrZones({
+      hr_in_timezones: [
+        { zoneNumber: 0, zoneLowBoundary: 90, secsInZone: 120 },
+        { zoneNumber: 1, zoneLowBoundary: 120, secsInZone: 300 },
+        { zoneNumber: 2, zoneLowBoundary: 150, secsInZone: 60 },
+      ],
+    });
+    expect(zones.map((z) => z.zone_index)).toEqual([0, 1, 2]);
+    expect(zones[0].seconds_in_zone).toBe(120);
+  });
+
+  it('still drops entries with no zone-index key at all', () => {
+    const zones = extractGarminHrZones({
+      hr_in_timezones: [{ zoneLowBoundary: 90, secsInZone: 120 }],
+    });
+    expect(zones).toHaveLength(0);
   });
 });

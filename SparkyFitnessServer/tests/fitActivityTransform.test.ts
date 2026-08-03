@@ -231,6 +231,42 @@ describe('transformFitActivity — unit behaviour', () => {
     ]);
   });
 
+  it('round-trips through extractGarminGpsPoints with a non-null cadence', async () => {
+    // Regression for PR #1990 review feedback: extractGarminGpsPoints used to
+    // look for 'directRunCadence'/'cadence' only, but this transform emits
+    // 'directDoubleCadence' (see the descriptor comment above), so cadence
+    // came back null for every FIT-imported trackpoint.
+    const { extractGarminGpsPoints } =
+      await import('../services/garmin/garminTelemetryExtractors.js');
+    const messages = baseMessages({
+      sessionMesgs: [
+        {
+          startTime: new Date('2026-03-01T10:00:00Z'),
+          totalTimerTime: 1800,
+          totalCalories: 300,
+          sport: 'running',
+          avgCadence: 80,
+          totalStrides: 2500,
+        },
+      ],
+      recordMesgs: [
+        { timestamp: new Date('2026-03-01T10:00:00Z'), cadence: 80 },
+      ],
+    } as Partial<FitMessages>);
+    const result = transformFitActivity(messages, Buffer.from('x'));
+    if (!result.ok) throw new Error(result.reason);
+
+    const descriptorKey = result.detailData.details.metricDescriptors.find(
+      (d) => d.metricsIndex === 1
+    )?.key;
+    expect(descriptorKey).toBe('directDoubleCadence');
+
+    const [point] = extractGarminGpsPoints({
+      details: result.detailData.details,
+    });
+    expect(point.cadence).toBe(160);
+  });
+
   it('normalizes camelCase sports to snake_case type keys', () => {
     const messages = baseMessages({
       sessionMesgs: [

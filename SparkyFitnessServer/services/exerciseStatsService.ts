@@ -161,15 +161,17 @@ async function getExerciseStatsSummary(
         COALESCE(SUM(s.reps), 0) as total_reps
       FROM public.exercise_entry_sets s
       JOIN public.exercise_entries e ON s.exercise_entry_id = e.id
-      WHERE e.user_id = $1 
-        AND e.entry_date >= $2 
+      WHERE e.user_id = $1
+        AND e.entry_date >= $2
         AND e.entry_date <= $3
+        ${query.category ? 'AND LOWER(e.category) = LOWER($4)' : ''}
     `;
-    const strengthResult = await client.query(strengthSql, [
-      targetUserId,
-      startDateStr,
-      endDateStr,
-    ]);
+    const strengthResult = await client.query(
+      strengthSql,
+      query.category
+        ? [targetUserId, startDateStr, endDateStr, query.category]
+        : [targetUserId, startDateStr, endDateStr]
+    );
     const totalLiftedVolumeKg = parseFloat(
       String(strengthResult.rows[0]?.total_volume || '0')
     );
