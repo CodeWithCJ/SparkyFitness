@@ -202,6 +202,7 @@ export type RootStackParamList = {
   Chat: undefined;
   Logs: undefined;
   Sync: undefined;
+  ImportHistory: undefined;
   MeasurementsAdd: { date?: string } | undefined;
   CalorieSettings: undefined;
   FoodSettings: undefined;

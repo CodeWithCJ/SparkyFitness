@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import Button from './ui/Button';
-import { seedHealthData, seedHistoricalSteps } from '../services/seedHealthData';
+import { seedHealthData, seedHistoricalSteps, seedOldHealthData } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
 import { notifySessionExpired } from '../services/api/authService';
 import { getActiveServerConfig } from '../services/storage';
@@ -63,6 +63,23 @@ const DevTools: React.FC = () => {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed historical step data: ${message}` });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleSeedOldData = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedOldHealthData();
+      if (result.success) {
+        Toast.show({ type: 'success', text1: 'Success', text2: `Seeded ${result.recordsInserted} records in clusters 1-3 years back.` });
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Failed to seed old health data.' });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed old health data: ${message}` });
     } finally {
       setIsSeeding(false);
     }
@@ -150,6 +167,15 @@ const DevTools: React.FC = () => {
           disabled={isSeeding}
         >
           <Text className="text-white text-base font-bold text-center">1 Year{'\n'}(Steps)</Text>
+        </Button>
+
+        <Button
+          variant="primary"
+          className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
+          onPress={handleSeedOldData}
+          disabled={isSeeding}
+        >
+          <Text className="text-white text-base font-bold text-center">Old Data{'\n'}(1-3 Years)</Text>
         </Button>
       </View>
       {Platform.OS === 'android' && (

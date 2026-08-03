@@ -78,7 +78,7 @@ const timeRangeOptions: TimeRangeOption[] = [
   { label: "Last Year", value: "365d" },
 ];
 
-const SyncScreen: React.FC<SyncScreenProps> = () => {
+const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
@@ -516,6 +516,22 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
           </Text>
           <HealthSourceLabel className="text-center mb-2" />
         </View>
+
+        {/* Import Full History */}
+        <Button
+          variant="ghost"
+          className="flex-row items-center"
+          onPress={() => navigation.navigate('ImportHistory')}
+          disabled={!isHealthConnectInitialized}
+        >
+          <Icon name="history" size={20} color={accentPrimary} />
+          <View className="flex-1 ml-3">
+            <Text className="text-accent-primary text-base font-semibold">Import Full History</Text>
+            <Text className="text-text-secondary text-sm mt-0.5">
+              One-time import of all past health data
+            </Text>
+          </View>
+        </Button>
 
         {/* Health Disclaimer */}
         {Platform.OS === 'android' && (

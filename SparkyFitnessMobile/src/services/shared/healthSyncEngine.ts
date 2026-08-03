@@ -50,6 +50,9 @@ export interface HealthReadProvider {
   ): Promise<ReadResult<TransformedRecord> | null>;
   /** Raw record read for one record type. */
   readRaw(recordType: string, startDate: Date, endDate: Date): Promise<ReadResult>;
+  /** Earliest stored sample for the metric across all history (history-import
+   *  floor probe). No data = { records: [] }; failures = { error }, never null. */
+  readEarliestRecord?(metric: HealthMetric): Promise<ReadResult<{ startTime: string }>>;
   /** Platform massaging of non-empty raw reads before transform (Android enriches
    *  ExerciseSession; iOS pre-aggregates SleepSession). */
   postProcessRaw(metric: HealthMetric, records: unknown[]): Promise<unknown[]>;
@@ -171,7 +174,7 @@ export const collectHealthData = async (
   provider: HealthReadProvider,
   metrics: HealthMetric[],
   windows: SyncWindows,
-  opts: { timeoutLabelPrefix: string },
+  opts: { timeoutLabelPrefix: string; timeoutMs?: number },
 ): Promise<MetricSyncOutcome[]> => {
   // Probed once per run, and only when a per-record water metric is enabled.
   const waterFallbackToSum = metrics.some(
@@ -185,7 +188,7 @@ export const collectHealthData = async (
     METRIC_FETCH_CONCURRENCY,
     metric => withTimeout(
       collectMetric(provider, metric, windows, waterFallbackToSum),
-      METRIC_TIMEOUT_MS,
+      opts.timeoutMs ?? METRIC_TIMEOUT_MS,
       `${opts.timeoutLabelPrefix} for ${metric.recordType}`,
     ),
     {

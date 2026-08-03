@@ -1,9 +1,12 @@
 import {
   initHealthConnect,
   requestHealthPermissions,
+  ensureHistoryReadPermission,
   getSyncStartDate,
   readHealthRecords,
   readHealthRecordsDetailed,
+  readEarliestRecordDetailed,
+  isQuotaExceededError,
   getAggregatedStepsByDate,
   getAggregatedStepsByDateDetailed,
   getAggregatedActiveCaloriesByDate,
@@ -22,6 +25,7 @@ const localEndOfDay = (y: number, m1to12: number, d: number) =>
 import {
   initialize,
   requestPermission,
+  getGrantedPermissions,
   readRecords,
   aggregateRecord,
   aggregateGroupByDuration,
@@ -47,6 +51,7 @@ jest.mock('../../../src/HealthMetrics', () => ({
 
 const mockInitialize = initialize as jest.Mock;
 const mockRequestPermission = requestPermission as jest.Mock;
+const mockGetGrantedPermissions = getGrantedPermissions as jest.Mock;
 const mockReadRecords = readRecords as jest.Mock;
 const mockAggregateRecord = aggregateRecord as jest.Mock;
 const mockAggregateGroupByDuration = aggregateGroupByDuration as jest.Mock;
@@ -1321,5 +1326,91 @@ describe('enrichExerciseSessions', () => {
     ]);
 
     expect((result[0] as { distance: { inMeters: number } }).distance).toEqual({ inMeters: 90 });
+  });
+});
+
+describe('readEarliestRecordDetailed', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('issues a single ascending pageSize-1 read from the 1970 epoch', async () => {
+    mockReadRecords.mockResolvedValue({ records: [{ startTime: '2019-03-04T08:00:00Z' }] });
+
+    const result = await readEarliestRecordDetailed('Steps');
+
+    expect(mockReadRecords).toHaveBeenCalledTimes(1);
+    const [recordType, options] = mockReadRecords.mock.calls[0];
+    expect(recordType).toBe('Steps');
+    expect(options.pageSize).toBe(1);
+    expect(options.ascendingOrder).toBe(true);
+    expect(options.timeRangeFilter.operator).toBe('between');
+    expect(options.timeRangeFilter.startTime).toBe('1970-01-01T00:00:00.000Z');
+    expect(result).toEqual({ records: [{ startTime: '2019-03-04T08:00:00Z' }] });
+  });
+
+  test('maps an instantaneous record time onto startTime', async () => {
+    mockReadRecords.mockResolvedValue({ records: [{ time: '2020-06-01T07:30:00Z' }] });
+
+    const result = await readEarliestRecordDetailed('Weight');
+
+    expect(result).toEqual({ records: [{ startTime: '2020-06-01T07:30:00Z' }] });
+  });
+
+  test('returns an empty result (no error) when no records exist', async () => {
+    mockReadRecords.mockResolvedValue({ records: [] });
+
+    const result = await readEarliestRecordDetailed('Steps');
+
+    expect(result).toEqual({ records: [] });
+  });
+
+  test('surfaces failures as an error envelope with the quota string intact', async () => {
+    mockReadRecords.mockRejectedValue(new Error('API call quota exceeded'));
+
+    const result = await readEarliestRecordDetailed('HeartRate');
+
+    expect(result.records).toEqual([]);
+    expect(result.error).toBe('API call quota exceeded');
+    expect(isQuotaExceededError(result.error)).toBe(true);
+  });
+});
+
+describe('ensureHistoryReadPermission', () => {
+  const historyGrant = { accessType: 'read', recordType: 'ReadHealthDataHistory' };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('returns true without a request when already granted', async () => {
+    mockGetGrantedPermissions.mockResolvedValue([
+      { accessType: 'read', recordType: 'Steps' },
+      historyGrant,
+    ]);
+
+    await expect(ensureHistoryReadPermission()).resolves.toBe(true);
+    expect(mockRequestPermission).not.toHaveBeenCalled();
+  });
+
+  test('requests the permission and returns true on a fresh grant', async () => {
+    mockGetGrantedPermissions.mockResolvedValue([{ accessType: 'read', recordType: 'Steps' }]);
+    mockRequestPermission.mockResolvedValue([historyGrant]);
+
+    await expect(ensureHistoryReadPermission()).resolves.toBe(true);
+    expect(mockRequestPermission).toHaveBeenCalledWith([historyGrant]);
+  });
+
+  test('returns false when the user declines', async () => {
+    mockGetGrantedPermissions.mockResolvedValue([]);
+    mockRequestPermission.mockResolvedValue([]);
+
+    await expect(ensureHistoryReadPermission()).resolves.toBe(false);
+  });
+
+  test('returns false (never throws) when the bridge errors', async () => {
+    mockGetGrantedPermissions.mockRejectedValue(new Error('bridge unavailable'));
+
+    await expect(ensureHistoryReadPermission()).resolves.toBe(false);
   });
 });

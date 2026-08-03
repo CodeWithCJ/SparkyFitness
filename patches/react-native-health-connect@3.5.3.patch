@@ -1,3 +1,18 @@
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/permissions/PermissionUtils.kt b/android/src/main/java/dev/matinzd/healthconnect/permissions/PermissionUtils.kt
+index 0d9d3427cb5c60e9a3d988ef6ac68ea54ea06fb4..f9f3fec0d44e84a0f6171f5e43cf07894e27706c 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/permissions/PermissionUtils.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/permissions/PermissionUtils.kt
+@@ -66,6 +66,10 @@ class PermissionUtils {
+         ) {
+           pushMap(ReactPermission(AccessType.READ, "BackgroundAccessPermission").toReadableMap())
+         }
++
++        if (grantedPermissions.contains(HealthPermission.PERMISSION_READ_HEALTH_DATA_HISTORY)) {
++          pushMap(ReactPermission(AccessType.READ, "ReadHealthDataHistory").toReadableMap())
++        }
+       }
+     }
+   }
 diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt
 index 502352fc240d62d08957cc2ff7a8bd573eeb86d1..9a22318a79a3ae3e7884049a82380447e665d954 100644
 --- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt
@@ -271,3 +286,34 @@ index ec2b66bebf2a46e132dc02abe438b2d5a3eb9bac..6dbd7c15e5ec1e3289a1c7c508e7c844
        timeRangeSlicer = mapJsPeriodToPeriod(record.getMap("timeRangeSlicer")),
        dataOriginFilter = convertJsToDataOriginSet(record.getArray("dataOriginFilter"))
      )
+diff --git a/lib/typescript/index.d.ts b/lib/typescript/index.d.ts
+index 50ce8d18af47f25f8e9c1e9ee9d2c17785e3e84d..cd1394001ee28b93be6c5d0e649305d1bf98418c 100644
+--- a/lib/typescript/index.d.ts
++++ b/lib/typescript/index.d.ts
+@@ -32,7 +32,7 @@ export declare function requestExerciseRoute(recordId: string): Promise<Exercise
+  * This includes regular permissions as well as special permissions like WriteExerciseRoutePermission and BackgroundAccessPermission.
+  * @returns A promise that resolves to an array of granted permissions
+  */
+-export declare function getGrantedPermissions(): Promise<(Permission | WriteExerciseRoutePermission | BackgroundAccessPermission)[]>;
++export declare function getGrantedPermissions(): Promise<(Permission | WriteExerciseRoutePermission | BackgroundAccessPermission | ReadHealthDataHistoryPermission)[]>;
+ /**
+  * Revokes all previously granted permissions by the user to the calling app.
+  * On Android 14+, permissions are not immediately revoked. They will be revoked when the app restarts.
+diff --git a/src/index.tsx b/src/index.tsx
+index 5af85ac881bcee129d70610a4ef7b7b6ec5d51a2..ef9d1acb89528692bd9037b25876e2687768067b 100644
+--- a/src/index.tsx
++++ b/src/index.tsx
+@@ -128,7 +128,12 @@ export function requestExerciseRoute(recordId: string): Promise<ExerciseRoute> {
+  * @returns A promise that resolves to an array of granted permissions
+  */
+ export function getGrantedPermissions(): Promise<
+-  (Permission | WriteExerciseRoutePermission | BackgroundAccessPermission)[]
++  (
++    | Permission
++    | WriteExerciseRoutePermission
++    | BackgroundAccessPermission
++    | ReadHealthDataHistoryPermission
++  )[]
+ > {
+   return HealthConnect.getGrantedPermissions();
+ }

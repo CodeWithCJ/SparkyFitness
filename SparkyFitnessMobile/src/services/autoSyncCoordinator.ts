@@ -17,20 +17,53 @@ const AUTO_SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 
 const autoSyncKeyForConfig = (configId: string): string => `@AutoSync:lastAutoSyncAt:${configId}`;
 
+// UI (e.g. the history-import screen's start buttons) disables on the claim and
+// must re-render when it frees — a claim released by a run the screen no longer
+// owns would otherwise leave it disabled forever.
+const claimListeners = new Set<() => void>();
+
+const notifyClaimListeners = (): void => {
+  for (const listener of claimListeners) {
+    listener();
+  }
+};
+
+/** Subscribe to claim/release transitions (useSyncExternalStore-compatible). */
+export const subscribeSyncClaimed = (listener: () => void): (() => void) => {
+  claimListeners.add(listener);
+  return () => {
+    claimListeners.delete(listener);
+  };
+};
+
 export const tryClaimAutoSync = (): (() => void) | null => {
   if (claimed) return null;
   claimed = true;
+  notifyClaimListeners();
 
   let released = false;
   return () => {
     if (!released) {
       released = true;
       claimed = false;
+      notifyClaimListeners();
     }
   };
 };
 
 export const isSyncClaimed = (): boolean => claimed;
+
+// The history-import backfill holds the auto-sync claim for its whole run, but
+// two iOS observer paths legitimately claim-then-call performBackgroundSync, so
+// background sync cannot guard on isSyncClaimed(). This dedicated flag lets it
+// skip only while a backfill is actually running.
+let backfillRunning = false;
+
+export const setBackfillRunning = (isRunning: boolean): void => {
+  backfillRunning = isRunning;
+};
+
+export const isBackfillRunning = (): boolean => backfillRunning;
 
 export const setForegroundAutoSyncWindowOpen = (isOpen: boolean): void => {
   foregroundAutoSyncWindowOpen = isOpen;

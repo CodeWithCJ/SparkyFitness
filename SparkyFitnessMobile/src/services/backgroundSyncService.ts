@@ -22,6 +22,7 @@ import {
 } from './storage';
 import { queryClient } from '../hooks/queryClient';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
+import { isBackfillRunning } from './autoSyncCoordinator';
 import { listMedications, listEntries } from './api/medicationsApi';
 import { reconcileMedicationReminders } from './medicationReminderService';
 import { getTodayDate } from '../utils/dateUtils';
@@ -74,6 +75,11 @@ export const performBackgroundSync = async (taskId: string): Promise<void> => {
 };
 
 const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
+  if (isBackfillRunning()) {
+    addLog(`[Background Sync] Skipping ${taskId} — history import is running`, 'INFO');
+    return;
+  }
+
   addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'INFO');
 
   const lastSyncedTimeStr = await loadLastSyncedTime();

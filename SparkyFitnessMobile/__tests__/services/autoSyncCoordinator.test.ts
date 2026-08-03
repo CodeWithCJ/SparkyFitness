@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   tryClaimAutoSync,
   isSyncClaimed,
+  subscribeSyncClaimed,
   setForegroundAutoSyncWindowOpen,
   isForegroundAutoSyncWindowOpen,
   shouldRunForegroundResumeAutoSync,
@@ -67,6 +68,46 @@ describe('autoSyncCoordinator', () => {
 
       releaseSecond!();
       expect(isSyncClaimed()).toBe(false);
+    });
+  });
+
+  describe('subscribeSyncClaimed', () => {
+    it('notifies on claim and on release', () => {
+      const listener = jest.fn();
+      const unsubscribe = subscribeSyncClaimed(listener);
+
+      const release = tryClaimAutoSync();
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      release!();
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      unsubscribe();
+    });
+
+    it('does not notify for a refused claim or a repeated release', () => {
+      const release = tryClaimAutoSync();
+      const listener = jest.fn();
+      const unsubscribe = subscribeSyncClaimed(listener);
+
+      expect(tryClaimAutoSync()).toBeNull();
+      expect(listener).not.toHaveBeenCalled();
+
+      release!();
+      release!();
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      unsubscribe();
+    });
+
+    it('stops notifying after unsubscribe', () => {
+      const listener = jest.fn();
+      const unsubscribe = subscribeSyncClaimed(listener);
+      unsubscribe();
+
+      tryClaimAutoSync()?.();
+
+      expect(listener).not.toHaveBeenCalled();
     });
   });
 

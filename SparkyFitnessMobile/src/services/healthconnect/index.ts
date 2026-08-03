@@ -1,6 +1,7 @@
 import {
   initialize,
   requestPermission,
+  getGrantedPermissions,
   readRecords,
   aggregateRecord,
   aggregateGroupByDuration,
@@ -15,9 +16,11 @@ import {
   type ReadResult,
 } from '../../types/healthRecords';
 import { getSyncStartDate } from '../../utils/syncUtils';
+import { isQuotaExceededError } from '../shared/quotaError';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
+export { isQuotaExceededError };
 
 export const initHealthConnect = async (): Promise<boolean> => {
   try {
@@ -70,22 +73,39 @@ export const requestHealthPermissions = async (
   }
 };
 
+// Health Connect's history read permission ("Allow access to all past data"). The
+// runtime grant is required to read records older than 30 days; without it reads
+// silently cap at the 30-day window, which the history-import probes then reflect.
+const HISTORY_READ_PERMISSION = { accessType: 'read', recordType: 'ReadHealthDataHistory' } as const;
+
+const isHistoryReadGrant = (permission: { accessType: string; recordType: string }): boolean =>
+  permission.accessType === 'read' && permission.recordType === 'ReadHealthDataHistory';
+
+/**
+ * Ensures the history read permission is granted, requesting it if not. Returns
+ * whether it is granted; callers treat a decline as informational (probes then
+ * naturally cap the reachable floor at ~30 days), never as a hard failure.
+ */
+export const ensureHistoryReadPermission = async (): Promise<boolean> => {
+  try {
+    const granted = await getGrantedPermissions();
+    if (granted.some(isHistoryReadGrant)) {
+      return true;
+    }
+    const result = await requestPermission([HISTORY_READ_PERMISSION]);
+    return result.some(isHistoryReadGrant);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[HealthConnectService] History read permission check failed: ${message}`, 'WARNING');
+    return false;
+  }
+};
+
 const PAGE_SIZE = 5000;
 const MAX_PAGES = 100;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const FALLBACK_DAY_WINDOW_MS = DAY_MS;
 const FALLBACK_HOUR_WINDOW_MS = 60 * 60 * 1000;
-
-// Health Connect enforces a foreground API call quota; once exceeded, every
-// subsequent call fails with "API call quota exceeded". Splitting the failed
-// range into more sub-windows (the normal fallback path) just multiplies the
-// call rate and prolongs the outage, so we short-circuit on quota errors.
-const QUOTA_ERROR_PATTERNS = [/quota exceeded/i, /api call quota/i];
-
-export const isQuotaExceededError = (error: unknown): boolean => {
-  const message = error instanceof Error ? error.message : String(error ?? '');
-  return QUOTA_ERROR_PATTERNS.some((pattern) => pattern.test(message));
-};
 
 interface ReadRecordsOptions {
   timeRangeFilter: {
@@ -300,6 +320,42 @@ export const readHealthRecords = async (
 ): Promise<unknown[]> => {
   const result = await readHealthRecordsDetailed(recordType, startDate, endDate);
   return result.records;
+};
+
+// Probes read from the 1970 epoch: backdated manual entries and third-party
+// imports can predate any "reasonable" floor, and the wider window costs nothing.
+const PROBE_EPOCH_ISO = '1970-01-01T00:00:00.000Z';
+
+/**
+ * Earliest stored record of a type across all history, via a single ascending
+ * pageSize-1 read. Interval records carry startTime, instantaneous ones (Weight,
+ * Height, ...) carry time. No data = { records: [] }; failures = { records: [],
+ * error } (quota errors stay string-detectable via isQuotaExceededError).
+ */
+export const readEarliestRecordDetailed = async (
+  recordType: string,
+): Promise<ReadResult<{ startTime: string }>> => {
+  try {
+    const result = await readRecords(
+      recordType as Parameters<typeof readRecords>[0],
+      {
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: PROBE_EPOCH_ISO,
+          endTime: new Date().toISOString(),
+        },
+        pageSize: 1,
+        ascendingOrder: true,
+      } as unknown as Parameters<typeof readRecords>[1],
+    );
+    const record = (result.records as { startTime?: string; time?: string }[])[0];
+    const startTime = record?.startTime ?? record?.time;
+    return startTime ? { records: [{ startTime }] } : { records: [] };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[HealthConnectService] Earliest-record probe for ${recordType} failed: ${message}`, 'ERROR');
+    return { records: [], error: message };
+  }
 };
 
 /**

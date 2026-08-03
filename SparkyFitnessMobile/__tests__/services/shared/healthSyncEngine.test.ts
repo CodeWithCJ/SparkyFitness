@@ -267,6 +267,36 @@ describe('collectHealthData', () => {
     }
   });
 
+  test('a custom timeoutMs overrides the 60s default', async () => {
+    jest.useFakeTimers();
+    try {
+      const provider = fakeProvider({
+        readRaw: jest.fn(() => new Promise(() => {})),
+      });
+      const slow = metric({ recordType: 'Slow' });
+
+      const pending = collectHealthData(provider, [slow], windows, {
+        timeoutLabelPrefix: 'Test query',
+        timeoutMs: 120_000,
+      });
+      let settled = false;
+      pending.then(() => { settled = true; });
+
+      // The default 60s deadline passes without firing under the wider budget.
+      await jest.advanceTimersByTimeAsync(60_001);
+      expect(settled).toBe(false);
+
+      await jest.advanceTimersByTimeAsync(60_000);
+      const outcomes = await pending;
+
+      expect(settled).toBe(true);
+      expect(outcomes[0].status).toBe('rejected');
+      expect(outcomes[0].error).toContain('Test query for Slow timed out');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   test('outcomes preserve the input metric order', async () => {
     const provider = fakeProvider({
       readRaw: jest.fn().mockImplementation(async (recordType: string) => ({ records: [{ recordType }] })),
