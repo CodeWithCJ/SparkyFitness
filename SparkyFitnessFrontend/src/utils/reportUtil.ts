@@ -10,10 +10,7 @@ import { debug, info, warn, error } from '@/utils/logging';
 
 import { parseISO, subDays, subYears } from 'date-fns';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
-import {
-  calculateFoodEntryNutrition,
-  getEnergyUnitString,
-} from './nutritionCalculations';
+import { getEnergyUnitString } from './nutritionCalculations';
 import { getNetCarbsValue } from './nutrientUtils';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import {
@@ -21,7 +18,6 @@ import {
   DailyFoodEntry,
   NutritionData,
 } from '@/types/reports';
-import { FoodEntry } from '@/types/food';
 import {
   CheckInMeasurementsResponse,
   CustomMeasurementsResponse,
@@ -395,19 +391,14 @@ export const exportFoodDiary = async ({
     ): NutrientTotals => {
       return entries.reduce(
         (total, entry) => {
-          const calculatedNutrition = calculateFoodEntryNutrition(
-            entry as unknown as FoodEntry
-          );
+          const customSource = entry.custom_nutrients as
+            | Record<string, number>
+            | undefined;
 
           const customNutrientTotals = customNutrients.reduce(
             (acc: Record<string, number>, nutrient) => {
-              const customNutrientsSource =
-                calculatedNutrition.custom_nutrients as
-                  | Record<string, number>
-                  | undefined;
-
               const nutrientValue = Number(
-                customNutrientsSource?.[nutrient.name] || 0
+                entry[nutrient.name] ?? customSource?.[nutrient.name] ?? 0
               );
 
               acc[nutrient.name] = (acc[nutrient.name] || 0) + nutrientValue;
@@ -417,30 +408,29 @@ export const exportFoodDiary = async ({
           );
 
           return {
-            calories: total.calories + calculatedNutrition.calories,
-            protein: total.protein + calculatedNutrition.protein,
-            carbs: total.carbs + calculatedNutrition.carbs,
-            fat: total.fat + calculatedNutrition.fat,
+            calories: total.calories + Number(entry.calories || 0),
+            protein: total.protein + Number(entry.protein || 0),
+            carbs: total.carbs + Number(entry.carbs || 0),
+            fat: total.fat + Number(entry.fat || 0),
             saturated_fat:
-              total.saturated_fat + (calculatedNutrition.saturated_fat || 0),
+              total.saturated_fat + Number(entry.saturated_fat || 0),
             polyunsaturated_fat:
               total.polyunsaturated_fat +
-              (calculatedNutrition.polyunsaturated_fat || 0),
+              Number(entry.polyunsaturated_fat || 0),
             monounsaturated_fat:
               total.monounsaturated_fat +
-              (calculatedNutrition.monounsaturated_fat || 0),
-            trans_fat: total.trans_fat + (calculatedNutrition.trans_fat || 0),
-            cholesterol:
-              total.cholesterol + (calculatedNutrition.cholesterol || 0),
-            sodium: total.sodium + (calculatedNutrition.sodium || 0),
-            potassium: total.potassium + (calculatedNutrition.potassium || 0),
+              Number(entry.monounsaturated_fat || 0),
+            trans_fat: total.trans_fat + Number(entry.trans_fat || 0),
+            cholesterol: total.cholesterol + Number(entry.cholesterol || 0),
+            sodium: total.sodium + Number(entry.sodium || 0),
+            potassium: total.potassium + Number(entry.potassium || 0),
             dietary_fiber:
-              total.dietary_fiber + (calculatedNutrition.dietary_fiber || 0),
-            sugars: total.sugars + (calculatedNutrition.sugars || 0),
-            vitamin_a: total.vitamin_a + (calculatedNutrition.vitamin_a || 0),
-            vitamin_c: total.vitamin_c + (calculatedNutrition.vitamin_c || 0),
-            calcium: total.calcium + (calculatedNutrition.calcium || 0),
-            iron: total.iron + (calculatedNutrition.iron || 0),
+              total.dietary_fiber + Number(entry.dietary_fiber || 0),
+            sugars: total.sugars + Number(entry.sugars || 0),
+            vitamin_a: total.vitamin_a + Number(entry.vitamin_a || 0),
+            vitamin_c: total.vitamin_c + Number(entry.vitamin_c || 0),
+            calcium: total.calcium + Number(entry.calcium || 0),
+            iron: total.iron + Number(entry.iron || 0),
             ...customNutrientTotals,
           };
         },
@@ -482,48 +472,67 @@ export const exportFoodDiary = async ({
         }
         // Add individual entries
         entries.forEach((entry) => {
-          const calculatedNutrition = calculateFoodEntryNutrition(
-            entry as unknown as FoodEntry
-          );
-          const custom = calculatedNutrition.custom_nutrients as Record<
-            string,
-            string | number
-          >;
+          const foodName =
+            (entry.food_name as string) || (entry.foods?.name as string) || '';
+          const brandName =
+            (entry.brand_name as string) ||
+            (entry.foods?.brand as string) ||
+            '';
+          const calories = Number(entry.calories || 0);
+          const protein = Number(entry.protein || 0);
+          const carbs = Number(entry.carbs || 0);
+          const fat = Number(entry.fat || 0);
+          const saturatedFat = Number(entry.saturated_fat || 0);
+          const polyunsaturatedFat = Number(entry.polyunsaturated_fat || 0);
+          const monounsaturatedFat = Number(entry.monounsaturated_fat || 0);
+          const transFat = Number(entry.trans_fat || 0);
+          const cholesterol = Number(entry.cholesterol || 0);
+          const sodium = Number(entry.sodium || 0);
+          const potassium = Number(entry.potassium || 0);
+          const dietaryFiber = Number(entry.dietary_fiber || 0);
+          const sugars = Number(entry.sugars || 0);
+          const vitaminA = Number(entry.vitamin_a || 0);
+          const vitaminC = Number(entry.vitamin_c || 0);
+          const calcium = Number(entry.calcium || 0);
+          const iron = Number(entry.iron || 0);
+
+          const customSource = entry.custom_nutrients as
+            | Record<string, number>
+            | undefined;
+
           csvRows.push([
             formatDateInUserTimezone(entry.entry_date, 'MMM dd, yyyy'), // Format date for display
             entry.meal_type,
-            entry.foods?.name || '',
-            entry.foods?.brand || '',
+            foodName,
+            brandName,
             entry.quantity.toString(),
             entry.unit,
-            Math.round(
-              convertEnergy(calculatedNutrition.calories, 'kcal', energyUnit)
-            ).toString(),
-            calculatedNutrition.protein.toFixed(1), // g
+            Math.round(convertEnergy(calories, 'kcal', energyUnit)).toString(),
+            protein.toFixed(1), // g
             (showNetCarbs
-              ? getNetCarbsValue(
-                  calculatedNutrition.carbs,
-                  calculatedNutrition.dietary_fiber
-                )
-              : calculatedNutrition.carbs
+              ? getNetCarbsValue(carbs, dietaryFiber)
+              : carbs
             ).toFixed(1), // g
-            calculatedNutrition.fat.toFixed(1), // g
-            (calculatedNutrition.saturated_fat || 0).toFixed(1), // g
-            (calculatedNutrition.polyunsaturated_fat || 0).toFixed(1), // g
-            (calculatedNutrition.monounsaturated_fat || 0).toFixed(1), // g
-            (calculatedNutrition.trans_fat || 0).toFixed(1), // g
-            (calculatedNutrition.cholesterol || 0).toFixed(2), // mg
-            (calculatedNutrition.sodium || 0).toFixed(2), // mg
-            (calculatedNutrition.potassium || 0).toFixed(2), // mg
-            (calculatedNutrition.dietary_fiber || 0).toFixed(1), // g
-            (calculatedNutrition.sugars || 0).toFixed(1), // g
-            Math.round(calculatedNutrition.vitamin_a || 0).toString(), // μg - full number
-            (calculatedNutrition.vitamin_c || 0).toFixed(2), // mg
-            (calculatedNutrition.calcium || 0).toFixed(2), // mg
-            (calculatedNutrition.iron || 0).toFixed(2), // mg
-            ...customNutrients.map((nutrient) =>
-              Number(custom?.[nutrient.name] || 0).toFixed(1)
-            ),
+            fat.toFixed(1), // g
+            saturatedFat.toFixed(1), // g
+            polyunsaturatedFat.toFixed(1), // g
+            monounsaturatedFat.toFixed(1), // g
+            transFat.toFixed(1), // g
+            cholesterol.toFixed(2), // mg
+            sodium.toFixed(2), // mg
+            potassium.toFixed(2), // mg
+            dietaryFiber.toFixed(1), // g
+            sugars.toFixed(1), // g
+            Math.round(vitaminA).toString(), // μg - full number
+            vitaminC.toFixed(2), // mg
+            calcium.toFixed(2), // mg
+            iron.toFixed(2), // mg
+            ...customNutrients.map((nutrient) => {
+              const val = Number(
+                entry[nutrient.name] ?? customSource?.[nutrient.name] ?? 0
+              );
+              return val.toFixed(1);
+            }),
           ]);
         });
 
