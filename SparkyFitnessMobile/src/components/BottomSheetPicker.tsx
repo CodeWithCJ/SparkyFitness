@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Platform,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -12,19 +11,10 @@ import {
   BottomSheetModal,
   BottomSheetView,
   BottomSheetScrollView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useUniwind, useCSSVariable } from 'uniwind';
+import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
-
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
-    : undefined;
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 
 export interface PickerOption<T> {
   label: string;
@@ -93,13 +83,11 @@ function BottomSheetPicker<T extends string | number>({
   renderTrigger,
 }: BottomSheetPickerProps<T>) {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const { theme } = useUniwind();
   const [primary, textMuted, surfaceBg] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-surface',
   ]) as [string, string, string];
-  const isDarkMode = theme === 'dark' || theme === 'amoled';
 
   const normalizedSections = useMemo<PickerSection<T>[]>(() => {
     if (sections && sections.length > 0) {
@@ -143,17 +131,7 @@ function BottomSheetPicker<T extends string | number>({
     };
   }, []);
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        opacity={isDarkMode ? 0.7 : 0.5}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [isDarkMode]
-  );
+  const renderBackdrop = useSheetBackdrop();
 
   const renderOption = (item: PickerOption<T>) => {
     const isSelected = item.value === value;

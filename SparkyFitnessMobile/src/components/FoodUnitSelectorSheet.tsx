@@ -7,15 +7,10 @@ import {
   View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable, useUniwind } from 'uniwind';
 import Icon from './Icon';
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import type {
   FoodUnitSelectionResult,
   FoodUnitVariant,
@@ -42,13 +37,6 @@ const STANDARD_UNIT_KEYS = new Set(
 // backwards compatibility with older saved variants. They shouldn't appear as
 // separate dropdown options — picking either is functionally identical.
 const UNIT_ALIASES_TO_HIDE = new Set(['cups', 'lbs']);
-
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => (
-        <FullWindowOverlay>{children}</FullWindowOverlay>
-      )
-    : undefined;
 
 const androidSparkleStyle =
   Platform.OS === 'android'
@@ -170,17 +158,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       .filter((group) => group.units.length > 0);
   }, [convertibleUnits, savedStandardUnits, selectedUnitKey]);
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        opacity={isDarkMode ? 0.7 : 0.5}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [isDarkMode],
-  );
+  const renderBackdrop = useSheetBackdrop();
 
   const clearScheduledPresent = useCallback(() => {
     if (presentFrameRef.current != null) {

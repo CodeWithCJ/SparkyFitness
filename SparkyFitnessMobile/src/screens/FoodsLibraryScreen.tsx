@@ -12,31 +12,9 @@ import { useFavorites, useFoodsLibrary, useServerConnection, useProfile } from '
 import { foodItemToFoodInfo } from '../types/foodInfo';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodItem } from '../types/foods';
-
-const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
-  items: T[],
-  filter: 'all' | 'mine' | 'family' | 'public',
-  currentUserId?: string
-) => {
-  if (filter === 'all') return items;
-  return items.filter((item) => {
-    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
-    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
-    
-    if (filter === 'mine') {
-      return isOwner;
-    }
-    if (filter === 'family') {
-      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
-    }
-    if (filter === 'public') {
-      return isPublic;
-    }
-    return true;
-  });
-};
 
 type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
 
@@ -47,7 +25,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -63,7 +41,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     loadMore,
     refetch,
   } = useFoodsLibrary(searchText, { enabled: isConnected });
-  const filteredFoods = useMemo(() => filterItems(foods, ownershipFilter, profile?.id), [foods, ownershipFilter, profile?.id]);
+  const filteredFoods = useMemo(() => filterByOwnership(foods, ownershipFilter, profile?.id), [foods, ownershipFilter, profile?.id]);
   const { favoriteFoods } = useFavorites({ enabled: isConnected });
   const favoriteFoodIds = useMemo(
     () => new Set(favoriteFoods.map((f) => f.id)),

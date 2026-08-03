@@ -5,30 +5,20 @@ import {
   useMemo,
   useRef,
   useState,
-  type PropsWithChildren,
 } from 'react';
-import { Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import {
-  BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetTextInput,
   BottomSheetView,
-  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useCSSVariable, useUniwind } from 'uniwind';
+import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import CollapsibleSection from './CollapsibleSection';
 import StepperInput from './StepperInput';
 import { formatRestLabel } from './RestPeriodChip';
 import { getDefaultRestSec } from '../utils/workoutSession';
-
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
-    : undefined;
 
 export const MIN_REST_SEC = 0;
 export const MAX_REST_SEC = 900;
@@ -53,13 +43,11 @@ interface RestPeriodSheetProps {
 const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
   ({ onChange }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const { theme } = useUniwind();
     const [accentPrimary, surfaceBg, textMuted] = useCSSVariable([
       '--color-accent-primary',
       '--color-surface',
       '--color-text-muted',
     ]) as [string, string, string];
-    const isDarkMode = theme === 'dark' || theme === 'amoled';
 
     const [currentValue, setCurrentValue] = useState<number>(90);
     const [customOpen, setCustomOpen] = useState(false);
@@ -118,17 +106,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
       bottomSheetRef.current?.dismiss();
     };
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          opacity={isDarkMode ? 0.7 : 0.5}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [isDarkMode],
-    );
+    const renderBackdrop = useSheetBackdrop();
 
     return (
       <BottomSheetModal

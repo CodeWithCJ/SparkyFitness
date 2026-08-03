@@ -1,23 +1,17 @@
 import React, {
   forwardRef,
-  useCallback,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import { ActivityIndicator, Alert, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useCSSVariable, useUniwind } from 'uniwind';
+import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 
 import Icon from './Icon';
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import FastingEditSheet, { type FastingEditSheetRef } from './FastingEditSheet';
 import { FastingProtocolBadge } from './FastingSharedComponents';
 import { useFastingHistory, useDeleteFast } from '../hooks/useFasting';
@@ -25,13 +19,6 @@ import { formatHoursMinutes, relativeDayLabel } from '../utils/fasting';
 import { toLocalDateString } from '../utils/dateUtils';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
-
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
-    : undefined;
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -112,8 +99,6 @@ export interface FastingHistorySheetRef {
 const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const editSheetRef = useRef<FastingEditSheetRef>(null);
-  const { theme } = useUniwind();
-  const isDarkMode = theme === 'dark' || theme === 'amoled';
 
   const [limit, setLimit] = useState(PAGE_SIZE);
 
@@ -134,17 +119,7 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => 
     dismiss: () => bottomSheetRef.current?.dismiss(),
   }));
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        opacity={isDarkMode ? 0.7 : 0.5}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [isDarkMode],
-  );
+  const renderBackdrop = useSheetBackdrop();
 
   const openEdit = (fast: FastingLog) => editSheetRef.current?.present(fast);
 

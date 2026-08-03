@@ -1,23 +1,12 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Platform, View, Text } from 'react-native';
-import {
-  BottomSheetModal,
-  BottomSheetView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useUniwind, useCSSVariable } from 'uniwind';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
 import Button from './ui/Button';
-
-// Render inside an iOS UIWindow so the sheet sits above any native modal. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
-    : undefined;
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 
 export interface DateRangeSheetRef {
   present: () => void;
@@ -37,8 +26,6 @@ interface DateRangeSheetProps {
 const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
   ({ onConfirm }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const { theme } = useUniwind();
-    const isDarkMode = theme === 'dark' || theme === 'amoled';
     const [start, setStart] = useState<DateType>(undefined);
     const [end, setEnd] = useState<DateType>(undefined);
 
@@ -66,17 +53,7 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
       };
     }, []);
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          opacity={isDarkMode ? 0.7 : 0.5}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [isDarkMode]
-    );
+    const renderBackdrop = useSheetBackdrop();
 
     const handleChange = useCallback(
       ({ startDate, endDate }: { startDate: DateType; endDate: DateType }) => {

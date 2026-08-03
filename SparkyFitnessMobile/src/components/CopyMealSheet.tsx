@@ -1,4 +1,4 @@
-import React, {
+import {
   forwardRef,
   useCallback,
   useImperativeHandle,
@@ -7,29 +7,17 @@ import React, {
   useState,
 } from 'react';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
-import {
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useUniwind, useCSSVariable } from 'uniwind';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import Button from './ui/Button';
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import Icon from './Icon';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { getMealTypeLabel } from '../constants/meals';
 import { formatDateLabel } from '../utils/dateUtils';
 import { dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
-
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
-    : undefined;
 
 export interface CopyMealSheetRef {
   present: (sourceDate: string, sourceMealType: string) => void;
@@ -44,8 +32,6 @@ interface CopyMealSheetProps {
 const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
   ({ isPending = false, onCopy }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const { theme } = useUniwind();
-    const isDarkMode = theme === 'dark' || theme === 'amoled';
 
     const [
       surfaceBg,
@@ -79,17 +65,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       dismiss: () => bottomSheetRef.current?.dismiss(),
     }));
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          opacity={isDarkMode ? 0.7 : 0.5}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [isDarkMode]
-    );
+    const renderBackdrop = useSheetBackdrop();
 
     const handleDateChange = useCallback(({ date }: { date: DateType }) => {
       if (!date) return;

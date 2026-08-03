@@ -8,7 +8,7 @@ import Icon from '../components/Icon';
 import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus, useProfile } from '../hooks';
-import { deriveShareStatus } from '../utils/shareStatus';
+import { deriveShareStatus, filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
@@ -31,29 +31,6 @@ type PresetSearchScreenProps = RootStackScreenProps<'PresetSearch'>;
 /** startingId sentinel for the pinned empty-workout row (preset rows use preset ids). */
 const EMPTY_START_ID = 'empty-workout';
 
-const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
-  items: T[],
-  filter: 'all' | 'mine' | 'family' | 'public',
-  currentUserId?: string
-) => {
-  if (filter === 'all') return items;
-  return items.filter((item) => {
-    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
-    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
-    
-    if (filter === 'mine') {
-      return isOwner;
-    }
-    if (filter === 'family') {
-      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
-    }
-    if (filter === 'public') {
-      return isPublic;
-    }
-    return true;
-  });
-};
-
 const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -67,14 +44,14 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   const { profile } = useProfile();
 
   const [searchText, setSearchText] = useState('');
-  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [startingId, setStartingId] = useState<string | number | null>(null);
 
   const { presets, isLoading, isError, refetch } = useWorkoutPresets();
   const { searchResults, isSearching, isSearchActive, isSearchError } = useWorkoutPresetSearch(searchText);
-  const filteredPresets = useMemo(() => filterItems(presets, ownershipFilter, profile?.id), [presets, ownershipFilter, profile?.id]);
-  const filteredSearchResults = useMemo(() => filterItems(searchResults, ownershipFilter, profile?.id), [searchResults, ownershipFilter, profile?.id]);
+  const filteredPresets = useMemo(() => filterByOwnership(presets, ownershipFilter, profile?.id), [presets, ownershipFilter, profile?.id]);
+  const filteredSearchResults = useMemo(() => filterByOwnership(searchResults, ownershipFilter, profile?.id), [searchResults, ownershipFilter, profile?.id]);
   const { startLiveWorkout, isStarting } = useStartLiveWorkout(navigation);
   const { getImageSource } = useExerciseImageSource();
   const { isNavigationLocked, runNavigationAction } = useNavigationActionGuard(navigation);

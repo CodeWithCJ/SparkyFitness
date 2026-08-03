@@ -1,14 +1,13 @@
-import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { View, Text } from 'react-native';
 import Button from './ui/Button';
+import { useSheetBackdrop } from './ui/sheetChrome';
 import {
   BottomSheetModal,
   BottomSheetView,
-  BottomSheetBackdrop,
   BottomSheetTextInput,
-  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { useUniwind, useCSSVariable } from 'uniwind';
+import { useCSSVariable } from 'uniwind';
 import StepperInput from './StepperInput';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
@@ -28,12 +27,10 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [entry, setEntry] = useState<FoodEntry | null>(null);
   const [quantityText, setQuantityText] = useState('0');
-  const { theme } = useUniwind();
   const [surfaceBg, textMuted] = useCSSVariable([
     '--color-surface',
     '--color-text-muted',
   ]) as [string, string];
-  const isDarkMode = theme === 'dark' || theme === 'amoled';
 
   const quantity = parseDecimalInput(quantityText) || 0;
   const totalCalories = entry && entry.serving_size > 0
@@ -98,17 +95,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
     updateEntry({ quantity });
   };
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        opacity={isDarkMode ? 0.7 : 0.5}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [isDarkMode]
-  );
+  const renderBackdrop = useSheetBackdrop();
 
   return (
     <BottomSheetModal
