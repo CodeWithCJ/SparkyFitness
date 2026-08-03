@@ -2056,7 +2056,11 @@
     "everyDay": "Codziennie"
   },
   "healthConnect": {
-    "title": "Health Connect"
+    "title": "Health Connect",
+    "healthAppUnavailableTitle": "Aplikacja Zdrowie niedostepna",
+    "healthAppUnavailableMessage": "Zainstaluj aplikacje Apple Zdrowie, aby synchronizowac dane zdrowotne.",
+    "permissionErrorTitle": "Blad uprawnien",
+    "permissionErrorMessage": "Wystapil nieoczekiwany blad podczas prosby o uprawnienia zdrowotne: {{message}}"
   },
   "haptics": {
     "title": "Informacje zwrotne dotykowe",
@@ -2076,7 +2080,15 @@
     "restTimerSubtitle": "Powiadomienie, gdy zakończy się okres odpoczynku, nawet w tle.",
     "fastingGoals": "Cele postu",
     "fastingGoalsSubtitle": "Powiadomienie, gdy osiągniesz cel postu.",
-    "medicationsGroup": "Leki"
+    "medicationsGroup": "Leki",
+    "workoutTimerChannel": "Licznik treningu",
+    "fastingChannel": "Post",
+    "medicationReminderChannel": "Przypomnienia o lekach",
+    "completeSetAction": "Zakoncz serie",
+    "medicationTakenAction": "Zarejestruj jako przyjete",
+    "skipAction": "Pomin",
+    "notificationsOff": "Powiadomienia wylaczone",
+    "timerWillStillAlert": "Licznik nadal powiadomi w aplikacji."
   },
   "medicationReminders": {
     "title": "Przypomnienia o lekach",

@@ -2031,46 +2031,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/services/healthkit/index.ts",
-      "value": "An unexpected error occurred while trying to request Health permissions: {{dynamic}}",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 1
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/healthkit/index.ts:An unexpected error occurred while trying to request Health permissions: {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":1}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/services/healthkit/index.ts",
-      "value": "Health App Not Available",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 0
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/healthkit/index.ts:Health App Not Available:{\"context\":\"Alert.alert\",\"argIndex\":0}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/services/healthkit/index.ts",
-      "value": "Permission Error",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 0
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/healthkit/index.ts:Permission Error:{\"context\":\"Alert.alert\",\"argIndex\":0}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/services/healthkit/index.ts",
-      "value": "Please install the Apple Health app to sync your health data.",
-      "context": {
-        "context": "Alert.alert",
-        "argIndex": 1
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/healthkit/index.ts:Please install the Apple Health app to sync your health data.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/services/LogService.ts",
       "value": "All",
       "context": {
@@ -2145,16 +2105,6 @@
     {
       "rule": "hardcoded-ui-text",
       "file": "src/services/notifications.ts",
-      "value": "Notifications off",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text1"
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:Notifications off:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/services/notifications.ts",
       "value": "On-time alerts",
       "context": {
         "context": "Alert.alert",
@@ -2170,16 +2120,6 @@
         "context": "Alert.alert:button"
       },
       "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:Open Settings:{\"context\":\"Alert.alert:button\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/services/notifications.ts",
-      "value": "Timer will still alert in the app.",
-      "context": {
-        "context": "Toast.show",
-        "prop": "text2"
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:Timer will still alert in the app.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -2972,10 +2912,6 @@
     "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Failed to update preset:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:This preset will be permanently removed from your library.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
-    "hardcoded-ui-text:src/services/healthkit/index.ts:An unexpected error occurred while trying to request Health permissions: {{dynamic}}:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
-    "hardcoded-ui-text:src/services/healthkit/index.ts:Health App Not Available:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
-    "hardcoded-ui-text:src/services/healthkit/index.ts:Permission Error:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
-    "hardcoded-ui-text:src/services/healthkit/index.ts:Please install the Apple Health app to sync your health data.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
     "hardcoded-ui-text:src/services/LogService.ts:All:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/services/LogService.ts:Errors Only:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/services/LogService.ts:No Debug:{\"prop\":\"label\"}": 1,
@@ -2984,10 +2920,8 @@
     "hardcoded-ui-text:src/services/notifications.ts:Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Fasting goal reached:{\"prop\":\"title\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Not Now:{\"context\":\"Alert.alert:button\"}": 1,
-    "hardcoded-ui-text:src/services/notifications.ts:Notifications off:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:On-time alerts:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Open Settings:{\"context\":\"Alert.alert:button\"}": 1,
-    "hardcoded-ui-text:src/services/notifications.ts:Timer will still alert in the app.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:You've hit your fasting goal. Great work!:{\"prop\":\"body\"}": 1,
     "hardcoded-ui-text:src/services/workoutDraftService.ts:Failed to save draft:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/services/workoutDraftService.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,

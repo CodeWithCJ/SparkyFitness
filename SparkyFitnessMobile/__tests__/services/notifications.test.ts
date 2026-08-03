@@ -180,6 +180,11 @@ describe('notifications service', () => {
 
       expect(await ensureNotificationPermission()).toBe(false);
       expect(mockToastShow).toHaveBeenCalledTimes(1);
+      expect(mockToastShow).toHaveBeenCalledWith({
+        type: 'info',
+        text1: 'Notifications off',
+        text2: 'Timer will still alert in the app.',
+      });
 
       // Subsequent undetermined→denied must not re-show the toast.
       expect(await ensureNotificationPermission()).toBe(false);

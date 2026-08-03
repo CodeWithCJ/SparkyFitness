@@ -2038,7 +2038,11 @@
     "everyDay": "Every day"
   },
   "healthConnect": {
-    "title": "Health Connect"
+    "title": "Health Connect",
+    "healthAppUnavailableTitle": "Health App Not Available",
+    "healthAppUnavailableMessage": "Please install the Apple Health app to sync your health data.",
+    "permissionErrorTitle": "Permission Error",
+    "permissionErrorMessage": "An unexpected error occurred while trying to request Health permissions: {{message}}"
   },
   "haptics": {
     "title": "Haptic Feedback",
@@ -2058,7 +2062,15 @@
     "restTimerSubtitle": "Alert when a rest period ends, even in the background.",
     "fastingGoals": "Fasting Goals",
     "fastingGoalsSubtitle": "Alert when you reach your fasting goal.",
-    "medicationsGroup": "Medications"
+    "medicationsGroup": "Medications",
+    "workoutTimerChannel": "Workout timer",
+    "fastingChannel": "Fasting",
+    "medicationReminderChannel": "Medication reminders",
+    "completeSetAction": "Complete Set",
+    "medicationTakenAction": "Log as taken",
+    "skipAction": "Skip",
+    "notificationsOff": "Notifications off",
+    "timerWillStillAlert": "Timer will still alert in the app."
   },
   "medicationReminders": {
     "title": "Medication Reminders",
