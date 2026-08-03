@@ -30,7 +30,7 @@ export function BarcodeField({
         returnKeyType="done"
       />
       {isInvalid ? (
-        <Text className="text-sm" style={{ color: '#dc2626' }}>
+        <Text className="text-text-danger-subtle text-sm">
           Barcode must be 8-14 digits.
         </Text>
       ) : (

@@ -87,7 +87,19 @@ jest.mock('../../src/components/ui/Button', () => {
   const { Pressable, Text } = require('react-native');
   return {
     __esModule: true,
-    default: ({ children, onPress, disabled, loading, accessibilityLabel }: any) => (
+    default: ({
+      children,
+      onPress,
+      disabled,
+      loading,
+      accessibilityLabel,
+    }: {
+      children: React.ReactNode;
+      onPress?: () => void;
+      disabled?: boolean;
+      loading?: boolean;
+      accessibilityLabel?: string;
+    }) => (
       <Pressable
         onPress={disabled || loading ? undefined : onPress}
         accessibilityLabel={accessibilityLabel}

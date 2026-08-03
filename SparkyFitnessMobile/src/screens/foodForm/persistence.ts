@@ -107,7 +107,8 @@ export function validateFoodForm(data: FoodFormData): boolean {
     return false;
   }
 
-  if (!parseDecimalInput(data.servingSize)) {
+  const servingSize = parseDecimalInput(data.servingSize);
+  if (!Number.isFinite(servingSize) || servingSize <= 0) {
     Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
     return false;
   }

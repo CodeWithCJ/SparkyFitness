@@ -381,7 +381,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
               await updateFood(foodId, foodPayload);
             }
             invalidateFoodCaches(queryClient, foodId);
-            // Skip the diff/overwrite path ??? new variant is already saved.
+            // Skip the diff/overwrite path — new variant is already saved.
             setEquivalentBaseline(equivalentDraft);
             Toast.show({ type: 'success', text1: 'Saved as new variant' });
             isSavingRef.current = true;

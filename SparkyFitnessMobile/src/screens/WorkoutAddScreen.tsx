@@ -332,12 +332,11 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      {header}
       {isInitializingEditForm ? (
         <StatusView loading />
       ) : (
         <>
-          {header}
-
           <KeyboardAwareScrollView
             contentContainerClassName="px-4"
             bottomOffset={80}

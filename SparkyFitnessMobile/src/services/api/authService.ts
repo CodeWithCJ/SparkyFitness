@@ -7,6 +7,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { clearSessionToken, ServerConfig } from '../storage';
 import { addLog } from '../LogService';
 import { normalizeUrl } from '../../utils/serverUrl';
+import { getErrorMessage } from '../../utils/errors';
 import { LoginError } from './authErrors';
 import {
   CONNECTION_CHECK_TIMEOUT_MS,
@@ -164,7 +165,7 @@ const getTrustedAuthOrigin = async (serverUrl: string): Promise<string | undefin
       trustedOrigin = normalizeOrigin(body.trusted_origin);
     }
   } catch (error) {
-    addLog(`[AuthService] Failed to fetch auth settings for MFA: ${error}`, 'WARNING');
+    addLog(`[AuthService] Failed to fetch auth settings for MFA: ${getErrorMessage(error)}`, 'WARNING');
   }
 
   if (!trustedOrigin) {
@@ -225,7 +226,7 @@ export const clearAuthCookies = async (): Promise<void> => {
         resolve();
       }
     } catch (error) {
-      addLog(`[AuthService] Failed to clear auth cookies: ${error}`, 'WARNING');
+      addLog(`[AuthService] Failed to clear auth cookies: ${getErrorMessage(error)}`, 'WARNING');
       resolve();
     }
   });

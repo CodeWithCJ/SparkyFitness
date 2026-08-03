@@ -842,9 +842,10 @@ export function applyDisplayValuesToFoodInfo(
 }
 
 /**
- * Steps a serving quantity by half-serving increments: snaps to the nearest
- * half-serving boundary first (so odd typed values land back on the grid),
- * then steps, never dropping below one increment.
+ * Steps a serving quantity by half-serving increments. An off-grid value snaps
+ * to the nearest boundary in the tap direction (so odd typed values land back
+ * on the grid); an on-grid value steps by one increment. Never drops below one
+ * increment.
  */
 export function nextQuantity(quantity: number, delta: number, step: number): number {
   const increment = step * 0.5 || 1;
