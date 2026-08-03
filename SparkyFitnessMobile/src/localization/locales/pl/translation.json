@@ -2057,10 +2057,10 @@
   },
   "healthConnect": {
     "title": "Health Connect",
-    "healthAppUnavailableTitle": "Aplikacja Zdrowie niedostepna",
-    "healthAppUnavailableMessage": "Zainstaluj aplikacje Apple Zdrowie, aby synchronizowac dane zdrowotne.",
-    "permissionErrorTitle": "Blad uprawnien",
-    "permissionErrorMessage": "Wystapil nieoczekiwany blad podczas prosby o uprawnienia zdrowotne: {{message}}"
+    "healthAppUnavailableTitle": "Aplikacja Zdrowie niedostępna",
+    "healthAppUnavailableMessage": "Zainstaluj aplikację Apple Zdrowie, aby synchronizować dane zdrowotne.",
+    "permissionErrorTitle": "Błąd uprawnień",
+    "permissionErrorMessage": "Wystąpił nieoczekiwany błąd podczas prośby o uprawnienia zdrowotne: {{message}}"
   },
   "haptics": {
     "title": "Informacje zwrotne dotykowe",
@@ -2084,10 +2084,10 @@
     "workoutTimerChannel": "Licznik treningu",
     "fastingChannel": "Post",
     "medicationReminderChannel": "Przypomnienia o lekach",
-    "completeSetAction": "Zakoncz serie",
-    "medicationTakenAction": "Zarejestruj jako przyjete",
-    "skipAction": "Pomin",
-    "notificationsOff": "Powiadomienia wylaczone",
+    "completeSetAction": "Zakończ serię",
+    "medicationTakenAction": "Zarejestruj jako przyjęte",
+    "skipAction": "Pomiń",
+    "notificationsOff": "Powiadomienia wyłączone",
     "timerWillStillAlert": "Licznik nadal powiadomi w aplikacji."
   },
   "medicationReminders": {

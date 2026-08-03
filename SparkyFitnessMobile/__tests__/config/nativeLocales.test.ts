@@ -16,11 +16,29 @@ describe('native app locale resources', () => {
       expect(en.ios[key]).not.toBe('');
       expect(pl.ios[key]).not.toBe('');
     }
+    expect(Object.keys(en.ios).sort()).toEqual(Object.keys(pl.ios).sort());
   });
 
-  it('keeps localized permission copy distinct between languages', () => {
-    for (const key of REQUIRED_IOS_KEYS) {
-      expect(en.ios[key]).not.toBe(pl.ios[key]);
-    }
+  it('uses the approved Polish permission copy', () => {
+    expect(pl.ios).toEqual({
+      NSCameraUsageDescription:
+        'SparkyFitness potrzebuje dostępu do aparatu, aby skanować kody kreskowe i etykiety produktów.',
+      NSHealthShareUsageDescription:
+        'SparkyFitness odczytuje dane zdrowotne, takie jak aktywność, treningi i pomiary ciała, aby wyświetlać je w aplikacji i synchronizować z Twoim samodzielnie hostowanym serwerem SparkyFitness.',
+      NSHealthUpdateUsageDescription:
+        'SparkyFitness zapisuje rejestrowane w aplikacji wartości odżywcze i nawodnienie w Apple Health, aby zachować synchronizację.',
+      NSLocalNetworkUsageDescription:
+        'SparkyFitness łączy się z samodzielnie hostowanymi serwerami w Twojej sieci lokalnej.',
+    });
+  });
+
+  it('does not contain transliterated forms in the new Polish N1.1 copy', () => {
+    const newPolishCopy = [
+      pl.ios.NSCameraUsageDescription,
+      pl.ios.NSHealthShareUsageDescription,
+      pl.ios.NSHealthUpdateUsageDescription,
+      pl.ios.NSLocalNetworkUsageDescription,
+    ].join(' ');
+    expect(newPolishCopy).not.toMatch(/dostep|skanowac|aplikacje|synchronizowac|Blad|uprawnien/i);
   });
 });

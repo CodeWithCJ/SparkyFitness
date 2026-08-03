@@ -21,6 +21,7 @@ import {
 import { ExactAlarmBridge } from '../../src/services/ExactAlarmBridge';
 import { __resetSoundsForTests } from '../../src/services/sounds';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('../../src/services/ExactAlarmBridge', () => ({
   ExactAlarmBridge: {
@@ -68,6 +69,8 @@ const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 describe('notifications service', () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
+    await initializeI18n();
+    await i18n.changeLanguage('en');
     __resetNotificationStateForTests();
     mockGetPerms.mockReset().mockResolvedValue({ status: 'granted' } as any);
     mockRequestPerms.mockReset().mockResolvedValue({ status: 'granted' } as any);
@@ -196,6 +199,19 @@ describe('notifications service', () => {
       expect(await ensureNotificationPermission()).toBe(false);
       expect(mockRequestPerms).not.toHaveBeenCalled();
       expect(mockToastShow).not.toHaveBeenCalled();
+    });
+
+    it('shows the Polish toast copy when the app locale is Polish', async () => {
+      await i18n.changeLanguage('pl');
+      mockGetPerms.mockResolvedValue({ status: 'undetermined' } as any);
+      mockRequestPerms.mockResolvedValue({ status: 'denied' } as any);
+
+      expect(await ensureNotificationPermission()).toBe(false);
+      expect(mockToastShow).toHaveBeenCalledWith({
+        type: 'info',
+        text1: 'Powiadomienia wyłączone',
+        text2: 'Licznik nadal powiadomi w aplikacji.',
+      });
     });
   });
 
