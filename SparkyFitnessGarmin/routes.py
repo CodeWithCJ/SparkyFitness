@@ -854,7 +854,6 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         # Try to get both sleep and awake respiration values
                         sleep_resp = respiration_data.get("avgSleepRespirationValue")
                         awake_resp = respiration_data.get("avgWakingRespirationValue")
-                        # Fallback to general average if specific values not available
                         avg_resp = respiration_data.get("avgRespiration")
 
                         logger.info(
@@ -862,14 +861,17 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         )
 
                         if sleep_resp or awake_resp or avg_resp:
+                            # Each key is stored as its own sample (contexts
+                            # sleep/awake/daily_average). No cross-key
+                            # fallback: substituting the sleep value for a
+                            # missing daily average would store the same
+                            # reading twice under two contexts.
                             health_data["respiration"].append(
                                 {
                                     "date": current_date,
                                     "sleep_respiration_avg": sleep_resp,
                                     "awake_respiration_avg": awake_resp,
-                                    "average_respiration_rate": avg_resp
-                                    or sleep_resp
-                                    or awake_resp,  # Keep for backwards compatibility
+                                    "average_respiration_rate": avg_resp,
                                 }
                             )
                 except Exception as e:

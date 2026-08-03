@@ -8,7 +8,7 @@ import mealTypeRepository from '../../models/mealType.js';
 import * as genericHealthRepo from '../../models/genericHealthRepository.js';
 import { getClient } from '../../db/poolManager.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
-import { num, str } from './garminTelemetryExtractors.js';
+import { num, str, toUtcInstant } from './garminTelemetryExtractors.js';
 import {
   localDateTimeToUtc,
   instantToDay,
@@ -615,17 +615,14 @@ export async function processGarminHealthAndWellnessData(
         }
 
         // Nightly summary, sent as flat keys alongside the readings above.
+        // Garmin's weekly_avg / hrvSummary.weeklyAvg is a weekly RMSSD
+        // average, not an SDNN value, so it is deliberately not stored:
+        // writing it to sdnn_ms would present one HRV metric as another.
         const lastNightAvg = num(
           item.last_night_avg ?? item.average_overnight_hrv
         );
-        const weeklyAvg = num(item.weekly_avg);
         const summaryStatus = str(item.status ?? item.hrv_status);
-        if (
-          item.date &&
-          (lastNightAvg !== null ||
-            weeklyAvg !== null ||
-            summaryStatus !== null)
-        ) {
+        if (item.date && (lastNightAvg !== null || summaryStatus !== null)) {
           // Garmin's nightly HRV summary has no intraday timestamp; anchor at
           // 05:00 UTC, matching this ingest's prior behavior, so it sorts with
           // the overnight sleep window rather than the following day.
@@ -636,7 +633,6 @@ export async function processGarminHealthAndWellnessData(
             ...tagActivity(timestamp),
             device_name: item.device_name || 'Garmin Device',
             rmssd_ms: lastNightAvg ?? undefined,
-            sdnn_ms: weeklyAvg ?? undefined,
             status: summaryStatus ?? 'balanced',
           });
         } else if (item.hrvSummary && item.date) {
@@ -650,7 +646,6 @@ export async function processGarminHealthAndWellnessData(
             ...tagActivity(timestamp),
             device_name: 'Garmin Device',
             rmssd_ms: item.hrvSummary.lastNightAvg ?? undefined,
-            sdnn_ms: item.hrvSummary.weeklyAvg ?? undefined,
             status: item.hrvSummary.status || 'balanced',
           });
         } else if (item.date && item.timestamp) {
@@ -939,16 +934,15 @@ export async function processGarminHealthAndWellnessData(
         if (!item.date || typeof item.value !== 'string') continue;
         const match = bpPattern.exec(item.value);
         if (!match) continue;
-        // Prefer the reading's own instant (routes.py now sends it as
-        // `timestamp`); without it, two same-day readings both stamped
-        // T12:00:00Z would upsert onto the same (user, provider, timestamp)
-        // row and one would be lost. Fall back to the noon anchor only for
-        // older payloads that lack it.
-        const rawTimestamp = item.timestamp ? new Date(item.timestamp) : null;
+        // Prefer the reading's own instant (routes.py sends it as
+        // `timestamp`, sourced from measurementTimestampGMT — a naive string
+        // that toUtcInstant pins to UTC so a non-UTC server can't shift it);
+        // without it, two same-day readings both stamped T12:00:00Z would
+        // upsert onto the same (user, provider, timestamp) row and one would
+        // be lost. Fall back to the noon anchor only for older payloads that
+        // lack it.
         const timestamp =
-          rawTimestamp && !Number.isNaN(rawTimestamp.getTime())
-            ? rawTimestamp
-            : new Date(`${item.date}T12:00:00Z`);
+          toUtcInstant(item.timestamp) ?? new Date(`${item.date}T12:00:00Z`);
         vitalsEntriesToInsert.push({
           user_id: userId,
           entry_date: item.date,

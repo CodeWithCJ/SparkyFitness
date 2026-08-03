@@ -1655,11 +1655,11 @@ CREATE TABLE public.exercise_entry_activity_details (
 --
 
 CREATE TABLE public.exercise_entry_gps_points (
-    id uuid DEFAULT gen_random_uuid() CONSTRAINT exercise_entry_gps_points_new_id_not_null NOT NULL,
-    user_id uuid CONSTRAINT exercise_entry_gps_points_new_user_id_not_null NOT NULL,
-    exercise_entry_id uuid CONSTRAINT exercise_entry_gps_points_new_exercise_entry_id_not_null NOT NULL,
-    entry_date date CONSTRAINT exercise_entry_gps_points_new_entry_date_not_null NOT NULL,
-    points jsonb DEFAULT '[]'::jsonb CONSTRAINT exercise_entry_gps_points_new_points_not_null NOT NULL,
+    id uuid DEFAULT gen_random_uuid() CONSTRAINT exercise_entry_gps_points_id_not_null NOT NULL,
+    user_id uuid CONSTRAINT exercise_entry_gps_points_user_id_not_null NOT NULL,
+    exercise_entry_id uuid CONSTRAINT exercise_entry_gps_points_exercise_entry_id_not_null NOT NULL,
+    entry_date date CONSTRAINT exercise_entry_gps_points_entry_date_not_null NOT NULL,
+    points jsonb DEFAULT '[]'::jsonb CONSTRAINT exercise_entry_gps_points_points_not_null NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
@@ -4290,11 +4290,11 @@ ALTER TABLE ONLY public.exercise_entry_activity_details
 
 
 --
--- Name: exercise_entry_gps_points exercise_entry_gps_points_new_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: exercise_entry_gps_points exercise_entry_gps_points_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.exercise_entry_gps_points
-    ADD CONSTRAINT exercise_entry_gps_points_new_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT exercise_entry_gps_points_pkey PRIMARY KEY (id);
 
 
 --
@@ -6531,19 +6531,19 @@ ALTER TABLE ONLY public.exercise_entry_activity_details
 
 
 --
--- Name: exercise_entry_gps_points exercise_entry_gps_points_new_exercise_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: exercise_entry_gps_points exercise_entry_gps_points_exercise_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.exercise_entry_gps_points
-    ADD CONSTRAINT exercise_entry_gps_points_new_exercise_entry_id_fkey FOREIGN KEY (exercise_entry_id) REFERENCES public.exercise_entries(id) ON DELETE CASCADE;
+    ADD CONSTRAINT exercise_entry_gps_points_exercise_entry_id_fkey FOREIGN KEY (exercise_entry_id) REFERENCES public.exercise_entries(id) ON DELETE CASCADE;
 
 
 --
--- Name: exercise_entry_gps_points exercise_entry_gps_points_new_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: exercise_entry_gps_points exercise_entry_gps_points_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.exercise_entry_gps_points
-    ADD CONSTRAINT exercise_entry_gps_points_new_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT exercise_entry_gps_points_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --

@@ -1449,73 +1449,83 @@ async function getRecentSessionsForExercise(
     client.release();
   }
 }
+async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
+  client: PoolClient,
+  userId: string,
+  startDate: string,
+  endDate: string,
+  entrySource: string
+) {
+  // Get IDs of exercise entries to be deleted
+  const entryIdsResult = await client.query(
+    `SELECT id FROM exercise_entries
+     WHERE user_id = $1
+       AND entry_date BETWEEN $2 AND $3
+       AND source = $4`,
+    [userId, startDate, endDate, entrySource]
+  );
+  const entryIds = entryIdsResult.rows.map((row: { id: string }) => row.id);
+  if (entryIds.length > 0) {
+    // Delete associated activity details
+    await client.query(
+      'DELETE FROM exercise_entry_activity_details WHERE exercise_entry_id = ANY($1::uuid[])',
+      [entryIds]
+    );
+    log(
+      'info',
+      `[exerciseEntry] Deleted activity details for ${entryIds.length} exercise entries.`
+    );
+    // Delete associated sets
+    await client.query(
+      'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = ANY($1::uuid[])',
+      [entryIds]
+    );
+    log(
+      'info',
+      `[exerciseEntry] Deleted sets for ${entryIds.length} exercise entries.`
+    );
+    // Delete the exercise entries themselves
+    const result = await client.query(
+      'DELETE FROM exercise_entries WHERE id = ANY($1::uuid[])',
+      [entryIds]
+    );
+    log(
+      'info',
+      `[exerciseEntry] Deleted ${result.rowCount} exercise entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`
+    );
+    return result.rowCount;
+  }
+  log(
+    'info',
+    `[exerciseEntry] No exercise entries with source '${entrySource}' found for user ${userId} from ${startDate} to ${endDate}.`
+  );
+  return 0;
+}
+
 async function deleteExerciseEntriesByEntrySourceAndDate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entrySource: any
+  userId: string,
+  startDate: string,
+  endDate: string,
+  entrySource: string
 ) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-    // Get IDs of exercise entries to be deleted
-    const entryIdsResult = await client.query(
-      `SELECT id FROM exercise_entries
-       WHERE user_id = $1
-         AND entry_date BETWEEN $2 AND $3
-         AND source = $4`,
-      [userId, startDate, endDate, entrySource]
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const entryIds = entryIdsResult.rows.map((row: any) => row.id);
-    if (entryIds.length > 0) {
-      // Delete associated activity details
-      await client.query(
-        'DELETE FROM exercise_entry_activity_details WHERE exercise_entry_id = ANY($1::uuid[])',
-        [entryIds]
+    const deletedCount =
+      await deleteExerciseEntriesByEntrySourceAndDateWithClient(
+        client,
+        userId,
+        startDate,
+        endDate,
+        entrySource
       );
-      log(
-        'info',
-        `[exerciseEntry] Deleted activity details for ${entryIds.length} exercise entries.`
-      );
-      // Delete associated sets
-      await client.query(
-        'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = ANY($1::uuid[])',
-        [entryIds]
-      );
-      log(
-        'info',
-        `[exerciseEntry] Deleted sets for ${entryIds.length} exercise entries.`
-      );
-      // Delete the exercise entries themselves
-      const result = await client.query(
-        'DELETE FROM exercise_entries WHERE id = ANY($1::uuid[])',
-        [entryIds]
-      );
-      log(
-        'info',
-        `[exerciseEntry] Deleted ${result.rowCount} exercise entries with source '${entrySource}' for user ${userId} from ${startDate} to ${endDate}.`
-      );
-      await client.query('COMMIT');
-      return result.rowCount;
-    } else {
-      log(
-        'info',
-        `[exerciseEntry] No exercise entries with source '${entrySource}' found for user ${userId} from ${startDate} to ${endDate}.`
-      );
-      await client.query('COMMIT');
-      return 0;
-    }
+    await client.query('COMMIT');
+    return deletedCount;
   } catch (error) {
     await client.query('ROLLBACK');
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error deleting exercise entries by source and date: ${error.message}`,
+      `Error deleting exercise entries by source and date: ${error instanceof Error ? error.message : String(error)}`,
       { userId, startDate, endDate, entrySource, error }
     );
     throw error;
@@ -1699,6 +1709,7 @@ export { getBestSetForExercise };
 export { getLastSetForExercise };
 export { getRecentSessionsForExercise };
 export { deleteExerciseEntriesByEntrySourceAndDate };
+export { deleteExerciseEntriesByEntrySourceAndDateWithClient };
 export { getDailyExerciseTotalsRange };
 export { getExerciseDiaryRange };
 export { getRecentExerciseEntries };
@@ -1728,6 +1739,7 @@ export default {
   getLastSetForExercise,
   getRecentSessionsForExercise,
   deleteExerciseEntriesByEntrySourceAndDate,
+  deleteExerciseEntriesByEntrySourceAndDateWithClient,
   getDailyExerciseTotalsRange,
   getExerciseDiaryRange,
   getRecentExerciseEntries,

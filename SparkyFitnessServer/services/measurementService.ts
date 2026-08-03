@@ -138,7 +138,7 @@ async function preCleanEntriesBySourceAndDate(
   userId: any,
   label: string,
   deleteFn: (
-    userId: unknown,
+    userId: string,
     startDate: string,
     endDate: string,
     source: string
