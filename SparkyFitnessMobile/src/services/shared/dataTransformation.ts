@@ -65,6 +65,8 @@ export interface ValueTransformResult {
   value: number;
   date: string;
   type?: string; // Optional override for output type
+  timestamp?: string;
+  source_id?: string;
 }
 
 // Transformer that extracts value and date for standard record output
@@ -126,8 +128,17 @@ export const createHydrationTransformer = (
   if (isOwnRecord(rec)) return null; // don't re-import water Sparky wrote
   const liters = extractNestedValue(rec, 'volume', 'inLiters');
   const date = getDateString(rec.startTime);
+  const timestamp = (rec.startTime as string) || (rec.time as string) || undefined;
+  const sourceId = (rec.uuid as string) || (rec.id as string) || undefined;
   // Convert L -> integer ml: synced as water intake (type 'water') which the server stores in ml.
-  return liters !== null && date ? { value: Math.round(liters * 1000), date } : null;
+  return liters !== null && date
+    ? {
+        value: Math.round(liters * 1000),
+        date,
+        ...(timestamp ? { timestamp } : {}),
+        ...(sourceId ? { source_id: sourceId } : {}),
+      }
+    : null;
 };
 
 export const createBloodPressureTransformer = (
@@ -264,6 +275,8 @@ export const createTransformHealthRecords = (config: TransformHealthRecordsConfi
               date: result.date,
               unit,
               source,
+              ...(result.timestamp ? { timestamp: result.timestamp } : {}),
+              ...(result.source_id ? { source_id: result.source_id } : {}),
               ...extractTimezoneMetadata(rec),
             };
             transformedData.push(transformedRecord);

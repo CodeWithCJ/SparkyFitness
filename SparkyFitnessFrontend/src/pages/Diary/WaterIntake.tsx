@@ -56,8 +56,8 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     () => activeContainer?.id ?? null
   );
 
-  // Local state for log panel visibility
-  const [showLog, setShowLog] = useState(false);
+  // Local state for log panel visibility (defaults to open so synced/manual logs are immediately visible)
+  const [showLog, setShowLog] = useState(true);
 
   // State for editing time on a log entry
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);

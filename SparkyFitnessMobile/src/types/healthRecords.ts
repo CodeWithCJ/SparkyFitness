@@ -167,6 +167,8 @@ export interface TransformedRecord extends RecordTimezoneMetadata {
   date: string;
   unit: string;
   source: string;
+  timestamp?: string;
+  source_id?: string;
 }
 
 /** Sparky meal type slug derived from Health Connect MealType constant */

@@ -50,23 +50,34 @@ function resolveHealthEntryDate(entry: any, fallbackTimezone: any) {
   } else {
     basisField = entry.date || entry.entry_date || entry.timestamp;
   }
-  // 2. If the basis is a date-only string (YYYY-MM-DD) with no timestamp,
-  // the record was already bucketed client-side. Trust the date as-is —
-  // applying timezone conversion to a UTC-midnight-parsed day string would
-  // shift negative-offset zones to the previous day.
+  // 2. If the basis is a date-only string (YYYY-MM-DD), the record was
+  // already bucketed client-side to the correct local day. Trust the date
+  // as-is — applying timezone conversion to a UTC-midnight-parsed day string
+  // would shift negative-offset zones to the previous day. A companion
+  // `entry.timestamp` (used below for entryTimestamp/entryHour) doesn't
+  // change that; basisField already prefers `date`/`entry_date` over
+  // `timestamp` as the day source (see step 1), so its presence alone
+  // shouldn't override an already-correct bucketed day.
   const basisIsDayOnly =
-    typeof basisField === 'string' &&
-    isDayString(basisField) &&
-    !entry.timestamp;
+    typeof basisField === 'string' && isDayString(basisField);
   const basisDate = new Date(basisField);
   if (isNaN(basisDate.getTime())) {
     return null;
   }
   if (basisIsDayOnly) {
+    // A companion `entry.timestamp` still carries the real logged instant
+    // (used for `logged_at`/hourly bucketing) even though the day itself
+    // comes from the trusted `date` string above.
+    const tsObj = entry.timestamp ? new Date(entry.timestamp) : null;
+    const hasValidTimestamp = tsObj !== null && !isNaN(tsObj.getTime());
     return {
       parsedDate: basisField,
-      entryTimestamp: basisDate.toISOString(),
-      entryHour: 0,
+      entryTimestamp: hasValidTimestamp
+        ? tsObj.toISOString()
+        : basisDate.toISOString(),
+      entryHour: hasValidTimestamp
+        ? instantHourMinute(tsObj, fallbackTimezone).hour
+        : 0,
     };
   }
   // 3. Determine the timestamp for entryTimestamp (prefer explicit timestamp)

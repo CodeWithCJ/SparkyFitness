@@ -5,6 +5,7 @@ import exerciseEntryDb from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import moodRepository from '../models/moodRepository.js';
+import waterContainerRepository from '../models/waterContainerRepository.js';
 import { BUILT_IN_MOODS } from '@workspace/shared';
 
 /**
@@ -427,6 +428,10 @@ export interface HealthBatchContext {
    * (no X-Workout-Model-Version header) and sends per-set duration in minutes.
    */
   legacyWorkoutSetMinutes?: boolean;
+  /** Optional sync window start date (YYYY-MM-DD) for windowed delete-and-replace */
+  windowStart?: string;
+  /** Optional sync window end date (YYYY-MM-DD) for windowed delete-and-replace */
+  windowEnd?: string;
 }
 
 /** HealthBatchContext plus the per-entry resolved date values. */
@@ -727,9 +732,101 @@ const waterHandler: HealthTypeHandler = {
       ctx.actingUserId,
       waterValue,
       ctx.parsedDate,
-      source // Use the provided source (e.g., 'fitbit', 'garmin', 'apple_health')
+      source
     );
     return { status: 'success', data: result };
+  },
+
+  async handleBatch(entries, ctx) {
+    const outcomes: HandlerOutcome[] = new Array(entries.length);
+    if (entries.length === 0) return outcomes;
+
+    // Group entries by source to process per-source date windows
+    const entriesBySource = new Map<
+      string,
+      Array<{
+        index: number;
+        entry: PreparedHealthEntry['entry'];
+        parsedDate: string;
+      }>
+    >();
+    for (let i = 0; i < entries.length; i++) {
+      const item = entries[i];
+      const source = (item.entry.source as string) || 'manual';
+      const waterValue = parseInt(String(item.entry.value), 10);
+      if (isNaN(waterValue) || waterValue <= 0) {
+        outcomes[i] = { status: 'error', error: 'Invalid water value' };
+        continue;
+      }
+      const existing = entriesBySource.get(source) || [];
+      existing.push({
+        index: i,
+        entry: item.entry,
+        parsedDate: item.parsedDate,
+      });
+      entriesBySource.set(source, existing);
+    }
+
+    // Fetch user's primary container ID (if any) as fallback container_id
+    const primaryContainer =
+      await waterContainerRepository.getPrimaryWaterContainerByUserId(
+        ctx.userId
+      );
+    const primaryContainerId = primaryContainer?.id ?? null;
+
+    for (const [source, group] of entriesBySource) {
+      if (group.length === 0) continue;
+      const dates = group.map((g) => g.parsedDate).sort();
+      const minDate = ctx.windowStart
+        ? ctx.windowStart < dates[0]
+          ? ctx.windowStart
+          : dates[0]
+        : dates[0];
+      const maxDate = ctx.windowEnd
+        ? ctx.windowEnd > dates[dates.length - 1]
+          ? ctx.windowEnd
+          : dates[dates.length - 1]
+        : dates[dates.length - 1];
+
+      const samples = group.map((g) => ({
+        entryDate: g.parsedDate,
+        waterMl: parseInt(String(g.entry.value), 10),
+        containerId: primaryContainerId,
+        containerName:
+          source === 'healthkit'
+            ? 'Apple Health'
+            : source === 'health_connect'
+              ? 'Health Connect'
+              : source,
+        source,
+        loggedAt:
+          (g.entry.timestamp as string) ||
+          (g.entry.startTime as string) ||
+          null,
+      }));
+
+      try {
+        const written =
+          await measurementRepository.replaceWaterIntakeSamplesByWindow(
+            ctx.userId,
+            ctx.actingUserId,
+            minDate,
+            maxDate,
+            source,
+            samples
+          );
+        group.forEach((g, pos) => {
+          outcomes[g.index] = { status: 'success', data: written?.[pos] };
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        group.forEach((g) => {
+          outcomes[g.index] = { status: 'error', error: msg };
+        });
+      }
+    }
+
+    return outcomes;
   },
 };
 

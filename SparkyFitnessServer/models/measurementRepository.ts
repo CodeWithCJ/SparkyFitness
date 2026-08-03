@@ -1463,6 +1463,94 @@ async function insertWaterIntakeLog(
   }
 }
 
+async function replaceWaterIntakeSamplesByWindow(
+  userId: string,
+  actingUserId: string,
+  startDate: string,
+  endDate: string,
+  source: string,
+  samples: Array<{
+    entryDate: string;
+    waterMl: number;
+    containerId?: number | null;
+    containerName: string;
+    source: string;
+    loggedAt?: string | null;
+  }>
+) {
+  const client = await getClient(actingUserId);
+  try {
+    await client.query('BEGIN');
+
+    // 1. Delete existing synced entries for this window and source
+    await client.query(
+      `DELETE FROM water_intake_entries
+       WHERE user_id = $1 AND entry_date >= $2 AND entry_date <= $3 AND source = $4`,
+      [userId, startDate, endDate, source]
+    );
+
+    // 2. Insert active fresh samples
+    const insertedRows: Array<Record<string, unknown>> = [];
+    const affectedDates = new Set<string>();
+
+    for (const sample of samples) {
+      affectedDates.add(sample.entryDate);
+      const res = await client.query(
+        `INSERT INTO water_intake_entries
+          (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()))
+         RETURNING *`,
+        [
+          userId,
+          sample.entryDate,
+          sample.waterMl,
+          sample.containerId || null,
+          sample.containerName,
+          sample.source,
+          actingUserId,
+          sample.loggedAt || null,
+        ]
+      );
+      insertedRows.push(res.rows[0]);
+    }
+
+    // Include all dates in window range to ensure 0-sample days update totals
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      affectedDates.add(dateStr);
+    }
+
+    // 3. Recalculate and update daily totals in water_intake table for affected dates
+    for (const dateStr of affectedDates) {
+      const sumRes = await client.query(
+        `SELECT COALESCE(SUM(water_ml), 0) as total_ml
+         FROM water_intake_entries
+         WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
+        [userId, dateStr, source]
+      );
+      const totalMl = Number(sumRes.rows[0]?.total_ml || 0);
+
+      await client.query(
+        `INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
+         ON CONFLICT (user_id, entry_date, source)
+         DO UPDATE SET water_ml = $3, updated_at = NOW(), updated_by_user_id = $5`,
+        [userId, dateStr, totalMl, source, actingUserId]
+      );
+    }
+
+    await client.query('COMMIT');
+    return insertedRows;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function getWaterIntakeLogsByDates(userId: string, dates: string[]) {
   const client = await getClient(userId);
   try {
@@ -1587,6 +1675,7 @@ export default {
   updateWaterIntake,
   deleteWaterIntake,
   insertWaterIntakeLog,
+  replaceWaterIntakeSamplesByWindow,
   getWaterIntakeLogByDate,
   getWaterIntakeLogsByDates,
   deleteWaterIntakeLog,

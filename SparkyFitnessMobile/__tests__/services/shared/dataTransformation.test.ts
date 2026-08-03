@@ -169,14 +169,14 @@ describe('createHydrationTransformer', () => {
   test('converts liters to whole ml', () => {
     const transformer = createHydrationTransformer(() => false, getDateString);
     expect(transformer({ volume: { inLiters: 0.7501 }, startTime: 'x' }, METRIC, 0))
-      .toEqual({ value: 750, date: '2024-01-15' });
+      .toEqual({ value: 750, date: '2024-01-15', timestamp: 'x' });
   });
 
   test('skips records matched by the injected ownership predicate', () => {
     const transformer = createHydrationTransformer((rec) => rec.mine === true, getDateString);
     expect(transformer({ mine: true, volume: { inLiters: 1 }, startTime: 'x' }, METRIC, 0)).toBeNull();
     expect(transformer({ mine: false, volume: { inLiters: 1 }, startTime: 'x' }, METRIC, 0))
-      .toEqual({ value: 1000, date: '2024-01-15' });
+      .toEqual({ value: 1000, date: '2024-01-15', timestamp: 'x' });
   });
 });
 
