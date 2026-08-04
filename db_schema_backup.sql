@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict UK2vb2gfdaW09yZcXqlm0ZueUsjAQH9HYf4K0bUukTh5NeuHiY4zr9iY7KHaudD
+\restrict 5kexud6nM8ftR4Ra2t6beziQNYZc2hHTL7WbtJyBSsir77QMggNCOYU5x29Dlwf
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1655,11 +1655,11 @@ CREATE TABLE public.exercise_entry_activity_details (
 --
 
 CREATE TABLE public.exercise_entry_gps_points (
-    id uuid DEFAULT gen_random_uuid() CONSTRAINT exercise_entry_gps_points_id_not_null NOT NULL,
-    user_id uuid CONSTRAINT exercise_entry_gps_points_user_id_not_null NOT NULL,
-    exercise_entry_id uuid CONSTRAINT exercise_entry_gps_points_exercise_entry_id_not_null NOT NULL,
-    entry_date date CONSTRAINT exercise_entry_gps_points_entry_date_not_null NOT NULL,
-    points jsonb DEFAULT '[]'::jsonb CONSTRAINT exercise_entry_gps_points_points_not_null NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    exercise_entry_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    points jsonb DEFAULT '[]'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
@@ -3492,8 +3492,8 @@ CREATE TABLE public.user_preferences (
     time_format text DEFAULT 'h:mm A'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
-    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text))),
-    CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text])))
+    CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text]))),
+    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
 );
 
 
@@ -3722,8 +3722,16 @@ CREATE TABLE public.water_intake_entries (
     source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
-    logged_at timestamp with time zone DEFAULT now() NOT NULL
+    logged_at timestamp with time zone DEFAULT now() NOT NULL,
+    source_id character varying(255)
 );
+
+
+--
+-- Name: COLUMN water_intake_entries.source_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.water_intake_entries.source_id IS 'Provider-stable record id for idempotent re-sync (e.g. HealthKit uuid, Health Connect metadata.id). NULL for manual or pre-migration synced entries.';
 
 
 --
@@ -5906,6 +5914,13 @@ CREATE INDEX idx_vitals_user_date ON public.vitals_entries USING btree (user_id,
 --
 
 CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries USING btree (user_id, entry_date);
+
+
+--
+-- Name: idx_water_intake_entries_user_source_source_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_water_intake_entries_user_source_source_id ON public.water_intake_entries USING btree (user_id, source, source_id) WHERE ((source IS NOT NULL) AND (source_id IS NOT NULL));
 
 
 --
@@ -10630,5 +10645,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict UK2vb2gfdaW09yZcXqlm0ZueUsjAQH9HYf4K0bUukTh5NeuHiY4zr9iY7KHaudD
+\unrestrict 5kexud6nM8ftR4Ra2t6beziQNYZc2hHTL7WbtJyBSsir77QMggNCOYU5x29Dlwf
 

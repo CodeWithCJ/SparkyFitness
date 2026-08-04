@@ -197,6 +197,31 @@ describe('measurementRepository.incrementWaterData', () => {
     );
 
     const call = mockClient.query.mock.calls[0];
-    expect(call[0]).toContain('GREATEST(0, $3)');
+    expect(call[0]).toContain('GREATEST(0::numeric, $3::numeric)');
+  });
+
+  // Regression: wrapping $3 in GREATEST(0, $3) made Postgres infer $3 as
+  // integer from the untyped 0 literal (previously it was inferred as numeric
+  // from the water_ml target column), so fractional ml amounts — which arise
+  // whenever a container's volume / servings_per_container isn't a whole
+  // number — failed with "invalid input syntax for type integer".
+  it('casts the clamped value to numeric so fractional ml amounts are accepted', async () => {
+    await measurementRepository.incrementWaterData(
+      'user-1',
+      'user-1',
+      59.147000000000006,
+      '2026-08-03',
+      'manual'
+    );
+
+    const [text, values] = mockClient.query.mock.calls[0];
+    // Both $3 occurrences must be explicitly numeric-cast; an untyped 0
+    // literal anywhere alongside $3 re-triggers integer inference.
+    expect(text).not.toMatch(/GREATEST\(0,/);
+    expect(text).toContain('GREATEST(0::numeric, $3::numeric)');
+    expect(text).toContain(
+      'GREATEST(0::numeric, water_intake.water_ml + $3::numeric)'
+    );
+    expect(values[2]).toBe(59.147000000000006);
   });
 });

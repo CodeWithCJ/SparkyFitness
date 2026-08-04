@@ -17,11 +17,13 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
+import { isManualSource, prettifySource } from '@/utils/sourceLabels';
 import { useWaterContainer } from '@/contexts/WaterContainerContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import {
   useWaterGoalQuery,
   useWaterIntakeQuery,
+  useManualWaterIntakeQuery,
   useUpdateWaterIntakeMutation,
   useWaterIntakeLogQuery,
   useDeleteWaterIntakeLogMutation,
@@ -41,6 +43,12 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const userId = activeUserId || user?.id;
   const { data: waterGoalMl = 1920 } = useWaterGoalQuery(selectedDate, userId);
   const { data: waterMl = 0 } = useWaterIntakeQuery(selectedDate, userId);
+  // Only manually logged water can be removed here; provider-synced water is
+  // owned by its provider and would just reappear on the next sync.
+  const { data: manualWaterMl = 0 } = useManualWaterIntakeQuery(
+    selectedDate,
+    userId
+  );
   const { mutate: updateWaterIntake, isPending: loading } =
     useUpdateWaterIntakeMutation();
   const { data: logEntries = [] } = useWaterIntakeLogQuery(
@@ -263,9 +271,17 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
           <Button
             variant="outline"
             onClick={() => adjustWater(-1)}
-            disabled={waterMl === 0 || loading}
+            disabled={manualWaterMl <= 0 || loading}
             size="icon"
             className="h-8 w-8 rounded-full"
+            title={
+              manualWaterMl <= 0 && waterMl > 0
+                ? t(
+                    'foodDiary.waterIntake.noManualToRemove',
+                    'Only manually logged water can be removed here'
+                  )
+                : undefined
+            }
           >
             <Minus className="h-4 w-4" />
           </Button>
@@ -391,6 +407,14 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                             'Container'
                           )}
                       </span>
+                      {/* Synced entries are labelled so it's clear why the "-"
+                          control can't remove them; manual rows stay unlabelled
+                          to keep the common case uncluttered. */}
+                      {!isManualSource(entry.source) && (
+                        <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-300">
+                          {prettifySource(entry.source)}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="font-medium text-blue-600 dark:text-blue-400">

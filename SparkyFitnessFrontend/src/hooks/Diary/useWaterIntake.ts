@@ -9,6 +9,7 @@ import {
   WaterIntakeLogEntry,
 } from '@/api/Diary/waterIntakteService';
 import { waterIntakeKeys } from '@/api/keys/diary';
+import { isManualSource } from '@/utils/sourceLabels';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useDiaryInvalidation } from '../useInvalidateKeys';
@@ -32,22 +33,72 @@ export const useWaterGoalQuery = (date: string, userId?: string) => {
   });
 };
 
+/** Day totals split by origin: `manualMl` is the part the "-" control can remove. */
+interface WaterIntakeTotals {
+  totalMl: number;
+  manualMl: number;
+}
+
+const fetchWaterIntakeTotals = async (
+  date: string,
+  userId: string
+): Promise<WaterIntakeTotals> => {
+  const waterData = await getWaterIntakeForDate(date, userId);
+  if (Array.isArray(waterData)) {
+    // Legacy per-source shape: sum the rows and pick out the manual ones.
+    return waterData.reduce<WaterIntakeTotals>(
+      (acc, record) => {
+        const ml = Number(record.water_ml) || 0;
+        acc.totalMl += ml;
+        if (isManualSource(record.source)) acc.manualMl += ml;
+        return acc;
+      },
+      { totalMl: 0, manualMl: 0 }
+    );
+  }
+  if (waterData && waterData.water_ml !== undefined) {
+    const totalMl = Number(waterData.water_ml) || 0;
+    return {
+      totalMl,
+      // Servers predating the manual_ml breakdown report only the combined
+      // total; treating it all as manual preserves the previous behaviour
+      // (the "-" control stays enabled) rather than disabling it wrongly.
+      manualMl:
+        waterData.manual_ml !== undefined
+          ? Number(waterData.manual_ml) || 0
+          : totalMl,
+    };
+  }
+  return { totalMl: 0, manualMl: 0 };
+};
+
+/**
+ * Shared by useWaterIntakeQuery and useManualWaterIntakeQuery — same query key,
+ * so both hooks read one cached fetch and differ only in what they select.
+ */
+const waterIntakeTotalsOptions = (date: string, userId?: string) => ({
+  queryKey: waterIntakeKeys.daily(date, userId!),
+  queryFn: () => fetchWaterIntakeTotals(date, userId!),
+  enabled: !!userId && !!date,
+});
+
 export const useWaterIntakeQuery = (date: string, userId?: string) => {
   return useQuery({
-    queryKey: waterIntakeKeys.daily(date, userId!),
-    queryFn: async () => {
-      const waterData = await getWaterIntakeForDate(date, userId!);
-      if (Array.isArray(waterData) && waterData.length > 0) {
-        return waterData.reduce(
-          (sum, record) => sum + Number(record.water_ml),
-          0
-        );
-      } else if (waterData && waterData.water_ml !== undefined) {
-        return Number(waterData.water_ml);
-      }
-      return 0;
-    },
-    enabled: !!userId && !!date,
+    ...waterIntakeTotalsOptions(date, userId),
+    select: (totals: WaterIntakeTotals) => totals.totalMl,
+  });
+};
+
+/**
+ * Manually logged portion of the day's water. Only this part can be removed by
+ * the diary "-" control, so it drives that button's disabled state — the
+ * combined total would leave it enabled against provider-synced water it can't
+ * actually decrement.
+ */
+export const useManualWaterIntakeQuery = (date: string, userId?: string) => {
+  return useQuery({
+    ...waterIntakeTotalsOptions(date, userId),
+    select: (totals: WaterIntakeTotals) => totals.manualMl,
   });
 };
 

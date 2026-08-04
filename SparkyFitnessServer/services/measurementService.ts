@@ -553,7 +553,8 @@ async function upsertWaterIntake(
       // when log rows were recorded with different containers.
       const logEntries = await measurementRepository.getWaterIntakeLogByDate(
         authenticatedUserId,
-        entryDate
+        entryDate,
+        'manual'
       );
       const requestedDrinks = Math.abs(changeDrinks);
       const entriesToRemove = Math.min(requestedDrinks, logEntries.length);

@@ -150,10 +150,10 @@ async function incrementWaterData(
   try {
     const query = `
       INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
-      VALUES ($1, $2, GREATEST(0, $3), $4, $5, $5, now(), now())
+      VALUES ($1, $2, GREATEST(0::numeric, $3::numeric), $4, $5, $5, now(), now())
       ON CONFLICT (user_id, entry_date, source)
       DO UPDATE SET
-        water_ml = GREATEST(0, water_intake.water_ml + $3),
+        water_ml = GREATEST(0::numeric, water_intake.water_ml + $3::numeric),
         updated_at = now(),
         updated_by_user_id = $5
       RETURNING *`;
@@ -175,9 +175,13 @@ async function getWaterIntakeByDate(userId: any, date: any, source = null) {
         'SELECT * FROM water_intake WHERE user_id = $1 AND entry_date = $2 AND source = $3';
       values = [userId, date, source];
     } else {
-      // Sum all sources for the day
-      query =
-        'SELECT SUM(water_ml) as water_ml FROM water_intake WHERE user_id = $1 AND entry_date = $2';
+      // Sum all sources for the day. `manual_ml` is broken out separately
+      // because only manually logged water can be decremented from the diary
+      // "-" control (synced provider rows are owned by their provider), so the
+      // UI needs the manual subtotal to know whether that control does anything.
+      query = `SELECT COALESCE(SUM(water_ml), 0) as water_ml,
+                      COALESCE(SUM(water_ml) FILTER (WHERE source = 'manual'), 0) as manual_ml
+               FROM water_intake WHERE user_id = $1 AND entry_date = $2`;
       values = [userId, date];
     }
     const result = await client.query(query, values);
@@ -1507,9 +1511,12 @@ async function upsertWaterIntakeSamples(
         // aggregate). Without this, the first keyed re-sync of that day would
         // insert a second row alongside the legacy one and double the total,
         // since ON CONFLICT can't match a row that has no source_id to
-        // conflict against. At most one such row can exist per
-        // (user, entry_date, source), since it originates from the
-        // water_intake table's own unique constraint on that triple.
+        // conflict against. Expected to be at most one such row per
+        // (user, entry_date, source), but that isn't schema-enforced, so the
+        // update is bounded to a single row via the ctid subquery — if more
+        // than one exists, only one gets adopted instead of stamping the
+        // same source_id onto multiple rows (which would trip the partial
+        // unique index on (user_id, source, source_id) and fail the batch).
         const adopted = await client.query(
           `UPDATE water_intake_entries
            SET source_id = $1,
@@ -1517,7 +1524,11 @@ async function upsertWaterIntakeSamples(
                container_id = $3,
                container_name = $4,
                logged_at = COALESCE($5, logged_at)
-           WHERE user_id = $6 AND source = $7 AND entry_date = $8 AND source_id IS NULL
+           WHERE ctid = (
+             SELECT ctid FROM water_intake_entries
+             WHERE user_id = $6 AND source = $7 AND entry_date = $8 AND source_id IS NULL
+             LIMIT 1
+           )
            RETURNING *`,
           [
             sample.sourceId,
@@ -1631,15 +1642,24 @@ async function getWaterIntakeLogsByDates(userId: string, dates: string[]) {
   }
 }
 
-async function getWaterIntakeLogByDate(userId: string, date: string) {
+async function getWaterIntakeLogByDate(
+  userId: string,
+  date: string,
+  source?: string | null
+) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
-       FROM water_intake_entries
-       WHERE user_id = $1 AND entry_date = $2
-       ORDER BY logged_at DESC`,
-      [userId, date]
+      source
+        ? `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+           FROM water_intake_entries
+           WHERE user_id = $1 AND entry_date = $2 AND source = $3
+           ORDER BY logged_at DESC`
+        : `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+           FROM water_intake_entries
+           WHERE user_id = $1 AND entry_date = $2
+           ORDER BY logged_at DESC`,
+      source ? [userId, date, source] : [userId, date]
     );
     return result.rows;
   } finally {
