@@ -1,6 +1,10 @@
 import { AppState } from 'react-native';
 import { HEALTH_METRICS, type HealthMetric } from '../HealthMetrics';
-import { syncHealthData, type HealthDataPayload } from './api/healthDataApi';
+import {
+  syncHealthData,
+  type HealthDataPayload,
+  type HealthDataSyncSummary,
+} from './api/healthDataApi';
 import { addLog } from './LogService';
 import { collectHealthData, type MetricSyncOutcome } from './shared/healthSyncEngine';
 import { isQuotaExceededError } from './shared/quotaError';
@@ -18,6 +22,7 @@ import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
 import {
   alignToLocalDayStart,
   buildBackfillWindows,
+  ceilToLocalDayStart,
   countLocalDays,
   enumerateDayAlignedWindows,
 } from '../utils/syncUtils';
@@ -140,12 +145,14 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
 
     if (checkpoint) {
       // A run interrupted by quota is DESIGNED to resume on a later day, possibly
-      // in another timezone — then the stored instants are no longer local
-      // midnights and would produce the partial-day windows this design forbids.
-      // Seam-day double-coverage from re-aligning is safe (delete-then-insert /
-      // upsert semantics server-side).
+      // in another timezone or across a DST shift — then the stored instants are
+      // no longer local midnights and would produce the partial-day windows this
+      // design forbids. The cursor is the lower edge of the already-covered span,
+      // so it rounds UP: the seam day gets re-imported, which is safe
+      // (delete-then-insert / upsert semantics server-side), whereas rounding it
+      // down would mark never-imported hours as covered and silently skip them.
       checkpoint.endEdge = alignToLocalDayStart(new Date(checkpoint.endEdge)).toISOString();
-      checkpoint.cursor = alignToLocalDayStart(new Date(checkpoint.cursor)).toISOString();
+      checkpoint.cursor = ceilToLocalDayStart(new Date(checkpoint.cursor)).toISOString();
       checkpoint.floor = alignToLocalDayStart(new Date(checkpoint.floor)).toISOString();
       recordsUploaded = checkpoint.recordsUploaded;
     }
@@ -325,12 +332,21 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
         if ((await getActiveServerConfig())?.id !== configId) {
           return { outcome: 'server-changed', recordsUploaded };
         }
+        let uploadSummary: HealthDataSyncSummary | undefined;
         try {
-          await syncHealthData(payload);
+          uploadSummary = await syncHealthData(payload);
         } catch (error) {
           return { outcome: 'upload-failed', error: getErrorMessage(error), recordsUploaded };
         }
-        recordsUploaded += payload.length;
+        const recordErrors = uploadSummary?.recordErrors ?? [];
+        if (recordErrors.length > 0) {
+          addLog(
+            `[Backfill] Server rejected ${recordErrors.length} of ${payload.length} record(s) in this window`,
+            'WARNING',
+            recordErrors.slice(0, 5).map(recordError => recordError.error),
+          );
+        }
+        recordsUploaded += payload.length - recordErrors.length;
       }
 
       // Per-record server rejections (recordErrors) never hold the checkpoint;

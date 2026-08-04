@@ -18,6 +18,16 @@ export const alignToLocalDayStart = (date: Date): Date => {
 };
 
 /**
+ * Returns a copy of `date` rounded up to the next local midnight (unchanged when
+ * already midnight-aligned). The lower edge of an already-covered span must round
+ * this way: rounding it down would mark hours that were never imported as covered.
+ */
+export const ceilToLocalDayStart = (date: Date): Date => {
+  const aligned = alignToLocalDayStart(date);
+  return aligned.getTime() === date.getTime() ? aligned : addLocalDays(aligned, 1);
+};
+
+/**
  * The read windows for one sync run. Raw/session reads use the exact requested
  * window; day-aggregated reads (cumulative totals, min/max/avg day statistics) use
  * the day-aligned start so complete daily values are sent, never partial slices.

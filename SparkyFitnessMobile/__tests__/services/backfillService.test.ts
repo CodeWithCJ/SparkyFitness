@@ -140,7 +140,10 @@ describe('runBackfill', () => {
           error: undefined,
         })),
     );
-    api.syncHealthData.mockResolvedValue({});
+    api.syncHealthData.mockImplementation(async (payload: unknown[]) => ({
+      recordsSent: payload.length,
+      recordErrors: [],
+    }));
   });
 
   afterEach(() => {
@@ -436,7 +439,11 @@ describe('runBackfill', () => {
     expect(result.recordsUploaded).toBe(6);
   });
 
-  test('resume re-aligns checkpoint instants to local midnight after a timezone change', async () => {
+  test('resume re-aligns checkpoint instants after a timezone change, rounding the cursor up', async () => {
+    // Stored instants are midnights of a timezone 7 hours ahead of the current
+    // one. The cursor bounds the already-covered span, so it must round UP to
+    // Jul 5 and re-import the seam day; rounding it down to Jul 4 would mark the
+    // never-imported 7 hours of Jul 4 as covered and silently skip them.
     const skewMs = 7 * 60 * 60 * 1000;
     await saveBackfillCheckpoint('server-1', inProgressCheckpoint({
       endEdge: new Date(AUG_3.getTime() + skewMs).toISOString(),
@@ -447,9 +454,27 @@ describe('runBackfill', () => {
     const result = await runBackfill(runOpts());
 
     expect(result.outcome).toBe('completed');
+    expect(engine.collectHealthData).toHaveBeenCalledTimes(1);
     const windows = engine.collectHealthData.mock.calls[0][2] as WindowsLike;
     expect(windows.sessionStart).toEqual(JUN_20);
-    expect(windows.end).toEqual(JUL_4);
+    expect(windows.end).toEqual(new Date(2026, 6, 5, 0, 0, 0, 0));
+  });
+
+  test('server-rejected records are not counted as written', async () => {
+    api.syncHealthData.mockImplementation(async (payload: unknown[]) => ({
+      recordsSent: payload.length,
+      recordErrors: [{ error: 'invalid entry' }],
+    }));
+
+    const result = await runBackfill(runOpts());
+
+    // Rejections never hold the checkpoint — the run still completes.
+    expect(result.outcome).toBe('completed');
+    // 3 records sent across 2 windows, 1 rejected per window.
+    expect(result.recordsUploaded).toBe(1);
+    const saved = await loadBackfillCheckpoint('server-1');
+    expect(saved?.status).toBe('done');
+    expect(saved?.recordsUploaded).toBe(1);
   });
 
   test('a done checkpoint short-circuits to completed without touching anything', async () => {

@@ -1,6 +1,7 @@
 import {
   getSyncStartDate,
   alignToLocalDayStart,
+  ceilToLocalDayStart,
   addLocalDays,
   countLocalDays,
   buildForegroundWindows,
@@ -18,6 +19,20 @@ describe('alignToLocalDayStart', () => {
 
     expect(aligned).toEqual(new Date(2026, 6, 2, 0, 0, 0, 0));
     expect(input.getHours()).toBe(15);
+  });
+});
+
+describe('ceilToLocalDayStart', () => {
+  test('rounds a mid-day instant up to the next local midnight', () => {
+    const input = new Date(2026, 6, 2, 15, 30, 45, 123);
+    expect(ceilToLocalDayStart(input)).toEqual(new Date(2026, 6, 3, 0, 0, 0, 0));
+    expect(input.getHours()).toBe(15);
+  });
+
+  test('leaves a midnight-aligned instant unchanged', () => {
+    expect(ceilToLocalDayStart(new Date(2026, 6, 2, 0, 0, 0, 0))).toEqual(
+      new Date(2026, 6, 2, 0, 0, 0, 0),
+    );
   });
 });
 
