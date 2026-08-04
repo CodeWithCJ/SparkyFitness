@@ -5,6 +5,7 @@ import {
   tryClaimAutoSync,
   isSyncClaimed,
   isBackfillRunning,
+  markSyncInFlight,
 } from '../../src/services/autoSyncCoordinator';
 import {
   loadBackfillCheckpoint,
@@ -218,6 +219,24 @@ describe('runBackfill', () => {
       expect(result.outcome).toBe('already-running');
     } finally {
       release?.();
+    }
+  });
+
+  test('returns already-running while a sync without the claim is in flight', async () => {
+    // The OS background task and manual Sync Now run without the auto-sync
+    // claim; the in-flight marker is the only thing excluding them.
+    const syncDone = markSyncInFlight();
+    try {
+      const result = await runBackfill(runOpts());
+
+      expect(result.outcome).toBe('already-running');
+      expect(healthService.readEarliestRecord).not.toHaveBeenCalled();
+      expect(engine.collectHealthData).not.toHaveBeenCalled();
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      // The refused run must not leave the claim held.
+      expect(isSyncClaimed()).toBe(false);
+    } finally {
+      syncDone();
     }
   });
 
@@ -463,6 +482,22 @@ describe('runBackfill', () => {
     expect(windows.end).toEqual(new Date(2026, 6, 5, 0, 0, 0, 0));
   });
 
+  test('a window with a very large record set uploads without hitting the argument limit', async () => {
+    engine.collectHealthData.mockImplementation(
+      async (_provider: unknown, metrics: MetricLike[]) => [{
+        metric: metrics[0],
+        status: 'fulfilled' as const,
+        data: Array.from({ length: 200_000 }, (_, i) => ({ type: 'Steps', date: String(i) })),
+        error: undefined,
+      }],
+    );
+
+    const result = await runBackfill(runOpts());
+
+    expect(result.outcome).toBe('completed');
+    expect(api.syncHealthData.mock.calls[0][0]).toHaveLength(200_000);
+  });
+
   test('server-rejected records are not counted as written', async () => {
     api.syncHealthData.mockImplementation(async (payload: unknown[]) => ({
       recordsSent: payload.length,
@@ -527,10 +562,9 @@ describe('runBackfill', () => {
     expect(removeSubscription).toHaveBeenCalled();
   });
 
-  test('windows where no metric has history yet fast-forward without reads or uploads', async () => {
-    // Weight-only run whose history starts Jul 20: window 2 [Jun 20, Jul 4) has no
-    // eligible metric... but the floor IS Weight's earliest, so make Steps the
-    // late starter instead: freeze both with Steps starting Jul 20.
+  test('metrics whose history starts later are dropped from older windows', async () => {
+    // Steps is frozen as the late starter (history from Jul 20), so window 2
+    // [Jun 20, Jul 4) must read Weight only.
     await saveBackfillCheckpoint('server-1', inProgressCheckpoint({
       cursor: AUG_3.toISOString(),
       earliestByRecordType: { Steps: WEIGHT_EARLIEST, Weight: STEPS_EARLIEST },

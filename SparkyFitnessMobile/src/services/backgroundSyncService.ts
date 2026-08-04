@@ -22,7 +22,7 @@ import {
 } from './storage';
 import { queryClient } from '../hooks/queryClient';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
-import { isBackfillRunning } from './autoSyncCoordinator';
+import { isBackfillRunning, markSyncInFlight } from './autoSyncCoordinator';
 import { listMedications, listEntries } from './api/medicationsApi';
 import { reconcileMedicationReminders } from './medicationReminderService';
 import { getTodayDate } from '../utils/dateUtils';
@@ -68,8 +68,10 @@ export const performBackgroundSync = async (taskId: string): Promise<void> => {
     return inflightSync;
   }
 
+  const syncDone = markSyncInFlight();
   inflightSync = performBackgroundSyncInternal(taskId).finally(() => {
     inflightSync = null;
+    syncDone();
   });
   return inflightSync;
 };
@@ -129,7 +131,12 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
       );
     } else if (outcome.status === 'fulfilled') {
       if (outcome.data.length > 0) {
-        allData.push(...outcome.data);
+        // Per-record push: spreading a day of per-sample records (e.g.
+        // continuous heart rate) into one call can exceed the engine's
+        // argument limit and throw RangeError.
+        for (const record of outcome.data) {
+          allData.push(record);
+        }
         collectedCounts.push(`${metric.id}: ${outcome.data.length}`);
       }
       if (outcome.error) {

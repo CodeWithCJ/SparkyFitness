@@ -2,7 +2,7 @@ import {
   triggerManualSync,
   flushPendingHealthSyncCacheRefresh,
 } from '../../src/services/backgroundSyncService';
-import { setBackfillRunning, tryClaimAutoSync } from '../../src/services/autoSyncCoordinator';
+import { setBackfillRunning, tryClaimAutoSync, isSyncInFlight } from '../../src/services/autoSyncCoordinator';
 import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
 import { TimeoutError } from '../../src/utils/concurrency';
 import { AppState } from 'react-native';
@@ -880,6 +880,17 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
       expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
       expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('marks a sync in flight for the whole run so a backfill cannot start mid-sync', async () => {
+      const run = triggerManualSync();
+      // Set synchronously on invocation, so a backfill starting at any await
+      // point during the run observes it.
+      expect(isSyncInFlight()).toBe(true);
+
+      await run;
+
+      expect(isSyncInFlight()).toBe(false);
     });
   });
 

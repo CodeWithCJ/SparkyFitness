@@ -45,6 +45,8 @@ const pausedReasonCopy = (outcome: BackfillOutcome | null, error?: string): stri
       return `Uploading to your server failed${error ? ` (${error})` : ''}. Check your connection and resume to retry.`;
     case 'window-failed':
       return `Reading health data failed${error ? ` (${error})` : ''}. Resume to retry from where it stopped.`;
+    case 'already-running':
+      return 'Another sync is running right now. Wait a moment for it to finish, then resume.';
     default:
       return null;
   }
@@ -60,6 +62,8 @@ const idleNoticeCopy = (outcome: BackfillOutcome | null): string | null => {
       return 'No active server is configured.';
     case 'server-changed':
       return 'The active server changed during the import, so it stopped. Start again to import into the current server.';
+    case 'already-running':
+      return 'Another sync is running right now. Wait a moment for it to finish, then start the import.';
     default:
       return null;
   }
@@ -161,6 +165,7 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
   const usesNativeHeader = useNativeIOSHeadersActive();
   const isAndroid = Platform.OS === 'android';
   const [isHealthStoreInitialized, setIsHealthStoreInitialized] = useState(false);
+  const [pauseRequested, setPauseRequested] = useState(false);
   const {
     status,
     progress,
@@ -183,8 +188,17 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
   // claim until its window boundary — the buttons must re-enable when it frees.
   const syncClaimed = useSyncExternalStore(subscribeSyncClaimed, isSyncClaimed);
 
-  const handleStart = useCallback(() => start(), [start]);
-  const handleCancel = useCallback(() => cancel(), [cancel]);
+  const handleStart = useCallback(() => {
+    setPauseRequested(false);
+    start();
+  }, [start]);
+  // cancel() only requests a stop; the run keeps going to its window boundary,
+  // so the button reflects the pending pause for the rest of the 'running'
+  // phase. Only start() re-enters that phase, and it resets the flag.
+  const handleCancel = useCallback(() => {
+    setPauseRequested(true);
+    cancel();
+  }, [cancel]);
   const handleStartOver = useCallback(() => startOver(), [startOver]);
 
   const header = useScreenHeader({ title: 'Import History', left: { kind: 'back' } });
@@ -315,9 +329,21 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
               </Text>
             )}
             <InfoNote text="Keep the app open and your device unlocked while the import runs." />
-            <Button variant="secondary" className="mt-6" onPress={handleCancel}>
-              <Text className="text-text-primary text-lg font-semibold">Pause Import</Text>
+            <Button
+              variant="secondary"
+              className="mt-6"
+              onPress={handleCancel}
+              disabled={pauseRequested}
+            >
+              <Text className="text-text-primary text-lg font-semibold">
+                {pauseRequested ? 'Pausing…' : 'Pause Import'}
+              </Text>
             </Button>
+            {pauseRequested && (
+              <Text className="text-text-muted text-xs mt-2 text-center">
+                Finishing up, then pausing.
+              </Text>
+            )}
           </View>
         )}
 
@@ -395,6 +421,11 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
             <Button variant="ghost" className="mt-6" onPress={handleStartOver} disabled={startDisabled}>
               <Text className="text-accent-primary text-base font-semibold">Start Over</Text>
             </Button>
+            {syncClaimed && (
+              <Text className="text-text-muted text-xs mt-2 text-center">
+                A sync is still finishing up. This will enable in a moment.
+              </Text>
+            )}
           </View>
         )}
       </ScrollView>

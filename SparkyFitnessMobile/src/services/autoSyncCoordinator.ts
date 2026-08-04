@@ -65,6 +65,28 @@ export const setBackfillRunning = (isRunning: boolean): void => {
 
 export const isBackfillRunning = (): boolean => backfillRunning;
 
+// Non-exclusive marker counting health syncs actually in flight. The exclusive
+// claim above cannot serve this purpose: the OS background task and manual
+// Sync Now run without it, and the observer paths claim-then-call, so holding
+// the claim says nothing about whether a sync is mid-run. The backfill checks
+// this after claiming so it never interleaves its reads and uploads with a
+// sync that started without the claim.
+let syncsInFlight = 0;
+
+/** Returns an idempotent done() the caller MUST call when the sync settles. */
+export const markSyncInFlight = (): (() => void) => {
+  syncsInFlight += 1;
+  let done = false;
+  return () => {
+    if (!done) {
+      done = true;
+      syncsInFlight -= 1;
+    }
+  };
+};
+
+export const isSyncInFlight = (): boolean => syncsInFlight > 0;
+
 export const setForegroundAutoSyncWindowOpen = (isOpen: boolean): void => {
   foregroundAutoSyncWindowOpen = isOpen;
 };

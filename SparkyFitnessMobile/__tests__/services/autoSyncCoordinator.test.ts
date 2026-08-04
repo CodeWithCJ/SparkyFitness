@@ -7,6 +7,8 @@ import {
   isForegroundAutoSyncWindowOpen,
   shouldRunForegroundResumeAutoSync,
   recordAutoSyncTime,
+  markSyncInFlight,
+  isSyncInFlight,
 } from '../../src/services/autoSyncCoordinator';
 
 const CONFIG_ID = 'config-1';
@@ -108,6 +110,34 @@ describe('autoSyncCoordinator', () => {
       tryClaimAutoSync()?.();
 
       expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sync in-flight marker', () => {
+    it('counts overlapping syncs and clears once all settle', () => {
+      expect(isSyncInFlight()).toBe(false);
+
+      const doneFirst = markSyncInFlight();
+      const doneSecond = markSyncInFlight();
+      expect(isSyncInFlight()).toBe(true);
+
+      doneFirst();
+      expect(isSyncInFlight()).toBe(true);
+
+      doneSecond();
+      expect(isSyncInFlight()).toBe(false);
+    });
+
+    it('done() is idempotent and never uncounts another sync', () => {
+      const doneFirst = markSyncInFlight();
+      const doneSecond = markSyncInFlight();
+
+      doneFirst();
+      doneFirst();
+      expect(isSyncInFlight()).toBe(true);
+
+      doneSecond();
+      expect(isSyncInFlight()).toBe(false);
     });
   });
 

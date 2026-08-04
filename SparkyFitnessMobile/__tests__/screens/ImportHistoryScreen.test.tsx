@@ -120,12 +120,13 @@ describe('ImportHistoryScreen', () => {
   test('idle: shows the enabled data-type count only once it has loaded', () => {
     mockUseBackfillRunner.mockReturnValue(runner({ enabledMetricCount: null }));
     const loading = renderScreen();
-    expect(loading.queryByText(/\d+ enabled/)).toBeNull();
+    expect(loading.getByText('Data types enabled')).toBeTruthy();
+    expect(loading.queryByText('7')).toBeNull();
     loading.unmount();
 
     mockUseBackfillRunner.mockReturnValue(runner({ enabledMetricCount: 7 }));
     const loaded = renderScreen();
-    expect(loaded.getByText(/7/)).toBeTruthy();
+    expect(loaded.getByText('7')).toBeTruthy();
   });
 
   test('idle: Start stays disabled while another sync holds the claim', async () => {
@@ -173,6 +174,12 @@ describe('ImportHistoryScreen', () => {
 
     expect(mockUseKeepAwake).toHaveBeenCalledWith('import-history');
     fireEvent.press(getByText('Pause Import'));
+    expect(state.cancel).toHaveBeenCalledTimes(1);
+
+    // cancel() only stops the run at the next window boundary; the button
+    // reflects the pending pause and blocks repeat presses until then.
+    expect(getByText('Pausing…')).toBeTruthy();
+    fireEvent.press(getByText('Pausing…'));
     expect(state.cancel).toHaveBeenCalledTimes(1);
   });
 

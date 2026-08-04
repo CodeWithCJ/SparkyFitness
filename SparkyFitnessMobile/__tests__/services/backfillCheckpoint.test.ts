@@ -63,6 +63,12 @@ describe('backfillCheckpoint', () => {
     await expect(loadBackfillCheckpoint('server-1')).resolves.toBeNull();
   });
 
+  test('clear swallows storage failures instead of rejecting', async () => {
+    jest.spyOn(AsyncStorage, 'removeItem').mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(clearBackfillCheckpoint('server-1')).resolves.toBeUndefined();
+  });
+
   test('clear removes only the given config checkpoint', async () => {
     await saveBackfillCheckpoint('server-1', checkpoint());
     await saveBackfillCheckpoint('server-2', checkpoint());

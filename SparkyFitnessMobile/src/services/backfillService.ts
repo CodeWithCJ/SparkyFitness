@@ -17,7 +17,7 @@ import {
   requestHealthPermissions,
 } from './healthConnectService';
 import { getActiveServerConfig } from './storage';
-import { tryClaimAutoSync, setBackfillRunning } from './autoSyncCoordinator';
+import { tryClaimAutoSync, setBackfillRunning, isSyncInFlight } from './autoSyncCoordinator';
 import { queryClient } from '../hooks/queryClient';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
 import {
@@ -102,6 +102,12 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
 
   const release = tryClaimAutoSync();
   if (!release) {
+    return { outcome: 'already-running', recordsUploaded: 0 };
+  }
+  // The claim alone cannot exclude syncs that run without it (OS background
+  // task, manual Sync Now); never interleave backfill reads and uploads with one.
+  if (isSyncInFlight()) {
+    release();
     return { outcome: 'already-running', recordsUploaded: 0 };
   }
   setBackfillRunning(true);
@@ -335,10 +341,13 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
         return { outcome: 'window-failed', error: issue.error, recordsUploaded };
       }
 
+      // Per-record push: spreading a 30-day window of per-sample records (e.g.
+      // continuous heart rate) into one call can exceed the engine's argument
+      // limit and throw RangeError.
       const payload: HealthDataPayload = [];
       for (const outcome of outcomes) {
-        if (outcome.data.length > 0) {
-          payload.push(...outcome.data);
+        for (const record of outcome.data) {
+          payload.push(record);
         }
       }
 

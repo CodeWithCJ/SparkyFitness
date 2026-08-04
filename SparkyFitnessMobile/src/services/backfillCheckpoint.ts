@@ -45,5 +45,9 @@ export const saveBackfillCheckpoint = async (
 };
 
 export const clearBackfillCheckpoint = async (configId: string): Promise<void> => {
-  await AsyncStorage.removeItem(backfillKeyForConfig(configId));
+  try {
+    await AsyncStorage.removeItem(backfillKeyForConfig(configId));
+  } catch (error) {
+    addLog(`[Backfill] Failed to clear checkpoint: ${getErrorMessage(error)}`, 'ERROR');
+  }
 };
