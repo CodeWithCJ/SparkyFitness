@@ -744,14 +744,20 @@ const waterHandler: HealthTypeHandler = {
         index: number;
         entry: PreparedHealthEntry['entry'];
         parsedDate: string;
+        waterMl: number;
       }>
     >();
     for (let i = 0; i < entries.length; i++) {
       const item = entries[i];
       const source = (item.entry.source as string) || 'manual';
-      const waterValue = parseInt(String(item.entry.value), 10);
-      if (isNaN(waterValue) || waterValue <= 0) {
-        outcomes[i] = { status: 'error', error: 'Invalid water value' };
+      const waterValue = Number(item.entry.value);
+      // Match handle()'s validation (accepts 0 and negative integers, rejects
+      // non-integers) so the same payload behaves identically on both paths.
+      if (!Number.isInteger(waterValue)) {
+        outcomes[i] = {
+          status: 'error',
+          error: 'Invalid value for water. Must be an integer.',
+        };
         continue;
       }
       const existing = entriesBySource.get(source) || [];
@@ -759,6 +765,7 @@ const waterHandler: HealthTypeHandler = {
         index: i,
         entry: item.entry,
         parsedDate: item.parsedDate,
+        waterMl: waterValue,
       });
       entriesBySource.set(source, existing);
     }
@@ -776,7 +783,7 @@ const waterHandler: HealthTypeHandler = {
 
       const samples = group.map((g) => ({
         entryDate: g.parsedDate,
-        waterMl: parseInt(String(g.entry.value), 10),
+        waterMl: g.waterMl,
         containerId: primaryContainerId,
         containerName: primaryContainerName,
         source,
@@ -797,7 +804,10 @@ const waterHandler: HealthTypeHandler = {
           samples
         );
         group.forEach((g, pos) => {
-          outcomes[g.index] = { status: 'success', data: written?.[pos] };
+          const row = written?.[pos];
+          outcomes[g.index] = row
+            ? { status: 'success', data: row }
+            : { status: 'error', error: 'Water sample was not persisted' };
         });
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);

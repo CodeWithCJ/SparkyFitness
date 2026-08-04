@@ -70,14 +70,31 @@ function resolveHealthEntryDate(entry: any, fallbackTimezone: any) {
     // comes from the trusted `date` string above.
     const tsObj = entry.timestamp ? new Date(entry.timestamp) : null;
     const hasValidTimestamp = tsObj !== null && !isNaN(tsObj.getTime());
+    // Apply the same record-timezone, offset, then account-fallback
+    // precedence used below (step 4) for entryHour, so an hourly bucket
+    // isn't computed in the wrong zone just because the day was pre-bucketed.
+    let entryHour = 0;
+    if (hasValidTimestamp) {
+      if (entry.record_timezone && isValidTimeZone(entry.record_timezone)) {
+        entryHour = instantHourMinute(tsObj, entry.record_timezone).hour;
+      } else if (
+        entry.record_utc_offset_minutes !== null &&
+        typeof entry.record_utc_offset_minutes === 'number'
+      ) {
+        entryHour = instantHourMinuteWithOffset(
+          tsObj,
+          entry.record_utc_offset_minutes
+        ).hour;
+      } else {
+        entryHour = instantHourMinute(tsObj, fallbackTimezone).hour;
+      }
+    }
     return {
       parsedDate: basisField,
       entryTimestamp: hasValidTimestamp
         ? tsObj.toISOString()
         : basisDate.toISOString(),
-      entryHour: hasValidTimestamp
-        ? instantHourMinute(tsObj, fallbackTimezone).hour
-        : 0,
+      entryHour,
     };
   }
   // 3. Determine the timestamp for entryTimestamp (prefer explicit timestamp)
