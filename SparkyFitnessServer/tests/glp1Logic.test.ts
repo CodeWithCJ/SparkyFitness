@@ -2,13 +2,34 @@ import { describe, expect, it } from 'vitest';
 import {
   resolveGlp1Profile,
   eliminationRate,
+  absorptionRate,
   serumLevelAt,
   simulateSerumCurve,
   suggestNextSite,
+  GLP1_DRUG_PROFILES,
   INJECTION_SITES,
   SITE_REST_DAYS,
   type DoseEvent,
 } from '@workspace/shared';
+
+function singleDosePeakDay(
+  halfLifeDays: number,
+  tMaxDays: number,
+  step = 0.005
+): number {
+  const doses: DoseEvent[] = [{ day: 0, doseMg: 1 }];
+  const profile = { halfLifeDays, tMaxDays };
+  let bestDay = 0;
+  let bestLevel = -Infinity;
+  for (let day = 0; day <= halfLifeDays * 6; day += step) {
+    const level = serumLevelAt(day, doses, profile);
+    if (level > bestLevel) {
+      bestLevel = level;
+      bestDay = day;
+    }
+  }
+  return bestDay;
+}
 
 describe('GLP-1 PK helpers', () => {
   it('resolves a profile by id and by brand name', () => {
@@ -20,6 +41,44 @@ describe('GLP-1 PK helpers', () => {
 
   it('derives elimination rate from half-life (ln2 / t½)', () => {
     expect(eliminationRate(7)).toBeCloseTo(Math.LN2 / 7, 6);
+  });
+
+  it('derives an absorption rate that puts the single-dose peak at tMax', () => {
+    for (const [halfLifeDays, tMaxDays] of [
+      [7, 1.5],
+      [5, 1.5],
+      [4.7, 2],
+      [0.54, 0.46],
+      [7, 3],
+      [1, 0.25],
+    ]) {
+      const ka = absorptionRate(halfLifeDays, tMaxDays);
+      const ke = eliminationRate(halfLifeDays);
+      expect(ka).toBeGreaterThan(ke);
+      expect(Math.log(ka / ke) / (ka - ke)).toBeCloseTo(tMaxDays, 4);
+    }
+  });
+
+  it('peaks at the profile tMax for every shipped drug profile', () => {
+    for (const profile of Object.values(GLP1_DRUG_PROFILES)) {
+      const peak = singleDosePeakDay(profile.halfLifeDays, profile.tMaxDays);
+      expect(Math.abs(peak - profile.tMaxDays)).toBeLessThanOrEqual(0.05);
+    }
+  });
+
+  it('falls back to the slowest supported absorption when tMax is unreachable', () => {
+    const halfLifeDays = 7;
+    const ke = eliminationRate(halfLifeDays);
+    const unreachable = 1 / ke + 5;
+    const ka = absorptionRate(halfLifeDays, unreachable);
+    expect(ka).toBeGreaterThan(ke);
+    expect(Number.isFinite(ka)).toBe(true);
+  });
+
+  it('falls back when tMax is zero or not a number', () => {
+    const ke = eliminationRate(7);
+    expect(absorptionRate(7, 0)).toBeCloseTo(ke * 4, 6);
+    expect(absorptionRate(7, Number.NaN)).toBeCloseTo(ke * 4, 6);
   });
 
   it('serum level is zero before the first dose and positive after', () => {

@@ -95,6 +95,43 @@ export function eliminationRate(halfLifeDays: number): number {
   return Math.LN2 / halfLifeDays;
 }
 
+const absorptionRateCache = new Map<string, number>();
+
+/** First-order absorption rate constant (per day) placing the single-dose peak at `tMaxDays`. */
+export function absorptionRate(halfLifeDays: number, tMaxDays: number): number {
+  const ke = eliminationRate(halfLifeDays);
+  if (!(tMaxDays > 0) || !Number.isFinite(tMaxDays)) return ke * 4;
+
+  const cacheKey = `${halfLifeDays}:${tMaxDays}`;
+  const cached = absorptionRateCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  const peakAt = (ka: number) => Math.log(ka / ke) / (ka - ke);
+
+  let lo = ke * 1.000001;
+  let hi = ke * 2;
+  let guard = 0;
+  while (peakAt(hi) > tMaxDays && guard < 200) {
+    hi *= 2;
+    guard += 1;
+  }
+
+  let ka: number;
+  if (peakAt(lo) < tMaxDays) {
+    ka = lo;
+  } else {
+    for (let i = 0; i < 100; i += 1) {
+      const mid = (lo + hi) / 2;
+      if (peakAt(mid) > tMaxDays) lo = mid;
+      else hi = mid;
+    }
+    ka = (lo + hi) / 2;
+  }
+
+  absorptionRateCache.set(cacheKey, ka);
+  return ka;
+}
+
 export interface DoseEvent {
   /** day index (can be fractional) when the dose was administered */
   day: number;
@@ -113,11 +150,7 @@ export function serumLevelAt(
   profile: Pick<Glp1DrugProfile, "halfLifeDays" | "tMaxDays">,
 ): number {
   const ke = eliminationRate(profile.halfLifeDays);
-  // Absorption rate: derived so the single-dose peak lands near tMax.
-  const ka =
-    profile.tMaxDays > 0
-      ? Math.max(ke * 1.5, Math.LN2 / profile.tMaxDays)
-      : ke * 4;
+  const ka = absorptionRate(profile.halfLifeDays, profile.tMaxDays);
   let level = 0;
   for (const d of doses) {
     const t = day - d.day;
