@@ -135,7 +135,7 @@ import MedicationReminderReconciler from './src/components/MedicationReminderRec
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useAppPreferencesStore } from './src/stores/appPreferencesStore';
-import { applyLanguagePreference } from './src/localization';
+import { syncAppLanguageFromSystem } from './src/localization';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 
 SplashScreen.preventAutoHideAsync();
@@ -275,7 +275,7 @@ function AppContent() {
     if (languagePreference !== 'system') return;
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void applyLanguagePreference('system');
+        void syncAppLanguageFromSystem();
       }
     });
     return () => subscription.remove();

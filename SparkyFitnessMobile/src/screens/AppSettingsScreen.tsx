@@ -18,7 +18,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
-  applyLanguagePreference,
+  setAppLanguagePreference,
   type LanguagePreference,
 } from '../localization';
 
@@ -43,16 +43,14 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
     (s) => s.setLiquidGlassTabBarEnabled,
   );
   const languagePreference = useAppPreferencesStore((s) => s.languagePreference);
-  const setLanguagePreference = useAppPreferencesStore((s) => s.setLanguagePreference);
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const handleLanguageSelect = useCallback(
     (value: LanguagePreference) => {
-      setLanguagePreference(value);
-      void applyLanguagePreference(value);
+      void setAppLanguagePreference(value);
     },
-    [setLanguagePreference],
+    [],
   );
 
   const languagePickerOptions = [

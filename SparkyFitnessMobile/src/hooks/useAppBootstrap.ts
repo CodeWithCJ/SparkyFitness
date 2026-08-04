@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 
-import { initializeI18n } from '../localization';
+import { initializeAppLanguage } from '../localization';
 import { getActiveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 
@@ -22,7 +22,7 @@ export function useAppBootstrap(): AppBootstrapResult {
 
     const determine = async () => {
       try {
-        await initializeI18n();
+        await initializeAppLanguage();
         if (cancelled) return;
 
         const config = await getActiveServerConfig();

@@ -1,4 +1,11 @@
 export {
+  getNativeApplicationLanguage,
+  initializeAppLanguage,
+  setAppLanguagePreference,
+  syncAppLanguageFromSystem,
+  type NativeLanguageValue,
+} from './appLanguage';
+export {
   SUPPORTED_LANGUAGES,
   applyLanguagePreference,
   formatLocalizedNumber,

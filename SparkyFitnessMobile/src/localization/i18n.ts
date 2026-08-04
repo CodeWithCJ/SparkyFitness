@@ -29,7 +29,7 @@ const I18N_INIT_OPTIONS = {
   },
 };
 
-function normalizeLanguage(language: string | null | undefined): SupportedLanguage {
+export function normalizeLanguage(language: string | null | undefined): SupportedLanguage {
   return language?.toLowerCase().startsWith('pl') ? 'pl' : 'en';
 }
 
@@ -67,13 +67,17 @@ async function initI18nLanguage(language: SupportedLanguage): Promise<void> {
 
 let initPromise: Promise<void> | null = null;
 
-export async function initializeI18n(): Promise<void> {
+export async function initializeI18n(language?: SupportedLanguage): Promise<void> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    let initialLanguage: SupportedLanguage = 'en';
+    let initialLanguage: SupportedLanguage = language ?? 'en';
 
     try {
+      if (language !== undefined) {
+        await initI18nLanguage(initialLanguage);
+        return;
+      }
       const raw = await AsyncStorage.getItem(STORE_KEY);
       if (raw) {
         const parsed = safeJsonParse(raw);

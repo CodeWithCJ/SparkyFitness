@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppBootstrap } from '../../src/hooks/useAppBootstrap';
 
 jest.mock('../../src/localization', () => ({
-  initializeI18n: jest.fn(() => Promise.resolve()),
+  initializeAppLanguage: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../../src/services/storage', () => ({
@@ -22,11 +22,11 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-import { initializeI18n } from '../../src/localization';
+import { initializeAppLanguage } from '../../src/localization';
 import { getActiveServerConfig } from '../../src/services/storage';
 import * as SplashScreen from 'expo-splash-screen';
 
-const mockInitializeI18n = initializeI18n as jest.MockedFunction<typeof initializeI18n>;
+const mockInitializeAppLanguage = initializeAppLanguage as jest.MockedFunction<typeof initializeAppLanguage>;
 const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<typeof getActiveServerConfig>;
 const mockSplashScreen = SplashScreen as jest.Mocked<typeof SplashScreen>;
 
@@ -50,17 +50,17 @@ function t(key: string, lang: string): string {
 describe('useAppBootstrap', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockInitializeI18n.mockResolvedValue(undefined);
+    mockInitializeAppLanguage.mockResolvedValue('en');
     mockGetActiveServerConfig.mockResolvedValue(null);
   });
 
   it('does not set initialRoute before i18n initialization completes', async () => {
-    mockInitializeI18n.mockReturnValue(new Promise<void>(() => {}));
+    mockInitializeAppLanguage.mockReturnValue(new Promise<never>(() => {}));
 
     const { result } = renderHook(() => useAppBootstrap());
 
     await waitFor(() => {
-      expect(mockInitializeI18n).toHaveBeenCalledTimes(1);
+      expect(mockInitializeAppLanguage).toHaveBeenCalledTimes(1);
     });
 
     expect(result.current.initialRoute).toBeNull();
@@ -93,7 +93,7 @@ describe('useAppBootstrap', () => {
   });
 
   it('continues with fallback when initialization is rejected', async () => {
-    mockInitializeI18n.mockRejectedValue(new Error('i18n init failed'));
+    mockInitializeAppLanguage.mockRejectedValue(new Error('language init failed'));
 
     const { result } = renderHook(() => useAppBootstrap());
 
@@ -103,7 +103,7 @@ describe('useAppBootstrap', () => {
   });
 
   it('does not hide splash screen before i18n is ready', () => {
-    mockInitializeI18n.mockReturnValue(new Promise<void>(() => {}));
+    mockInitializeAppLanguage.mockReturnValue(new Promise<never>(() => {}));
 
     renderHook(() => useAppBootstrap());
 
@@ -121,7 +121,7 @@ describe('useAppBootstrap', () => {
   });
 
   it('hides splash screen even when initialization is rejected', async () => {
-    mockInitializeI18n.mockRejectedValue(new Error('i18n init failed'));
+    mockInitializeAppLanguage.mockRejectedValue(new Error('language init failed'));
 
     renderHook(() => useAppBootstrap());
 
@@ -130,7 +130,7 @@ describe('useAppBootstrap', () => {
     });
   });
 
-  it('does not trigger a second initializeI18n call on re-render', async () => {
+  it('does not trigger a second language initialization on re-render', async () => {
     mockGetActiveServerConfig.mockResolvedValue(null);
 
     const { result, rerender } = renderHook(() => useAppBootstrap());
@@ -139,11 +139,11 @@ describe('useAppBootstrap', () => {
       expect(result.current.initialRoute).toBe('Onboarding');
     });
 
-    const callsAfterFirstComplete = mockInitializeI18n.mock.calls.length;
+    const callsAfterFirstComplete = mockInitializeAppLanguage.mock.calls.length;
 
     rerender({});
 
-    expect(mockInitializeI18n).toHaveBeenCalledTimes(callsAfterFirstComplete);
+    expect(mockInitializeAppLanguage).toHaveBeenCalledTimes(callsAfterFirstComplete);
   });
 
   it('language change does not remount the navigator (real NavigationContainer)', async () => {
@@ -216,13 +216,13 @@ describe('useAppBootstrap', () => {
     });
 
     const initialRouteBefore = result.current.initialRoute;
-    const initCallsBefore = mockInitializeI18n.mock.calls.length;
+    const initCallsBefore = mockInitializeAppLanguage.mock.calls.length;
     const configCallsBefore = mockGetActiveServerConfig.mock.calls.length;
 
     rerender({});
 
     expect(result.current.initialRoute).toBe(initialRouteBefore);
-    expect(mockInitializeI18n).toHaveBeenCalledTimes(initCallsBefore);
+    expect(mockInitializeAppLanguage).toHaveBeenCalledTimes(initCallsBefore);
     expect(mockGetActiveServerConfig).toHaveBeenCalledTimes(configCallsBefore);
   });
 });

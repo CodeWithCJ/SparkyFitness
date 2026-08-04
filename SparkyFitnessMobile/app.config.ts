@@ -167,6 +167,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         },
       ],
       './plugins/withGlanceAndroidSupport',
+      './plugins/withAppLanguage',
       './plugins/withCalorieWidget',
       './plugins/withExactAlarmModule',
       './plugins/withEnrichedMarkdownNoMath',

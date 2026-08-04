@@ -6,7 +6,7 @@ import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
-import { applyLanguagePreference } from '../../src/localization';
+import { setAppLanguagePreference } from '../../src/localization';
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
   const ReactNative = require('react-native');
@@ -92,14 +92,17 @@ jest.mock('../../src/localization', () => {
   const actual = jest.requireActual('../../src/localization');
   return {
     ...actual,
-    applyLanguagePreference: jest.fn(async (value: 'en' | 'pl' | 'system') => {
+    setAppLanguagePreference: jest.fn(async (value: 'en' | 'pl' | 'system') => {
+      const { useAppPreferencesStore } = require('../../src/stores/appPreferencesStore');
+      useAppPreferencesStore.getState().setLanguagePreference(value);
       globalThis.__I18N_LANG = value === 'system' ? 'en' : value;
+      return value === 'system' ? 'en' : value;
     }),
   };
 });
 
-const mockApplyLanguagePreference = applyLanguagePreference as jest.MockedFunction<
-  typeof applyLanguagePreference
+const mockSetAppLanguagePreference = setAppLanguagePreference as jest.MockedFunction<
+  typeof setAppLanguagePreference
 >;
 
 const route = { params: {} } as never;
@@ -181,7 +184,7 @@ describe('AppSettingsScreen localization', () => {
 
     await waitFor(() => {
       expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
-      expect(mockApplyLanguagePreference).toHaveBeenCalledWith('pl');
+      expect(mockSetAppLanguagePreference).toHaveBeenCalledWith('pl');
       expect(screen.getAllByText('Język').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Motyw').length).toBeGreaterThan(0);
     });
