@@ -268,6 +268,25 @@ describe('Medication Routes V2', () => {
       );
     });
 
+    // The guard runs ahead of each route's UuidParamSchema and its lookups compare
+    // against uuid columns, so a malformed id must not reach the database. It should
+    // fall through to the route's own validation and still produce a 400.
+    it.each([
+      ['put', '/api/v2/medications/schedules/not-a-uuid'],
+      ['delete', '/api/v2/medications/schedules/not-a-uuid'],
+      ['put', '/api/v2/medications/entries/not-a-uuid'],
+    ])('returns 400 for a malformed id on %s %s', async (method, url) => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+
+      const res = await (method === 'put'
+        ? request(app).put(url).set('Cookie', cookie).send({ dose_amount: 3 })
+        : request(app).delete(url).set('Cookie', cookie));
+
+      expect(res.statusCode).toBe(400);
+      expect(canAccessUserData).not.toHaveBeenCalled();
+    });
+
     it('leaves plain medication dose logging ungated', async () => {
       supplementLookup.is_supplement = false;
       vi.mocked(canAccessUserData).mockResolvedValue(false);

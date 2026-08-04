@@ -96,6 +96,15 @@ const stripNutrientFieldsWithoutDiaryAccess = ({
 const oneParam = (value: string | string[] | undefined): string | undefined =>
   Array.isArray(value) ? value[0] : value;
 
+// The guard below runs ahead of each route's own UuidParamSchema validation, and its
+// lookups compare against uuid columns. A malformed id would therefore reach Postgres
+// and raise instead of returning the route's normal 400, so ids are shape-checked here
+// and anything invalid is passed straight through to that existing validation.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const asUuid = (value: string | undefined): string | undefined =>
+  value !== undefined && UUID_RE.test(value) ? value : undefined;
+
 const resolveIsSupplement = async (
   userId: string,
   {
@@ -620,21 +629,21 @@ router.get('/entries', listEntries);
 router.post(
   '/entries',
   requireDiaryForSupplementDose((req) => ({
-    medicationId: req.body?.medication_id as string | undefined,
+    medicationId: asUuid(req.body?.medication_id as string | undefined),
   })),
   createEntry
 );
 router.put(
   '/entries/:id',
   requireDiaryForSupplementDose((req) => ({
-    entryId: oneParam(req.params.id),
+    entryId: asUuid(oneParam(req.params.id)),
   })),
   updateEntry
 );
 router.delete(
   '/entries/:id',
   requireDiaryForSupplementDose((req) => ({
-    entryId: oneParam(req.params.id),
+    entryId: asUuid(oneParam(req.params.id)),
   })),
   deleteEntry
 );
@@ -772,14 +781,14 @@ const deleteSchedule: RequestHandler = async (req, res, next) => {
 router.post(
   '/:medicationId/schedules',
   requireDiaryForSupplementDose((req) => ({
-    medicationId: oneParam(req.params.medicationId),
+    medicationId: asUuid(oneParam(req.params.medicationId)),
   })),
   addSchedule
 );
 router.put(
   '/schedules/:id',
   requireDiaryForSupplementDose((req) => ({
-    scheduleId: oneParam(req.params.id),
+    scheduleId: asUuid(oneParam(req.params.id)),
   })),
   updateSchedule
 );
@@ -789,7 +798,7 @@ router.delete(
   // medication dose. That changes the multiplier applied to a supplement's nutrients
   // just as editing it does, so it carries the same gate.
   requireDiaryForSupplementDose((req) => ({
-    scheduleId: oneParam(req.params.id),
+    scheduleId: asUuid(oneParam(req.params.id)),
   })),
   deleteSchedule
 );
