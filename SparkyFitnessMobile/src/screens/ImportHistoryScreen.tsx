@@ -4,14 +4,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
 
 import Button from '../components/ui/Button';
+import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { initHealthConnect } from '../services/healthConnectService';
 import { isSyncClaimed, subscribeSyncClaimed } from '../services/autoSyncCoordinator';
 import { useBackfillRunner } from '../hooks/useBackfillRunner';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { countLocalDays } from '../utils/syncUtils';
+import { formatDuration } from '../utils/workoutSession';
 import type { BackfillOutcome } from '../services/backfillService';
 import type { RootStackScreenProps } from '../types/navigation';
+import Icon, { type IconName } from '../components/Icon';
+import { useCSSVariable } from 'uniwind';
 
 type ImportHistoryScreenProps = RootStackScreenProps<'ImportHistory'>;
 
@@ -24,7 +29,9 @@ const KeepAwakeLock: React.FC = () => {
 
 const healthSourceName = Platform.OS === 'android' ? 'Health Connect' : 'Apple Health';
 
-const interruptionCopy = (outcome: BackfillOutcome | null, error?: string): string => {
+/** Why the run stopped, for abnormal stops only; a plain manual pause needs no
+ *  explanation beyond the paused UI itself. */
+const pausedReasonCopy = (outcome: BackfillOutcome | null, error?: string): string | null => {
   switch (outcome) {
     case 'quota':
       return `${healthSourceName}'s daily read limit was reached. Your progress is saved — resume tomorrow to continue where you left off.`;
@@ -38,10 +45,8 @@ const interruptionCopy = (outcome: BackfillOutcome | null, error?: string): stri
       return `Uploading to your server failed${error ? ` (${error})` : ''}. Check your connection and resume to retry.`;
     case 'window-failed':
       return `Reading health data failed${error ? ` (${error})` : ''}. Resume to retry from where it stopped.`;
-    case 'cancelled':
-      return 'Import paused. Resume anytime to continue where you left off.';
     default:
-      return 'A previous import was interrupted partway. Resume anytime to continue where it left off.';
+      return null;
   }
 };
 
@@ -63,6 +68,90 @@ const idleNoticeCopy = (outcome: BackfillOutcome | null): string | null => {
 const monthYearLabel = (date: Date): string =>
   date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
+const timeRemainingLabel = (ms: number): string => {
+  const minutes = ms / 60_000;
+  if (minutes < 1) return 'Under a minute';
+  return formatDuration(minutes);
+};
+
+const InfoNote: React.FC<{ icon?: IconName; text: string }> = ({ icon = 'info-circle', text }) => {
+  const textSecondary = useCSSVariable('--color-text-secondary') as string;
+  return (
+    <View className="flex-row items-center gap-2 mt-5 px-1">
+      <Icon name={icon} size={18} color={textSecondary} />
+      <Text className="text-text-secondary text-sm flex-1">{text}</Text>
+    </View>
+  );
+};
+
+interface ProgressSummaryProps {
+  importedDays: number;
+  totalDays: number;
+  /** Start of the window being imported (or resumed next); null while unknown. */
+  windowStart: Date | null;
+  recordsUploaded: number;
+  /** null renders an em dash — unknown pace, or a paused run. */
+  timeRemaining: string | null;
+  paused: boolean;
+}
+
+const ProgressSummary: React.FC<ProgressSummaryProps> = ({
+  importedDays,
+  totalDays,
+  windowStart,
+  recordsUploaded,
+  timeRemaining,
+  paused,
+}) => {
+  const percent = totalDays > 0 ? Math.min(100, Math.round((importedDays / totalDays) * 100)) : 0;
+  return (
+    <View>
+      <View className="flex-row items-baseline gap-2 mt-2">
+        <Text className="text-5xl font-extrabold text-text-primary">
+          {importedDays.toLocaleString()}
+        </Text>
+        <Text className="text-xl text-text-muted">of {totalDays.toLocaleString()} days</Text>
+      </View>
+      <View className="flex-row items-center justify-between mt-6">
+        <Text className="text-base text-text-primary">
+          {windowStart ? `Around ${monthYearLabel(windowStart)}` : ' '}
+        </Text>
+        <Text
+          className={`text-base font-medium ${paused ? 'text-text-muted' : 'text-text-secondary'}`}
+        >
+          {percent}%
+        </Text>
+      </View>
+      <View className="h-2 bg-progress-track rounded-full mt-2 overflow-hidden">
+        <View
+          className={`h-2 rounded-full ${paused ? 'bg-text-muted' : 'bg-accent-primary'}`}
+          style={{ width: `${percent}%` }}
+        />
+      </View>
+      <SettingsRowGroup className="mt-6 mb-0">
+        <SettingsRow
+          title="Records written"
+          rightAccessory={
+            <Text className="text-base font-semibold text-text-primary">
+              {recordsUploaded.toLocaleString()}
+            </Text>
+          }
+        />
+        <SettingsRow
+          title="Time remaining"
+          rightAccessory={
+            timeRemaining ? (
+              <Text className="text-base font-semibold text-text-primary">{timeRemaining}</Text>
+            ) : (
+              <Text className="text-base text-text-muted">—</Text>
+            )
+          }
+        />
+      </SettingsRowGroup>
+    </View>
+  );
+};
+
 const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -76,6 +165,8 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
     lastOutcome,
     lastError,
     frozenSelectionDiffers,
+    enabledMetricCount,
+    estimatedMsRemaining,
     start,
     cancel,
     startOver,
@@ -97,10 +188,28 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
 
   const startDisabled = !isHealthStoreInitialized || syncClaimed;
   const idleNotice = idleNoticeCopy(lastOutcome);
-  const progressPercent =
-    progress && progress.totalDays > 0
-      ? Math.min(100, Math.round((progress.importedDays / progress.totalDays) * 100))
-      : 0;
+
+  // Live progress while a run is importing; the checkpoint carries the same
+  // numbers across a remount so a paused run still shows where it stopped.
+  const importStats =
+    progress?.phase === 'importing'
+      ? {
+          importedDays: progress.importedDays,
+          totalDays: progress.totalDays,
+          windowStart:
+            progress.currentWindow?.start ?? (checkpoint ? new Date(checkpoint.cursor) : null),
+          recordsUploaded: progress.recordsUploaded,
+        }
+      : checkpoint
+        ? {
+            importedDays: countLocalDays(new Date(checkpoint.cursor), new Date(checkpoint.endEdge)),
+            totalDays: countLocalDays(new Date(checkpoint.floor), new Date(checkpoint.endEdge)),
+            windowStart: new Date(checkpoint.cursor),
+            recordsUploaded: checkpoint.recordsUploaded,
+          }
+        : null;
+
+  const pausedReason = pausedReasonCopy(lastOutcome, lastError);
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -120,15 +229,34 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
 
         {status === 'idle' && (
           <View>
+            <Text className="text-text-primary text-xl py-4 font-semibold">Import your health history</Text>
             <Text className="text-text-primary text-base">
-              Import all of your past {healthSourceName} data into SparkyFitness — a one-time
-              backfill of every enabled metric, from your earliest recorded data up to today.
+              Import all of your past {healthSourceName} data into SparkyFitness with a one-time backfill of every enabled metric, from your earliest recorded data up to today.
+
             </Text>
-            <Text className="text-text-secondary text-sm mt-3">
-              Recent data is already covered by normal sync. The import walks backwards from
-              today, so the most recent history arrives first, and it can be paused and resumed
-              at any time.
-            </Text>
+            <SettingsRowGroup className="mt-4 mb-0">
+              <SettingsRow
+                title="Source"
+                rightAccessory={
+                  <Text className="text-base text-text-secondary">{healthSourceName}</Text>
+                }
+              />
+              <SettingsRow
+                title="Data types enabled"
+                rightAccessory={
+                  enabledMetricCount != null ? (
+                    <Text className="text-base text-text-secondary">
+                      {enabledMetricCount}
+                    </Text>
+                  ) : undefined
+                }
+              />
+            </SettingsRowGroup>
+            <InfoNote
+              icon="clock"
+              text="Takes a few minutes. You can pause any time and pick up where you left off."
+            />
+
             {idleNotice && (
               <Text className="text-text-secondary text-sm mt-3 font-semibold">{idleNotice}</Text>
             )}
@@ -141,17 +269,16 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
               </Text>
             )}
             {!isHealthStoreInitialized && (
-              <Text className="text-red-500 mt-3 text-center">
+              <Text className="text-icon-danger mt-3 text-center">
                 {isAndroid
                   ? 'Health Connect is not available. Please make sure it is installed and enabled.'
                   : 'Health data (HealthKit) is not available. Please enable Health access in the iOS Health app.'}
               </Text>
             )}
             {isAndroid && (
-              <Text className="text-text-muted text-xs mt-4">
-                Health Connect limits how much data apps can read per day. Long histories may
-                take several sessions — the import stops when the limit is reached and resumes
-                where it left off.
+              <Text className="text-text-muted text-sm mt-4">
+                Health Connect limits how much historical data apps can read each day. If that limit is reached, the
+                import automatically resumes later where it left off.
               </Text>
             )}
           </View>
@@ -160,7 +287,15 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
         {status === 'running' && (
           <View>
             <KeepAwakeLock />
-            {progress?.phase === 'probing' || !progress ? (
+            {progress?.phase === 'importing' && importStats ? (
+              <ProgressSummary
+                {...importStats}
+                timeRemaining={
+                  estimatedMsRemaining != null ? timeRemainingLabel(estimatedMsRemaining) : null
+                }
+                paused={false}
+              />
+            ) : (
               <View className="py-8 items-center">
                 <ActivityIndicator />
                 <Text className="text-text-primary text-base mt-4">Scanning your history…</Text>
@@ -168,50 +303,27 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
                   Finding your earliest recorded data
                 </Text>
               </View>
-            ) : (
-              <View>
-                <Text className="text-text-primary text-lg font-semibold">Importing…</Text>
-                <Text className="text-text-secondary text-sm mt-1">
-                  {progress.currentWindow
-                    ? `Around ${monthYearLabel(progress.currentWindow.start)}`
-                    : ' '}
-                </Text>
-                <View className="h-2 bg-surface rounded-full mt-4 overflow-hidden">
-                  <View
-                    className="h-2 bg-accent-primary rounded-full"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </View>
-                <Text className="text-text-muted text-sm mt-2">
-                  {progress.importedDays} of {progress.totalDays} days
-                </Text>
-              </View>
             )}
-            <Text className="text-text-secondary text-sm mt-4">
-              Keep the app open and your device unlocked while the import runs.
-            </Text>
             {isAndroid && progress?.historyAccessGranted === false && (
               <Text className="text-text-muted text-xs mt-3">
                 Access to all past data was not granted, so the import can only reach about 30
                 days back. Grant it from Health Connect settings and start over to go further.
               </Text>
             )}
-            <Button variant="ghost" className="mt-6" onPress={handleCancel}>
-              <Text className="text-accent-primary text-base font-semibold">Pause Import</Text>
+            <InfoNote text="Keep the app open and your device unlocked while the import runs." />
+            <Button variant="secondary" className="mt-6" onPress={handleCancel}>
+              <Text className="text-text-primary text-lg font-semibold">Pause Import</Text>
             </Button>
           </View>
         )}
 
         {status === 'interrupted' && (
           <View>
-            <Text className="text-text-primary text-lg font-semibold">Import paused</Text>
-            <Text className="text-text-secondary text-sm mt-2">
-              {interruptionCopy(lastOutcome, lastError)}
-            </Text>
-            {checkpoint && (
-              <Text className="text-text-muted text-sm mt-3">
-                {checkpoint.recordsUploaded} records imported so far.
-              </Text>
+            {importStats && (
+              <ProgressSummary {...importStats} timeRemaining={null} paused />
+            )}
+            {pausedReason && (
+              <Text className="text-text-secondary text-sm mt-4">{pausedReason}</Text>
             )}
             {frozenSelectionDiffers && (
               <Text testID="metric-selection-notice" className="text-text-muted text-xs mt-3">
@@ -219,8 +331,12 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
                 with the original selection; Start Over uses the current one.
               </Text>
             )}
+            <InfoNote text="Days already imported are saved. Starting over discards them and re-imports from day 1." />
             <Button className="mt-6" onPress={handleStart} disabled={startDisabled}>
-              <Text className="text-white text-lg font-semibold">Resume</Text>
+              <View className="flex-row items-center gap-2">
+                <Icon name="play" size={18} color="#fff" />
+                <Text className="text-white text-lg font-semibold">Resume</Text>
+              </View>
             </Button>
             <Button variant="ghost" className="mt-2" onPress={handleStartOver} disabled={startDisabled}>
               <Text className="text-accent-primary text-base font-semibold">Start Over</Text>

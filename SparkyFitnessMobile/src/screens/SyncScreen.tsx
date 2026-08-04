@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator, AppState } from 'react-native';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
+import SettingsRow from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SyncFrequency from '../components/SyncFrequency';
 import SyncOnOpen from '../components/SyncOnOpen';
@@ -518,20 +519,14 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         </View>
 
         {/* Import Full History */}
-        <Button
-          variant="ghost"
-          className="flex-row items-center"
+        <SettingsRow
+          icon="history"
+          title="Import Full History"
+          subtitle="One-time import of all past health data"
           onPress={() => navigation.navigate('ImportHistory')}
           disabled={!isHealthConnectInitialized}
-        >
-          <Icon name="history" size={20} color={accentPrimary} />
-          <View className="flex-1 ml-3">
-            <Text className="text-accent-primary text-base font-semibold">Import Full History</Text>
-            <Text className="text-text-secondary text-sm mt-0.5">
-              One-time import of all past health data
-            </Text>
-          </View>
-        </Button>
+          iconColor={accentPrimary}
+        />
 
         {/* Health Disclaimer */}
         {Platform.OS === 'android' && (

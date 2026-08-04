@@ -45,6 +45,12 @@ export interface BackfillRunner {
   lastError?: string;
   /** The in-progress checkpoint's frozen metric set no longer matches current toggles. */
   frozenSelectionDiffers: boolean;
+  /** Metrics currently enabled for sync, deduped by record type to match what a
+   *  fresh import would cover; null until loaded. */
+  enabledMetricCount: number | null;
+  /** Pace-based estimate from windows completed in this run; null until the
+   *  first one completes. Older windows are sparser and faster, so it skews high. */
+  estimatedMsRemaining: number | null;
   /** Starts a fresh run, or resumes an interrupted one from its checkpoint. */
   start: () => void;
   /** Stops at the next window boundary; the in-flight window finishes and is kept. */
@@ -61,20 +67,22 @@ export const useBackfillRunner = (): BackfillRunner => {
   const [lastOutcome, setLastOutcome] = useState<BackfillOutcome | null>(null);
   const [lastError, setLastError] = useState<string | undefined>(undefined);
   const [frozenSelectionDiffers, setFrozenSelectionDiffers] = useState(false);
+  const [enabledMetricCount, setEnabledMetricCount] = useState<number | null>(null);
+  const [estimatedMsRemaining, setEstimatedMsRemaining] = useState<number | null>(null);
   const cancelRef = useRef(false);
+  const paceAnchorRef = useRef<{ time: number; importedDays: number } | null>(null);
   const runningRef = useRef(false);
   const mountedRef = useRef(true);
 
   const refreshFromCheckpoint = useCallback(async (): Promise<BackfillCheckpoint | null> => {
     const config = await getActiveServerConfig();
     const loaded = config ? await loadBackfillCheckpoint(config.id) : null;
+    const current = await loadEnabledRecordTypes();
     if (!mountedRef.current) return loaded;
     setCheckpoint(loaded);
+    setEnabledMetricCount(current.size);
     if (loaded?.status === 'in-progress') {
-      const current = await loadEnabledRecordTypes();
-      if (mountedRef.current) {
-        setFrozenSelectionDiffers(recordTypeSetsDiffer(new Set(loaded.enabledRecordTypes), current));
-      }
+      setFrozenSelectionDiffers(recordTypeSetsDiffer(new Set(loaded.enabledRecordTypes), current));
     } else {
       setFrozenSelectionDiffers(false);
     }
@@ -105,12 +113,26 @@ export const useBackfillRunner = (): BackfillRunner => {
     setProgress(null);
     setLastOutcome(null);
     setLastError(undefined);
+    setEstimatedMsRemaining(null);
+    paceAnchorRef.current = null;
 
     void (async () => {
       const result = await runBackfill({
         shouldCancel: () => cancelRef.current,
         onProgress: update => {
-          if (mountedRef.current) setProgress(update);
+          if (!mountedRef.current) return;
+          setProgress(update);
+          if (update.phase !== 'importing') return;
+          // Pace is anchored at this run's first importing emission (nonzero
+          // importedDays on a resume), so prior sessions never dilute the rate.
+          const now = Date.now();
+          const anchor = paceAnchorRef.current;
+          if (anchor === null) {
+            paceAnchorRef.current = { time: now, importedDays: update.importedDays };
+          } else if (update.importedDays > anchor.importedDays && now > anchor.time) {
+            const msPerDay = (now - anchor.time) / (update.importedDays - anchor.importedDays);
+            setEstimatedMsRemaining((update.totalDays - update.importedDays) * msPerDay);
+          }
         },
       });
       runningRef.current = false;
@@ -141,6 +163,7 @@ export const useBackfillRunner = (): BackfillRunner => {
       setProgress(null);
       setLastOutcome(null);
       setLastError(undefined);
+      setEstimatedMsRemaining(null);
       setStatus('idle');
     })();
   }, []);
@@ -152,6 +175,8 @@ export const useBackfillRunner = (): BackfillRunner => {
     lastOutcome,
     lastError,
     frozenSelectionDiffers,
+    enabledMetricCount,
+    estimatedMsRemaining,
     start,
     cancel,
     startOver,

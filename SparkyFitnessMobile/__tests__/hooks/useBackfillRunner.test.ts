@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useBackfillRunner } from '../../src/hooks/useBackfillRunner';
-import { runBackfill } from '../../src/services/backfillService';
+import { runBackfill, type BackfillProgress } from '../../src/services/backfillService';
 import {
   loadBackfillCheckpoint,
   clearBackfillCheckpoint,
@@ -71,6 +71,12 @@ describe('useBackfillRunner', () => {
     expect(result.current.checkpoint).toBeNull();
   });
 
+  test('exposes the count of currently enabled metrics', async () => {
+    const { result } = renderHook(() => useBackfillRunner());
+
+    await waitFor(() => expect(result.current.enabledMetricCount).toBe(1));
+  });
+
   test('mounts to interrupted for an in-progress checkpoint and to done for a finished one', async () => {
     mockLoadCheckpoint.mockResolvedValue(checkpoint());
     const interrupted = renderHook(() => useBackfillRunner());
@@ -123,6 +129,54 @@ describe('useBackfillRunner', () => {
     await waitFor(() => expect(result.current.status).toBe('interrupted'));
     expect(result.current.lastOutcome).toBe('quota');
     expect(result.current.lastError).toBe('quota exceeded');
+  });
+
+  test('estimates time remaining from this run\'s importing pace', async () => {
+    let onProgress: ((update: BackfillProgress) => void) | null = null;
+    let finishRun: (value: { outcome: string; recordsUploaded: number }) => void = () => {};
+    mockRunBackfill.mockImplementation(
+      (opts: { onProgress: (update: BackfillProgress) => void }) => {
+        onProgress = opts.onProgress;
+        return new Promise(resolve => {
+          finishRun = resolve;
+        });
+      },
+    );
+
+    const { result } = renderHook(() => useBackfillRunner());
+    await waitFor(() => expect(result.current.status).toBe('idle'));
+
+    act(() => result.current.start());
+    await waitFor(() => expect(onProgress).not.toBeNull());
+
+    const emission = (importedDays: number): BackfillProgress => ({
+      phase: 'importing',
+      totalDays: 90,
+      importedDays,
+      currentWindow: null,
+      recordsUploaded: 0,
+      historyAccessGranted: true,
+    });
+
+    const nowSpy = jest.spyOn(Date, 'now');
+    try {
+      // A resume's first emission already carries prior sessions' imported days;
+      // it only anchors the pace, producing no estimate.
+      nowSpy.mockReturnValue(100_000);
+      act(() => onProgress!(emission(30)));
+      expect(result.current.estimatedMsRemaining).toBeNull();
+
+      // 30 days in 60s → 2s/day; 30 days remain → 60s.
+      nowSpy.mockReturnValue(160_000);
+      act(() => onProgress!(emission(60)));
+      expect(result.current.estimatedMsRemaining).toBe(60_000);
+    } finally {
+      nowSpy.mockRestore();
+    }
+
+    await act(async () => {
+      finishRun({ outcome: 'cancelled', recordsUploaded: 0 });
+    });
   });
 
   test('cancel flips the shouldCancel signal the running backfill polls', async () => {

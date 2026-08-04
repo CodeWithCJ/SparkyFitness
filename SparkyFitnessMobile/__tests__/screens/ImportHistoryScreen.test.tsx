@@ -85,6 +85,8 @@ const runner = (overrides: Partial<BackfillRunner> = {}): BackfillRunner => ({
   lastOutcome: null,
   lastError: undefined,
   frozenSelectionDiffers: false,
+  enabledMetricCount: null,
+  estimatedMsRemaining: null,
   start: jest.fn(),
   cancel: jest.fn(),
   startOver: jest.fn(),
@@ -113,6 +115,17 @@ describe('ImportHistoryScreen', () => {
     fireEvent.press(getByText('Start Import'));
 
     expect(state.start).toHaveBeenCalledTimes(1);
+  });
+
+  test('idle: shows the enabled data-type count only once it has loaded', () => {
+    mockUseBackfillRunner.mockReturnValue(runner({ enabledMetricCount: null }));
+    const loading = renderScreen();
+    expect(loading.queryByText(/\d+ enabled/)).toBeNull();
+    loading.unmount();
+
+    mockUseBackfillRunner.mockReturnValue(runner({ enabledMetricCount: 7 }));
+    const loaded = renderScreen();
+    expect(loaded.getByText(/7/)).toBeTruthy();
   });
 
   test('idle: Start stays disabled while another sync holds the claim', async () => {
@@ -192,7 +205,46 @@ describe('ImportHistoryScreen', () => {
       },
     }));
     const importing = renderScreen();
-    await waitFor(() => expect(importing.getByText(/30 of 44 days/)).toBeTruthy());
+    await waitFor(() => expect(importing.getByText('30')).toBeTruthy());
+    expect(importing.getByText('of 44 days')).toBeTruthy();
+  });
+
+  test('running: shows the time estimate only once pace is known', () => {
+    const importingProgress = {
+      phase: 'importing' as const,
+      totalDays: 44,
+      importedDays: 30,
+      currentWindow: null,
+      recordsUploaded: 100,
+      historyAccessGranted: true,
+    };
+
+    mockUseBackfillRunner.mockReturnValue(runner({
+      status: 'running',
+      progress: importingProgress,
+      estimatedMsRemaining: null,
+    }));
+    const noPace = renderScreen();
+    expect(noPace.getByText('—')).toBeTruthy();
+    noPace.unmount();
+
+    mockUseBackfillRunner.mockReturnValue(runner({
+      status: 'running',
+      progress: importingProgress,
+      estimatedMsRemaining: 5 * 60_000,
+    }));
+    const minutes = renderScreen();
+    expect(minutes.queryByText('—')).toBeNull();
+    expect(minutes.getByText('5 min')).toBeTruthy();
+    minutes.unmount();
+
+    mockUseBackfillRunner.mockReturnValue(runner({
+      status: 'running',
+      progress: importingProgress,
+      estimatedMsRemaining: 20_000,
+    }));
+    const subMinute = renderScreen();
+    expect(subMinute.getByText('Under a minute')).toBeTruthy();
   });
 
   test('interrupted: Resume resumes and Start Over restarts', async () => {
@@ -207,6 +259,45 @@ describe('ImportHistoryScreen', () => {
 
     fireEvent.press(getByText('Start Over'));
     expect(state.startOver).toHaveBeenCalledTimes(1);
+  });
+
+  test('interrupted: derives progress from the checkpoint when no live progress exists', async () => {
+    // Fresh mount after a restart: `progress` is null, so day counts and the
+    // record total must come from the checkpoint; time remaining is unknown.
+    mockUseBackfillRunner.mockReturnValue(runner({
+      status: 'interrupted',
+      progress: null,
+      checkpoint: checkpoint(),
+    }));
+
+    const { getByText } = renderScreen();
+    await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
+
+    // cursor→endEdge = 30 days imported, floor→endEdge = 44 days total.
+    expect(getByText('30')).toBeTruthy();
+    expect(getByText('of 44 days')).toBeTruthy();
+    expect(getByText('250')).toBeTruthy();
+    expect(getByText('—')).toBeTruthy();
+  });
+
+  test('interrupted: falls back to the checkpoint cursor for the month when the last progress had no window', async () => {
+    mockUseBackfillRunner.mockReturnValue(runner({
+      status: 'interrupted',
+      progress: {
+        phase: 'importing',
+        totalDays: 44,
+        importedDays: 30,
+        currentWindow: null,
+        recordsUploaded: 250,
+        historyAccessGranted: true,
+      },
+      checkpoint: checkpoint(),
+    }));
+
+    const { getByText } = renderScreen();
+    await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
+
+    expect(getByText(/Around July 2026/)).toBeTruthy();
   });
 
   test('interrupted: the metric-selection notice renders only when the frozen set differs', async () => {
