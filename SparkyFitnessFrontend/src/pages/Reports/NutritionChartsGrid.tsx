@@ -166,18 +166,27 @@ const NutritionChartsGrid = ({
         const chartData = prepareChartData(effectiveNutritionData, chart.key);
         const yAxisDomain = getYAxisDomain(effectiveNutritionData, chart.key);
         const average = calculateAverage(chartData, chart.key);
-        const foodAverage = calculateAverage(chartData, `food_${chart.key}`);
+        // The split is shown as a SHARE, not a second and third average. The question
+        // behind it is "how much of this comes from a pill", which is a proportion;
+        // and averaging the supplement arm understates it badly on intermittent
+        // dosing, where non-dosing days drag the mean toward zero. A share is also
+        // range-independent and needs no y-axis room, which is why the split is not
+        // drawn as extra series: the domain comes from the total, so lines sitting
+        // well below it never render inside the plot.
         const supplementAverage = calculateAverage(
           chartData,
           `supplement_${chart.key}`
         );
+        const supplementShare =
+          average > 0 ? Math.round((supplementAverage / average) * 100) : 0;
+        // Hidden entirely when nothing was supplemented, so users who track no
+        // supplements see their charts exactly as before.
+        const showSupplementShare = supplementAverage > 0;
         const formatAverage = (value: number) =>
           chart.key === 'calories'
             ? Math.round(convertEnergy(value, 'kcal', energyUnit)).toString()
             : formatNutrientValue(chart.key, value, customNutrients);
         const formattedAverage = formatAverage(average);
-        const formattedFoodAverage = formatAverage(foodAverage);
-        const formattedSupplementAverage = formatAverage(supplementAverage);
 
         return (
           <ZoomableChart
@@ -196,12 +205,15 @@ const NutritionChartsGrid = ({
                         {t('reports.average', 'Avg')}: {formattedAverage}{' '}
                         {chart.unit}
                       </div>
-                      <div>
-                        {t('reports.fromFood', 'Food')}: {formattedFoodAverage}{' '}
-                        {chart.unit} ·{' '}
-                        {t('reports.fromSupplements', 'Supplements')}:{' '}
-                        {formattedSupplementAverage} {chart.unit}
-                      </div>
+                      {showSupplementShare && (
+                        <div>
+                          {t(
+                            'reports.supplementShare',
+                            '{{percent}}% from supplements',
+                            { percent: supplementShare }
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -291,26 +303,6 @@ const NutritionChartsGrid = ({
                           dot={false}
                           isAnimationActive={false}
                           name={chart.label}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey={`food_${chart.key}`}
-                          stroke={chart.color}
-                          strokeWidth={1.5}
-                          strokeDasharray="3 3"
-                          dot={false}
-                          isAnimationActive={false}
-                          name={t('reports.fromFood', 'Food')}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey={`supplement_${chart.key}`}
-                          stroke="#8b5cf6"
-                          strokeWidth={1.5}
-                          strokeDasharray="3 3"
-                          dot={false}
-                          isAnimationActive={false}
-                          name={t('reports.fromSupplements', 'Supplements')}
                         />
                         <Line
                           type="monotone"

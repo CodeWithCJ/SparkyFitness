@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Search, Sparkles } from 'lucide-react';
+import { ListPlus, Plus, Search } from 'lucide-react';
 import {
   MICRONUTRIENT_CATALOG,
   MULTIVITAMIN_PANEL_IDS,
@@ -437,7 +437,7 @@ export function NutrientPicker({
         size="sm"
         onClick={addMultivitaminPanel}
       >
-        <Sparkles className="mr-2 h-4 w-4" />
+        <ListPlus className="mr-2 h-4 w-4" />
         {t('medications.cabinet.multivitaminPanel', 'Multivitamin panel')}
       </Button>
     </div>
