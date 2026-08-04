@@ -78,13 +78,28 @@ class CustomNutrientService {
         // can both see nothing and race to insert; without this the unique
         // (user_id, name) constraint fails one of them instead of returning the row
         // that now exists. The no-op DO UPDATE is what makes RETURNING yield it.
+        //
+        // `xmax = 0` distinguishes a real insert from a conflict. It matters: the setup
+        // below seeds display views and goal targets, and re-running it for a nutrient
+        // the user already has would overwrite a target they had tuned and un-hide it
+        // from views they had deliberately hidden it from. The racing writers both
+        // supply identical values, so the loser simply skips the setup the winner did.
         `INSERT INTO user_custom_nutrients (id, user_id, name, unit, aliases)
                      VALUES ($1, $2, $3, $4, $5::jsonb)
                      ON CONFLICT (user_id, name)
                      DO UPDATE SET name = EXCLUDED.name
-                     RETURNING *`,
+                     RETURNING *, (xmax = 0) AS inserted`,
         [id, userId, name, unit, JSON.stringify(sanitizeAliases(aliases))]
       );
+      const wasInserted = result.rows[0]?.inserted === true;
+      if (!wasInserted) {
+        log(
+          'info',
+          `Custom nutrient already existed: ${name} for user ${userId}; skipping view and goal setup`
+        );
+        const { inserted: _inserted, ...row } = result.rows[0];
+        return row;
+      }
       log('info', `Custom nutrient created: ${name} for user ${userId}`);
       // Automatically add to specific views (Food Database, Goal, Reports)
       try {
@@ -129,7 +144,9 @@ class CustomNutrientService {
         );
         // We don't want to fail the whole creation if preference/goal update fails
       }
-      return result.rows[0];
+      // Strip the synthetic discriminator so callers see a plain nutrient row.
+      const { inserted: _created, ...created } = result.rows[0];
+      return created;
     } finally {
       client.release();
     }

@@ -63,9 +63,13 @@ const stripNutrientFieldsWithoutDiaryAccess = ({
   keepSupplementFlag: boolean;
 }): RequestHandler => {
   return async (req, res, next) => {
+    // dose_amount belongs in this set: the entry snapshot multiplies the nutrient
+    // payload by it, so changing a supplement's dose changes future nutrition just
+    // as editing the payload does.
     const touchesNutrition =
       req.body?.nutrients !== undefined ||
-      req.body?.is_supplement !== undefined;
+      req.body?.is_supplement !== undefined ||
+      req.body?.dose_amount !== undefined;
     if (!touchesNutrition) return next();
 
     const authUserId =
@@ -73,8 +77,16 @@ const stripNutrientFieldsWithoutDiaryAccess = ({
     try {
       const allowed = await canAccessUserData(req.userId, 'diary', authUserId);
       if (!allowed) {
+        // On update the body alone does not say whether the target is a supplement,
+        // so resolve it: a bare dose_amount patch carries no is_supplement flag.
+        const targetIsSupplement =
+          req.body?.is_supplement === true ||
+          (await resolveIsSupplement(req.userId, {
+            medicationId: asUuid(oneParam(req.params.id)),
+          }));
         delete req.body.nutrients;
         if (!keepSupplementFlag) delete req.body.is_supplement;
+        if (targetIsSupplement) delete req.body.dose_amount;
       }
       return next();
     } catch (error) {
@@ -129,10 +141,17 @@ const resolveIsSupplement = async (
       return Boolean(res.rows[0]?.is_supplement);
     }
     if (entryId) {
+      // LEFT JOIN, and the snapshot counts as much as the flag. medication_id is
+      // ON DELETE SET NULL, so entries from a deleted supplement keep feeding the
+      // report through nutrients_snapshot while having no medication row to read
+      // is_supplement from. An inner join reports those orphans as non-supplements
+      // and opens the gate on exactly the history it is meant to protect. The
+      // snapshot is also the more honest test: it is what the report actually sums.
       const res = await client.query(
-        `SELECT m.is_supplement
+        `SELECT (m.is_supplement OR me.nutrients_snapshot IS NOT NULL)
+                  AS is_supplement
            FROM medication_entries me
-           JOIN medications m ON m.id = me.medication_id
+           LEFT JOIN medications m ON m.id = me.medication_id
           WHERE me.id = $1 AND me.user_id = $2`,
         [entryId, userId]
       );

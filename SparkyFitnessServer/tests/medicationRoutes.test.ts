@@ -25,9 +25,14 @@ vi.mock('../utils/permissionUtils.js', () => ({
 
 // resolveIsSupplement reads the medication's subtype directly, so steer it per-test.
 const supplementLookup = { is_supplement: false };
+// Records every statement the subtype resolver runs so a test can assert its shape.
+const executedSql: string[] = [];
 vi.mock('../db/poolManager.js', () => ({
   getClient: vi.fn(async () => ({
-    query: vi.fn(async () => ({ rows: [supplementLookup] })),
+    query: vi.fn(async (sql: string) => {
+      executedSql.push(String(sql));
+      return { rows: [supplementLookup] };
+    }),
     release: vi.fn(),
   })),
 }));
@@ -71,6 +76,7 @@ const cookie = ['userId=testUser'];
 describe('Medication Routes V2', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    executedSql.length = 0;
     // Default to an actor who may write diary data (the ordinary self-serve case).
     vi.mocked(canAccessUserData).mockResolvedValue(true);
   });
@@ -285,6 +291,47 @@ describe('Medication Routes V2', () => {
 
       expect(res.statusCode).toBe(400);
       expect(canAccessUserData).not.toHaveBeenCalled();
+    });
+
+    it('treats an orphaned entry as a supplement via its snapshot', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+
+      await request(app)
+        .put(`/api/v2/medications/entries/${UID}`)
+        .set('Cookie', cookie)
+        .send({ status: 'skipped' });
+
+      // medication_id is ON DELETE SET NULL, so an entry whose supplement was
+      // deleted has no medication row to read is_supplement from while still
+      // feeding the report through its snapshot. An inner join would report it as
+      // a plain medication and open the gate on exactly that history.
+      expect(executedSql.some((q) => q.includes('LEFT JOIN medications'))).toBe(
+        true
+      );
+      expect(
+        executedSql.some((q) => q.includes('me.nutrients_snapshot IS NOT NULL'))
+      ).toBe(true);
+    });
+
+    it('strips dose_amount when updating a supplement without diary access', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+      vi.mocked(medicationRepository.updateMedication).mockResolvedValue({
+        id: UID,
+      });
+
+      // The entry snapshot multiplies the payload by dose_amount, so a bare dose
+      // patch is a nutrition write even with no nutrients in the body.
+      await request(app)
+        .put(`/api/v2/medications/${UID}`)
+        .set('Cookie', cookie)
+        .send({ dose_amount: 3, name: 'Vitamin D' });
+
+      const body = vi.mocked(medicationRepository.updateMedication).mock
+        .calls[0][2];
+      expect(body).not.toHaveProperty('dose_amount');
+      expect(body).toMatchObject({ name: 'Vitamin D' });
     });
 
     it('leaves plain medication dose logging ungated', async () => {

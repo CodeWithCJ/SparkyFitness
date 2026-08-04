@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { medicationNutrientsSchema } from "./Medications.zod.ts";
 
-export const medicationEntriesIdSchema = z.string().and(
-  z.object({
-    __brand: z.literal("public.medication_entries"),
-  }),
-);
+// Branded so a public.medication_entries id cannot be passed where another table's id belongs.
+// z.string().and(z.object(...)) was the shape here, but an intersection of a
+// primitive and an object cannot parse any value, so the schema rejected every
+// UUID it was given.
+export const medicationEntriesIdSchema = z
+  .string()
+  .uuid()
+  .brand<"public.medication_entries">();
 
-const userIdSchema = z.any();
+// A user id is a UUID string. z.any() accepted anything and inferred as any,
+// which erased the contract for every consumer of these types.
+const userIdSchema = z.string().uuid();
 
 const medicationEntriesFieldsSchema = z.object({
   // Nullable because the medication FK is ON DELETE SET NULL: dose history outlives
