@@ -42,10 +42,10 @@ import {
   MED_TYPE_COLORS,
   SUPPLEMENT_FORMS,
   positiveDoseOrNull,
+  type NutrientPick,
 } from './medicationUtils';
 import { NutrientPicker } from './NutrientPicker';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import type { NutrientPick } from './nutrientPickerUtils';
 import {
   useCreateCustomNutrientMutation,
   useEnsureCatalogNutrientsMutation,
@@ -71,16 +71,11 @@ export default function AddMedicationDialog({
   editMed,
   trigger,
   defaultIsSupplement = false,
-  open: openProp,
-  onOpenChange,
 }: {
   editMed?: Medication;
   trigger?: ReactNode;
   /** Opens with the supplement toggle already on — used by the "Add supplement" entry point. */
   defaultIsSupplement?: boolean;
-  /** Controlled open state. When supplied the dialog renders no trigger of its own. */
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
 } = {}) {
   const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
@@ -93,13 +88,7 @@ export default function AddMedicationDialog({
   const { hasWritePermission } = useActiveUser();
   const canEditNutrients = hasWritePermission('diary');
   const isEdit = Boolean(editMed);
-  const isControlled = openProp !== undefined;
-  const [internalOpen, setInternalOpen] = useState(false);
-  const open = isControlled ? openProp : internalOpen;
-  const setOpen = (next: boolean) => {
-    if (!isControlled) setInternalOpen(next);
-    onOpenChange?.(next);
-  };
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState(editMed?.name ?? '');
   const [typeId, setTypeId] = useState(() => {
     const isSupp = editMed?.is_supplement ?? defaultIsSupplement;
@@ -201,7 +190,7 @@ export default function AddMedicationDialog({
   const updateMutation = useUpdateMedicationMutation();
   const mutation = isEdit ? updateMutation : createMutation;
   const ensureCatalog = useEnsureCatalogNutrientsMutation();
-  const createCustom = useCreateCustomNutrientMutation();
+  const createCustom = useCreateCustomNutrientMutation({ silentSuccess: true });
 
   // The grid renders a custom-nutrient row only if it can find the nutrient by name, so
   // pending picks are shown as provisional entries until save makes them real.
@@ -472,8 +461,16 @@ export default function AddMedicationDialog({
       // real dose is a natural follow-up once the editor states what the payload is
       // per. Medications use the dose fields this dialog now edits directly;
       // positiveDoseOrNull keeps a typed 0 or negative out of a body the API rejects.
-      dose_amount: isSupplement ? 1 : positiveDoseOrNull(displayedDoseAmount),
-      dose_unit: isSupplement ? 'dose' : displayedDoseUnit || null,
+      // On create a supplement is pinned to one dose. On EDIT the stored value is
+      // preserved instead of being rewritten: the dose is gated server side now, so
+      // forcing it back to 1 on every save would quietly undo a dose set through
+      // another surface, and this form does not offer the field for supplements.
+      dose_amount: isSupplement
+        ? (editMed?.dose_amount ?? 1)
+        : positiveDoseOrNull(displayedDoseAmount),
+      dose_unit: isSupplement
+        ? (editMed?.dose_unit ?? 'dose')
+        : displayedDoseUnit || null,
       prescriber: prescriber.trim() || null,
       pharmacy: pharmacy.trim() || null,
       rx_number: rxNumber.trim() || null,
@@ -534,16 +531,14 @@ export default function AddMedicationDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {!isControlled && (
-        <DialogTrigger asChild>
-          {trigger ?? (
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />{' '}
-              {t('medications.cabinet.addMed', 'Add medication')}
-            </Button>
-          )}
-        </DialogTrigger>
-      )}
+      <DialogTrigger asChild>
+        {trigger ?? (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />{' '}
+            {t('medications.cabinet.addMed', 'Add medication')}
+          </Button>
+        )}
+      </DialogTrigger>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>

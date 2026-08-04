@@ -4,6 +4,15 @@ import { renderWithClient } from '../test-utils';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { NutrientPicker } from '@/pages/Medications/NutrientPicker';
 
+// The picker's helpers now live in medicationUtils, which imports the real i18n
+// singleton at module scope; that initialises HttpApi under jsdom and fails.
+jest.mock('@/i18n', () => ({
+  __esModule: true,
+  default: {
+    t: (key: string, defaultValue?: string) => defaultValue || key,
+  },
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: unknown) => {

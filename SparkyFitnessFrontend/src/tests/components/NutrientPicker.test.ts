@@ -1,7 +1,7 @@
 import {
   collectClaimedNutrientNames,
   isNutrientOptionAlreadyAdded,
-} from '@/pages/Medications/nutrientPickerUtils';
+} from '@/pages/Medications/medicationUtils';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 
 const customNutrient = (

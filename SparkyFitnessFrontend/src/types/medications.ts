@@ -2,27 +2,15 @@
 // api service (src/api) and page components can import them (page components are
 // not allowed to import from src/api directly — see eslint no-restricted-imports).
 
+import type { FoodVariantNutrientField } from '@workspace/shared';
+
+/**
+ * A supplement's per-dose payload: the fixed food-variant nutrient columns plus the
+ * user's own custom nutrients. Keyed off the shared field list so it cannot drift from
+ * what the report and the nutrient grid actually read.
+ */
 export type MedicationNutrients = Partial<
-  Record<
-    | 'calories'
-    | 'protein'
-    | 'carbs'
-    | 'fat'
-    | 'saturated_fat'
-    | 'polyunsaturated_fat'
-    | 'monounsaturated_fat'
-    | 'trans_fat'
-    | 'cholesterol'
-    | 'sodium'
-    | 'potassium'
-    | 'dietary_fiber'
-    | 'sugars'
-    | 'vitamin_a'
-    | 'vitamin_c'
-    | 'calcium'
-    | 'iron',
-    number
-  >
+  Record<FoodVariantNutrientField, number>
 > & { custom_nutrients?: Record<string, number> };
 
 export interface Medication {

@@ -19,7 +19,9 @@ export const useCustomNutrients = () => {
     },
   });
 };
-export const useCreateCustomNutrientMutation = () => {
+export const useCreateCustomNutrientMutation = ({
+  silentSuccess = false,
+}: { silentSuccess?: boolean } = {}) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -58,7 +60,12 @@ export const useCreateCustomNutrientMutation = () => {
     },
     meta: {
       errorMessage: 'Failed to add custom nutrient.',
-      successMessage: 'Custom nutrient added successfully.',
+      // The supplement editor creates one nutrient per free-text row on save, so a
+      // per-nutrient toast would stack N of them in front of the one toast the user
+      // is waiting on. That caller opts out and reports the save itself.
+      successMessage: silentSuccess
+        ? undefined
+        : 'Custom nutrient added successfully.',
     },
   });
 };
