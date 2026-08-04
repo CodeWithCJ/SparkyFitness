@@ -71,10 +71,10 @@ export const AccountSecurity = () => {
       return;
     }
 
-    if (passwordForm.new_password.length < 6) {
+    if (passwordForm.new_password.length < 8) {
       toast({
         title: 'Error',
-        description: 'Password must be at least 6 characters long',
+        description: 'Password must be at least 8 characters long',
         variant: 'destructive',
       });
       return;

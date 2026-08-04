@@ -220,6 +220,7 @@ const auth = betterAuth({
   emailAndPassword: {
     enabled: process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN !== 'true',
     requireEmailVerification: false,
+    minPasswordLength: 8,
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetEmail(user.email, url);
     },

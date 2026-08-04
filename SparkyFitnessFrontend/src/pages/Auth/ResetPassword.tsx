@@ -47,8 +47,8 @@ const ResetPassword = () => {
   }, [token]);
 
   const validatePassword = (pwd: string) => {
-    if (pwd.length < 6) {
-      return 'Password must be at least 6 characters long.';
+    if (pwd.length < 8) {
+      return 'Password must be at least 8 characters long.';
     }
     if (!/[A-Z]/.test(pwd)) {
       return 'Password must contain at least one uppercase letter.';
@@ -135,6 +135,7 @@ const ResetPassword = () => {
                   setPasswordError(validatePassword(e.target.value));
                 }}
                 required
+                minLength={8}
                 autoComplete="new-password"
               />
               <PasswordToggle

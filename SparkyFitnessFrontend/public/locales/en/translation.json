@@ -1273,7 +1273,7 @@
       "updatePassword": "Update Password",
       "updating": "Updating...",
       "newPasswordsDoNotMatch": "New passwords do not match",
-      "passwordLengthError": "Password must be at least 6 characters long",
+      "passwordLengthError": "Password must be at least 8 characters long",
       "enterNewEmailAddress": "Please enter a new email address"
     }
   },
