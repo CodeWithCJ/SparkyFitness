@@ -318,16 +318,19 @@ export default function AddMedicationDialog({
       if (typeof value === 'number' && Number.isFinite(value))
         nutrients[field] = value;
     });
-    const custom = Object.fromEntries(
-      Object.entries(nutrientVariant.custom_nutrients ?? {}).flatMap(
-        ([name, value]) =>
-          selected.has(name) &&
-          typeof value === 'number' &&
-          Number.isFinite(value)
-            ? [[rename[name] ?? name, value] as const]
-            : []
-      )
-    );
+    // Two provisional keys can resolve onto the SAME existing nutrient (the user's
+    // "Vitamin D" absorbing both "Vitamin D2" and "Vitamin D3"), so build the object by
+    // accumulating rather than via Object.fromEntries — the latter lets the second
+    // value silently overwrite the first, dropping an amount the user typed.
+    const custom: Record<string, number> = {};
+    for (const [name, value] of Object.entries(
+      nutrientVariant.custom_nutrients ?? {}
+    )) {
+      if (!selected.has(name)) continue;
+      if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+      const key = rename[name] ?? name;
+      custom[key] = (custom[key] ?? 0) + value;
+    }
     if (Object.keys(custom).length > 0) nutrients.custom_nutrients = custom;
     return nutrients;
   };

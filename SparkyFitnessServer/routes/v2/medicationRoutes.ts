@@ -22,6 +22,7 @@ import {
 import { UuidParamSchema } from '../../schemas/measurementSchemas.js';
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
 import { canAccessUserData } from '../../utils/permissionUtils.js';
+import { getClient } from '../../db/poolManager.js';
 import onBehalfOfMiddleware from '../../middleware/onBehalfOfMiddleware.js';
 import medicationRepository from '../../models/medicationRepository.js';
 import medicationPenRepository from '../../models/medicationPenRepository.js';
@@ -74,6 +75,78 @@ const stripNutrientFieldsWithoutDiaryAccess = ({
       if (!allowed) {
         delete req.body.nutrients;
         if (!keepSupplementFlag) delete req.body.is_supplement;
+      }
+      return next();
+    } catch (error) {
+      return next(error);
+    }
+  };
+};
+
+// Logging a supplement dose is also a nutrition write: createEntry snapshots the
+// medication's nutrient payload onto the entry, and the report multiplies it by the
+// dose. Guarding only the medication create/update paths therefore leaves a side door
+// open — a caregiver without diary access could log doses of a supplement the owner
+// already set up, or change a dose so future entries scale differently.
+//
+// Rejecting rather than stripping here, unlike the medication paths: there is no
+// harmless subset of "log this dose" to let through. Plain medications are unaffected,
+// so a caregiver keeps full access to everything that is not a supplement.
+// Route params are typed `string | string[]` here, so normalise before use.
+const oneParam = (value: string | string[] | undefined): string | undefined =>
+  Array.isArray(value) ? value[0] : value;
+
+const resolveIsSupplement = async (
+  userId: string,
+  { medicationId, entryId }: { medicationId?: string; entryId?: string }
+): Promise<boolean> => {
+  const client = await getClient(userId);
+  try {
+    if (entryId) {
+      const res = await client.query(
+        `SELECT m.is_supplement
+           FROM medication_entries me
+           JOIN medications m ON m.id = me.medication_id
+          WHERE me.id = $1 AND me.user_id = $2`,
+        [entryId, userId]
+      );
+      return Boolean(res.rows[0]?.is_supplement);
+    }
+    if (medicationId) {
+      const res = await client.query(
+        'SELECT is_supplement FROM medications WHERE id = $1 AND user_id = $2',
+        [medicationId, userId]
+      );
+      return Boolean(res.rows[0]?.is_supplement);
+    }
+    return false;
+  } finally {
+    client.release();
+  }
+};
+
+const requireDiaryForSupplementDose = (
+  locate: (req: Parameters<RequestHandler>[0]) => {
+    medicationId?: string;
+    entryId?: string;
+  }
+): RequestHandler => {
+  return async (req, res, next) => {
+    try {
+      const target = locate(req);
+      if (!target.medicationId && !target.entryId) return next();
+      const isSupplement = await resolveIsSupplement(req.userId, target);
+      if (!isSupplement) return next();
+
+      const authUserId =
+        req.originalUserId || req.authenticatedUserId || req.userId;
+      const allowed = await canAccessUserData(req.userId, 'diary', authUserId);
+      if (!allowed) {
+        res.status(403).json({
+          error:
+            'Managing supplement doses requires food diary access for this profile.',
+        });
+        return;
       }
       return next();
     } catch (error) {
@@ -525,9 +598,27 @@ router.post(
   createMedication
 );
 router.get('/entries', listEntries);
-router.post('/entries', createEntry);
-router.put('/entries/:id', updateEntry);
-router.delete('/entries/:id', deleteEntry);
+router.post(
+  '/entries',
+  requireDiaryForSupplementDose((req) => ({
+    medicationId: req.body?.medication_id as string | undefined,
+  })),
+  createEntry
+);
+router.put(
+  '/entries/:id',
+  requireDiaryForSupplementDose((req) => ({
+    entryId: oneParam(req.params.id),
+  })),
+  updateEntry
+);
+router.delete(
+  '/entries/:id',
+  requireDiaryForSupplementDose((req) => ({
+    entryId: oneParam(req.params.id),
+  })),
+  deleteEntry
+);
 // --- Display Preferences --------------------------------------------------
 
 const getDisplayPreferences: RequestHandler = async (req, res, next) => {
@@ -659,7 +750,13 @@ const deleteSchedule: RequestHandler = async (req, res, next) => {
   }
 };
 
-router.post('/:medicationId/schedules', addSchedule);
+router.post(
+  '/:medicationId/schedules',
+  requireDiaryForSupplementDose((req) => ({
+    medicationId: oneParam(req.params.medicationId),
+  })),
+  addSchedule
+);
 router.put('/schedules/:id', updateSchedule);
 router.delete('/schedules/:id', deleteSchedule);
 

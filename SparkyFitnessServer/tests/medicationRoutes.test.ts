@@ -22,6 +22,15 @@ vi.mock('../services/glp1Service.js');
 vi.mock('../utils/permissionUtils.js', () => ({
   canAccessUserData: vi.fn(),
 }));
+
+// resolveIsSupplement reads the medication's subtype directly, so steer it per-test.
+const supplementLookup = { is_supplement: false };
+vi.mock('../db/poolManager.js', () => ({
+  getClient: vi.fn(async () => ({
+    query: vi.fn(async () => ({ rows: [supplementLookup] })),
+    release: vi.fn(),
+  })),
+}));
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
   default: vi.fn(
     () =>
@@ -195,6 +204,51 @@ describe('Medication Routes V2', () => {
         .calls[0][2];
       expect(body).not.toHaveProperty('nutrients');
       expect(body).not.toHaveProperty('is_supplement');
+    });
+
+    it('rejects logging a supplement dose without diary access', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+
+      const res = await request(app)
+        .post('/api/v2/medications/entries')
+        .set('Cookie', cookie)
+        .send({ medication_id: UID, status: 'taken' });
+
+      // Rejected, not stripped: there is no harmless subset of "log this dose",
+      // and createEntry would snapshot the nutrients server-side regardless.
+      expect(res.statusCode).toBe(403);
+      expect(medicationEntryRepository.createEntry).not.toHaveBeenCalled();
+    });
+
+    it('allows logging a supplement dose with diary access', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(true);
+      vi.mocked(medicationEntryRepository.createEntry).mockResolvedValue({
+        id: UID,
+      });
+
+      const res = await request(app)
+        .post('/api/v2/medications/entries')
+        .set('Cookie', cookie)
+        .send({ medication_id: UID, status: 'taken' });
+
+      expect(res.statusCode).toBe(201);
+    });
+
+    it('leaves plain medication dose logging ungated', async () => {
+      supplementLookup.is_supplement = false;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+      vi.mocked(medicationEntryRepository.createEntry).mockResolvedValue({
+        id: UID,
+      });
+
+      const res = await request(app)
+        .post('/api/v2/medications/entries')
+        .set('Cookie', cookie)
+        .send({ medication_id: UID, status: 'taken' });
+
+      expect(res.statusCode).toBe(201);
     });
 
     it('does not consult diary permission for a plain medication', async () => {

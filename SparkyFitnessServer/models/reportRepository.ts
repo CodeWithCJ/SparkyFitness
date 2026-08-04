@@ -608,10 +608,9 @@ async function getDailyNutritionTotalsRange(
   try {
     // Same fixed nutrient columns the query already reports, paired with the output alias
     // (dietary_fiber -> fiber, sugars -> sugar). Each food SUM gets its dose-scaled
-    // supplement contribution for that date added, so trends include supplements too. NB:
-    // this arm only reaches dates that already have a food entry (the query groups
-    // food_entries); a date with ONLY supplements logged and no food is not surfaced here,
-    // which matches the pre-existing shape of this range query.
+    // supplement contribution for that date added, so trends include supplements too.
+    // The date set is the UNION of food and taken-supplement dates, so a day with only
+    // supplements logged still yields a row rather than disappearing from the range.
     const rangeCols: [string, string][] = [
       ['calories', 'calories'],
       ['protein', 'protein'],
@@ -632,20 +631,31 @@ async function getDailyNutritionTotalsRange(
       ['iron', 'iron'],
     ];
     const supplementFixed = (key: string) =>
-      `COALESCE((SELECT SUM(public.sf_try_numeric(me.nutrients_snapshot->>'${key}') * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) FROM medication_entries me WHERE me.user_id = $1 AND me.entry_date = food_entries.entry_date AND me.status IN ('taken', 'prn_taken') AND me.nutrients_snapshot IS NOT NULL), 0)`;
+      `COALESCE((SELECT SUM(public.sf_try_numeric(me.nutrients_snapshot->>'${key}') * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) FROM medication_entries me WHERE me.user_id = $1 AND me.entry_date = d.entry_date AND me.status IN ('taken', 'prn_taken') AND me.nutrients_snapshot IS NOT NULL), 0)`;
     const rangeSelects = rangeCols
       .map(
         ([col, alias]) =>
-          `COALESCE(SUM(${col} * quantity / NULLIF(serving_size, 0)), 0) + ${supplementFixed(col)} as ${alias}`
+          `COALESCE(SUM(fe.${col} * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed(col)} as ${alias}`
       )
       .join(',\n              ');
     const result = await client.query(
-      `SELECT entry_date,
+      `SELECT d.entry_date,
               ${rangeSelects}
-       FROM food_entries
-       WHERE user_id = $1 AND entry_date >= $2 AND entry_date <= $3
-       GROUP BY entry_date
-       ORDER BY entry_date ASC`,
+       FROM (
+         SELECT DISTINCT entry_date
+           FROM food_entries
+          WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
+         UNION
+         SELECT DISTINCT entry_date
+           FROM medication_entries
+          WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
+            AND status IN ('taken', 'prn_taken')
+            AND nutrients_snapshot IS NOT NULL
+       ) d
+       LEFT JOIN food_entries fe
+              ON fe.user_id = $1 AND fe.entry_date = d.entry_date
+       GROUP BY d.entry_date
+       ORDER BY d.entry_date ASC`,
       [userId, startDate, endDate]
     );
     return result.rows;

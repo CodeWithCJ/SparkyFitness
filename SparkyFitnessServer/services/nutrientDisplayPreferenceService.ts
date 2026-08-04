@@ -1,6 +1,13 @@
 import nutrientDisplayPreferenceRepository from '../models/nutrientDisplayPreferenceRepository.js';
 import { log } from '../config/logging.js';
 import customNutrientService from './customNutrientService.js';
+
+// The shape of a `user_nutrient_display_preferences` row as this service reads it.
+interface NutrientDisplayPreferenceRow {
+  view_group: string;
+  platform: string;
+  visible_nutrients: string[] | null;
+}
 const defaultNutrients = [
   'calories',
   'protein',
@@ -68,8 +75,8 @@ async function addNutrientToSpecificViews(
   for (const group of targetGroups) {
     for (const platform of platforms) {
       const existing = rawUserPrefs.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (p: any) => p.view_group === group && p.platform === platform
+        (p: NutrientDisplayPreferenceRow) =>
+          p.view_group === group && p.platform === platform
       );
       let visibleNutrients;
       if (existing) {

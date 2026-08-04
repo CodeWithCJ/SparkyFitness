@@ -1,4 +1,8 @@
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createMockDbClient,
+  type MockDbClient,
+} from './helpers/mockDbClient.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getClient } from '../db/poolManager.js';
 import customNutrientService from '../services/customNutrientService.js';
@@ -18,21 +22,19 @@ vi.mock('../services/nutrientDisplayPreferenceService.js', () => ({
 // food_variants/food_entries are handled. Otherwise a deleted nutrient's supplement
 // contributions linger and resurrect if the name is recreated.
 describe('customNutrientService.deleteCustomNutrient — supplement JSONB cleanup', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockDbClient;
   const userId = uuidv4();
   const id = uuidv4();
   const nutrientName = 'Boron';
 
   beforeEach(() => {
-    mockClient = { query: vi.fn(), release: vi.fn() };
+    mockClient = createMockDbClient();
     mockClient.query.mockImplementation((sql: string) =>
       String(sql).includes('SELECT name FROM user_custom_nutrients')
         ? Promise.resolve({ rows: [{ name: nutrientName }] })
         : Promise.resolve({ rows: [] })
     );
-    // @ts-expect-error mocked in the module mock above
-    getClient.mockResolvedValue(mockClient);
+    vi.mocked(getClient).mockResolvedValue(mockClient);
   });
 
   afterEach(() => vi.clearAllMocks());
@@ -54,14 +56,14 @@ describe('customNutrientService.deleteCustomNutrient — supplement JSONB cleanu
 
     const medDefs = findQuery('UPDATE medications', 'custom_nutrients');
     expect(medDefs).toBeTruthy();
-    expect(medDefs[1]).toEqual([nutrientName, userId]);
+    expect(medDefs![1]).toEqual([nutrientName, userId]);
 
     const medSnapshots = findQuery(
       'UPDATE medication_entries',
       'nutrients_snapshot'
     );
     expect(medSnapshots).toBeTruthy();
-    expect(medSnapshots[1]).toEqual([nutrientName, userId]);
+    expect(medSnapshots![1]).toEqual([nutrientName, userId]);
   });
 
   it('scrubs the medication definitions but NOT the immutable snapshots when deleteAllHistory is false', async () => {

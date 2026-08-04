@@ -1,4 +1,8 @@
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createMockDbClient,
+  type MockDbClient,
+} from './helpers/mockDbClient.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getClient } from '../db/poolManager.js';
 import { getNutritionData } from '../models/reportRepository.js';
@@ -12,17 +16,12 @@ vi.mock('../db/poolManager', () => ({
 // or a "take 2" schedule silently undercounts every nutrient. This is a count, not the
 // medication's mg strength (which is the scaling we deliberately DON'T do).
 describe('getNutritionData — supplement dose scaling', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockDbClient;
   const userId = uuidv4();
 
   beforeEach(() => {
-    mockClient = {
-      query: vi.fn().mockResolvedValue({ rows: [] }),
-      release: vi.fn(),
-    };
-    // @ts-expect-error mocked in the module mock above
-    getClient.mockResolvedValue(mockClient);
+    mockClient = createMockDbClient([]);
+    vi.mocked(getClient).mockResolvedValue(mockClient);
   });
 
   afterEach(() => vi.clearAllMocks());

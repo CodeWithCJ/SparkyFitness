@@ -68,6 +68,7 @@ export const useCreateCustomNutrientMutation = () => {
 // with the right unit, aliases and Daily Value. Idempotent, so repeated picks are safe.
 export const useEnsureCatalogNutrientsMutation = () => {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   return useMutation({
     mutationFn: (catalogIds: string[]) =>
       customNutrientService.ensureCatalogNutrients(catalogIds),
@@ -86,7 +87,10 @@ export const useEnsureCatalogNutrientsMutation = () => {
       });
     },
     meta: {
-      errorMessage: 'Failed to add nutrient.',
+      errorMessage: t(
+        'customNutrients.failedToAddNutrient',
+        'Failed to add nutrient.'
+      ),
     },
   });
 };

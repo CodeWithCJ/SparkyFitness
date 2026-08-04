@@ -271,6 +271,10 @@ async function getDailyNutritionSummary(userId: any, date: any) {
   }
 }
 
+// The driving date set is the UNION of days with food and days with taken supplement
+// entries, so a day on which the user logged only supplements still returns a row. The
+// food aggregates LEFT JOIN onto that set and COALESCE to zero, which is the honest
+// answer for a day with no food logged.
 async function getDailyNutritionSummariesByDates(
   userId: string,
   dates: string[]
@@ -279,12 +283,12 @@ async function getDailyNutritionSummariesByDates(
   try {
     const result = await client.query(
       `SELECT
-        fe.entry_date,
-        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('calories', 'fe.user_id', 'fe.entry_date')} AS total_calories,
-        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('protein', 'fe.user_id', 'fe.entry_date')} AS total_protein,
-        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('carbs', 'fe.user_id', 'fe.entry_date')} AS total_carbs,
-        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('fat', 'fe.user_id', 'fe.entry_date')} AS total_fat,
-        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('dietary_fiber', 'fe.user_id', 'fe.entry_date')} AS total_dietary_fiber,
+        d.entry_date,
+        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('calories', 'd.user_id', 'd.entry_date')} AS total_calories,
+        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('protein', 'd.user_id', 'd.entry_date')} AS total_protein,
+        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('carbs', 'd.user_id', 'd.entry_date')} AS total_carbs,
+        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('fat', 'd.user_id', 'd.entry_date')} AS total_fat,
+        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('dietary_fiber', 'd.user_id', 'd.entry_date')} AS total_dietary_fiber,
         COALESCE(
           (
             SELECT jsonb_object_agg(key, value)
@@ -294,16 +298,27 @@ async function getDailyNutritionSummariesByDates(
                 SELECT key, (NULLIF(TRIM(value), '')::numeric) * fe2.quantity / NULLIF(fe2.serving_size, 0) AS scaled
                 FROM food_entries fe2
                 CROSS JOIN LATERAL jsonb_each_text(fe2.custom_nutrients)
-                WHERE fe2.user_id = fe.user_id AND fe2.entry_date = fe.entry_date${supplementCustomUnion('fe.user_id', 'fe.entry_date')}
+                WHERE fe2.user_id = d.user_id AND fe2.entry_date = d.entry_date${supplementCustomUnion('d.user_id', 'd.entry_date')}
               ) combined
               GROUP BY key
             ) custom_agg
           ),
           '{}'::jsonb
         ) AS total_custom_nutrients
-       FROM food_entries fe
-       WHERE fe.user_id = $1 AND fe.entry_date = ANY($2::date[])
-       GROUP BY fe.user_id, fe.entry_date`,
+       FROM (
+         SELECT DISTINCT user_id, entry_date
+           FROM food_entries
+          WHERE user_id = $1 AND entry_date = ANY($2::date[])
+         UNION
+         SELECT DISTINCT user_id, entry_date
+           FROM medication_entries
+          WHERE user_id = $1 AND entry_date = ANY($2::date[])
+            AND status IN ('taken', 'prn_taken')
+            AND nutrients_snapshot IS NOT NULL
+       ) d
+       LEFT JOIN food_entries fe
+              ON fe.user_id = d.user_id AND fe.entry_date = d.entry_date
+       GROUP BY d.user_id, d.entry_date`,
       [userId, dates]
     );
     return result.rows;

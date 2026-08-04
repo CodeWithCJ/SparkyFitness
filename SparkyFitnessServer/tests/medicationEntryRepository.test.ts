@@ -1,4 +1,8 @@
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  createMockDbClient,
+  type MockDbClient,
+} from './helpers/mockDbClient.js';
 import medicationEntryRepository from '../models/medicationEntryRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getClient } from '../db/poolManager.js';
@@ -8,19 +12,15 @@ vi.mock('../db/poolManager', () => ({
 }));
 
 describe('medicationEntryRepository.createEntry — nutrient snapshot', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockDbClient;
   const userId = uuidv4();
   const medicationId = uuidv4();
   const entryId = uuidv4();
 
   beforeEach(() => {
-    mockClient = {
-      query: vi.fn(),
-      release: vi.fn(),
-    };
-    // @ts-expect-error mocked in the module mock above
-    getClient.mockResolvedValue(mockClient);
+    mockClient = createMockDbClient();
+    mockClient.query.mockReset();
+    vi.mocked(getClient).mockResolvedValue(mockClient);
     mockClient.query.mockClear();
   });
 
@@ -61,8 +61,9 @@ describe('medicationEntryRepository.createEntry — nutrient snapshot', () => {
     const insertCall = mockClient.query.mock.calls.find((c: unknown[]) =>
       String(c[0]).includes('INSERT INTO medication_entries')
     );
-    expect(insertCall[0]).toContain('nutrients_snapshot');
-    const insertParams = insertCall[1] as unknown[];
+    expect(insertCall).toBeDefined();
+    expect(insertCall![0]).toContain('nutrients_snapshot');
+    const insertParams = insertCall![1] as unknown[];
     expect(insertParams[insertParams.length - 1]).toBe(
       JSON.stringify(nutrients)
     );
@@ -93,7 +94,7 @@ describe('medicationEntryRepository.createEntry — nutrient snapshot', () => {
     const insertCall = mockClient.query.mock.calls.find((c: unknown[]) =>
       String(c[0]).includes('INSERT INTO medication_entries')
     );
-    const insertParams = insertCall[1] as unknown[];
+    const insertParams = insertCall![1] as unknown[];
     expect(insertParams[insertParams.length - 1]).toBeNull();
   });
 
@@ -125,7 +126,7 @@ describe('medicationEntryRepository.createEntry — nutrient snapshot', () => {
     const insertCall = mockClient.query.mock.calls.find((c: unknown[]) =>
       String(c[0]).includes('INSERT INTO medication_entries')
     );
-    const insertParams = insertCall[1] as unknown[];
+    const insertParams = insertCall![1] as unknown[];
     // dose_amount_snapshot is the 9th INSERT column (index 8).
     expect(insertParams[8]).toBe(2);
   });

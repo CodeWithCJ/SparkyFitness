@@ -55,8 +55,12 @@ RETURNS numeric
 LANGUAGE sql
 IMMUTABLE
 AS $$
+-- The regex alone is not enough: it accepts values like '1e1000000' whose ::numeric
+-- cast raises out-of-range, which would error the whole report this helper exists to
+-- protect. Bound the exponent so the cast can never overflow.
 SELECT CASE
-    WHEN txt ~ '^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$' THEN txt::numeric
+    WHEN txt ~ '^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]{1,4})?$'
+     AND length(txt) <= 64 THEN txt::numeric
     ELSE NULL
 END;
 $$;

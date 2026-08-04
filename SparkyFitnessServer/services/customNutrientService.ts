@@ -73,8 +73,15 @@ class CustomNutrientService {
     try {
       const id = uuidv4();
       const result = await client.query(
+        // ON CONFLICT keeps this idempotent under concurrency. Catalog provisioning
+        // does a read-before-create, so two simultaneous requests for the same nutrient
+        // can both see nothing and race to insert; without this the unique
+        // (user_id, name) constraint fails one of them instead of returning the row
+        // that now exists. The no-op DO UPDATE is what makes RETURNING yield it.
         `INSERT INTO user_custom_nutrients (id, user_id, name, unit, aliases)
                      VALUES ($1, $2, $3, $4, $5::jsonb)
+                     ON CONFLICT (user_id, name)
+                     DO UPDATE SET name = EXCLUDED.name
                      RETURNING *`,
         [id, userId, name, unit, JSON.stringify(sanitizeAliases(aliases))]
       );

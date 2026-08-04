@@ -1053,6 +1053,7 @@
       "description": "Create and manage custom measurement categories"
     },
     "customNutrients": {
+      "failedToAddNutrient": "Failed to add nutrient.",
       "title": "Custom Nutrients",
       "subtitle": "Manage your custom nutrient definitions"
     },
