@@ -56,6 +56,7 @@ import {
   SafeFastingDetail,
   SafeLogs,
   SafeSync,
+  SafeImportHistory,
   SafeMeasurementsAdd,
   SafeChat,
   SafeCalorieSettings,
@@ -554,6 +555,11 @@ function AppContent() {
             name="Sync"
             component={SafeSync}
             options={createStackScreenOptions('Health Sync', { headerBackTitle: 'Settings' })}
+          />
+          <Stack.Screen
+            name="ImportHistory"
+            component={SafeImportHistory}
+            options={createStackScreenOptions('Import History', { headerBackTitle: 'Health Sync' })}
           />
           <Stack.Screen
             name="MeasurementsAdd"

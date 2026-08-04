@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator, AppState } from 'react-native';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
+import SettingsRow from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SyncFrequency from '../components/SyncFrequency';
 import SyncOnOpen from '../components/SyncOnOpen';
@@ -78,7 +79,7 @@ const timeRangeOptions: TimeRangeOption[] = [
   { label: "Last Year", value: "365d" },
 ];
 
-const SyncScreen: React.FC<SyncScreenProps> = () => {
+const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentPrimary = useCSSVariable('--color-accent-primary') as string | undefined;
@@ -516,6 +517,16 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
           </Text>
           <HealthSourceLabel className="text-center mb-2" />
         </View>
+
+        {/* Import Full History */}
+        <SettingsRow
+          icon="history"
+          title="Import Full History"
+          subtitle="One-time import of all past health data"
+          onPress={() => navigation.navigate('ImportHistory')}
+          disabled={!isHealthConnectInitialized}
+          iconColor={accentPrimary}
+        />
 
         {/* Health Disclaimer */}
         {Platform.OS === 'android' && (

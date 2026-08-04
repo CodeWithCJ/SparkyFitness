@@ -260,6 +260,18 @@ export const requestHealthPermissions = async (
         } else if (p.accessType === 'write') {
           writePermissionsSet.add('HKWorkoutTypeIdentifier');
         }
+      } else if (p.recordType === 'TotalCaloriesBurned') {
+        // Total calories is derived from basal + active energy: the day-statistics
+        // reader and the earliest-sample probe query both underlying types, so
+        // authorization must cover both even when Active Calories is not itself an
+        // enabled metric.
+        if (p.accessType === 'read') {
+          readPermissionsSet.add('HKQuantityTypeIdentifierBasalEnergyBurned');
+          readPermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+        } else if (p.accessType === 'write') {
+          writePermissionsSet.add('HKQuantityTypeIdentifierBasalEnergyBurned');
+          writePermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+        }
       } else if (p.recordType === 'Nutrition') {
         // HealthKit authorizes the *contents* of a Food correlation, not the correlation
         // type itself — passing HKCorrelationTypeIdentifierFood to requestAuthorization
@@ -1166,3 +1178,116 @@ export const readHealthRecords = (
   endDate: Date
 ): Promise<unknown[]> =>
   readHealthRecordsDetailed(recordType, startDate, endDate).then(result => result.records);
+
+// ============================================================================
+// Earliest-sample probes (history-import floor detection)
+// ============================================================================
+
+// Probes read from the 1970 epoch: backdated manual entries and third-party
+// imports can predate any "reasonable" floor, and the wider window costs nothing.
+const PROBE_EPOCH = new Date(0);
+
+const probeQuantityEarliest = async (identifier: string, now: Date): Promise<Date | null> => {
+  const samples = await queryQuantitySamples(identifier as Parameters<typeof queryQuantitySamples>[0], {
+    ascending: true,
+    limit: 1,
+    filter: { date: { startDate: PROBE_EPOCH, endDate: now } },
+  });
+  const sample = Array.isArray(samples) ? samples[0] : undefined;
+  return sample ? new Date(sample.startDate) : null;
+};
+
+const probeCategoryEarliest = async (identifier: string, now: Date): Promise<Date | null> => {
+  const samples = await queryCategorySamples(identifier as Parameters<typeof queryCategorySamples>[0], {
+    ascending: true,
+    limit: 1,
+    filter: { date: { startDate: PROBE_EPOCH, endDate: now } },
+  });
+  const sample = Array.isArray(samples) ? samples[0] : undefined;
+  return sample ? new Date(sample.startDate) : null;
+};
+
+const probeWorkoutEarliest = async (now: Date): Promise<Date | null> => {
+  const workouts = await queryWorkoutSamples({
+    ascending: true,
+    limit: 1,
+    filter: { date: { startDate: PROBE_EPOCH, endDate: now } },
+  });
+  const workout = Array.isArray(workouts) ? workouts[0] : undefined;
+  return workout ? new Date(workout.startDate) : null;
+};
+
+const CATEGORY_PROBE_TYPES = new Set([
+  'SleepSession',
+  'Stress',
+  'IntermenstrualBleeding',
+  'MenstruationFlow',
+  'OvulationTest',
+  'CervicalMucus',
+]);
+
+const WORKOUT_PROBE_TYPES = new Set(['Workout', 'ExerciseSession']);
+
+const minDate = (dates: (Date | null)[]): Date | null =>
+  dates.reduce<Date | null>(
+    (earliest, date) => (date && (!earliest || date < earliest) ? date : earliest),
+    null,
+  );
+
+// Routed by record kind, mirroring RECORD_HANDLERS. Multi-identifier metrics take
+// the min over the SAME identifiers their reader reads, so the probe can never
+// claim less history than the reader would find.
+const probeEarliestSample = async (recordType: string, now: Date): Promise<Date | null> => {
+  if (WORKOUT_PROBE_TYPES.has(recordType)) {
+    return probeWorkoutEarliest(now);
+  }
+  if (CATEGORY_PROBE_TYPES.has(recordType)) {
+    const identifier = HEALTHKIT_TYPE_MAP[recordType];
+    return identifier ? probeCategoryEarliest(identifier, now) : null;
+  }
+  if (recordType === 'BloodPressure') {
+    return probeQuantityEarliest('HKQuantityTypeIdentifierBloodPressureSystolic', now);
+  }
+  if (recordType === 'TotalCaloriesBurned') {
+    const [basal, active] = await Promise.all([
+      probeQuantityEarliest('HKQuantityTypeIdentifierBasalEnergyBurned', now),
+      probeQuantityEarliest('HKQuantityTypeIdentifierActiveEnergyBurned', now),
+    ]);
+    return minDate([basal, active]);
+  }
+  if (recordType === 'Nutrition') {
+    // Nutrient-only entries with no energy value must still move the floor, so
+    // every dietary identifier the nutrition reader covers is probed (iOS has no
+    // read quota; a dozen limit-1 probes are free).
+    const dates: (Date | null)[] = [];
+    for (const identifier of DIETARY_WRITE_IDENTIFIERS) {
+      dates.push(await probeQuantityEarliest(identifier, now));
+    }
+    return minDate(dates);
+  }
+  const identifier = HEALTHKIT_TYPE_MAP[recordType];
+  if (!identifier || !SUPPORTED_HK_TYPES.has(identifier)) {
+    return null;
+  }
+  return probeQuantityEarliest(identifier, now);
+};
+
+/**
+ * Earliest stored sample for a record type across all history. No data =
+ * { records: [] }; failures go through recordReadError so locked-device probes
+ * bump the database-inaccessible counter.
+ */
+export const readEarliestSampleDetailed = async (
+  recordType: string,
+): Promise<HealthKitReadResult<{ startTime: string }>> => {
+  if (!isHealthKitAvailable) {
+    return { records: [] };
+  }
+
+  try {
+    const earliest = await probeEarliestSample(recordType, new Date());
+    return earliest ? { records: [{ startTime: earliest.toISOString() }] } : { records: [] };
+  } catch (error) {
+    return { records: [], error: recordReadError(error, `${recordType} earliest-sample probe`) };
+  }
+};

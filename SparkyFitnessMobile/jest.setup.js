@@ -87,6 +87,7 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
 jest.mock('react-native-health-connect', () => ({
   initialize: jest.fn().mockResolvedValue(true),
   requestPermission: jest.fn().mockResolvedValue([]),
+  getGrantedPermissions: jest.fn().mockResolvedValue([]),
   readRecords: jest.fn().mockResolvedValue({ records: [] }),
   aggregateRecord: jest.fn().mockResolvedValue({}),
   aggregateGroupByDuration: jest.fn().mockResolvedValue([]),

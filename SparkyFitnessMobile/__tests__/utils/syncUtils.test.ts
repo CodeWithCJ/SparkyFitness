@@ -1,8 +1,13 @@
 import {
   getSyncStartDate,
   alignToLocalDayStart,
+  ceilToLocalDayStart,
+  addLocalDays,
+  countLocalDays,
   buildForegroundWindows,
   buildBackgroundWindows,
+  buildBackfillWindows,
+  enumerateDayAlignedWindows,
   SESSION_OVERLAP_MS,
   SyncDuration,
 } from '../../src/utils/syncUtils';
@@ -14,6 +19,107 @@ describe('alignToLocalDayStart', () => {
 
     expect(aligned).toEqual(new Date(2026, 6, 2, 0, 0, 0, 0));
     expect(input.getHours()).toBe(15);
+  });
+});
+
+describe('ceilToLocalDayStart', () => {
+  test('rounds a mid-day instant up to the next local midnight', () => {
+    const input = new Date(2026, 6, 2, 15, 30, 45, 123);
+    expect(ceilToLocalDayStart(input)).toEqual(new Date(2026, 6, 3, 0, 0, 0, 0));
+    expect(input.getHours()).toBe(15);
+  });
+
+  test('leaves a midnight-aligned instant unchanged', () => {
+    expect(ceilToLocalDayStart(new Date(2026, 6, 2, 0, 0, 0, 0))).toEqual(
+      new Date(2026, 6, 2, 0, 0, 0, 0),
+    );
+  });
+});
+
+describe('addLocalDays', () => {
+  test('adds calendar days without mutating the input', () => {
+    const input = new Date(2026, 6, 2, 15, 30, 0);
+    const result = addLocalDays(input, 3);
+
+    expect(result).toEqual(new Date(2026, 6, 5, 15, 30, 0));
+    expect(input.getDate()).toBe(2);
+  });
+
+  test('supports negative day counts across month boundaries', () => {
+    expect(addLocalDays(new Date(2026, 6, 2, 0, 0, 0, 0), -30)).toEqual(new Date(2026, 5, 2, 0, 0, 0, 0));
+  });
+});
+
+describe('countLocalDays', () => {
+  test('counts calendar days in [start, end)', () => {
+    expect(countLocalDays(new Date(2026, 6, 1), new Date(2026, 6, 31))).toBe(30);
+  });
+
+  test('returns 0 for an empty or inverted span', () => {
+    const day = new Date(2026, 6, 1);
+    expect(countLocalDays(day, day)).toBe(0);
+    expect(countLocalDays(new Date(2026, 6, 5), new Date(2026, 6, 1))).toBe(0);
+  });
+
+  test('aligns non-midnight inputs before counting', () => {
+    expect(countLocalDays(new Date(2026, 6, 1, 15, 30), new Date(2026, 6, 3, 2, 0))).toBe(2);
+  });
+});
+
+describe('buildBackfillWindows', () => {
+  test('uses the same edges for session and aggregated reads', () => {
+    const start = new Date(2026, 5, 3, 0, 0, 0, 0);
+    const end = new Date(2026, 6, 3, 0, 0, 0, 0);
+
+    const windows = buildBackfillWindows(start, end);
+
+    expect(windows.sessionStart).toBe(start);
+    expect(windows.aggregatedStart).toBe(start);
+    expect(windows.end).toBe(end);
+  });
+});
+
+describe('enumerateDayAlignedWindows', () => {
+  test('partitions newest-first with a short oldest window', () => {
+    // 75 days: [floor, endEdge) → 30 + 30 + 15.
+    const floor = new Date(2026, 3, 19, 0, 0, 0, 0);
+    const endEdge = new Date(2026, 6, 3, 0, 0, 0, 0);
+
+    const windows = enumerateDayAlignedWindows(floor, endEdge, 30);
+
+    expect(windows).toEqual([
+      { start: new Date(2026, 5, 3, 0, 0, 0, 0), end: new Date(2026, 6, 3, 0, 0, 0, 0) },
+      { start: new Date(2026, 4, 4, 0, 0, 0, 0), end: new Date(2026, 5, 3, 0, 0, 0, 0) },
+      { start: new Date(2026, 3, 19, 0, 0, 0, 0), end: new Date(2026, 4, 4, 0, 0, 0, 0) },
+    ]);
+    expect(countLocalDays(windows[2].start, windows[2].end)).toBe(15);
+  });
+
+  test('an exact multiple produces full windows only', () => {
+    const floor = new Date(2026, 5, 3, 0, 0, 0, 0);
+    const endEdge = new Date(2026, 6, 3, 0, 0, 0, 0);
+
+    const windows = enumerateDayAlignedWindows(floor, endEdge, 30);
+
+    expect(windows).toEqual([{ start: floor, end: endEdge }]);
+  });
+
+  test('returns [] when floor >= endEdge (HC rejects start >= end windows)', () => {
+    const edge = new Date(2026, 6, 3, 0, 0, 0, 0);
+    expect(enumerateDayAlignedWindows(edge, edge, 30)).toEqual([]);
+    expect(enumerateDayAlignedWindows(new Date(2026, 6, 4), edge, 30)).toEqual([]);
+  });
+
+  test('aligns non-midnight inputs so every window edge is a local midnight', () => {
+    const windows = enumerateDayAlignedWindows(
+      new Date(2026, 6, 1, 9, 15),
+      new Date(2026, 6, 3, 18, 45),
+      30,
+    );
+
+    expect(windows).toEqual([
+      { start: new Date(2026, 6, 1, 0, 0, 0, 0), end: new Date(2026, 6, 3, 0, 0, 0, 0) },
+    ]);
   });
 });
 

@@ -2,6 +2,7 @@ import {
   triggerManualSync,
   flushPendingHealthSyncCacheRefresh,
 } from '../../src/services/backgroundSyncService';
+import { setBackfillRunning, tryClaimAutoSync, isSyncInFlight } from '../../src/services/autoSyncCoordinator';
 import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
 import { TimeoutError } from '../../src/utils/concurrency';
 import { AppState } from 'react-native';
@@ -838,6 +839,58 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
       expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
       expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Backfill guard', () => {
+    beforeEach(() => {
+      storage.loadLastSyncedTime.mockResolvedValue(new Date('2024-01-15T08:00:00Z').toISOString());
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.getAggregatedActiveCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedTotalCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedDistanceByDate.mockResolvedValue([]);
+      healthService.getAggregatedFloorsClimbedByDate.mockResolvedValue([]);
+      healthService.readHealthRecords.mockResolvedValue([]);
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+    });
+
+    test('skips the entire sync while a history-import backfill is running', async () => {
+      setBackfillRunning(true);
+      try {
+        await triggerManualSync();
+      } finally {
+        setBackfillRunning(false);
+      }
+
+      expect(storage.loadLastSyncedTime).not.toHaveBeenCalled();
+      expect(healthService.getAggregatedStepsByDate).not.toHaveBeenCalled();
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
+    test('a held auto-sync claim without a backfill still syncs (iOS observer claim-then-call path)', async () => {
+      const release = tryClaimAutoSync();
+      expect(release).not.toBeNull();
+      try {
+        await triggerManualSync();
+      } finally {
+        release?.();
+      }
+
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('marks a sync in flight for the whole run so a backfill cannot start mid-sync', async () => {
+      const run = triggerManualSync();
+      // Set synchronously on invocation, so a backfill starting at any await
+      // point during the run observes it.
+      expect(isSyncInFlight()).toBe(true);
+
+      await run;
+
+      expect(isSyncInFlight()).toBe(false);
     });
   });
 

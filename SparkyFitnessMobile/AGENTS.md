@@ -125,6 +125,8 @@ npx expo prebuild --clean
 - `app.config.ts` grants `android.permission.health.READ_HEALTH_DATA_HISTORY` so Android can read data older than 30 days.
 - Health Connect permission migrations belong in `services/shared/healthPermissionMigration.ts`, not UI-only state.
 - Core check-in measurements use `measurementsApi.ts` and `MeasurementsAddScreen`; preserve `upsertCheckIn` omitted-vs-null semantics.
+- "Import Full History" (`ImportHistoryScreen`, reached from `SyncScreen`) is a one-time resumable backfill: `backfillService.ts` walks 30-day day-aligned windows newest-first from start-of-today down to a probe-derived floor (`readEarliestRecord` on both providers), one upload per window, with a per-server checkpoint in `backfillCheckpoint.ts`. It never advances `lastSyncedTime` and never runs writeback; while it runs, `isBackfillRunning()` (autoSyncCoordinator) makes background sync skip.
+- The backfill's metric set is FROZEN in its checkpoint at first run; resume uses the frozen set verbatim and toggle changes require Start Over. Quota exhaustion, locked device, and app-inactive are expected mid-run stops — the checkpoint keeps them resumable.
 
 ## Health Writeback
 

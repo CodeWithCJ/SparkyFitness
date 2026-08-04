@@ -1,4 +1,5 @@
 import SyncScreen from '../screens/SyncScreen';
+import ImportHistoryScreen from '../screens/ImportHistoryScreen';
 import LogScreen from '../screens/LogScreen';
 import FoodSearchScreen from '../screens/FoodSearchScreen';
 import FoodEntryAddScreen from '../screens/FoodEntryAddScreen';
@@ -91,6 +92,7 @@ export const SafeActivityDetail = withErrorBoundary(ActivityDetailScreen, 'Activ
 export const SafeFastingDetail = withErrorBoundary(FastingDetailScreen, 'FastingDetail', { canGoBack: true });
 export const SafeLogs = withErrorBoundary(LogScreen, 'Logs', { canGoBack: true });
 export const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
+export const SafeImportHistory = withErrorBoundary(ImportHistoryScreen, 'ImportHistory', { canGoBack: true });
 export const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'MeasurementsAdd', { canGoBack: true });
 export const SafeChat = withErrorBoundary(ChatScreen, 'Chat', { canGoBack: true });
 export const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });

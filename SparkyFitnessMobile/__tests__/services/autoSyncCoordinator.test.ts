@@ -2,10 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   tryClaimAutoSync,
   isSyncClaimed,
+  subscribeSyncClaimed,
   setForegroundAutoSyncWindowOpen,
   isForegroundAutoSyncWindowOpen,
   shouldRunForegroundResumeAutoSync,
   recordAutoSyncTime,
+  markSyncInFlight,
+  isSyncInFlight,
 } from '../../src/services/autoSyncCoordinator';
 
 const CONFIG_ID = 'config-1';
@@ -67,6 +70,74 @@ describe('autoSyncCoordinator', () => {
 
       releaseSecond!();
       expect(isSyncClaimed()).toBe(false);
+    });
+  });
+
+  describe('subscribeSyncClaimed', () => {
+    it('notifies on claim and on release', () => {
+      const listener = jest.fn();
+      const unsubscribe = subscribeSyncClaimed(listener);
+
+      const release = tryClaimAutoSync();
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      release!();
+      expect(listener).toHaveBeenCalledTimes(2);
+
+      unsubscribe();
+    });
+
+    it('does not notify for a refused claim or a repeated release', () => {
+      const release = tryClaimAutoSync();
+      const listener = jest.fn();
+      const unsubscribe = subscribeSyncClaimed(listener);
+
+      expect(tryClaimAutoSync()).toBeNull();
+      expect(listener).not.toHaveBeenCalled();
+
+      release!();
+      release!();
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      unsubscribe();
+    });
+
+    it('stops notifying after unsubscribe', () => {
+      const listener = jest.fn();
+      const unsubscribe = subscribeSyncClaimed(listener);
+      unsubscribe();
+
+      tryClaimAutoSync()?.();
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sync in-flight marker', () => {
+    it('counts overlapping syncs and clears once all settle', () => {
+      expect(isSyncInFlight()).toBe(false);
+
+      const doneFirst = markSyncInFlight();
+      const doneSecond = markSyncInFlight();
+      expect(isSyncInFlight()).toBe(true);
+
+      doneFirst();
+      expect(isSyncInFlight()).toBe(true);
+
+      doneSecond();
+      expect(isSyncInFlight()).toBe(false);
+    });
+
+    it('done() is idempotent and never uncounts another sync', () => {
+      const doneFirst = markSyncInFlight();
+      const doneSecond = markSyncInFlight();
+
+      doneFirst();
+      doneFirst();
+      expect(isSyncInFlight()).toBe(true);
+
+      doneSecond();
+      expect(isSyncInFlight()).toBe(false);
     });
   });
 

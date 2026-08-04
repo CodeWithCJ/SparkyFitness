@@ -139,7 +139,9 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
       accessibilityLabel={accessibilityLabel ?? title}
       disabled={disabled}
       testID={testID}
-      style={({ pressed }) => (pressed && !disabled ? { opacity: 0.7 } : null)}
+      style={({ pressed }) =>
+        disabled ? { opacity: 0.5 } : pressed ? { opacity: 0.7 } : null
+      }
     >
       {content}
     </Pressable>
