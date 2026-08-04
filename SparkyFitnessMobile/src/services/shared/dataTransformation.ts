@@ -129,7 +129,14 @@ export const createHydrationTransformer = (
   const liters = extractNestedValue(rec, 'volume', 'inLiters');
   const date = getDateString(rec.startTime);
   const timestamp = (rec.startTime as string) || (rec.time as string) || undefined;
-  const sourceId = (rec.uuid as string) || (rec.id as string) || undefined;
+  // iOS HealthKit samples carry a top-level `uuid`; Android Health Connect
+  // records carry their stable id under `metadata.id` instead (there is no
+  // top-level `id`/`uuid` on Health Connect records).
+  const sourceId =
+    (rec.uuid as string) ||
+    (rec.id as string) ||
+    ((rec.metadata as { id?: string } | undefined)?.id) ||
+    undefined;
   // Convert L -> integer ml: synced as water intake (type 'water') which the server stores in ml.
   return liters !== null && date
     ? {

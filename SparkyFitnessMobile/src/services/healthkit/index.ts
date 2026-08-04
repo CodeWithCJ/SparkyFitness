@@ -949,6 +949,9 @@ const createQuantityHandler = (recordType: string): RecordHandler => {
         // — there is no pre-flattened source field, so this path is read directly.
         sourceBundleId: (s as unknown as { sourceRevision?: { source?: { bundleIdentifier?: string } } })
           .sourceRevision?.source?.bundleIdentifier,
+        // Stable per-sample id, used by e.g. the Hydration transformer as
+        // source_id for idempotent server-side upsert-by-record sync.
+        uuid: (s as unknown as { uuid?: string }).uuid,
       };
       // Forward timezone metadata so the transform layer can attach it to output records
       const tz = (s as unknown as { metadataTimeZone?: string }).metadataTimeZone;

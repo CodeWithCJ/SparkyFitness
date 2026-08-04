@@ -428,10 +428,6 @@ export interface HealthBatchContext {
    * (no X-Workout-Model-Version header) and sends per-set duration in minutes.
    */
   legacyWorkoutSetMinutes?: boolean;
-  /** Optional sync window start date (YYYY-MM-DD) for windowed delete-and-replace */
-  windowStart?: string;
-  /** Optional sync window end date (YYYY-MM-DD) for windowed delete-and-replace */
-  windowEnd?: string;
 }
 
 /** HealthBatchContext plus the per-entry resolved date values. */
@@ -741,7 +737,7 @@ const waterHandler: HealthTypeHandler = {
     const outcomes: HandlerOutcome[] = new Array(entries.length);
     if (entries.length === 0) return outcomes;
 
-    // Group entries by source to process per-source date windows
+    // Group entries by source; each source is upserted independently.
     const entriesBySource = new Map<
       string,
       Array<{
@@ -767,38 +763,24 @@ const waterHandler: HealthTypeHandler = {
       entriesBySource.set(source, existing);
     }
 
-    // Fetch user's primary container ID (if any) as fallback container_id
+    // Synced entries log against the user's default container, same as manual entries.
     const primaryContainer =
       await waterContainerRepository.getPrimaryWaterContainerByUserId(
         ctx.userId
       );
     const primaryContainerId = primaryContainer?.id ?? null;
+    const primaryContainerName = primaryContainer?.name || 'Default';
 
     for (const [source, group] of entriesBySource) {
       if (group.length === 0) continue;
-      const dates = group.map((g) => g.parsedDate).sort();
-      const minDate = ctx.windowStart
-        ? ctx.windowStart < dates[0]
-          ? ctx.windowStart
-          : dates[0]
-        : dates[0];
-      const maxDate = ctx.windowEnd
-        ? ctx.windowEnd > dates[dates.length - 1]
-          ? ctx.windowEnd
-          : dates[dates.length - 1]
-        : dates[dates.length - 1];
 
       const samples = group.map((g) => ({
         entryDate: g.parsedDate,
         waterMl: parseInt(String(g.entry.value), 10),
         containerId: primaryContainerId,
-        containerName:
-          source === 'healthkit'
-            ? 'Apple Health'
-            : source === 'health_connect'
-              ? 'Health Connect'
-              : source,
+        containerName: primaryContainerName,
         source,
+        sourceId: (g.entry.source_id as string) || null,
         loggedAt:
           (g.entry.timestamp as string) ||
           (g.entry.startTime as string) ||
@@ -806,20 +788,24 @@ const waterHandler: HealthTypeHandler = {
       }));
 
       try {
-        const written =
-          await measurementRepository.replaceWaterIntakeSamplesByWindow(
-            ctx.userId,
-            ctx.actingUserId,
-            minDate,
-            maxDate,
-            source,
-            samples
-          );
+        // Idempotent per-record upsert keyed on (user, source, sourceId) —
+        // never deletes entries outside this batch, so partial/incremental
+        // sync batches can't wipe out earlier same-day entries.
+        const written = await measurementRepository.upsertWaterIntakeSamples(
+          ctx.userId,
+          ctx.actingUserId,
+          samples
+        );
         group.forEach((g, pos) => {
           outcomes[g.index] = { status: 'success', data: written?.[pos] };
         });
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
+        log(
+          'error',
+          `[waterHandler.handleBatch] upsertWaterIntakeSamples failed for source '${source}' (${group.length} record(s)): ${msg}`,
+          error
+        );
         group.forEach((g) => {
           outcomes[g.index] = { status: 'error', error: msg };
         });

@@ -108,7 +108,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   const convertedGoal = convertFromMl(goal, unit);
   const formatUnitVolume = (val: number, u: string): string => {
     if (u === 'oz') return parseFloat(val.toFixed(1)).toString();
-    if (u === 'liter') return val.toFixed(2);
+    if (u === 'liter') return parseFloat(val.toFixed(2)).toString();
     return Math.round(val).toString();
   };
   const displayConsumed = formatUnitVolume(convertedConsumed, unit);

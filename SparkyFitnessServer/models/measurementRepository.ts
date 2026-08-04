@@ -150,9 +150,9 @@ async function incrementWaterData(
   try {
     const query = `
       INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $5, now(), now())
+      VALUES ($1, $2, GREATEST(0, $3), $4, $5, $5, now(), now())
       ON CONFLICT (user_id, entry_date, source)
-      DO UPDATE SET 
+      DO UPDATE SET
         water_ml = GREATEST(0, water_intake.water_ml + $3),
         updated_at = now(),
         updated_by_user_id = $5
@@ -1463,18 +1463,26 @@ async function insertWaterIntakeLog(
   }
 }
 
-async function replaceWaterIntakeSamplesByWindow(
+/**
+ * Idempotently upserts synced hydration samples by (user_id, source, source_id)
+ * instead of deleting-and-replacing a date window. Mobile hydration reads are
+ * incremental (a rolling overlap cursor, not a full-day resend), so deleting
+ * everything in a calendar-day window and reinserting only what's in the
+ * current batch would silently drop earlier same-day entries that aren't in
+ * this batch. Per-record upsert makes re-syncing the same record idempotent
+ * without ever deleting entries this batch didn't see. Samples without a
+ * sourceId can't be deduped, so they're inserted as-is (best-effort).
+ */
+async function upsertWaterIntakeSamples(
   userId: string,
   actingUserId: string,
-  startDate: string,
-  endDate: string,
-  source: string,
   samples: Array<{
     entryDate: string;
     waterMl: number;
     containerId?: number | null;
     containerName: string;
     source: string;
+    sourceId?: string | null;
     loggedAt?: string | null;
   }>
 ) {
@@ -1482,67 +1490,123 @@ async function replaceWaterIntakeSamplesByWindow(
   try {
     await client.query('BEGIN');
 
-    // 1. Delete existing synced entries for this window and source
-    await client.query(
-      `DELETE FROM water_intake_entries
-       WHERE user_id = $1 AND entry_date >= $2 AND entry_date <= $3 AND source = $4`,
-      [userId, startDate, endDate, source]
-    );
-
-    // 2. Insert active fresh samples
-    const insertedRows: Array<Record<string, unknown>> = [];
-    const affectedDates = new Set<string>();
+    const writtenRows: Array<Record<string, unknown>> = [];
+    const affectedDatesBySource = new Map<string, Set<string>>();
 
     for (const sample of samples) {
-      affectedDates.add(sample.entryDate);
-      const res = await client.query(
-        `INSERT INTO water_intake_entries
-          (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()))
-         RETURNING *`,
-        [
-          userId,
-          sample.entryDate,
-          sample.waterMl,
-          sample.containerId || null,
-          sample.containerName,
-          sample.source,
-          actingUserId,
-          sample.loggedAt || null,
-        ]
-      );
-      insertedRows.push(res.rows[0]);
+      const dates =
+        affectedDatesBySource.get(sample.source) || new Set<string>();
+      dates.add(sample.entryDate);
+      affectedDatesBySource.set(sample.source, dates);
+
+      let res;
+      if (sample.sourceId) {
+        // Adopt a pre-existing unkeyed row for this exact (user, source, date)
+        // if one exists — e.g. a legacy row from before source_id existed
+        // (single-total-per-day rows backfilled from the water_intake
+        // aggregate). Without this, the first keyed re-sync of that day would
+        // insert a second row alongside the legacy one and double the total,
+        // since ON CONFLICT can't match a row that has no source_id to
+        // conflict against. At most one such row can exist per
+        // (user, entry_date, source), since it originates from the
+        // water_intake table's own unique constraint on that triple.
+        const adopted = await client.query(
+          `UPDATE water_intake_entries
+           SET source_id = $1,
+               water_ml = $2,
+               container_id = $3,
+               container_name = $4,
+               logged_at = COALESCE($5, logged_at)
+           WHERE user_id = $6 AND source = $7 AND entry_date = $8 AND source_id IS NULL
+           RETURNING *`,
+          [
+            sample.sourceId,
+            sample.waterMl,
+            sample.containerId || null,
+            sample.containerName,
+            sample.loggedAt || null,
+            userId,
+            sample.source,
+            sample.entryDate,
+          ]
+        );
+        if (adopted.rows.length > 0) {
+          res = adopted;
+        } else {
+          res = await client.query(
+            `INSERT INTO water_intake_entries
+              (user_id, entry_date, water_ml, container_id, container_name, source, source_id, created_at, created_by_user_id, logged_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, COALESCE($9, NOW()))
+             ON CONFLICT (user_id, source, source_id) WHERE source IS NOT NULL AND source_id IS NOT NULL
+             DO UPDATE SET
+               entry_date = EXCLUDED.entry_date,
+               water_ml = EXCLUDED.water_ml,
+               container_id = EXCLUDED.container_id,
+               container_name = EXCLUDED.container_name,
+               logged_at = EXCLUDED.logged_at
+             RETURNING *`,
+            [
+              userId,
+              sample.entryDate,
+              sample.waterMl,
+              sample.containerId || null,
+              sample.containerName,
+              sample.source,
+              sample.sourceId,
+              actingUserId,
+              sample.loggedAt || null,
+            ]
+          );
+        }
+      } else {
+        log(
+          'warn',
+          `[upsertWaterIntakeSamples] Sample without sourceId for source '${sample.source}'; cannot dedupe, inserting as-is.`
+        );
+        res = await client.query(
+          `INSERT INTO water_intake_entries
+            (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()))
+           RETURNING *`,
+          [
+            userId,
+            sample.entryDate,
+            sample.waterMl,
+            sample.containerId || null,
+            sample.containerName,
+            sample.source,
+            actingUserId,
+            sample.loggedAt || null,
+          ]
+        );
+      }
+      writtenRows.push(res.rows[0]);
     }
 
-    // Include all dates in window range to ensure 0-sample days update totals
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
-      affectedDates.add(dateStr);
-    }
+    // Recalculate and update daily totals in water_intake for every
+    // (source, date) combination touched by this batch's samples.
+    for (const [source, dates] of affectedDatesBySource) {
+      for (const dateStr of dates) {
+        const sumRes = await client.query(
+          `SELECT COALESCE(SUM(water_ml), 0) as total_ml
+           FROM water_intake_entries
+           WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
+          [userId, dateStr, source]
+        );
+        const totalMl = Number(sumRes.rows[0]?.total_ml || 0);
 
-    // 3. Recalculate and update daily totals in water_intake table for affected dates
-    for (const dateStr of affectedDates) {
-      const sumRes = await client.query(
-        `SELECT COALESCE(SUM(water_ml), 0) as total_ml
-         FROM water_intake_entries
-         WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
-        [userId, dateStr, source]
-      );
-      const totalMl = Number(sumRes.rows[0]?.total_ml || 0);
-
-      await client.query(
-        `INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
-         ON CONFLICT (user_id, entry_date, source)
-         DO UPDATE SET water_ml = $3, updated_at = NOW(), updated_by_user_id = $5`,
-        [userId, dateStr, totalMl, source, actingUserId]
-      );
+        await client.query(
+          `INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
+           ON CONFLICT (user_id, entry_date, source)
+           DO UPDATE SET water_ml = $3, updated_at = NOW(), updated_by_user_id = $5`,
+          [userId, dateStr, totalMl, source, actingUserId]
+        );
+      }
     }
 
     await client.query('COMMIT');
-    return insertedRows;
+    return writtenRows;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -1637,7 +1701,7 @@ async function getWaterTotalsByDateRange(
   const client = await getClient(userId);
   try {
     let query = `
-      SELECT entry_date, SUM(water_ml) as total_ml
+      SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') as entry_date, SUM(water_ml) as total_ml
       FROM water_intake_entries
       WHERE user_id = $1
     `;
@@ -1675,7 +1739,7 @@ export default {
   updateWaterIntake,
   deleteWaterIntake,
   insertWaterIntakeLog,
-  replaceWaterIntakeSamplesByWindow,
+  upsertWaterIntakeSamples,
   getWaterIntakeLogByDate,
   getWaterIntakeLogsByDates,
   deleteWaterIntakeLog,

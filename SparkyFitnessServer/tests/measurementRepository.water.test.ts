@@ -1,0 +1,202 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import measurementRepository from '../models/measurementRepository.js';
+import { getClient } from '../db/poolManager.js';
+
+vi.mock('../db/poolManager.js', () => ({
+  getClient: vi.fn(),
+}));
+
+describe('measurementRepository.upsertWaterIntakeSamples', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const findQueries = (
+    fragment: string
+  ): Array<{ text: string; values: any[] }> =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockClient.query.mock.calls
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((call: any[]) => ({ text: call[0], values: call[1] }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((call: any) => call.text.includes(fragment));
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn().mockResolvedValue({ rows: [{}] }),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('never issues a DELETE against water_intake_entries (no destructive window-replace)', async () => {
+    await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+      {
+        entryDate: '2026-08-03',
+        waterMl: 250,
+        containerName: 'Health Connect',
+        source: 'health_connect',
+        sourceId: 'hc-record-1',
+        loggedAt: '2026-08-03T15:00:00.000Z',
+      },
+    ]);
+
+    const deletes = findQueries('DELETE FROM water_intake_entries');
+    expect(deletes).toHaveLength(0);
+  });
+
+  it('upserts a keyed sample using ON CONFLICT (user_id, source, source_id) when no legacy row to adopt', async () => {
+    mockClient.query.mockImplementation((text: string) => {
+      if (text.includes('SET source_id = $1')) {
+        return Promise.resolve({ rows: [] }); // nothing to adopt
+      }
+      return Promise.resolve({ rows: [{}] });
+    });
+
+    await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+      {
+        entryDate: '2026-08-03',
+        waterMl: 250,
+        containerName: 'Health Connect',
+        source: 'health_connect',
+        sourceId: 'hc-record-1',
+        loggedAt: '2026-08-03T15:00:00.000Z',
+      },
+    ]);
+
+    const inserts = findQueries('ON CONFLICT (user_id, source, source_id)');
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].values).toContain('hc-record-1');
+  });
+
+  it('adopts a pre-existing unkeyed row instead of inserting a duplicate', async () => {
+    mockClient.query.mockImplementation((text: string) => {
+      if (text.includes('SET source_id = $1')) {
+        return Promise.resolve({
+          rows: [{ id: 'legacy-row-1', source_id: 'hc-record-1' }],
+        });
+      }
+      return Promise.resolve({ rows: [{}] });
+    });
+
+    await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+      {
+        entryDate: '2026-08-03',
+        waterMl: 250,
+        containerName: 'Health Connect',
+        source: 'health_connect',
+        sourceId: 'hc-record-1',
+      },
+    ]);
+
+    const adoptions = findQueries('SET source_id = $1');
+    expect(adoptions).toHaveLength(1);
+    expect(adoptions[0].values).toEqual([
+      'hc-record-1',
+      250,
+      null,
+      'Health Connect',
+      null,
+      'user-1',
+      'health_connect',
+      '2026-08-03',
+    ]);
+    // No fresh INSERT..ON CONFLICT should run once the legacy row was adopted.
+    const inserts = findQueries('ON CONFLICT (user_id, source, source_id)');
+    expect(inserts).toHaveLength(0);
+  });
+
+  it('falls back to a plain insert (no conflict target) when sourceId is missing', async () => {
+    await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+      {
+        entryDate: '2026-08-03',
+        waterMl: 250,
+        containerName: 'manual',
+        source: 'manual',
+        sourceId: null,
+      },
+    ]);
+
+    const keyedInserts = findQueries(
+      'ON CONFLICT (user_id, source, source_id)'
+    );
+    expect(keyedInserts).toHaveLength(0);
+  });
+
+  it('recomputes the water_intake aggregate only for dates in this batch', async () => {
+    await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+      {
+        entryDate: '2026-08-03',
+        waterMl: 250,
+        containerName: 'Health Connect',
+        source: 'health_connect',
+        sourceId: 'hc-record-1',
+      },
+    ]);
+
+    const sums = findQueries('COALESCE(SUM(water_ml)');
+    expect(sums).toHaveLength(1);
+    expect(sums[0].values).toEqual(['user-1', '2026-08-03', 'health_connect']);
+  });
+
+  it('rolls back the transaction if a write fails', async () => {
+    mockClient.query.mockImplementation((text: string) => {
+      if (text.includes('BEGIN')) return Promise.resolve();
+      if (text.includes('SET source_id = $1'))
+        return Promise.resolve({ rows: [] });
+      if (text.includes('INSERT INTO water_intake_entries')) {
+        return Promise.reject(new Error('boom'));
+      }
+      return Promise.resolve({ rows: [{}] });
+    });
+
+    await expect(
+      measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+        {
+          entryDate: '2026-08-03',
+          waterMl: 250,
+          containerName: 'Health Connect',
+          source: 'health_connect',
+          sourceId: 'hc-record-1',
+        },
+      ])
+    ).rejects.toThrow('boom');
+
+    const rollbacks = findQueries('ROLLBACK');
+    expect(rollbacks).toHaveLength(1);
+  });
+});
+
+describe('measurementRepository.incrementWaterData', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn().mockResolvedValue({ rows: [{ water_ml: 0 }] }),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('clamps the INSERT-path value so a decrement with no existing row cannot go negative', async () => {
+    await measurementRepository.incrementWaterData(
+      'user-1',
+      'user-1',
+      -500,
+      '2026-08-03',
+      'manual'
+    );
+
+    const call = mockClient.query.mock.calls[0];
+    expect(call[0]).toContain('GREATEST(0, $3)');
+  });
+});
