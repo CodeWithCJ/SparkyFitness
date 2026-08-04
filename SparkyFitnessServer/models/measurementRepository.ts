@@ -1599,7 +1599,7 @@ async function upsertWaterIntakeSamples(
                water_ml = EXCLUDED.water_ml,
                container_id = EXCLUDED.container_id,
                container_name = EXCLUDED.container_name,
-               logged_at = EXCLUDED.logged_at
+               logged_at = COALESCE($9, water_intake_entries.logged_at)
              RETURNING *`,
             [
               userId,

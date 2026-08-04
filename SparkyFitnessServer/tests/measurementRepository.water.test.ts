@@ -139,6 +139,36 @@ describe('measurementRepository.upsertWaterIntakeSamples', () => {
     expect(inserts[0].values).toContain('hc-record-1');
   });
 
+  // The insert VALUES fill a null loggedAt with NOW(); the conflict update
+  // must not copy that via EXCLUDED.logged_at or a timestamp-less re-sync
+  // would stamp the retry time over the entry's original logged_at.
+  it('preserves the stored logged_at when a keyed re-sync has no timestamp', async () => {
+    mockClient.query.mockImplementation((text: string) => {
+      if (text.includes('SET source_id = $1')) {
+        return Promise.resolve({ rows: [] }); // nothing to adopt
+      }
+      return Promise.resolve({ rows: [{}] });
+    });
+
+    await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+      {
+        entryDate: '2026-08-03',
+        waterMl: 250,
+        containerName: 'Health Connect',
+        source: 'health_connect',
+        sourceId: 'hc-record-1',
+        loggedAt: null,
+      },
+    ]);
+
+    const inserts = findQueries('ON CONFLICT (user_id, source, source_id)');
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].text).toContain(
+      'logged_at = COALESCE($9, water_intake_entries.logged_at)'
+    );
+    expect(inserts[0].values[8]).toBeNull();
+  });
+
   it('adopts a pre-existing unkeyed row instead of inserting a duplicate', async () => {
     mockClient.query.mockImplementation((text: string) => {
       if (text.includes('SET source_id = $1')) {
