@@ -51,7 +51,8 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
       const data = await fetchDailySummary(date);
       const foodEntries = await resolveCollapsedFoodEntries(date, data.foodEntries);
 
-      const resolvedAppleStandHours = data.appleStandHours ?? data.appleStandTime ?? null;
+      const resolvedAppleStandHours =
+        data.appleStandHours ?? data.appleStandTime ?? null;
 
       return {
         goals: data.goals,
@@ -81,6 +82,7 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
       const calorieGoal = adjustedGoals?.calories ?? goals.calories ?? 0;
       const caloriesConsumed = calculateCaloriesConsumed(foodEntries);
       const exerciseStats = calculateExerciseStats(exerciseEntries);
+<<<<<<< HEAD
       const { caloriesBurned, activeCalories, otherExerciseCalories } = exerciseStats;
       const exerciseMinutes =
         raw.appleExerciseTime === null || raw.appleExerciseTime === undefined
@@ -99,7 +101,10 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         remaining: Math.round(fallbackRemaining),
         goal: Math.round(calorieGoal),
         net: Math.round(netCalories),
-        progress: calorieGoal > 0 ? Math.max(0, Math.round((caloriesConsumed / calorieGoal) * 100)) : 0,
+        progress:
+          calorieGoal > 0
+            ? Math.max(0, Math.round((caloriesConsumed / calorieGoal) * 100))
+            : 0,
         bmr: 0,
         bmrSource: 'formula' as const,
         exerciseSource: 'none',

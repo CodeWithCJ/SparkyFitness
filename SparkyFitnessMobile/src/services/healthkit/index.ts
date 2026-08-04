@@ -376,7 +376,12 @@ const queryAppleStandHours = async (
     const samples = await queryCategorySamples('HKCategoryTypeIdentifierAppleStandHour', {
       ascending: false,
       limit: 0,
-      filter: { date: { startDate: dayStart, endDate: dayEnd } },
+      filter: {
+        date: {
+          startDate: dayStart,
+          endDate: dayEnd,
+        },
+      },
     });
 
     const stoodCount = samples.filter(sample => sample.value === 0).length;

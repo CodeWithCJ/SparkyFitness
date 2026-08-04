@@ -424,6 +424,57 @@ describe('dailySummaryService', () => {
     expect(result.appleStandTime).toBe(9);
   });
 
+  test('preserves the newest apple ring values when multiple entries exist for a day', async () => {
+    vi.mocked(
+      measurementRepository.getCustomMeasurementEntriesByDate
+    ).mockResolvedValue([
+      {
+        value: '42',
+        custom_categories: { name: 'apple_exercise_time' },
+      },
+      {
+        value: '30',
+        custom_categories: { name: 'apple_exercise_time' },
+      },
+      {
+        value: '9',
+        custom_categories: { name: 'apple_stand_hour' },
+      },
+      {
+        value: '7',
+        custom_categories: { name: 'apple_stand_hour' },
+      },
+      {
+        value: '600',
+        custom_categories: { name: 'apple_stand_time' },
+      },
+      {
+        value: '480',
+        custom_categories: { name: 'apple_stand_time' },
+      },
+      {
+        value: '720',
+        custom_categories: { name: 'apple_move_time' },
+      },
+      {
+        value: '650',
+        custom_categories: { name: 'apple_move_time' },
+      },
+    ]);
+
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+    expect(result.appleExerciseTime).toBe(42);
+    expect(result.appleMoveTime).toBe(720);
+    expect(result.appleStandHours).toBe(9);
+    expect(result.appleStandTime).toBe(9);
+  });
+
   describe('adjustedGoals', () => {
     test('returns null when raw and adjusted goals have the same calories', async () => {
       const result = await getDailySummary({

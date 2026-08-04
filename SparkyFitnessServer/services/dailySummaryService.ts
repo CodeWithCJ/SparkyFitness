@@ -58,10 +58,18 @@ function extractAppleRingSummary(
         : parseFloat(String(entry.value));
     if (!name || Number.isNaN(parsed)) continue;
 
-    if (name === 'apple_exercise_time') summary.appleExerciseTime = parsed;
-    if (name === 'apple_move_time') summary.appleMoveTime = parsed;
-    if (name === 'apple_stand_time') summary.appleStandTime = parsed;
-    if (name === 'apple_stand_hour') summary.appleStandHours = parsed;
+    if (name === 'apple_exercise_time' && summary.appleExerciseTime === null) {
+      summary.appleExerciseTime = parsed;
+    }
+    if (name === 'apple_move_time' && summary.appleMoveTime === null) {
+      summary.appleMoveTime = parsed;
+    }
+    if (name === 'apple_stand_time' && summary.appleStandTime === null) {
+      summary.appleStandTime = parsed;
+    }
+    if (name === 'apple_stand_hour' && summary.appleStandHours === null) {
+      summary.appleStandHours = parsed;
+    }
   }
 
   return summary;
