@@ -1,4 +1,4 @@
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { HEALTH_METRICS, type HealthMetric } from '../HealthMetrics';
 import {
   syncHealthData,
@@ -14,6 +14,7 @@ import {
   resetDatabaseInaccessibleCount,
   getDatabaseInaccessibleCount,
   ensureHistoryReadPermission,
+  requestHealthPermissions,
 } from './healthConnectService';
 import { getActiveServerConfig } from './storage';
 import { tryClaimAutoSync, setBackfillRunning } from './autoSyncCoordinator';
@@ -175,6 +176,23 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
     }
     if (metrics.length === 0) {
       return { outcome: 'no-metrics', recordsUploaded: 0 };
+    }
+
+    if (Platform.OS === 'ios') {
+      // HealthKit queries THROW on never-requested (not-determined) types, unlike
+      // denied ones which just read empty. Enabled toggles can outlive this
+      // install's HealthKit authorization state (dev/prod bundle ids, restored
+      // preferences), so re-request before reading — the permission sheet only
+      // appears for types still undetermined. Android instead surfaces missing
+      // grants per-read, and its history grant is handled above.
+      const granted = await requestHealthPermissions(metrics.flatMap(metric => metric.permissions));
+      if (!granted) {
+        return {
+          outcome: 'window-failed',
+          error: 'Health permissions could not be requested',
+          recordsUploaded,
+        };
+      }
     }
 
     if (checkpoint === null) {

@@ -260,6 +260,18 @@ export const requestHealthPermissions = async (
         } else if (p.accessType === 'write') {
           writePermissionsSet.add('HKWorkoutTypeIdentifier');
         }
+      } else if (p.recordType === 'TotalCaloriesBurned') {
+        // Total calories is derived from basal + active energy: the day-statistics
+        // reader and the earliest-sample probe query both underlying types, so
+        // authorization must cover both even when Active Calories is not itself an
+        // enabled metric.
+        if (p.accessType === 'read') {
+          readPermissionsSet.add('HKQuantityTypeIdentifierBasalEnergyBurned');
+          readPermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+        } else if (p.accessType === 'write') {
+          writePermissionsSet.add('HKQuantityTypeIdentifierBasalEnergyBurned');
+          writePermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+        }
       } else if (p.recordType === 'Nutrition') {
         // HealthKit authorizes the *contents* of a Food correlation, not the correlation
         // type itself — passing HKCorrelationTypeIdentifierFood to requestAuthorization

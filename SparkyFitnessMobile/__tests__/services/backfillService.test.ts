@@ -38,9 +38,9 @@ jest.mock('../../src/hooks/refreshHealthSyncCache', () => ({
 
 jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
-    { id: 'steps', recordType: 'Steps', preferenceKey: 'syncStepsEnabled', label: 'Steps' },
-    { id: 'weight', recordType: 'Weight', preferenceKey: 'syncWeightEnabled', label: 'Weight' },
-    { id: 'heartRate', recordType: 'HeartRate', preferenceKey: 'syncHeartRateEnabled', label: 'Heart Rate' },
+    { id: 'steps', recordType: 'Steps', preferenceKey: 'syncStepsEnabled', label: 'Steps', permissions: [{ accessType: 'read', recordType: 'Steps' }] },
+    { id: 'weight', recordType: 'Weight', preferenceKey: 'syncWeightEnabled', label: 'Weight', permissions: [{ accessType: 'read', recordType: 'Weight' }] },
+    { id: 'heartRate', recordType: 'HeartRate', preferenceKey: 'syncHeartRateEnabled', label: 'Heart Rate', permissions: [{ accessType: 'read', recordType: 'HeartRate' }] },
   ],
 }));
 
@@ -49,6 +49,7 @@ jest.mock('../../src/services/healthConnectService', () => {
   return {
     loadHealthPreference: jest.fn(),
     ensureHistoryReadPermission: jest.fn(),
+    requestHealthPermissions: jest.fn(),
     resetDatabaseInaccessibleCount: jest.fn(),
     getDatabaseInaccessibleCount: jest.fn().mockReturnValue(0),
     healthReadProvider: { readEarliestRecord },
@@ -68,6 +69,7 @@ const engine = require('../../src/services/shared/healthSyncEngine') as { collec
 const healthService = require('../../src/services/healthConnectService') as {
   loadHealthPreference: jest.Mock;
   ensureHistoryReadPermission: jest.Mock;
+  requestHealthPermissions: jest.Mock;
   resetDatabaseInaccessibleCount: jest.Mock;
   getDatabaseInaccessibleCount: jest.Mock;
   readEarliestRecord: jest.Mock;
@@ -125,6 +127,7 @@ describe('runBackfill', () => {
       Promise.resolve(key === 'syncStepsEnabled' || key === 'syncWeightEnabled'),
     );
     healthService.ensureHistoryReadPermission.mockResolvedValue(true);
+    healthService.requestHealthPermissions.mockResolvedValue(true);
     healthService.getDatabaseInaccessibleCount.mockReturnValue(0);
     healthService.readEarliestRecord.mockImplementation(async (metric: MetricLike) => {
       if (metric.recordType === 'Steps') return { records: [{ startTime: STEPS_EARLIEST }] };
@@ -475,6 +478,31 @@ describe('runBackfill', () => {
     const saved = await loadBackfillCheckpoint('server-1');
     expect(saved?.status).toBe('done');
     expect(saved?.recordsUploaded).toBe(1);
+  });
+
+  test('requests read authorization for the metric set before any reads (iOS)', async () => {
+    // HealthKit throws on never-requested types instead of reading empty, so the
+    // run must settle authorization before the first probe.
+    const result = await runBackfill(runOpts());
+
+    expect(result.outcome).toBe('completed');
+    expect(healthService.requestHealthPermissions).toHaveBeenCalledWith([
+      { accessType: 'read', recordType: 'Steps' },
+      { accessType: 'read', recordType: 'Weight' },
+    ]);
+    expect(healthService.requestHealthPermissions.mock.invocationCallOrder[0]).toBeLessThan(
+      healthService.readEarliestRecord.mock.invocationCallOrder[0],
+    );
+  });
+
+  test('a failed permission request stops the run before any reads', async () => {
+    healthService.requestHealthPermissions.mockResolvedValue(false);
+
+    const result = await runBackfill(runOpts());
+
+    expect(result.outcome).toBe('window-failed');
+    expect(healthService.readEarliestRecord).not.toHaveBeenCalled();
+    expect(engine.collectHealthData).not.toHaveBeenCalled();
   });
 
   test('a done checkpoint short-circuits to completed without touching anything', async () => {
