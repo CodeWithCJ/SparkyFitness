@@ -107,9 +107,10 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   const convertedConsumed = convertFromMl(consumed, unit);
   const convertedGoal = convertFromMl(goal, unit);
   const formatUnitVolume = (val: number, u: string): string => {
-    if (u === 'oz') return parseFloat(val.toFixed(1)).toString();
-    if (u === 'liter') return parseFloat(val.toFixed(2)).toString();
-    return Math.round(val).toString();
+    const decimals = u === 'oz' ? 1 : u === 'liter' ? 2 : 0;
+    // toLocaleString keeps thousands grouping and the locale's decimal
+    // separator; maximumFractionDigits alone strips trailing zeros.
+    return val.toLocaleString(undefined, { maximumFractionDigits: decimals });
   };
   const displayConsumed = formatUnitVolume(convertedConsumed, unit);
   const displayGoal = formatUnitVolume(convertedGoal, unit);

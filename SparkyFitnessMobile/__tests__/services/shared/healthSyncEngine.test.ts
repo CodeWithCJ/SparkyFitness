@@ -19,7 +19,12 @@ jest.mock('../../../src/services/api/healthDataApi', () => ({
   syncHealthData: jest.fn(),
 }));
 
+jest.mock('../../../src/services/api/measurementsApi', () => ({
+  serverSupportsPerRecordWater: jest.fn().mockResolvedValue(true),
+}));
+
 const api = require('../../../src/services/api/healthDataApi') as { syncHealthData: jest.Mock };
+const measurementsApi = require('../../../src/services/api/measurementsApi') as { serverSupportsPerRecordWater: jest.Mock };
 const writeback = require('../../../src/services/writeback') as { runWriteback: jest.Mock };
 
 const metric = (overrides: Partial<HealthMetric>): HealthMetric => ({
@@ -271,6 +276,58 @@ describe('collectHealthData', () => {
     const outcomes = await collectHealthData(provider, metrics, windows, { timeoutLabelPrefix: 'Test query' });
 
     expect(outcomes.map(o => o.metric.recordType)).toEqual(['A', 'B', 'C', 'D', 'E']);
+  });
+
+  // Older servers SET the day total per incoming water record (last drink
+  // wins), so per-record hydration is gated on the server capability probe.
+  describe('per-record water server gate', () => {
+    const hydration = metric({ recordType: 'Hydration', type: 'water', unit: 'ml' });
+    const drinkRecords = [
+      { value: 250, date: '2026-07-02', unit: 'ml', source: 'healthkit', type: 'water', source_id: 'hk-1' },
+      { value: 500, date: '2026-07-02', unit: 'ml', source: 'healthkit', type: 'water', source_id: 'hk-2' },
+    ];
+
+    test('sends individual records when the server supports per-record water', async () => {
+      measurementsApi.serverSupportsPerRecordWater.mockResolvedValue(true);
+      const provider = fakeProvider({
+        readRaw: jest.fn().mockResolvedValue({ records: [{}, {}] }),
+        transform: jest.fn(() => drinkRecords),
+      });
+
+      const outcomes = await collectHealthData(provider, [hydration], windows, { timeoutLabelPrefix: 'Test query' });
+
+      expect(outcomes[0].data).toEqual(drinkRecords);
+      // Per-record upsert tolerates partial-day windows — the session window is fine.
+      expect(provider.readRaw).toHaveBeenCalledWith('Hydration', windows.sessionStart, windows.end);
+    });
+
+    test('falls back to one day-aggregate record against an older server', async () => {
+      measurementsApi.serverSupportsPerRecordWater.mockResolvedValue(false);
+      const provider = fakeProvider({
+        readRaw: jest.fn().mockResolvedValue({ records: [{}, {}] }),
+        transform: jest.fn(() => drinkRecords),
+      });
+
+      const outcomes = await collectHealthData(provider, [hydration], windows, { timeoutLabelPrefix: 'Test query' });
+
+      // Summed per day, with no source_id/timestamp leaking onto the aggregate.
+      expect(outcomes[0].data).toEqual([
+        { value: 750, type: 'water', date: '2026-07-02', unit: 'ml', source: 'healthkit' },
+      ]);
+      // The aggregate is a full-day SET on the old server, so the read must
+      // start at a local day boundary — a mid-day session window (background
+      // sync: lastSynced − 6h) would sum only a slice of the day.
+      expect(provider.readRaw).toHaveBeenCalledWith('Hydration', windows.aggregatedStart, windows.end);
+    });
+
+    test('does not probe the server when no per-record water metric is enabled', async () => {
+      const provider = fakeProvider();
+      const steps = metric({ recordType: 'Steps', type: 'step', readKind: 'cumulative-day' });
+
+      await collectHealthData(provider, [steps], windows, { timeoutLabelPrefix: 'Test query' });
+
+      expect(measurementsApi.serverSupportsPerRecordWater).not.toHaveBeenCalled();
+    });
   });
 });
 

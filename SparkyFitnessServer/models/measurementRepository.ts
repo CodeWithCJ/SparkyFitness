@@ -1474,8 +1474,21 @@ async function insertWaterIntakeLog(
  * everything in a calendar-day window and reinserting only what's in the
  * current batch would silently drop earlier same-day entries that aren't in
  * this batch. Per-record upsert makes re-syncing the same record idempotent
- * without ever deleting entries this batch didn't see. Samples without a
- * sourceId can't be deduped, so they're inserted as-is (best-effort).
+ * without ever deleting entries this batch didn't see.
+ *
+ * Samples without a sourceId can't join that per-record key, and their
+ * producers (older mobile apps sending one day-aggregate per day, CSV health
+ * imports) re-send the same rows on every sync or re-import. For non-manual
+ * sources those samples use replace-per-day semantics instead: each
+ * (entry_date, source) receiving unkeyed samples in this batch has ALL its
+ * previous rows deleted first — keyed ones included, because an unkeyed
+ * day-aggregate is that client's full-day truth for the source, and keyed
+ * rows left beside it would double the total with no way to ever adopt the
+ * aggregate row (its records already exist keyed). A later per-record sync
+ * adopts the aggregate row back into keyed form, so mixed old/new clients
+ * self-heal in both directions. Manual unkeyed samples stay additive —
+ * wiping the user's tapped-in drink log because a CSV import omitted a
+ * source column would destroy real data.
  */
 async function upsertWaterIntakeSamples(
   userId: string,
@@ -1497,6 +1510,29 @@ async function upsertWaterIntakeSamples(
     const writtenRows: Array<Record<string, unknown>> = [];
     const affectedDatesBySource = new Map<string, Set<string>>();
 
+    // Replace-per-day pre-pass for unkeyed non-manual samples (see doc comment):
+    // clear each affected (entry_date, source) once, before any of this batch's
+    // inserts, so multiple unkeyed samples for the same day in one batch all
+    // survive.
+    const unkeyedDatesBySource = new Map<string, Set<string>>();
+    for (const sample of samples) {
+      if (!sample.sourceId && sample.source !== 'manual') {
+        const dates =
+          unkeyedDatesBySource.get(sample.source) || new Set<string>();
+        dates.add(sample.entryDate);
+        unkeyedDatesBySource.set(sample.source, dates);
+      }
+    }
+    for (const [source, dates] of unkeyedDatesBySource) {
+      for (const dateStr of dates) {
+        await client.query(
+          `DELETE FROM water_intake_entries
+           WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
+          [userId, dateStr, source]
+        );
+      }
+    }
+
     for (const sample of samples) {
       const dates =
         affectedDatesBySource.get(sample.source) || new Set<string>();
@@ -1517,6 +1553,11 @@ async function upsertWaterIntakeSamples(
         // than one exists, only one gets adopted instead of stamping the
         // same source_id onto multiple rows (which would trip the partial
         // unique index on (user_id, source, source_id) and fail the batch).
+        // The NOT EXISTS guard skips adoption entirely when this source_id is
+        // already keyed: a re-sync of a known record must land on the
+        // ON CONFLICT update below, not stamp its id onto a second leftover
+        // unkeyed row (same unique-index trip, and it would keep failing on
+        // every subsequent sync).
         const adopted = await client.query(
           `UPDATE water_intake_entries
            SET source_id = $1,
@@ -1528,6 +1569,10 @@ async function upsertWaterIntakeSamples(
              SELECT ctid FROM water_intake_entries
              WHERE user_id = $6 AND source = $7 AND entry_date = $8 AND source_id IS NULL
              LIMIT 1
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM water_intake_entries
+             WHERE user_id = $6 AND source = $7 AND source_id = $1
            )
            RETURNING *`,
           [
@@ -1572,7 +1617,9 @@ async function upsertWaterIntakeSamples(
       } else {
         log(
           'warn',
-          `[upsertWaterIntakeSamples] Sample without sourceId for source '${sample.source}'; cannot dedupe, inserting as-is.`
+          sample.source === 'manual'
+            ? `[upsertWaterIntakeSamples] Sample without sourceId for source '${sample.source}'; inserting additively (not deduped).`
+            : `[upsertWaterIntakeSamples] Sample without sourceId for source '${sample.source}'; using replace-per-day semantics for ${sample.entryDate}.`
         );
         res = await client.query(
           `INSERT INTO water_intake_entries

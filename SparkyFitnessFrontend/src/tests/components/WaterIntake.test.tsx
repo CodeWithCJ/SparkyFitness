@@ -225,4 +225,34 @@ describe('WaterIntake Component', () => {
     expect(screen.getByText('Health Connect')).toBeInTheDocument();
     expect(screen.queryByText('manual')).not.toBeInTheDocument();
   });
+
+  // Deleting a provider-synced row is futile — the provider still holds the
+  // record, so it re-inserts on the next sync. Only manual rows are deletable.
+  it('renders a delete button only on manually logged drink rows', () => {
+    (useWaterIntakeLogQuery as jest.Mock).mockReturnValue({
+      data: [
+        {
+          id: 'e1',
+          water_ml: 250,
+          container_name: 'Work Bottle',
+          source: 'manual',
+          logged_at: '2023-10-27T09:00:00.000Z',
+          created_at: '2023-10-27T09:00:00.000Z',
+        },
+        {
+          id: 'e2',
+          water_ml: 500,
+          container_name: 'Work Bottle',
+          source: 'health_connect',
+          logged_at: '2023-10-27T10:00:00.000Z',
+          created_at: '2023-10-27T10:00:00.000Z',
+        },
+      ],
+    });
+
+    renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
+
+    // One trash icon: the manual row's. The provider row renders none.
+    expect(screen.getAllByTestId('trash-icon')).toHaveLength(1);
+  });
 });

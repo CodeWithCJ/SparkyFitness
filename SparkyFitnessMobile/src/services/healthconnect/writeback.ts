@@ -155,6 +155,15 @@ const writeHydrationForDate = async (
   const record = waterMlToHydrationRecord(date, ml, version);
   const records = record ? [record] : [];
 
+  // A null record with water logged means the noon anchor is still in the
+  // future — the day's record can't be written yet. Bail before the signature
+  // check: storing the empty signature here would make every later pre-noon
+  // run report "unchanged" no matter how much the total moves.
+  if (ml > 0 && !record) {
+    addLog(`[Writeback] Hydration ${date}: deferred — noon anchor still in the future`, 'DEBUG');
+    return;
+  }
+
   const signature = recordsSignature(records);
   if (signature === (await loadWrittenSignature('Hydration', date))) {
     addLog(`[Writeback] Hydration ${date}: unchanged — skipped`, 'DEBUG');

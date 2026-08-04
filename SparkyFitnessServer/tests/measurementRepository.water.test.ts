@@ -33,7 +33,7 @@ describe('measurementRepository.upsertWaterIntakeSamples', () => {
     vi.clearAllMocks();
   });
 
-  it('never issues a DELETE against water_intake_entries (no destructive window-replace)', async () => {
+  it('never issues a DELETE for keyed samples (no destructive window-replace)', async () => {
     await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
       {
         entryDate: '2026-08-03',
@@ -47,6 +47,72 @@ describe('measurementRepository.upsertWaterIntakeSamples', () => {
 
     const deletes = findQueries('DELETE FROM water_intake_entries');
     expect(deletes).toHaveLength(0);
+  });
+
+  // Unkeyed non-manual producers (older mobile apps sending one day-aggregate,
+  // CSV imports) re-send the same rows every sync. Without replace-per-day
+  // semantics each re-send would plain-INSERT a duplicate and inflate totals.
+  it("replaces the day's unkeyed rows once per (date, source) for unkeyed non-manual samples", async () => {
+    await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+      {
+        entryDate: '2026-08-03',
+        waterMl: 1000,
+        containerName: 'Health Connect',
+        source: 'health_connect',
+        sourceId: null,
+      },
+      {
+        entryDate: '2026-08-03',
+        waterMl: 500,
+        containerName: 'Health Connect',
+        source: 'health_connect',
+        sourceId: null,
+      },
+    ]);
+
+    const deletes = findQueries('DELETE FROM water_intake_entries');
+    // One delete per (date, source) pair — not per sample — so both samples
+    // in this batch survive the pre-pass. It clears keyed rows too: an
+    // unkeyed day-aggregate is the client's full-day truth for the source,
+    // and keyed leftovers beside it would double the total.
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].values).toEqual([
+      'user-1',
+      '2026-08-03',
+      'health_connect',
+    ]);
+  });
+
+  it('does not replace-per-day for unkeyed manual samples (additive insert)', async () => {
+    await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+      {
+        entryDate: '2026-08-03',
+        waterMl: 250,
+        containerName: 'manual',
+        source: 'manual',
+        sourceId: null,
+      },
+    ]);
+
+    const deletes = findQueries('DELETE FROM water_intake_entries');
+    expect(deletes).toHaveLength(0);
+  });
+
+  it('guards adoption so an already-keyed source_id cannot be stamped onto a second unkeyed row', async () => {
+    await measurementRepository.upsertWaterIntakeSamples('user-1', 'user-1', [
+      {
+        entryDate: '2026-08-03',
+        waterMl: 250,
+        containerName: 'Health Connect',
+        source: 'health_connect',
+        sourceId: 'hc-record-1',
+      },
+    ]);
+
+    const adoptions = findQueries('SET source_id = $1');
+    expect(adoptions).toHaveLength(1);
+    expect(adoptions[0].text).toContain('NOT EXISTS');
+    expect(adoptions[0].text).toContain('source_id = $1');
   });
 
   it('upserts a keyed sample using ON CONFLICT (user_id, source, source_id) when no legacy row to adopt', async () => {

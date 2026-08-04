@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 5kexud6nM8ftR4Ra2t6beziQNYZc2hHTL7WbtJyBSsir77QMggNCOYU5x29Dlwf
+\restrict UK2vb2gfdaW09yZcXqlm0ZueUsjAQH9HYf4K0bUukTh5NeuHiY4zr9iY7KHaudD
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -1655,11 +1655,11 @@ CREATE TABLE public.exercise_entry_activity_details (
 --
 
 CREATE TABLE public.exercise_entry_gps_points (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    exercise_entry_id uuid NOT NULL,
-    entry_date date NOT NULL,
-    points jsonb DEFAULT '[]'::jsonb NOT NULL,
+    id uuid DEFAULT gen_random_uuid() CONSTRAINT exercise_entry_gps_points_id_not_null NOT NULL,
+    user_id uuid CONSTRAINT exercise_entry_gps_points_user_id_not_null NOT NULL,
+    exercise_entry_id uuid CONSTRAINT exercise_entry_gps_points_exercise_entry_id_not_null NOT NULL,
+    entry_date date CONSTRAINT exercise_entry_gps_points_entry_date_not_null NOT NULL,
+    points jsonb DEFAULT '[]'::jsonb CONSTRAINT exercise_entry_gps_points_points_not_null NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
@@ -3492,8 +3492,8 @@ CREATE TABLE public.user_preferences (
     time_format text DEFAULT 'h:mm A'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY (ARRAY[('kcal'::character varying)::text, ('kJ'::character varying)::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
-    CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text]))),
-    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
+    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text))),
+    CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text])))
 );
 
 
@@ -10645,5 +10645,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 5kexud6nM8ftR4Ra2t6beziQNYZc2hHTL7WbtJyBSsir77QMggNCOYU5x29Dlwf
+\unrestrict UK2vb2gfdaW09yZcXqlm0ZueUsjAQH9HYf4K0bUukTh5NeuHiY4zr9iY7KHaudD
 

@@ -795,9 +795,12 @@ const waterHandler: HealthTypeHandler = {
       }));
 
       try {
-        // Idempotent per-record upsert keyed on (user, source, sourceId) —
-        // never deletes entries outside this batch, so partial/incremental
-        // sync batches can't wipe out earlier same-day entries.
+        // Idempotent per-record upsert keyed on (user, source, sourceId).
+        // Keyed samples never delete entries outside this batch, so
+        // partial/incremental sync batches can't wipe out earlier same-day
+        // entries; unkeyed non-manual samples (older apps, CSV imports)
+        // replace their day's unkeyed rows instead so re-sends don't
+        // duplicate.
         const written = await measurementRepository.upsertWaterIntakeSamples(
           ctx.userId,
           ctx.actingUserId,
