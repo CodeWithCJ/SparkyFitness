@@ -47,8 +47,8 @@ const variantClasses: Record<ButtonVariant, { container: string; text: string; p
     pressed: 'opacity-80',
   },
   secondary: {
-    container: 'bg-raised rounded-xl border border-accent-primary border-2',
-    text: 'text-text-primary font-semibold',
+    container: 'bg-raised rounded-xl border-0',
+    text: 'text-accent-primary font-semibold',
     pressed: 'opacity-80',
   },
   outline: {

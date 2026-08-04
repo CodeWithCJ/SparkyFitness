@@ -34,7 +34,7 @@ const healthSourceName = Platform.OS === 'android' ? 'Health Connect' : 'Apple H
 const pausedReasonCopy = (outcome: BackfillOutcome | null, error?: string): string | null => {
   switch (outcome) {
     case 'quota':
-      return `${healthSourceName}'s daily read limit was reached. Your progress is saved — resume tomorrow to continue where you left off.`;
+      return `${healthSourceName}'s daily history limit was reached. Your progress has been saved. Resume tomorrow to continue where you left off.`;
     case 'device-locked':
       return 'Your device locked during the import, so health data became unreadable. Unlock your device and resume.';
     case 'app-inactive':
@@ -68,6 +68,9 @@ const idleNoticeCopy = (outcome: BackfillOutcome | null): string | null => {
 const monthYearLabel = (date: Date): string =>
   date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
+const fullDateLabel = (date: Date): string =>
+  date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+
 const timeRemainingLabel = (ms: number): string => {
   const minutes = ms / 60_000;
   if (minutes < 1) return 'Under a minute';
@@ -78,7 +81,7 @@ const InfoNote: React.FC<{ icon?: IconName; text: string }> = ({ icon = 'info-ci
   const textSecondary = useCSSVariable('--color-text-secondary') as string;
   return (
     <View className="flex-row items-center gap-2 mt-5 px-1">
-      <Icon name={icon} size={18} color={textSecondary} />
+      <Icon name={icon} size={22} color={textSecondary} />
       <Text className="text-text-secondary text-sm flex-1">{text}</Text>
     </View>
   );
@@ -210,6 +213,7 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
         : null;
 
   const pausedReason = pausedReasonCopy(lastOutcome, lastError);
+  const iconWarning = useCSSVariable('--color-icon-warning') as string;
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -265,7 +269,7 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
             </Button>
             {syncClaimed && (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                A sync is still finishing up — this will enable in a moment.
+                A sync is still finishing up. This will enable in a moment.
               </Text>
             )}
             {!isHealthStoreInitialized && (
@@ -323,12 +327,18 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
               <ProgressSummary {...importStats} timeRemaining={null} paused />
             )}
             {pausedReason && (
-              <Text className="text-text-secondary text-sm mt-4">{pausedReason}</Text>
+              <View
+                testID="paused-reason-callout"
+                className="flex-row items-center gap-2.5 bg-bg-warning rounded-xl p-3.5 mt-5"
+              >
+                <Icon name="warning" size={20} color={iconWarning} />
+                <Text className="text-text-warning text-sm flex-1">{pausedReason}</Text>
+              </View>
             )}
             {frozenSelectionDiffers && (
               <Text testID="metric-selection-notice" className="text-text-muted text-xs mt-3">
                 Your metric selection has changed since this import started. Resume continues
-                with the original selection; Start Over uses the current one.
+                with the original selection and Start Over uses the current one.
               </Text>
             )}
             <InfoNote text="Days already imported are saved. Starting over discards them and re-imports from day 1." />
@@ -343,7 +353,7 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
             </Button>
             {syncClaimed && (
               <Text testID="sync-claimed-note" className="text-text-muted text-xs mt-2 text-center">
-                A sync is still finishing up — these will enable in a moment.
+                A sync is still finishing up. These will enable in a moment.
               </Text>
             )}
           </View>
@@ -351,16 +361,37 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
 
         {status === 'done' && (
           <View>
-            <Text className="text-text-primary text-lg font-semibold">Import complete</Text>
-            <Text className="text-text-secondary text-sm mt-2">
-              {checkpoint
-                ? `${checkpoint.recordsUploaded} records were imported into SparkyFitness.`
-                : 'Your history has been imported into SparkyFitness.'}
-            </Text>
-            <Text className="text-text-muted text-sm mt-3">
-              New data is picked up by normal sync — you only need to run this again if you
-              enable more metrics later.
-            </Text>
+            {importStats ? (
+              <View className="flex-row items-baseline gap-2 mt-2">
+                <Text className="text-5xl font-extrabold text-text-primary">
+                  {importStats.totalDays.toLocaleString()}
+                </Text>
+                <Text className="text-xl text-text-muted">days imported</Text>
+              </View>
+            ) : (
+              <Text className="text-text-primary text-xl py-4 font-semibold">Import complete</Text>
+            )}
+            <SettingsRowGroup className="mt-6 mb-0">
+              <SettingsRow
+                title="Records written"
+                rightAccessory={
+                  <Text className="text-base font-semibold text-text-primary">
+                    {(checkpoint?.recordsUploaded ?? 0).toLocaleString()}
+                  </Text>
+                }
+              />
+              {checkpoint?.completedAt && (
+                <SettingsRow
+                  title="Completed"
+                  rightAccessory={
+                    <Text className="text-base text-text-secondary">
+                      {fullDateLabel(new Date(checkpoint.completedAt))}
+                    </Text>
+                  }
+                />
+              )}
+            </SettingsRowGroup>
+            <InfoNote text="New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics." />
             <Button variant="ghost" className="mt-6" onPress={handleStartOver} disabled={startDisabled}>
               <Text className="text-accent-primary text-base font-semibold">Start Over</Text>
             </Button>

@@ -300,6 +300,27 @@ describe('ImportHistoryScreen', () => {
     expect(getByText(/Around July 2026/)).toBeTruthy();
   });
 
+  test('interrupted: the reason callout renders for abnormal stops but not manual pauses', async () => {
+    mockUseBackfillRunner.mockReturnValue(runner({
+      status: 'interrupted',
+      lastOutcome: 'quota',
+      checkpoint: checkpoint(),
+    }));
+    const quota = renderScreen();
+    await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
+    expect(quota.getByTestId('paused-reason-callout')).toBeTruthy();
+    quota.unmount();
+
+    mockUseBackfillRunner.mockReturnValue(runner({
+      status: 'interrupted',
+      lastOutcome: 'cancelled',
+      checkpoint: checkpoint(),
+    }));
+    const paused = renderScreen();
+    await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
+    expect(paused.queryByTestId('paused-reason-callout')).toBeNull();
+  });
+
   test('interrupted: the metric-selection notice renders only when the frozen set differs', async () => {
     mockUseBackfillRunner.mockReturnValue(runner({
       status: 'interrupted',
@@ -344,7 +365,7 @@ describe('ImportHistoryScreen', () => {
     expect(state.start).toHaveBeenCalledTimes(1);
   });
 
-  test('done: shows the uploaded-record count and offers Start Over', async () => {
+  test('done: shows the day and record totals and offers Start Over', async () => {
     const state = runner({
       status: 'done',
       checkpoint: checkpoint({ status: 'done', recordsUploaded: 1234 }),
@@ -354,7 +375,10 @@ describe('ImportHistoryScreen', () => {
     const { getByText } = renderScreen();
     await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
 
-    expect(getByText(/1234/)).toBeTruthy();
+    // floor→endEdge = 44 days; record count is locale-formatted.
+    expect(getByText('44')).toBeTruthy();
+    expect(getByText('days imported')).toBeTruthy();
+    expect(getByText('1,234')).toBeTruthy();
     fireEvent.press(getByText('Start Over'));
     expect(state.startOver).toHaveBeenCalledTimes(1);
   });
