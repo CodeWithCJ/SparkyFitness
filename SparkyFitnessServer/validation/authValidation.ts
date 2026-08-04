@@ -3,8 +3,8 @@ import { body } from 'express-validator';
 const registerValidation = [
   body('email').isEmail().withMessage('Invalid email address'),
   body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
     .matches(/[A-Z]/)
     .withMessage('Password must contain at least one uppercase letter')
     .matches(/[!@#$%^&*(),.?":{}|<>]/)
@@ -24,8 +24,8 @@ const forgotPasswordValidation = [
 const resetPasswordValidation = [
   body('token').notEmpty().withMessage('Reset token is required'),
   body('newPassword')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
     .matches(/[A-Z]/)
     .withMessage('Password must contain at least one uppercase letter')
     .matches(/[!@#$%^&*(),.?":{}|<>]/)
