@@ -25,6 +25,8 @@ export interface CheckInMeasurementRange {
 
 export interface WaterIntake {
   water_ml: number;
+  /** Manually-logged subtotal; servers predating per-record water sync omit it. */
+  manual_ml?: number;
 }
 
 export interface WaterContainer {

@@ -1706,7 +1706,8 @@
       "deleteConfirm": "Remove this {{volume}} {{unit}} entry?",
       "deletedSuccess": "Drink removed",
       "deletedError": "Failed to remove drink",
-      "editTime": "Click to change time"
+      "editTime": "Click to change time",
+      "noManualToRemove": "Only manually logged water can be removed here"
     },
     "copyFoodEntryDialog": {
       "title": "Copy Food Entries",

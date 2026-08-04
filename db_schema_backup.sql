@@ -3722,8 +3722,16 @@ CREATE TABLE public.water_intake_entries (
     source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
-    logged_at timestamp with time zone DEFAULT now() NOT NULL
+    logged_at timestamp with time zone DEFAULT now() NOT NULL,
+    source_id character varying(255)
 );
+
+
+--
+-- Name: COLUMN water_intake_entries.source_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.water_intake_entries.source_id IS 'Provider-stable record id for idempotent re-sync (e.g. HealthKit uuid, Health Connect metadata.id). NULL for manual or pre-migration synced entries.';
 
 
 --
@@ -5906,6 +5914,13 @@ CREATE INDEX idx_vitals_user_date ON public.vitals_entries USING btree (user_id,
 --
 
 CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries USING btree (user_id, entry_date);
+
+
+--
+-- Name: idx_water_intake_entries_user_source_source_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_water_intake_entries_user_source_source_id ON public.water_intake_entries USING btree (user_id, source, source_id) WHERE ((source IS NOT NULL) AND (source_id IS NOT NULL));
 
 
 --

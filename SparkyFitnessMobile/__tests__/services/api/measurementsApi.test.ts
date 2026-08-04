@@ -1,4 +1,8 @@
-import { upsertCheckIn, fetchMeasurements } from '../../../src/services/api/measurementsApi';
+import {
+  upsertCheckIn,
+  fetchMeasurements,
+  serverSupportsPerRecordWater,
+} from '../../../src/services/api/measurementsApi';
 import { apiFetch } from '../../../src/services/api/apiClient';
 import type { CheckInMeasurementRange } from '../../../src/types/measurements';
 
@@ -74,5 +78,42 @@ describe('fetchMeasurements', () => {
     mockApiFetch.mockResolvedValue([]);
 
     await expect(fetchMeasurements('2024-06-15')).resolves.toEqual({});
+  });
+});
+
+// The probe caches its last successful answer in module state, so these tests
+// are order-dependent by design: the virgin-cache case must run first.
+describe('serverSupportsPerRecordWater', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('assumes support when the very first probe fails', async () => {
+    mockApiFetch.mockRejectedValue(new Error('offline'));
+
+    await expect(serverSupportsPerRecordWater()).resolves.toBe(true);
+  });
+
+  test('treats a day-totals response without manual_ml as an older server', async () => {
+    mockApiFetch.mockResolvedValue({ water_ml: 1500 });
+
+    await expect(serverSupportsPerRecordWater()).resolves.toBe(false);
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: expect.stringMatching(/^\/api\/measurements\/water-intake\/\d{4}-\d{2}-\d{2}$/),
+      }),
+    );
+  });
+
+  test('reuses the last successful answer when the probe request fails', async () => {
+    mockApiFetch.mockRejectedValue(new Error('offline'));
+
+    await expect(serverSupportsPerRecordWater()).resolves.toBe(false);
+  });
+
+  test('detects support from the manual_ml breakdown', async () => {
+    mockApiFetch.mockResolvedValue({ water_ml: 1500, manual_ml: 500 });
+
+    await expect(serverSupportsPerRecordWater()).resolves.toBe(true);
   });
 });

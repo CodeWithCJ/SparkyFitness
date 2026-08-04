@@ -261,6 +261,21 @@ describe('writebackPhase', () => {
     expect(mockDeleteObjects).toHaveBeenCalledWith(WATER, { uuids: ['old-water'] });
   });
 
+  // Regression: a pre-noon run used to store the empty signature, making every
+  // later run that day report "unchanged — skipped" regardless of the total.
+  it('defers hydration without storing a signature while the noon anchor is in the future', async () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1); // local tomorrow: noon anchor guaranteed future
+    const tomorrow = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    prefs({ writebackHydrationEnabled: true });
+    mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 750 });
+    await writebackPhase([tomorrow]);
+
+    expect(mockSaveQuantity).not.toHaveBeenCalled();
+    expect(store[`writebackHydrationSig:${tomorrow}`]).toBeUndefined();
+  });
+
   it('returns true once all dates are attempted (no quota concept)', async () => {
     prefs({ writebackNutritionEnabled: true });
     await expect(writebackPhase(['2026-06-01'])).resolves.toBe(true);

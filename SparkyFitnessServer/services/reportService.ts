@@ -132,6 +132,7 @@ async function getReportsData(
       medicationEntries,
       symptomEntries,
       injections,
+      waterTotals,
     ] = await Promise.all([
       reportRepository.getNutritionData(
         targetUserId,
@@ -165,7 +166,19 @@ async function getReportsData(
         fromDate: startDate,
         toDate: endDate,
       }),
+      measurementRepository.getWaterTotalsByDateRange(
+        targetUserId,
+        startDate,
+        endDate
+      ),
     ]);
+    const waterByDate = new Map<string, number>();
+    for (const row of waterTotals as Array<{
+      entry_date: string;
+      total_ml: string | number;
+    }>) {
+      waterByDate.set(row.entry_date, Number(row.total_ml) || 0);
+    }
     const customMeasurementsData = [];
     for (const category of customCategoriesResult) {
       const customMeasurementResult =
@@ -229,6 +242,7 @@ async function getReportsData(
           vitamin_c: parseFloat(String(item.vitamin_c)) || 0,
           calcium: parseFloat(String(item.calcium)) || 0,
           iron: parseFloat(String(item.iron)) || 0,
+          water: waterByDate.get(String(item.date)) || 0,
         };
         // Map custom nutrients dynamically
         customNutrients.forEach((cn: CustomNutrientDefinition) => {

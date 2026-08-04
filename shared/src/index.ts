@@ -80,6 +80,7 @@ export * from "./schemas/database/Verification.zod.ts";
 export * from "./schemas/database/VMctqAnalysis.zod.ts";
 export * from "./schemas/database/VMctqStats.zod.ts";
 export * from "./schemas/database/WaterIntake.zod.ts";
+export * from "./schemas/database/WaterIntakeEntries.zod.ts";
 export * from "./schemas/database/WeeklyGoalPlans.zod.ts";
 export * from "./schemas/database/WorkoutPlanAssignmentSets.zod.ts";
 export * from "./schemas/database/WorkoutPlanTemplateAssignments.zod.ts";

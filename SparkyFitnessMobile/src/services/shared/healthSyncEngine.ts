@@ -13,6 +13,7 @@ import type { HealthDataPayload } from '../api/healthDataApi';
 import { runWriteback } from '../writeback';
 import { addLog } from '../LogService';
 import { aggregateByDay } from './dataAggregation';
+import { serverSupportsPerRecordWater } from '../api/measurementsApi';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../../utils/concurrency';
 import {
   alignToLocalDayStart,
@@ -74,17 +75,25 @@ const finishTransform = (
   metric: HealthMetric,
   records: unknown[],
   error: string | undefined,
+  waterFallbackToSum: boolean,
 ): CollectedMetric => {
   // The transform preserves each pre-aggregated record's own `type` (cumulative reads
   // emit e.g. 'total_calories' while the metric config may carry a different type).
   const transformed = provider.transform(records, metric);
 
-  if (metric.aggregationStrategy) {
+  // Hydration ships as individual records only to servers that upsert them by
+  // source_id; older servers SET the day total per record (last drink would
+  // win), so against those the day-aggregate 'sum' payload is restored.
+  const strategy =
+    metric.aggregationStrategy ??
+    (waterFallbackToSum && metric.type === 'water' ? 'sum' : undefined);
+
+  if (strategy) {
     const aggregated = aggregateByDay(
       transformed as TransformedRecord[],
       metric.type,
       metric.unit,
-      metric.aggregationStrategy,
+      strategy,
     );
     return { data: aggregated as HealthDataPayload, error };
   }
@@ -96,6 +105,7 @@ const collectMetric = async (
   provider: HealthReadProvider,
   metric: HealthMetric,
   windows: SyncWindows,
+  waterFallbackToSum: boolean,
 ): Promise<CollectedMetric> => {
   const readKind = metricReadKind(metric);
 
@@ -104,7 +114,7 @@ const collectMetric = async (
   if (readKind === 'cumulative-day') {
     const result = await provider.readCumulativeByDay(metric, windows.aggregatedStart, windows.end);
     if (result) {
-      return finishTransform(provider, metric, result.records, result.error);
+      return finishTransform(provider, metric, result.records, result.error, waterFallbackToSum);
     }
     // null = capability missing on this platform → raw path below.
   }
@@ -131,7 +141,16 @@ const collectMetric = async (
       ))
     : windows.sessionStart;
 
-  const result = await provider.readRaw(metric.recordType, rawStart, windows.end);
+  // Day-aggregated water lands as a full-day SET on the receiving server, so
+  // its read must cover complete local days: the background sessionStart
+  // (lastSynced − 6h) can fall mid-day, and summing that slice would replace
+  // the server's real day total with a fraction of it.
+  const readStart =
+    waterFallbackToSum && metric.type === 'water'
+      ? windows.aggregatedStart
+      : rawStart;
+
+  const result = await provider.readRaw(metric.recordType, readStart, windows.end);
   const rawRecords = result.records;
 
   if (!rawRecords || rawRecords.length === 0) {
@@ -139,7 +158,7 @@ const collectMetric = async (
   }
 
   const processed = await provider.postProcessRaw(metric, rawRecords);
-  return finishTransform(provider, metric, processed, result.error);
+  return finishTransform(provider, metric, processed, result.error, waterFallbackToSum);
 };
 
 /**
@@ -154,11 +173,18 @@ export const collectHealthData = async (
   windows: SyncWindows,
   opts: { timeoutLabelPrefix: string },
 ): Promise<MetricSyncOutcome[]> => {
+  // Probed once per run, and only when a per-record water metric is enabled.
+  const waterFallbackToSum = metrics.some(
+    m => m.type === 'water' && !m.aggregationStrategy,
+  )
+    ? !(await serverSupportsPerRecordWater())
+    : false;
+
   const results = await runTasksInBatches(
     metrics,
     METRIC_FETCH_CONCURRENCY,
     metric => withTimeout(
-      collectMetric(provider, metric, windows),
+      collectMetric(provider, metric, windows, waterFallbackToSum),
       METRIC_TIMEOUT_MS,
       `${opts.timeoutLabelPrefix} for ${metric.recordType}`,
     ),

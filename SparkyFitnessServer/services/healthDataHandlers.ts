@@ -5,6 +5,7 @@ import exerciseEntryDb from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import moodRepository from '../models/moodRepository.js';
+import waterContainerRepository from '../models/waterContainerRepository.js';
 import { BUILT_IN_MOODS } from '@workspace/shared';
 
 /**
@@ -727,9 +728,104 @@ const waterHandler: HealthTypeHandler = {
       ctx.actingUserId,
       waterValue,
       ctx.parsedDate,
-      source // Use the provided source (e.g., 'fitbit', 'garmin', 'apple_health')
+      source
     );
     return { status: 'success', data: result };
+  },
+
+  async handleBatch(entries, ctx) {
+    const outcomes: HandlerOutcome[] = new Array(entries.length);
+    if (entries.length === 0) return outcomes;
+
+    // Group entries by source; each source is upserted independently.
+    const entriesBySource = new Map<
+      string,
+      Array<{
+        index: number;
+        entry: PreparedHealthEntry['entry'];
+        parsedDate: string;
+        waterMl: number;
+      }>
+    >();
+    for (let i = 0; i < entries.length; i++) {
+      const item = entries[i];
+      const source = (item.entry.source as string) || 'manual';
+      const waterValue = Number(item.entry.value);
+      // Match handle()'s validation (accepts 0 and negative integers, rejects
+      // non-integers) so the same payload behaves identically on both paths.
+      if (!Number.isInteger(waterValue)) {
+        outcomes[i] = {
+          status: 'error',
+          error: 'Invalid value for water. Must be an integer.',
+        };
+        continue;
+      }
+      const existing = entriesBySource.get(source) || [];
+      existing.push({
+        index: i,
+        entry: item.entry,
+        parsedDate: item.parsedDate,
+        waterMl: waterValue,
+      });
+      entriesBySource.set(source, existing);
+    }
+
+    // Synced entries log against the user's default container, same as manual entries.
+    const primaryContainer =
+      await waterContainerRepository.getPrimaryWaterContainerByUserId(
+        ctx.userId
+      );
+    const primaryContainerId = primaryContainer?.id ?? null;
+    const primaryContainerName = primaryContainer?.name || 'Default';
+
+    for (const [source, group] of entriesBySource) {
+      if (group.length === 0) continue;
+
+      const samples = group.map((g) => ({
+        entryDate: g.parsedDate,
+        waterMl: g.waterMl,
+        containerId: primaryContainerId,
+        containerName: primaryContainerName,
+        source,
+        sourceId: (g.entry.source_id as string) || null,
+        loggedAt:
+          (g.entry.timestamp as string) ||
+          (g.entry.startTime as string) ||
+          null,
+      }));
+
+      try {
+        // Idempotent per-record upsert keyed on (user, source, sourceId).
+        // Keyed samples never delete entries outside this batch, so
+        // partial/incremental sync batches can't wipe out earlier same-day
+        // entries; unkeyed non-manual samples (older apps, CSV imports)
+        // replace their day's unkeyed rows instead so re-sends don't
+        // duplicate.
+        const written = await measurementRepository.upsertWaterIntakeSamples(
+          ctx.userId,
+          ctx.actingUserId,
+          samples
+        );
+        group.forEach((g, pos) => {
+          const row = written?.[pos];
+          outcomes[g.index] = row
+            ? { status: 'success', data: row }
+            : { status: 'error', error: 'Water sample was not persisted' };
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        log(
+          'error',
+          `[waterHandler.handleBatch] upsertWaterIntakeSamples failed for source '${source}' (${group.length} record(s)): ${msg}`,
+          error
+        );
+        group.forEach((g) => {
+          outcomes[g.index] = { status: 'error', error: msg };
+        });
+      }
+    }
+
+    return outcomes;
   },
 };
 
