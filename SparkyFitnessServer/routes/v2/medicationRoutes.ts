@@ -220,7 +220,7 @@ const requireDiaryForSupplementDose = (
  *     tags: [Medications & GLP-1]
  *     security: [{ cookieAuth: [] }]
  *     parameters: [{ in: path, name: medicationId, required: true, schema: { type: string, format: uuid } }]
- *     responses: { 201: { description: Created. }, 400: { description: Invalid request. } }
+ *     responses: { 201: { description: Created. }, 400: { description: Invalid request. }, 403: { description: Supplement doses require food diary access for this profile. } }
  * /v2/medications/schedules/{id}:
  *   put:
  *     summary: Update a schedule rule (partial)
@@ -362,7 +362,7 @@ const requireDiaryForSupplementDose = (
  *       content:
  *         application/json:
  *           schema: { type: object, required: [medication_id], properties: { medication_id: { type: string, format: uuid }, schedule_id: { type: string, format: uuid }, status: { type: string, enum: [taken, skipped, snoozed, prn_taken] }, taken_at: { type: string, format: date-time }, entry_date: { type: string, format: date }, notes: { type: string } } }
- *     responses: { 201: { description: Created. }, 400: { description: Invalid request. } }
+ *     responses: { 201: { description: Created. }, 400: { description: Invalid request. }, 403: { description: Supplement doses require food diary access for this profile. } }
  * /v2/medications/entries/{id}:
  *   put:
  *     summary: Update a logged dose (e.g. correct the taken-at time or notes)
@@ -373,13 +373,13 @@ const requireDiaryForSupplementDose = (
  *       content:
  *         application/json:
  *           schema: { type: object, properties: { status: { type: string, enum: [taken, skipped, snoozed, prn_taken] }, taken_at: { type: string, format: date-time }, scheduled_for: { type: string, format: date-time }, entry_date: { type: string, format: date }, notes: { type: string } } }
- *     responses: { 200: { description: Updated. }, 404: { description: Not found. } }
+ *     responses: { 200: { description: Updated. }, 404: { description: Not found. }, 403: { description: Supplement doses require food diary access for this profile. } }
  *   delete:
  *     summary: Delete a logged dose
  *     tags: [Medications & GLP-1]
  *     security: [{ cookieAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
- *     responses: { 204: { description: Deleted. }, 404: { description: Not found. } }
+ *     responses: { 204: { description: Deleted. }, 404: { description: Not found. }, 403: { description: Supplement doses require food diary access for this profile. } }
  *
  * /v2/medications/display-preferences:
  *   get:

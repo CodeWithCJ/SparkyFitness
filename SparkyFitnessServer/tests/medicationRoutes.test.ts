@@ -219,6 +219,13 @@ describe('Medication Routes V2', () => {
       // and createEntry would snapshot the nutrients server-side regardless.
       expect(res.statusCode).toBe(403);
       expect(medicationEntryRepository.createEntry).not.toHaveBeenCalled();
+      // The gate must ask for diary specifically — asking for 'medications' would
+      // always pass here and silently reopen the hole.
+      expect(canAccessUserData).toHaveBeenCalledWith(
+        expect.anything(),
+        'diary',
+        expect.anything()
+      );
     });
 
     it('allows logging a supplement dose with diary access', async () => {
@@ -234,6 +241,11 @@ describe('Medication Routes V2', () => {
         .send({ medication_id: UID, status: 'taken' });
 
       expect(res.statusCode).toBe(201);
+      expect(canAccessUserData).toHaveBeenCalledWith(
+        expect.anything(),
+        'diary',
+        expect.anything()
+      );
     });
 
     it('leaves plain medication dose logging ungated', async () => {
