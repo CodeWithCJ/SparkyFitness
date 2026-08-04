@@ -248,6 +248,26 @@ describe('Medication Routes V2', () => {
       );
     });
 
+    it('rejects a supplement schedule dose change without diary access', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+
+      // A schedule's dose_amount becomes the entry's dose_amount_snapshot, which the
+      // report multiplies the nutrient payload by, so this is a nutrition write too.
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({ dose_amount: 3 });
+
+      expect(res.statusCode).toBe(403);
+      expect(medicationRepository.updateSchedule).not.toHaveBeenCalled();
+      expect(canAccessUserData).toHaveBeenCalledWith(
+        expect.anything(),
+        'diary',
+        expect.anything()
+      );
+    });
+
     it('leaves plain medication dose logging ungated', async () => {
       supplementLookup.is_supplement = false;
       vi.mocked(canAccessUserData).mockResolvedValue(false);

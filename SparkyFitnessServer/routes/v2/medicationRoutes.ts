@@ -98,10 +98,27 @@ const oneParam = (value: string | string[] | undefined): string | undefined =>
 
 const resolveIsSupplement = async (
   userId: string,
-  { medicationId, entryId }: { medicationId?: string; entryId?: string }
+  {
+    medicationId,
+    entryId,
+    scheduleId,
+  }: { medicationId?: string; entryId?: string; scheduleId?: string }
 ): Promise<boolean> => {
   const client = await getClient(userId);
   try {
+    if (scheduleId) {
+      // A schedule's dose_amount becomes the entry's dose_amount_snapshot, which the
+      // report multiplies the nutrient payload by, so editing it changes future
+      // nutrition just as surely as editing the payload does.
+      const res = await client.query(
+        `SELECT m.is_supplement
+           FROM medication_schedules ms
+           JOIN medications m ON m.id = ms.medication_id
+          WHERE ms.id = $1 AND ms.user_id = $2`,
+        [scheduleId, userId]
+      );
+      return Boolean(res.rows[0]?.is_supplement);
+    }
     if (entryId) {
       const res = await client.query(
         `SELECT m.is_supplement
@@ -129,12 +146,14 @@ const requireDiaryForSupplementDose = (
   locate: (req: Parameters<RequestHandler>[0]) => {
     medicationId?: string;
     entryId?: string;
+    scheduleId?: string;
   }
 ): RequestHandler => {
   return async (req, res, next) => {
     try {
       const target = locate(req);
-      if (!target.medicationId && !target.entryId) return next();
+      if (!target.medicationId && !target.entryId && !target.scheduleId)
+        return next();
       const isSupplement = await resolveIsSupplement(req.userId, target);
       if (!isSupplement) return next();
 
@@ -757,8 +776,23 @@ router.post(
   })),
   addSchedule
 );
-router.put('/schedules/:id', updateSchedule);
-router.delete('/schedules/:id', deleteSchedule);
+router.put(
+  '/schedules/:id',
+  requireDiaryForSupplementDose((req) => ({
+    scheduleId: oneParam(req.params.id),
+  })),
+  updateSchedule
+);
+router.delete(
+  '/schedules/:id',
+  // Deleting a schedule drops its dose override, so future entries fall back to the
+  // medication dose. That changes the multiplier applied to a supplement's nutrients
+  // just as editing it does, so it carries the same gate.
+  requireDiaryForSupplementDose((req) => ({
+    scheduleId: oneParam(req.params.id),
+  })),
+  deleteSchedule
+);
 
 // --- Pens / vials ---------------------------------------------------------
 
