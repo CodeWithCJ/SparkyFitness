@@ -66,6 +66,21 @@ describe('GLP-1 PK helpers', () => {
     }
   });
 
+  it('falls back to the fastest supported absorption when tMax is below any finite rate', () => {
+    const ka = absorptionRate(7, 1e-100);
+    expect(Number.isFinite(ka)).toBe(true);
+    expect(ka).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it('keeps the curve finite for a tiny tMax at doses above 1 mg', () => {
+    const profile = { halfLifeDays: 7, tMaxDays: 1e-100 };
+    for (const doseMg of [0.25, 1, 2, 15]) {
+      const level = serumLevelAt(3, [{ day: 0, doseMg }], profile);
+      expect(Number.isFinite(level)).toBe(true);
+      expect(level).toBeGreaterThan(0);
+    }
+  });
+
   it('falls back to the slowest supported absorption when tMax is unreachable', () => {
     const halfLifeDays = 7;
     const ke = eliminationRate(halfLifeDays);
