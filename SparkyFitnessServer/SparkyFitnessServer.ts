@@ -185,7 +185,7 @@ app.use(
 // one also runs after this mount, so /mcp requests would never reach it.
 app.use(
   '/mcp',
-  requestLogger,
+  requestLogger({ logCompletion: true }),
   express.json({ limit: '1mb' }),
   cookieParser(),
   authenticate,
@@ -255,7 +255,7 @@ app.use(async (req, res, next) => {
   next();
 });
 // Log all incoming requests - AFTER auth to see what falls through
-app.use(requestLogger);
+app.use(requestLogger());
 // Serve static files from the 'uploads' directory
 const UPLOADS_BASE_DIR = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
   ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
