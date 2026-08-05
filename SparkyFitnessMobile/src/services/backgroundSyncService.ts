@@ -27,6 +27,11 @@ import { listMedications, listEntries } from './api/medicationsApi';
 import { reconcileMedicationReminders } from './medicationReminderService';
 import { getTodayDate } from '../utils/dateUtils';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  BACKGROUND_TELEMETRY_BUDGET,
+  setTelemetryInteractive,
+  setWorkoutTelemetryBudget,
+} from './shared/telemetryBudget';
 
 const isAppActive = (): boolean => AppState.currentState === 'active';
 
@@ -84,6 +89,19 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
 
   addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'INFO');
 
+  // Cap per-workout telemetry collection for this run, and forbid anything that
+  // would need to show UI (Android route consent); see telemetryBudget.ts.
+  setWorkoutTelemetryBudget(BACKGROUND_TELEMETRY_BUDGET);
+  setTelemetryInteractive(false);
+  try {
+    await runBackgroundSync(taskId);
+  } finally {
+    setWorkoutTelemetryBudget(Number.POSITIVE_INFINITY);
+    setTelemetryInteractive(true);
+  }
+};
+
+const runBackgroundSync = async (taskId: string): Promise<void> => {
   const lastSyncedTimeStr = await loadLastSyncedTime();
   addLog(`[Background Sync] Last synced: ${lastSyncedTimeStr ?? 'never (defaulting to 24h ago)'}`, 'INFO');
 

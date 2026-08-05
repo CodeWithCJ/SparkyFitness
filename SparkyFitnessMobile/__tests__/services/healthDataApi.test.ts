@@ -240,14 +240,16 @@ describe('healthDataApi', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Workout-Model-Version': '2',
+            'X-Workout-Model-Version': '3',
             Authorization: 'Bearer test-api-key-12345',
           },
         }),
       );
     });
 
-    test('declares the seconds-based workout model on every chunk', async () => {
+    // Version 3 keeps 2's seconds-based set durations and adds the optional
+    // telemetry fields; the header must be on every chunk, not just the first.
+    test('declares the workout model version on every chunk', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -265,7 +267,7 @@ describe('healthDataApi', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
       for (const call of mockFetch.mock.calls) {
         expect(call[1].headers).toEqual(
-          expect.objectContaining({ 'X-Workout-Model-Version': '2' }),
+          expect.objectContaining({ 'X-Workout-Model-Version': '3' }),
         );
       }
     });

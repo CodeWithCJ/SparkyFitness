@@ -17,6 +17,11 @@ import {
 } from '../../types/healthRecords';
 import { getSyncStartDate } from '../../utils/syncUtils';
 import { isQuotaExceededError } from '../shared/quotaError';
+import {
+  claimTelemetryBudget,
+  isTelemetryInteractive,
+} from '../shared/telemetryBudget';
+import { collectSessionTelemetry } from './workoutTelemetry';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
@@ -1105,6 +1110,24 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
       const meters = result.DISTANCE?.inMeters;
       if (meters != null && isPlausibleSessionDistance(meters, durationMs)) {
         enrichedFields.distance = { inMeters: meters };
+      }
+    }
+
+    // Route + series collection. Interactive only in the foreground: reading a
+    // route can prompt for per-session consent, which a headless background
+    // task cannot present. Sessions skipped here are re-sent with telemetry on
+    // the next foreground sync and upserted in place server-side.
+    if (claimTelemetryBudget()) {
+      const bundle = await collectSessionTelemetry(rec, {
+        interactive: isTelemetryInteractive(),
+      });
+      if (bundle.gps_points) enrichedFields.gps_points = bundle.gps_points;
+      if (bundle.hr_samples) enrichedFields.hr_samples = bundle.hr_samples;
+      if (bundle.laps) enrichedFields.laps = bundle.laps;
+      if (bundle.telemetry) {
+        const telemetry: Record<string, unknown> = { ...bundle.telemetry };
+        if (kcal != null) telemetry.active_calories = kcal;
+        enrichedFields.telemetry = telemetry;
       }
     }
 

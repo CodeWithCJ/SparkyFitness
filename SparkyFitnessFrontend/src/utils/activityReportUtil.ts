@@ -146,6 +146,30 @@ export const getEventTypeLabel = (eventType: unknown): string | null => {
   return label;
 };
 
+/**
+ * Display names for the providers that write activity telemetry. Keys are the
+ * lowercased `exercise_entries.source` values each ingest path writes.
+ */
+const PROVIDER_LABELS: Record<string, string> = {
+  garmin: 'Garmin',
+  garmin_fit: 'Garmin',
+  strava: 'Strava',
+  healthkit: 'Apple Health',
+  'health connect': 'Health Connect',
+};
+
+/**
+ * Human-readable provider name for display only.
+ *
+ * Never pass the result back into a query: `provider_name` is matched against
+ * `exercise_entry_activity_details.provider_name` in the database, so a lookup
+ * keyed on "Apple Health" silently returns nothing.
+ */
+export const providerLabel = (providerName?: string | null): string | null => {
+  if (!providerName) return null;
+  return PROVIDER_LABELS[providerName.toLowerCase()] ?? providerName;
+};
+
 export const processChartData = (
   metrics: ActivityDetailMetric[],
   activityData: ActivityDetailsResponse,

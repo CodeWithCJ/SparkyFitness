@@ -1,20 +1,21 @@
 import { useTranslation } from 'react-i18next';
 import ActivityReportVisualizer from '@/pages/Reports/ActivityReportVisualizer'; // Adjust path if needed
+import { providerLabel } from '@/utils/activityReportUtil';
 import { ExerciseProgressResponse } from '@workspace/shared';
 
-interface GarminActivityListProps {
+interface ActivityTelemetryListProps {
   entries: ExerciseProgressResponse[];
   formatDate: (date: Date, formatStr: string) => string;
   parseISO: (dateString: string) => Date;
   title?: string;
 }
 
-export const GarminActivityList = ({
+export const ActivityTelemetryList = ({
   entries,
   formatDate,
   parseISO,
   title,
-}: GarminActivityListProps) => {
+}: ActivityTelemetryListProps) => {
   const { t } = useTranslation();
 
   if (entries.length === 0) return null;
@@ -29,9 +30,18 @@ export const GarminActivityList = ({
           key={entry.exercise_entry_id}
           className="border p-4 rounded-lg shadow-sm"
         >
-          <h3 className="text-xl font-semibold mb-2">
-            {formatDate(parseISO(entry.entry_date), 'MMM dd, yyyy')}
-          </h3>
+          <div className="flex items-baseline justify-between gap-2 mb-2">
+            <h3 className="text-xl font-semibold">
+              {formatDate(parseISO(entry.entry_date), 'MMM dd, yyyy')}
+            </h3>
+            {providerLabel(entry.provider_name) && (
+              <span className="text-sm text-muted-foreground">
+                {providerLabel(entry.provider_name)}
+              </span>
+            )}
+          </div>
+          {/* The raw provider_name is the DB lookup key — pass it through
+              unmapped; providerLabel above is for display only. */}
           <ActivityReportVisualizer
             exerciseEntryId={entry.exercise_entry_id!}
             providerName={entry.provider_name || 'garmin'}

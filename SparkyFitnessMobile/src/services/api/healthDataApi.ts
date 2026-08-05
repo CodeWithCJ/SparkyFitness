@@ -349,9 +349,12 @@ export const syncHealthData = async (
       `${url}/api/health-data`,
       {
         'Content-Type': 'application/json',
-        // Declares per-set exercise durations as integer seconds. Servers read an
-        // absent header as the legacy contract, where those durations are minutes.
-        'X-Workout-Model-Version': '2',
+        // 2 declares per-set exercise durations as integer seconds (an absent
+        // header means the legacy contract, where those durations are minutes).
+        // 3 additionally signals that workout records may carry telemetry —
+        // gps_points, hr_samples, laps and telemetry. Those fields are all
+        // optional, so a server that predates 3 simply ignores them.
+        'X-Workout-Model-Version': '3',
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
       },

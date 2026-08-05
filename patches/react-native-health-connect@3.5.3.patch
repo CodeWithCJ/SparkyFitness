@@ -317,3 +317,28 @@ index 5af85ac881bcee129d70610a4ef7b7b6ec5d51a2..ef9d1acb89528692bd9037b25876e268
  > {
    return HealthConnect.getGrantedPermissions();
  }
+diff --git a/src/types/base.types.ts b/src/types/base.types.ts
+index 2fbda8d..46c76b2 100644
+--- a/src/types/base.types.ts
++++ b/src/types/base.types.ts
+@@ -207,10 +207,17 @@ export interface Location {
+   altitude?: Length;
+ }
+ 
++// String-valued so the declared type matches what the native module actually
++// sends: ReactExerciseSessionRecord.kt emits putString("type", "CONSENT_REQUIRED"),
++// while the original numeric enum made CONSENT_REQUIRED === 2. That mismatch
++// silently broke the comparison in this library's own documented example
++// (`exerciseRoute.type === ExerciseRouteResultType.CONSENT_REQUIRED`), so route
++// consent was never requested. Values are the same strings the bridge sends, so
++// this is a types-only change with no runtime or native impact.
+ export enum ExerciseRouteResultType {
+-  DATA,
+-  NO_DATA,
+-  CONSENT_REQUIRED,
++  DATA = 'DATA',
++  NO_DATA = 'NO_DATA',
++  CONSENT_REQUIRED = 'CONSENT_REQUIRED',
+ }
+ 
+ export interface ExerciseRoute {

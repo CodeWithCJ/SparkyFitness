@@ -1,7 +1,8 @@
 import {
   calculateMaxWeightTrendData,
-  extractGarminActivityEntries,
+  extractTelemetryActivityEntries,
 } from '@/utils/exerciseTrendUtils';
+import { providerLabel } from '@/utils/activityReportUtil';
 import type { ExerciseProgressResponse } from '@workspace/shared';
 import { format } from 'date-fns';
 
@@ -120,7 +121,7 @@ describe('calculateMaxWeightTrendData', () => {
   });
 });
 
-describe('extractGarminActivityEntries', () => {
+describe('extractTelemetryActivityEntries', () => {
   const progressData: Record<string, ExerciseProgressResponse[]> = {
     Tennis: [
       makeEntry({
@@ -149,7 +150,11 @@ describe('extractGarminActivityEntries', () => {
   };
 
   it('accepts both garmin and garmin_fit entries across all exercises', () => {
-    const entries = extractGarminActivityEntries(progressData, 'All', parseISO);
+    const entries = extractTelemetryActivityEntries(
+      progressData,
+      'All',
+      parseISO
+    );
     expect(entries.map((e) => e.exercise_entry_id)).toEqual([
       'fit-2',
       'fit-1',
@@ -158,7 +163,7 @@ describe('extractGarminActivityEntries', () => {
   });
 
   it('accepts both providers for a single selected exercise', () => {
-    const entries = extractGarminActivityEntries(
+    const entries = extractTelemetryActivityEntries(
       progressData,
       'Tennis',
       parseISO
@@ -178,10 +183,46 @@ describe('extractGarminActivityEntries', () => {
       ],
     };
     expect(
-      extractGarminActivityEntries(data, 'All', parseISO).map(
+      extractTelemetryActivityEntries(data, 'All', parseISO).map(
         (e) => e.exercise_entry_id
       )
     ).toEqual(['strava-1', 'strava-2']);
+  });
+
+  it('accepts mobile-synced workouts from HealthKit and Health Connect', () => {
+    // The mobile app writes these exact strings (see healthRecords.ts); the
+    // workout handler now persists their GPS/laps/zones, so they belong in the
+    // telemetry list alongside Garmin and Strava.
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Walking: [
+        makeEntry({ provider_name: 'HealthKit', exercise_entry_id: 'hk-1' }),
+        makeEntry({
+          provider_name: 'Health Connect',
+          exercise_entry_id: 'hc-1',
+        }),
+      ],
+    };
+    expect(
+      extractTelemetryActivityEntries(data, 'All', parseISO)
+        .map((e) => e.exercise_entry_id)
+        .sort()
+    ).toEqual(['hc-1', 'hk-1']);
+  });
+
+  it('matches the mobile providers regardless of casing', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Walking: [
+        makeEntry({ provider_name: 'healthkit', exercise_entry_id: 'hk-2' }),
+        makeEntry({ provider_name: 'HEALTHKIT', exercise_entry_id: 'hk-3' }),
+        makeEntry({
+          provider_name: 'health connect',
+          exercise_entry_id: 'hc-2',
+        }),
+      ],
+    };
+    expect(extractTelemetryActivityEntries(data, 'All', parseISO)).toHaveLength(
+      3
+    );
   });
 
   it('ignores entries from other providers and entries without an id', () => {
@@ -189,12 +230,35 @@ describe('extractGarminActivityEntries', () => {
       Tennis: [
         makeEntry({ provider_name: 'fitbit' }),
         makeEntry({ provider_name: null }),
+        makeEntry({ provider_name: 'manual' }),
         makeEntry({
           provider_name: 'garmin_fit',
           exercise_entry_id: '',
         }),
       ],
     };
-    expect(extractGarminActivityEntries(data, 'All', parseISO)).toEqual([]);
+    expect(extractTelemetryActivityEntries(data, 'All', parseISO)).toEqual([]);
+  });
+});
+
+describe('providerLabel', () => {
+  it.each([
+    ['garmin', 'Garmin'],
+    ['garmin_fit', 'Garmin'],
+    ['strava', 'Strava'],
+    ['HealthKit', 'Apple Health'],
+    ['Health Connect', 'Health Connect'],
+  ])("maps '%s' to '%s'", (source, expected) => {
+    expect(providerLabel(source)).toBe(expected);
+  });
+
+  it('passes an unknown provider through unchanged', () => {
+    expect(providerLabel('Whoop')).toBe('Whoop');
+  });
+
+  it('returns null when there is no provider', () => {
+    expect(providerLabel(null)).toBeNull();
+    expect(providerLabel(undefined)).toBeNull();
+    expect(providerLabel('')).toBeNull();
   });
 });

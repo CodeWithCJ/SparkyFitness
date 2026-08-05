@@ -231,7 +231,7 @@ function toJsonColumnText(value: unknown): string | null {
 // populates a subset of these keys on entryData/mergedData by name; keeping the INSERT/UPDATE
 // column list driven off this single array is what stops a future addition from being silently
 // dropped the way the original 26 columns were.
-const EXERCISE_ENTRY_TELEMETRY_COLUMNS = [
+export const EXERCISE_ENTRY_TELEMETRY_COLUMNS = [
   'max_heart_rate',
   'heart_rate_recovery_1min',
   'avg_respiration_brpm',
