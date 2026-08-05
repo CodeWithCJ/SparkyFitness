@@ -201,7 +201,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       const lastSynced = new Date('2024-01-15T08:00:00Z');
       storage.loadLastSyncedTime.mockResolvedValue(lastSynced.toISOString());
       healthService.loadHealthPreference.mockResolvedValue(true);
-      healthService.readHealthRecords.mockResolvedValue([{ value: 72 }]);
+      healthService.readHealthRecords.mockResolvedValue([{ value: 480 }]);
 
       await triggerManualSync();
 
@@ -209,8 +209,30 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       const expectedSessionStart = new Date(lastSynced.getTime() - 6 * 60 * 60 * 1000);
 
       expect(healthService.readHealthRecords).toHaveBeenCalledWith(
-        'HeartRate',
+        'SleepSession',
         expectedSessionStart,
+        now
+      );
+    });
+
+    test('uses start-of-day for min-max-avg raw reads (issue #1978)', async () => {
+      const lastSynced = new Date('2024-01-15T08:00:00Z');
+      storage.loadLastSyncedTime.mockResolvedValue(lastSynced.toISOString());
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.readHealthRecords.mockResolvedValue([{ value: 72 }]);
+
+      await triggerManualSync();
+
+      const now = new Date('2024-01-15T14:30:00Z');
+      const sessionStart = new Date(lastSynced.getTime() - 6 * 60 * 60 * 1000);
+      const expectedAggregatedStart = new Date(sessionStart);
+      expectedAggregatedStart.setHours(0, 0, 0, 0);
+
+      // A mid-day start would recompute heart_rate_min over a partial day and
+      // overwrite the server's full-day value (losing the overnight low).
+      expect(healthService.readHealthRecords).toHaveBeenCalledWith(
+        'HeartRate',
+        expectedAggregatedStart,
         now
       );
     });

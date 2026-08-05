@@ -144,12 +144,15 @@ const collectMetric = async (
       ))
     : windows.sessionStart;
 
-  // Day-aggregated water lands as a full-day SET on the receiving server, so
-  // its read must cover complete local days: the background sessionStart
-  // (lastSynced − 6h) can fall mid-day, and summing that slice would replace
-  // the server's real day total with a fraction of it.
+  // Day-aggregated payloads (aggregationStrategy metrics and the water day-sum
+  // fallback) land as full-day SETs on the receiving server, so their reads
+  // must cover complete local days: the background sessionStart
+  // (lastSynced − 6h) can fall mid-day, and aggregating that slice would
+  // replace the server's real full-day values with partial-window ones
+  // (e.g. heart_rate_min losing the overnight low).
   const readStart =
-    waterFallbackToSum && metric.type === 'water'
+    metric.aggregationStrategy != null ||
+    (waterFallbackToSum && metric.type === 'water')
       ? windows.aggregatedStart
       : rawStart;
 
