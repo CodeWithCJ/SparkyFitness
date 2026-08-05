@@ -510,8 +510,13 @@ async function upsertWaterIntake(
         authenticatedUserId
       );
       if (container) {
-        amountPerDrink =
-          Number(container.volume) / Number(container.servings_per_container);
+        // Stored rows can carry servings_per_container = 0; clamp so the
+        // division can't produce Infinity
+        const servings = Math.max(
+          1,
+          Number(container.servings_per_container) || 1
+        );
+        amountPerDrink = Number(container.volume) / servings;
         containerName = container.name || null;
       } else {
         // Fallback to default if container not found
