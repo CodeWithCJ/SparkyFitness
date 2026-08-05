@@ -4,6 +4,41 @@ import { optionalNullableNumber, optionalNullableInt } from './schema.utils.js';
 const customFields = z.record(z.string(), z.unknown()).nullable().optional();
 const optionalNullableString = z.string().nullable().optional();
 const optionalDateString = z.string().nullable().optional(); // 'YYYY-MM-DD'
+const nutrientValue = z.number().finite().nonnegative();
+// A dose amount, when present, must be positive. Beyond being a sane display quantity, for
+// a supplement it becomes the report's per-entry dose multiplier (COALESCE(ms.dose_amount,
+// m.dose_amount)), where a zero or negative value would silently zero or subtract every
+// nutrient in the daily total.
+const positiveDoseAmount = z
+  .number()
+  .finite()
+  .positive('dose_amount must be greater than 0')
+  .nullable()
+  .optional();
+
+export const MedicationNutrientsSchema = z
+  .object({
+    calories: nutrientValue.optional(),
+    protein: nutrientValue.optional(),
+    carbs: nutrientValue.optional(),
+    fat: nutrientValue.optional(),
+    saturated_fat: nutrientValue.optional(),
+    polyunsaturated_fat: nutrientValue.optional(),
+    monounsaturated_fat: nutrientValue.optional(),
+    trans_fat: nutrientValue.optional(),
+    cholesterol: nutrientValue.optional(),
+    sodium: nutrientValue.optional(),
+    potassium: nutrientValue.optional(),
+    dietary_fiber: nutrientValue.optional(),
+    sugars: nutrientValue.optional(),
+    vitamin_a: nutrientValue.optional(),
+    vitamin_c: nutrientValue.optional(),
+    calcium: nutrientValue.optional(),
+    iron: nutrientValue.optional(),
+    custom_nutrients: z.record(z.string(), nutrientValue).optional(),
+  })
+  .strict();
+export type MedicationNutrients = z.infer<typeof MedicationNutrientsSchema>;
 
 // --------------------------------------------------------------------------
 // Medications
@@ -15,7 +50,7 @@ const MedicationFieldsSchema = z.object({
   route_id: optionalNullableString,
   strength_value: optionalNullableNumber,
   strength_unit: optionalNullableString,
-  dose_amount: optionalNullableNumber,
+  dose_amount: positiveDoseAmount,
   dose_unit: optionalNullableString,
   rxnorm_rxcui: optionalNullableString,
   ndc: optionalNullableString,
@@ -30,6 +65,8 @@ const MedicationFieldsSchema = z.object({
   is_active: z.boolean().optional(),
   is_quick: z.boolean().optional(),
   is_glp1: z.boolean().optional(),
+  is_supplement: z.boolean().optional(),
+  nutrients: MedicationNutrientsSchema.optional(),
   notes: optionalNullableString,
   source: z.string().optional(),
   custom_fields: customFields,
@@ -50,7 +87,7 @@ export const CreateScheduleBodySchema = z
   .object({
     schedule_type_id: z.string().min(1, 'schedule_type_id is required'),
     time_of_day: optionalNullableString, // 'HH:MM' or 'HH:MM:SS'
-    dose_amount: optionalNullableNumber,
+    dose_amount: positiveDoseAmount,
     days_of_week: z.array(z.number().int().min(0).max(6)).nullable().optional(),
     interval_days: optionalNullableInt,
     day_of_month: z.number().int().min(1).max(31).nullable().optional(),

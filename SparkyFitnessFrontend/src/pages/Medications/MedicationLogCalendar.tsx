@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isEntryVisibleForSubtype, type MedSubtype } from './medicationUtils';
 import { buildMonthGrid } from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useMedicationEntries } from '@/hooks/useMedications';
@@ -71,15 +72,63 @@ interface MedicationLogCalendarProps {
   medications: Medication[];
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  subtype?: MedSubtype;
 }
 
 export default function MedicationLogCalendar({
   medications,
   selectedDate,
   onSelectDate,
+  subtype = 'all',
 }: MedicationLogCalendarProps) {
   const { t } = useTranslation();
   const { firstDayOfWeek } = usePreferences();
+
+  // The calendar already receives the subtype-filtered list, so only its wording
+  // needs to follow the filter. In the mixed All view the picker's catch-all is just
+  // "All", because the list it heads can hold both medications and supplements.
+  const copy = useMemo(() => {
+    if (subtype === 'supplements') {
+      return {
+        title: t(
+          'medications.calendar.titleSupplements',
+          'Supplement Log Calendar'
+        ),
+        empty: t(
+          'medications.calendar.noSupplements',
+          'Add a supplement to see its log calendar here.'
+        ),
+        all: t('medications.calendar.allSupplements', 'All supplements'),
+        placeholder: t(
+          'medications.calendar.selectSupplement',
+          'Select a supplement'
+        ),
+      };
+    }
+    if (subtype === 'meds') {
+      return {
+        title: t('medications.calendar.title', 'Medication Log Calendar'),
+        empty: t(
+          'medications.calendar.noMeds',
+          'Add a medication to see its log calendar here.'
+        ),
+        all: t('medications.calendar.allMedications', 'All medications'),
+        placeholder: t(
+          'medications.calendar.selectMedication',
+          'Select a medication'
+        ),
+      };
+    }
+    return {
+      title: t('medications.calendar.titleAll', 'Log Calendar'),
+      empty: t(
+        'medications.calendar.noEntries',
+        'Add a medication or supplement to see its log calendar here.'
+      ),
+      all: t('medications.calendar.allEntries', 'All'),
+      placeholder: t('medications.calendar.selectEntry', 'Select an item'),
+    };
+  }, [subtype, t]);
 
   const loggableMeds = useMemo(
     () => medications.filter((m) => m.is_active !== false),
@@ -89,6 +138,32 @@ export default function MedicationLogCalendar({
   const [selectedMedId, setSelectedMedId] = useState<string>(ALL_MEDS);
   const isAllSelected = selectedMedId === ALL_MEDS;
   const activeMedId = isAllSelected ? undefined : selectedMedId;
+
+  // `medications` arrives already narrowed by the subtype filter, but the entries
+  // below are fetched by date and only constrained when a single item is picked.
+  // With the catch-all selected the month total and day colours would therefore
+  // count the subtype the user just filtered out. Narrow them by the visible ids.
+  //
+  // `all` deliberately does NOT filter: an entry outlives the medication it came
+  // from, and those orphans match no visible id, so filtering the mixed view would
+  // silently drop history it exists to show.
+  const visibleMedIds = useMemo(
+    () => new Set(medications.map((m) => m.id)),
+    [medications]
+  );
+  const entryIsVisible = useCallback(
+    (medicationId: string | null | undefined) =>
+      isEntryVisibleForSubtype(medicationId, visibleMedIds, subtype),
+    [subtype, visibleMedIds]
+  );
+
+  // A selection made under one filter can survive a switch that hides it, leaving
+  // the calendar pinned to an item the list no longer offers.
+  useEffect(() => {
+    if (!isAllSelected && !visibleMedIds.has(selectedMedId)) {
+      setSelectedMedId(ALL_MEDS);
+    }
+  }, [isAllSelected, selectedMedId, visibleMedIds]);
 
   const [month, setMonth] = useState(() => selectedDate.slice(0, 7));
 
@@ -119,6 +194,7 @@ export default function MedicationLogCalendar({
     const map: Record<string, DayCounts> = {};
     (entries as MedicationEntry[]).forEach((e) => {
       if (!isAllSelected && e.medication_id !== activeMedId) return;
+      if (isAllSelected && !entryIsVisible(e.medication_id)) return;
       const day = e.entry_date.split('T')[0];
       if (!day) return;
       if (!map[day]) map[day] = { taken: 0, prn: 0, skipped: 0, snoozed: 0 };
@@ -128,17 +204,22 @@ export default function MedicationLogCalendar({
       else if (e.status === 'snoozed') map[day].snoozed++;
     });
     return map;
-  }, [entries, activeMedId, isAllSelected]);
+  }, [entries, activeMedId, isAllSelected, entryIsVisible]);
 
   const symptomsByDay = useMemo(() => {
     const map: Record<string, DaySymptomInfo> = {};
     symptomEntries.forEach((s) => {
       const day = s.entry_date.split('T')[0];
       if (!day) return;
+      // A symptom linked to an item the subtype filter hides belongs to the other
+      // kind, so drop it outright. Reclassifying it as "general" would keep its dot
+      // and its name on a calendar that is meant to exclude it. Symptoms with no
+      // medication at all are genuinely general and always stay.
+      if (s.medication_id && !entryIsVisible(s.medication_id)) return;
       if (!map[day])
         map[day] = { sideEffect: false, general: false, names: [] };
-      // In "All medications" mode, any medication-linked symptom counts as a
-      // side effect; otherwise only symptoms linked to the selected medication do.
+      // In catch-all mode any medication-linked symptom counts as a side effect;
+      // otherwise only symptoms linked to the selected item do.
       const isSideEffect = isAllSelected
         ? !!s.medication_id
         : s.medication_id === activeMedId;
@@ -152,7 +233,7 @@ export default function MedicationLogCalendar({
       }
     });
     return map;
-  }, [symptomEntries, activeMedId, isAllSelected]);
+  }, [symptomEntries, activeMedId, isAllSelected, entryIsVisible]);
 
   const monthTotal = useMemo(() => {
     return Object.entries(entriesByDay).reduce((sum, [day, counts]) => {
@@ -192,15 +273,12 @@ export default function MedicationLogCalendar({
       <Card>
         <CardHeader>
           <CardTitle className="text-base font-semibold">
-            {t('medications.calendar.title', 'Medication Log Calendar')}
+            {copy.title}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-6">
-            {t(
-              'medications.calendar.noMeds',
-              'Add a medication to see its log calendar here.'
-            )}
+            {copy.empty}
           </p>
         </CardContent>
       </Card>
@@ -252,17 +330,10 @@ export default function MedicationLogCalendar({
           <div className="flex items-center justify-between gap-3">
             <Select value={selectedMedId} onValueChange={setSelectedMedId}>
               <SelectTrigger className="h-9 w-full">
-                <SelectValue
-                  placeholder={t(
-                    'medications.calendar.selectMedication',
-                    'Select a medication'
-                  )}
-                />
+                <SelectValue placeholder={copy.placeholder} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_MEDS}>
-                  {t('medications.calendar.allMedications', 'All medications')}
-                </SelectItem>
+                <SelectItem value={ALL_MEDS}>{copy.all}</SelectItem>
                 {loggableMeds.map((med) => (
                   <SelectItem key={med.id} value={med.id}>
                     {med.display_name || med.name}

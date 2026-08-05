@@ -10,7 +10,7 @@ import type {
 const MED_COLS = `id, user_id, name, display_name, type_id, route_id,
   strength_value, strength_unit, dose_amount, dose_unit, rxnorm_rxcui, ndc,
   prescriber, pharmacy, rx_number, reason_text, effectiveness_rating,
-  color, icon, photo_path, is_active, is_quick, is_glp1, notes,
+  color, icon, photo_path, is_active, is_quick, is_glp1, is_supplement, nutrients, notes,
   source, custom_fields, created_at, updated_at`;
 
 const SCHEDULE_COLS = `id, medication_id, user_id, schedule_type_id, time_of_day,
@@ -26,10 +26,11 @@ async function createMedication(userId: string, data: CreateMedicationBody) {
          user_id, name, display_name, type_id, route_id, strength_value, strength_unit,
          dose_amount, dose_unit, rxnorm_rxcui, ndc, prescriber, pharmacy, rx_number,
          reason_text, effectiveness_rating, color, icon, photo_path, is_active, is_quick,
-         is_glp1, notes, source, custom_fields)
+         is_glp1, is_supplement, nutrients, notes, source, custom_fields)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
-         COALESCE($20, TRUE), COALESCE($21, FALSE), COALESCE($22, FALSE), $23,
-         COALESCE($24, 'manual'), COALESCE($25, '{}'::jsonb))
+         COALESCE($20, TRUE), COALESCE($21, FALSE), COALESCE($22, FALSE),
+         COALESCE($23, FALSE), COALESCE($24, '{}'::jsonb), $25,
+         COALESCE($26, 'manual'), COALESCE($27, '{}'::jsonb))
        RETURNING ${MED_COLS}`,
       [
         userId,
@@ -54,6 +55,8 @@ async function createMedication(userId: string, data: CreateMedicationBody) {
         data.is_active ?? null,
         data.is_quick ?? null,
         data.is_glp1 ?? null,
+        data.is_supplement ?? null,
+        data.nutrients ? JSON.stringify(data.nutrients) : null,
         data.notes ?? null,
         data.source ?? null,
         data.custom_fields ? JSON.stringify(data.custom_fields) : null,
@@ -160,6 +163,8 @@ async function updateMedication(
       'is_active',
       'is_quick',
       'is_glp1',
+      'is_supplement',
+      'nutrients',
       'notes',
       'custom_fields',
     ];
@@ -167,10 +172,9 @@ async function updateMedication(
     for (const key of fields) {
       if (data[key] !== undefined) {
         updates.push(`${key} = $${index}`);
-        if (key === 'custom_fields') {
-          values.push(
-            data.custom_fields ? JSON.stringify(data.custom_fields) : '{}'
-          );
+        if (key === 'custom_fields' || key === 'nutrients') {
+          const jsonValue = data[key];
+          values.push(jsonValue ? JSON.stringify(jsonValue) : '{}');
         } else {
           values.push(data[key]);
         }

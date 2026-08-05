@@ -26,7 +26,10 @@ import {
   useAddScheduleMutation,
   useDeleteScheduleMutation,
 } from '@/hooks/useMedications';
-import { formatScheduleDescription } from './medicationUtils';
+import {
+  formatScheduleDescription,
+  positiveDoseOrNull,
+} from './medicationUtils';
 import type { MedicationDetail, MedicationSchedule } from '@/types/medications';
 
 export default function ScheduleManager({ med }: { med: MedicationDetail }) {
@@ -66,7 +69,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
     const body: Partial<MedicationSchedule> & { schedule_type_id: string } = {
       schedule_type_id: scheduleTypeId,
       time_of_day: scheduleTypeId === 'prn' ? null : timeOfDay,
-      dose_amount: doseAmount ? Number(doseAmount) : null,
+      dose_amount: positiveDoseOrNull(doseAmount),
       with_meal: withMeal || null,
       start_date: startDate || null,
       end_date: endDate || null,
@@ -192,6 +195,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                   <Input
                     type="number"
                     step="0.1"
+                    min="0.1"
                     placeholder={
                       med.dose_amount != null ? String(med.dose_amount) : '1'
                     }

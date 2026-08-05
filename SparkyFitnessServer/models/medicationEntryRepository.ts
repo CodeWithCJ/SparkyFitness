@@ -5,39 +5,64 @@ import type {
 } from '../schemas/medicationSchemas.js';
 
 const ENTRY_COLS = `id, medication_id, schedule_id, user_id, status, taken_at, scheduled_for, entry_date,
-  med_name_snapshot, dose_amount_snapshot, dose_unit_snapshot, notes, source, custom_fields, created_at, updated_at`;
+  med_name_snapshot, dose_amount_snapshot, dose_unit_snapshot, notes, source, custom_fields, created_at, updated_at,
+  nutrients_snapshot`;
 
 async function createEntry(userId: string, data: CreateMedicationEntryBody) {
   const client = await getClient(userId);
   try {
-    // Fetch medication snapshot details if not explicitly provided
+    // Fetch medication snapshot details. We always look the medication up (when a
+    // medication_id is present) because — beyond filling in any missing name/dose
+    // snapshots — we must capture the per-dose nutrient payload for supplements.
     let nameSnapshot = data.med_name_snapshot;
     let doseAmountSnapshot = data.dose_amount_snapshot;
     let doseUnitSnapshot = data.dose_unit_snapshot;
+    // Strictly server-derived from the looked-up medication; never read from the
+    // request body. Non-supplement entries leave this NULL.
+    let nutrientsSnapshot: unknown = null;
 
-    if (!nameSnapshot) {
+    if (data.medication_id) {
       const medResult = await client.query(
-        'SELECT name, display_name, dose_amount, dose_unit FROM medications WHERE id = $1 AND user_id = $2',
-        [data.medication_id, userId]
+        `SELECT m.name, m.display_name,
+                COALESCE(ms.dose_amount, m.dose_amount) AS dose_amount,
+                m.dose_unit, m.is_supplement, m.nutrients
+           FROM medications m
+           LEFT JOIN medication_schedules ms
+             ON ms.id = $3 AND ms.medication_id = m.id AND ms.user_id = m.user_id
+          WHERE m.id = $1 AND m.user_id = $2`,
+        [data.medication_id, userId, data.schedule_id ?? null]
       );
       const med = medResult.rows[0];
       if (med) {
-        nameSnapshot = med.display_name || med.name;
-        if (doseAmountSnapshot === undefined || doseAmountSnapshot === null) {
+        nameSnapshot ||= med.display_name || med.name;
+        // For a supplement the snapshot is what the report multiplies the per-dose payload
+        // by, so it MUST be the authoritative schedule/medication dose count — never a
+        // client-supplied value, which could be stale, zero or negative and skew every
+        // nutrient in the report. Non-supplement entries keep the existing behaviour of
+        // honouring a caller-provided snapshot and falling back to the medication dose.
+        if (med.is_supplement) {
+          doseAmountSnapshot = med.dose_amount;
+        } else if (
+          doseAmountSnapshot === undefined ||
+          doseAmountSnapshot === null
+        ) {
           doseAmountSnapshot = med.dose_amount;
         }
-        if (!doseUnitSnapshot) {
-          doseUnitSnapshot = med.dose_unit;
-        }
+        doseUnitSnapshot ||= med.dose_unit;
+        // Snapshot the per-dose nutrient payload for supplements so historical daily
+        // totals stay immutable even if the medication's nutrients are edited later.
+        // Non-supplement entries (incl. GLP-1 injections) leave this NULL.
+        nutrientsSnapshot = med.is_supplement ? (med.nutrients ?? null) : null;
       }
     }
 
     const result = await client.query(
       `INSERT INTO medication_entries (
          medication_id, schedule_id, user_id, status, taken_at, scheduled_for, entry_date,
-         med_name_snapshot, dose_amount_snapshot, dose_unit_snapshot, notes, source, custom_fields)
+         med_name_snapshot, dose_amount_snapshot, dose_unit_snapshot, notes, source, custom_fields,
+         nutrients_snapshot)
        VALUES ($1, $2, $3, COALESCE($4, 'taken'), COALESCE($5, NOW()), $6, COALESCE($7, CURRENT_DATE),
-         $8, $9, $10, $11, COALESCE($12, 'manual'), COALESCE($13, '{}'::jsonb))
+         $8, $9, $10, $11, COALESCE($12, 'manual'), COALESCE($13, '{}'::jsonb), $14)
        RETURNING ${ENTRY_COLS}`,
       [
         data.medication_id,
@@ -53,6 +78,9 @@ async function createEntry(userId: string, data: CreateMedicationEntryBody) {
         data.notes ?? null,
         data.source ?? null,
         data.custom_fields ? JSON.stringify(data.custom_fields) : null,
+        nutrientsSnapshot !== null && nutrientsSnapshot !== undefined
+          ? JSON.stringify(nutrientsSnapshot)
+          : null,
       ]
     );
     return result.rows[0];
@@ -139,6 +167,7 @@ async function listEntriesWithInjections(
               COALESCE(m.display_name, m.name) AS med_name_snapshot,
               i.dose_mg AS dose_amount_snapshot, 'mg'::text AS dose_unit_snapshot,
               i.notes, i.source, i.custom_fields, i.created_at, i.updated_at,
+              NULL::jsonb AS nutrients_snapshot,
               i.site, 'injection'::text AS entry_type
          FROM injection_entries i
          LEFT JOIN medications m ON m.id = i.medication_id

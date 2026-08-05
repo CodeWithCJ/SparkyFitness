@@ -1,5 +1,12 @@
 import i18n from '@/i18n';
 import {
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+  getMicronutrientById,
+  normalizeNutrientName,
+} from '@workspace/shared';
+import type { UserCustomNutrient } from '@/types/customNutrient';
+import type { MedicationNutrients } from '@/types/medications';
+import {
   Pill,
   Syringe,
   Tablets,
@@ -44,10 +51,64 @@ export const MED_TYPES = [
   'other',
 ];
 
+// Dose-forms offered on the supplement form. These reuse the medication `type_id`
+// text column (no schema change) — a supplement is an is_supplement medication row,
+// so its form lives in the same field a medication's type does.
+export const SUPPLEMENT_FORMS = [
+  'tablet',
+  'capsule',
+  'softgel',
+  'gummy',
+  'powder',
+  'liquid',
+] as const;
+
+export type MedSubtype = 'all' | 'meds' | 'supplements';
+
+// Partitions the medication list for the `All | Meds | Supplements` segmented filter.
+// Supplements are is_supplement medication rows, so this is a view filter over the same
+// list, not a separate data source — keeping the adherence engine and rollup untouched.
+export const filterMedsBySubtype = <T extends { is_supplement?: boolean }>(
+  meds: T[],
+  subtype: MedSubtype
+): T[] =>
+  meds.filter((med) =>
+    subtype === 'all'
+      ? true
+      : subtype === 'supplements'
+        ? Boolean(med.is_supplement)
+        : !med.is_supplement
+  );
+
+// Whether a logged entry belongs to the subtype currently on screen. `all` always
+// says yes and deliberately never consults the id set: an entry outlives the
+// medication it came from, so an orphan matches no visible id and filtering the
+// mixed view would silently drop history that view exists to show. The narrowed
+// views do filter, because an orphan cannot be classified once its row is gone.
+export const isEntryVisibleForSubtype = (
+  medicationId: string | null | undefined,
+  visibleMedIds: Set<string>,
+  subtype: MedSubtype
+): boolean =>
+  subtype === 'all' || (!!medicationId && visibleMedIds.has(medicationId));
+
+// Array form of the rule above, for the Log view's entry lists.
+export const filterEntriesBySubtype = <T extends { medication_id: string }>(
+  entries: T[],
+  visibleMedIds: Set<string>,
+  subtype: MedSubtype
+): T[] =>
+  entries.filter((entry) =>
+    isEntryVisibleForSubtype(entry.medication_id, visibleMedIds, subtype)
+  );
+
 export const MED_TYPE_ICONS: Record<string, LucideIcon> = {
   pill: Pill,
   tablet: Tablets,
   capsule: Pill,
+  softgel: Pill,
+  gummy: Tablets,
+  powder: FlaskConical,
   liquid: FlaskConical,
   injection: Syringe,
   patch: Bandage,
@@ -63,6 +124,9 @@ export const MED_TYPE_COLORS: Record<string, string> = {
   pill: 'text-rose-500',
   tablet: 'text-amber-500',
   capsule: 'text-orange-500',
+  softgel: 'text-amber-500',
+  gummy: 'text-pink-500',
+  powder: 'text-emerald-500',
   liquid: 'text-cyan-500',
   injection: 'text-blue-500',
   patch: 'text-violet-500',
@@ -208,3 +272,103 @@ export const formatScheduleDescription = (
       return `${sched.schedule_type_id}${timeStr}${mealStr}`;
   }
 };
+
+// Normalises a free-text number input into a `dose_amount` the API will accept. The
+// server requires dose_amount to be positive, but these are plain number inputs saved
+// via onClick rather than a native form submit, so their `min` attribute never triggers
+// constraint validation — an empty, zero or negative entry has to become null ("no
+// dose" / "no override") here, or the save fails with a 400.
+export const positiveDoseOrNull = (value: string): number | null => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+// Which of the two Log cards to render for the active filter. The medications card
+// doubles as the "nothing scheduled at all" empty state, so it stays in the All view
+// even when the user has no medications — dropping it there would leave a user with
+// only supplements-in-waiting staring at a blank column. The supplement card is only
+// worth its header once there is something to put under it.
+export const visibleDoseCards = (
+  subtype: MedSubtype,
+  hasSupplementContent: boolean
+): { medications: boolean; supplements: boolean } => ({
+  medications: subtype !== 'supplements',
+  supplements:
+    subtype === 'supplements' || (subtype === 'all' && hasSupplementContent),
+});
+
+// How many nutrient rows a supplement's per-dose payload carries. Used for the compact
+// "12 nutrients" badge — a multivitamin has ~26, which is correct but not worth listing
+// inline on a card.
+export const countMedicationNutrients = (
+  nutrients: MedicationNutrients | null | undefined
+): number => {
+  if (!nutrients) return 0;
+  const fixed = FOOD_VARIANT_NUTRIENT_FIELDS.filter(
+    (field) => typeof nutrients[field] === 'number'
+  ).length;
+  return fixed + Object.keys(nutrients.custom_nutrients ?? {}).length;
+};
+
+/**
+ * A nutrient row the user chose in the picker, before anything exists server-side.
+ *
+ * Nothing is created when a nutrient is picked — only when the supplement is SAVED.
+ * Picking used to seed `user_custom_nutrients` immediately, which meant a mis-click on
+ * "Multivitamin panel" followed by Cancel still left 20 custom nutrients (and their
+ * display-preference and goal rows) behind permanently.
+ *
+ * `catalogId` marks a canonical catalog nutrient that must be find-or-created on save;
+ * `isNew` a free-text one. Neither set means the key is already storable as-is (a fixed
+ * food-variant column, or a custom nutrient the user already has).
+ */
+export interface NutrientPick {
+  /** the key to store the value against (provisional for catalog/free-text picks) */
+  key: string;
+  unit: string;
+  catalogId?: string;
+  isNew?: boolean;
+}
+
+/**
+ * Every name the rows already in the supplement editor answer to: each row's own key,
+ * plus the aliases of the custom nutrient behind it.
+ *
+ * Aliases matter because the server resolves a catalog pick onto a matching alias — a
+ * user who tracks "Vit D" (alias "Vitamin D3") already HAS the catalog's "Vitamin D".
+ */
+export function collectClaimedNutrientNames(
+  selected: string[],
+  customNutrients?: UserCustomNutrient[]
+): Set<string> {
+  const claimed = new Set<string>();
+  for (const key of selected) {
+    claimed.add(normalizeNutrientName(key));
+    const custom = customNutrients?.find((nutrient) => nutrient.name === key);
+    for (const alias of custom?.aliases ?? []) {
+      claimed.add(normalizeNutrientName(alias));
+    }
+  }
+  return claimed;
+}
+
+/**
+ * A picker option is unavailable once the editor holds a row that answers to any of its
+ * names — its field key, its canonical name, or (for a catalog entry) any of its aliases.
+ *
+ * Without the alias arm the picker would offer a nutrient the user already tracks under
+ * their own spelling, and adding it would silently do nothing.
+ */
+export function isNutrientOptionAlreadyAdded(
+  option: { label: string; fieldKey?: string; catalogId?: string },
+  selected: string[],
+  claimedNames: Set<string>
+): boolean {
+  if (option.fieldKey && selected.includes(option.fieldKey)) return true;
+  const names = [option.label];
+  if (option.catalogId) {
+    const entry = getMicronutrientById(option.catalogId);
+    if (entry) names.push(...entry.aliases);
+  }
+  return names.some((name) => claimedNames.has(normalizeNutrientName(name)));
+}
