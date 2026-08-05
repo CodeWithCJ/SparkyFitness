@@ -295,6 +295,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
           style={{ width: '100%', aspectRatio: IMAGE_ASPECT_RATIO }}
           contentFit={sourceMayHaveTransparency(imageSources[0].uri) ? 'contain' : 'cover'}
           fallback={imageFallback}
+          autoplay={!reducedMotion}
         />
       </View>
     ) : imageSources.length === 2 && !reducedMotion && pairAspectMatch !== false ? (
@@ -328,6 +329,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                   style={{ width: '100%', height: '100%' }}
                   contentFit={sourceMayHaveTransparency(source.uri) ? 'contain' : 'cover'}
                   fallback={imageFallback}
+                  autoplay={!reducedMotion}
                 />
               </View>
             ))}

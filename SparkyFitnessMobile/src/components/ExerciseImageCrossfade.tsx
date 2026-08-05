@@ -94,6 +94,7 @@ const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({
           style={StyleSheet.absoluteFill}
           contentFit={contentFit}
           fallback={fallback}
+          autoplay
         />
       </Animated.View>
       <Animated.View style={[StyleSheet.absoluteFill, overlayStyle]}>
@@ -102,6 +103,7 @@ const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({
           style={StyleSheet.absoluteFill}
           contentFit={contentFit}
           fallback={fallback}
+          autoplay
         />
       </Animated.View>
       {paused && (

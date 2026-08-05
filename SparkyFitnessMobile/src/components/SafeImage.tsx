@@ -8,6 +8,13 @@ interface SafeImageProps {
   style: StyleProp<ImageStyle>;
   contentFit?: ImageContentFit;
   fallback?: React.ReactNode;
+  /**
+   * Whether animated formats (GIF, animated WebP) play. Off by default: most
+   * SafeImage slots are list thumbnails, where a looping GIF next to static
+   * JPEG exercises reads as broken. Screens that own the animation (exercise
+   * detail) opt in.
+   */
+  autoplay?: boolean;
 }
 
 function getImageSourceSignature(
@@ -42,7 +49,13 @@ const UNDERLAY_DELAY_MS = 200;
  * removed once the image has fully faded in so images with transparency don't
  * show it through.
  */
-const SafeImage: React.FC<SafeImageProps> = ({ source, style, contentFit, fallback = null }) => {
+const SafeImage: React.FC<SafeImageProps> = ({
+  source,
+  style,
+  contentFit,
+  fallback = null,
+  autoplay = false,
+}) => {
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -107,6 +120,7 @@ const SafeImage: React.FC<SafeImageProps> = ({ source, style, contentFit, fallba
           source={source}
           style={StyleSheet.absoluteFill}
           contentFit={contentFit}
+          autoplay={autoplay}
           cachePolicy="memory-disk"
           transition={TRANSITION_MS}
           onLoad={() => setLoaded(true)}

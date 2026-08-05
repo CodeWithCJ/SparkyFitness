@@ -30,6 +30,10 @@ describe('ExerciseImageCrossfade', () => {
     expect(images[1].props.source).toEqual(frameB);
     expect(images[0].props.fallback).toBe(fallback);
     expect(images[1].props.fallback).toBe(fallback);
+    // The detail screen owns exercise animation, so its frames override
+    // SafeImage's play-nothing default.
+    expect(images[0].props.autoplay).toBe(true);
+    expect(images[1].props.autoplay).toBe(true);
   });
 
   it('contains transparent-capable frames on a white backdrop and covers opaque JPEG frames', () => {
