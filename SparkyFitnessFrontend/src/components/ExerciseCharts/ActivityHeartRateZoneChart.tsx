@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -17,6 +18,13 @@ interface HeartRateZoneData {
   name: string;
   [key: string]: string | number;
 }
+
+// Standard 5-zone HR palette (Zone 1 = easiest/blue through Zone 5 = hardest/red),
+// matching the Garmin/Apple Fitness convention. Extra zones beyond 5 repeat the
+// last (hardest) color rather than falling back to a neutral gray.
+const ZONE_COLORS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444'];
+const zoneColorAt = (index: number) =>
+  ZONE_COLORS[Math.min(index, ZONE_COLORS.length - 1)];
 
 interface ActivityHeartRateZonesChartProps {
   data: HeartRateZoneData[];
@@ -48,7 +56,7 @@ export const ActivityHeartRateZonesChart = ({
             >
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
+                <XAxis dataKey="name" interval={0} />
                 <YAxis />
                 <Tooltip
                   contentStyle={{
@@ -63,9 +71,12 @@ export const ActivityHeartRateZonesChart = ({
                 <Legend />
                 <Bar
                   dataKey={t('reports.activityReport.timeInZoneS')}
-                  fill="#8884d8"
                   isAnimationActive={false}
-                />
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={entry.name} fill={zoneColorAt(index)} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

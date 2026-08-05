@@ -916,8 +916,13 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
       if (typeof loss === 'number') telemetry.elevation_loss_meters = loss;
       if (typeof floors === 'number') telemetry.floors_climbed = floors;
       if (typeof strokes === 'number') telemetry.stroke_count = strokes;
-      if (typeof w.duration === 'number') {
-        telemetry.elapsed_time_seconds = Math.round(w.duration);
+      // w.duration is a Quantity ({ unit, quantity }), not a raw number — the
+      // same shape totalEnergyBurned/totalDistance arrive in above.
+      const durationSeconds = quantityOf(
+        w.duration as { quantity?: number } | number | undefined
+      );
+      if (typeof durationSeconds === 'number') {
+        telemetry.elapsed_time_seconds = Math.round(durationSeconds);
       }
       if (totalEnergyBurned) telemetry.active_calories = totalEnergyBurned;
       if (Object.keys(telemetry).length > 0) record.telemetry = telemetry;

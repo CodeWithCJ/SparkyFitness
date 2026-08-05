@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import Button from './ui/Button';
-import { seedHealthData, seedHistoricalSteps, seedOldHealthData } from '../services/seedHealthData';
+import { seedHealthData, seedHistoricalSteps, seedOldHealthData, seedRichWorkout, seedRichStrengthWorkout } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
 import { notifySessionExpired } from '../services/api/authService';
 import { getActiveServerConfig } from '../services/storage';
@@ -102,6 +102,40 @@ const DevTools: React.FC = () => {
     }
   };
 
+  const handleSeedRichWorkout = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedRichWorkout();
+      if (result.success) {
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Seeded a 12-minute walk with route, HR, speed and laps. Run a foreground sync to pull it in.' });
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Failed to seed rich workout.' });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed rich workout: ${message}` });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleSeedRichStrengthWorkout = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedRichStrengthWorkout();
+      if (result.success) {
+        Toast.show({ type: 'success', text1: 'Success', text2: 'Seeded a 35-minute strength session with spiky HR (no route/reps — devices never report those). Run a foreground sync to pull it in.' });
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Failed to seed rich strength workout.' });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed rich strength workout: ${message}` });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   const handleCheckBackgroundPermissions = async () => {
     const permissions = await getGrantedPermissions();
     const hasBackgroundAccess = permissions.some(
@@ -177,6 +211,28 @@ const DevTools: React.FC = () => {
         >
           <Text className="text-white text-base font-bold text-center">Old Data{'\n'}(1-3 Years)</Text>
         </Button>
+
+        {Platform.OS === 'android' && (
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
+            onPress={handleSeedRichWorkout}
+            disabled={isSeeding}
+          >
+            <Text className="text-white text-base font-bold text-center">Rich Workout{'\n'}(Route+HR+Laps)</Text>
+          </Button>
+        )}
+
+        {Platform.OS === 'android' && (
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
+            onPress={handleSeedRichStrengthWorkout}
+            disabled={isSeeding}
+          >
+            <Text className="text-white text-base font-bold text-center">Rich Strength{'\n'}(Spiky HR)</Text>
+          </Button>
+        )}
       </View>
       {Platform.OS === 'android' && (
         <View className="flex-row gap-2 flex-wrap justify-between mt-4">

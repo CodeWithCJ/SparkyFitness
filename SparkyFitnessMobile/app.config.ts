@@ -79,6 +79,7 @@ const devAndroidPermissions = [
   'android.permission.health.WRITE_CERVICAL_MUCUS',
   'android.permission.health.WRITE_CYCLING_PEDALING_CADENCE',
   'android.permission.health.WRITE_EXERCISE',
+  'android.permission.health.WRITE_EXERCISE_ROUTE',
   'android.permission.health.WRITE_DISTANCE',
   'android.permission.health.WRITE_ELEVATION_GAINED',
   'android.permission.health.WRITE_FLOORS_CLIMBED',
