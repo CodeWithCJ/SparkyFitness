@@ -134,9 +134,8 @@ import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
-import { useAppPreferencesStore } from './src/stores/appPreferencesStore';
-import { syncAppLanguageFromSystem } from './src/localization';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
+import { useAppLanguageForegroundSync } from './src/hooks/useAppLanguageForegroundSync';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -262,7 +261,6 @@ const SafeMedicationScheduleForm = withErrorBoundary(MedicationScheduleFormScree
 function AppContent() {
   const { t } = useTranslation();
   const { theme } = useUniwind();
-  const languagePreference = useAppPreferencesStore((state) => state.languagePreference);
   const {
     showReauthModal, showSetupModal, showApiKeySwitchModal,
     expiredConfigId, switchToApiKeyConfig,
@@ -271,15 +269,7 @@ function AppContent() {
 
   const { initialRoute, linkingEnabled, setLinkingEnabled } = useAppBootstrap();
 
-  useEffect(() => {
-    if (languagePreference !== 'system') return;
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        void syncAppLanguageFromSystem();
-      }
-    });
-    return () => subscription.remove();
-  }, [languagePreference]);
+  useAppLanguageForegroundSync();
 
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
   const foregroundAutoSyncWindowRef = useRef(false);
