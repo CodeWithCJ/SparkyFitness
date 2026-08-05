@@ -9,7 +9,9 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
-import ExerciseImageCrossfade from '../components/ExerciseImageCrossfade';
+import ExerciseImageCrossfade, {
+  sourceMayHaveTransparency,
+} from '../components/ExerciseImageCrossfade';
 import Icon from '../components/Icon';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import ExerciseHistoryList from '../components/ExerciseHistoryList';
@@ -47,6 +49,10 @@ type TabKey = 'summary' | 'history' | 'how-to';
 
 const DESCRIPTION_PREVIEW_LINES = 3;
 const DESCRIPTION_PREVIEW_THRESHOLD = 180;
+
+// Matches the dominant exercise image sets (4:3 photos), so cover-filled
+// frames crop little to nothing.
+const IMAGE_ASPECT_RATIO = 4 / 3;
 
 // Tab-change flings ignore touches starting this close to the left screen
 // edge so the native-stack back swipe keeps the edge to itself.
@@ -264,14 +270,14 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
       <View className="bg-surface rounded-xl overflow-hidden">
         <Image
           source={imageSources[0]}
-          style={{ width: '100%', aspectRatio: 16 / 9 }}
-          resizeMode="cover"
+          style={{ width: '100%', aspectRatio: IMAGE_ASPECT_RATIO }}
+          resizeMode={sourceMayHaveTransparency(imageSources[0].uri) ? 'contain' : 'cover'}
         />
       </View>
     ) : imageSources.length === 2 && !reducedMotion ? (
       <View
         className="bg-surface rounded-xl overflow-hidden"
-        style={{ width: '100%', aspectRatio: 16 / 9 }}
+        style={{ width: '100%', aspectRatio: IMAGE_ASPECT_RATIO }}
       >
         <ExerciseImageCrossfade sources={[imageSources[0], imageSources[1]]} />
       </View>
@@ -279,7 +285,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
       <View>
         <View
           className="bg-surface rounded-xl overflow-hidden"
-          style={{ width: '100%', aspectRatio: 16 / 9 }}
+          style={{ width: '100%', aspectRatio: IMAGE_ASPECT_RATIO }}
         >
           <PagerView
             style={{ flex: 1 }}
@@ -291,7 +297,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 <Image
                   source={source}
                   style={{ width: '100%', height: '100%' }}
-                  resizeMode="cover"
+                  resizeMode={sourceMayHaveTransparency(source.uri) ? 'contain' : 'cover'}
                 />
               </View>
             ))}

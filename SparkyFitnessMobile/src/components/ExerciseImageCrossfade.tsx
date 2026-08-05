@@ -66,6 +66,12 @@ const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({ sources
   }));
   const overlayStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
 
+  // Contain keeps the full pose visible; its letterbox is invisible because
+  // the frame's own background shows through the transparency anyway. Opaque
+  // frames cover-fill instead so the card never shows hard image edges. The
+  // pair shares one mode so the two frames stay aligned mid-dissolve.
+  const resizeMode = mayHaveTransparency ? 'contain' : 'cover';
+
   return (
     <Pressable
       testID="exercise-image-crossfade"
@@ -75,10 +81,10 @@ const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({ sources
       style={styles.fill}
     >
       <Animated.View style={[StyleSheet.absoluteFill, baseStyle]}>
-        <Image source={sources[0]} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={sources[0]} style={StyleSheet.absoluteFill} resizeMode={resizeMode} />
       </Animated.View>
       <Animated.View style={[StyleSheet.absoluteFill, overlayStyle]}>
-        <Image source={sources[1]} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={sources[1]} style={StyleSheet.absoluteFill} resizeMode={resizeMode} />
       </Animated.View>
       {paused && (
         <View

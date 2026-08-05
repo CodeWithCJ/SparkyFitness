@@ -28,6 +28,32 @@ describe('ExerciseImageCrossfade', () => {
     expect(images[1].props.source).toEqual(frameB);
   });
 
+  it('contains transparent-capable frames and covers opaque JPEG frames', () => {
+    const pngPair = render(
+      <ExerciseImageCrossfade
+        sources={[
+          { uri: 'https://server/images/a.png', headers: {} },
+          { uri: 'https://server/images/b.png', headers: {} },
+        ]}
+      />,
+    );
+    for (const image of pngPair.UNSAFE_getAllByType(Image)) {
+      expect(image.props.resizeMode).toBe('contain');
+    }
+
+    const jpgPair = render(
+      <ExerciseImageCrossfade
+        sources={[
+          { uri: 'https://server/images/a.jpg', headers: {} },
+          { uri: 'https://server/images/b.jpg', headers: {} },
+        ]}
+      />,
+    );
+    for (const image of jpgPair.UNSAFE_getAllByType(Image)) {
+      expect(image.props.resizeMode).toBe('cover');
+    }
+  });
+
   it('toggles pause on tap and resumes on a second tap', () => {
     const { getByTestId, queryByTestId } = render(
       <ExerciseImageCrossfade sources={[frameA, frameB]} />,
