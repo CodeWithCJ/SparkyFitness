@@ -115,6 +115,7 @@ export {
 } from './useWorkoutPresetMutations';
 export { useExerciseSetEditing } from './useExerciseSetEditing';
 export { useWidgetSync } from './useWidgetSync';
+export { useWidgetLanguageRefresh } from './useWidgetLanguageRefresh';
 export { useProfile } from './useProfile';
 export { useActiveAiServiceSetting } from './useActiveAiServiceSetting';
 export { useUserAiConfigAllowed } from './useUserAiConfigAllowed';

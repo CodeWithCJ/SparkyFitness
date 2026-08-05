@@ -136,6 +136,7 @@ import { withErrorBoundary } from './src/components/ScreenErrorBoundary';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useAppLanguageForegroundSync } from './src/hooks/useAppLanguageForegroundSync';
+import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -270,6 +271,7 @@ function AppContent() {
   const { initialRoute, linkingEnabled, setLinkingEnabled } = useAppBootstrap();
 
   useAppLanguageForegroundSync();
+  useWidgetLanguageRefresh();
 
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
   const foregroundAutoSyncWindowRef = useRef(false);
