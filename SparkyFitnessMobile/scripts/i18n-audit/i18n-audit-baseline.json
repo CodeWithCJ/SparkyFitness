@@ -2152,55 +2152,6 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/services/WorkoutLiveActivityLayout.tsx",
-      "value": "+15s",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:+15s:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/services/WorkoutLiveActivityLayout.tsx",
-      "value": "Complete",
-      "context": {
-        "attr": "label"
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:Complete:{\"attr\":\"label\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/services/WorkoutLiveActivityLayout.tsx",
-      "value": "Elapsed",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:Elapsed:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/services/WorkoutLiveActivityLayout.tsx",
-      "value": "Rest",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:Rest:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
-      "file": "src/services/WorkoutLiveActivityLayout.tsx",
-      "value": "Workout complete",
-      "context": {
-        "element": "Text",
-        "form": "text"
-      },
-      "fingerprint": "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:Workout complete:{\"element\":\"Text\",\"form\":\"text\"}"
-    },
-    {
-      "rule": "hardcoded-ui-text",
       "file": "src/stores/activeWorkoutStore.ts",
       "value": "Rest complete: next set up",
       "context": {
@@ -2925,11 +2876,6 @@
     "hardcoded-ui-text:src/services/notifications.ts:You've hit your fasting goal. Great work!:{\"prop\":\"body\"}": 1,
     "hardcoded-ui-text:src/services/workoutDraftService.ts:Failed to save draft:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/services/workoutDraftService.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
-    "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:+15s:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:Complete:{\"attr\":\"label\"}": 1,
-    "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:Elapsed:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:Rest:{\"element\":\"Text\",\"form\":\"text\"}": 1,
-    "hardcoded-ui-text:src/services/WorkoutLiveActivityLayout.tsx:Workout complete:{\"element\":\"Text\",\"form\":\"text\"}": 1,
     "hardcoded-ui-text:src/stores/activeWorkoutStore.ts:Rest complete: next set up:{\"prop\":\"title\"}": 1,
     "hardcoded-ui-text:src/stores/activeWorkoutStore.ts:Rest complete:{\"prop\":\"title\"}": 1,
     "hardcoded-ui-text:src/types/foodInfo.ts:Calcium:{\"prop\":\"label\"}": 1,

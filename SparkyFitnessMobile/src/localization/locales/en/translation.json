@@ -1028,6 +1028,20 @@
       "set": "Set",
       "previous": "Prev",
       "seconds": "Sec"
+    },
+    "liveActivity": {
+      "rest": "Rest",
+      "paused": "Paused",
+      "elapsed": "Elapsed",
+      "workoutComplete": "Workout complete",
+      "complete": "Complete",
+      "addFifteenSeconds": "Add 15 seconds",
+      "addFifteenSecondsShort": "+15s",
+      "skipRest": "Skip rest",
+      "workout": "Workout",
+      "exercise": "Exercise",
+      "set": "Set",
+      "setOf": "of"
     }
   },
   "settings": {
