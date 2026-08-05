@@ -85,8 +85,7 @@ router.get('/', authenticate, async (req, res, next) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
  *     requestBody:
  *       content:
  *         application/json:
@@ -127,8 +126,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
  *     responses:
  *       200:
  *         description: Deleted successfully.
@@ -163,8 +161,7 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: string
- *           format: uuid
+ *           type: integer
  *     responses:
  *       200:
  *         description: Primary container set successfully.
