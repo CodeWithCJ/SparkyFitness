@@ -95,8 +95,6 @@ export function eliminationRate(halfLifeDays: number): number {
   return Math.LN2 / halfLifeDays;
 }
 
-const absorptionRateCache = new Map<string, number>();
-
 /** Fastest absorption the model offers, for a `tMaxDays` no finite rate can reach. Bounded well
  * below `Number.MAX_VALUE` so `doseMg * ka` in `serumLevelAt` cannot overflow to Infinity. */
 const MAX_ABSORPTION_RATE = Number.MAX_SAFE_INTEGER;
@@ -105,10 +103,6 @@ const MAX_ABSORPTION_RATE = Number.MAX_SAFE_INTEGER;
 export function absorptionRate(halfLifeDays: number, tMaxDays: number): number {
   const ke = eliminationRate(halfLifeDays);
   if (!(tMaxDays > 0) || !Number.isFinite(tMaxDays)) return ke * 4;
-
-  const cacheKey = `${halfLifeDays}:${tMaxDays}`;
-  const cached = absorptionRateCache.get(cacheKey);
-  if (cached !== undefined) return cached;
 
   const peakAt = (ka: number) => Math.log(ka / ke) / (ka - ke);
 
@@ -132,7 +126,6 @@ export function absorptionRate(halfLifeDays: number, tMaxDays: number): number {
     ka = (lo + hi) / 2;
   }
 
-  absorptionRateCache.set(cacheKey, ka);
   return ka;
 }
 
