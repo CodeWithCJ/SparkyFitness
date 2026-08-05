@@ -5,12 +5,24 @@ async function createWaterContainer(userId: any, containerData: any) {
     containerData;
   const client = await getClient(userId); // User-specific operation
   try {
+    await client.query('BEGIN');
+    if (is_primary === true) {
+      // A user has at most one primary container
+      await client.query(
+        'UPDATE user_water_containers SET is_primary = false WHERE user_id = $1',
+        [userId]
+      );
+    }
     const result = await client.query(
       `INSERT INTO user_water_containers (user_id, name, volume, unit, is_primary, servings_per_container)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [userId, name, volume, unit, is_primary, servings_per_container]
     );
+    await client.query('COMMIT');
     return result.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
@@ -33,6 +45,7 @@ async function updateWaterContainer(id: any, userId: any, updateData: any) {
   const { name, volume, unit, is_primary, servings_per_container } = updateData;
   const client = await getClient(userId); // User-specific operation
   try {
+    await client.query('BEGIN');
     const result = await client.query(
       `UPDATE user_water_containers SET
         name = COALESCE($1, name),
@@ -45,7 +58,20 @@ async function updateWaterContainer(id: any, userId: any, updateData: any) {
        RETURNING *`,
       [name, volume, unit, is_primary, servings_per_container, id, userId]
     );
+    // Demote competing primaries only after the target row is confirmed to
+    // exist and belong to this user
+    if (result.rows[0] && is_primary === true) {
+      // A user has at most one primary container
+      await client.query(
+        'UPDATE user_water_containers SET is_primary = false WHERE user_id = $1 AND id != $2',
+        [userId, id]
+      );
+    }
+    await client.query('COMMIT');
     return result.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
@@ -68,16 +94,18 @@ async function setPrimaryWaterContainer(id: any, userId: any) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
-    // First, set all containers for this user to not be primary
-    await client.query(
-      'UPDATE user_water_containers SET is_primary = false WHERE user_id = $1',
-      [userId]
-    );
-    // Then, set the specified container to be primary
     const result = await client.query(
       'UPDATE user_water_containers SET is_primary = true, updated_at = now() WHERE id = $1 AND user_id = $2 RETURNING *',
       [id, userId]
     );
+    // Demote the other containers only after the target row is confirmed to
+    // exist and belong to this user
+    if (result.rows[0]) {
+      await client.query(
+        'UPDATE user_water_containers SET is_primary = false WHERE user_id = $1 AND id != $2',
+        [userId, id]
+      );
+    }
     await client.query('COMMIT');
     return result.rows[0];
   } catch (error) {

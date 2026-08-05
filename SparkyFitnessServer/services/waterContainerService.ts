@@ -1,6 +1,7 @@
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import { log } from '../config/logging.js';
-const VALID_UNITS = ['ml', 'oz', 'liter']; // Changed 'cup' to 'liter'
+import { WATER_CONTAINER_UNITS } from '../schemas/waterContainerSchemas.js';
+const VALID_UNITS: readonly string[] = WATER_CONTAINER_UNITS;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function convertToMl(volume: any, unit: any) {
   if (!VALID_UNITS.includes(unit)) {
