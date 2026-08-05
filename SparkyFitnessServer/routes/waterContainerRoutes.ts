@@ -1,4 +1,5 @@
 import express from 'express';
+import { z } from 'zod/v4';
 import { authenticate } from '../middleware/authMiddleware.js';
 import waterContainerService from '../services/waterContainerService.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
@@ -10,14 +11,10 @@ import {
 const router = express.Router();
 
 // Small helper to send a uniform 400 for Zod failures.
-function badRequest(res: express.Response, error: unknown): void {
+function badRequest(res: express.Response, error: z.ZodError): void {
   res.status(400).json({
     error: 'Invalid request',
-    details:
-      error && typeof error === 'object' && 'flatten' in error
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (error as any).flatten().fieldErrors
-        : undefined,
+    details: error.flatten().fieldErrors,
   });
 }
 /**

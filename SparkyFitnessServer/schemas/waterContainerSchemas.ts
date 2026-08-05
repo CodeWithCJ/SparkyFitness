@@ -7,9 +7,10 @@ export const WaterContainerIdParamSchema = z.object({
 });
 
 const nameSchema = z.string().min(1).max(255);
-// Stored as numeric(10,3) after unit conversion; the bound keeps the
-// worst-case liter -> ml conversion inside the column's range
-const volumeSchema = z.number().positive().max(9999.999);
+// Stored as numeric(10,3) after unit conversion; the min stops ml values
+// from rounding to 0.000 and the max keeps the worst-case liter -> ml
+// conversion inside the column's range
+const volumeSchema = z.number().min(0.001).max(9999.999);
 const unitSchema = z.enum(WATER_CONTAINER_UNITS);
 const servingsSchema = z.number().int().min(1);
 

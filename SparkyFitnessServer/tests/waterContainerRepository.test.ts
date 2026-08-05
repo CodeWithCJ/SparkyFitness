@@ -133,5 +133,53 @@ describe('waterContainerRepository single-primary enforcement', () => {
 
       expect(demoteQueries()).toHaveLength(0);
     });
+
+    it('does not demote anything when the target container is missing or foreign', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockClient.query.mockImplementation(async (text: any) => {
+        if (typeof text === 'string' && text.includes('COALESCE')) {
+          return { rows: [] };
+        }
+        return { rows: [{}] };
+      });
+
+      const result = await waterContainerRepository.updateWaterContainer(
+        999,
+        'user-1',
+        { is_primary: true }
+      );
+
+      expect(result).toBeUndefined();
+      expect(demoteQueries()).toHaveLength(0);
+    });
+  });
+
+  describe('setPrimaryWaterContainer', () => {
+    it('demotes the other containers after promoting the target', async () => {
+      await waterContainerRepository.setPrimaryWaterContainer(7, 'user-1');
+
+      const demotes = demoteQueries();
+      expect(demotes).toHaveLength(1);
+      expect(demotes[0].values).toEqual(['user-1', 7]);
+      expect(demotes[0].text).toContain('id != $2');
+    });
+
+    it('does not demote anything when the target container is missing or foreign', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockClient.query.mockImplementation(async (text: any) => {
+        if (typeof text === 'string' && text.includes('is_primary = true')) {
+          return { rows: [] };
+        }
+        return { rows: [{}] };
+      });
+
+      const result = await waterContainerRepository.setPrimaryWaterContainer(
+        999,
+        'user-1'
+      );
+
+      expect(result).toBeUndefined();
+      expect(demoteQueries()).toHaveLength(0);
+    });
   });
 });

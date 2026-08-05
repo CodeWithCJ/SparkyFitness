@@ -18,8 +18,11 @@ vi.mock('../services/waterContainerService.js', () => ({
 }));
 
 vi.mock('../middleware/authMiddleware.js', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticate: (req: any, res: any, next: any) => {
+  authenticate: (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
     req.userId = 'test-user-id';
     next();
   },
@@ -91,6 +94,14 @@ describe('Water Container Routes', () => {
       const res = await request(app)
         .post('/api/water-containers')
         .send({ ...validBody, volume: 0 });
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('rejects a volume below the numeric(10,3) precision floor', async () => {
+      const res = await request(app)
+        .post('/api/water-containers')
+        .send({ ...validBody, volume: 0.0001 });
 
       expect(res.statusCode).toBe(400);
     });
