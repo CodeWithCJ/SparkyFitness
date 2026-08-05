@@ -11,6 +11,7 @@ import { bridgeBearerAuthHeader } from './utils/bearerAuthBridge.js';
 import { endPool } from './db/poolManager.js';
 import { log } from './config/logging.js';
 import { authenticate } from './middleware/authMiddleware.js';
+import { requestLogger } from './middleware/requestLogger.js';
 import { applySignOutCookieCleanup } from './middleware/signOutCookieCleanup.js';
 import foodRoutes from './routes/foodRoutes.js';
 import favoritesRoutes from './routes/favoritesRoutes.js';
@@ -180,9 +181,11 @@ app.use(
 // before the global 50mb parser so its route-local 1mb parser wins (the global
 // parser would set req._body first and no-op the local one). cookieParser is
 // local because the global one also runs after the 50mb parser, and
-// authenticate reads req.cookies.
+// authenticate reads req.cookies. requestLogger is local because the global
+// one also runs after this mount, so /mcp requests would never reach it.
 app.use(
   '/mcp',
+  requestLogger,
   express.json({ limit: '1mb' }),
   cookieParser(),
   authenticate,
@@ -252,13 +255,7 @@ app.use(async (req, res, next) => {
   next();
 });
 // Log all incoming requests - AFTER auth to see what falls through
-app.use((req, _res, next) => {
-  log(
-    'info',
-    `Incoming request: ${req.method} ${req.originalUrl} (Path: ${req.path})`
-  );
-  next();
-});
+app.use(requestLogger);
 // Serve static files from the 'uploads' directory
 const UPLOADS_BASE_DIR = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
   ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)

@@ -5,7 +5,9 @@ import express from 'express';
 // @ts-expect-error TS(7016): no types for cookie-parser
 import cookieParser from 'cookie-parser';
 import { todayInZone } from '@workspace/shared';
+import { log } from '../config/logging.js';
 import mcpRoutes from '../routes/mcpRoutes.js';
+import { requestLogger } from '../middleware/requestLogger.js';
 import { buildChatbotTools } from '../ai/tools/index.js';
 import { buildDevTools } from '../ai/tools/devTools.js';
 import goalService from '../services/goalService.js';
@@ -114,6 +116,7 @@ function fakeAuthenticate(req: any, res: any, next: any) {
 const app = express();
 app.use(
   '/mcp',
+  requestLogger,
   express.json({ limit: '1mb' }),
   cookieParser(),
   fakeAuthenticate,
@@ -263,6 +266,19 @@ describe('POST /mcp', () => {
 
     expect(res.status).toBe(401);
     expect(goalService.getUserGoals).not.toHaveBeenCalled();
+  });
+
+  it('logs the incoming request even when auth fails (the chain must log itself — the global logger is mounted below /mcp and never sees it)', async () => {
+    const res = await request(app)
+      .post('/mcp')
+      .set(MCP_HEADERS)
+      .send({ jsonrpc: '2.0', id: 3, method: 'tools/list' });
+
+    expect(res.status).toBe(401);
+    expect(log).toHaveBeenCalledWith(
+      'info',
+      'Incoming request: POST /mcp (Path: /)'
+    );
   });
 
   it('rejects bodies over the route-local 1mb limit with 413', async () => {
