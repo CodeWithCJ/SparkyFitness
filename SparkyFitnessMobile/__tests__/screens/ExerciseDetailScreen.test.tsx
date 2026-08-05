@@ -732,13 +732,13 @@ describe('ExerciseDetailScreen', () => {
           uri: `https://server/uploads/${path}`,
           headers: {},
         }),
-      } as any);
+      });
     });
 
     afterEach(() => {
       mockUseExerciseImageSource.mockReturnValue({
         getImageSource: jest.fn(() => null),
-      } as any);
+      });
       mockUseImagePairAspectMatch.mockReturnValue(undefined);
     });
 

@@ -185,6 +185,38 @@ describe('useImagePairAspectMatch', () => {
     expect(loadedRef.release).toHaveBeenCalled();
   });
 
+  it('resets the verdict during render when the sources change', async () => {
+    loadSpy
+      .mockResolvedValueOnce(makeRef(800, 600))
+      .mockResolvedValueOnce(makeRef(400, 300));
+
+    const { result, rerender } = renderHook(
+      (sources: typeof pair) => useImagePairAspectMatch(sources),
+      { initialProps: pair },
+    );
+
+    await waitFor(() => expect(result.current).toBe(true));
+
+    // Gate the new pair's measurements so the reset is observable before the
+    // new verdict lands.
+    let openGate!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      openGate = resolve;
+    });
+    const gatedRefs = [makeRef(1600, 900), makeRef(800, 600)];
+    loadSpy.mockImplementation(() => gate.then(() => gatedRefs.shift()));
+
+    rerender([
+      { uri: 'https://example.com/c.png', headers: {} },
+      { uri: 'https://example.com/d.png', headers: {} },
+    ]);
+
+    expect(result.current).toBeUndefined();
+
+    await act(async () => openGate());
+    await waitFor(() => expect(result.current).toBe(false));
+  });
+
   it('stays undecided without measuring when the array is not a pair', async () => {
     const single = [pair[0]];
 
