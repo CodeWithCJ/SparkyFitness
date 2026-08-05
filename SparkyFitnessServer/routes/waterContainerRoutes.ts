@@ -2,7 +2,24 @@ import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import waterContainerService from '../services/waterContainerService.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
+import {
+  WaterContainerIdParamSchema,
+  CreateWaterContainerBodySchema,
+  UpdateWaterContainerBodySchema,
+} from '../schemas/waterContainerSchemas.js';
 const router = express.Router();
+
+// Small helper to send a uniform 400 for Zod failures.
+function badRequest(res: express.Response, error: unknown): void {
+  res.status(400).json({
+    error: 'Invalid request',
+    details:
+      error && typeof error === 'object' && 'flatten' in error
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (error as any).flatten().fieldErrors
+        : undefined,
+  });
+}
 /**
  * @swagger
  * /water-containers:
@@ -23,9 +40,11 @@ const router = express.Router();
  */
 router.post('/', authenticate, async (req, res, next) => {
   try {
+    const body = CreateWaterContainerBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
     const container = await waterContainerService.createWaterContainer(
       req.userId,
-      req.body
+      body.data
     );
     res.status(201).json(container);
   } catch (error) {
@@ -97,11 +116,14 @@ router.get('/', authenticate, async (req, res, next) => {
  */
 router.put('/:id', authenticate, async (req, res, next) => {
   try {
+    const params = WaterContainerIdParamSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
+    const body = UpdateWaterContainerBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
     const container = await waterContainerService.updateWaterContainer(
-      req.params.id,
-
+      params.data.id,
       req.userId,
-      req.body
+      body.data
     );
     if (!container) {
       return res
@@ -133,9 +155,10 @@ router.put('/:id', authenticate, async (req, res, next) => {
  */
 router.delete('/:id', authenticate, async (req, res, next) => {
   try {
+    const params = WaterContainerIdParamSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
     const result = await waterContainerService.deleteWaterContainer(
-      req.params.id,
-
+      params.data.id,
       req.userId
     );
     res.status(200).json(result);
@@ -168,9 +191,10 @@ router.delete('/:id', authenticate, async (req, res, next) => {
  */
 router.put('/:id/set-primary', authenticate, async (req, res, next) => {
   try {
+    const params = WaterContainerIdParamSchema.safeParse(req.params);
+    if (!params.success) return badRequest(res, params.error);
     const container = await waterContainerService.setPrimaryWaterContainer(
-      req.params.id,
-
+      params.data.id,
       req.userId
     );
     if (!container) {
