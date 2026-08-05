@@ -1,6 +1,13 @@
 import type { Request, Response, NextFunction } from 'express';
 import { log } from '../config/logging.js';
 
+// Client-supplied strings go into single-line log records; anything outside
+// printable ASCII (newlines especially) could forge extra log lines, so it
+// becomes '?', and length is capped well above any real MCP method/tool name.
+function sanitizeRpcField(value: string): string {
+  return value.replace(/[^\x20-\x7e]/g, '?').slice(0, 64);
+}
+
 // Extracts "[<jsonrpc method> <tool name>]" from an MCP request body; returns
 // '' for any body that isn't JSON-RPC (every non-MCP route).
 function rpcContext(body: unknown): string {
@@ -9,8 +16,9 @@ function rpcContext(body: unknown): string {
     params?: { name?: unknown } | null;
   };
   if (typeof method !== 'string') return '';
-  const toolName = typeof params?.name === 'string' ? ` ${params.name}` : '';
-  return ` [${method}${toolName}]`;
+  const toolName =
+    typeof params?.name === 'string' ? ` ${sanitizeRpcField(params.name)}` : '';
+  return ` [${sanitizeRpcField(method)}${toolName}]`;
 }
 
 // Logs every request that reaches it. Used in two places: globally after the

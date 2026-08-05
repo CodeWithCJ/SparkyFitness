@@ -305,6 +305,30 @@ describe('POST /mcp', () => {
     );
   });
 
+  it('neutralizes control characters in JSON-RPC fields so a crafted body cannot forge log lines', async () => {
+    const res = await request(app)
+      .post('/mcp')
+      .set(MCP_HEADERS)
+      .set('Authorization', 'Bearer valid')
+      .send({
+        jsonrpc: '2.0',
+        id: 11,
+        method: 'tools/call',
+        params: {
+          name: 'evil\n[2026-01-01] [INFO] forged line',
+          arguments: {},
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(log).toHaveBeenCalledWith(
+      'info',
+      expect.stringMatching(
+        /^Request finished: POST \/mcp 200 in \d+ms \[tools\/call evil\?\[2026-01-01\] \[INFO\] forged line\]$/
+      )
+    );
+  });
+
   it('logs a warn line when the connection dies before the response finishes', async () => {
     // The real chain always responds, so a local app whose handler kills the
     // socket stands in for a client abort mid-request.
