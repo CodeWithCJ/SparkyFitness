@@ -1,9 +1,10 @@
-import { renderHook } from '@testing-library/react-native';
+import { renderHook, waitFor } from '@testing-library/react-native';
 import { Platform } from 'react-native';
 
 import { useWidgetLanguageRefresh } from '../../src/hooks/useWidgetLanguageRefresh';
 import i18n from '../../src/localization/i18n';
 import { CalorieWidgetBridge } from '../../src/services/CalorieWidgetBridge';
+import { addLog } from '../../src/services/LogService';
 
 jest.mock('../../src/services/CalorieWidgetBridge', () => ({
   CalorieWidgetBridge: {
@@ -12,8 +13,13 @@ jest.mock('../../src/services/CalorieWidgetBridge', () => ({
   },
 }));
 
+jest.mock('../../src/services/LogService', () => ({
+  addLog: jest.fn(() => Promise.resolve()),
+}));
+
 const mockReload = CalorieWidgetBridge.reloadWidget as jest.Mock;
 const mockReloadMacro = CalorieWidgetBridge.reloadMacroWidget as jest.Mock;
+const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 function setPlatform(os: 'android' | 'ios'): void {
   Object.defineProperty(Platform, 'OS', {
@@ -22,14 +28,18 @@ function setPlatform(os: 'android' | 'ios'): void {
   });
 }
 
+const flushReload = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+};
+
 describe('useWidgetLanguageRefresh', () => {
   let languageListeners: (() => void)[] = [];
 
   beforeEach(() => {
     jest.clearAllMocks();
     languageListeners = [];
-    const originalOn = i18n.on.bind(i18n);
-    const originalOff = i18n.off.bind(i18n);
     jest.spyOn(i18n, 'on').mockImplementation(((event: string, listener: () => void) => {
       if (event === 'languageChanged') {
         languageListeners.push(listener);
@@ -42,8 +52,6 @@ describe('useWidgetLanguageRefresh', () => {
       }
       return i18n;
     }) as unknown) as typeof i18n.off);
-    void originalOn;
-    void originalOff;
   });
 
   afterEach(() => {
@@ -59,17 +67,17 @@ describe('useWidgetLanguageRefresh', () => {
     expect(mockReloadMacro).toHaveBeenCalledTimes(1);
   });
 
-  it('reloads all widget instances when the effective language changes', () => {
+  it('reloads all widget instances when the effective language changes', async () => {
     setPlatform('android');
 
     renderHook(() => useWidgetLanguageRefresh());
 
     expect(languageListeners).toHaveLength(1);
     languageListeners[0]();
-    languageListeners[0]();
+    await flushReload();
 
-    expect(mockReload).toHaveBeenCalledTimes(3);
-    expect(mockReloadMacro).toHaveBeenCalledTimes(3);
+    expect(mockReload).toHaveBeenCalledTimes(2);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
   });
 
   it('does not add an extra reload when language does not change', () => {
@@ -100,5 +108,115 @@ describe('useWidgetLanguageRefresh', () => {
 
     expect(mockReload).not.toHaveBeenCalled();
     expect(mockReloadMacro).not.toHaveBeenCalled();
+  });
+
+  it('still calls reloadMacroWidget when reloadWidget rejects', async () => {
+    setPlatform('android');
+    mockReload.mockRejectedValueOnce(new Error('calorie down'));
+
+    renderHook(() => useWidgetLanguageRefresh());
+
+    await waitFor(() => expect(mockReloadMacro).toHaveBeenCalledTimes(1));
+    expect(mockReload).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(mockAddLog).toHaveBeenCalledWith(
+        '[useWidgetLanguageRefresh] Calorie widget reload failed',
+        'ERROR',
+      ),
+    );
+    expect(
+      mockAddLog.mock.calls.some((call) =>
+        String(call[0]).includes('Macro widget reload failed'),
+      ),
+    ).toBe(false);
+  });
+
+  it('still calls reloadWidget when reloadMacroWidget rejects', async () => {
+    setPlatform('android');
+    mockReloadMacro.mockRejectedValueOnce(new Error('macro down'));
+
+    renderHook(() => useWidgetLanguageRefresh());
+
+    await waitFor(() => expect(mockReload).toHaveBeenCalledTimes(1));
+    expect(mockReloadMacro).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(mockAddLog).toHaveBeenCalledWith(
+        '[useWidgetLanguageRefresh] Macro widget reload failed',
+        'ERROR',
+      ),
+    );
+    expect(
+      mockAddLog.mock.calls.some((call) =>
+        String(call[0]).includes('Calorie widget reload failed'),
+      ),
+    ).toBe(false);
+  });
+
+  it('settles both rejections without an unhandled rejection', async () => {
+    setPlatform('android');
+    mockReload.mockRejectedValue(new Error('calorie down'));
+    mockReloadMacro.mockRejectedValue(new Error('macro down'));
+
+    const onUnhandledRejection = jest.fn();
+    const originalOnUnhandled = process.on.bind(process);
+    process.on('unhandledRejection', onUnhandledRejection);
+
+    renderHook(() => useWidgetLanguageRefresh());
+
+    await flushReload();
+
+    expect(onUnhandledRejection).not.toHaveBeenCalled();
+    expect(mockAddLog).toHaveBeenCalledWith(
+      '[useWidgetLanguageRefresh] Calorie widget reload failed',
+      'ERROR',
+    );
+    expect(mockAddLog).toHaveBeenCalledWith(
+      '[useWidgetLanguageRefresh] Macro widget reload failed',
+      'ERROR',
+    );
+
+    process.removeListener('unhandledRejection', onUnhandledRejection);
+    void originalOnUnhandled;
+  });
+
+  it('keeps the languageChanged subscription active after a cold-start failure', async () => {
+    setPlatform('android');
+    mockReload.mockRejectedValueOnce(new Error('calorie down'));
+    mockReloadMacro.mockRejectedValueOnce(new Error('macro down'));
+
+    renderHook(() => useWidgetLanguageRefresh());
+
+    await flushReload();
+
+    expect(languageListeners).toHaveLength(1);
+    languageListeners[0]();
+    await flushReload();
+
+    expect(mockReload).toHaveBeenCalledTimes(2);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries the refresh on the next language change after an earlier failure', async () => {
+    setPlatform('android');
+    mockReload.mockRejectedValueOnce(new Error('calorie down'));
+
+    renderHook(() => useWidgetLanguageRefresh());
+
+    await flushReload();
+
+    mockReload.mockResolvedValue(undefined);
+    languageListeners[0]();
+    await flushReload();
+
+    expect(mockReload).toHaveBeenCalledTimes(2);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not log anything on iOS', () => {
+    setPlatform('ios');
+
+    renderHook(() => useWidgetLanguageRefresh());
+
+    expect(mockAddLog).not.toHaveBeenCalled();
   });
 });
