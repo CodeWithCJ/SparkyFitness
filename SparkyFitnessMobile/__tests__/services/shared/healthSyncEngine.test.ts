@@ -161,7 +161,7 @@ describe('collectHealthData', () => {
     expect(outcomes[0].data).toBe(dayStats);
   });
 
-  test('min-max-avg-day null (no verified spec) falls back to raw samples with the ORIGINAL window plus the aggregation tail', async () => {
+  test('min-max-avg-day null (no verified spec) falls back to raw samples with the DAY-ALIGNED window plus the aggregation tail', async () => {
     const rawSamples = [
       { value: 2.5, type: 'running_speed', date: '2026-07-02', unit: 'm/s' },
       { value: 4.0, type: 'running_speed', date: '2026-07-02', unit: 'm/s' },
@@ -173,7 +173,11 @@ describe('collectHealthData', () => {
 
     const outcomes = await collectHealthData(provider, [runningSpeed], windows, { timeoutLabelPrefix: 'Test query' });
 
-    expect(provider.readRaw).toHaveBeenCalledWith('RunningSpeed', windows.sessionStart, windows.end);
+    // Day-aligned, not sessionStart: the aggregates land as full-day SETs on
+    // the server, so a mid-day window start would clobber the stored day
+    // values with partial-window ones (issue #1978 — heart_rate_min losing
+    // the overnight low to an afternoon sync).
+    expect(provider.readRaw).toHaveBeenCalledWith('RunningSpeed', windows.aggregatedStart, windows.end);
     expect(provider.transform).toHaveBeenCalledWith(rawSamples, runningSpeed);
     // The aggregateByDay tail runs: exactly 3 records per day.
     expect(outcomes[0].data.map((r: { type: string }) => r.type)).toEqual([
@@ -181,6 +185,15 @@ describe('collectHealthData', () => {
       'running_speed_max',
       'running_speed_avg',
     ]);
+  });
+
+  test('sum-strategy metrics also read from the day-aligned window on the raw path', async () => {
+    const provider = fakeProvider();
+    const standTime = metric({ recordType: 'AppleStandTime', type: 'apple_stand_time', unit: 'seconds', aggregationStrategy: 'sum' });
+
+    await collectHealthData(provider, [standTime], windows, { timeoutLabelPrefix: 'Test query' });
+
+    expect(provider.readRaw).toHaveBeenCalledWith('AppleStandTime', windows.aggregatedStart, windows.end);
   });
 
   test('rollingLookbackDays widens the raw window to the day-aligned lookback', async () => {
