@@ -5,9 +5,11 @@ import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handl
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
+import { useReducedMotion } from 'react-native-reanimated';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
+import ExerciseImageCrossfade from '../components/ExerciseImageCrossfade';
 import Icon from '../components/Icon';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import ExerciseHistoryList from '../components/ExerciseHistoryList';
@@ -91,6 +93,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const { getImageSource } = useExerciseImageSource();
+  const reducedMotion = useReducedMotion();
   const { profile } = useProfile();
   const { isConnected } = useServerConnection();
 
@@ -264,6 +267,13 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
           style={{ width: '100%', aspectRatio: 16 / 9 }}
           resizeMode="cover"
         />
+      </View>
+    ) : imageSources.length === 2 && !reducedMotion ? (
+      <View
+        className="bg-surface rounded-xl overflow-hidden"
+        style={{ width: '100%', aspectRatio: 16 / 9 }}
+      >
+        <ExerciseImageCrossfade sources={[imageSources[0], imageSources[1]]} />
       </View>
     ) : imageSources.length > 1 ? (
       <View>
