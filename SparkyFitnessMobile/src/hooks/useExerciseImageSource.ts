@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Image } from 'react-native';
+import { Image } from 'expo-image';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../services/storage';
 import { normalizeUrl } from '../services/api/apiClient';
@@ -90,21 +90,26 @@ export function useImagePairAspectMatch(
     if (sources.length !== 2) return;
 
     let cancelled = false;
-    Promise.all(
-      sources.map((source) => Image.getSizeWithHeaders(source.uri, source.headers)),
-    )
-      .then((sizes) => {
-        if (cancelled) return;
-        const [a, b] = sizes.map(({ width, height }) =>
-          height > 0 ? width / height : 0,
+    // The pair is about to render through expo-image, so measuring through the
+    // same pipeline means one download and one disk-cache entry serve both the
+    // probe and the render. A failed load leaves its ratio at 0, keeping the
+    // verdict undefined per the contract above.
+    Promise.allSettled(sources.map((source) => Image.loadAsync(source))).then(
+      (results) => {
+        const refs = results.map((result) =>
+          result.status === 'fulfilled' ? result.value : null,
         );
-        if (a > 0 && b > 0) {
+        const [a, b] = refs.map((ref) =>
+          ref && ref.height > 0 ? ref.width / ref.height : 0,
+        );
+        if (!cancelled && a > 0 && b > 0) {
           setMatch(Math.abs(a - b) / Math.max(a, b) <= PAIR_ASPECT_TOLERANCE);
         }
-      })
-      .catch(() => {
-        // Verdict stays undefined; see the contract above.
-      });
+        // ImageRefs pin the decoded bitmaps in native memory; only the
+        // dimensions are needed here.
+        for (const ref of refs) ref?.release();
+      },
+    );
 
     return () => {
       cancelled = true;

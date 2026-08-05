@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { Image } from 'react-native';
+import { Image, type ImageRef } from 'expo-image';
 import {
   useExerciseImageSource,
   useImagePairAspectMatch,
@@ -126,20 +126,23 @@ describe('useImagePairAspectMatch', () => {
     { uri: 'https://example.com/b.png', headers: {} },
   ];
 
-  let getSizeSpy: jest.SpyInstance;
+  const makeRef = (width: number, height: number) =>
+    ({ width, height, release: jest.fn() }) as unknown as ImageRef;
+
+  let loadSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    getSizeSpy = jest.spyOn(Image, 'getSizeWithHeaders');
+    loadSpy = jest.spyOn(Image, 'loadAsync');
   });
 
   afterEach(() => {
-    getSizeSpy.mockRestore();
+    loadSpy.mockRestore();
   });
 
   it('matches a pair whose aspect ratios are close despite resolution differences', async () => {
-    getSizeSpy
-      .mockResolvedValueOnce({ width: 840, height: 630 })
-      .mockResolvedValueOnce({ width: 420, height: 315 });
+    loadSpy
+      .mockResolvedValueOnce(makeRef(840, 630))
+      .mockResolvedValueOnce(makeRef(420, 315));
 
     const { result } = renderHook(() => useImagePairAspectMatch(pair));
 
@@ -148,24 +151,38 @@ describe('useImagePairAspectMatch', () => {
   });
 
   it('rejects a pair whose aspect ratios differ', async () => {
-    getSizeSpy
-      .mockResolvedValueOnce({ width: 800, height: 600 })
-      .mockResolvedValueOnce({ width: 1600, height: 900 });
+    loadSpy
+      .mockResolvedValueOnce(makeRef(800, 600))
+      .mockResolvedValueOnce(makeRef(1600, 900));
 
     const { result } = renderHook(() => useImagePairAspectMatch(pair));
 
     await waitFor(() => expect(result.current).toBe(false));
   });
 
-  it('stays undecided when a size lookup fails', async () => {
-    getSizeSpy
-      .mockResolvedValueOnce({ width: 800, height: 600 })
+  it('releases the loaded image refs once measured', async () => {
+    const refA = makeRef(800, 600);
+    const refB = makeRef(400, 300);
+    loadSpy.mockResolvedValueOnce(refA).mockResolvedValueOnce(refB);
+
+    const { result } = renderHook(() => useImagePairAspectMatch(pair));
+
+    await waitFor(() => expect(result.current).toBe(true));
+    expect(refA.release).toHaveBeenCalled();
+    expect(refB.release).toHaveBeenCalled();
+  });
+
+  it('stays undecided when a load fails, releasing the ref that did load', async () => {
+    const loadedRef = makeRef(800, 600);
+    loadSpy
+      .mockResolvedValueOnce(loadedRef)
       .mockRejectedValueOnce(new Error('not found'));
 
     const { result } = renderHook(() => useImagePairAspectMatch(pair));
 
     await act(async () => {});
     expect(result.current).toBeUndefined();
+    expect(loadedRef.release).toHaveBeenCalled();
   });
 
   it('stays undecided without measuring when the array is not a pair', async () => {
@@ -175,6 +192,6 @@ describe('useImagePairAspectMatch', () => {
 
     await act(async () => {});
     expect(result.current).toBeUndefined();
-    expect(getSizeSpy).not.toHaveBeenCalled();
+    expect(loadSpy).not.toHaveBeenCalled();
   });
 });
