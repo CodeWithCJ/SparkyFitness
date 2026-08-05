@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -10,11 +10,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Icon from './Icon';
+import SafeImage from './SafeImage';
 
 type ImageSource = { uri: string; headers: Record<string, string> };
 
 interface ExerciseImageCrossfadeProps {
   sources: readonly [ImageSource, ImageSource];
+  fallback?: React.ReactNode;
 }
 
 // Cadence tuned to read like the two-frame exercise GIFs this stands in for:
@@ -32,10 +34,15 @@ export const sourceMayHaveTransparency = (uri: string): boolean => {
 /**
  * Loops a cross-dissolve between an exercise's two position images, standing
  * in for the paid animated GIFs at full image quality. Tap pauses and resumes.
- * Callers own the frame (size, background, rounding) and should fall back to
- * a static presentation when the OS reduce-motion setting is on.
+ * Frames that fail to load show `fallback`; both failing reads as one static
+ * placeholder since the layers are identical. Callers own the frame (size,
+ * rounding) and should fall back to a static presentation when the OS
+ * reduce-motion setting is on.
  */
-const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({ sources }) => {
+const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({
+  sources,
+  fallback = null,
+}) => {
   const [paused, setPaused] = useState(false);
   const fade = useSharedValue(0);
 
@@ -66,11 +73,12 @@ const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({ sources
   }));
   const overlayStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
 
-  // Contain keeps the full pose visible; its letterbox is invisible because
-  // the frame's own background shows through the transparency anyway. Opaque
-  // frames cover-fill instead so the card never shows hard image edges. The
-  // pair shares one mode so the two frames stay aligned mid-dissolve.
-  const resizeMode = mayHaveTransparency ? 'contain' : 'cover';
+  // Contain keeps the full pose visible; transparent frames also get a white
+  // backdrop because the exercise art is drawn for light backgrounds and
+  // disappears against dark theme surfaces. Opaque frames cover-fill instead
+  // so the card never shows hard image edges. The pair shares one mode so the
+  // two frames stay aligned mid-dissolve.
+  const contentFit = mayHaveTransparency ? 'contain' : 'cover';
 
   return (
     <Pressable
@@ -78,13 +86,23 @@ const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({ sources
       accessibilityRole="button"
       accessibilityLabel={paused ? 'Play exercise animation' : 'Pause exercise animation'}
       onPress={() => setPaused((value) => !value)}
-      style={styles.fill}
+      style={[styles.fill, mayHaveTransparency && styles.whiteBackdrop]}
     >
       <Animated.View style={[StyleSheet.absoluteFill, baseStyle]}>
-        <Image source={sources[0]} style={StyleSheet.absoluteFill} resizeMode={resizeMode} />
+        <SafeImage
+          source={sources[0]}
+          style={StyleSheet.absoluteFill}
+          contentFit={contentFit}
+          fallback={fallback}
+        />
       </Animated.View>
       <Animated.View style={[StyleSheet.absoluteFill, overlayStyle]}>
-        <Image source={sources[1]} style={StyleSheet.absoluteFill} resizeMode={resizeMode} />
+        <SafeImage
+          source={sources[1]}
+          style={StyleSheet.absoluteFill}
+          contentFit={contentFit}
+          fallback={fallback}
+        />
       </Animated.View>
       {paused && (
         <View
@@ -98,6 +116,9 @@ const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({ sources
   );
 };
 
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  whiteBackdrop: { backgroundColor: '#ffffff' },
+});
 
 export default ExerciseImageCrossfade;

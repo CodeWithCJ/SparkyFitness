@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../services/storage';
 import { normalizeUrl } from '../services/api/apiClient';
@@ -58,4 +59,57 @@ export function useExerciseImageSource() {
   );
 
   return { getImageSource };
+}
+
+// Aspect ratios within this relative tolerance overlay cleanly; beyond it the
+// subject visibly re-scales or shifts mid-dissolve.
+const PAIR_ASPECT_TOLERANCE = 0.1;
+
+/**
+ * Resolves whether two images share roughly one aspect ratio, so callers can
+ * reserve the crossfade for frames that overlay cleanly (user uploads are
+ * arbitrary). `undefined` while measuring, `false` only on a confirmed
+ * mismatch. An unreadable size also stays `undefined`: the image itself
+ * likely fails to render too, and a fallback presentation shouldn't switch
+ * modes over it. Ignores arrays that are not exactly a pair.
+ */
+export function useImagePairAspectMatch(
+  sources: readonly ImageSource[],
+): boolean | undefined {
+  const [match, setMatch] = useState<boolean | undefined>(undefined);
+
+  // Reset during render (not in the effect) so a source change never shows
+  // the previous pair's verdict for a frame.
+  const [prevSources, setPrevSources] = useState(sources);
+  if (sources !== prevSources) {
+    setPrevSources(sources);
+    setMatch(undefined);
+  }
+
+  useEffect(() => {
+    if (sources.length !== 2) return;
+
+    let cancelled = false;
+    Promise.all(
+      sources.map((source) => Image.getSizeWithHeaders(source.uri, source.headers)),
+    )
+      .then((sizes) => {
+        if (cancelled) return;
+        const [a, b] = sizes.map(({ width, height }) =>
+          height > 0 ? width / height : 0,
+        );
+        if (a > 0 && b > 0) {
+          setMatch(Math.abs(a - b) / Math.max(a, b) <= PAIR_ASPECT_TOLERANCE);
+        }
+      })
+      .catch(() => {
+        // Verdict stays undefined; see the contract above.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sources]);
+
+  return match;
 }

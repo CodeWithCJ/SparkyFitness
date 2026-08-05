@@ -1,9 +1,10 @@
 import React from 'react';
-import { Image } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import ExerciseImageCrossfade, {
   sourceMayHaveTransparency,
 } from '../../src/components/ExerciseImageCrossfade';
+import SafeImage from '../../src/components/SafeImage';
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -18,17 +19,20 @@ const frameB = { uri: 'https://server/images/b.png', headers: { Authorization: '
 
 describe('ExerciseImageCrossfade', () => {
   it('renders both frames stacked so the dissolve has both images loaded', () => {
+    const fallback = <></>;
     const { UNSAFE_getAllByType } = render(
-      <ExerciseImageCrossfade sources={[frameA, frameB]} />,
+      <ExerciseImageCrossfade sources={[frameA, frameB]} fallback={fallback} />,
     );
 
-    const images = UNSAFE_getAllByType(Image);
+    const images = UNSAFE_getAllByType(SafeImage);
     expect(images).toHaveLength(2);
     expect(images[0].props.source).toEqual(frameA);
     expect(images[1].props.source).toEqual(frameB);
+    expect(images[0].props.fallback).toBe(fallback);
+    expect(images[1].props.fallback).toBe(fallback);
   });
 
-  it('contains transparent-capable frames and covers opaque JPEG frames', () => {
+  it('contains transparent-capable frames on a white backdrop and covers opaque JPEG frames', () => {
     const pngPair = render(
       <ExerciseImageCrossfade
         sources={[
@@ -37,9 +41,13 @@ describe('ExerciseImageCrossfade', () => {
         ]}
       />,
     );
-    for (const image of pngPair.UNSAFE_getAllByType(Image)) {
-      expect(image.props.resizeMode).toBe('contain');
+    for (const image of pngPair.UNSAFE_getAllByType(SafeImage)) {
+      expect(image.props.contentFit).toBe('contain');
     }
+    expect(
+      StyleSheet.flatten(pngPair.getByTestId('exercise-image-crossfade').props.style)
+        .backgroundColor,
+    ).toBe('#ffffff');
 
     const jpgPair = render(
       <ExerciseImageCrossfade
@@ -49,9 +57,13 @@ describe('ExerciseImageCrossfade', () => {
         ]}
       />,
     );
-    for (const image of jpgPair.UNSAFE_getAllByType(Image)) {
-      expect(image.props.resizeMode).toBe('cover');
+    for (const image of jpgPair.UNSAFE_getAllByType(SafeImage)) {
+      expect(image.props.contentFit).toBe('cover');
     }
+    expect(
+      StyleSheet.flatten(jpgPair.getByTestId('exercise-image-crossfade').props.style)
+        .backgroundColor,
+    ).toBeUndefined();
   });
 
   it('toggles pause on tap and resumes on a second tap', () => {

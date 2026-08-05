@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { CommonActions, StackActions } from '@react-navigation/native';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
@@ -13,6 +13,7 @@ import ExerciseImageCrossfade, {
   sourceMayHaveTransparency,
 } from '../components/ExerciseImageCrossfade';
 import Icon from '../components/Icon';
+import SafeImage from '../components/SafeImage';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import ExerciseHistoryList from '../components/ExerciseHistoryList';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -20,7 +21,10 @@ import { fetchExerciseById } from '../services/api/exerciseApi';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
 import { exerciseDetailQueryKey, suggestedExercisesQueryKey } from '../hooks/queryKeys';
-import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import {
+  useExerciseImageSource,
+  useImagePairAspectMatch,
+} from '../hooks/useExerciseImageSource';
 import {
   useDeleteExerciseLibrary,
   usePreferences,
@@ -33,6 +37,7 @@ import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   buildSingleExerciseStartPayload,
+  CATEGORY_ICON_MAP,
   formatRecentSessionSet,
   normalizeWeightUnit,
   resolveSnapshotModality,
@@ -98,6 +103,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const textMuted = useCSSVariable('--color-text-muted') as string;
   const { getImageSource } = useExerciseImageSource();
   const reducedMotion = useReducedMotion();
   const { profile } = useProfile();
@@ -193,6 +199,8 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
       );
   }, [exercise.images, getImageSource]);
 
+  const pairAspectMatch = useImagePairAspectMatch(imageSources);
+
   const equipmentText = formatList(exercise.equipment ?? []);
   const primaryMusclesText = formatList(exercise.primary_muscles ?? []);
   const secondaryMusclesText = formatList(exercise.secondary_muscles ?? []);
@@ -265,21 +273,39 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
   const descriptionIsLong = description.length > DESCRIPTION_PREVIEW_THRESHOLD;
 
+  const imageFallback = (
+    <View className="bg-raised items-center justify-center" style={{ flex: 1 }}>
+      <Icon
+        name={(exercise.category && CATEGORY_ICON_MAP[exercise.category]) || 'exercise-weights'}
+        size={48}
+        color={textMuted}
+      />
+    </View>
+  );
+
   const imageCarousel =
     imageSources.length === 1 ? (
-      <View className="bg-surface rounded-xl overflow-hidden">
-        <Image
+      <View
+        className={`${
+          sourceMayHaveTransparency(imageSources[0].uri) ? 'bg-white' : 'bg-surface'
+        } rounded-xl overflow-hidden`}
+      >
+        <SafeImage
           source={imageSources[0]}
           style={{ width: '100%', aspectRatio: IMAGE_ASPECT_RATIO }}
-          resizeMode={sourceMayHaveTransparency(imageSources[0].uri) ? 'contain' : 'cover'}
+          contentFit={sourceMayHaveTransparency(imageSources[0].uri) ? 'contain' : 'cover'}
+          fallback={imageFallback}
         />
       </View>
-    ) : imageSources.length === 2 && !reducedMotion ? (
+    ) : imageSources.length === 2 && !reducedMotion && pairAspectMatch !== false ? (
       <View
         className="bg-surface rounded-xl overflow-hidden"
         style={{ width: '100%', aspectRatio: IMAGE_ASPECT_RATIO }}
       >
-        <ExerciseImageCrossfade sources={[imageSources[0], imageSources[1]]} />
+        <ExerciseImageCrossfade
+          sources={[imageSources[0], imageSources[1]]}
+          fallback={imageFallback}
+        />
       </View>
     ) : imageSources.length > 1 ? (
       <View>
@@ -293,11 +319,15 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             onPageSelected={handleImagePageSelected}
           >
             {imageSources.map((source, index) => (
-              <View key={`${source.uri}-${index}`}>
-                <Image
+              <View
+                key={`${source.uri}-${index}`}
+                className={sourceMayHaveTransparency(source.uri) ? 'bg-white' : undefined}
+              >
+                <SafeImage
                   source={source}
                   style={{ width: '100%', height: '100%' }}
-                  resizeMode={sourceMayHaveTransparency(source.uri) ? 'contain' : 'cover'}
+                  contentFit={sourceMayHaveTransparency(source.uri) ? 'contain' : 'cover'}
+                  fallback={imageFallback}
                 />
               </View>
             ))}
