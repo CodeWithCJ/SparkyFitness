@@ -137,6 +137,7 @@ import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/service
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useAppLanguageForegroundSync } from './src/hooks/useAppLanguageForegroundSync';
 import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
+import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -272,6 +273,7 @@ function AppContent() {
 
   useAppLanguageForegroundSync();
   useWidgetLanguageRefresh();
+  useIOSWidgetLanguageRefresh();
 
   const navigationRef = useRef<NavigationProp<TabParamList> | null>(null);
   const foregroundAutoSyncWindowRef = useRef(false);

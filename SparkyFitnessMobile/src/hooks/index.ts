@@ -116,6 +116,7 @@ export {
 export { useExerciseSetEditing } from './useExerciseSetEditing';
 export { useWidgetSync } from './useWidgetSync';
 export { useWidgetLanguageRefresh } from './useWidgetLanguageRefresh';
+export { useIOSWidgetLanguageRefresh } from './useIOSWidgetLanguageRefresh';
 export { useProfile } from './useProfile';
 export { useActiveAiServiceSetting } from './useActiveAiServiceSetting';
 export { useUserAiConfigAllowed } from './useUserAiConfigAllowed';
