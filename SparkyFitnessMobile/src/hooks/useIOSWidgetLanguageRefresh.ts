@@ -21,6 +21,11 @@ const iosAppGroup = (
  * which can differ from the in-app language selector, so the effective JS
  * locale is written into the shared app group and both widget timelines are
  * reloaded. Runs only on iOS; no-op on Android.
+ *
+ * `lastWrittenLocaleRef` records only locales that were fully applied (write +
+ * both reloads). On a failure it keeps the previous applied locale, so the next
+ * language event retries the whole flow instead of being skipped. There is no
+ * automatic retry timer.
  */
 export function useIOSWidgetLanguageRefresh(): void {
   const lastWrittenLocaleRef = useRef<string | null>(null);
@@ -31,7 +36,6 @@ export function useIOSWidgetLanguageRefresh(): void {
     const applyLocale = () => {
       const locale = i18n.resolvedLanguage === 'pl' ? 'pl' : 'en';
       if (lastWrittenLocaleRef.current === locale) return;
-      lastWrittenLocaleRef.current = locale;
 
       try {
         const storage = new ExtensionStorage(iosAppGroup);
@@ -43,7 +47,10 @@ export function useIOSWidgetLanguageRefresh(): void {
           `[useIOSWidgetLanguageRefresh] Failed to refresh widget locale: ${error}`,
           'ERROR',
         );
+        return;
       }
+
+      lastWrittenLocaleRef.current = locale;
     };
 
     if (i18n.isInitialized) {

@@ -177,4 +177,113 @@ describe('useIOSWidgetLanguageRefresh', () => {
       'ERROR',
     );
   });
+
+  it('retries the flow when the app group write fails and the locale is not marked applied', () => {
+    setPlatform('ios');
+    resolvedLanguage = 'pl';
+    mockSet.mockImplementationOnce(() => {
+      throw new Error('app group unavailable');
+    });
+
+    renderHook(() => useIOSWidgetLanguageRefresh());
+
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockReload).not.toHaveBeenCalled();
+    expect(mockAddLog).toHaveBeenCalledTimes(1);
+
+    // Same locale fires again after the failure: the flow must be retried.
+    languageListeners[0]('pl');
+
+    expect(mockSet).toHaveBeenCalledTimes(2);
+    expect(mockReload).toHaveBeenCalledTimes(2);
+    expect(mockReload).toHaveBeenCalledWith('widget');
+    expect(mockReload).toHaveBeenCalledWith('macroWidget');
+  });
+
+  it('retries the flow when the calorie widget reload fails', () => {
+    setPlatform('ios');
+    resolvedLanguage = 'pl';
+    let reloadFailure: string | null = 'widget';
+    mockReload.mockImplementation((name: string) => {
+      if (reloadFailure && name === reloadFailure) {
+        throw new Error('calorie reload failed');
+      }
+    });
+
+    renderHook(() => useIOSWidgetLanguageRefresh());
+
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockAddLog).toHaveBeenCalledTimes(1);
+
+    // Same locale fires again after the failure: write and reload are retried.
+    reloadFailure = null;
+    languageListeners[0]('pl');
+
+    expect(mockSet).toHaveBeenCalledTimes(2);
+    expect(mockReload).toHaveBeenCalledTimes(3);
+    expect(mockReload).toHaveBeenCalledWith('widget');
+    expect(mockReload).toHaveBeenCalledWith('macroWidget');
+  });
+
+  it('retries the flow when the macro widget reload fails', () => {
+    setPlatform('ios');
+    resolvedLanguage = 'pl';
+    let reloadFailure: string | null = 'macroWidget';
+    mockReload.mockImplementation((name: string) => {
+      if (reloadFailure && name === reloadFailure) {
+        throw new Error('macro reload failed');
+      }
+    });
+
+    renderHook(() => useIOSWidgetLanguageRefresh());
+
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockAddLog).toHaveBeenCalledTimes(1);
+
+    // Same locale fires again after the failure: write and reload are retried.
+    reloadFailure = null;
+    languageListeners[0]('pl');
+
+    expect(mockSet).toHaveBeenCalledTimes(2);
+    expect(mockReload).toHaveBeenCalledTimes(4);
+    expect(mockReload).toHaveBeenCalledWith('widget');
+    expect(mockReload).toHaveBeenCalledWith('macroWidget');
+  });
+
+  it('skips redundant work after a full success for the same locale', () => {
+    setPlatform('ios');
+    resolvedLanguage = 'en';
+
+    renderHook(() => useIOSWidgetLanguageRefresh());
+
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockReload).toHaveBeenCalledTimes(2);
+
+    languageListeners[0]('en');
+
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockReload).toHaveBeenCalledTimes(2);
+  });
+
+  it('reapplies when the locale changes after a successful apply, then dedupes', () => {
+    setPlatform('ios');
+    resolvedLanguage = 'en';
+
+    renderHook(() => useIOSWidgetLanguageRefresh());
+
+    expect(mockSet).toHaveBeenLastCalledWith('widgetLocale', 'en');
+
+    resolvedLanguage = 'pl';
+    languageListeners[0]('pl');
+
+    expect(mockSet).toHaveBeenCalledTimes(2);
+    expect(mockSet).toHaveBeenLastCalledWith('widgetLocale', 'pl');
+    expect(mockReload).toHaveBeenCalledTimes(4);
+
+    // A third identical event for the already-applied pl locale is skipped.
+    languageListeners[0]('pl');
+
+    expect(mockSet).toHaveBeenCalledTimes(2);
+    expect(mockReload).toHaveBeenCalledTimes(4);
+  });
 });
