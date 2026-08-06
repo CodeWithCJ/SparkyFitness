@@ -113,6 +113,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const ownershipFilter = useAppPreferencesStore((s) => s.foodSearchOwnershipFilter);
   const setOwnershipFilter = useAppPreferencesStore((s) => s.setFoodSearchOwnershipFilter);
   const isOwnershipFiltered = ownershipFilter !== 'all';
+  // Mine and Family describe ownership of saved items; provider results are
+  // public catalog data, so those filters suppress online search and its
+  // sections entirely, matching web.
+  const onlineAllowedByOwnership =
+    ownershipFilter === 'all' || ownershipFilter === 'public';
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({
     enabled: isConnected,
@@ -275,7 +280,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     isFetchingNextPage,
     isFetchNextPageError,
   } = useExternalFoodSearch(searchText, selectedProviderType, {
-    enabled: isConnected && selectedProvider !== null && !isAllProviders,
+    enabled:
+      isConnected &&
+      selectedProvider !== null &&
+      !isAllProviders &&
+      onlineAllowedByOwnership,
     providerId: selectedProvider ?? undefined,
     autoScale: preferences?.auto_scale_open_food_facts_imports,
   });
@@ -286,7 +295,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     anyLoading: anyProviderLoading,
     isSearchActive: isAllProvidersSearchActive,
   } = useAllProvidersSearch(searchText, providers, {
-    enabled: isConnected && isAllProviders,
+    enabled: isConnected && isAllProviders && onlineAllowedByOwnership,
     autoScale: preferences?.auto_scale_open_food_facts_imports,
   });
 
@@ -651,9 +660,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     // Cap the local sections only when an online section will also render, so a
     // pure local search is never truncated.
-    const willShowOnline = (isAllProviders
-      ? isAllProvidersSearchActive
-      : showOnlineSection) && (ownershipFilter === 'all' || ownershipFilter === 'public');
+    const willShowOnline =
+      (isAllProviders ? isAllProvidersSearchActive : showOnlineSection) &&
+      onlineAllowedByOwnership;
 
     if (hasLocalResults) {
       if (searchFoodsFavFirst.length > 0) {
@@ -695,7 +704,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       });
     }
 
-    if (isAllProviders) {
+    if (isAllProviders && onlineAllowedByOwnership) {
       // Aggregated "All Providers" view: Top Matches then a By Source
       // accordion per provider, each streaming in independently. Gate on the
       // hook's debounced active flag (not raw text length) so the sections do
@@ -752,7 +761,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           });
         }
       }
-    } else if (showOnlineSection) {
+    } else if (showOnlineSection && onlineAllowedByOwnership) {
       sections.push({
         key: 'online',
         kind: 'online',
@@ -778,7 +787,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     expandedProviders,
     showAllFoods,
     showAllMeals,
-    ownershipFilter,
+    onlineAllowedByOwnership,
   ]);
 
   // --- Results list renderers ---

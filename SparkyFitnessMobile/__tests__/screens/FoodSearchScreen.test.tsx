@@ -608,6 +608,46 @@ describe('FoodSearchScreen', () => {
     expect(screen.getByText('Grilled Chicken')).toBeTruthy();
   });
 
+  it('suppresses online results and disables the provider queries under Mine', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'mine' });
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] }),
+    );
+
+    const screen = renderSearching();
+
+    // Online rows never mix into a Mine/Family view: provider results are
+    // public catalog data, so the section is withheld even though the hook
+    // (mocked here) still reports results.
+    expect(screen.queryByText('Online Results')).toBeNull();
+    expect(screen.queryByText('Cheddar Cheese')).toBeNull();
+    // The queries themselves are disabled too, not just hidden.
+    expect(mockUseExternalFoodSearch).toHaveBeenLastCalledWith(
+      'chicken',
+      'fatsecret',
+      expect.objectContaining({ enabled: false }),
+    );
+    expect(mockUseAllProvidersSearch).toHaveBeenLastCalledWith(
+      'chicken',
+      expect.anything(),
+      expect.objectContaining({ enabled: false }),
+    );
+  });
+
+  it('keeps online results visible under the Public filter', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'public' });
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] }),
+    );
+
+    const screen = renderSearching();
+
+    expect(screen.getByText('Online Results')).toBeTruthy();
+    expect(screen.getByText('Cheddar Cheese')).toBeTruthy();
+  });
+
   it('names the filter and offers Show All when it empties the landing', () => {
     useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'family' });
 
