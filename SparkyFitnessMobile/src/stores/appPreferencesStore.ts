@@ -51,6 +51,7 @@ export const PREFERENCE_DEFAULTS = {
   restTimerSoundEnabled: true,
   workoutKeepAwakeEnabled: false,
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
+  foodsLibraryOwnershipFilter: 'all' as OwnershipFilter,
 } as const;
 
 export type AppPreferencesData = {
@@ -75,6 +76,7 @@ export type AppPreferencesData = {
   restTimerSoundEnabled: boolean;
   workoutKeepAwakeEnabled: boolean;
   foodSearchOwnershipFilter: OwnershipFilter;
+  foodsLibraryOwnershipFilter: OwnershipFilter;
 };
 
 export interface AppPreferencesState extends AppPreferencesData {
@@ -99,6 +101,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setRestTimerSoundEnabled: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
   setFoodSearchOwnershipFilter: (value: OwnershipFilter) => void;
+  setFoodsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
 }
 
 /**
@@ -163,6 +166,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setRestTimerSoundEnabled: (value) => set({ restTimerSoundEnabled: value }),
       setWorkoutKeepAwakeEnabled: (value) => set({ workoutKeepAwakeEnabled: value }),
       setFoodSearchOwnershipFilter: (value) => set({ foodSearchOwnershipFilter: value }),
+      setFoodsLibraryOwnershipFilter: (value) => set({ foodsLibraryOwnershipFilter: value }),
     }),
     {
       name: STORE_KEY,
@@ -192,6 +196,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,
+        foodsLibraryOwnershipFilter: state.foodsLibraryOwnershipFilter,
       }),
       migrate: (persistedState, version) => {
         if (
