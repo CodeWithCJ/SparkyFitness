@@ -191,14 +191,19 @@ describe('extractTelemetryActivityEntries', () => {
 
   it('accepts mobile-synced workouts from HealthKit and Health Connect', () => {
     // The mobile app writes these exact strings (see healthRecords.ts); the
-    // workout handler now persists their GPS/laps/zones, so they belong in the
+    // workout handler persists their GPS/laps/zones, so they belong in the
     // telemetry list alongside Garmin and Strava.
     const data: Record<string, ExerciseProgressResponse[]> = {
       Walking: [
-        makeEntry({ provider_name: 'HealthKit', exercise_entry_id: 'hk-1' }),
+        makeEntry({
+          provider_name: 'HealthKit',
+          exercise_entry_id: 'hk-1',
+          has_telemetry: true,
+        }),
         makeEntry({
           provider_name: 'Health Connect',
           exercise_entry_id: 'hc-1',
+          has_telemetry: true,
         }),
       ],
     };
@@ -212,11 +217,20 @@ describe('extractTelemetryActivityEntries', () => {
   it('matches the mobile providers regardless of casing', () => {
     const data: Record<string, ExerciseProgressResponse[]> = {
       Walking: [
-        makeEntry({ provider_name: 'healthkit', exercise_entry_id: 'hk-2' }),
-        makeEntry({ provider_name: 'HEALTHKIT', exercise_entry_id: 'hk-3' }),
+        makeEntry({
+          provider_name: 'healthkit',
+          exercise_entry_id: 'hk-2',
+          has_telemetry: true,
+        }),
+        makeEntry({
+          provider_name: 'HEALTHKIT',
+          exercise_entry_id: 'hk-3',
+          has_telemetry: true,
+        }),
         makeEntry({
           provider_name: 'health connect',
           exercise_entry_id: 'hc-2',
+          has_telemetry: true,
         }),
       ],
     };
@@ -224,6 +238,76 @@ describe('extractTelemetryActivityEntries', () => {
       3
     );
   });
+
+  it.each([
+    ['false', false],
+    ['null', null],
+    ['absent (server predates the flag)', undefined],
+  ])(
+    'drops mobile-synced entries whose telemetry flag is %s',
+    (_label, hasTelemetry) => {
+      const data: Record<string, ExerciseProgressResponse[]> = {
+        Walking: [
+          makeEntry({
+            provider_name: 'HealthKit',
+            exercise_entry_id: 'hk-empty',
+            has_telemetry: hasTelemetry,
+          }),
+          makeEntry({
+            provider_name: 'Health Connect',
+            exercise_entry_id: 'hc-empty',
+            has_telemetry: hasTelemetry,
+          }),
+        ],
+      };
+      expect(extractTelemetryActivityEntries(data, 'All', parseISO)).toEqual(
+        []
+      );
+    }
+  );
+
+  it('keeps a mobile entry with telemetry while dropping one without', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Walking: [
+        makeEntry({
+          provider_name: 'HealthKit',
+          exercise_entry_id: 'hk-run',
+          has_telemetry: true,
+        }),
+        makeEntry({
+          provider_name: 'HealthKit',
+          exercise_entry_id: 'hk-lifting',
+          has_telemetry: false,
+        }),
+      ],
+    };
+    expect(
+      extractTelemetryActivityEntries(data, 'All', parseISO).map(
+        (e) => e.exercise_entry_id
+      )
+    ).toEqual(['hk-run']);
+  });
+
+  it.each([['garmin'], ['garmin_fit'], ['strava']])(
+    'still cards a %s entry that carries no telemetry flag',
+    (providerName) => {
+      // These pipelines only ever write activities that have telemetry, so they
+      // must keep working against a server that never sends the flag.
+      const data: Record<string, ExerciseProgressResponse[]> = {
+        Cycling: [
+          makeEntry({
+            provider_name: providerName,
+            exercise_entry_id: 'no-flag',
+          }),
+        ],
+      };
+      expect(
+        extractTelemetryActivityEntries(data, 'All', parseISO).map(
+          (e) => e.exercise_entry_id
+        )
+      ).toEqual(['no-flag']);
+    }
+  );
 
   it('ignores entries from other providers and entries without an id', () => {
     const data: Record<string, ExerciseProgressResponse[]> = {
@@ -244,7 +328,7 @@ describe('extractTelemetryActivityEntries', () => {
 describe('providerLabel', () => {
   it('routes the one real brand-name mismatch (Apple Health) through a translation key', () => {
     expect(providerLabel('HealthKit')).toEqual({
-      label: 'activityReport.provider.appleHealth',
+      label: 'reports.activityReport.provider.appleHealth',
       isTranslationKey: true,
       fallback: 'Apple Health',
     });

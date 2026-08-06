@@ -35,9 +35,21 @@ function log(level: any, message: any, ...args: any[]) {
     }
   }
 }
+/**
+ * Whether a message at `level` would actually be emitted. Lets a caller skip
+ * building an expensive message (a JSON.stringify of a multi-megabyte payload,
+ * say) that the current level would discard anyway — `log()` alone still pays
+ * that cost because arguments are evaluated before the call.
+ */
+function isLogLevelEnabled(level: string): boolean {
+  const threshold = LOG_LEVELS[level.toUpperCase() as keyof typeof LOG_LEVELS];
+  return threshold !== undefined && threshold >= currentLogLevel;
+}
 export { log };
+export { isLogLevelEnabled };
 export { LOG_LEVELS };
 export default {
   log,
+  isLogLevelEnabled,
   LOG_LEVELS,
 };

@@ -20,6 +20,9 @@ export interface TelemetryGpsPoint {
   cad?: number | null;
   power?: number | null;
   dist?: number | null;
+  hacc?: number | null;
+  vacc?: number | null;
+  course?: number | null;
 }
 
 /** A lap window as sent by the client. */

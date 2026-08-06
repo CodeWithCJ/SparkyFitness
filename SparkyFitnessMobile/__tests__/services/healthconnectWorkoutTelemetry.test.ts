@@ -12,6 +12,7 @@ const {
   collectSessionLaps,
   collectSessionRoute,
   collectSessionTelemetry,
+  prefetchSessionRoutes,
   routeNeedsConsent,
 } = require('../../src/services/healthconnect/workoutTelemetry.ts');
 
@@ -100,6 +101,27 @@ describe('collectSessionRoute', () => {
   });
 
   it('prompts for consent in the foreground and remembers the grant', async () => {
+    // The native module resolves the bare location array, not the { type,
+    // route } wrapper its 3.5.3 typings declare — coding to the wrapper meant
+    // the freshly granted route was discarded and zero points uploaded.
+    requestExerciseRoute.mockResolvedValue([
+      { time: at(0), latitude: 1, longitude: 2 },
+    ]);
+
+    const points = await collectSessionRoute(
+      session({ exerciseRoute: { type: 'CONSENT_REQUIRED', route: [] } }),
+      true
+    );
+
+    expect(requestExerciseRoute).toHaveBeenCalledWith('session-1');
+    expect(points).toHaveLength(1);
+    expect(points[0]).toMatchObject({ lat: 1, lon: 2 });
+    const [key, stored] = AsyncStorage.setItem.mock.calls[0];
+    expect(key).toContain('session-1');
+    expect(JSON.parse(stored)).toMatchObject({ value: 'granted' });
+  });
+
+  it('still accepts the wrapped { type, route } result shape', async () => {
     requestExerciseRoute.mockResolvedValue({
       route: [{ time: at(0), latitude: 1, longitude: 2 }],
     });
@@ -109,11 +131,37 @@ describe('collectSessionRoute', () => {
       true
     );
 
-    expect(requestExerciseRoute).toHaveBeenCalledWith('session-1');
     expect(points).toHaveLength(1);
-    const [key, stored] = AsyncStorage.setItem.mock.calls[0];
-    expect(key).toContain('session-1');
-    expect(JSON.parse(stored)).toMatchObject({ value: 'granted' });
+  });
+
+  it('never runs two consent requests concurrently', async () => {
+    // The native side has one uncorrelated result channel: overlapping
+    // requests are matched to callers by ordering alone, so a second in-flight
+    // dialog can hand one workout another workout's route.
+    let inFlight = 0;
+    let maxInFlight = 0;
+    requestExerciseRoute.mockImplementation(async () => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise(resolve => setTimeout(resolve, 5));
+      inFlight -= 1;
+      return [{ time: at(0), latitude: 1, longitude: 2 }];
+    });
+
+    const needsConsent = (id: string) =>
+      session({
+        metadata: { id, dataOrigin: 'com.strava' },
+        exerciseRoute: { type: 'CONSENT_REQUIRED', route: [] },
+      });
+
+    const [a, b] = await Promise.all([
+      collectSessionRoute(needsConsent('session-a'), true),
+      collectSessionRoute(needsConsent('session-b'), true),
+    ]);
+
+    expect(maxInFlight).toBe(1);
+    expect(a).toHaveLength(1);
+    expect(b).toHaveLength(1);
   });
 
   it('never prompts when not interactive', async () => {
@@ -160,9 +208,9 @@ describe('collectSessionRoute', () => {
     AsyncStorage.getItem.mockResolvedValue(
       JSON.stringify({ value: 'denied', storedAtMs: twoDaysAgo })
     );
-    requestExerciseRoute.mockResolvedValue({
-      route: [{ time: at(0), latitude: 1, longitude: 2 }],
-    });
+    requestExerciseRoute.mockResolvedValue([
+      { time: at(0), latitude: 1, longitude: 2 },
+    ]);
 
     const points = await collectSessionRoute(
       session({ exerciseRoute: { type: 'CONSENT_REQUIRED', route: [] } }),
@@ -177,9 +225,9 @@ describe('collectSessionRoute', () => {
     // Pre-fix storage wrote the raw string 'denied', not JSON — JSON.parse
     // throws on it, which must fall back to "no decision" rather than crash.
     AsyncStorage.getItem.mockResolvedValue('denied');
-    requestExerciseRoute.mockResolvedValue({
-      route: [{ time: at(0), latitude: 1, longitude: 2 }],
-    });
+    requestExerciseRoute.mockResolvedValue([
+      { time: at(0), latitude: 1, longitude: 2 },
+    ]);
 
     const points = await collectSessionRoute(
       session({ exerciseRoute: { type: 'CONSENT_REQUIRED', route: [] } }),
@@ -205,6 +253,67 @@ describe('collectSessionRoute', () => {
       true
     );
     expect(points).toHaveLength(1);
+  });
+});
+
+describe('prefetchSessionRoutes', () => {
+  const consentSession = (id: string) => ({
+    startTime: at(0),
+    endTime: at(600),
+    metadata: { id, dataOrigin: 'com.strava' },
+    exerciseRoute: { type: 'CONSENT_REQUIRED', route: [] },
+  });
+
+  it('resolves consent up front so the timed read never prompts', async () => {
+    readRecords.mockResolvedValue({
+      records: [consentSession('prefetch-1')],
+    });
+    requestExerciseRoute.mockResolvedValue([
+      { time: at(0), latitude: 1, longitude: 2 },
+    ]);
+
+    await prefetchSessionRoutes(new Date(at(0)), new Date(at(600)));
+    expect(requestExerciseRoute).toHaveBeenCalledTimes(1);
+
+    // The later in-window read consumes the cached points without a dialog.
+    const points = await collectSessionRoute(consentSession('prefetch-1'), true);
+    expect(points).toHaveLength(1);
+    expect(requestExerciseRoute).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips sessions that already carry route data or need no consent', async () => {
+    readRecords.mockResolvedValue({
+      records: [
+        session({
+          metadata: { id: 'prefetch-2' },
+          exerciseRoute: { type: 'DATA', route: [{ time: at(0), latitude: 1, longitude: 2 }] },
+        }),
+        session({ metadata: { id: 'prefetch-3' }, exerciseRoute: { type: 'NO_DATA', route: [] } }),
+      ],
+    });
+
+    await prefetchSessionRoutes(new Date(at(0)), new Date(at(600)));
+    expect(requestExerciseRoute).not.toHaveBeenCalled();
+  });
+
+  it('a failed session read costs the prefetch, not the sync', async () => {
+    readRecords.mockRejectedValue(new Error('unavailable'));
+    await expect(
+      prefetchSessionRoutes(new Date(at(0)), new Date(at(600)))
+    ).resolves.toBeUndefined();
+  });
+
+  it('remembers a prefetch refusal like an inline one', async () => {
+    readRecords.mockResolvedValue({
+      records: [consentSession('prefetch-4')],
+    });
+    requestExerciseRoute.mockRejectedValue(new Error('denied'));
+
+    await prefetchSessionRoutes(new Date(at(0)), new Date(at(600)));
+
+    const [key, stored] = AsyncStorage.setItem.mock.calls[0];
+    expect(key).toContain('prefetch-4');
+    expect(JSON.parse(stored)).toMatchObject({ value: 'denied' });
   });
 });
 

@@ -9,7 +9,10 @@ import {
   seriesMean,
   type SeriesPoint,
 } from '../../src/services/shared/telemetryDownsample';
-import type { WorkoutGpsPoint } from '../../src/types/healthRecords';
+import type {
+  WorkoutGpsPoint,
+  WorkoutHrSample,
+} from '../../src/types/healthRecords';
 
 const BASE_MS = Date.parse('2026-08-04T09:00:00.000Z');
 const at = (seconds: number): string =>
@@ -85,19 +88,36 @@ describe('downsampleSeries', () => {
 
   it('averages within a bucket rather than sampling', () => {
     // Sampling every Nth reading would alias a spike in or out depending on
-    // where it landed; averaging keeps the curve's shape.
+    // where it landed; averaging keeps the curve's shape. A lone spike in the
+    // middle of a three-reading bucket surfaces as a partial-weight value:
+    // sampling would either drop it (exactly 100) or keep it whole (exactly
+    // 200).
     const series: SeriesPoint[] = Array.from({ length: 3000 }, (_, i) => ({
       t: at(i),
-      v: i % 2 === 0 ? 100 : 200,
+      v: i === 1501 ? 200 : 100,
     }));
     const result = downsampleSeries(series);
-    for (const point of result) {
-      expect(point.v).toBeGreaterThanOrEqual(100);
-      expect(point.v).toBeLessThanOrEqual(200);
-    }
-    const mean = seriesMean(result) as number;
-    expect(mean).toBeGreaterThan(140);
-    expect(mean).toBeLessThan(160);
+    const spiked = result.filter((point) => point.v !== 100);
+    expect(spiked).toHaveLength(1);
+    expect(spiked[0].v).toBeGreaterThan(100);
+    expect(spiked[0].v).toBeLessThan(200);
+  });
+
+  it('caps the output when a reading lands on the final bucket boundary', () => {
+    // 7201 readings across exactly 7200s bucket to 6s each, so the last one
+    // falls on the boundary that opens bucket 1200 — one past the cap.
+    const series: SeriesPoint[] = Array.from({ length: 7201 }, (_, i) => ({
+      t: at(i),
+      v: i === 7200 ? 500 : 100,
+    }));
+    const result = downsampleSeries(series);
+    expect(result.length).toBeLessThanOrEqual(MAX_SERIES_POINTS);
+    expect(result[0].t).toBe(at(0));
+    // The boundary reading is folded into the last bucket rather than emitted
+    // on its own, so the final value is a mean, not the raw 500.
+    const last = result[result.length - 1];
+    expect(last.v).toBeGreaterThan(100);
+    expect(last.v).toBeLessThan(500);
   });
 
   it('drops malformed points', () => {
@@ -112,10 +132,17 @@ describe('downsampleSeries', () => {
 
 describe('downsampleHrSamples', () => {
   it('rounds to whole bpm', () => {
-    const samples = Array.from({ length: 3000 }, (_, i) => ({
+    // Alternating 100/101 across three-reading buckets means every bucket
+    // averages to a third of a bpm, so rounding is observable in the output.
+    const samples: WorkoutHrSample[] = Array.from({ length: 3000 }, (_, i) => ({
       t: at(i),
-      bpm: 100 + (i % 3),
+      bpm: 100 + (i % 2),
     }));
+    const unrounded = downsampleSeries(
+      samples.map((s) => ({ t: s.t, v: s.bpm }))
+    );
+    expect(unrounded.some((point) => !Number.isInteger(point.v))).toBe(true);
+
     const result = downsampleHrSamples(samples);
     expect(result.length).toBeLessThanOrEqual(MAX_SERIES_POINTS);
     for (const sample of result) {

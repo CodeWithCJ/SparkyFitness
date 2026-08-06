@@ -832,6 +832,63 @@ describe('healthDataApi', () => {
         expect(body).toHaveLength(CHUNK_SIZE + 500);
       });
 
+      test('splits an oversized workout group at whole-day boundaries', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+        // 30 telemetry-sized days from one source: two workouts per day, each
+        // ~150KB, so the group (~9MB) must split — but never within a day,
+        // because the server's pre-cleanup range-deletes whole days per
+        // request and a same-day split would let one chunk wipe the other's
+        // inserts.
+        const filler = 'x'.repeat(150 * 1024);
+        const data = Array.from({ length: 60 }, (_, i) => ({
+          type: 'ExerciseSession',
+          date: `2024-01-${String(Math.floor(i / 2) + 1).padStart(2, '0')}`,
+          raw_data: filler,
+          value: i,
+          source: 'healthkit',
+        })) as HealthDataPayload;
+
+        await syncHealthData(data);
+
+        expect(mockFetch.mock.calls.length).toBeGreaterThan(1);
+
+        const daysPerChunk: string[][] = mockFetch.mock.calls.map(call => {
+          const body = JSON.parse(call[1].body) as { date: string }[];
+          return [...new Set(body.map(record => record.date))].sort();
+        });
+
+        // Every day appears in exactly one chunk, and each chunk covers a
+        // contiguous run of days — chunks' server-side range deletes must not
+        // overlap another chunk's days.
+        const seen = new Set<string>();
+        for (const days of daysPerChunk) {
+          for (const day of days) {
+            expect(seen.has(day)).toBe(false);
+            seen.add(day);
+          }
+        }
+        expect(seen.size).toBe(30);
+        const flat = daysPerChunk.flat();
+        expect(flat).toEqual([...flat].sort());
+
+        // Both workouts of a day travel together.
+        for (const call of mockFetch.mock.calls) {
+          const body = JSON.parse(call[1].body) as { date: string }[];
+          const counts = new Map<string, number>();
+          for (const record of body) {
+            counts.set(record.date, (counts.get(record.date) ?? 0) + 1);
+          }
+          for (const count of counts.values()) {
+            expect(count).toBe(2);
+          }
+        }
+      });
+
       test('preserves staged sleep session payloads inside session chunks', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({

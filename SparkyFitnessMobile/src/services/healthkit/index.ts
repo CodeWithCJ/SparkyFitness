@@ -28,7 +28,10 @@ import {
   collectWorkoutTelemetry,
   type WorkoutProxyLike,
 } from './workoutTelemetry';
-import { claimTelemetryBudget } from '../shared/telemetryBudget';
+import {
+  createTelemetryRunContext,
+  type TelemetryRunContext,
+} from '../shared/telemetryBudget';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
@@ -716,7 +719,8 @@ export const readMinMaxAvgByDayDetailed = async (
 type RecordHandler = (
   identifier: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  telemetry?: TelemetryRunContext
 ) => Promise<unknown[]>;
 
 // Filter helpers for date range checking. Every handler pushes the window into the
@@ -809,7 +813,7 @@ const handleReproductiveHealth: RecordHandler = async (identifier, startDate, en
 };
 
 // Handler for Workout/ExerciseSession records
-const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => {
+const handleWorkout: RecordHandler = async (_identifier, startDate, endDate, telemetry) => {
   const workouts = await queryWorkoutSamples({
     ascending: false,
     limit: 0,
@@ -822,6 +826,18 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
     const workoutEnd = new Date(w.endDate);
     return overlapsDateRange(workoutStart, workoutEnd, startDate, endDate);
   });
+
+  // Budget slots are assigned in list order (the query is newest-first) before
+  // the concurrent stats fetches start. Claiming inside the map would award
+  // slots in Promise completion order — whichever workout's reads resolve
+  // first — so a capped background run could spend its budget on old workouts
+  // while the newest go unenriched.
+  const ctx = telemetry ?? createTelemetryRunContext();
+  const telemetryAllowed = new Set<unknown>();
+  for (const w of filteredWorkouts) {
+    if (!ctx.claim()) break;
+    telemetryAllowed.add(w);
+  }
 
   // Fetch statistics (calories, distance) for each workout
   const workoutsWithStats = await Promise.all(filteredWorkouts.map(async (w) => {
@@ -922,7 +938,7 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
     // Telemetry must be collected here, inside the closure that owns the live
     // proxy: the per-workout sample predicate takes the proxy object itself,
     // and the proxy cannot be carried out on the returned record.
-    if (claimTelemetryBudget()) {
+    if (telemetryAllowed.has(w)) {
       const bundle = await collectWorkoutTelemetry(
         w as unknown as WorkoutProxyLike,
         (w as unknown as { events?: readonly { type: number; startDate: Date; endDate: Date }[] }).events,
@@ -1245,7 +1261,8 @@ const RECORD_HANDLERS: Record<string, RecordHandler> = {
 export const readHealthRecordsDetailed = async (
   recordType: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  telemetry?: TelemetryRunContext
 ): Promise<HealthKitReadResult> => {
   if (!isHealthKitAvailable) {
     return { records: [] };
@@ -1259,7 +1276,7 @@ export const readHealthRecordsDetailed = async (
 
     // Use registered handler if available, otherwise create a quantity handler
     const handler = RECORD_HANDLERS[recordType] || createQuantityHandler(recordType);
-    return { records: await handler(identifier, startDate, endDate) };
+    return { records: await handler(identifier, startDate, endDate, telemetry) };
   } catch (error) {
     return { records: [], error: recordReadError(error, `${recordType} read`) };
   }

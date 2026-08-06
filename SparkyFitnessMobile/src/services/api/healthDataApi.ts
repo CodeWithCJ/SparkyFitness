@@ -153,6 +153,67 @@ export const fetchWithRetry = async (
 // chunk's pre-cleanup wipe an earlier chunk's inserts.
 const RANGE_DELETE_TYPES = new Set(['ExerciseSession', 'Workout']);
 
+// Soft cap on one workout chunk's JSON size. Reverse proxies commonly cap
+// request bodies at 10 MB; telemetry-heavy sessions run ~250 KB each, and a
+// backfill window can hold a month of them for one source, so oversized groups
+// are split at calendar-day boundaries (see splitWorkoutGroupBySize). Kept well
+// under the proxy cap to leave room for JSON escaping and header overhead.
+export const WORKOUT_CHUNK_SOFT_LIMIT_BYTES = 2 * 1024 * 1024;
+
+const recordDay = (record: HealthDataPayloadItem): string => {
+  const rec = record as unknown as { date?: string; startTime?: string };
+  if (typeof rec.date === 'string' && rec.date) return rec.date;
+  return typeof rec.startTime === 'string' ? rec.startTime.slice(0, 10) : '';
+};
+
+/**
+ * Splits one source's workout records into chunks under the size cap without
+ * breaking the range-delete contract: whole calendar days only, packed in date
+ * order, so consecutive chunks cover disjoint contiguous day ranges and each
+ * request's server-side pre-cleanup touches no other chunk's days. A single
+ * day that alone exceeds the cap cannot be split and ships as its own chunk.
+ */
+const splitWorkoutGroupBySize = (
+  records: HealthDataPayloadItem[],
+): HealthDataPayloadItem[][] => {
+  const sizeOf = (record: HealthDataPayloadItem): number =>
+    JSON.stringify(record).length;
+
+  let totalBytes = 0;
+  const byDay = new Map<string, { records: HealthDataPayloadItem[]; bytes: number }>();
+  for (const record of records) {
+    const day = recordDay(record);
+    const bytes = sizeOf(record);
+    totalBytes += bytes;
+    const bucket = byDay.get(day);
+    if (bucket) {
+      bucket.records.push(record);
+      bucket.bytes += bytes;
+    } else {
+      byDay.set(day, { records: [record], bytes });
+    }
+  }
+
+  if (totalBytes <= WORKOUT_CHUNK_SOFT_LIMIT_BYTES) return [records];
+
+  const chunks: HealthDataPayloadItem[][] = [];
+  let current: HealthDataPayloadItem[] = [];
+  let currentBytes = 0;
+  const days = [...byDay.keys()].sort();
+  for (const day of days) {
+    const bucket = byDay.get(day)!;
+    if (current.length > 0 && currentBytes + bucket.bytes > WORKOUT_CHUNK_SOFT_LIMIT_BYTES) {
+      chunks.push(current);
+      current = [];
+      currentBytes = 0;
+    }
+    current.push(...bucket.records);
+    currentBytes += bucket.bytes;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+};
+
 // Types the server ingests idempotently by natural key (no range-delete), so they
 // can be chunked freely — but each record is expensive to process server-side
 // (multiple queries / merges), so they're capped at SESSION_CHUNK_SIZE rather than
@@ -215,9 +276,12 @@ const sendHealthDataChunked = async (
 
   const chunks: HealthDataPayloadItem[][] = [];
 
-  // Exercise/Workout: one chunk per source, never split.
+  // Exercise/Workout: one chunk per source, split only at whole-day boundaries
+  // when telemetry pushes a group past the size cap.
   for (const sessionRecords of rangeDeleteBySource.values()) {
-    chunks.push(sessionRecords);
+    for (const chunk of splitWorkoutGroupBySize(sessionRecords)) {
+      chunks.push(chunk);
+    }
   }
 
   // Sleep/Nutrition: chunked by SESSION_CHUNK_SIZE.

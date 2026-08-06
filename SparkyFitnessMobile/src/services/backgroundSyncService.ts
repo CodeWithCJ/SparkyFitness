@@ -29,8 +29,8 @@ import { getTodayDate } from '../utils/dateUtils';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
   BACKGROUND_TELEMETRY_BUDGET,
-  setTelemetryInteractive,
-  setWorkoutTelemetryBudget,
+  createTelemetryRunContext,
+  type TelemetryRunContext,
 } from './shared/telemetryBudget';
 
 const isAppActive = (): boolean => AppState.currentState === 'active';
@@ -101,27 +101,21 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
 
   addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'INFO');
 
-  if (isForegroundTriggeredSync(taskId)) {
-    // No budget cap and no UI restriction: the user is present and can see
-    // (and answer) a route consent prompt, so there's nothing to protect
-    // against here.
-    await runBackgroundSync(taskId);
-    return;
-  }
-
-  // Cap per-workout telemetry collection for this run, and forbid anything that
-  // would need to show UI (Android route consent); see telemetryBudget.ts.
-  setWorkoutTelemetryBudget(BACKGROUND_TELEMETRY_BUDGET);
-  setTelemetryInteractive(false);
-  try {
-    await runBackgroundSync(taskId);
-  } finally {
-    setWorkoutTelemetryBudget(Number.POSITIVE_INFINITY);
-    setTelemetryInteractive(true);
-  }
+  // Limits are carried per run rather than via module state so a capped
+  // headless run overlapping a foreground sync cannot strip the foreground
+  // run's budget or its route-consent UI; see telemetryBudget.ts. Foreground
+  // triggers get no cap and may show UI (the user is present to answer a route
+  // consent prompt); everything else is capped and headless.
+  const telemetry = isForegroundTriggeredSync(taskId)
+    ? createTelemetryRunContext()
+    : createTelemetryRunContext({
+        budget: BACKGROUND_TELEMETRY_BUDGET,
+        interactive: false,
+      });
+  await runBackgroundSync(taskId, telemetry);
 };
 
-const runBackgroundSync = async (taskId: string): Promise<void> => {
+const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext): Promise<void> => {
   const lastSyncedTimeStr = await loadLastSyncedTime();
   addLog(`[Background Sync] Last synced: ${lastSyncedTimeStr ?? 'never (defaulting to 24h ago)'}`, 'INFO');
 
@@ -156,6 +150,7 @@ const runBackgroundSync = async (taskId: string): Promise<void> => {
 
   const outcomes = await collectHealthData(healthReadProvider, enabledMetrics, windows, {
     timeoutLabelPrefix: 'Background query',
+    telemetry,
   });
 
   for (const outcome of outcomes) {

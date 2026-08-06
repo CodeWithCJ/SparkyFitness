@@ -168,7 +168,12 @@ export function downsampleSeries(
   };
 
   for (const point of ordered) {
-    const index = Math.floor((Date.parse(point.t) - startMs) / bucketMs);
+    // A reading landing exactly on the final bucket boundary sits at index
+    // `max`, one past the ceiling; clamping folds it into the last bucket.
+    const index = Math.min(
+      max - 1,
+      Math.floor((Date.parse(point.t) - startMs) / bucketMs)
+    );
     if (index !== bucketIndex) {
       flush();
       bucketIndex = index;

@@ -119,6 +119,19 @@ describe('workoutHandler — backward compatibility', () => {
     expect(payload.avg_heart_rate).toBeUndefined();
     expect(payload.max_speed_mps).toBeUndefined();
   });
+
+  it('passes the payload source_id through to the entry', async () => {
+    // source_id is the dedup key: dropping it turns every re-sync of the same
+    // session into a duplicate entry.
+    await workoutHandler.handle(
+      baseEntry({ telemetry: { max_heart_rate: 138 } }),
+      makeCtx()
+    );
+
+    const payload = (exerciseEntryDb.createExerciseEntry as Mock).mock
+      .calls[0][1];
+    expect(payload.source_id).toBe('hk-workout-1');
+  });
 });
 
 describe('workoutHandler — exercise modality', () => {
@@ -374,6 +387,40 @@ describe('workoutHandler — GPS, laps and zones', () => {
     const rows = (telemetryRepo.bulkInsertExerciseEntryGpsPoints as Mock).mock
       .calls[0][2];
     expect(rows).toHaveLength(2);
+  });
+
+  it('nulls unusable sensor readings without discarding the fix', async () => {
+    await workoutHandler.handle(
+      baseEntry({
+        gps_points: [
+          {
+            t: at(0),
+            lat: 37.7749,
+            lon: -122.4194,
+            alt: Number.NaN,
+            speed: '1.3',
+            hr: Infinity,
+            hacc: 4.2,
+            vacc: null,
+            course: 271.5,
+          },
+        ],
+      }),
+      makeCtx()
+    );
+
+    const rows = (telemetryRepo.bulkInsertExerciseEntryGpsPoints as Mock).mock
+      .calls[0][2];
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      latitude: 37.7749,
+      altitude_meters: null,
+      speed_mps: null,
+      heart_rate_bpm: null,
+      horizontal_accuracy_meters: 4.2,
+      vertical_accuracy_meters: null,
+      course_degrees: 271.5,
+    });
   });
 });
 
