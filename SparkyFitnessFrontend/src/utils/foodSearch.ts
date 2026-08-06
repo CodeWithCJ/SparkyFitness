@@ -48,6 +48,47 @@ export const convertNutritionixToFood = (
   };
 };
 
+// A provider's detail response can flag a different default serving than the
+// one the search card displayed (e.g. FatSecret cards advertise "Per 100g"
+// while details default to "1 small"). Re-flag the fetched variants so the
+// serving the user clicked stays the default in the edit form and on import.
+export const pinDefaultVariantToServing = (
+  detailed: Food,
+  serving?: Pick<
+    FoodVariant,
+    'serving_size' | 'serving_unit' | 'serving_description'
+  >
+): Food => {
+  const variants = detailed.variants;
+  if (!serving || !variants || variants.length === 0) return detailed;
+
+  const sameServing = (v: FoodVariant) =>
+    v.serving_size === serving.serving_size &&
+    v.serving_unit.trim().toLowerCase() ===
+      serving.serving_unit.trim().toLowerCase();
+
+  const candidates = variants.filter(sameServing);
+  if (candidates.length === 0 || candidates.some((v) => v.is_default)) {
+    return detailed;
+  }
+
+  // Same-named servings can differ only by description ("1 serving (200 g)"
+  // vs "1 serving (400 g)"); prefer the exact description when we have one.
+  const match =
+    candidates.find(
+      (v) =>
+        serving.serving_description &&
+        v.serving_description === serving.serving_description
+    ) ?? candidates[0];
+
+  const pinned = variants.map((v) => ({ ...v, is_default: v === match }));
+  return {
+    ...detailed,
+    default_variant: pinned.find((v) => v.is_default),
+    variants: pinned,
+  };
+};
+
 export const isUUID = (uuid: string) => {
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
