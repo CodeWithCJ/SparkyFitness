@@ -179,7 +179,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     setQuantityTouched(true);
   };
 
-  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeDisplayLabel(mt.name, t), value: mt.id }));
+  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeDisplayLabel(mt, t), value: mt.id }));
 
   const [customNutrientValues, setCustomNutrientValues] = useState<Record<string, number>>({});
 
@@ -424,7 +424,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
                       className="flex-row items-center"
                     >
                       <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {getMealTypeDisplayLabel(selectedMealType.name, t)}
+                        {getMealTypeDisplayLabel(selectedMealType, t)}
                       </Text>
                       <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
                     </TouchableOpacity>

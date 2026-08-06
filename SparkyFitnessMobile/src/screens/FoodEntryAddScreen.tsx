@@ -1106,7 +1106,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const fatGoalPct = goalPercent(scaled(displayValues.fat), goals?.fat);
 
   const mealPickerOptions = mealTypes.map((mealType) => ({
-    label: getMealTypeDisplayLabel(mealType.name, t),
+    label: getMealTypeDisplayLabel(mealType, t),
     value: mealType.id,
   }));
 
@@ -1497,7 +1497,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                       className="flex-row items-center"
                     >
                       <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {getMealTypeDisplayLabel(selectedMealType.name, t)}
+                        {getMealTypeDisplayLabel(selectedMealType, t)}
                       </Text>
                       <Icon
                         name="chevron-down"

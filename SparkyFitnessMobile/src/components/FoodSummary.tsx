@@ -54,8 +54,10 @@ const MealSection: React.FC<MealSectionProps> = ({
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
-  const label = getMealTypeDisplayLabel(group.name, t);
-  const icon = getMealTypeIcon(group.name);
+  const label = getMealTypeDisplayLabel({ name: group.name, user_id: group.user_id }, t);
+  // Icons follow the same ownership rule as labels: a custom category named
+  // "breakfast" still gets the neutral icon, never the system one.
+  const icon = group.isSystem ? getMealTypeIcon(group.name) : 'meal-snack';
 
   const totalCalories = calculateMealNutrition(group.entries).values.calories;
   const targetCalories = React.useMemo(() => {

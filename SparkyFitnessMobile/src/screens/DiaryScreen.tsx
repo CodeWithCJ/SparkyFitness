@@ -29,7 +29,7 @@ import {
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
+import { getHistoricalMealTypeLabel, getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import type { FoodEntry } from '../types/foodEntries';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -121,17 +121,25 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     Gesture.Fling().direction(Directions.LEFT).onEnd(goToNextDay).runOnJS(true),
   ), [goToPreviousDay, goToNextDay]);
 
+  const { mealTypes } = useMealTypes();
+
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), [setSelectedDate]);
   const openMealTypeDetail = useCallback(
     (mealTypeId: string | null, mealTypeName: string, entries: FoodEntry[]) => {
+      // Resolve the label from the canonical definition (ownership-aware); for
+      // a deleted/hidden type fall back to the literal historical name.
+      const definition = mealTypes.find((mt) => mt.id === mealTypeId) ?? null;
+      const mealLabel = definition
+        ? getMealTypeDisplayLabel(definition, t)
+        : getHistoricalMealTypeLabel(mealTypeName, t);
       navigation.navigate('MealTypeDetail', {
         date: selectedDate,
         mealTypeId: mealTypeId ?? undefined,
         mealType: mealTypeName,
-        mealLabel: getMealTypeDisplayLabel(mealTypeName, t),
+        mealLabel,
       });
     },
-    [navigation, selectedDate, t],
+    [navigation, selectedDate, t, mealTypes],
   );
 
   const { preferences } = usePreferences();
@@ -167,7 +175,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     refetch: refetchCustomMeasurements,
     isRefetching: isCustomMeasurementsRefetching,
   } = useCustomMeasurementsByDate(selectedDate, { enabled: isConnected });
-  const { mealTypes } = useMealTypes();
   const {
     customNutrients,
     refetch: refetchCustomNutrients,

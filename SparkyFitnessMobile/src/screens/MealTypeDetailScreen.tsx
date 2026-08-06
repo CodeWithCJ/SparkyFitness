@@ -20,6 +20,7 @@ import {
   calculateEntryNutrition,
   calculateMealNutrition,
   filterFoodEntriesByMealTypeId,
+  getHistoricalMealTypeLabel,
   getMealPercentage,
   getMealTypeDisplayLabel,
 } from '../utils/mealNutrition';
@@ -48,18 +49,21 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
   const [refreshing, setRefreshing] = useState(false);
 
-  // Resolve the display label: a pre-resolved mealLabel wins (Diary sends the
-  // literal custom name or the localized system label); otherwise resolve from
-  // the active meal type by id, then fall back to the legacy name key.
-  const resolvedName = useMemo(() => {
+  // Resolve the display label from the canonical definition (ownership-aware):
+  // a pre-resolved mealLabel wins (Diary sends it), otherwise resolve from the
+  // active meal type by id, then fall back to the literal historical name.
+  const resolvedType = useMemo(() => {
     if (mealTypeId) {
-      const mt = mealTypes.find((m) => m.id === mealTypeId);
-      if (mt) return mt.name;
+      return mealTypes.find((m) => m.id === mealTypeId) ?? null;
     }
-    return mealType;
-  }, [mealTypeId, mealType, mealTypes]);
-  const label = mealLabel ?? getMealTypeDisplayLabel(resolvedName ?? '', t);
-  const mealTypeName = resolvedName ?? '';
+    return null;
+  }, [mealTypeId, mealTypes]);
+  const mealTypeName = resolvedType?.name ?? mealType ?? '';
+  const label =
+    mealLabel ??
+    (resolvedType
+      ? getMealTypeDisplayLabel(resolvedType, t)
+      : getHistoricalMealTypeLabel(mealTypeName, t));
   const entries = useMemo(
     () =>
       filterFoodEntriesByMealTypeId(

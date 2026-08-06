@@ -19,7 +19,17 @@ const mealTypes: MealType[] = [
   { id: 'sys-l', name: 'lunch', sort_order: 1, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
   { id: 'custom-pw', name: 'Pre-Workout', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
   { id: 'custom-ps', name: 'Post-Workout', sort_order: 5, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  // A CUSTOM category deliberately named like the system type.
+  { id: 'custom-b', name: 'breakfast', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
 ];
+
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (
+    globalThis as typeof globalThis & {
+      __setTestLocale: (value: 'en' | 'pl') => void;
+    }
+  ).__setTestLocale(locale);
+}
 
 const entry = (id: string, meal_type_id: string, meal_type: string): FoodEntry =>
   ({ id, meal_type_id, meal_type } as FoodEntry);
@@ -83,5 +93,33 @@ describe('FoodSummary', () => {
 
     fireEvent.press(view.getByText('Pre-Workout'));
     expect(onPressMealType).toHaveBeenCalledWith('custom-pw', 'Pre-Workout', expect.any(Array));
+  });
+
+  it('renders a custom category named breakfast literally in Polish (not Śniadanie)', () => {
+    setTestLocale('pl');
+    const view = render(
+      <FoodSummary
+        foodEntries={[entry('1', 'custom-b', 'breakfast')]}
+        mealTypes={mealTypes}
+      />,
+    );
+
+    expect(view.getByText('breakfast')).toBeTruthy();
+    expect(view.queryByText('Śniadanie')).toBeNull();
+    setTestLocale('en');
+  });
+
+  it('uses the neutral icon for a custom category named breakfast', () => {
+    const view = render(
+      <FoodSummary
+        foodEntries={[entry('1', 'custom-b', 'breakfast')]}
+        mealTypes={mealTypes}
+      />,
+    );
+
+    // The custom group renders the neutral snack icon, not the system
+    // breakfast icon.
+    expect(view.queryByTestId('icon-meal-breakfast')).toBeNull();
+    expect(view.getByTestId('icon-meal-snack')).toBeTruthy();
   });
 });

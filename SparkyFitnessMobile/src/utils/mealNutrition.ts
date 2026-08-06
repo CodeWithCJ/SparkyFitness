@@ -16,6 +16,9 @@ export interface MealGroup {
   sortOrder: number;
   entries: FoodEntry[];
   isSystem: boolean;
+  /** Owner of the meal type definition; `null` for system types. Mirrors
+   *  `MealType.user_id` so label/icon resolution never relies on the name. */
+  user_id: string | null;
 }
 
 export interface EntryNutrition {
@@ -25,6 +28,11 @@ export interface EntryNutrition {
   fat: number;
 }
 
+/**
+ * Static system label key for a meal type NAME. Only meaningful once the type
+ * has been confirmed as system-owned (`user_id === null`); custom types named
+ * "breakfast"/"lunch"/... must never be routed through this map.
+ */
 export function getMealTypeSystemKey(name: string): string {
   const lower = name.toLowerCase();
   if (lower === 'breakfast') return 'mealTypes.breakfast';
@@ -36,14 +44,21 @@ export function getMealTypeSystemKey(name: string): string {
 }
 
 /**
- * Single source of truth for a meal type's display label.
+ * Single source of truth for a KNOWN meal type's display label.
  *
- * - System meal types resolve to their static i18n key (never a dynamic key).
- * - Custom and unknown/historical types render their literal name — the name
- *   is user data and is NEVER passed to `t()`.
+ * The decision is based on ownership metadata, never on the name string alone:
+ * - `user_id === null` (system)  → static i18n map.
+ * - `user_id !== null` (custom)  → the literal user-defined name.
+ *
+ * A custom category called "breakfast", "lunch", "dinner", "snack" or
+ * "other" therefore always renders its literal name in every language.
  */
-export function getMealTypeDisplayLabel(name: string, t: TFunction): string {
-  switch (getMealTypeSystemKey(name)) {
+export function getMealTypeDisplayLabel(
+  mealType: Pick<MealType, 'name' | 'user_id'>,
+  t: TFunction,
+): string {
+  if (mealType.user_id != null) return mealType.name;
+  switch (getMealTypeSystemKey(mealType.name)) {
     case 'mealTypes.breakfast':
       return t('mealTypes.breakfast');
     case 'mealTypes.lunch':
@@ -55,8 +70,41 @@ export function getMealTypeDisplayLabel(name: string, t: TFunction): string {
     case 'mealTypes.other':
       return t('mealTypes.other');
     default:
-      return name;
+      return mealType.name;
   }
+}
+
+/**
+ * Fallback label for a HISTORICAL entry whose meal type definition is not
+ * present in the active list (deleted, hidden, or an older server). The
+ * snapshotted name is returned literally — never auto-translated just because
+ * it happens to read "breakfast" — and only entries with no name at all fall
+ * back to the localized "Other".
+ */
+export function getHistoricalMealTypeLabel(
+  name: string | null | undefined,
+  t: TFunction,
+): string {
+  const trimmed = (name ?? '').trim();
+  if (!trimmed) return t('mealTypes.other');
+  return trimmed;
+}
+
+/**
+ * Resolves a display label for a name by looking it up against the active
+ * meal type list first (so a system definition still localizes), falling back
+ * to the literal historical name when no definition matches.
+ */
+export function getMealTypeDisplayLabelForName(
+  name: string | null | undefined,
+  mealTypes: MealType[],
+  t: TFunction,
+): string {
+  const trimmed = (name ?? '').trim();
+  if (!trimmed) return t('mealTypes.other');
+  const mt = mealTypes.find((m) => m.name.toLowerCase() === trimmed.toLowerCase());
+  if (mt) return getMealTypeDisplayLabel(mt, t);
+  return getHistoricalMealTypeLabel(trimmed, t);
 }
 
 export function getFoodEntryMealTypeKey(entry: FoodEntry, mealTypes: MealType[]): string {
@@ -135,6 +183,7 @@ export function groupFoodEntriesByMealType(
         sortOrder: mt.sort_order ?? 999,
         entries: group.entries,
         isSystem: mt.user_id === null,
+        user_id: mt.user_id ?? null,
       });
     }
   }
@@ -147,6 +196,7 @@ export function groupFoodEntriesByMealType(
         sortOrder: 9999,
         entries: group.entries,
         isSystem: false,
+        user_id: null,
       });
     }
   }

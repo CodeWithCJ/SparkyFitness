@@ -1,6 +1,8 @@
 import {
   getFoodEntryMealTypeKey,
+  getHistoricalMealTypeLabel,
   getMealTypeDisplayLabel,
+  getMealTypeDisplayLabelForName,
   getMealPercentage,
   groupFoodEntriesByMealType,
   filterFoodEntriesByMealTypeId,
@@ -154,24 +156,84 @@ describe('getMealTypeDisplayLabel', () => {
     return map[key] ?? key;
   };
 
-  it('localizes system meal types', () => {
-    expect(getMealTypeDisplayLabel('breakfast', t)).toBe('Śniadanie');
-    expect(getMealTypeDisplayLabel('LUNCH', t)).toBe('Obiad');
-    expect(getMealTypeDisplayLabel('snacks', t)).toBe('Przekąski');
-    expect(getMealTypeDisplayLabel('other', t)).toBe('Inne');
+  it('localizes system meal types by ownership, not by name', () => {
+    expect(getMealTypeDisplayLabel({ name: 'breakfast', user_id: null }, t)).toBe('Śniadanie');
+    expect(getMealTypeDisplayLabel({ name: 'LUNCH', user_id: null }, t)).toBe('Obiad');
+    expect(getMealTypeDisplayLabel({ name: 'snacks', user_id: null }, t)).toBe('Przekąski');
+    expect(getMealTypeDisplayLabel({ name: 'other', user_id: null }, t)).toBe('Inne');
+  });
+
+  it('keeps a CUSTOM type named breakfast literal in every language', () => {
+    expect(getMealTypeDisplayLabel({ name: 'breakfast', user_id: 'user-1' }, t)).toBe('breakfast');
+  });
+
+  it('keeps custom types named lunch/dinner/snack/other literal', () => {
+    expect(getMealTypeDisplayLabel({ name: 'Lunch', user_id: 'user-1' }, t)).toBe('Lunch');
+    expect(getMealTypeDisplayLabel({ name: 'DINNER', user_id: 'user-1' }, t)).toBe('DINNER');
+    expect(getMealTypeDisplayLabel({ name: 'snack', user_id: 'user-1' }, t)).toBe('snack');
+    expect(getMealTypeDisplayLabel({ name: 'other', user_id: 'user-1' }, t)).toBe('other');
   });
 
   it('keeps custom meal type names literal', () => {
-    expect(getMealTypeDisplayLabel('Brunch', t)).toBe('Brunch');
-    expect(getMealTypeDisplayLabel('Drugie śniadanie', t)).toBe('Drugie śniadanie');
+    expect(getMealTypeDisplayLabel({ name: 'Brunch', user_id: 'user-1' }, t)).toBe('Brunch');
+    expect(getMealTypeDisplayLabel({ name: 'Drugie śniadanie', user_id: 'user-1' }, t)).toBe('Drugie śniadanie');
   });
 
   it('keeps a custom name that looks like an i18n key literal (never dynamic t)', () => {
-    expect(getMealTypeDisplayLabel('mealTypes.breakfast', t)).toBe('mealTypes.breakfast');
+    expect(getMealTypeDisplayLabel({ name: 'mealTypes.breakfast', user_id: 'user-1' }, t)).toBe('mealTypes.breakfast');
+  });
+});
+
+describe('getHistoricalMealTypeLabel', () => {
+  const t = (key: string): string => {
+    const map: Record<string, string> = {
+      'mealTypes.breakfast': 'Śniadanie',
+      'mealTypes.other': 'Inne',
+    };
+    return map[key] ?? key;
+  };
+
+  it('returns the literal snapshot for a historical entry without a definition', () => {
+    // No active definition exists, so even a snapshot reading "breakfast" is
+    // never auto-translated; the safe contract prefers the literal name.
+    expect(getHistoricalMealTypeLabel('breakfast', t)).toBe('breakfast');
+    expect(getHistoricalMealTypeLabel('Old Meal', t)).toBe('Old Meal');
   });
 
-  it('keeps unknown historical names literal', () => {
-    expect(getMealTypeDisplayLabel('completely-unknown-slot', t)).toBe('completely-unknown-slot');
+  it('falls back to the localized Other when the snapshot is missing', () => {
+    expect(getHistoricalMealTypeLabel(null, t)).toBe('Inne');
+    expect(getHistoricalMealTypeLabel(undefined, t)).toBe('Inne');
+    expect(getHistoricalMealTypeLabel('   ', t)).toBe('Inne');
+  });
+});
+
+describe('getMealTypeDisplayLabelForName', () => {
+  const t = (key: string): string => {
+    const map: Record<string, string> = {
+      'mealTypes.breakfast': 'Śniadanie',
+      'mealTypes.lunch': 'Obiad',
+      'mealTypes.other': 'Inne',
+    };
+    return map[key] ?? key;
+  };
+
+  it('localizes a system definition matched by name', () => {
+    expect(
+      getMealTypeDisplayLabelForName('breakfast', systemMealTypes, t),
+    ).toBe('Śniadanie');
+  });
+
+  it('keeps a custom definition literal even when the name matches a system key', () => {
+    const customBreakfast: MealType = {
+      id: 'custom-b', name: 'breakfast', user_id: 'user-1', sort_order: 0,
+      created_at: '', is_visible: true, show_in_quick_log: true,
+    };
+    expect(getMealTypeDisplayLabelForName('breakfast', [customBreakfast], t)).toBe('breakfast');
+  });
+
+  it('returns the literal snapshot when no definition matches', () => {
+    expect(getMealTypeDisplayLabelForName('Old Meal', systemMealTypes, t)).toBe('Old Meal');
+    expect(getMealTypeDisplayLabelForName(null, systemMealTypes, t)).toBe('Inne');
   });
 });
 

@@ -135,14 +135,14 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const mealPickerOptions = useMemo(
     () =>
       mealTypes.map((mt) => ({
-        label: getMealTypeDisplayLabel(mt.name, t),
+        label: getMealTypeDisplayLabel(mt, t),
         value: mt.id,
       })),
     [mealTypes, t],
   );
   const selectedMealLabel = useMemo(() => {
     const found = mealTypes.find((mt) => mt.id === selectedMealTypeId);
-     return found ? getMealTypeDisplayLabel(found.name, t) : t('foodMealScreens.selectMeal');
+     return found ? getMealTypeDisplayLabel(found, t) : t('foodMealScreens.selectMeal');
    }, [mealTypes, selectedMealTypeId, t]);
 
   const handleSave = async () => {

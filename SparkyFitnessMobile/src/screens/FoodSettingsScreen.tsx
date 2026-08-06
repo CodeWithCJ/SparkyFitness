@@ -321,7 +321,7 @@ const MealTypeTimeRow: React.FC<{
   return (
     <View className="flex-row items-center justify-between py-2.5 border-b border-border/40">
       <Text className="text-sm font-medium text-text-primary">
-        {getMealTypeDisplayLabel(mealType.name, t)}
+        {getMealTypeDisplayLabel(mealType, t)}
       </Text>
       <View className="flex-row items-center gap-2">
         <TextInput

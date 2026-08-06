@@ -104,6 +104,8 @@ const mockUseCopyFoodEntries = useCopyFoodEntries as jest.MockedFunction<typeof 
 const mealTypes: MealType[] = [
   { id: 'sys-b', name: 'breakfast', sort_order: 0, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
   { id: 'custom-pw', name: 'Pre-Workout', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  // A CUSTOM category deliberately named like a system type.
+  { id: 'custom-d', name: 'dinner', sort_order: 2, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
 ];
 
 const entry = (id: string, meal_type_id: string, meal_type: string): FoodEntry =>
@@ -173,5 +175,18 @@ describe('MealTypeDetailScreen', () => {
     const view = renderScreen({ date: '2026-01-01', mealTypeId: 'custom-pw' });
 
     expect(view.getByText('Pre-Workout')).toBeTruthy();
+  });
+
+  it('renders a custom type named dinner literally and filters by its id', () => {
+    setSummary([
+      entry('1', 'custom-d', 'dinner'),
+      entry('2', 'sys-b', 'breakfast'),
+    ]);
+    const view = renderScreen({ date: '2026-01-01', mealTypeId: 'custom-d', mealType: 'dinner' });
+
+    // Literal custom name — never the localized system "Kolacja"/"Dinner".
+    expect(view.getByText('dinner')).toBeTruthy();
+    expect(view.queryByText('Dinner')).toBeNull();
+    expect(view.getAllByTestId('food-row')).toHaveLength(1);
   });
 });
