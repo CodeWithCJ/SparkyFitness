@@ -14,8 +14,8 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
   filterByOwnership,
+  ownershipFilterHeaderMenu,
   OWNERSHIP_FILTER_LABELS,
-  type OwnershipFilter,
 } from '../utils/shareStatus';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodItem } from '../types/foods';
@@ -31,7 +31,6 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const [searchText, setSearchText] = useState('');
   const ownershipFilter = useAppPreferencesStore((s) => s.foodsLibraryOwnershipFilter);
   const setOwnershipFilter = useAppPreferencesStore((s) => s.setFoodsLibraryOwnershipFilter);
-  const isOwnershipFiltered = ownershipFilter !== 'all';
   const [refreshing, setRefreshing] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -153,32 +152,15 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     );
   };
 
-  // The ownership filter is a persisted device preference, so it lives behind
-  // the header menu instead of spending a permanent bar on a rarely-changed
-  // choice; the badge dot marks a non-default selection.
   const header = useScreenHeader({
     title: 'Foods',
     left: { kind: 'back' },
-    right: {
-      kind: 'menu',
-      sfSymbol: 'line.3.horizontal.decrease',
-      ionicon: 'filter',
-      showsBadge: isOwnershipFiltered,
-      accessibilityLabel: isOwnershipFiltered
-        ? `Filter foods, filtered to ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
-        : 'Filter foods',
+    right: ownershipFilterHeaderMenu({
+      noun: 'foods',
       identifier: 'foods-library-filter',
-      items: [
-        {
-          label: 'Show',
-          items: (Object.keys(OWNERSHIP_FILTER_LABELS) as OwnershipFilter[]).map((filter) => ({
-            label: OWNERSHIP_FILTER_LABELS[filter],
-            selected: ownershipFilter === filter,
-            onPress: () => setOwnershipFilter(filter),
-          })),
-        },
-      ],
-    },
+      filter: ownershipFilter,
+      onSelect: setOwnershipFilter,
+    }),
   });
 
   return (

@@ -52,6 +52,9 @@ export const PREFERENCE_DEFAULTS = {
   workoutKeepAwakeEnabled: false,
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
   foodsLibraryOwnershipFilter: 'all' as OwnershipFilter,
+  mealsLibraryOwnershipFilter: 'all' as OwnershipFilter,
+  exercisesLibraryOwnershipFilter: 'all' as OwnershipFilter,
+  workoutPresetsLibraryOwnershipFilter: 'all' as OwnershipFilter,
 } as const;
 
 export type AppPreferencesData = {
@@ -77,6 +80,9 @@ export type AppPreferencesData = {
   workoutKeepAwakeEnabled: boolean;
   foodSearchOwnershipFilter: OwnershipFilter;
   foodsLibraryOwnershipFilter: OwnershipFilter;
+  mealsLibraryOwnershipFilter: OwnershipFilter;
+  exercisesLibraryOwnershipFilter: OwnershipFilter;
+  workoutPresetsLibraryOwnershipFilter: OwnershipFilter;
 };
 
 export interface AppPreferencesState extends AppPreferencesData {
@@ -102,6 +108,9 @@ export interface AppPreferencesState extends AppPreferencesData {
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
   setFoodSearchOwnershipFilter: (value: OwnershipFilter) => void;
   setFoodsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
+  setMealsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
+  setExercisesLibraryOwnershipFilter: (value: OwnershipFilter) => void;
+  setWorkoutPresetsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
 }
 
 /**
@@ -167,6 +176,9 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setWorkoutKeepAwakeEnabled: (value) => set({ workoutKeepAwakeEnabled: value }),
       setFoodSearchOwnershipFilter: (value) => set({ foodSearchOwnershipFilter: value }),
       setFoodsLibraryOwnershipFilter: (value) => set({ foodsLibraryOwnershipFilter: value }),
+      setMealsLibraryOwnershipFilter: (value) => set({ mealsLibraryOwnershipFilter: value }),
+      setExercisesLibraryOwnershipFilter: (value) => set({ exercisesLibraryOwnershipFilter: value }),
+      setWorkoutPresetsLibraryOwnershipFilter: (value) => set({ workoutPresetsLibraryOwnershipFilter: value }),
     }),
     {
       name: STORE_KEY,
@@ -197,6 +209,9 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,
         foodsLibraryOwnershipFilter: state.foodsLibraryOwnershipFilter,
+        mealsLibraryOwnershipFilter: state.mealsLibraryOwnershipFilter,
+        exercisesLibraryOwnershipFilter: state.exercisesLibraryOwnershipFilter,
+        workoutPresetsLibraryOwnershipFilter: state.workoutPresetsLibraryOwnershipFilter,
       }),
       migrate: (persistedState, version) => {
         if (
