@@ -245,30 +245,47 @@ export const calculateTimeUnderTensionData = (
   }));
 };
 
-export const extractGarminActivityEntries = (
+export const extractTelemetryActivityEntries = (
   exerciseProgressData: Record<string, ExerciseProgressResponse[]>,
   selectedExercise: string,
   parseISO: (dateString: string) => Date
 ) => {
-  const allGarminActivityEntries: ExerciseProgressResponse[] = [];
+  const allTelemetryActivityEntries: ExerciseProgressResponse[] = [];
   const seenPresetIds = new Set<string>();
 
   // Every provider listed here now writes relational telemetry (laps at minimum) on
-  // sync/import — see garminActivityProcessor.ts, fitImportService.ts, and
-  // stravaDataProcessor.ts — so the activity detail view has real data to show for all
-  // of them, not just Garmin.
+  // sync/import — see garminActivityProcessor.ts, fitImportService.ts,
+  // stravaDataProcessor.ts, and the workout handler in healthDataHandlers.ts —
+  // so the activity detail view has real data to show for all of them.
   //
   // Matched case-insensitively: provider_name casing is not consistent across
-  // the ingest paths (Strava writes 'Strava', Garmin writes 'garmin'), and an
-  // exact-match set silently hides a provider's activities the moment one side
-  // changes case.
-  const TELEMETRY_PROVIDERS = new Set(['garmin', 'garmin_fit', 'strava']);
+  // the ingest paths (Strava writes 'Strava', Garmin writes 'garmin', mobile
+  // writes 'HealthKit'/'Health Connect'), and an exact-match set silently hides
+  // a provider's activities the moment one side changes case.
+  const TELEMETRY_PROVIDERS = new Set([
+    'garmin',
+    'garmin_fit',
+    'strava',
+    'healthkit',
+    'health connect',
+  ]);
+
+  // Mobile sync writes a row for every workout the phone knows about, including
+  // strength sessions and entries that predate telemetry capture, so source
+  // alone would render an empty activity card (~5 queries) for each of them.
+  // Garmin and Strava sync only ever writes activities that carry telemetry, so
+  // they stay gated on source and keep working against a server too old to send
+  // has_telemetry — which is also why this compares to true explicitly: an
+  // absent flag must fail closed here rather than pass as truthy.
+  const REQUIRES_TELEMETRY_FLAG = new Set(['healthkit', 'health connect']);
 
   const processEntry = (entry: ExerciseProgressResponse) => {
+    const source = entry.provider_name?.toLowerCase();
     if (
-      entry.provider_name &&
-      TELEMETRY_PROVIDERS.has(entry.provider_name.toLowerCase()) &&
-      entry.exercise_entry_id
+      source &&
+      TELEMETRY_PROVIDERS.has(source) &&
+      entry.exercise_entry_id &&
+      (!REQUIRES_TELEMETRY_FLAG.has(source) || entry.has_telemetry === true)
     ) {
       const presetId = (entry as Record<string, unknown>)[
         'exercise_preset_entry_id'
@@ -277,12 +294,12 @@ export const extractGarminActivityEntries = (
       if (presetId) {
         if (!seenPresetIds.has(presetId)) {
           seenPresetIds.add(presetId);
-          allGarminActivityEntries.push(entry);
+          allTelemetryActivityEntries.push(entry);
         }
       } else {
         if (!seenPresetIds.has(entry.exercise_entry_id)) {
           seenPresetIds.add(entry.exercise_entry_id);
-          allGarminActivityEntries.push(entry);
+          allTelemetryActivityEntries.push(entry);
         }
       }
     }
@@ -296,7 +313,7 @@ export const extractGarminActivityEntries = (
     exerciseProgressData[selectedExercise].forEach(processEntry);
   }
 
-  return allGarminActivityEntries.sort(
+  return allTelemetryActivityEntries.sort(
     (a, b) =>
       parseISO(b.entry_date).getTime() - parseISO(a.entry_date).getTime()
   );

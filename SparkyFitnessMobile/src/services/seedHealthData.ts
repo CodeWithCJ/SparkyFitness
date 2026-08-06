@@ -3,6 +3,7 @@ import {
   requestPermission,
 } from 'react-native-health-connect';
 import { addLog } from './LogService';
+import { initHealthConnect } from './healthconnect/index';
 
 // ============================================================================
 // Types
@@ -454,6 +455,301 @@ const seedHydration = async (dates: Date[]): Promise<number> => {
 
   await insertRecords(records);
   return records.length;
+};
+
+/**
+ * Seeds one Walking ExerciseSession with everything the mobile telemetry sync
+ * actually reads: an embedded GPS route, a HeartRate record whose samples span
+ * the exact session window, a Speed record likewise, and two laps. Unlike
+ * seedExerciseSessions (which seeds a bare session) and the day-wide SEED_CONFIGS
+ * generators (whose HeartRate/Speed samples land at random times across the
+ * whole day, with no guarantee they overlap any one session), this exists to
+ * give collectSessionTelemetry something real to correlate and downsample —
+ * the Health Connect Toolbox app can't produce this because it inserts one
+ * record type at a time and has no way to align them to a shared window.
+ */
+export const seedRichWorkout = async (): Promise<SeedResult> => {
+  try {
+    // Every other seeder in this file assumes Health Connect was already
+    // initialized elsewhere (e.g. by a prior sync this session) — that's a
+    // real gap, not just untested here: a fresh app launch that goes straight
+    // to Dev Tools hits "Health Connect client is not initialized" without it.
+    const initialized = await initHealthConnect();
+    if (!initialized) {
+      return {
+        success: false,
+        recordsInserted: 0,
+        error: 'Health Connect is not available on this device.',
+      };
+    }
+
+    await requestPermission([
+      { accessType: 'write', recordType: 'ExerciseSession' },
+      // Distinct from ExerciseSession write access — writing a route on the
+      // session throws a SecurityException without this too.
+      { accessType: 'write', recordType: 'ExerciseRoute' },
+      { accessType: 'write', recordType: 'HeartRate' },
+      { accessType: 'write', recordType: 'Speed' },
+      { accessType: 'write', recordType: 'Distance' },
+      { accessType: 'write', recordType: 'ActiveCaloriesBurned' },
+    ] as Parameters<typeof requestPermission>[0]);
+
+    const durationMinutes = 12;
+    const sampleCount = 40; // ~1 sample every 18s, well above the downsampler's cap
+    const startTime = new Date();
+    startTime.setMinutes(startTime.getMinutes() - durationMinutes);
+    const endTime = new Date();
+
+    const stepMs = (durationMinutes * 60_000) / sampleCount;
+    // Short out-and-back walk so the route visibly bends on the map instead of
+    // being a straight line — easier to eyeball as "real" telemetry.
+    const baseLat = 37.7749;
+    const baseLon = -122.4194;
+
+    const route = Array.from({ length: sampleCount }, (_, i) => {
+      const t = new Date(startTime.getTime() + i * stepMs);
+      const progress = i / (sampleCount - 1);
+      const bend = Math.sin(progress * Math.PI) * 0.0015;
+      return {
+        time: t.toISOString(),
+        latitude: baseLat + progress * 0.004,
+        longitude: baseLon + bend,
+        altitude: { value: 15 + Math.sin(progress * Math.PI * 2) * 5, unit: 'meters' as const },
+        // The native module reads altitude/horizontalAccuracy/verticalAccuracy
+        // unconditionally per route point (ReactExerciseSessionRecord.kt) even
+        // though the TS types mark them optional — omitting any one throws
+        // "Length is not valid" instead of defaulting.
+        horizontalAccuracy: { value: 5, unit: 'meters' as const },
+        verticalAccuracy: { value: 5, unit: 'meters' as const },
+      };
+    });
+
+    const heartRateSamples = Array.from({ length: sampleCount }, (_, i) => {
+      const t = new Date(startTime.getTime() + i * stepMs);
+      // Ramp up, hold, ramp down — gives the HR chart and zone bars real shape
+      // instead of a flat line.
+      const progress = i / (sampleCount - 1);
+      const ramp =
+        progress < 0.2
+          ? progress / 0.2
+          : progress > 0.8
+            ? (1 - progress) / 0.2
+            : 1;
+      const bpm = Math.round(95 + ramp * 35 + randomInt(-3, 3));
+      return { time: t.toISOString(), beatsPerMinute: bpm };
+    });
+
+    const speedSamples = Array.from({ length: sampleCount }, (_, i) => {
+      const t = new Date(startTime.getTime() + i * stepMs);
+      return {
+        time: t.toISOString(),
+        speed: { value: randomFloat(0.9, 1.6), unit: 'metersPerSecond' as const },
+      };
+    });
+
+    const midTime = new Date(startTime.getTime() + (durationMinutes * 60_000) / 2);
+
+    // Health Connect's own idempotency key: writing the same clientRecordId
+    // again with a higher clientRecordVersion replaces the prior record in
+    // place instead of creating a new one. Without this, every tap of this
+    // button would leave behind a permanent, undeleted duplicate — Health
+    // Connect has no dedup of its own, same as HealthKit.
+    const version = Date.now();
+    const clientRecordId = (suffix: string) => ({
+      clientRecordId: `sparkyfitness-seed-rich-walk-${suffix}`,
+      clientRecordVersion: version,
+    });
+
+    // insertRecords rejects a mixed-type array ("All records must have the
+    // same type") — one call per record type, matching every other seeder
+    // in this file.
+    await insertRecords([
+      {
+        recordType: 'ExerciseSession' as const,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        exerciseType: 79, // Walking — see EXERCISE_TYPES above
+        title: 'Seeded Rich Walk',
+        exerciseRoute: { route },
+        metadata: clientRecordId('session'),
+        // The write-side native parser (ReactExerciseSessionRecord.kt) reads
+        // laps AND segments from a JS key literally called "samples", not
+        // "laps" — a mismatch against the library's own TS types (which only
+        // exist for the read side). A `laps` key here is silently dropped, no
+        // error, laps just come back empty.
+        samples: [
+          {
+            startTime: startTime.toISOString(),
+            endTime: midTime.toISOString(),
+            length: { value: 350, unit: 'meters' as const },
+          },
+          {
+            startTime: midTime.toISOString(),
+            endTime: endTime.toISOString(),
+            length: { value: 400, unit: 'meters' as const },
+          },
+        ],
+      } as Parameters<typeof insertRecords>[0][number],
+    ]);
+
+    await insertRecords([
+      {
+        recordType: 'HeartRate' as const,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        samples: heartRateSamples,
+        metadata: clientRecordId('heartrate'),
+      },
+    ]);
+
+    await insertRecords([
+      {
+        recordType: 'Speed' as const,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        samples: speedSamples,
+        metadata: clientRecordId('speed'),
+      },
+    ]);
+
+    await insertRecords([
+      {
+        recordType: 'Distance' as const,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        distance: { value: 750, unit: 'meters' as const },
+        metadata: clientRecordId('distance'),
+      },
+    ]);
+
+    await insertRecords([
+      {
+        recordType: 'ActiveCaloriesBurned' as const,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        energy: { value: 55, unit: 'kilocalories' as const },
+        metadata: clientRecordId('calories'),
+      },
+    ]);
+
+    return { success: true, recordsInserted: sampleCount * 2 + 3 };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[seedHealthData] Failed to seed rich workout: ${message}`, 'ERROR');
+    return { success: false, recordsInserted: 0, error: message };
+  }
+};
+
+/**
+ * Seeds one Strength Training ExerciseSession with a correlated, spiky HR
+ * pattern (up during a set, down during rest) — no route/speed/distance,
+ * matching what a real watch actually reports for lifting.
+ *
+ * Deliberately does NOT attempt to seed reps/weight per set: neither
+ * HealthKit nor Health Connect exposes that at all (see the sets: [...]
+ * literal in dataTransformation.ts on both platforms — always exactly one
+ * synthetic duration-only set, for every activity type, on every real
+ * device). This exists to verify activity-type -> modality/category
+ * classification ('weight_reps'/'Strength') and diary rendering for a
+ * strength session, not to fabricate data no device can ever send.
+ */
+export const seedRichStrengthWorkout = async (): Promise<SeedResult> => {
+  try {
+    const initialized = await initHealthConnect();
+    if (!initialized) {
+      return {
+        success: false,
+        recordsInserted: 0,
+        error: 'Health Connect is not available on this device.',
+      };
+    }
+
+    await requestPermission([
+      { accessType: 'write', recordType: 'ExerciseSession' },
+      { accessType: 'write', recordType: 'HeartRate' },
+      { accessType: 'write', recordType: 'ActiveCaloriesBurned' },
+    ] as Parameters<typeof requestPermission>[0]);
+
+    const durationMinutes = 35;
+    const setCount = 8; // e.g. 4 exercises x 2 sets, alternating work/rest
+    const startTime = new Date();
+    startTime.setMinutes(startTime.getMinutes() - durationMinutes);
+    const endTime = new Date();
+
+    const totalMs = durationMinutes * 60_000;
+    const heartRateSamples: { time: string; beatsPerMinute: number }[] = [];
+    for (let set = 0; set < setCount; set++) {
+      const setStartMs = (set / setCount) * totalMs;
+      const setEndMs = ((set + 0.6) / setCount) * totalMs; // ~60% work, ~40% rest
+      const workSamples = 6;
+      for (let i = 0; i <= workSamples; i++) {
+        const t = new Date(
+          startTime.getTime() + setStartMs + (i / workSamples) * (setEndMs - setStartMs)
+        );
+        // Ramps up sharply during the set (exertion), matching real lifting HR shape.
+        const bpm = Math.round(100 + (i / workSamples) * 45 + randomInt(-4, 4));
+        heartRateSamples.push({ time: t.toISOString(), beatsPerMinute: bpm });
+      }
+      const restStartMs = setEndMs;
+      const restEndMs = ((set + 1) / setCount) * totalMs;
+      const restSamples = 4;
+      for (let i = 0; i <= restSamples; i++) {
+        const t = new Date(
+          startTime.getTime() + restStartMs + (i / restSamples) * (restEndMs - restStartMs)
+        );
+        // Decays back down during rest between sets.
+        const bpm = Math.round(145 - (i / restSamples) * 35 + randomInt(-4, 4));
+        heartRateSamples.push({ time: t.toISOString(), beatsPerMinute: bpm });
+      }
+    }
+
+    // See seedRichWorkout's comment: fixed clientRecordId + rising version
+    // makes each tap replace the same logical record instead of piling up a
+    // new one.
+    const version = Date.now();
+    const clientRecordId = (suffix: string) => ({
+      clientRecordId: `sparkyfitness-seed-rich-strength-${suffix}`,
+      clientRecordVersion: version,
+    });
+
+    // insertRecords rejects a mixed-type array — one call per record type.
+    await insertRecords([
+      {
+        recordType: 'ExerciseSession' as const,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        exerciseType: 70, // Strength Training
+        title: 'Seeded Rich Strength Workout',
+        metadata: clientRecordId('session'),
+      },
+    ]);
+
+    await insertRecords([
+      {
+        recordType: 'HeartRate' as const,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        samples: heartRateSamples,
+        metadata: clientRecordId('heartrate'),
+      },
+    ]);
+
+    await insertRecords([
+      {
+        recordType: 'ActiveCaloriesBurned' as const,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        energy: { value: 220, unit: 'kilocalories' as const },
+        metadata: clientRecordId('calories'),
+      },
+    ]);
+
+    return { success: true, recordsInserted: heartRateSamples.length + 2 };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[seedHealthData] Failed to seed rich strength workout: ${message}`, 'ERROR');
+    return { success: false, recordsInserted: 0, error: message };
+  }
 };
 
 const seedExerciseSessions = async (dates: Date[]): Promise<number> => {

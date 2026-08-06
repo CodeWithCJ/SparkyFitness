@@ -60,8 +60,21 @@ export const WorkoutSessionBreakdown = ({
 }: WorkoutSessionBreakdownProps) => {
   const { t } = useTranslation();
   const { weightUnit } = usePreferences();
+  // Guess synchronously from the entry actually passed in — this is exact for
+  // a standalone entry, and merely a best-effort guess for a preset session
+  // (whose sibling exercises load async); effectiveActiveTab below corrects
+  // the guess once the full session's primary_muscles are known.
   const [activeTab, setActiveTab] = useState<'sets' | 'exercises' | 'muscles'>(
-    'muscles'
+    () => {
+      const snapshot = exerciseEntry?.['exercise_snapshot'] as
+        | Record<string, unknown>
+        | undefined;
+      const primary = snapshot?.['primary_muscles'] as
+        | string[]
+        | null
+        | undefined;
+      return primary && primary.length > 0 ? 'muscles' : 'sets';
+    }
   );
   const [expandedExercises, setExpandedExercises] = useState<
     Record<string, boolean>
@@ -236,6 +249,19 @@ export const WorkoutSessionBreakdown = ({
     return Array.from(set);
   }, [musclesByExerciseName]);
 
+  // Cardio activities (HealthKit/Health Connect/Garmin) generally have no
+  // primary_muscles snapshot at all, so this tab would otherwise show a body
+  // diagram where every muscle reads "Untargeted" — not useful, hide it.
+  const hasTargetedMuscles = primaryMusclesTargeted.length > 0;
+
+  // The lazy useState guess above is exact for a standalone entry but only a
+  // best-effort guess for a preset session (whose sibling exercises resolve
+  // async) — derive the tab actually used for rendering from the now-final
+  // hasTargetedMuscles instead of trusting the stored guess, so a late-arriving
+  // "no muscles after all" answer can never render the Untargeted view.
+  const effectiveActiveTab =
+    !hasTargetedMuscles && activeTab === 'muscles' ? 'sets' : activeTab;
+
   if (setList.length === 0) return null;
 
   const formatSeconds = (totalSecs: number) => {
@@ -256,7 +282,7 @@ export const WorkoutSessionBreakdown = ({
       <div className="flex border-b border-border space-x-2 sm:space-x-4">
         <button
           className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 ${
-            activeTab === 'sets'
+            effectiveActiveTab === 'sets'
               ? 'border-primary text-primary font-bold'
               : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
@@ -266,7 +292,7 @@ export const WorkoutSessionBreakdown = ({
         </button>
         <button
           className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 ${
-            activeTab === 'exercises'
+            effectiveActiveTab === 'exercises'
               ? 'border-primary text-primary font-bold'
               : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
@@ -275,19 +301,21 @@ export const WorkoutSessionBreakdown = ({
           {t('workoutReport.exercises', 'Exercises')} ({groupedExercises.length}
           )
         </button>
-        <button
-          className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 ${
-            activeTab === 'muscles'
-              ? 'border-primary text-primary font-bold'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-          onClick={() => setActiveTab('muscles')}
-        >
-          {t('workoutReport.primaryMuscles', 'Primary Muscles')}
-        </button>
+        {hasTargetedMuscles && (
+          <button
+            className={`pb-3 px-4 text-sm font-semibold transition-colors border-b-2 ${
+              effectiveActiveTab === 'muscles'
+                ? 'border-primary text-primary font-bold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => setActiveTab('muscles')}
+          >
+            {t('workoutReport.primaryMuscles', 'Primary Muscles')}
+          </button>
+        )}
       </div>
 
-      {activeTab === 'sets' && (
+      {effectiveActiveTab === 'sets' && (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 border-b text-xs font-semibold text-muted-foreground uppercase">
@@ -347,7 +375,7 @@ export const WorkoutSessionBreakdown = ({
         </div>
       )}
 
-      {activeTab === 'exercises' && (
+      {effectiveActiveTab === 'exercises' && (
         <div className="space-y-4">
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full text-left text-sm">
@@ -461,7 +489,7 @@ export const WorkoutSessionBreakdown = ({
         </div>
       )}
 
-      {activeTab === 'muscles' && (
+      {effectiveActiveTab === 'muscles' && (
         <div className="space-y-6">
           <WorkoutSessionBodyMap
             primaryMuscles={primaryMusclesTargeted}

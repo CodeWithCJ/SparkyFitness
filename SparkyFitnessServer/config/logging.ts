@@ -6,11 +6,15 @@ const LOG_LEVELS = {
   ERROR: 3,
   SILENT: 4,
 };
-// Get desired log level from environment variable, default to INFO
+// Log level from the environment. An unset, empty, or invalid
+// SPARKY_FITNESS_LOG_LEVEL fails closed to INFO: debug logging can serialize
+// full health payloads (GPS tracks, heart-rate series), so it must be an
+// explicit opt-in, never the result of a missing variable or a typo. `??`
+// rather than `||` because DEBUG's threshold is the falsy 0.
 const currentLogLevel =
   // @ts-expect-error TS(2538): Type 'undefined' cannot be used as an index type.
-  LOG_LEVELS[process.env.SPARKY_FITNESS_LOG_LEVEL?.trim().toUpperCase()] ||
-  LOG_LEVELS.DEBUG; // Changed default to DEBUG for development
+  LOG_LEVELS[process.env.SPARKY_FITNESS_LOG_LEVEL?.trim().toUpperCase()] ??
+  LOG_LEVELS.INFO;
 // Custom logger function
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function log(level: any, message: any, ...args: any[]) {
@@ -35,9 +39,21 @@ function log(level: any, message: any, ...args: any[]) {
     }
   }
 }
+/**
+ * Whether a message at `level` would actually be emitted. Lets a caller skip
+ * building an expensive message (a JSON.stringify of a multi-megabyte payload,
+ * say) that the current level would discard anyway — `log()` alone still pays
+ * that cost because arguments are evaluated before the call.
+ */
+function isLogLevelEnabled(level: string): boolean {
+  const threshold = LOG_LEVELS[level.toUpperCase() as keyof typeof LOG_LEVELS];
+  return threshold !== undefined && threshold >= currentLogLevel;
+}
 export { log };
+export { isLogLevelEnabled };
 export { LOG_LEVELS };
 export default {
   log,
+  isLogLevelEnabled,
   LOG_LEVELS,
 };

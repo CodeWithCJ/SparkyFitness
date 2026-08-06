@@ -157,3 +157,52 @@ describe('getGroupedExerciseSessionByIdWithClient modality', () => {
     expect(session!.exercises[0].exercise_snapshot?.modality).toBeNull();
   });
 });
+
+describe('getGroupedExerciseSessionByIdWithClient telemetry columns', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('surfaces wearable telemetry columns instead of dropping them', async () => {
+    const row = makeChildRow('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 0, null);
+    row.max_heart_rate = 121;
+    row.elevation_gain_meters = 16;
+    row.elevation_loss_meters = 39.75;
+    row.weather_condition = 'Clear';
+    const client = makeClient([row]);
+
+    const session = await getGroupedExerciseSessionByIdWithClient(
+      client,
+      USER_ID,
+      PRESET_ENTRY_ID
+    );
+
+    const exercise = session!.exercises[0] as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(exercise.max_heart_rate).toBe(121);
+    expect(exercise.elevation_gain_meters).toBe(16);
+    expect(exercise.elevation_loss_meters).toBe(39.75);
+    expect(exercise.weather_condition).toBe('Clear');
+  });
+
+  it('defaults absent telemetry columns to null rather than undefined', async () => {
+    const client = makeClient([
+      makeChildRow('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 0, null),
+    ]);
+
+    const session = await getGroupedExerciseSessionByIdWithClient(
+      client,
+      USER_ID,
+      PRESET_ENTRY_ID
+    );
+
+    const exercise = session!.exercises[0] as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(exercise.max_heart_rate).toBeNull();
+    expect(exercise.weather_condition).toBeNull();
+  });
+});

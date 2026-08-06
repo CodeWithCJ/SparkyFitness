@@ -1,4 +1,5 @@
 import { addLog } from '../LogService';
+import { attachWorkoutTelemetry } from '../shared/workoutTelemetryPayload';
 import {
   TransformedExerciseSession,
   TransformedNutritionEntry,
@@ -514,7 +515,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       source_id: rec.uuid as string | undefined,
       ...timezone,
     };
-    output.push(exerciseSession);
+    output.push(attachWorkoutTelemetry(exerciseSession, rec));
   },
 };
 

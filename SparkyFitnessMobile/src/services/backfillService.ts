@@ -7,6 +7,7 @@ import {
 } from './api/healthDataApi';
 import { addLog } from './LogService';
 import { collectHealthData, type MetricSyncOutcome } from './shared/healthSyncEngine';
+import { createTelemetryRunContext } from './shared/telemetryBudget';
 import { isQuotaExceededError } from './shared/quotaError';
 import {
   loadHealthPreference,
@@ -315,7 +316,15 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
           healthReadProvider,
           windowMetrics,
           buildBackfillWindows(window.start, window.end),
-          { timeoutLabelPrefix: 'History import query', timeoutMs: BACKFILL_METRIC_TIMEOUT_MS },
+          {
+            timeoutLabelPrefix: 'History import query',
+            timeoutMs: BACKFILL_METRIC_TIMEOUT_MS,
+            // Non-interactive: a months-deep import over sessions from other
+            // apps would otherwise fire one Android route-consent dialog per
+            // workout. Routes that need consent are skipped, not lost — a
+            // normal foreground sync can still collect any inside its window.
+            telemetry: createTelemetryRunContext({ interactive: false }),
+          },
         );
       };
 

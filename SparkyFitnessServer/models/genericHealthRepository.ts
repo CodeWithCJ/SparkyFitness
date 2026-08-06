@@ -9,6 +9,11 @@ import {
   DailyHealthMetricsInitializer,
 } from '@workspace/shared';
 
+/** Minimal client surface needed to run a parameterised statement within a caller-owned transaction. */
+export interface HealthMetricSamplesDbClient {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: unknown[] }>;
+}
+
 /**
  * Repository for continuous intraday health telemetry and daily summary metrics.
  */
@@ -74,6 +79,82 @@ export async function getHealthMetricSamples(
   } finally {
     client.release();
   }
+}
+
+/**
+ * Transaction-scoped advisory lock keyed to one (user, metric, day, provider)
+ * slot, released automatically on COMMIT or ROLLBACK.
+ *
+ * SELECT ... FOR UPDATE (below) only serializes against a row that already
+ * exists. The first write for a given key has no row to lock — two concurrent
+ * "first writes" would both see no existing row, both merge onto an empty
+ * baseline, and the later INSERT's `samples = EXCLUDED.samples` would silently
+ * discard the earlier write's samples instead of merging with them. Callers
+ * must acquire this lock before the FOR UPDATE read so the second transaction
+ * blocks until the first commits, and then sees the row the first one just
+ * inserted.
+ */
+export async function acquireHealthMetricSampleLockWithClient(
+  client: HealthMetricSamplesDbClient,
+  userId: string,
+  metric: HealthMetric,
+  entryDate: string,
+  sourceProvider: string
+): Promise<void> {
+  const key = `${userId}:${metric}:${entryDate}:${sourceProvider}`;
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [key]);
+}
+
+/**
+ * Row-locking read for the merge-write path: FOR UPDATE blocks a concurrent
+ * writer targeting the same (user, metric, day, provider) row until this
+ * transaction commits, so it always merges onto the latest data rather than a
+ * stale snapshot. Callers in a `merge` write must call
+ * acquireHealthMetricSampleLockWithClient first — this alone does not cover
+ * the case where no row exists yet (see that function's docs).
+ */
+export async function getHealthMetricSampleRowForUpdateWithClient(
+  client: HealthMetricSamplesDbClient,
+  userId: string,
+  metric: HealthMetric,
+  entryDate: string,
+  sourceProvider: string
+): Promise<HealthMetricSamples | null> {
+  const res = (await client.query(
+    `SELECT * FROM health_metric_samples
+     WHERE user_id = $1 AND metric = $2 AND entry_date = $3 AND source_provider = $4
+     FOR UPDATE`,
+    [userId, metric, entryDate, sourceProvider]
+  )) as { rows: HealthMetricSamples[] };
+  return res.rows[0] ?? null;
+}
+
+/** Same upsert as upsertHealthMetricSamples, but on a caller-supplied (and caller-committed) client. */
+export async function upsertHealthMetricSamplesWithClient(
+  client: HealthMetricSamplesDbClient,
+  userId: string,
+  row: HealthMetricSamplesInitializer
+): Promise<HealthMetricSamples> {
+  const res = (await client.query(
+    `INSERT INTO health_metric_samples
+      (user_id, metric, entry_date, source_provider, device_name, samples)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT ON CONSTRAINT uq_health_metric_samples
+     DO UPDATE SET
+       samples = EXCLUDED.samples,
+       device_name = COALESCE(EXCLUDED.device_name, health_metric_samples.device_name),
+       updated_at = NOW()
+     RETURNING *`,
+    [
+      userId,
+      row.metric,
+      row.entry_date,
+      row.source_provider,
+      row.device_name || null,
+      JSON.stringify(row.samples),
+    ]
+  )) as { rows: HealthMetricSamples[] };
+  return res.rows[0];
 }
 
 // 2. Vitals Entries
