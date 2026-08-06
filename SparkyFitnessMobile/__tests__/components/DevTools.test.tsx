@@ -27,34 +27,9 @@ const mockResetAnnouncementModal = jest.fn<Promise<void>, []>();
 const mockOpenHealthConnectSettings = jest.fn();
 const mockOpenHealthConnectDataManagement = jest.fn();
 const mockGetGrantedPermissions = jest.fn<Promise<Permission[]>, []>();
-const mockResetSources = jest.fn<Promise<void>, []>();
-const mockResetProvider = jest.fn<Promise<void>, []>();
-const mockResetFuture = jest.fn<Promise<void>, []>();
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
-const mockPopovers = [
-  {
-    id: 'sources',
-    resetLabel: 'Sources Intro',
-    hasSeen: jest.fn(),
-    markSeen: jest.fn(),
-    reset: mockResetSources,
-  },
-  {
-    id: 'provider',
-    resetLabel: 'Source Switcher',
-    hasSeen: jest.fn(),
-    markSeen: jest.fn(),
-    reset: mockResetProvider,
-  },
-  {
-    id: 'future-popover',
-    resetLabel: 'Future Server Label',
-    hasSeen: jest.fn(),
-    markSeen: jest.fn(),
-    reset: mockResetFuture,
-  },
-];
+
 
 jest.mock('../../src/services/seedHealthData', () => ({
   get seedHealthData() {
@@ -90,11 +65,6 @@ jest.mock('../../src/services/whatsNewBanner', () => ({
 jest.mock('../../src/components/AnnouncementModal', () => ({
   get resetAnnouncementModal() {
     return mockResetAnnouncementModal;
-  },
-}));
-jest.mock('../../src/services/foodSearchPreferences', () => ({
-  get FOOD_SEARCH_POPOVERS() {
-    return mockPopovers;
   },
 }));
 jest.mock('react-native-health-connect', () => ({
@@ -148,9 +118,6 @@ describe('DevTools', () => {
     mockOpenHealthConnectSettings.mockReset();
     mockOpenHealthConnectDataManagement.mockReset();
     mockGetGrantedPermissions.mockReset();
-    mockResetSources.mockReset();
-    mockResetProvider.mockReset();
-    mockResetFuture.mockReset();
     mockToastShow.mockClear();
     mockGetActiveServerConfig.mockResolvedValue(null);
     mockGetGrantedPermissions.mockResolvedValue([]);
@@ -191,10 +158,6 @@ describe('DevTools', () => {
     expect(view.getByText('Reset Banner')).toBeTruthy();
     expect(view.getByText('System Announcement')).toBeTruthy();
     expect(view.getByText('Reset Announcement')).toBeTruthy();
-    expect(view.getByText('Food Search Popovers')).toBeTruthy();
-    expect(view.getByText('Sources Intro')).toBeTruthy();
-    expect(view.getByText('Source Switcher')).toBeTruthy();
-    expect(view.getByText('Future Server Label')).toBeTruthy();
 
     setTestLocale('pl');
     view.rerender(<DevTools />);
@@ -216,10 +179,6 @@ describe('DevTools', () => {
     expect(view.getByText('Zresetuj baner')).toBeTruthy();
     expect(view.getByText('Ogłoszenie systemowe')).toBeTruthy();
     expect(view.getByText('Zresetuj ogłoszenie')).toBeTruthy();
-    expect(view.getByText('Podpowiedzi wyszukiwania żywności')).toBeTruthy();
-    expect(view.getByText('Wprowadzenie do źródeł')).toBeTruthy();
-    expect(view.getByText('Przełącznik źródeł')).toBeTruthy();
-    expect(view.getByText('Future Server Label')).toBeTruthy();
   });
 
   it.each([
@@ -712,70 +671,6 @@ describe('DevTools', () => {
         type: 'error',
         text1: locale === 'en' ? 'Error' : 'Błąd',
         text2: failure,
-      });
-    },
-  );
-
-  it.each([
-    ['sources', 'Sources Intro', 'Sources Intro', mockResetSources],
-    ['provider', 'Source Switcher', 'Source Switcher', mockResetProvider],
-    [
-      'future-popover',
-      'Future Server Label',
-      'Future Server Label',
-      mockResetFuture,
-    ],
-  ] as const)(
-    'resets only the exact %s popover and preserves its label',
-    async (id, label, toastLabel, reset) => {
-      const view = render(<DevTools />);
-      await act(async () => {
-        fireEvent.press(view.getByText(label));
-      });
-      expect(reset).toHaveBeenCalledTimes(1);
-      for (const otherReset of [
-        mockResetSources,
-        mockResetProvider,
-        mockResetFuture,
-      ]) {
-        if (otherReset !== reset) expect(otherReset).not.toHaveBeenCalled();
-      }
-      expect(mockToastShow).toHaveBeenCalledWith({
-        type: 'success',
-        text1: 'Reset',
-        text2: `${toastLabel} popover will re-appear.`,
-      });
-    },
-  );
-
-  it.each([
-    ['en', 'Sources Intro', mockResetSources, 'Could not reset popover.'],
-    [
-      'pl',
-      'Wprowadzenie do źródeł',
-      mockResetSources,
-      'Nie udało się zresetować podpowiedzi.',
-    ],
-    ['en', 'Source Switcher', mockResetProvider, 'Could not reset popover.'],
-    [
-      'pl',
-      'Przełącznik źródeł',
-      mockResetProvider,
-      'Nie udało się zresetować podpowiedzi.',
-    ],
-  ] as const)(
-    'shows localized popover reset errors in %s',
-    async (locale, label, reset, message) => {
-      setTestLocale(locale);
-      reset.mockRejectedValueOnce(new Error('popover failed'));
-      const view = render(<DevTools />);
-      await act(async () => {
-        fireEvent.press(view.getByText(label));
-      });
-      expect(mockToastShow).toHaveBeenLastCalledWith({
-        type: 'error',
-        text1: locale === 'en' ? 'Error' : 'Błąd',
-        text2: message,
       });
     },
   );

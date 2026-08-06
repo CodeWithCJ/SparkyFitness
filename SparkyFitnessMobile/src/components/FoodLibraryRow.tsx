@@ -67,20 +67,9 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
           ) : null}
         </View>
         <View className="items-end">
-          <View className="flex-row items-center gap-1">
-            {isFavorite && (
-              <Icon
-                name="star"
-                size={13}
-                color={goldColor}
-                style={{ marginTop: 1 }}
-                 accessibilityLabel={t('common.favorite')}
-              />
-            )}
-            <Text className="text-text-primary text-base font-semibold">
-              {formatLocalizedNumber(food.default_variant.calories)} {t('units.calShort')}
-            </Text>
-          </View>
+          <Text className="text-text-primary text-base font-semibold">
+            {formatLocalizedNumber(food.default_variant.calories)} {t('units.calShort')}
+          </Text>
           <Text className="text-text-secondary text-xs">
             {formatLocalizedNumber(food.default_variant.serving_size, { maximumFractionDigits: 20 })}{' '}
             {formatServingUnit(food.default_variant.serving_unit)}
