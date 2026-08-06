@@ -1069,6 +1069,11 @@ export const enrichExerciseSessions = async (
   for (const record of byNewest) {
     const rec = record as Record<string, unknown>;
     if (typeof rec.startTime !== 'string' || typeof rec.endTime !== 'string') continue;
+    // Claimed slots are never refunded, so a record the enrichment loop below
+    // would reject for an invalid window must not consume one.
+    const startMs = Date.parse(rec.startTime);
+    const endMs = Date.parse(rec.endTime);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) continue;
     if (!ctx.claim()) break;
     telemetryAllowed.add(record);
   }

@@ -72,10 +72,14 @@ describe('upsertSamplesByDay', () => {
 
   it('keeps stored samples outside the window and replaces those inside it', async () => {
     // One row holds the whole day, so a 60-second workout write must leave the
-    // morning and afternoon readings alone.
+    // morning and afternoon readings alone. The window is inclusive at both
+    // ends: the stored samples sitting exactly on startMs and endMs must be
+    // replaced, not kept.
     stored = [
       { t: at('08:00:00'), bpm: 60 },
+      { t: at('09:00:00'), bpm: 200 },
       { t: at('09:00:30'), bpm: 200 },
+      { t: at('09:01:00'), bpm: 200 },
       { t: at('12:00:00'), bpm: 70 },
     ];
 

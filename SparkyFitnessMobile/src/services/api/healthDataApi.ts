@@ -5,6 +5,12 @@ import { ApiError } from './errors';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ensureTimezoneBootstrapped } from './preferencesApi';
 import { CONNECTION_CHECK_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
+import {
+  instantToDay,
+  instantToDayWithOffset,
+  isDayString,
+  isValidTimeZone,
+} from '@workspace/shared';
 import type { SleepStageEvent } from '../../types/mobileHealthData';
 
 interface BaseHealthDataPayloadItem {
@@ -160,10 +166,30 @@ const RANGE_DELETE_TYPES = new Set(['ExerciseSession', 'Workout']);
 // under the proxy cap to leave room for JSON escaping and header overhead.
 export const WORKOUT_CHUNK_SOFT_LIMIT_BYTES = 2 * 1024 * 1024;
 
+// Chunk day keys must match the day the server resolves for its per-request
+// range delete (resolveHealthEntryDate): the basis instant is `timestamp`,
+// bucketed in the record's own timezone or UTC offset when present. A key that
+// lands on a different day than the server's lets one chunk's pre-cleanup
+// range overlap another chunk's days and delete its freshly inserted rows.
+// Day-only basis strings are trusted as-is, exactly as the server does. The
+// device zone approximates the server's account-timezone fallback (the account
+// timezone is bootstrapped from the device). Records with no parseable basis
+// share one '' bucket; the server excludes them from its cleanup range, so
+// their grouping is inconsequential.
 const recordDay = (record: HealthDataPayloadItem): string => {
-  const rec = record as unknown as { date?: string; startTime?: string };
-  if (typeof rec.date === 'string' && rec.date) return rec.date;
-  return typeof rec.startTime === 'string' ? rec.startTime.slice(0, 10) : '';
+  const basis =
+    record.timestamp || record.date || record.entry_date || record.startTime;
+  if (!basis) return '';
+  if (isDayString(basis)) return basis;
+  const instant = new Date(basis);
+  if (isNaN(instant.getTime())) return '';
+  if (record.record_timezone && isValidTimeZone(record.record_timezone)) {
+    return instantToDay(instant, record.record_timezone);
+  }
+  if (typeof record.record_utc_offset_minutes === 'number') {
+    return instantToDayWithOffset(instant, record.record_utc_offset_minutes);
+  }
+  return instantToDay(instant, Intl.DateTimeFormat().resolvedOptions().timeZone);
 };
 
 /**

@@ -1494,6 +1494,37 @@ describe('enrichExerciseSessions', () => {
       expect(enrichedOlder.hr_samples).toBeUndefined();
       expect(enrichedNewer.hr_samples).toBeDefined();
     });
+
+    test('an invalid session window does not consume a budget slot', async () => {
+      mockReadRecords.mockImplementation((recordType: string) => {
+        if (recordType === 'HeartRate') {
+          return Promise.resolve({
+            records: [
+              { samples: [{ time: '2024-01-15T10:10:00Z', beatsPerMinute: 100 }] },
+            ],
+          });
+        }
+        return Promise.resolve({ records: [] });
+      });
+
+      // Newest by startTime, but its window is inverted — the enrichment loop
+      // rejects it, so it must not have claimed the only slot first.
+      const invalid = makeSession({
+        startTime: '2024-01-16T10:00:00Z',
+        endTime: '2024-01-16T09:00:00Z',
+      });
+      const valid = makeSession();
+
+      const result = await enrichExerciseSessions(
+        [invalid, valid],
+        createTelemetryRunContext({ budget: 1 })
+      );
+
+      const enrichedInvalid = result[0] as Record<string, unknown>;
+      const enrichedValid = result[1] as Record<string, unknown>;
+      expect(enrichedInvalid.hr_samples).toBeUndefined();
+      expect(enrichedValid.hr_samples).toBeDefined();
+    });
   });
 });
 
