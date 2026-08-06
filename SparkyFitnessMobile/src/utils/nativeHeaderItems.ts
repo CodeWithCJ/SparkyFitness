@@ -1,4 +1,8 @@
-import type { NativeStackHeaderItem, NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import type {
+  NativeStackHeaderItem,
+  NativeStackHeaderItemMenu,
+  NativeStackNavigationOptions,
+} from '@react-navigation/native-stack';
 
 export function createIOSNativeHeaderOptions(
   actionTintColor: string,
@@ -58,6 +62,35 @@ export function createNativeHeaderTextButtonItem({
     identifier,
     sharesBackground: true,
     disabled,
+  };
+}
+
+export function createNativeHeaderMenuButtonItem({
+  sfSymbol,
+  menuItems,
+  tintColor,
+  identifier,
+  accessibilityLabel,
+  badge,
+}: {
+  sfSymbol: string;
+  menuItems: NativeStackHeaderItemMenu['menu']['items'];
+  tintColor: string;
+  identifier: string;
+  accessibilityLabel: string;
+  /** iOS 26+ system badge (UIBarButtonItemBadge); ignored on earlier versions. */
+  badge?: NativeStackHeaderItemMenu['badge'];
+}): NativeStackHeaderItem {
+  return {
+    type: 'menu',
+    label: '',
+    icon: { type: 'sfSymbol', name: sfSymbol as never },
+    tintColor,
+    accessibilityLabel,
+    identifier,
+    sharesBackground: true,
+    badge,
+    menu: { items: menuItems },
   };
 }
 

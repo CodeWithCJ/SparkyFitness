@@ -21,6 +21,15 @@ import {
 } from '../../src/hooks';
 import type { Meal } from '../../src/types/meals';
 import type { FoodItem } from '../../src/types/foods';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
+import {
+  findHeaderItemByAccessibilityLabel,
+  findHeaderMenuAction,
+  pressHeaderMenuAction,
+} from './helpers/nativeHeaderTestUtils';
 
 jest.mock('../../src/hooks', () => ({
   useExternalFoodSearch: jest.fn(),
@@ -175,6 +184,7 @@ describe('FoodSearchScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
     mockUseServerConnection.mockReturnValue({ isConnected: true } as any);
     mockUsePreferences.mockReturnValue({ preferences: {} } as any);
     mockUseFoods.mockReturnValue({
@@ -553,6 +563,62 @@ describe('FoodSearchScreen', () => {
         expect.objectContaining({ serving_size: 100, serving_unit: 'g' }),
       );
     });
+  });
+
+  it('persists an ownership filter chosen from the native overflow menu', () => {
+    renderSearching();
+
+    pressHeaderMenuAction(navigation, 'Mine');
+
+    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe('mine');
+  });
+
+  it('checkmarks the active filter and badges the native menu button', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'mine' });
+
+    renderSearching();
+
+    expect(findHeaderMenuAction(navigation, 'Mine')?.state).toBe('on');
+    expect(findHeaderMenuAction(navigation, 'All')?.state).toBe('off');
+    const button = findHeaderItemByAccessibilityLabel(
+      navigation,
+      'More options, filtered to Mine',
+    );
+    // Dot badge: bullet glyph with foreground matched to background.
+    expect(button?.badge?.value).toBe('•');
+  });
+
+  it('names the filter and offers Show All when it empties the search results', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'mine' });
+    // The result belongs to no known owner, so the Mine filter hides it.
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: [buildFood()],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+    } as any);
+
+    const screen = renderSearching();
+
+    expect(screen.getByText('No saved foods or meals found in Mine')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Show All'));
+
+    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe('all');
+    expect(screen.getByText('Grilled Chicken')).toBeTruthy();
+  });
+
+  it('names the filter and offers Show All when it empties the landing', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'family' });
+
+    const screen = renderLanding();
+
+    expect(screen.getByText('No foods in Family')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Show All'));
+
+    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe('all');
+    expect(screen.getByText('Search for a food or meal to log')).toBeTruthy();
   });
 
   it('toasts the error but still opens partial info when an online detail fetch fails', async () => {

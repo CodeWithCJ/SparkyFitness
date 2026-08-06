@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { OwnershipFilter } from '../utils/shareStatus';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
 const STORE_VERSION = 1;
@@ -49,6 +50,7 @@ export const PREFERENCE_DEFAULTS = {
   defaultRestSec: DEFAULT_REST_SEC as number,
   restTimerSoundEnabled: true,
   workoutKeepAwakeEnabled: false,
+  foodSearchOwnershipFilter: 'all' as OwnershipFilter,
 } as const;
 
 export type AppPreferencesData = {
@@ -72,6 +74,7 @@ export type AppPreferencesData = {
   defaultRestSec: number;
   restTimerSoundEnabled: boolean;
   workoutKeepAwakeEnabled: boolean;
+  foodSearchOwnershipFilter: OwnershipFilter;
 };
 
 export interface AppPreferencesState extends AppPreferencesData {
@@ -95,6 +98,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setDefaultRestSec: (value: number) => void;
   setRestTimerSoundEnabled: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
+  setFoodSearchOwnershipFilter: (value: OwnershipFilter) => void;
 }
 
 /**
@@ -158,6 +162,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
       setRestTimerSoundEnabled: (value) => set({ restTimerSoundEnabled: value }),
       setWorkoutKeepAwakeEnabled: (value) => set({ workoutKeepAwakeEnabled: value }),
+      setFoodSearchOwnershipFilter: (value) => set({ foodSearchOwnershipFilter: value }),
     }),
     {
       name: STORE_KEY,
@@ -186,6 +191,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         defaultRestSec: state.defaultRestSec,
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
+        foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,
       }),
       migrate: (persistedState, version) => {
         if (

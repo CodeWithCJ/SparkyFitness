@@ -8,6 +8,7 @@ import {
   Text,
   useWindowDimensions,
 } from 'react-native';
+import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon, { IconName } from './Icon';
 
@@ -22,7 +23,11 @@ export type AnchoredMenuItem = {
   key: string;
   label: string;
   icon?: IconName;
-  onPress: () => void;
+  /** Renders a trailing checkmark; use for single-choice option rows. */
+  selected?: boolean;
+  /** Renders as a non-interactive uppercase group label above option rows. */
+  isGroupLabel?: boolean;
+  onPress?: () => void;
 };
 
 /**
@@ -67,6 +72,7 @@ const AnchoredMenu: React.FC<Props> = ({
   const { width: screenWidth } = useWindowDimensions();
   const accentColor = String(useCSSVariable('--color-accent-primary'));
   const textPrimary = String(useCSSVariable('--color-text-primary'));
+  const textMuted = String(useCSSVariable('--color-text-muted'));
 
   if (!visible || !anchor) return null;
 
@@ -99,32 +105,67 @@ const AnchoredMenu: React.FC<Props> = ({
       onRequestClose={onClose}
     >
       <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Dismiss menu">
-        <View
-          className="absolute bg-surface rounded-xl border border-border-subtle shadow-lg py-1"
+        {/* Entrance-only animation: dismissal must stay instant (see the
+            animationType note above), so only the content animates in. */}
+        <Animated.View
+          entering={FadeIn.duration(120)}
+          className="absolute"
           style={menuStyle}
         >
-          {items.map((item, index) => (
-            <Pressable
-              key={item.key}
-              onPress={() => {
-                onClose();
-                item.onPress();
-              }}
-              className={`flex-row items-center gap-3 px-4 py-3 ${
-                index > 0 ? 'border-t border-border-subtle' : ''
-              }`}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-            >
-              {item.icon ? (
-                <Icon name={item.icon} size={20} color={accentColor} />
-              ) : null}
-              <Text className="text-base font-medium" style={{ color: textPrimary }}>
-                {item.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+          <Animated.View
+            entering={ZoomIn.duration(160).withInitialValues({
+              transform: [{ scale: 0.95 }],
+            })}
+            className="bg-surface rounded-xl border border-border-subtle shadow-lg py-1"
+            style={{ transformOrigin: isLeftHalf ? 'top left' : 'top right' }}
+          >
+          {items.map((item, index) =>
+            item.isGroupLabel ? (
+              <View
+                key={item.key}
+                className={`px-4 pt-2.5 pb-1 ${
+                  index > 0 ? 'border-t border-border-subtle' : ''
+                }`}
+              >
+                <Text
+                  className="text-xs font-bold uppercase tracking-wider"
+                  style={{ color: textMuted }}
+                >
+                  {item.label}
+                </Text>
+              </View>
+            ) : (
+              <Pressable
+                key={item.key}
+                onPress={() => {
+                  onClose();
+                  item.onPress?.();
+                }}
+                className={`flex-row items-center gap-3 px-4 py-3 ${
+                  index > 0 && !items[index - 1]?.isGroupLabel
+                    ? 'border-t border-border-subtle'
+                    : ''
+                }`}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                accessibilityState={
+                  item.selected !== undefined ? { selected: item.selected } : undefined
+                }
+              >
+                {item.icon ? (
+                  <Icon name={item.icon} size={20} color={accentColor} />
+                ) : null}
+                <Text className="text-base font-medium flex-1" style={{ color: textPrimary }}>
+                  {item.label}
+                </Text>
+                {item.selected ? (
+                  <Icon name="checkmark" size={18} color={accentColor} />
+                ) : null}
+              </Pressable>
+            ),
+          )}
+          </Animated.View>
+        </Animated.View>
       </Pressable>
     </Modal>
   );

@@ -2,6 +2,13 @@ export type ShareStatus = 'public' | 'family' | 'private' | null;
 
 export type OwnershipFilter = 'all' | 'mine' | 'family' | 'public';
 
+export const OWNERSHIP_FILTER_LABELS: Record<OwnershipFilter, string> = {
+  all: 'All',
+  mine: 'Mine',
+  family: 'Family',
+  public: 'Public',
+};
+
 /**
  * Filters library/search items by ownership: 'mine' = owned by the current
  * user, 'family' = another user's non-public item, 'public' = shared publicly.

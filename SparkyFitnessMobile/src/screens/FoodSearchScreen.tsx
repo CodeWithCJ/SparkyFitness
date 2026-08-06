@@ -12,15 +12,17 @@ import {
   SectionList,
   TextInput,
   Platform,
-  useWindowDimensions,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import AnchoredMenu, { AnchorRect } from '../components/AnchoredMenu';
+import AnchoredMenu, {
+  AnchorRect,
+  measureAnchoredMenuTrigger,
+} from '../components/AnchoredMenu';
+import type { AnchoredMenuItem } from '../components/AnchoredMenu';
 import Popover from '../components/Popover';
-import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import LandingEntryRow from '../components/foodSearch/LandingEntryRow';
 import FoodSearchResultRow from '../components/foodSearch/FoodSearchResultRow';
@@ -44,7 +46,12 @@ import {
   useFavorites,
   useProfile,
 } from '../hooks';
-import { filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
+import {
+  filterByOwnership,
+  OWNERSHIP_FILTER_LABELS,
+  type OwnershipFilter,
+} from '../utils/shareStatus';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import Toast from 'react-native-toast-message';
 import { fetchExternalFoodDetails } from '../services/api/externalFoodSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
@@ -63,7 +70,11 @@ import { interleaveTopMatches } from '../utils/topMatches';
 import { mergeRecent, mergeFrequent, landingKey } from '../utils/landingLists';
 import type { LandingEntry } from '../utils/landingLists';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
-import { createNativeHeaderIconButtonItem } from '../utils/nativeHeaderItems';
+import {
+  createNativeHeaderIconButtonItem,
+  createNativeHeaderMenuButtonItem,
+} from '../utils/nativeHeaderItems';
+import type { NativeStackHeaderItemMenu } from '@react-navigation/native-stack';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
@@ -91,7 +102,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
   const [accentColor, textMuted, textSecondary, favoriteGold] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -100,12 +110,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     // indicator, not a tap target. See MealLibraryRow for the rationale.
     '--color-cat-amber',
   ]) as [string, string, string, string];
-  const { defaultColor: headerActionColor, saveColor: headerSaveColor } = useHeaderActionColors();
+  const { defaultColor: headerActionColor } = useHeaderActionColors();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { isConnected } = useServerConnection();
   const { profile } = useProfile();
-  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
+  const ownershipFilter = useAppPreferencesStore((s) => s.foodSearchOwnershipFilter);
+  const setOwnershipFilter = useAppPreferencesStore((s) => s.setFoodSearchOwnershipFilter);
+  const isOwnershipFiltered = ownershipFilter !== 'all';
   const { preferences } = usePreferences({ enabled: isConnected });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({
     enabled: isConnected,
@@ -376,27 +388,72 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     });
   }, [navigation, date, isMealBuilderMode, selectedProvider]);
 
-  // In meal-builder mode the only create action is a food, so skip the menu.
-  const handleAddPress = useCallback(() => {
-    if (isMealBuilderMode) {
-      openCreateFood();
-      return;
-    }
-    if (usesNativeHeader) {
-      setMenuAnchor({
-        x: windowWidth - 48,
-        y: insets.top,
-        width: 36,
-        height: 36,
-      });
-      setMenuVisible(true);
-      return;
-    }
-    addButtonRef.current?.measureInWindow((x, y, width, height) => {
-      setMenuAnchor({ x, y, width, height });
+  // Only the custom-header path opens the JS menu; on the native path the
+  // system presents a UIMenu from the header item directly.
+  const handleOverflowPress = useCallback(() => {
+    measureAnchoredMenuTrigger(addButtonRef.current, (anchor) => {
+      setMenuAnchor(anchor);
       setMenuVisible(true);
     });
-  }, [insets.top, isMealBuilderMode, openCreateFood, usesNativeHeader, windowWidth]);
+  }, []);
+
+  // Create actions plus the ownership filter, one overflow menu. The filter is
+  // a persisted device preference, so it lives behind the menu instead of
+  // spending a permanent bar on a rarely-changed choice. Built twice from the
+  // same source data: AnchoredMenu items for the custom-header path, native
+  // UIMenu items for the iOS native-header path — keep the two in sync.
+  const menuItems = useMemo<AnchoredMenuItem[]>(() => {
+    const items: AnchoredMenuItem[] = [
+      { key: 'food', label: 'New Food', icon: 'food', onPress: openCreateFood },
+    ];
+    if (!isMealBuilderMode) {
+      items.push({ key: 'meal', label: 'New Meal', icon: 'meal', onPress: openMealAdd });
+    }
+    items.push({ key: 'show-label', label: 'Show', isGroupLabel: true });
+    for (const filter of Object.keys(OWNERSHIP_FILTER_LABELS) as OwnershipFilter[]) {
+      items.push({
+        key: `filter-${filter}`,
+        label: OWNERSHIP_FILTER_LABELS[filter],
+        selected: ownershipFilter === filter,
+        onPress: () => setOwnershipFilter(filter),
+      });
+    }
+    return items;
+  }, [isMealBuilderMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter]);
+
+  const nativeMenuItems = useMemo<NativeStackHeaderItemMenu['menu']['items']>(() => {
+    const items: NativeStackHeaderItemMenu['menu']['items'] = [
+      {
+        type: 'action',
+        label: 'New Food',
+        icon: { type: 'sfSymbol', name: 'fork.knife' as never },
+        onPress: openCreateFood,
+      },
+    ];
+    if (!isMealBuilderMode) {
+      items.push({
+        type: 'action',
+        label: 'New Meal',
+        icon: { type: 'sfSymbol', name: 'square.stack.3d.up.fill' as never },
+        onPress: openMealAdd,
+      });
+    }
+    items.push({
+      type: 'submenu',
+      label: 'Show',
+      // An inline single-selection submenu renders as a titled section with a
+      // leading checkmark on the active option (the Mail-app pattern).
+      inline: true,
+      multiselectable: false,
+      items: (Object.keys(OWNERSHIP_FILTER_LABELS) as OwnershipFilter[]).map((filter) => ({
+        type: 'action',
+        label: OWNERSHIP_FILTER_LABELS[filter],
+        state: ownershipFilter === filter ? 'on' : 'off',
+        onPress: () => setOwnershipFilter(filter),
+      })),
+    });
+    return items;
+  }, [isMealBuilderMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter]);
 
   useLayoutEffect(() => {
     if (!usesNativeHeader) return;
@@ -412,21 +469,41 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         }),
       ],
       unstable_headerRightItems: () => [
-        createNativeHeaderIconButtonItem({
-          sfSymbol: 'plus',
-          identifier: 'food-search-add',
-          tintColor: headerSaveColor,
-          accessibilityLabel: isMealBuilderMode ? 'Add Food' : 'Add Food or Meal',
-          onPress: handleAddPress,
+        createNativeHeaderMenuButtonItem({
+          // Bare glyph: Liquid Glass draws its own circular button background,
+          // so ellipsis.circle would double up the ring.
+          sfSymbol: 'ellipsis',
+          identifier: 'food-search-overflow',
+          tintColor: headerActionColor,
+          accessibilityLabel: isOwnershipFiltered
+            ? `More options, filtered to ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
+            : 'More options',
+          badge: isOwnershipFiltered
+            ? {
+                // The screens bridge only exposes UIBarButtonItemBadge's
+                // string variant (no .indicator), so a bullet with foreground
+                // matched to the background renders as a plain accent dot;
+                // the badge capsule sizes with the font, so a small fontSize
+                // keeps the dot compact.
+                value: '•',
+                style: {
+                  backgroundColor: accentColor,
+                  color: accentColor,
+                  fontSize: 9,
+                },
+              }
+            : undefined,
+          menuItems: nativeMenuItems,
         }),
       ],
     });
   }, [
-    handleAddPress,
+    accentColor,
     headerActionColor,
-    headerSaveColor,
-    isMealBuilderMode,
+    isOwnershipFiltered,
+    nativeMenuItems,
     navigation,
+    ownershipFilter,
     usesNativeHeader,
   ]);
 
@@ -483,8 +560,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // flicker mid-typing; becoming pending is still immediate via the ||.
   const debouncedNotPending = useDebounce(!localPending, 150);
   const stableLocalPending = localPending || !debouncedNotPending;
-  const hasLocalResults =
-    searchResults.length > 0 || (!isMealBuilderMode && mealResults.length > 0);
   // Only show online results from the currently selected provider. On a swap,
   // keepPreviousData holds the previous provider's results in the hook until the
   // new ones load; filtering by source drops those stale rows immediately (so a
@@ -587,6 +662,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   const filteredSearchResults = useMemo(() => filterByOwnership(searchResults, ownershipFilter, profile?.id), [searchResults, ownershipFilter, profile?.id]);
   const filteredMealResults = useMemo(() => filterByOwnership(mealResults, ownershipFilter, profile?.id), [mealResults, ownershipFilter, profile?.id]);
+
+  // Based on the FILTERED lists: results the ownership filter hides must still
+  // produce the status row (which names the filter), not a silently blank list.
+  const hasLocalResults =
+    filteredSearchResults.length > 0 ||
+    (!isMealBuilderMode && filteredMealResults.length > 0);
 
   // Favorites: the first landing section, starred foods and meals intermixed,
   // most recently starred first. Modelled as LandingEntry so every landing
@@ -840,6 +921,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       accentColor={accentColor}
       textMuted={textMuted}
       loadingFoodId={loadingFoodId}
+      ownershipFilter={ownershipFilter}
+      onResetOwnershipFilter={() => setOwnershipFilter('all')}
       isMealBuilderMode={isMealBuilderMode}
       getProviderColor={getProviderColor}
       onSelectFood={showFoodInfo}
@@ -986,12 +1069,24 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View ref={addButtonRef} collapsable={false}>
           <Button
             variant="ghost"
-            onPress={handleAddPress}
+            onPress={handleOverflowPress}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="p-0"
-            accessibilityLabel={isMealBuilderMode ? 'Add Food' : 'Add Food or Meal'}
+            accessibilityLabel={
+              isOwnershipFiltered
+                ? `More options, filtered to ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
+                : 'More options'
+            }
           >
-            <Icon name="add" size={26} color={accentColor} />
+            <View>
+              <Icon name="ellipsis-horizontal" size={24} color={headerActionColor} />
+              {isOwnershipFiltered && (
+                <View
+                  className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
+                  style={{ backgroundColor: accentColor }}
+                />
+              )}
+            </View>
           </Button>
         </View>
       )}
@@ -1052,8 +1147,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="search" size={48} color={textSecondary} />
           <Text className="text-text-secondary text-base mt-4 text-center">
-            Search for a food or meal to log
+            {isOwnershipFiltered
+              ? `No foods in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
+              : 'Search for a food or meal to log'}
           </Text>
+          {isOwnershipFiltered && (
+            <Button
+              variant="secondary"
+              onPress={() => setOwnershipFilter('all')}
+              className="mt-4 px-6"
+            >
+              Show All
+            </Button>
+          )}
         </View>
       );
     }
@@ -1091,27 +1197,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {renderHeaderBar()}
-      <View className="px-4 py-2 bg-background border-b border-border-subtle">
-        <SegmentedControl
-          segments={[
-            { key: 'all', label: 'All' },
-            { key: 'mine', label: 'Mine' },
-            { key: 'family', label: 'Family' },
-            { key: 'public', label: 'Public' },
-          ]}
-          activeKey={ownershipFilter}
-          onSelect={setOwnershipFilter}
-        />
-      </View>
       {renderBody()}
       <AnchoredMenu
         visible={menuVisible}
         anchor={menuAnchor}
         onClose={() => setMenuVisible(false)}
-        items={[
-          { key: 'food', label: 'New Food', icon: 'food', onPress: openCreateFood },
-          { key: 'meal', label: 'New Meal', icon: 'meal', onPress: openMealAdd },
-        ]}
+        items={menuItems}
       />
       <Popover
         visible={introVisible}
