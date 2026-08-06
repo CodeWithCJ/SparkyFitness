@@ -549,6 +549,17 @@ export const seedRichWorkout = async (): Promise<SeedResult> => {
 
     const midTime = new Date(startTime.getTime() + (durationMinutes * 60_000) / 2);
 
+    // Health Connect's own idempotency key: writing the same clientRecordId
+    // again with a higher clientRecordVersion replaces the prior record in
+    // place instead of creating a new one. Without this, every tap of this
+    // button would leave behind a permanent, undeleted duplicate — Health
+    // Connect has no dedup of its own, same as HealthKit.
+    const version = Date.now();
+    const clientRecordId = (suffix: string) => ({
+      clientRecordId: `sparkyfitness-seed-rich-walk-${suffix}`,
+      clientRecordVersion: version,
+    });
+
     // insertRecords rejects a mixed-type array ("All records must have the
     // same type") — one call per record type, matching every other seeder
     // in this file.
@@ -560,6 +571,7 @@ export const seedRichWorkout = async (): Promise<SeedResult> => {
         exerciseType: 79, // Walking — see EXERCISE_TYPES above
         title: 'Seeded Rich Walk',
         exerciseRoute: { route },
+        metadata: clientRecordId('session'),
         // The write-side native parser (ReactExerciseSessionRecord.kt) reads
         // laps AND segments from a JS key literally called "samples", not
         // "laps" — a mismatch against the library's own TS types (which only
@@ -586,6 +598,7 @@ export const seedRichWorkout = async (): Promise<SeedResult> => {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         samples: heartRateSamples,
+        metadata: clientRecordId('heartrate'),
       },
     ]);
 
@@ -595,6 +608,7 @@ export const seedRichWorkout = async (): Promise<SeedResult> => {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         samples: speedSamples,
+        metadata: clientRecordId('speed'),
       },
     ]);
 
@@ -604,6 +618,7 @@ export const seedRichWorkout = async (): Promise<SeedResult> => {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         distance: { value: 750, unit: 'meters' as const },
+        metadata: clientRecordId('distance'),
       },
     ]);
 
@@ -613,6 +628,7 @@ export const seedRichWorkout = async (): Promise<SeedResult> => {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         energy: { value: 55, unit: 'kilocalories' as const },
+        metadata: clientRecordId('calories'),
       },
     ]);
 
@@ -687,6 +703,15 @@ export const seedRichStrengthWorkout = async (): Promise<SeedResult> => {
       }
     }
 
+    // See seedRichWorkout's comment: fixed clientRecordId + rising version
+    // makes each tap replace the same logical record instead of piling up a
+    // new one.
+    const version = Date.now();
+    const clientRecordId = (suffix: string) => ({
+      clientRecordId: `sparkyfitness-seed-rich-strength-${suffix}`,
+      clientRecordVersion: version,
+    });
+
     // insertRecords rejects a mixed-type array — one call per record type.
     await insertRecords([
       {
@@ -695,6 +720,7 @@ export const seedRichStrengthWorkout = async (): Promise<SeedResult> => {
         endTime: endTime.toISOString(),
         exerciseType: 70, // Strength Training
         title: 'Seeded Rich Strength Workout',
+        metadata: clientRecordId('session'),
       },
     ]);
 
@@ -704,6 +730,7 @@ export const seedRichStrengthWorkout = async (): Promise<SeedResult> => {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         samples: heartRateSamples,
+        metadata: clientRecordId('heartrate'),
       },
     ]);
 
@@ -713,6 +740,7 @@ export const seedRichStrengthWorkout = async (): Promise<SeedResult> => {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         energy: { value: 220, unit: 'kilocalories' as const },
+        metadata: clientRecordId('calories'),
       },
     ]);
 
