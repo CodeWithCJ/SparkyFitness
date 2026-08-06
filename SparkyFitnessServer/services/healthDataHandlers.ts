@@ -1251,7 +1251,17 @@ function minMax(instantsMs: number[]): { startMs: number; endMs: number } {
   return { startMs, endMs };
 }
 
-/** Keeps only well-formed trackpoints; a point without a fix is unusable. */
+/** A client-supplied sensor reading, or null when it is missing or unusable. */
+const finiteOrNull = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
+
+/**
+ * Keeps only well-formed trackpoints; a point without a fix is unusable.
+ *
+ * Every optional sensor reading is narrowed to a finite number or null, because
+ * these land in numeric columns and a JSONB round-trip: a string, NaN, or
+ * Infinity from the wire would otherwise be stored verbatim.
+ */
 function sanitizeGpsPoints(raw: unknown): TelemetryGpsPoint[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -1264,6 +1274,20 @@ function sanitizeGpsPoints(raw: unknown): TelemetryGpsPoint[] {
         Number.isFinite((p as TelemetryGpsPoint).lon) &&
         Number.isFinite(Date.parse((p as TelemetryGpsPoint).t))
     )
+    .map((p) => ({
+      t: p.t,
+      lat: p.lat,
+      lon: p.lon,
+      alt: finiteOrNull(p.alt),
+      speed: finiteOrNull(p.speed),
+      hr: finiteOrNull(p.hr),
+      cad: finiteOrNull(p.cad),
+      power: finiteOrNull(p.power),
+      dist: finiteOrNull(p.dist),
+      hacc: finiteOrNull(p.hacc),
+      vacc: finiteOrNull(p.vacc),
+      course: finiteOrNull(p.course),
+    }))
     .sort((a, b) => byInstant(a.t, b.t));
 }
 
@@ -1334,10 +1358,9 @@ async function persistWorkoutTelemetry(
         cadence: p.cad ?? null,
         power_watts: p.power ?? null,
         distance_meters: p.dist ?? null,
-        horizontal_accuracy_meters:
-          (p as { hacc?: number | null }).hacc ?? null,
-        vertical_accuracy_meters: (p as { vacc?: number | null }).vacc ?? null,
-        course_degrees: (p as { course?: number | null }).course ?? null,
+        horizontal_accuracy_meters: p.hacc ?? null,
+        vertical_accuracy_meters: p.vacc ?? null,
+        course_degrees: p.course ?? null,
       }))
     );
   }

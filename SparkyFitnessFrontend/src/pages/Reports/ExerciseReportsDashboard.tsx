@@ -595,9 +595,9 @@ const ExerciseReportsDashboard = ({
           entry.sets &&
           entry.sets.length > 0 &&
           entry.sets.some((s) => (s.weight || 0) > 0 || (s.reps || 0) > 0);
-        const category = (entry as unknown as { category?: string }).category;
         const isStrengthCategory =
-          category !== undefined && STRENGTH_CATEGORIES.includes(category);
+          entry.category != null &&
+          STRENGTH_CATEGORIES.includes(entry.category);
         return hasStrengthSets || isStrengthCategory;
       });
     }

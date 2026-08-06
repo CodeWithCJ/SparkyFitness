@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-07-08*
+*Last updated: 2026-08-06*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -128,7 +128,7 @@ pnpm start
 pnpm run ios
 pnpm run android
 pnpm run validate
-pnpm run test:run -- --watchman=false --runInBand
+pnpm exec jest --watchman=false --runInBand
 npx expo prebuild --clean
 ```
 

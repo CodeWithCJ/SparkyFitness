@@ -832,6 +832,174 @@ describe('healthDataApi', () => {
         expect(body).toHaveLength(CHUNK_SIZE + 500);
       });
 
+      test('splits an oversized workout group at whole-day boundaries', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+        // 30 telemetry-sized days from one source: two workouts per day, each
+        // ~150KB, so the group (~9MB) must split — but never within a day,
+        // because the server's pre-cleanup range-deletes whole days per
+        // request and a same-day split would let one chunk wipe the other's
+        // inserts.
+        const filler = 'x'.repeat(150 * 1024);
+        const data = Array.from({ length: 60 }, (_, i) => ({
+          type: 'ExerciseSession',
+          date: `2024-01-${String(Math.floor(i / 2) + 1).padStart(2, '0')}`,
+          raw_data: filler,
+          value: i,
+          source: 'healthkit',
+        })) as HealthDataPayload;
+
+        await syncHealthData(data);
+
+        expect(mockFetch.mock.calls.length).toBeGreaterThan(1);
+
+        const daysPerChunk: string[][] = mockFetch.mock.calls.map(call => {
+          const body = JSON.parse(call[1].body) as { date: string }[];
+          return [...new Set(body.map(record => record.date))].sort();
+        });
+
+        // Every day appears in exactly one chunk, and each chunk covers a
+        // contiguous run of days — chunks' server-side range deletes must not
+        // overlap another chunk's days.
+        const seen = new Set<string>();
+        for (const days of daysPerChunk) {
+          for (const day of days) {
+            expect(seen.has(day)).toBe(false);
+            seen.add(day);
+          }
+        }
+        expect(seen.size).toBe(30);
+        const flat = daysPerChunk.flat();
+        expect(flat).toEqual([...flat].sort());
+
+        // Both workouts of a day travel together.
+        for (const call of mockFetch.mock.calls) {
+          const body = JSON.parse(call[1].body) as { date: string }[];
+          const counts = new Map<string, number>();
+          for (const record of body) {
+            counts.set(record.date, (counts.get(record.date) ?? 0) + 1);
+          }
+          for (const count of counts.values()) {
+            expect(count).toBe(2);
+          }
+        }
+      });
+
+      // The server resolves a workout's day from `timestamp` in the record's
+      // own timezone/offset, ignoring the client-stamped `date`. Chunk
+      // boundaries must follow that rule: a split keyed on `date` can put two
+      // records the server resolves to the same day into different chunks,
+      // letting the later chunk's range delete wipe the earlier one's inserts.
+      test('groups oversized workout chunks by the UTC-offset-resolved day, not the date field', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+        const filler = 'x'.repeat(1200 * 1024);
+        // All UTC-8: lateJan15 starts Jan 15 21:00 local but its UTC instant —
+        // and the device-local `date` a transformer in a UTC device zone would
+        // stamp — is already Jan 16.
+        const lateJan15 = {
+          type: 'ExerciseSession',
+          source: 'healthconnect',
+          date: '2024-01-16',
+          timestamp: '2024-01-16T05:00:00Z',
+          record_utc_offset_minutes: -480,
+          raw_data: filler,
+          value: 1,
+        };
+        const middayJan15 = {
+          type: 'ExerciseSession',
+          source: 'healthconnect',
+          date: '2024-01-15',
+          timestamp: '2024-01-15T22:00:00Z',
+          record_utc_offset_minutes: -480,
+          raw_data: filler,
+          value: 2,
+        };
+        const jan16 = {
+          type: 'ExerciseSession',
+          source: 'healthconnect',
+          date: '2024-01-17',
+          timestamp: '2024-01-17T01:00:00Z',
+          record_utc_offset_minutes: -480,
+          raw_data: filler,
+          value: 3,
+        };
+        const data = [lateJan15, middayJan15, jan16] as HealthDataPayload;
+
+        await syncHealthData(data);
+
+        expect(mockFetch.mock.calls.length).toBe(2);
+        const chunkFor = (value: number): number =>
+          mockFetch.mock.calls.findIndex(call =>
+            (JSON.parse(call[1].body) as { value: number }[]).some(
+              record => record.value === value,
+            ),
+          );
+
+        // Both Jan-15 (UTC-8) workouts travel together; Jan 16 ships alone.
+        expect(chunkFor(1)).toBe(chunkFor(2));
+        expect(chunkFor(3)).not.toBe(chunkFor(1));
+      });
+
+      test('groups oversized workout chunks by the record_timezone-resolved day', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+        const filler = 'x'.repeat(1200 * 1024);
+        const lateJan15 = {
+          type: 'ExerciseSession',
+          source: 'healthkit',
+          date: '2024-01-16',
+          timestamp: '2024-01-16T05:00:00Z',
+          record_timezone: 'America/Los_Angeles',
+          raw_data: filler,
+          value: 1,
+        };
+        const middayJan15 = {
+          type: 'ExerciseSession',
+          source: 'healthkit',
+          date: '2024-01-15',
+          timestamp: '2024-01-15T22:00:00Z',
+          record_timezone: 'America/Los_Angeles',
+          raw_data: filler,
+          value: 2,
+        };
+        const jan16 = {
+          type: 'ExerciseSession',
+          source: 'healthkit',
+          date: '2024-01-17',
+          timestamp: '2024-01-17T01:00:00Z',
+          record_timezone: 'America/Los_Angeles',
+          raw_data: filler,
+          value: 3,
+        };
+        const data = [lateJan15, middayJan15, jan16] as HealthDataPayload;
+
+        await syncHealthData(data);
+
+        expect(mockFetch.mock.calls.length).toBe(2);
+        const chunkFor = (value: number): number =>
+          mockFetch.mock.calls.findIndex(call =>
+            (JSON.parse(call[1].body) as { value: number }[]).some(
+              record => record.value === value,
+            ),
+          );
+
+        expect(chunkFor(1)).toBe(chunkFor(2));
+        expect(chunkFor(3)).not.toBe(chunkFor(1));
+      });
+
       test('preserves staged sleep session payloads inside session chunks', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({

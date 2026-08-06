@@ -293,6 +293,20 @@ describe('collectWorkoutLaps', () => {
     expect(collectWorkoutLaps(undefined)).toEqual([]);
     expect(collectWorkoutLaps([])).toEqual([]);
   });
+
+  it('drops instantaneous marker events (start == end)', () => {
+    // .lap events are often zero-width markers; the server derives lap stats
+    // from the window, and a zero-width window contains no samples.
+    const laps = collectWorkoutLaps([
+      { type: 3, startDate: at(0), endDate: at(0) },
+      { type: 3, startDate: at(0), endDate: at(1000) },
+      { type: 3, startDate: at(1000), endDate: at(1000) },
+    ]);
+
+    expect(laps).toEqual([
+      { start_time: at(0), end_time: at(1000), lap_index: 1 },
+    ]);
+  });
 });
 
 // -----------------------------------------------------------------------

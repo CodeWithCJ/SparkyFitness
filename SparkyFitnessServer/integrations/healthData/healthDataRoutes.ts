@@ -1,5 +1,5 @@
 import express from 'express';
-import { log } from '../../config/logging.js';
+import { isLogLevelEnabled, log } from '../../config/logging.js';
 import measurementService from '../../services/measurementService.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { instantToDay } from '@workspace/shared';
@@ -30,12 +30,27 @@ router.post('/', checkPermissionMiddleware('diary'), async (req, res, next) => {
         'Invalid health data format. All entries must be non-null objects.',
     });
   }
-  // Log the incoming health data JSON
+  const recordTypes = [
+    ...new Set(
+      healthDataArray.map((item: Record<string, unknown>) =>
+        typeof item.type === 'string' ? item.type : 'unknown'
+      )
+    ),
+  ];
   log(
     'info',
-    'Incoming health data JSON:',
-    JSON.stringify(healthDataArray, null, 2)
+    `Incoming health data: ${healthDataArray.length} record(s), types: ${recordTypes.join(', ')}`
   );
+  // A workout sync carries a full GPS track and heart-rate series, so the
+  // stringify is guarded rather than passed as an argument: arguments are
+  // evaluated before log() gets to drop them.
+  if (isLogLevelEnabled('debug')) {
+    log(
+      'debug',
+      'Incoming health data JSON:',
+      JSON.stringify(healthDataArray, null, 2)
+    );
+  }
   try {
     // Backwards compatibility (issue #1903): clients on the seconds-based set
     // model send X-Workout-Model-Version: 2 (or higher). Older clients omit the

@@ -131,6 +131,114 @@ function routeHasData(route: HcExerciseRoute | undefined): boolean {
   return Array.isArray(route?.route) && route.route.length > 0;
 }
 
+/**
+ * requestExerciseRoute resolves with the bare location array — the native
+ * module resolves `parseExerciseRoute(...)` directly, with no `{ type, route }`
+ * wrapper. The library's 3.5.3 typings declare the wrapped shape (corrected
+ * upstream in 4.1.2), so both are accepted here.
+ */
+function locationsOf(result: unknown): readonly HcLocation[] {
+  if (Array.isArray(result)) return result as readonly HcLocation[];
+  const wrapped = (result as HcExerciseRoute | undefined)?.route;
+  return Array.isArray(wrapped) ? wrapped : [];
+}
+
+/**
+ * The native module funnels every route-consent dialog through one
+ * ActivityResultLauncher and one uncorrelated result channel: results are
+ * matched to waiting callers purely by ordering, so concurrent requests can
+ * hand one workout another workout's route (or strand a caller forever when a
+ * stacked launch is dropped). Exactly one request in flight, ever.
+ */
+let routeRequestChain: Promise<unknown> = Promise.resolve();
+
+function requestExerciseRouteSerialized(recordId: string): Promise<unknown> {
+  const request = routeRequestChain.then(() => requestExerciseRoute(recordId));
+  routeRequestChain = request.catch(() => undefined);
+  return request;
+}
+
+function toGpsPoints(locations: readonly HcLocation[]): WorkoutGpsPoint[] {
+  const points: WorkoutGpsPoint[] = [];
+  for (const location of locations) {
+    const ms = Date.parse(location.time);
+    if (
+      !Number.isFinite(ms) ||
+      !Number.isFinite(location.latitude) ||
+      !Number.isFinite(location.longitude)
+    ) {
+      continue;
+    }
+    points.push({
+      t: new Date(ms).toISOString(),
+      lat: location.latitude,
+      lon: location.longitude,
+      alt: metersOf(location.altitude),
+      hacc: metersOf(location.horizontalAccuracy),
+      vacc: metersOf(location.verticalAccuracy),
+    });
+  }
+  return points.sort((a, b) => a.t.localeCompare(b.t));
+}
+
+/**
+ * Routes resolved ahead of the engine's timed metric read, keyed by record id.
+ *
+ * A consent dialog has no deadline — it sits until the user answers. Inside the
+ * engine's per-metric timeout that stalls the ExerciseSession read past its
+ * limit and fails the whole sync, so interactive runs resolve consent up front
+ * via prefetchSessionRoutes and the timed read consumes the cached result.
+ */
+const prefetchedRoutes = new Map<string, WorkoutGpsPoint[]>();
+
+/**
+ * Resolves route consent for every session in the window that needs it, one
+ * dialog at a time, caching the resulting points for the timed read. Failures
+ * only cost routes, never the sync.
+ */
+export async function prefetchSessionRoutes(
+  startTime: Date,
+  endTime: Date
+): Promise<void> {
+  prefetchedRoutes.clear();
+
+  let sessions: Record<string, unknown>[];
+  try {
+    const result = await readRecords('ExerciseSession', {
+      timeRangeFilter: {
+        operator: 'between',
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      },
+    });
+    sessions = (result?.records ?? []) as Record<string, unknown>[];
+  } catch (error) {
+    addLog(
+      `[HealthConnectService] Route consent prefetch read failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      'WARNING'
+    );
+    return;
+  }
+
+  for (const session of sessions) {
+    const route = session.exerciseRoute as HcExerciseRoute | undefined;
+    const recordId = (session.metadata as { id?: string } | undefined)?.id;
+    if (routeHasData(route) || !routeNeedsConsent(route) || !recordId) continue;
+
+    const remembered = await getRouteConsent(recordId);
+    if (remembered === 'denied') continue;
+    try {
+      const result = await requestExerciseRouteSerialized(recordId);
+      prefetchedRoutes.set(recordId, toGpsPoints(locationsOf(result)));
+      await setRouteConsent(recordId, 'granted');
+    } catch {
+      await setRouteConsent(recordId, 'denied');
+    }
+  }
+}
+
 const metersOf = (
   value: { inMeters?: number } | number | undefined
 ): number | null => {
@@ -151,15 +259,21 @@ export async function collectSessionRoute(
   session: Record<string, unknown>,
   interactive: boolean
 ): Promise<WorkoutGpsPoint[]> {
-  let route = session.exerciseRoute as HcExerciseRoute | undefined;
+  const route = session.exerciseRoute as HcExerciseRoute | undefined;
   const recordId = (session.metadata as { id?: string } | undefined)?.id;
 
-  if (!routeHasData(route) && routeNeedsConsent(route) && interactive && recordId) {
+  if (routeHasData(route)) return toGpsPoints(route?.route ?? []);
+
+  const prefetched = recordId ? prefetchedRoutes.get(recordId) : undefined;
+  if (prefetched) return prefetched;
+
+  if (routeNeedsConsent(route) && interactive && recordId) {
     const remembered = await getRouteConsent(recordId);
     if (remembered === 'denied') return [];
     try {
-      route = (await requestExerciseRoute(recordId)) as HcExerciseRoute;
+      const result = await requestExerciseRouteSerialized(recordId);
       await setRouteConsent(recordId, 'granted');
+      return toGpsPoints(locationsOf(result));
     } catch {
       // The user declined, or the record has no route. Remember either way so
       // the 6h overlap re-sync does not prompt for the same session again.
@@ -168,29 +282,7 @@ export async function collectSessionRoute(
     }
   }
 
-  if (!routeHasData(route)) return [];
-
-  const points: WorkoutGpsPoint[] = [];
-  for (const location of route?.route ?? []) {
-    const ms = Date.parse(location.time);
-    if (
-      !Number.isFinite(ms) ||
-      !Number.isFinite(location.latitude) ||
-      !Number.isFinite(location.longitude)
-    ) {
-      continue;
-    }
-    points.push({
-      t: new Date(ms).toISOString(),
-      lat: location.latitude,
-      lon: location.longitude,
-      alt: metersOf(location.altitude),
-      hacc: metersOf(location.horizontalAccuracy),
-      vacc: metersOf(location.verticalAccuracy),
-    });
-  }
-
-  return points.sort((a, b) => a.t.localeCompare(b.t));
+  return [];
 }
 
 interface WindowRead {

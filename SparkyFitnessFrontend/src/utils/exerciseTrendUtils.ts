@@ -270,11 +270,22 @@ export const extractTelemetryActivityEntries = (
     'health connect',
   ]);
 
+  // Mobile sync writes a row for every workout the phone knows about, including
+  // strength sessions and entries that predate telemetry capture, so source
+  // alone would render an empty activity card (~5 queries) for each of them.
+  // Garmin and Strava sync only ever writes activities that carry telemetry, so
+  // they stay gated on source and keep working against a server too old to send
+  // has_telemetry — which is also why this compares to true explicitly: an
+  // absent flag must fail closed here rather than pass as truthy.
+  const REQUIRES_TELEMETRY_FLAG = new Set(['healthkit', 'health connect']);
+
   const processEntry = (entry: ExerciseProgressResponse) => {
+    const source = entry.provider_name?.toLowerCase();
     if (
-      entry.provider_name &&
-      TELEMETRY_PROVIDERS.has(entry.provider_name.toLowerCase()) &&
-      entry.exercise_entry_id
+      source &&
+      TELEMETRY_PROVIDERS.has(source) &&
+      entry.exercise_entry_id &&
+      (!REQUIRES_TELEMETRY_FLAG.has(source) || entry.has_telemetry === true)
     ) {
       const presetId = (entry as Record<string, unknown>)[
         'exercise_preset_entry_id'

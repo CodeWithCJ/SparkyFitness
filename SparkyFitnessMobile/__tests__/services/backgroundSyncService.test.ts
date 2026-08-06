@@ -180,24 +180,27 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
   });
 
   describe('telemetry budget (regression: manual sync must not silently cap itself)', () => {
-    test('triggerManualSync leaves the telemetry budget/interactive state untouched', async () => {
+    test('triggerManualSync runs uncapped and interactive', async () => {
       storage.loadLastSyncedTime.mockResolvedValue(null);
       healthService.loadHealthPreference.mockResolvedValue(true);
       healthService.getAggregatedStepsByDate.mockResolvedValue([]);
 
-      const setBudgetSpy = jest.spyOn(telemetryBudget, 'setWorkoutTelemetryBudget');
-      const setInteractiveSpy = jest.spyOn(telemetryBudget, 'setTelemetryInteractive');
+      const createCtxSpy = jest.spyOn(telemetryBudget, 'createTelemetryRunContext');
 
       await triggerManualSync();
 
-      // Previously, triggerManualSync ('manual-sync') fell through to the same
-      // capped/non-interactive branch as the real OS background task and the
-      // iOS silent-delivery observer — so a user explicitly tapping "sync now"
-      // got a route-consent dialog silently suppressed and telemetry capped at
-      // BACKGROUND_TELEMETRY_BUDGET workouts, with no indication why.
-      expect(setBudgetSpy).not.toHaveBeenCalled();
-      expect(setInteractiveSpy).not.toHaveBeenCalled();
-      expect(telemetryBudget.isTelemetryInteractive()).toBe(true);
+      // triggerManualSync ('manual-sync') must not fall through to the same
+      // capped/non-interactive shape as the real OS background task and the
+      // iOS silent-delivery observer — a user explicitly tapping "sync now"
+      // would get a route-consent dialog silently suppressed and telemetry
+      // capped at BACKGROUND_TELEMETRY_BUDGET workouts, with no indication why.
+      expect(createCtxSpy).toHaveBeenCalled();
+      const runCtx = createCtxSpy.mock.results[0].value as telemetryBudget.TelemetryRunContext;
+      expect(createCtxSpy.mock.calls[0]).toEqual([]);
+      expect(runCtx.interactive).toBe(true);
+      for (let i = 0; i < telemetryBudget.BACKGROUND_TELEMETRY_BUDGET + 1; i++) {
+        expect(runCtx.claim()).toBe(true);
+      }
     });
   });
 

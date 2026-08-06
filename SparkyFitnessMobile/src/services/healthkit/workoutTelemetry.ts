@@ -219,6 +219,10 @@ export function collectWorkoutLaps(
       (lap): lap is { start_time: string; end_time: string } =>
         lap.start_time !== null && lap.end_time !== null
     )
+    // .lap events are often instantaneous markers (start == end) rather than
+    // spans; the server derives lap stats from the window, and a zero-width
+    // window contains no samples, so marker-style laps are dropped.
+    .filter((lap) => lap.start_time !== lap.end_time)
     .sort((a, b) => a.start_time.localeCompare(b.start_time))
     .map((lap, index) => ({ ...lap, lap_index: index + 1 }));
 }

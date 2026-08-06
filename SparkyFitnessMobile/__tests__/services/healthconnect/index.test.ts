@@ -34,10 +34,7 @@ import {
 
 import type { PermissionRequest, GrantedPermission } from '../../../src/types/healthRecords';
 import type { SyncDuration } from '../../../src/services/healthconnect/preferences';
-import {
-  setWorkoutTelemetryBudget,
-  setTelemetryInteractive,
-} from '../../../src/services/shared/telemetryBudget';
+import { createTelemetryRunContext } from '../../../src/services/shared/telemetryBudget';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -1341,13 +1338,6 @@ describe('enrichExerciseSessions', () => {
       mockAggregateRecord.mockResolvedValue({});
     });
 
-    afterEach(() => {
-      // Real (unmocked) shared module — restore its defaults so a budget
-      // change in one test can't leak into a later one in this file.
-      setWorkoutTelemetryBudget(Number.POSITIVE_INFINITY);
-      setTelemetryInteractive(true);
-    });
-
     test('attaches hr_samples and derived summary telemetry when HeartRate records exist in the session window', async () => {
       mockReadRecords.mockImplementation((recordType: string) => {
         if (recordType === 'HeartRate') {
@@ -1462,9 +1452,10 @@ describe('enrichExerciseSessions', () => {
         }
         return Promise.resolve({ records: [] });
       });
-      setWorkoutTelemetryBudget(0);
-
-      const result = await enrichExerciseSessions([makeSession()]);
+      const result = await enrichExerciseSessions(
+        [makeSession()],
+        createTelemetryRunContext({ budget: 0 })
+      );
 
       const enriched = result[0] as Record<string, unknown>;
       // Calorie/distance enrichment happens before the budget gate and must
@@ -1472,6 +1463,67 @@ describe('enrichExerciseSessions', () => {
       expect(enriched.energy).toEqual({ inKilocalories: 300 });
       expect(enriched.hr_samples).toBeUndefined();
       expect(enriched.telemetry).toBeUndefined();
+    });
+
+    test('a partial budget goes to the newest sessions, not read-completion order', async () => {
+      mockReadRecords.mockImplementation((recordType: string) => {
+        if (recordType === 'HeartRate') {
+          return Promise.resolve({
+            records: [
+              { samples: [{ time: '2024-01-15T10:10:00Z', beatsPerMinute: 100 }] },
+            ],
+          });
+        }
+        return Promise.resolve({ records: [] });
+      });
+
+      const older = makeSession({
+        startTime: '2024-01-14T10:00:00Z',
+        endTime: '2024-01-14T11:00:00Z',
+      });
+      const newer = makeSession();
+
+      // Oldest first in the input — the slot must still go to the newer one.
+      const result = await enrichExerciseSessions(
+        [older, newer],
+        createTelemetryRunContext({ budget: 1 })
+      );
+
+      const enrichedOlder = result[0] as Record<string, unknown>;
+      const enrichedNewer = result[1] as Record<string, unknown>;
+      expect(enrichedOlder.hr_samples).toBeUndefined();
+      expect(enrichedNewer.hr_samples).toBeDefined();
+    });
+
+    test('an invalid session window does not consume a budget slot', async () => {
+      mockReadRecords.mockImplementation((recordType: string) => {
+        if (recordType === 'HeartRate') {
+          return Promise.resolve({
+            records: [
+              { samples: [{ time: '2024-01-15T10:10:00Z', beatsPerMinute: 100 }] },
+            ],
+          });
+        }
+        return Promise.resolve({ records: [] });
+      });
+
+      // Newest by startTime, but its window is inverted — the enrichment loop
+      // rejects it, so it must not have claimed the only slot first.
+      const invalid = makeSession({
+        startTime: '2024-01-16T10:00:00Z',
+        endTime: '2024-01-16T09:00:00Z',
+      });
+      const valid = makeSession();
+
+      const result = await enrichExerciseSessions(
+        [invalid, valid],
+        createTelemetryRunContext({ budget: 1 })
+      );
+
+      const enrichedInvalid = result[0] as Record<string, unknown>;
+      const enrichedValid = result[1] as Record<string, unknown>;
+      expect(enrichedInvalid.hr_samples).toBeUndefined();
+      expect(enrichedValid.hr_samples).toBeDefined();
     });
   });
 });

@@ -16,6 +16,10 @@ import { aggregateByDay } from './dataAggregation';
 import { serverSupportsPerRecordWater } from '../api/measurementsApi';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../../utils/concurrency';
 import {
+  createTelemetryRunContext,
+  type TelemetryRunContext,
+} from './telemetryBudget';
+import {
   alignToLocalDayStart,
   buildForegroundWindows,
   type SyncDuration,
@@ -49,13 +53,27 @@ export interface HealthReadProvider {
     endDate: Date,
   ): Promise<ReadResult<TransformedRecord> | null>;
   /** Raw record read for one record type. */
-  readRaw(recordType: string, startDate: Date, endDate: Date): Promise<ReadResult>;
+  readRaw(
+    recordType: string,
+    startDate: Date,
+    endDate: Date,
+    telemetry?: TelemetryRunContext,
+  ): Promise<ReadResult>;
   /** Earliest stored sample for the metric across all history (history-import
    *  floor probe). No data = { records: [] }; failures = { error }, never null. */
   readEarliestRecord?(metric: HealthMetric): Promise<ReadResult<{ startTime: string }>>;
   /** Platform massaging of non-empty raw reads before transform (Android enriches
    *  ExerciseSession; iOS pre-aggregates SleepSession). */
-  postProcessRaw(metric: HealthMetric, records: unknown[]): Promise<unknown[]>;
+  postProcessRaw(
+    metric: HealthMetric,
+    records: unknown[],
+    telemetry?: TelemetryRunContext,
+  ): Promise<unknown[]>;
+  /** Interactive-run preparation with no deadline, run before the timed metric
+   *  reads. Android resolves per-session route-consent dialogs here — a dialog
+   *  waits on the user, so inside the per-metric timeout it would fail the
+   *  whole sync. */
+  prepareInteractiveRead?(metrics: HealthMetric[], windows: SyncWindows): Promise<void>;
   /** Platform transform tables (record shapes and timezone metadata differ). */
   transform(records: unknown[], metric: MetricConfig): TransformOutput[];
 }
@@ -109,6 +127,7 @@ const collectMetric = async (
   metric: HealthMetric,
   windows: SyncWindows,
   waterFallbackToSum: boolean,
+  telemetry: TelemetryRunContext,
 ): Promise<CollectedMetric> => {
   const readKind = metricReadKind(metric);
 
@@ -153,14 +172,14 @@ const collectMetric = async (
       ? windows.aggregatedStart
       : rawStart;
 
-  const result = await provider.readRaw(metric.recordType, readStart, windows.end);
+  const result = await provider.readRaw(metric.recordType, readStart, windows.end, telemetry);
   const rawRecords = result.records;
 
   if (!rawRecords || rawRecords.length === 0) {
     return { data: [], error: result.error };
   }
 
-  const processed = await provider.postProcessRaw(metric, rawRecords);
+  const processed = await provider.postProcessRaw(metric, rawRecords, telemetry);
   return finishTransform(provider, metric, processed, result.error, waterFallbackToSum);
 };
 
@@ -174,8 +193,10 @@ export const collectHealthData = async (
   provider: HealthReadProvider,
   metrics: HealthMetric[],
   windows: SyncWindows,
-  opts: { timeoutLabelPrefix: string; timeoutMs?: number },
+  opts: { timeoutLabelPrefix: string; timeoutMs?: number; telemetry?: TelemetryRunContext },
 ): Promise<MetricSyncOutcome[]> => {
+  const telemetry = opts.telemetry ?? createTelemetryRunContext();
+
   // Probed once per run, and only when a per-record water metric is enabled.
   const waterFallbackToSum = metrics.some(
     m => m.type === 'water' && !m.aggregationStrategy,
@@ -183,11 +204,15 @@ export const collectHealthData = async (
     ? !(await serverSupportsPerRecordWater())
     : false;
 
+  if (telemetry.interactive && provider.prepareInteractiveRead) {
+    await provider.prepareInteractiveRead(metrics, windows);
+  }
+
   const results = await runTasksInBatches(
     metrics,
     METRIC_FETCH_CONCURRENCY,
     metric => withTimeout(
-      collectMetric(provider, metric, windows, waterFallbackToSum),
+      collectMetric(provider, metric, windows, waterFallbackToSum, telemetry),
       opts.timeoutMs ?? METRIC_TIMEOUT_MS,
       `${opts.timeoutLabelPrefix} for ${metric.recordType}`,
     ),

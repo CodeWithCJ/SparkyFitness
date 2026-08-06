@@ -18,8 +18,8 @@ import {
 import { getSyncStartDate } from '../../utils/syncUtils';
 import { isQuotaExceededError } from '../shared/quotaError';
 import {
-  claimTelemetryBudget,
-  isTelemetryInteractive,
+  createTelemetryRunContext,
+  type TelemetryRunContext,
 } from '../shared/telemetryBudget';
 import { collectSessionTelemetry } from './workoutTelemetry';
 
@@ -1045,10 +1045,38 @@ export const isPlausibleSessionDistance = (meters: number, durationMs: number): 
  * ActiveCaloriesBurned, TotalCaloriesBurned, and Distance aggregated over
  * each session's time range and apply plausibility checks (see #593, #1296).
  */
-export const enrichExerciseSessions = async (records: unknown[]): Promise<unknown[]> => {
+export const enrichExerciseSessions = async (
+  records: unknown[],
+  telemetry?: TelemetryRunContext,
+): Promise<unknown[]> => {
   if (records.length === 0) return records;
 
   addLog(`[HealthConnectService] Enriching ${records.length} exercise session(s) with calories/distance`, 'DEBUG');
+
+  const ctx = telemetry ?? createTelemetryRunContext();
+
+  // Budget slots are assigned newest-first before any read starts. Claiming
+  // inside the concurrent map below would award them in Promise completion
+  // order instead — whichever session's aggregate reads happen to resolve
+  // first — so a capped background run could spend its budget on old sessions
+  // while the newest go unenriched.
+  const telemetryAllowed = new Set<unknown>();
+  const byNewest = [...records].sort((a, b) => {
+    const aStart = (a as { startTime?: string }).startTime ?? '';
+    const bStart = (b as { startTime?: string }).startTime ?? '';
+    return bStart.localeCompare(aStart);
+  });
+  for (const record of byNewest) {
+    const rec = record as Record<string, unknown>;
+    if (typeof rec.startTime !== 'string' || typeof rec.endTime !== 'string') continue;
+    // Claimed slots are never refunded, so a record the enrichment loop below
+    // would reject for an invalid window must not consume one.
+    const startMs = Date.parse(rec.startTime);
+    const endMs = Date.parse(rec.endTime);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) continue;
+    if (!ctx.claim()) break;
+    telemetryAllowed.add(record);
+  }
 
   const enriched = await Promise.all(records.map(async (record) => {
     const rec = record as Record<string, unknown>;
@@ -1113,13 +1141,14 @@ export const enrichExerciseSessions = async (records: unknown[]): Promise<unknow
       }
     }
 
-    // Route + series collection. Interactive only in the foreground: reading a
-    // route can prompt for per-session consent, which a headless background
-    // task cannot present. Sessions skipped here are re-sent with telemetry on
-    // the next foreground sync and upserted in place server-side.
-    if (claimTelemetryBudget()) {
+    // Route + series collection. Interactive only when a user is present:
+    // reading a route can prompt for per-session consent, which a headless
+    // background task cannot present. Sessions skipped here are re-sent with
+    // telemetry on a later interactive sync (while they remain inside the 6h
+    // overlap window) and upserted in place server-side.
+    if (telemetryAllowed.has(record)) {
       const bundle = await collectSessionTelemetry(rec, {
-        interactive: isTelemetryInteractive(),
+        interactive: ctx.interactive,
       });
       if (bundle.gps_points) enrichedFields.gps_points = bundle.gps_points;
       if (bundle.hr_samples) enrichedFields.hr_samples = bundle.hr_samples;

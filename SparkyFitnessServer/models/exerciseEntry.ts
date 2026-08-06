@@ -1256,6 +1256,13 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
   }
 }
 
+/**
+ * Progress rows for the reports dashboard. `has_telemetry` is derived rather
+ * than selecting the ~40 telemetry columns, because the only question the
+ * dashboard asks is whether an entry has anything chartable. The EXISTS clauses
+ * are load-bearing: a provider-synced workout can carry all of its telemetry as
+ * GPS/lap rows while every summary column on the entry itself stays null.
+ */
 async function getExerciseProgressData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1281,6 +1288,22 @@ async function getExerciseProgressData(
          ee.source AS provider_name,
          ee.exercise_preset_entry_id,
          epe.name AS exercise_preset_entry_name,
+         e.category,
+         (
+           ee.avg_heart_rate IS NOT NULL
+           OR ee.max_heart_rate IS NOT NULL
+           OR ee.avg_speed_mps IS NOT NULL
+           OR ee.avg_power_watts IS NOT NULL
+           OR ee.elevation_gain_meters IS NOT NULL
+           OR EXISTS (
+             SELECT 1 FROM exercise_entry_gps_points eegp
+              WHERE eegp.exercise_entry_id = ee.id
+           )
+           OR EXISTS (
+             SELECT 1 FROM exercise_entry_laps eel
+              WHERE eel.exercise_entry_id = ee.id
+           )
+         ) AS has_telemetry,
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
@@ -1292,6 +1315,7 @@ async function getExerciseProgressData(
          ) AS sets
        FROM exercise_entries ee
        LEFT JOIN exercise_preset_entries epe ON epe.id = ee.exercise_preset_entry_id
+       LEFT JOIN exercises e ON e.id = ee.exercise_id
        WHERE ee.user_id = $1
          AND ee.exercise_id = $2
          AND ee.entry_date BETWEEN $3 AND $4
