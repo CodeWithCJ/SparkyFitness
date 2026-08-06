@@ -1014,17 +1014,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
     if (inSearchMode) {
       return (
-        <SectionList
-          sections={resultSections}
-          keyExtractor={resultKeyExtractor}
-          renderItem={renderResultRow}
-          renderSectionHeader={renderResultSectionHeader}
-          renderSectionFooter={renderResultSectionFooter}
-          stickySectionHeadersEnabled={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          contentContainerClassName="pb-safe-or-4"
-        />
+        <View className="flex-1 bg-surface">
+          <SectionList
+            sections={resultSections}
+            keyExtractor={resultKeyExtractor}
+            renderItem={renderResultRow}
+            renderSectionHeader={renderResultSectionHeader}
+            renderSectionFooter={renderResultSectionFooter}
+            stickySectionHeadersEnabled={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerClassName="pb-safe-or-4"
+          />
+        </View>
       );
     }
 
@@ -1056,26 +1058,28 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       );
     }
     return (
-      <SectionList
-        sections={landingSections}
-        keyExtractor={(item) => item.key}
-        renderItem={({ item }) => (
-          <LandingEntryRow
-            entry={item}
-            profileId={profile?.id}
-            favoriteKeys={favoriteKeys}
-            favoriteGold={favoriteGold}
-            onSelect={showFoodInfo}
-          />
-        )}
-        renderSectionHeader={({ section }) => (
-          <SectionTitleHeader title={section.title} />
-        )}
-        stickySectionHeadersEnabled
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentContainerClassName="pb-safe-or-4"
-      />
+      <View className="flex-1 bg-surface">
+        <SectionList
+          sections={landingSections}
+          keyExtractor={(item) => item.key}
+          renderItem={({ item }) => (
+            <LandingEntryRow
+              entry={item}
+              profileId={profile?.id}
+              favoriteKeys={favoriteKeys}
+              favoriteGold={favoriteGold}
+              onSelect={showFoodInfo}
+            />
+          )}
+          renderSectionHeader={({ section }) => (
+            <SectionTitleHeader title={section.title} />
+          )}
+          stickySectionHeadersEnabled
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerClassName="pb-safe-or-4"
+        />
+      </View>
     );
   };
 

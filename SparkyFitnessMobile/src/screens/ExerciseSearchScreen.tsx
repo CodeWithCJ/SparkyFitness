@@ -279,7 +279,7 @@ useEffect(() => {
   }, [filteredRecentExercises, filteredTopExercises]);
 
   const renderSectionHeader = ({ section }: { section: ExerciseSection }) => (
-    <View className="px-4 py-2 bg-surface">
+    <View className="px-4 py-2 bg-background">
       <Text className="text-text-secondary text-sm font-semibold uppercase tracking-wider">
         {section.title}
       </Text>
@@ -333,13 +333,15 @@ useEffect(() => {
     }
 
     return (
-      <FlatList
-        data={filteredSearchResults}
-        keyExtractor={(item) => item.id}
-        renderItem={renderExerciseRow}
-        keyboardShouldPersistTaps="handled"
-        contentContainerClassName="pb-safe-or-4"
-      />
+      <View className="flex-1 bg-surface">
+        <FlatList
+          data={filteredSearchResults}
+          keyExtractor={(item) => item.id}
+          renderItem={renderExerciseRow}
+          keyboardShouldPersistTaps="handled"
+          contentContainerClassName="pb-safe-or-4"
+        />
+      </View>
     );
   };
 
@@ -371,15 +373,17 @@ useEffect(() => {
     }
 
     return (
-      <SectionList
-        sections={sections}
-        keyExtractor={(item, index) => `${index}-${item.id}`}
-        renderItem={renderExerciseRow}
-        renderSectionHeader={renderSectionHeader}
-        stickySectionHeadersEnabled
-        keyboardShouldPersistTaps="handled"
-        contentContainerClassName="pb-safe-or-4"
-      />
+      <View className="flex-1 bg-surface">
+        <SectionList
+          sections={sections}
+          keyExtractor={(item, index) => `${index}-${item.id}`}
+          renderItem={renderExerciseRow}
+          renderSectionHeader={renderSectionHeader}
+          stickySectionHeadersEnabled
+          keyboardShouldPersistTaps="handled"
+          contentContainerClassName="pb-safe-or-4"
+        />
+      </View>
     );
   };
 
@@ -496,14 +500,16 @@ useEffect(() => {
     }
 
     return (
-      <FlatList
-        data={onlineSearchResults}
-        keyExtractor={(item, index) => `${item.source}-${item.id}-${index}`}
-        renderItem={renderExternalExerciseItem}
-        keyboardShouldPersistTaps="handled"
-        contentContainerClassName="pb-safe-or-4"
-        ListFooterComponent={renderOnlineFooter()}
-      />
+      <View className="flex-1 bg-surface">
+        <FlatList
+          data={onlineSearchResults}
+          keyExtractor={(item, index) => `${item.source}-${item.id}-${index}`}
+          renderItem={renderExternalExerciseItem}
+          keyboardShouldPersistTaps="handled"
+          contentContainerClassName="pb-safe-or-4"
+          ListFooterComponent={renderOnlineFooter()}
+        />
+      </View>
     );
   };
 
