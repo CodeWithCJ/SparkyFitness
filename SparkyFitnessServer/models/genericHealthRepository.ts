@@ -9,6 +9,11 @@ import {
   DailyHealthMetricsInitializer,
 } from '@workspace/shared';
 
+/** Minimal client surface needed to run a parameterised statement within a caller-owned transaction. */
+export interface HealthMetricSamplesDbClient {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: unknown[] }>;
+}
+
 /**
  * Repository for continuous intraday health telemetry and daily summary metrics.
  */
@@ -74,6 +79,58 @@ export async function getHealthMetricSamples(
   } finally {
     client.release();
   }
+}
+
+/**
+ * Row-locking read for the merge-write path: FOR UPDATE blocks a concurrent
+ * writer targeting the same (user, metric, day, provider) row until this
+ * transaction commits, so it always merges onto the latest data rather than a
+ * stale snapshot. No row yet (first write of the day) is not an error — the
+ * INSERT side of upsertHealthMetricSamplesWithClient's ON CONFLICT still
+ * serializes correctly against a concurrent first insert.
+ */
+export async function getHealthMetricSampleRowForUpdateWithClient(
+  client: HealthMetricSamplesDbClient,
+  userId: string,
+  metric: HealthMetric,
+  entryDate: string,
+  sourceProvider: string
+): Promise<HealthMetricSamples | null> {
+  const res = (await client.query(
+    `SELECT * FROM health_metric_samples
+     WHERE user_id = $1 AND metric = $2 AND entry_date = $3 AND source_provider = $4
+     FOR UPDATE`,
+    [userId, metric, entryDate, sourceProvider]
+  )) as { rows: HealthMetricSamples[] };
+  return res.rows[0] ?? null;
+}
+
+/** Same upsert as upsertHealthMetricSamples, but on a caller-supplied (and caller-committed) client. */
+export async function upsertHealthMetricSamplesWithClient(
+  client: HealthMetricSamplesDbClient,
+  userId: string,
+  row: HealthMetricSamplesInitializer
+): Promise<HealthMetricSamples> {
+  const res = (await client.query(
+    `INSERT INTO health_metric_samples
+      (user_id, metric, entry_date, source_provider, device_name, samples)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT ON CONSTRAINT uq_health_metric_samples
+     DO UPDATE SET
+       samples = EXCLUDED.samples,
+       device_name = COALESCE(EXCLUDED.device_name, health_metric_samples.device_name),
+       updated_at = NOW()
+     RETURNING *`,
+    [
+      userId,
+      row.metric,
+      row.entry_date,
+      row.source_provider,
+      row.device_name || null,
+      JSON.stringify(row.samples),
+    ]
+  )) as { rows: HealthMetricSamples[] };
+  return res.rows[0];
 }
 
 // 2. Vitals Entries

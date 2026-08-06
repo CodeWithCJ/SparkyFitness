@@ -7,6 +7,7 @@
  * and its call sites pass no options.
  */
 
+import { getClient } from '../db/poolManager.js';
 import * as genericHealthRepo from '../models/genericHealthRepository.js';
 import {
   type HealthMetric,
@@ -48,29 +49,6 @@ export interface SampleWriteOptions {
   window?: { startMs: number; endMs: number };
 }
 
-/** Reads the existing samples for one day+provider, or [] when there is no row. */
-async function loadExistingSamples(
-  userId: string,
-  actingUserId: string,
-  metric: HealthMetric,
-  sourceProvider: string,
-  entryDate: string
-): Promise<Record<string, unknown>[]> {
-  // getHealthMetricSamples filters by metric and date but not by provider, so
-  // narrow to this provider here — merging another provider's samples into this
-  // row would duplicate readings across both rows.
-  const rows = await genericHealthRepo.getHealthMetricSamples(
-    userId,
-    actingUserId,
-    metric,
-    entryDate,
-    entryDate
-  );
-  const row = rows.find((r) => r.source_provider === sourceProvider);
-  const samples = row?.samples;
-  return Array.isArray(samples) ? (samples as Record<string, unknown>[]) : [];
-}
-
 /**
  * Groups flat {entry_date, timestamp, ex, sl, ...fields} samples into one bucket
  * per day and upserts each as a single health_metric_samples row.
@@ -78,6 +56,12 @@ async function loadExistingSamples(
  * Bucketing by the caller-supplied `entry_date` (rather than deriving a day from
  * the timestamp here) is what keeps a workout or sleep session that crosses
  * midnight landing on the correct calendar days.
+ *
+ * The whole batch runs in one transaction. In `merge` mode each bucket's
+ * existing row is read with `SELECT ... FOR UPDATE` before being merged and
+ * written back, so a concurrent writer targeting the same (user, metric, day,
+ * provider) row blocks until this transaction commits instead of reading a
+ * stale snapshot and silently dropping this write's samples (or vice versa).
  *
  * Returns the number of day buckets written.
  */
@@ -112,50 +96,72 @@ export async function upsertSamplesByDay(
     byDate.set(entry_date, bucket);
   }
 
-  for (const bucket of byDate.values()) {
-    if (mode === 'merge') {
-      const existing = await loadExistingSamples(
-        userId,
-        actingUserId,
-        metric,
-        sourceProvider,
-        bucket.entry_date
+  const client = await getClient(userId, actingUserId);
+  try {
+    await client.query('BEGIN');
+
+    for (const bucket of byDate.values()) {
+      if (mode === 'merge') {
+        // Locks the row (if any) for the rest of this transaction — a second
+        // concurrent merge for the same key blocks here until this COMMIT,
+        // then sees this write's result rather than the pre-merge snapshot.
+        const existingRow =
+          await genericHealthRepo.getHealthMetricSampleRowForUpdateWithClient(
+            client,
+            userId,
+            metric,
+            bucket.entry_date,
+            sourceProvider
+          );
+        const existing = Array.isArray(existingRow?.samples)
+          ? (existingRow.samples as Record<string, unknown>[])
+          : [];
+
+        // Without a window there is nothing to scope the replacement to, so keep
+        // every prior sample and treat the write as purely additive.
+        const window = options.window;
+        const retained = existing.filter((sample) => {
+          if (!window) return true;
+          const ms = Date.parse(String(sample.t));
+          if (!Number.isFinite(ms)) return true;
+          return ms < window.startMs || ms > window.endMs;
+        });
+
+        bucket.samples = retained.concat(bucket.samples);
+      }
+
+      // Date.parse, not localeCompare: lexicographic order only agrees with
+      // chronological order when every sample uses the same UTC offset, and this
+      // merges freshly-written samples with whatever was already stored.
+      bucket.samples.sort(
+        (a, b) => Date.parse(String(a.t)) - Date.parse(String(b.t))
       );
 
-      // Without a window there is nothing to scope the replacement to, so keep
-      // every prior sample and treat the write as purely additive.
-      const window = options.window;
-      const retained = existing.filter((sample) => {
-        if (!window) return true;
-        const ms = Date.parse(String(sample.t));
-        if (!Number.isFinite(ms)) return true;
-        return ms < window.startMs || ms > window.endMs;
+      // Validates AND narrows to the metric's specific sample shape (the
+      // discriminated union's whole purpose) instead of an `any`/type-assertion
+      // cast — also catches malformed upstream data at ingest with a clear error
+      // rather than a silent bad write.
+      const row = healthMetricSamplesInitializerSchema.parse({
+        user_id: userId,
+        metric,
+        entry_date: bucket.entry_date,
+        source_provider: sourceProvider,
+        device_name: bucket.device_name,
+        samples: bucket.samples,
       });
-
-      bucket.samples = retained.concat(bucket.samples);
+      await genericHealthRepo.upsertHealthMetricSamplesWithClient(
+        client,
+        userId,
+        row
+      );
     }
 
-    bucket.samples.sort((a, b) => String(a.t).localeCompare(String(b.t)));
-  }
-
-  for (const bucket of byDate.values()) {
-    // Validates AND narrows to the metric's specific sample shape (the
-    // discriminated union's whole purpose) instead of an `any`/type-assertion
-    // cast — also catches malformed upstream data at ingest with a clear error
-    // rather than a silent bad write.
-    const row = healthMetricSamplesInitializerSchema.parse({
-      user_id: userId,
-      metric,
-      entry_date: bucket.entry_date,
-      source_provider: sourceProvider,
-      device_name: bucket.device_name,
-      samples: bucket.samples,
-    });
-    await genericHealthRepo.upsertHealthMetricSamples(
-      userId,
-      actingUserId,
-      row
-    );
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 
   return byDate.size;

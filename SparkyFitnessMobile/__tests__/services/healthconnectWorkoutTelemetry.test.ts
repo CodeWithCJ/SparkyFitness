@@ -111,10 +111,9 @@ describe('collectSessionRoute', () => {
 
     expect(requestExerciseRoute).toHaveBeenCalledWith('session-1');
     expect(points).toHaveLength(1);
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      expect.stringContaining('session-1'),
-      'granted'
-    );
+    const [key, stored] = AsyncStorage.setItem.mock.calls[0];
+    expect(key).toContain('session-1');
+    expect(JSON.parse(stored)).toMatchObject({ value: 'granted' });
   });
 
   it('never prompts when not interactive', async () => {
@@ -137,14 +136,15 @@ describe('collectSessionRoute', () => {
     );
 
     expect(points).toEqual([]);
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-      expect.stringContaining('session-1'),
-      'denied'
-    );
+    const [key, stored] = AsyncStorage.setItem.mock.calls[0];
+    expect(key).toContain('session-1');
+    expect(JSON.parse(stored)).toMatchObject({ value: 'denied' });
   });
 
-  it('does not re-prompt a session already denied', async () => {
-    AsyncStorage.getItem.mockResolvedValue('denied');
+  it('does not re-prompt a session denied recently', async () => {
+    AsyncStorage.getItem.mockResolvedValue(
+      JSON.stringify({ value: 'denied', storedAtMs: Date.now() })
+    );
 
     const points = await collectSessionRoute(
       session({ exerciseRoute: { type: 'CONSENT_REQUIRED', route: [] } }),
@@ -153,6 +153,41 @@ describe('collectSessionRoute', () => {
 
     expect(requestExerciseRoute).not.toHaveBeenCalled();
     expect(points).toEqual([]);
+  });
+
+  it('re-prompts once a denial older than 24h expires (transient failures must not be permanent)', async () => {
+    const twoDaysAgo = Date.now() - 2 * 24 * 60 * 60 * 1000;
+    AsyncStorage.getItem.mockResolvedValue(
+      JSON.stringify({ value: 'denied', storedAtMs: twoDaysAgo })
+    );
+    requestExerciseRoute.mockResolvedValue({
+      route: [{ time: at(0), latitude: 1, longitude: 2 }],
+    });
+
+    const points = await collectSessionRoute(
+      session({ exerciseRoute: { type: 'CONSENT_REQUIRED', route: [] } }),
+      true
+    );
+
+    expect(requestExerciseRoute).toHaveBeenCalledWith('session-1');
+    expect(points).toHaveLength(1);
+  });
+
+  it('treats a legacy bare-string stored value as undecided and re-prompts once', async () => {
+    // Pre-fix storage wrote the raw string 'denied', not JSON — JSON.parse
+    // throws on it, which must fall back to "no decision" rather than crash.
+    AsyncStorage.getItem.mockResolvedValue('denied');
+    requestExerciseRoute.mockResolvedValue({
+      route: [{ time: at(0), latitude: 1, longitude: 2 }],
+    });
+
+    const points = await collectSessionRoute(
+      session({ exerciseRoute: { type: 'CONSENT_REQUIRED', route: [] } }),
+      true
+    );
+
+    expect(requestExerciseRoute).toHaveBeenCalledWith('session-1');
+    expect(points).toHaveLength(1);
   });
 
   it('drops locations without a usable fix', async () => {

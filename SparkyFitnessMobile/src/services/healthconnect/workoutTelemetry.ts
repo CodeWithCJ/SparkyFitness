@@ -37,6 +37,22 @@ const FALLBACK_DENSITY_LIMIT = 2;
 
 type RouteConsent = 'granted' | 'denied';
 
+interface StoredRouteConsent {
+  value: RouteConsent;
+  storedAtMs: number;
+}
+
+/**
+ * How long a 'denied' decision is trusted before we re-prompt. requestExerciseRoute
+ * throws the same way for a real user refusal and for a transient failure (Health
+ * Connect briefly unavailable, client disconnected) — there is no error code that
+ * tells them apart — so a permanent 'denied' would mean a session hit by a
+ * transient error never gets a route again, ever. 24h is long enough that the 6h
+ * overlap re-sync window never re-prompts for the same session, but short enough
+ * that a transient failure heals itself within a day or two of syncs.
+ */
+const DENIAL_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
 const consentKey = (recordId: string): string =>
   `${ROUTE_CONSENT_PREFIX}${recordId}`;
 
@@ -44,8 +60,22 @@ export const getRouteConsent = async (
   recordId: string
 ): Promise<RouteConsent | null> => {
   try {
-    const value = await AsyncStorage.getItem(consentKey(recordId));
-    return value === 'granted' || value === 'denied' ? value : null;
+    const raw = await AsyncStorage.getItem(consentKey(recordId));
+    if (!raw) return null;
+    // Older stored values were the bare string 'granted'/'denied', not JSON —
+    // JSON.parse throws on those, which falls through to the catch below and
+    // is treated as "no decision yet", i.e. a one-time re-prompt during
+    // migration to the timestamped format.
+    const parsed = JSON.parse(raw) as Partial<StoredRouteConsent>;
+    if (parsed.value !== 'granted' && parsed.value !== 'denied') return null;
+    if (
+      parsed.value === 'denied' &&
+      typeof parsed.storedAtMs === 'number' &&
+      Date.now() - parsed.storedAtMs > DENIAL_EXPIRY_MS
+    ) {
+      return null; // expired — treat as undecided so it gets re-prompted
+    }
+    return parsed.value;
   } catch {
     return null;
   }
@@ -56,7 +86,8 @@ export const setRouteConsent = async (
   consent: RouteConsent
 ): Promise<void> => {
   try {
-    await AsyncStorage.setItem(consentKey(recordId), consent);
+    const stored: StoredRouteConsent = { value: consent, storedAtMs: Date.now() };
+    await AsyncStorage.setItem(consentKey(recordId), JSON.stringify(stored));
   } catch {
     // A failed write only costs us a repeat prompt; never block the sync.
   }

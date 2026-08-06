@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import type { HealthEntryContext } from '../services/healthDataHandlers.js';
 
 vi.mock('../models/exercise.js', () => ({
   default: {
@@ -48,7 +49,9 @@ const workoutHandler = HEALTH_TYPE_HANDLERS['Workout'];
 
 const ENTRY_ID = 'entry-uuid-1';
 
-function makeCtx(overrides: Record<string, unknown> = {}) {
+function makeCtx(
+  overrides: Partial<HealthEntryContext> = {}
+): HealthEntryContext {
   return {
     userId: 'user-1',
     actingUserId: 'user-1',
@@ -63,8 +66,7 @@ function makeCtx(overrides: Record<string, unknown> = {}) {
     processSleepEntry: vi.fn(),
     resolveCategory: vi.fn(),
     ...overrides,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any;
+  } as unknown as HealthEntryContext;
 }
 
 const at = (seconds: number): string =>
@@ -87,12 +89,9 @@ function baseEntry(extra: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (exerciseDb.findExerciseByNameAndUserId as any).mockResolvedValue(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (exerciseDb.createExercise as any).mockResolvedValue({ id: 'exercise-1' });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (exerciseEntryDb.createExerciseEntry as any).mockResolvedValue({
+  (exerciseDb.findExerciseByNameAndUserId as Mock).mockResolvedValue(null);
+  (exerciseDb.createExercise as Mock).mockResolvedValue({ id: 'exercise-1' });
+  (exerciseEntryDb.createExerciseEntry as Mock).mockResolvedValue({
     id: ENTRY_ID,
   });
 });
@@ -115,8 +114,7 @@ describe('workoutHandler — backward compatibility', () => {
   it('does not invent telemetry columns when none were sent', async () => {
     await workoutHandler.handle(baseEntry(), makeCtx());
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload = (exerciseEntryDb.createExerciseEntry as any).mock
+    const payload = (exerciseEntryDb.createExerciseEntry as Mock).mock
       .calls[0][1];
     expect(payload.avg_heart_rate).toBeUndefined();
     expect(payload.max_speed_mps).toBeUndefined();
@@ -127,8 +125,7 @@ describe('workoutHandler — exercise modality', () => {
   it('creates an outdoor walk as a distance activity', async () => {
     await workoutHandler.handle(baseEntry(), makeCtx());
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(exerciseDb.createExercise as any).toHaveBeenCalledWith(
+    expect(exerciseDb.createExercise as Mock).toHaveBeenCalledWith(
       expect.objectContaining({
         category: 'Cardio',
         modality: 'duration_distance',
@@ -142,8 +139,7 @@ describe('workoutHandler — exercise modality', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(exerciseDb.createExercise as any).toHaveBeenCalledWith(
+    expect(exerciseDb.createExercise as Mock).toHaveBeenCalledWith(
       expect.objectContaining({ modality: 'duration' })
     );
   });
@@ -163,8 +159,7 @@ describe('workoutHandler — telemetry columns', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload = (exerciseEntryDb.createExerciseEntry as any).mock
+    const payload = (exerciseEntryDb.createExerciseEntry as Mock).mock
       .calls[0][1];
     expect(payload).toMatchObject({
       avg_heart_rate: 112,
@@ -187,8 +182,7 @@ describe('workoutHandler — telemetry columns', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload = (exerciseEntryDb.createExerciseEntry as any).mock
+    const payload = (exerciseEntryDb.createExerciseEntry as Mock).mock
       .calls[0][1];
     expect(payload.user_id).toBeUndefined();
     expect(payload.notes).not.toBe('injected');
@@ -203,8 +197,7 @@ describe('workoutHandler — telemetry columns', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload = (exerciseEntryDb.createExerciseEntry as any).mock
+    const payload = (exerciseEntryDb.createExerciseEntry as Mock).mock
       .calls[0][1];
     expect(payload.max_heart_rate).toBeUndefined();
     expect(payload.avg_cadence).toBeUndefined();
@@ -222,8 +215,7 @@ describe('workoutHandler — telemetry columns', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload = (exerciseEntryDb.createExerciseEntry as any).mock
+    const payload = (exerciseEntryDb.createExerciseEntry as Mock).mock
       .calls[0][1];
     expect(payload.avg_heart_rate).toBe(999);
   });
@@ -239,8 +231,7 @@ describe('workoutHandler — telemetry columns', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const payload = (exerciseEntryDb.createExerciseEntry as any).mock
+    const payload = (exerciseEntryDb.createExerciseEntry as Mock).mock
       .calls[0][1];
     expect(payload.avg_heart_rate).toBe(110);
     expect(payload.max_heart_rate).toBe(120);
@@ -299,9 +290,8 @@ describe('workoutHandler — GPS, laps and zones', () => {
     expect(
       telemetryRepo.bulkInsertExerciseEntryGpsPoints
     ).toHaveBeenCalledTimes(1);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [userId, actingUserId, rows] = (
-      telemetryRepo.bulkInsertExerciseEntryGpsPoints as any
+      telemetryRepo.bulkInsertExerciseEntryGpsPoints as Mock
     ).mock.calls[0];
     expect(userId).toBe('user-1');
     expect(actingUserId).toBe('user-1');
@@ -319,8 +309,7 @@ describe('workoutHandler — GPS, laps and zones', () => {
   it('writes laps with server-derived aggregates and Date bounds', async () => {
     await workoutHandler.handle(gpsEntry(), makeCtx());
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (telemetryRepo.bulkInsertExerciseEntryLaps as any).mock
+    const rows = (telemetryRepo.bulkInsertExerciseEntryLaps as Mock).mock
       .calls[0][2];
     expect(rows).toHaveLength(2);
     expect(rows[0].start_time).toBeInstanceOf(Date);
@@ -332,8 +321,7 @@ describe('workoutHandler — GPS, laps and zones', () => {
   it('writes heart-rate zones', async () => {
     await workoutHandler.handle(gpsEntry(), makeCtx());
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (telemetryRepo.bulkInsertExerciseEntryHrZones as any).mock
+    const rows = (telemetryRepo.bulkInsertExerciseEntryHrZones as Mock).mock
       .calls[0][2];
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0]).toMatchObject({
@@ -383,8 +371,7 @@ describe('workoutHandler — GPS, laps and zones', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = (telemetryRepo.bulkInsertExerciseEntryGpsPoints as any).mock
+    const rows = (telemetryRepo.bulkInsertExerciseEntryGpsPoints as Mock).mock
       .calls[0][2];
     expect(rows).toHaveLength(2);
   });
@@ -404,8 +391,7 @@ describe('workoutHandler — heart-rate samples', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const call = (upsertSamplesByDay as any).mock.calls[0];
+    const call = (upsertSamplesByDay as Mock).mock.calls[0];
     expect(call[2]).toBe('heart_rate');
     expect(call[3]).toBe('HealthKit');
     expect(call[5]).toMatchObject({ mode: 'merge' });
@@ -424,8 +410,7 @@ describe('workoutHandler — heart-rate samples', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const samples = (upsertSamplesByDay as any).mock.calls[0][4];
+    const samples = (upsertSamplesByDay as Mock).mock.calls[0][4];
     expect(samples.every((s: { ex: string }) => s.ex === ENTRY_ID)).toBe(true);
   });
 
@@ -440,8 +425,7 @@ describe('workoutHandler — heart-rate samples', () => {
       makeCtx()
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const samples = (upsertSamplesByDay as any).mock.calls[0][4];
+    const samples = (upsertSamplesByDay as Mock).mock.calls[0][4];
     expect(samples.map((s: { entry_date: string }) => s.entry_date)).toEqual([
       '2026-08-04',
       '2026-08-05',
@@ -453,8 +437,7 @@ describe('workoutHandler — failure isolation', () => {
   it('still reports success when telemetry persistence fails', async () => {
     // The session itself saved; losing the map should not make the client
     // re-send the whole workout.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (telemetryRepo.bulkInsertExerciseEntryGpsPoints as any).mockRejectedValue(
+    (telemetryRepo.bulkInsertExerciseEntryGpsPoints as Mock).mockRejectedValue(
       new Error('gps table unavailable')
     );
 
@@ -472,8 +455,7 @@ describe('workoutHandler — failure isolation', () => {
   });
 
   it('reports an error when the entry itself fails', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (exerciseEntryDb.createExerciseEntry as any).mockRejectedValue(
+    (exerciseEntryDb.createExerciseEntry as Mock).mockRejectedValue(
       new Error('db down')
     );
 

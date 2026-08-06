@@ -242,19 +242,37 @@ describe('extractTelemetryActivityEntries', () => {
 });
 
 describe('providerLabel', () => {
-  it.each([
-    ['garmin', 'Garmin'],
-    ['garmin_fit', 'Garmin'],
-    ['strava', 'Strava'],
-    ['HealthKit', 'Apple Health'],
-    ['Health Connect', 'Health Connect'],
-  ])("maps '%s' to '%s'", (source, expected) => {
-    expect(providerLabel(source)).toBe(expected);
+  it('routes the one real brand-name mismatch (Apple Health) through a translation key', () => {
+    expect(providerLabel('HealthKit')).toEqual({
+      label: 'activityReport.provider.appleHealth',
+      isTranslationKey: true,
+      fallback: 'Apple Health',
+    });
   });
 
-  it('passes an unknown provider through unchanged', () => {
-    expect(providerLabel('Whoop')).toBe('Whoop');
+  it('collapses the garmin_fit alias onto the plain "Garmin" string, untranslated', () => {
+    expect(providerLabel('garmin_fit')).toEqual({
+      label: 'Garmin',
+      isTranslationKey: false,
+      fallback: 'Garmin',
+    });
   });
+
+  it.each([
+    ['garmin', 'Garmin'],
+    ['strava', 'Strava'],
+    ['Health Connect', 'Health Connect'],
+    ['Whoop', 'Whoop'],
+  ])(
+    "capitalizes '%s' generically, with no translation entry needed",
+    (source, expectedLabel) => {
+      expect(providerLabel(source)).toEqual({
+        label: expectedLabel,
+        isTranslationKey: false,
+        fallback: expectedLabel,
+      });
+    }
+  );
 
   it('returns null when there is no provider', () => {
     expect(providerLabel(null)).toBeNull();

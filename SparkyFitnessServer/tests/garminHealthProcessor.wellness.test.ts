@@ -7,11 +7,18 @@ import { vi, beforeEach, describe, it, expect } from 'vitest';
 // with an intraday reading array plus flat summary keys, not the
 // `hrvSummary`/`respirationValuesArray`-only shapes the old code expected).
 
-const upsertHealthMetricSamples = vi.fn().mockResolvedValue(undefined);
+const upsertHealthMetricSamplesWithClient = vi
+  .fn()
+  .mockResolvedValue(undefined);
+const getHealthMetricSampleRowForUpdateWithClient = vi
+  .fn()
+  .mockResolvedValue(null);
 const bulkUpsertVitals = vi.fn().mockResolvedValue([]);
 vi.mock('../models/genericHealthRepository.js', () => ({
-  upsertHealthMetricSamples: (...args: unknown[]) =>
-    upsertHealthMetricSamples(...args),
+  upsertHealthMetricSamplesWithClient: (...args: unknown[]) =>
+    upsertHealthMetricSamplesWithClient(...args),
+  getHealthMetricSampleRowForUpdateWithClient: (...args: unknown[]) =>
+    getHealthMetricSampleRowForUpdateWithClient(...args),
   bulkUpsertVitals: (...args: unknown[]) => bulkUpsertVitals(...args),
 }));
 
@@ -51,14 +58,15 @@ interface StoredSample {
 }
 
 function samplesForMetric(metric: string): StoredSample[] {
-  const call = upsertHealthMetricSamples.mock.calls.find(
+  const call = upsertHealthMetricSamplesWithClient.mock.calls.find(
     (c) => (c[2] as { metric?: string })?.metric === metric
   );
   return (call?.[2] as { samples: StoredSample[] } | undefined)?.samples ?? [];
 }
 
 beforeEach(() => {
-  upsertHealthMetricSamples.mockClear();
+  upsertHealthMetricSamplesWithClient.mockClear();
+  getHealthMetricSampleRowForUpdateWithClient.mockClear();
   bulkUpsertVitals.mockClear();
 });
 
@@ -254,7 +262,7 @@ describe('processGarminHealthAndWellnessData - respiration', () => {
       '2026-08-02'
     );
 
-    const call = upsertHealthMetricSamples.mock.calls.find(
+    const call = upsertHealthMetricSamplesWithClient.mock.calls.find(
       (c) => (c[2] as { metric?: string })?.metric === 'respiration'
     );
     expect((call?.[2] as { entry_date: string }).entry_date).toBe('2026-08-02');

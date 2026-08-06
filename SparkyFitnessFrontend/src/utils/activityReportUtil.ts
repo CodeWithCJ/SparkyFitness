@@ -147,27 +147,81 @@ export const getEventTypeLabel = (eventType: unknown): string | null => {
 };
 
 /**
- * Display names for the providers that write activity telemetry. Keys are the
- * lowercased `exercise_entries.source` values each ingest path writes.
+ * Providers whose raw `exercise_entries.source` string cannot just be
+ * capitalized into a display name — either the source itself is a brand
+ * mismatch (`healthkit` is Apple's API name, not what it calls the app;
+ * `Apple Health`), or it's an internal alias that must collapse onto another
+ * provider's label (`garmin_fit`, the FIT-file import path, is still Garmin
+ * to the user, not its own brand). Every other provider — garmin, strava,
+ * "Health Connect", a future Fitbit/Oura/Polar/Withings/Hevy integration —
+ * needs no entry here: capitalizeWords already turns their raw source string
+ * into the correct display name (verified: this app hardcodes "Garmin" as
+ * plain text in several other places too, e.g. externalProviderService.ts —
+ * there's no canonical provider-display-name table to defer to instead).
+ *
+ * `key` is present only where the label is worth resolving through
+ * useTranslation() — i.e. a real product name (Apple Health), not an
+ * internal alias like garmin_fit, which just needs the same plain string
+ * "garmin" itself resolves to.
+ *
+ * Keys of this map are lowercased `exercise_entries.source` values; this is a
+ * plain util, not a component, so it cannot call useTranslation() itself —
+ * resolve with t(key, fallback) at the render boundary.
  */
-const PROVIDER_LABELS: Record<string, string> = {
-  garmin: 'Garmin',
-  garmin_fit: 'Garmin',
-  strava: 'Strava',
-  healthkit: 'Apple Health',
-  'health connect': 'Health Connect',
+const PROVIDER_LABEL_EXCEPTIONS: Record<
+  string,
+  { key?: string; fallback: string }
+> = {
+  garmin_fit: { fallback: 'Garmin' },
+  healthkit: {
+    key: 'activityReport.provider.appleHealth',
+    fallback: 'Apple Health',
+  },
 };
 
+/** "health connect" / "garmin_fit" -> "Health Connect" / "Garmin Fit". */
+const capitalizeWords = (value: string): string =>
+  value
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+export interface ProviderLabel {
+  /** Pass to t() when isTranslationKey is true; render as-is otherwise. */
+  label: string;
+  /** false for a provider with no known display name — label is the raw provider_name. */
+  isTranslationKey: boolean;
+  /** English text to pass as t()'s default; unused when isTranslationKey is false. */
+  fallback: string;
+}
+
 /**
- * Human-readable provider name for display only.
+ * Resolves a provider_name to either a translation key (the small set of
+ * providers in PROVIDER_LABEL_EXCEPTIONS) or a capitalized version of the raw
+ * provider name (everything else) — never a hardcoded display string, so the
+ * caller must resolve it with t() before rendering.
  *
- * Never pass the result back into a query: `provider_name` is matched against
- * `exercise_entry_activity_details.provider_name` in the database, so a lookup
- * keyed on "Apple Health" silently returns nothing.
+ * Never pass provider_name (or this result) back into a query: it's matched
+ * against `exercise_entry_activity_details.provider_name` in the database, so
+ * anything other than the original raw value silently returns nothing.
  */
-export const providerLabel = (providerName?: string | null): string | null => {
+export const providerLabel = (
+  providerName?: string | null
+): ProviderLabel | null => {
   if (!providerName) return null;
-  return PROVIDER_LABELS[providerName.toLowerCase()] ?? providerName;
+  const entry = PROVIDER_LABEL_EXCEPTIONS[providerName.toLowerCase()];
+  if (entry) {
+    return entry.key
+      ? { label: entry.key, isTranslationKey: true, fallback: entry.fallback }
+      : {
+          label: entry.fallback,
+          isTranslationKey: false,
+          fallback: entry.fallback,
+        };
+  }
+  const capitalized = capitalizeWords(providerName);
+  return { label: capitalized, isTranslationKey: false, fallback: capitalized };
 };
 
 export const processChartData = (

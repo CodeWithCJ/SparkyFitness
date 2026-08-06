@@ -81,6 +81,18 @@ export const performBackgroundSync = async (taskId: string): Promise<void> => {
   return inflightSync;
 };
 
+/**
+ * taskId 'manual-sync' is triggerManualSync — a user explicitly tapping a
+ * button while looking at the app (currently only the Dev Tools "Trigger
+ * Sync" action). Everything else that reaches this function (the real OS
+ * background task, and the iOS 'healthkit-observer' silent-delivery callback)
+ * runs with no user present and must stay capped/non-interactive: a route
+ * consent dialog cannot be shown headless, and an unbounded per-workout
+ * telemetry read has no time budget to respect.
+ */
+const isForegroundTriggeredSync = (taskId: string): boolean =>
+  taskId === 'manual-sync';
+
 const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   if (isBackfillRunning()) {
     addLog(`[Background Sync] Skipping ${taskId} — history import is running`, 'INFO');
@@ -88,6 +100,14 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   }
 
   addLog(`[Background Sync] Starting background sync task: ${taskId}`, 'INFO');
+
+  if (isForegroundTriggeredSync(taskId)) {
+    // No budget cap and no UI restriction: the user is present and can see
+    // (and answer) a route consent prompt, so there's nothing to protect
+    // against here.
+    await runBackgroundSync(taskId);
+    return;
+  }
 
   // Cap per-workout telemetry collection for this run, and forbid anything that
   // would need to show UI (Android route consent); see telemetryBudget.ts.

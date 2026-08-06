@@ -1226,6 +1226,31 @@ function sanitizeTelemetry(
   return out;
 }
 
+/**
+ * Chronological comparator for ISO timestamp strings. Lexicographic order
+ * (localeCompare) only agrees with chronological order when every string uses
+ * the same UTC offset — a mix of `Z` and `+02:00` instants, or fractional vs
+ * whole seconds, sorts wrong even though Date.parse handles both fine.
+ */
+const byInstant = (a: string, b: string): number =>
+  Date.parse(a) - Date.parse(b);
+
+/**
+ * Min/max over a possibly-large array of epoch-ms instants without spreading
+ * into Math.min/Math.max — a long session at 1s sampling can produce tens of
+ * thousands of points, and one argument per element risks
+ * "RangeError: Maximum call stack size exceeded".
+ */
+function minMax(instantsMs: number[]): { startMs: number; endMs: number } {
+  let startMs = instantsMs[0];
+  let endMs = instantsMs[0];
+  for (const ms of instantsMs) {
+    if (ms < startMs) startMs = ms;
+    if (ms > endMs) endMs = ms;
+  }
+  return { startMs, endMs };
+}
+
 /** Keeps only well-formed trackpoints; a point without a fix is unusable. */
 function sanitizeGpsPoints(raw: unknown): TelemetryGpsPoint[] {
   if (!Array.isArray(raw)) return [];
@@ -1239,7 +1264,7 @@ function sanitizeGpsPoints(raw: unknown): TelemetryGpsPoint[] {
         Number.isFinite((p as TelemetryGpsPoint).lon) &&
         Number.isFinite(Date.parse((p as TelemetryGpsPoint).t))
     )
-    .sort((a, b) => a.t.localeCompare(b.t));
+    .sort((a, b) => byInstant(a.t, b.t));
 }
 
 /** Keeps only well-formed bpm readings. */
@@ -1254,7 +1279,7 @@ function sanitizeHrSamples(raw: unknown): HrSample[] {
         Number.isFinite((s as HrSample).bpm) &&
         Number.isFinite(Date.parse((s as HrSample).t))
     )
-    .sort((a, b) => a.t.localeCompare(b.t));
+    .sort((a, b) => byInstant(a.t, b.t));
 }
 
 /** Keeps only laps with a usable window, renumbering to a dense 1-based index. */
@@ -1270,7 +1295,7 @@ function sanitizeLaps(raw: unknown): LapWindow[] {
         Number.isFinite(Date.parse((l as LapWindow).start_time)) &&
         Number.isFinite(Date.parse((l as LapWindow).end_time))
     )
-    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+    .sort((a, b) => byInstant(a.start_time, b.start_time))
     .map((lap, index) => ({ ...lap, lap_index: index + 1 }));
 }
 
@@ -1394,7 +1419,7 @@ async function persistWorkoutTelemetry(
         // Replacing it here would delete the rest of the day's readings, so only
         // the span this workout covers is swapped out.
         mode: 'merge',
-        window: { startMs: Math.min(...times), endMs: Math.max(...times) },
+        window: minMax(times),
       }
     );
   }

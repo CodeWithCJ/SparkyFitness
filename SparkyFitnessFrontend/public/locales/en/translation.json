@@ -2209,6 +2209,9 @@
     },
     "noMapDataAvailable": "No map data available.",
     "activityReport": {
+      "provider": {
+        "appleHealth": "Apple Health"
+      },
       "loadingActivityReport": "Loading activity report...",
       "error": "Error:",
       "noActivityDataAvailable": "No activity data available.",

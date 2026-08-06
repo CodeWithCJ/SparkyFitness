@@ -74,8 +74,17 @@ function mean(values: readonly number[]): number | null {
   return total / values.length;
 }
 
+// Reduces rather than spreads into Math.max/Math.min: a long session's speed,
+// cadence, power, or altitude series can run tens of thousands of points, and
+// one argument per element risks "RangeError: Maximum call stack size exceeded".
 function max(values: readonly number[]): number | null {
-  return values.length === 0 ? null : Math.max(...values);
+  if (values.length === 0) return null;
+  return values.reduce((m, v) => (v > m ? v : m), values[0]);
+}
+
+function min(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((m, v) => (v < m ? v : m), values[0]);
 }
 
 const round = (value: number | null, digits = 2): number | null =>
@@ -251,12 +260,8 @@ export function deriveWorkoutTelemetry(
     max_power_watts: round(max(powers), 1),
     elevation_gain_meters: round(gain),
     elevation_loss_meters: round(loss),
-    min_elevation_meters: round(
-      altitudes.length ? Math.min(...altitudes) : null
-    ),
-    max_elevation_meters: round(
-      altitudes.length ? Math.max(...altitudes) : null
-    ),
+    min_elevation_meters: round(min(altitudes)),
+    max_elevation_meters: round(max(altitudes)),
   };
 
   for (const key of Object.keys(derived)) {

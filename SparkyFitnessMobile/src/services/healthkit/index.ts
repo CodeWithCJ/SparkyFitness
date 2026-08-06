@@ -895,6 +895,30 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
     const quantityOf = (v: { quantity?: number } | number | undefined) =>
       typeof v === 'object' ? v?.quantity : v;
 
+    // These all come from the workout sample already loaded above — no route
+    // read, no per-workout sample query — so they must not be gated behind the
+    // telemetry budget below. Gating them too would mean every workout past the
+    // budget on a backfill silently loses elevation/floors/strokes/elapsed time
+    // as well, even though the budget exists only to cap the expensive reads.
+    const telemetry: Record<string, number | null | undefined> = {};
+    const gain = elevation.metadataElevationAscended?.quantity;
+    const loss = elevation.metadataElevationDescended?.quantity;
+    const floors = quantityOf(elevation.totalFlightsClimbed);
+    const strokes = quantityOf(elevation.totalSwimmingStrokeCount);
+    if (typeof gain === 'number') telemetry.elevation_gain_meters = gain;
+    if (typeof loss === 'number') telemetry.elevation_loss_meters = loss;
+    if (typeof floors === 'number') telemetry.floors_climbed = floors;
+    if (typeof strokes === 'number') telemetry.stroke_count = strokes;
+    // w.duration is a Quantity ({ unit, quantity }), not a raw number — the
+    // same shape totalEnergyBurned/totalDistance arrive in above.
+    const durationSeconds = quantityOf(
+      w.duration as { quantity?: number } | number | undefined
+    );
+    if (typeof durationSeconds === 'number') {
+      telemetry.elapsed_time_seconds = Math.round(durationSeconds);
+    }
+    if (totalEnergyBurned) telemetry.active_calories = totalEnergyBurned;
+
     // Telemetry must be collected here, inside the closure that owns the live
     // proxy: the per-workout sample predicate takes the proxy object itself,
     // and the proxy cannot be carried out on the returned record.
@@ -906,27 +930,10 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
       if (bundle.gps_points) record.gps_points = bundle.gps_points;
       if (bundle.hr_samples) record.hr_samples = bundle.hr_samples;
       if (bundle.laps) record.laps = bundle.laps;
-
-      const telemetry = { ...(bundle.telemetry ?? {}) };
-      const gain = elevation.metadataElevationAscended?.quantity;
-      const loss = elevation.metadataElevationDescended?.quantity;
-      const floors = quantityOf(elevation.totalFlightsClimbed);
-      const strokes = quantityOf(elevation.totalSwimmingStrokeCount);
-      if (typeof gain === 'number') telemetry.elevation_gain_meters = gain;
-      if (typeof loss === 'number') telemetry.elevation_loss_meters = loss;
-      if (typeof floors === 'number') telemetry.floors_climbed = floors;
-      if (typeof strokes === 'number') telemetry.stroke_count = strokes;
-      // w.duration is a Quantity ({ unit, quantity }), not a raw number — the
-      // same shape totalEnergyBurned/totalDistance arrive in above.
-      const durationSeconds = quantityOf(
-        w.duration as { quantity?: number } | number | undefined
-      );
-      if (typeof durationSeconds === 'number') {
-        telemetry.elapsed_time_seconds = Math.round(durationSeconds);
-      }
-      if (totalEnergyBurned) telemetry.active_calories = totalEnergyBurned;
-      if (Object.keys(telemetry).length > 0) record.telemetry = telemetry;
+      Object.assign(telemetry, bundle.telemetry);
     }
+
+    if (Object.keys(telemetry).length > 0) record.telemetry = telemetry;
 
     return record;
   }));

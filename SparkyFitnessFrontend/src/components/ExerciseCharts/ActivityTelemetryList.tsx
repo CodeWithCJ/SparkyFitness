@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import ActivityReportVisualizer from '@/pages/Reports/ActivityReportVisualizer'; // Adjust path if needed
-import { providerLabel } from '@/utils/activityReportUtil';
+import { providerLabel as resolveProviderLabel } from '@/utils/activityReportUtil';
 import { ExerciseProgressResponse } from '@workspace/shared';
 
 interface ActivityTelemetryListProps {
@@ -25,29 +25,37 @@ export const ActivityTelemetryList = ({
       <h2 className="text-2xl font-bold">
         {title || t('exerciseReportsDashboard.activityMaps', 'Activity Maps')}
       </h2>
-      {entries.map((entry) => (
-        <div
-          key={entry.exercise_entry_id}
-          className="border p-4 rounded-lg shadow-sm"
-        >
-          <div className="flex items-baseline justify-between gap-2 mb-2">
-            <h3 className="text-xl font-semibold">
-              {formatDate(parseISO(entry.entry_date), 'MMM dd, yyyy')}
-            </h3>
-            {providerLabel(entry.provider_name) && (
-              <span className="text-sm text-muted-foreground">
-                {providerLabel(entry.provider_name)}
-              </span>
-            )}
+      {entries.map((entry) => {
+        const provider = resolveProviderLabel(entry.provider_name);
+        const displayLabel = provider
+          ? provider.isTranslationKey
+            ? t(provider.label, provider.fallback)
+            : provider.label
+          : null;
+        return (
+          <div
+            key={entry.exercise_entry_id}
+            className="border p-4 rounded-lg shadow-sm"
+          >
+            <div className="flex items-baseline justify-between gap-2 mb-2">
+              <h3 className="text-xl font-semibold">
+                {formatDate(parseISO(entry.entry_date), 'MMM dd, yyyy')}
+              </h3>
+              {displayLabel && (
+                <span className="text-sm text-muted-foreground">
+                  {displayLabel}
+                </span>
+              )}
+            </div>
+            {/* The raw provider_name is the DB lookup key — pass it through
+                unmapped; resolveProviderLabel above is for display only. */}
+            <ActivityReportVisualizer
+              exerciseEntryId={entry.exercise_entry_id!}
+              providerName={entry.provider_name || 'garmin'}
+            />
           </div>
-          {/* The raw provider_name is the DB lookup key — pass it through
-              unmapped; providerLabel above is for display only. */}
-          <ActivityReportVisualizer
-            exerciseEntryId={entry.exercise_entry_id!}
-            providerName={entry.provider_name || 'garmin'}
-          />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
