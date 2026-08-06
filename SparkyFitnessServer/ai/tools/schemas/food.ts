@@ -6,6 +6,7 @@ import {
   uuidSchema,
   mealTypeEnum,
   searchTypeEnum,
+  foodProviderTypeEnum,
   entryTypeEnum,
   giIndexEnum,
   paginationSchema,
@@ -32,17 +33,7 @@ const lookupFoodNutritionSchema = z
       .min(1)
       .max(200)
       .describe('Name of the food to lookup'),
-    provider_type: z
-      .enum([
-        'internal',
-        'openfoodfacts',
-        'usda',
-        'fatsecret',
-        'mealie',
-        'tandoor',
-        'yazio',
-        'norish',
-      ])
+    provider_type: foodProviderTypeEnum
       .optional()
       .describe(
         'Optional: Force a specific provider search, bypassing the cascade lookup'
@@ -122,17 +113,7 @@ const logExternalFoodSchema = z
       .describe(
         "The lookup result's External ID, to pin the exact provider item (optional)"
       ),
-    provider_type: z
-      .enum([
-        'internal',
-        'openfoodfacts',
-        'usda',
-        'fatsecret',
-        'mealie',
-        'tandoor',
-        'yazio',
-        'norish',
-      ])
+    provider_type: foodProviderTypeEnum
       .optional()
       .describe('Provider the lookup match came from (optional)'),
     quantity: z.coerce
@@ -792,16 +773,7 @@ export const manageFoodInput = z.object({
   start_date: dateSchema.optional().describe('Start date for range queries'),
   end_date: dateSchema.optional().describe('End date for range queries'),
   // explicit search provider
-  provider_type: z
-    .enum([
-      'internal',
-      'openfoodfacts',
-      'usda',
-      'fatsecret',
-      'mealie',
-      'tandoor',
-      'norish',
-    ])
+  provider_type: foodProviderTypeEnum
     .optional()
     .describe('Optional: Force a specific provider search (e.g. USDA)'),
 });
