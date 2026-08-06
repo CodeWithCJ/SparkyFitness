@@ -42,6 +42,8 @@ import {
   MED_TYPE_COLORS,
   SUPPLEMENT_FORMS,
   positiveDoseOrNull,
+  collectNutrientsToProvision,
+  isStoredNutrientAmount,
   type NutrientPick,
 } from './medicationUtils';
 import { NutrientPicker } from './NutrientPicker';
@@ -304,8 +306,7 @@ export default function AddMedicationDialog({
     FOOD_VARIANT_NUTRIENT_FIELDS.forEach((field) => {
       if (!selected.has(field)) return;
       const value = nutrientVariant[field];
-      if (typeof value === 'number' && Number.isFinite(value))
-        nutrients[field] = value;
+      if (isStoredNutrientAmount(value)) nutrients[field] = value;
     });
     // Two provisional keys can resolve onto the SAME existing nutrient (the user's
     // "Vitamin D" absorbing both "Vitamin D2" and "Vitamin D3"), so build the object by
@@ -316,7 +317,7 @@ export default function AddMedicationDialog({
       nutrientVariant.custom_nutrients ?? {}
     )) {
       if (!selected.has(name)) continue;
-      if (typeof value !== 'number' || !Number.isFinite(value)) continue;
+      if (!isStoredNutrientAmount(value)) continue;
       const key = rename[name] ?? name;
       custom[key] = (custom[key] ?? 0) + value;
     }
@@ -333,20 +334,16 @@ export default function AddMedicationDialog({
     string,
     string
   > | null> => {
-    const selected = new Set(selectedNutrients);
-    const catalogIds: string[] = [];
-    const provisionalByCatalogId: Record<string, string> = {};
-    const freeText: { key: string; unit: string }[] = [];
-
-    for (const [key, pending] of Object.entries(pendingNutrients)) {
-      if (!selected.has(key)) continue; // picked, then removed again
-      if (pending.catalogId) {
-        catalogIds.push(pending.catalogId);
-        provisionalByCatalogId[pending.catalogId] = key;
-      } else if (pending.isNew) {
-        freeText.push({ key, unit: pending.unit });
-      }
-    }
+    // Rows left blank are skipped: getNutrients() won't store them, so creating their
+    // nutrient (plus goal and display-preference fan-out) would leave orphan rows the
+    // supplement never references. They stay pending, so filling one in later and
+    // re-saving still creates it.
+    const { catalogIds, provisionalByCatalogId, freeText } =
+      collectNutrientsToProvision(
+        pendingNutrients,
+        selectedNutrients,
+        nutrientVariant.custom_nutrients
+      );
 
     const prunePending = (key: string) =>
       setPendingNutrients((current) => {

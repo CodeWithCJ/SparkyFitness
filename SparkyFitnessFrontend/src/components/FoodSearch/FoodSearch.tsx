@@ -44,6 +44,7 @@ import {
   searchNutritionixOptions,
 } from '@/hooks/Foods/useNutrionix.ts';
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients.ts';
+import { visibleCustomNutrients } from '@/utils/nutrientUtils.ts';
 import {
   convertNutritionixToFood,
   pinDefaultVariantToServing,
@@ -1078,15 +1079,31 @@ const EnhancedFoodSearch = ({
       (p) => p.view_group === 'quick_info' && p.platform === 'desktop'
     );
 
+  // Custom nutrients are gated by the food_database view group, the group the
+  // settings page adds them to by default — supplement-scoped nutrients are
+  // deliberately absent from it and must not become columns on every result card.
+  const foodDatabasePreferences =
+    nutrientDisplayPreferences.find(
+      (p) => p.view_group === 'food_database' && p.platform === platform
+    ) ||
+    nutrientDisplayPreferences.find(
+      (p) => p.view_group === 'food_database' && p.platform === 'desktop'
+    );
+
   const visibleNutrients = useMemo(() => {
     const base = quickInfoPreferences
       ? quickInfoPreferences.visible_nutrients
       : DEFAULT_NUTRIENTS;
 
-    const allKeys = [...base, ...(customNutrients?.map((cn) => cn.name) || [])];
+    const allKeys = [
+      ...base,
+      ...visibleCustomNutrients(customNutrients, foodDatabasePreferences).map(
+        (cn) => cn.name
+      ),
+    ];
 
     return Array.from(new Set(allKeys));
-  }, [quickInfoPreferences, customNutrients]);
+  }, [quickInfoPreferences, foodDatabasePreferences, customNutrients]);
 
   const nutrientConfig = {
     visibleNutrients,

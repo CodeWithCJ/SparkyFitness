@@ -331,6 +331,51 @@ export interface NutrientPick {
 }
 
 /**
+ * True when a staged nutrient value would actually be written into the saved payload —
+ * a real finite number. A cleared input holds `''` and an untouched row `undefined`.
+ */
+export const isStoredNutrientAmount = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+/**
+ * Which pending picker rows to find-or-create when the supplement is saved.
+ *
+ * A row qualifies only if it is still in the editor (`selectedNutrients`) AND carries
+ * an amount the payload will store. The amount check is load-bearing: the multivitamin
+ * panel stages ~20 rows in one click, and saving with only two filled in must not
+ * materialize the other eighteen — every created nutrient also fans out into goal
+ * targets and report/goal display preferences on all platforms.
+ */
+export function collectNutrientsToProvision(
+  pendingNutrients: Record<
+    string,
+    Pick<NutrientPick, 'catalogId' | 'unit' | 'isNew'>
+  >,
+  selectedNutrients: string[],
+  customValues: Record<string, string | number> | undefined
+): {
+  catalogIds: string[];
+  provisionalByCatalogId: Record<string, string>;
+  freeText: { key: string; unit: string }[];
+} {
+  const selected = new Set(selectedNutrients);
+  const catalogIds: string[] = [];
+  const provisionalByCatalogId: Record<string, string> = {};
+  const freeText: { key: string; unit: string }[] = [];
+  for (const [key, pending] of Object.entries(pendingNutrients)) {
+    if (!selected.has(key)) continue; // picked, then removed again
+    if (!isStoredNutrientAmount(customValues?.[key])) continue; // left blank
+    if (pending.catalogId) {
+      catalogIds.push(pending.catalogId);
+      provisionalByCatalogId[pending.catalogId] = key;
+    } else if (pending.isNew) {
+      freeText.push({ key, unit: pending.unit });
+    }
+  }
+  return { catalogIds, provisionalByCatalogId, freeText };
+}
+
+/**
  * Every name the rows already in the supplement editor answer to: each row's own key,
  * plus the aliases of the custom nutrient behind it.
  *
