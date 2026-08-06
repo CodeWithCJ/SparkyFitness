@@ -64,7 +64,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   }, [refetch]);
 
   const renderEmpty = () => {
-    if (foods.length > 0 && filteredFoods.length === 0) {
+    if (ownershipFilter !== 'all' && foods.length > 0 && filteredFoods.length === 0) {
       return (
         <StatusView
           inline

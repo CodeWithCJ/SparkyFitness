@@ -87,7 +87,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   );
 
   const renderEmpty = () => {
-    if (displayedMeals.length > 0 && filteredMeals.length === 0) {
+    if (ownershipFilter !== 'all' && displayedMeals.length > 0 && filteredMeals.length === 0) {
       return (
         <StatusView
           inline

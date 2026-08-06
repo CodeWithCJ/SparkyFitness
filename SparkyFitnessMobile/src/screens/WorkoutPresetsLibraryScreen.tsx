@@ -58,7 +58,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
   );
 
   const renderEmpty = () => {
-    if (presets.length > 0 && filteredPresets.length === 0) {
+    if (ownershipFilter !== 'all' && presets.length > 0 && filteredPresets.length === 0) {
       return (
         <StatusView
           inline

@@ -336,7 +336,7 @@ useEffect(() => {
     }
 
     if (filteredSearchResults.length === 0) {
-      if (searchResults.length > 0) {
+      if (ownershipFilter !== 'all' && searchResults.length > 0) {
         return (
           <StatusView
             {...ownershipFilterEmptyState({
@@ -387,7 +387,7 @@ useEffect(() => {
     }
 
     if (sections.length === 0) {
-      if (recentExercises.length > 0 || topExercises.length > 0) {
+      if (ownershipFilter !== 'all' && (recentExercises.length > 0 || topExercises.length > 0)) {
         return (
           <StatusView
             {...ownershipFilterEmptyState({

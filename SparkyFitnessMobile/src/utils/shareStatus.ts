@@ -57,7 +57,8 @@ export function ownershipFilterHeaderMenu({
  * Empty-state copy for a list whose visible items are all hidden by the
  * ownership filter. Lives beside the menu factory so the wording stays
  * aligned with OWNERSHIP_FILTER_LABELS. Spread into a StatusView alongside
- * any layout props (e.g. `inline`).
+ * any layout props (e.g. `inline`). 'all' is excluded because it hides
+ * nothing — callers keep their regular empty state for that case.
  */
 export function ownershipFilterEmptyState({
   noun,
@@ -65,7 +66,7 @@ export function ownershipFilterEmptyState({
   onReset,
 }: {
   noun: string;
-  filter: OwnershipFilter;
+  filter: Exclude<OwnershipFilter, 'all'>;
   onReset: () => void;
 }) {
   return {

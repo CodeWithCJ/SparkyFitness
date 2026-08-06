@@ -59,7 +59,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   );
 
   const renderEmpty = () => {
-    if (exercises.length > 0 && filteredExercises.length === 0) {
+    if (ownershipFilter !== 'all' && exercises.length > 0 && filteredExercises.length === 0) {
       return (
         <StatusView
           inline
