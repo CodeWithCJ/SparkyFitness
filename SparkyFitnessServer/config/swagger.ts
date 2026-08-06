@@ -1020,7 +1020,7 @@ const options = {
         WaterContainer: {
           type: 'object',
           properties: {
-            id: { type: 'string', format: 'uuid' },
+            id: { type: 'integer' },
             user_id: { type: 'string', format: 'uuid' },
             name: { type: 'string' },
             volume: { type: 'number', description: 'Volume in specified unit' },

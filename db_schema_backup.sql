@@ -45,6 +45,21 @@ $$;
 
 
 --
+-- Name: sf_try_numeric(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sf_try_numeric(txt text) RETURNS numeric
+    LANGUAGE sql IMMUTABLE
+    AS $$
+SELECT CASE
+    WHEN txt ~ '^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]{1,4})?$'
+     AND length(txt) <= 64 THEN txt::numeric
+    ELSE NULL
+END;
+$$;
+
+
+--
 -- Name: authenticated_user_id(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2434,11 +2449,13 @@ CREATE TABLE public.medication_entries (
     med_name_snapshot text,
     dose_amount_snapshot numeric,
     dose_unit_snapshot character varying(20),
+    nutrients_snapshot jsonb,
     notes text,
     source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT medication_entries_nutrients_snapshot_is_object CHECK (((nutrients_snapshot IS NULL) OR (jsonb_typeof(nutrients_snapshot) = 'object'::text)))
 );
 
 
@@ -2591,11 +2608,14 @@ CREATE TABLE public.medications (
     is_active boolean DEFAULT true NOT NULL,
     is_quick boolean DEFAULT false NOT NULL,
     is_glp1 boolean DEFAULT false NOT NULL,
+    is_supplement boolean DEFAULT false NOT NULL,
+    nutrients jsonb DEFAULT '{}'::jsonb NOT NULL,
     notes text,
     source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT medications_nutrients_is_object CHECK ((jsonb_typeof(nutrients) = 'object'::text))
 );
 
 
@@ -5641,6 +5661,13 @@ CREATE INDEX idx_medication_titration_steps_user_id ON public.medication_titrati
 --
 
 CREATE INDEX idx_medications_is_glp1 ON public.medications USING btree (user_id, is_glp1) WHERE is_glp1;
+
+
+--
+-- Name: idx_medications_is_supplement; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medications_is_supplement ON public.medications USING btree (user_id, is_supplement) WHERE is_supplement;
 
 
 --

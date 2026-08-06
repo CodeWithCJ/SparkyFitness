@@ -1,9 +1,11 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import measurementService from '../services/measurementService.js';
 import measurementRepository from '../models/measurementRepository.js';
+import waterContainerRepository from '../models/waterContainerRepository.js';
 import { UpsertWaterIntakeBodySchema } from '../schemas/measurementSchemas.js';
 // Mock the repository functions
 vi.mock('../models/measurementRepository');
+vi.mock('../models/waterContainerRepository');
 describe('Measurement Service - Water Intake', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -97,6 +99,76 @@ describe('Measurement Service - Water Intake', () => {
       expect(
         measurementRepository.getWaterIntakeEntryOwnerId
       ).toHaveBeenCalledWith(mockEntryId, mockUserId);
+    });
+  });
+  describe('upsertWaterIntake', () => {
+    const mockUserId = 'test-user-id';
+    const entryDate = '2026-08-05';
+
+    beforeEach(() => {
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementRepository.incrementWaterData.mockResolvedValue({});
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementRepository.insertWaterIntakeLog.mockResolvedValue({});
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementRepository.getWaterIntakeByDate.mockResolvedValue({});
+    });
+
+    it('divides container volume by servings_per_container per drink', async () => {
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      waterContainerRepository.getWaterContainerById.mockResolvedValue({
+        id: 3,
+        name: 'Jug',
+        volume: '2000.000',
+        servings_per_container: 8,
+      });
+      await measurementService.upsertWaterIntake(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        1,
+        3
+      );
+      expect(measurementRepository.incrementWaterData).toHaveBeenCalledWith(
+        mockUserId,
+        mockUserId,
+        250,
+        entryDate,
+        'manual'
+      );
+      expect(measurementRepository.insertWaterIntakeLog).toHaveBeenCalledWith(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        250,
+        3,
+        'Jug',
+        'manual'
+      );
+    });
+
+    it('falls back to the full container volume when servings_per_container is 0', async () => {
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      waterContainerRepository.getWaterContainerById.mockResolvedValue({
+        id: 3,
+        name: 'Broken Row',
+        volume: '750.000',
+        servings_per_container: 0,
+      });
+      await measurementService.upsertWaterIntake(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        1,
+        3
+      );
+      expect(measurementRepository.incrementWaterData).toHaveBeenCalledWith(
+        mockUserId,
+        mockUserId,
+        750,
+        entryDate,
+        'manual'
+      );
     });
   });
   describe('updateWaterIntake', () => {

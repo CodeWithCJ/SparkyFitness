@@ -95,6 +95,40 @@ export function eliminationRate(halfLifeDays: number): number {
   return Math.LN2 / halfLifeDays;
 }
 
+/** Fastest absorption the model offers, for a `tMaxDays` no finite rate can reach. Bounded well
+ * below `Number.MAX_VALUE` so `doseMg * ka` in `serumLevelAt` cannot overflow to Infinity. */
+const MAX_ABSORPTION_RATE = Number.MAX_SAFE_INTEGER;
+
+/** First-order absorption rate constant (per day) placing the single-dose peak at `tMaxDays`. */
+export function absorptionRate(halfLifeDays: number, tMaxDays: number): number {
+  const ke = eliminationRate(halfLifeDays);
+  if (!(tMaxDays > 0) || !Number.isFinite(tMaxDays)) return ke * 4;
+
+  const peakAt = (ka: number) => Math.log(ka / ke) / (ka - ke);
+
+  let lo = ke * 1.000001;
+  let hi = ke * 2;
+  while (peakAt(hi) > tMaxDays && hi < MAX_ABSORPTION_RATE) {
+    hi = Math.min(hi * 2, MAX_ABSORPTION_RATE);
+  }
+
+  let ka: number;
+  if (peakAt(hi) > tMaxDays) {
+    ka = MAX_ABSORPTION_RATE;
+  } else if (peakAt(lo) < tMaxDays) {
+    ka = lo;
+  } else {
+    for (let i = 0; i < 100; i += 1) {
+      const mid = (lo + hi) / 2;
+      if (peakAt(mid) > tMaxDays) lo = mid;
+      else hi = mid;
+    }
+    ka = (lo + hi) / 2;
+  }
+
+  return ka;
+}
+
 export interface DoseEvent {
   /** day index (can be fractional) when the dose was administered */
   day: number;
@@ -113,11 +147,7 @@ export function serumLevelAt(
   profile: Pick<Glp1DrugProfile, "halfLifeDays" | "tMaxDays">,
 ): number {
   const ke = eliminationRate(profile.halfLifeDays);
-  // Absorption rate: derived so the single-dose peak lands near tMax.
-  const ka =
-    profile.tMaxDays > 0
-      ? Math.max(ke * 1.5, Math.LN2 / profile.tMaxDays)
-      : ke * 4;
+  const ka = absorptionRate(profile.halfLifeDays, profile.tMaxDays);
   let level = 0;
   for (const d of doses) {
     const t = day - d.day;

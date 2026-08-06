@@ -9,6 +9,7 @@ import titrationRepository from '../models/titrationRepository.js';
 import medicationEntryRepository from '../models/medicationEntryRepository.js';
 import medicationDisplayPreferenceRepository from '../models/medicationDisplayPreferenceRepository.js';
 import glp1Service from '../services/glp1Service.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 import medicationRoutes from '../routes/v2/medicationRoutes.js';
 
 vi.mock('../models/medicationRepository.js');
@@ -18,6 +19,23 @@ vi.mock('../models/titrationRepository.js');
 vi.mock('../models/medicationEntryRepository.js');
 vi.mock('../models/medicationDisplayPreferenceRepository.js');
 vi.mock('../services/glp1Service.js');
+vi.mock('../utils/permissionUtils.js', () => ({
+  canAccessUserData: vi.fn(),
+}));
+
+// resolveIsSupplement reads the medication's subtype directly, so steer it per-test.
+const supplementLookup = { is_supplement: false };
+// Records every statement the subtype resolver runs so a test can assert its shape.
+const executedSql: string[] = [];
+vi.mock('../db/poolManager.js', () => ({
+  getClient: vi.fn(async () => ({
+    query: vi.fn(async (sql: string) => {
+      executedSql.push(String(sql));
+      return { rows: [supplementLookup] };
+    }),
+    release: vi.fn(),
+  })),
+}));
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
   default: vi.fn(
     () =>
@@ -56,7 +74,12 @@ const UID = '550e8400-e29b-41d4-a716-446655440000';
 const cookie = ['userId=testUser'];
 
 describe('Medication Routes V2', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    executedSql.length = 0;
+    // Default to an actor who may write diary data (the ordinary self-serve case).
+    vi.mocked(canAccessUserData).mockResolvedValue(true);
+  });
 
   describe('GET /api/v2/medications', () => {
     it('lists medications for the user', async () => {
@@ -111,6 +134,233 @@ describe('Medication Routes V2', () => {
         .send({ is_glp1: true });
       expect(res.statusCode).toBe(400);
       expect(res.body).toHaveProperty('error', 'Invalid request');
+    });
+
+    // A supplement's nutrient payload feeds the owner's daily nutrition totals, so
+    // writing it needs diary permission on top of the medication permission that
+    // guards this router. The client hides the editor, but that is only an
+    // affordance — these cases pin the server-side half.
+    it('keeps nutrient fields when the actor has diary access', async () => {
+      vi.mocked(canAccessUserData).mockResolvedValue(true);
+      vi.mocked(medicationRepository.createMedication).mockResolvedValue({
+        id: UID,
+        name: 'Vitamin D',
+      });
+
+      await request(app)
+        .post('/api/v2/medications')
+        .set('Cookie', cookie)
+        .send({
+          name: 'Vitamin D',
+          is_supplement: true,
+          nutrients: { custom_nutrients: { 'Vitamin D': 25 } },
+        });
+
+      const body = vi.mocked(medicationRepository.createMedication).mock
+        .calls[0][1];
+      expect(body).toMatchObject({
+        is_supplement: true,
+        nutrients: { custom_nutrients: { 'Vitamin D': 25 } },
+      });
+    });
+
+    it('strips nutrient fields when the actor lacks diary access', async () => {
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+      vi.mocked(medicationRepository.createMedication).mockResolvedValue({
+        id: UID,
+        name: 'Vitamin D',
+      });
+
+      const res = await request(app)
+        .post('/api/v2/medications')
+        .set('Cookie', cookie)
+        .send({
+          name: 'Vitamin D',
+          is_supplement: true,
+          nutrients: { calories: 500 },
+        });
+
+      // Stripped rather than rejected: the caregiver may still manage the
+      // medication itself, they just cannot attach nutrition to it.
+      expect(res.statusCode).toBe(201);
+      const body = vi.mocked(medicationRepository.createMedication).mock
+        .calls[0][1];
+      expect(body).not.toHaveProperty('nutrients');
+      // The classification is KEPT on create: it is not nutrition, a supplement with
+      // no payload rolls nothing up, and dropping it would silently turn the
+      // caregiver's "Add supplement" into a plain medication.
+      expect(body).toMatchObject({ name: 'Vitamin D', is_supplement: true });
+    });
+
+    it('strips the supplement flag on UPDATE when the actor lacks diary access', async () => {
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+      vi.mocked(medicationRepository.updateMedication).mockResolvedValue({
+        id: UID,
+        name: 'Vitamin D',
+      });
+
+      // Unlike create, setting the flag on an existing medication could switch on a
+      // nutrient payload the owner already stored — nutrition this caller may not write.
+      await request(app)
+        .put(`/api/v2/medications/${UID}`)
+        .set('Cookie', cookie)
+        .send({ is_supplement: true, nutrients: { calories: 500 } });
+
+      const body = vi.mocked(medicationRepository.updateMedication).mock
+        .calls[0][2];
+      expect(body).not.toHaveProperty('nutrients');
+      expect(body).not.toHaveProperty('is_supplement');
+    });
+
+    it('rejects logging a supplement dose without diary access', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+
+      const res = await request(app)
+        .post('/api/v2/medications/entries')
+        .set('Cookie', cookie)
+        .send({ medication_id: UID, status: 'taken' });
+
+      // Rejected, not stripped: there is no harmless subset of "log this dose",
+      // and createEntry would snapshot the nutrients server-side regardless.
+      expect(res.statusCode).toBe(403);
+      expect(medicationEntryRepository.createEntry).not.toHaveBeenCalled();
+      // The gate must ask for diary specifically — asking for 'medications' would
+      // always pass here and silently reopen the hole.
+      expect(canAccessUserData).toHaveBeenCalledWith(
+        expect.anything(),
+        'diary',
+        expect.anything()
+      );
+    });
+
+    it('allows logging a supplement dose with diary access', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(true);
+      vi.mocked(medicationEntryRepository.createEntry).mockResolvedValue({
+        id: UID,
+      });
+
+      const res = await request(app)
+        .post('/api/v2/medications/entries')
+        .set('Cookie', cookie)
+        .send({ medication_id: UID, status: 'taken' });
+
+      expect(res.statusCode).toBe(201);
+      expect(canAccessUserData).toHaveBeenCalledWith(
+        expect.anything(),
+        'diary',
+        expect.anything()
+      );
+    });
+
+    it('rejects a supplement schedule dose change without diary access', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+
+      // A schedule's dose_amount becomes the entry's dose_amount_snapshot, which the
+      // report multiplies the nutrient payload by, so this is a nutrition write too.
+      const res = await request(app)
+        .put(`/api/v2/medications/schedules/${UID}`)
+        .set('Cookie', cookie)
+        .send({ dose_amount: 3 });
+
+      expect(res.statusCode).toBe(403);
+      expect(medicationRepository.updateSchedule).not.toHaveBeenCalled();
+      expect(canAccessUserData).toHaveBeenCalledWith(
+        expect.anything(),
+        'diary',
+        expect.anything()
+      );
+    });
+
+    // The guard runs ahead of each route's UuidParamSchema and its lookups compare
+    // against uuid columns, so a malformed id must not reach the database. It should
+    // fall through to the route's own validation and still produce a 400.
+    it.each([
+      ['put', '/api/v2/medications/schedules/not-a-uuid'],
+      ['delete', '/api/v2/medications/schedules/not-a-uuid'],
+      ['put', '/api/v2/medications/entries/not-a-uuid'],
+    ])('returns 400 for a malformed id on %s %s', async (method, url) => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+
+      const res = await (method === 'put'
+        ? request(app).put(url).set('Cookie', cookie).send({ dose_amount: 3 })
+        : request(app).delete(url).set('Cookie', cookie));
+
+      expect(res.statusCode).toBe(400);
+      expect(canAccessUserData).not.toHaveBeenCalled();
+    });
+
+    it('treats an orphaned entry as a supplement via its snapshot', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+
+      await request(app)
+        .put(`/api/v2/medications/entries/${UID}`)
+        .set('Cookie', cookie)
+        .send({ status: 'skipped' });
+
+      // medication_id is ON DELETE SET NULL, so an entry whose supplement was
+      // deleted has no medication row to read is_supplement from while still
+      // feeding the report through its snapshot. An inner join would report it as
+      // a plain medication and open the gate on exactly that history.
+      expect(executedSql.some((q) => q.includes('LEFT JOIN medications'))).toBe(
+        true
+      );
+      expect(
+        executedSql.some((q) => q.includes('me.nutrients_snapshot IS NOT NULL'))
+      ).toBe(true);
+    });
+
+    it('strips dose_amount when updating a supplement without diary access', async () => {
+      supplementLookup.is_supplement = true;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+      vi.mocked(medicationRepository.updateMedication).mockResolvedValue({
+        id: UID,
+      });
+
+      // The entry snapshot multiplies the payload by dose_amount, so a bare dose
+      // patch is a nutrition write even with no nutrients in the body.
+      await request(app)
+        .put(`/api/v2/medications/${UID}`)
+        .set('Cookie', cookie)
+        .send({ dose_amount: 3, name: 'Vitamin D' });
+
+      const body = vi.mocked(medicationRepository.updateMedication).mock
+        .calls[0][2];
+      expect(body).not.toHaveProperty('dose_amount');
+      expect(body).toMatchObject({ name: 'Vitamin D' });
+    });
+
+    it('leaves plain medication dose logging ungated', async () => {
+      supplementLookup.is_supplement = false;
+      vi.mocked(canAccessUserData).mockResolvedValue(false);
+      vi.mocked(medicationEntryRepository.createEntry).mockResolvedValue({
+        id: UID,
+      });
+
+      const res = await request(app)
+        .post('/api/v2/medications/entries')
+        .set('Cookie', cookie)
+        .send({ medication_id: UID, status: 'taken' });
+
+      expect(res.statusCode).toBe(201);
+    });
+
+    it('does not consult diary permission for a plain medication', async () => {
+      vi.mocked(medicationRepository.createMedication).mockResolvedValue({
+        id: UID,
+        name: 'Metformin',
+      });
+
+      await request(app)
+        .post('/api/v2/medications')
+        .set('Cookie', cookie)
+        .send({ name: 'Metformin' });
+
+      expect(canAccessUserData).not.toHaveBeenCalled();
     });
   });
 

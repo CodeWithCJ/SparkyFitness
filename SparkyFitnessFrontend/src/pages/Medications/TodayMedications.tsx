@@ -4,6 +4,7 @@ import {
   Clock,
   Syringe,
   Pill,
+  Tablets,
   CheckCircle2,
   X,
   RotateCcw,
@@ -14,6 +15,7 @@ import {
   Trophy,
   Flame,
   AlertTriangle,
+  type LucideIcon,
 } from 'lucide-react';
 import {
   addDays,
@@ -62,6 +64,7 @@ import {
   useUpdateInjectionEntryMutation,
   useDeleteInjectionEntryMutation,
 } from '@/hooks/useMedications';
+import { visibleDoseCards, type MedSubtype } from './medicationUtils';
 import type {
   Medication,
   MedicationDetail,
@@ -92,6 +95,7 @@ export interface TodayMedicationsProps {
   loadingMeds: boolean;
   loadingEntries: boolean;
   onSelectDate: (date: string) => void;
+  subtype?: MedSubtype;
 }
 
 export default function TodayMedications({
@@ -103,6 +107,7 @@ export default function TodayMedications({
   loadingMeds,
   loadingEntries,
   onSelectDate,
+  subtype = 'all',
 }: TodayMedicationsProps) {
   const { t } = useTranslation();
   const { timezone, formatTime, timeFormat } = usePreferences();
@@ -166,6 +171,314 @@ export default function TodayMedications({
       );
     });
   }, [meds, dueDoses]);
+
+  // Split the ALREADY subtype-filtered lists for the two Log cards. Partitioning at
+  // render time rather than re-deriving keeps the adherence overview, the progress
+  // ring and completedDosesCount reading the full filtered set, exactly as before.
+  const medicationDues = useMemo(
+    () => dueDoses.filter((d) => !d.medication.is_supplement),
+    [dueDoses]
+  );
+  const supplementDues = useMemo(
+    () => dueDoses.filter((d) => Boolean(d.medication.is_supplement)),
+    [dueDoses]
+  );
+  const medicationPrns = useMemo(
+    () => prnMeds.filter((m) => !m.is_supplement),
+    [prnMeds]
+  );
+  const supplementPrns = useMemo(
+    () => prnMeds.filter((m) => Boolean(m.is_supplement)),
+    [prnMeds]
+  );
+
+  // The medications card also carries the "nothing scheduled at all" empty state, so
+  // it stays in the All view even with no medications; the narrowed views show
+  // exactly one card, and All only grows the supplement card once there is one.
+  const { medications: showMedicationCard, supplements: showSupplementCard } =
+    visibleDoseCards(
+      subtype,
+      supplementDues.length > 0 || supplementPrns.length > 0
+    );
+
+  // Renders the Log card once per subtype so medications and supplements read as
+  // separate sections instead of one mixed list. Deliberately a render FUNCTION and
+  // not a child component: the body closes over ~a dozen handlers and per-row note
+  // state, and a component would take a new identity each render, remounting the
+  // note inputs and stealing focus mid-typing.
+  const renderDoseCard = ({
+    title,
+    description,
+    emptyDueText,
+    emptyPrnText,
+    loadingPrnText,
+    Icon,
+    accentBg,
+    accentFg,
+    dues,
+    prns,
+  }: {
+    title: string;
+    description: string;
+    emptyDueText: string;
+    emptyPrnText: string;
+    loadingPrnText: string;
+    Icon: LucideIcon;
+    accentBg: string;
+    accentFg: string;
+    dues: typeof dueDoses;
+    prns: typeof prnMeds;
+  }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <span
+            className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${accentBg}`}
+          >
+            <Icon className={`h-3.5 w-3.5 ${accentFg}`} />
+          </span>
+          {title}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Due Today Group */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+            <Clock className="h-3.5 w-3.5" />{' '}
+            {t('medications.today.dueToday', 'Due today')}
+          </h3>
+
+          {loadingMeds && (
+            <p className="text-sm text-muted-foreground">
+              {t('medications.today.loadingChecklist', 'Loading checklist…')}
+            </p>
+          )}
+          {!loadingMeds && dues.length === 0 && (
+            <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-dashed text-center">
+              {emptyDueText}
+            </div>
+          )}
+          {!loadingMeds &&
+            dues.map((due, idx) => {
+              const entry = entries.find((e) => entryMatchesDue(e, due));
+              const isLogged =
+                entry &&
+                (entry.status === 'taken' || entry.status === 'skipped');
+              const isSnoozed = entry && entry.status === 'snoozed';
+              const doseLabel = formatDose(due.medication, due.schedule);
+
+              return (
+                <div
+                  key={`${due.medication.id}-${due.schedule.id}-${idx}`}
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg transition-all ${
+                    isLogged
+                      ? 'bg-muted/30 border-muted text-muted-foreground'
+                      : isSnoozed
+                        ? 'border-amber-200 bg-amber-50/20'
+                        : 'bg-card border-border hover:shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 shrink-0">
+                      {isLogged && entry.status === 'taken' ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                      ) : isLogged && entry.status === 'skipped' ? (
+                        <X className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <MedTypeIcon
+                          typeId={due.medication.type_id}
+                          isGlp1={due.medication.is_glp1}
+                          className="h-5 w-5"
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p
+                          className={`font-semibold text-sm ${isLogged ? 'line-through' : ''}`}
+                        >
+                          {due.medication.display_name || due.medication.name}
+                        </p>
+                        <Badge
+                          variant="outline"
+                          className="text-[9px] px-1.5 py-0 border-blue-200 text-blue-700 bg-blue-50/50 dark:border-blue-900 dark:text-blue-300 dark:bg-blue-950/30"
+                        >
+                          {t('medications.today.scheduled', 'Scheduled')}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground mt-0.5">
+                        {doseLabel != null && (
+                          <>
+                            <span>{doseLabel}</span>
+                            <span>•</span>
+                          </>
+                        )}
+                        <span className="flex items-center gap-1 font-medium text-primary">
+                          <Clock className="h-3 w-3" />
+                          {due.schedule.time_of_day
+                            ? formatTimeOfDayString(
+                                due.schedule.time_of_day,
+                                timeFormat
+                              )
+                            : t('medications.schedule.anyTime', 'Any time')}
+                        </span>
+                      </div>
+                      {!isLogged && (
+                        <Input
+                          placeholder="Add note..."
+                          value={logNotes[due.schedule.id] || ''}
+                          onChange={(e) =>
+                            setLogNotes((prev) => ({
+                              ...prev,
+                              [due.schedule.id]: e.target.value,
+                            }))
+                          }
+                          className="h-7 text-xs mt-2 max-w-[200px]"
+                        />
+                      )}
+                      {isLogged && entry?.notes && (
+                        <p className="text-xs text-muted-foreground italic mt-1.5">
+                          Note: {entry.notes}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 mt-3 sm:mt-0 shrink-0">
+                    {isLogged && entry ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive flex items-center gap-1"
+                        onClick={() => handleUndoEntry(entry)}
+                        disabled={isPending}
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />{' '}
+                        {t('medications.today.undo', 'Undo')}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs text-amber-600 border-amber-200 hover:bg-amber-50"
+                          onClick={() => handleLogScheduled(due, 'snoozed')}
+                          disabled={isPending || isSnoozed}
+                        >
+                          {isSnoozed
+                            ? t('medications.today.snoozed', 'Snoozed')
+                            : t('medications.today.snooze', 'Snooze')}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs text-muted-foreground hover:bg-muted"
+                          onClick={() => handleLogScheduled(due, 'skipped')}
+                          disabled={isPending}
+                        >
+                          {t('medications.today.skip', 'Skip')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => handleLogScheduled(due, 'taken')}
+                          disabled={isPending}
+                        >
+                          {t('medications.today.take', 'Take')}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
+
+        {/* As Needed Group */}
+        <div className="space-y-3 pt-4 border-t border-border">
+          <div>
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+              <Pill className="h-3.5 w-3.5" />{' '}
+              {t('medications.today.asNeeded', 'As needed')}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t(
+                'medications.today.asNeededHint',
+                'Tap to log a dose now (no fixed schedule or not due today).'
+              )}
+            </p>
+          </div>
+
+          {loadingMeds && (
+            <p className="text-sm text-muted-foreground">{loadingPrnText}</p>
+          )}
+          {!loadingMeds && prns.length === 0 && (
+            <p className="text-sm text-muted-foreground py-2 text-center bg-muted/10 rounded-lg border border-dashed">
+              {emptyPrnText}
+            </p>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {prns.map((med) => {
+              const prnSched = med.schedules?.find(
+                (s) => s.schedule_type_id === 'prn'
+              );
+              const schedId = prnSched?.id || med.id;
+              return (
+                <div
+                  key={med.id}
+                  className="flex flex-col p-3 border rounded-lg bg-card border-border hover:shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <MedTypeIcon
+                        typeId={med.type_id}
+                        isGlp1={med.is_glp1}
+                        className="h-4.5 w-4.5 shrink-0"
+                      />
+                      <div className="text-left truncate">
+                        <p className="font-semibold text-xs truncate">
+                          {med.display_name || med.name}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {formatDose(med) ?? med.type_id}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] px-1.5 py-0 bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-950 shrink-0"
+                    >
+                      PRN
+                    </Badge>
+                  </div>
+                  <Input
+                    placeholder="Add note..."
+                    value={logNotes[schedId] || ''}
+                    onChange={(e) =>
+                      setLogNotes((prev) => ({
+                        ...prev,
+                        [schedId]: e.target.value,
+                      }))
+                    }
+                    className="h-7 text-xs mt-2"
+                  />
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white mt-2 w-full"
+                    onClick={() => handleLogPrn(med)}
+                    disabled={isPending}
+                  >
+                    {t('medications.today.logIntake', 'Log Intake')}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   const completedDosesCount = useMemo(() => {
     return dueDoses.filter((due) =>
@@ -581,7 +894,12 @@ export default function TodayMedications({
       )}
 
       {/* Adherence overview + Today's Checklist (left) alongside the log calendar (right) */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+      {/* One grid, two flowing columns. The log calendar is taller than the
+          adherence stack, so keeping these as two separate stacked grids left a
+          dead gap under the checklist until the calendar row ended. Column order
+          is unchanged: adherence then doses on the left, calendar then activity
+          on the right. */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:items-start">
         <div className="space-y-6">
           {/* Today stats + 14-day adherence ring */}
           <Card>
@@ -745,411 +1063,209 @@ export default function TodayMedications({
               )}
             </CardContent>
           </Card>
+          {hasGlpMed &&
+            (canViewGlpCheckIn ? (
+              <GlpDailyCheckIn selectedDate={selectedDate} />
+            ) : (
+              <Card className="border-amber-300 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30">
+                <CardContent className="flex items-start gap-3 py-4">
+                  <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                  </span>
+                  <div className="space-y-0.5 text-sm">
+                    <p className="font-medium">
+                      {t(
+                        'medications.checkin.noAccessTitle',
+                        'GLP-1 daily check-in needs check-in access'
+                      )}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {t('medications.checkin.noAccessBody', {
+                        defaultValue:
+                          'Ask {{name}} to share Check-in access to track hunger, food noise, fullness and energy here.',
+                        name: activeUserName || 'this profile',
+                      })}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          {/* Today's Medications */}
+          {showMedicationCard &&
+            renderDoseCard({
+              title: t(
+                'medications.today.medicationsTitle',
+                "Today's medications"
+              ),
+              description: t(
+                'medications.today.medicationsDescription',
+                'Track scheduled doses and log as-needed medications'
+              ),
+              emptyDueText: t(
+                'medications.today.noMedicationDoses',
+                'No scheduled doses today — log any medication as-needed below.'
+              ),
+              emptyPrnText: t(
+                'medications.today.noPrnMedications',
+                'No as-needed or non-scheduled medications configured.'
+              ),
+              loadingPrnText: t(
+                'medications.today.loadingMedications',
+                'Loading active medications…'
+              ),
+              Icon: Pill,
+              accentBg: 'bg-blue-100 dark:bg-blue-900/50',
+              accentFg: 'text-blue-500',
+              dues: medicationDues,
+              prns: medicationPrns,
+            })}
+          {showSupplementCard &&
+            renderDoseCard({
+              title: t(
+                'medications.today.supplementsTitle',
+                "Today's supplements"
+              ),
+              description: t(
+                'medications.today.supplementsDescription',
+                'Track scheduled doses and log as-needed supplements'
+              ),
+              emptyDueText: t(
+                'medications.today.noSupplementDoses',
+                'No scheduled doses today — log any supplement as-needed below.'
+              ),
+              emptyPrnText: t(
+                'medications.today.noPrnSupplements',
+                'No as-needed or non-scheduled supplements configured.'
+              ),
+              loadingPrnText: t(
+                'medications.today.loadingSupplements',
+                'Loading active supplements…'
+              ),
+              Icon: Tablets,
+              accentBg: 'bg-emerald-100 dark:bg-emerald-900/50',
+              accentFg: 'text-emerald-500',
+              dues: supplementDues,
+              prns: supplementPrns,
+            })}
         </div>
 
-        <MedicationLogCalendar
-          medications={meds}
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
-        />
-      </div>
-
-      {hasGlpMed &&
-        (canViewGlpCheckIn ? (
-          <GlpDailyCheckIn selectedDate={selectedDate} />
-        ) : (
-          <Card className="border-amber-300 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30">
-            <CardContent className="flex items-start gap-3 py-4">
-              <span className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-              </span>
-              <div className="space-y-0.5 text-sm">
-                <p className="font-medium">
-                  {t(
-                    'medications.checkin.noAccessTitle',
-                    'GLP-1 daily check-in needs check-in access'
-                  )}
-                </p>
-                <p className="text-muted-foreground">
-                  {t('medications.checkin.noAccessBody', {
-                    defaultValue:
-                      'Ask {{name}} to share Check-in access to track hunger, food noise, fullness and energy here.',
-                    name: activeUserName || 'this profile',
-                  })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-      <div className="grid gap-6 md:grid-cols-[1fr_350px]">
-        {/* Scheduled & PRN Column */}
         <div className="space-y-6">
-          {/* Today's Medications */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
-                  <Pill className="h-3.5 w-3.5 text-blue-500" />
-                </span>
-                Today's medications
-              </CardTitle>
-              <CardDescription>
-                Track scheduled doses and log as-needed medications
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Due Today Group */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
-                  <Clock className="h-3.5 w-3.5" /> Due today
-                </h3>
-
-                {loadingMeds && (
+          <MedicationLogCalendar
+            medications={meds}
+            selectedDate={selectedDate}
+            onSelectDate={onSelectDate}
+            subtype={subtype}
+          />
+          {/* Today Activity Log Column */}
+          <div>
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                  </span>
+                  Logged today
+                </CardTitle>
+                <CardDescription>
+                  Everything you've taken or skipped on this date.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loadingEntries && (
                   <p className="text-sm text-muted-foreground">
-                    Loading checklist…
+                    Loading history…
                   </p>
                 )}
-                {!loadingMeds && dueDoses.length === 0 && (
-                  <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-dashed text-center">
-                    No scheduled doses today — log any medication as-needed
-                    below.
+                {!loadingEntries && entries.length === 0 && (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    {t(
+                      'medications.today.noIntake',
+                      'No entries logged yet today.'
+                    )}
                   </div>
                 )}
-                {!loadingMeds &&
-                  dueDoses.map((due, idx) => {
-                    const entry = entries.find((e) => entryMatchesDue(e, due));
-                    const isLogged =
-                      entry &&
-                      (entry.status === 'taken' || entry.status === 'skipped');
-                    const isSnoozed = entry && entry.status === 'snoozed';
-                    const doseLabel = formatDose(due.medication, due.schedule);
-
-                    return (
-                      <div
-                        key={`${due.medication.id}-${due.schedule.id}-${idx}`}
-                        className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg transition-all ${
-                          isLogged
-                            ? 'bg-muted/30 border-muted text-muted-foreground'
-                            : isSnoozed
-                              ? 'border-amber-200 bg-amber-50/20'
-                              : 'bg-card border-border hover:shadow-sm'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 shrink-0">
-                            {isLogged && entry.status === 'taken' ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-500" />
-                            ) : isLogged && entry.status === 'skipped' ? (
-                              <X className="h-5 w-5 text-muted-foreground" />
-                            ) : (
-                              <MedTypeIcon
-                                typeId={due.medication.type_id}
-                                isGlp1={due.medication.is_glp1}
-                                className="h-5 w-5"
-                              />
-                            )}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p
-                                className={`font-semibold text-sm ${isLogged ? 'line-through' : ''}`}
-                              >
-                                {due.medication.display_name ||
-                                  due.medication.name}
-                              </p>
-                              <Badge
-                                variant="outline"
-                                className="text-[9px] px-1.5 py-0 border-blue-200 text-blue-700 bg-blue-50/50 dark:border-blue-900 dark:text-blue-300 dark:bg-blue-950/30"
-                              >
-                                {t('medications.today.scheduled', 'Scheduled')}
-                              </Badge>
-                            </div>
-                            <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground mt-0.5">
-                              {doseLabel != null && (
-                                <>
-                                  <span>{doseLabel}</span>
-                                  <span>•</span>
-                                </>
-                              )}
-                              <span className="flex items-center gap-1 font-medium text-primary">
-                                <Clock className="h-3 w-3" />
-                                {due.schedule.time_of_day
-                                  ? formatTimeOfDayString(
-                                      due.schedule.time_of_day,
-                                      timeFormat
-                                    )
-                                  : t(
-                                      'medications.schedule.anyTime',
-                                      'Any time'
-                                    )}
-                              </span>
-                            </div>
-                            {!isLogged && (
-                              <Input
-                                placeholder="Add note..."
-                                value={logNotes[due.schedule.id] || ''}
-                                onChange={(e) =>
-                                  setLogNotes((prev) => ({
-                                    ...prev,
-                                    [due.schedule.id]: e.target.value,
-                                  }))
-                                }
-                                className="h-7 text-xs mt-2 max-w-[200px]"
-                              />
-                            )}
-                            {isLogged && entry?.notes && (
-                              <p className="text-xs text-muted-foreground italic mt-1.5">
-                                Note: {entry.notes}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-end gap-2 mt-3 sm:mt-0 shrink-0">
-                          {isLogged && entry ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2 text-xs hover:bg-destructive/10 hover:text-destructive flex items-center gap-1"
-                              onClick={() => handleUndoEntry(entry)}
-                              disabled={isPending}
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />{' '}
-                              {t('medications.today.undo', 'Undo')}
-                            </Button>
-                          ) : (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 text-xs text-amber-600 border-amber-200 hover:bg-amber-50"
-                                onClick={() =>
-                                  handleLogScheduled(due, 'snoozed')
-                                }
-                                disabled={isPending || isSnoozed}
-                              >
-                                {isSnoozed
-                                  ? t('medications.today.snoozed', 'Snoozed')
-                                  : t('medications.today.snooze', 'Snooze')}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 text-xs text-muted-foreground hover:bg-muted"
-                                onClick={() =>
-                                  handleLogScheduled(due, 'skipped')
-                                }
-                                disabled={isPending}
-                              >
-                                {t('medications.today.skip', 'Skip')}
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
-                                onClick={() => handleLogScheduled(due, 'taken')}
-                                disabled={isPending}
-                              >
-                                {t('medications.today.take', 'Take')}
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {/* As Needed Group */}
-              <div className="space-y-3 pt-4 border-t border-border">
-                <div>
-                  <h3 className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
-                    <Pill className="h-3.5 w-3.5" /> As needed
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Tap to log a dose now (no fixed schedule or not due today).
-                  </p>
-                </div>
-
-                {loadingMeds && (
-                  <p className="text-sm text-muted-foreground">
-                    Loading active medications…
-                  </p>
-                )}
-                {!loadingMeds && prnMeds.length === 0 && (
-                  <p className="text-sm text-muted-foreground py-2 text-center bg-muted/10 rounded-lg border border-dashed">
-                    No as-needed or non-scheduled medications configured.
-                  </p>
-                )}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {prnMeds.map((med) => {
-                    const prnSched = med.schedules?.find(
-                      (s) => s.schedule_type_id === 'prn'
-                    );
-                    const schedId = prnSched?.id || med.id;
-                    return (
-                      <div
-                        key={med.id}
-                        className="flex flex-col p-3 border rounded-lg bg-card border-border hover:shadow-sm"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <MedTypeIcon
-                              typeId={med.type_id}
-                              isGlp1={med.is_glp1}
-                              className="h-4.5 w-4.5 shrink-0"
-                            />
-                            <div className="text-left truncate">
-                              <p className="font-semibold text-xs truncate">
-                                {med.display_name || med.name}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {formatDose(med) ?? med.type_id}
-                              </p>
-                            </div>
-                          </div>
+                {entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/10 text-sm"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <MedTypeIcon
+                        typeId={
+                          meds.find((m) => m.id === entry.medication_id)
+                            ?.type_id
+                        }
+                        isGlp1={
+                          meds.find((m) => m.id === entry.medication_id)
+                            ?.is_glp1
+                        }
+                        className="h-4 w-4 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground truncate">
+                          {entry.med_name_snapshot}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                          <span className="tabular-nums font-medium">
+                            {formatEntryTime(entry.taken_at)}
+                          </span>
+                          <span>•</span>
                           <Badge
                             variant="secondary"
-                            className="text-[9px] px-1.5 py-0 bg-purple-100 text-purple-700 hover:bg-purple-100 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-950 shrink-0"
+                            className={`text-[10px] px-1.5 py-0 border-none font-semibold ${
+                              entry.status === 'taken'
+                                ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
+                                : entry.status === 'prn_taken'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                                  : entry.status === 'snoozed'
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-850 dark:text-gray-300'
+                            }`}
                           >
-                            PRN
+                            {entry.status === 'taken'
+                              ? 'Taken'
+                              : entry.status === 'prn_taken'
+                                ? 'PRN Taken'
+                                : entry.status === 'snoozed'
+                                  ? 'Snoozed'
+                                  : 'Skipped'}
                           </Badge>
                         </div>
-                        <Input
-                          placeholder="Add note..."
-                          value={logNotes[schedId] || ''}
-                          onChange={(e) =>
-                            setLogNotes((prev) => ({
-                              ...prev,
-                              [schedId]: e.target.value,
-                            }))
-                          }
-                          className="h-7 text-xs mt-2"
-                        />
-                        <Button
-                          size="sm"
-                          className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white mt-2 w-full"
-                          onClick={() => handleLogPrn(med)}
-                          disabled={isPending}
-                        >
-                          Log Intake
-                        </Button>
+                        {entry.notes && (
+                          <p className="text-[11px] text-muted-foreground italic mt-1">
+                            Note: {entry.notes}
+                          </p>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                    </div>
 
-        {/* Today Activity Log Column */}
-        <div>
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                </span>
-                Logged today
-              </CardTitle>
-              <CardDescription>
-                Everything you've taken or skipped on this date.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {loadingEntries && (
-                <p className="text-sm text-muted-foreground">
-                  Loading history…
-                </p>
-              )}
-              {!loadingEntries && entries.length === 0 && (
-                <div className="text-center py-8 text-sm text-muted-foreground">
-                  {t(
-                    'medications.today.noIntake',
-                    'No entries logged yet today.'
-                  )}
-                </div>
-              )}
-              {entries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/10 text-sm"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <MedTypeIcon
-                      typeId={
-                        meds.find((m) => m.id === entry.medication_id)?.type_id
-                      }
-                      isGlp1={
-                        meds.find((m) => m.id === entry.medication_id)?.is_glp1
-                      }
-                      className="h-4 w-4 shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-medium text-foreground truncate">
-                        {entry.med_name_snapshot}
-                      </p>
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-                        <span className="tabular-nums font-medium">
-                          {formatEntryTime(entry.taken_at)}
-                        </span>
-                        <span>•</span>
-                        <Badge
-                          variant="secondary"
-                          className={`text-[10px] px-1.5 py-0 border-none font-semibold ${
-                            entry.status === 'taken'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300'
-                              : entry.status === 'prn_taken'
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                                : entry.status === 'snoozed'
-                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-850 dark:text-gray-300'
-                          }`}
-                        >
-                          {entry.status === 'taken'
-                            ? 'Taken'
-                            : entry.status === 'prn_taken'
-                              ? 'PRN Taken'
-                              : entry.status === 'snoozed'
-                                ? 'Snoozed'
-                                : 'Skipped'}
-                        </Badge>
-                      </div>
-                      {entry.notes && (
-                        <p className="text-[11px] text-muted-foreground italic mt-1">
-                          Note: {entry.notes}
-                        </p>
-                      )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground"
+                        onClick={() => openEditEntry(entry)}
+                        disabled={isPending}
+                        aria-label="Edit entry time"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleUndoEntry(entry)}
+                        disabled={isPending}
+                        aria-label="Remove entry"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground"
-                      onClick={() => openEditEntry(entry)}
-                      disabled={isPending}
-                      aria-label="Edit entry time"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleUndoEntry(entry)}
-                      disabled={isPending}
-                      aria-label="Remove entry"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
 

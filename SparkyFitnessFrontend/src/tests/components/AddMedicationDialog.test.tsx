@@ -18,6 +18,47 @@ const mockUpdateMutate = jest.fn(
   (_args: unknown, options?: { onSuccess?: () => void }) =>
     options?.onSuccess?.()
 );
+// The nutrition editor's catalog hooks are react-query backed; this suite renders the
+// dialog without a QueryClientProvider.
+jest.mock('@/hooks/Foods/useCustomNutrients', () => ({
+  useCustomNutrients: () => ({ data: [] }),
+  useCreateCustomNutrientMutation: () => ({ mutateAsync: jest.fn() }),
+  useEnsureCatalogNutrientsMutation: () => ({ mutateAsync: jest.fn() }),
+}));
+
+// The nutrition editor reads the energy unit from preferences; this suite renders the
+// dialog bare, without the provider.
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    timezone: 'UTC',
+    timeFormat: 'h:mm A',
+    firstDayOfWeek: 0,
+  }),
+}));
+
+// better-auth ships an untransformed ESM build that jest does not process, and it is
+// reachable from this component through the auth hook. Cutting the chain at the hook
+// covers every import path that reaches it.
+jest.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({ user: { id: 'user-1' }, isLoading: false }),
+}));
+
+// The dialog gates its nutrition editor on the active profile's diary permission.
+// ActiveUserContext reaches useAuth and so pulls better-auth's ESM build into this
+// suite's module graph, which jest does not transform; mock the hook rather than
+// widen transformIgnorePatterns for one context.
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({
+    hasWritePermission: () => true,
+    hasPermission: () => true,
+    activeUserId: 'user-1',
+    activeUserName: 'Test User',
+    isActingOnBehalf: false,
+  }),
+}));
+
 jest.mock('@/hooks/useMedications', () => ({
   useCreateMedicationMutation: () => ({
     mutate: mockCreateMutate,

@@ -12,6 +12,69 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+  it('should normalize aggregate food_properties nutrition to one serving', () => {
+    const mockRecipe = {
+      id: 2,
+      name: 'Multi-Serving Recipe',
+      nutrition: null,
+      properties: [],
+      food_properties: {
+        1: { name: 'Calories', total_value: 600 },
+        2: { name: 'Proteins', total_value: 60 },
+        3: { name: 'Fats', total_value: 30 },
+        4: { name: 'Carbohydrates', total_value: 150 },
+      },
+      servings: 3,
+    };
+
+    const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
+
+    expect(result.variant.serving_size).toBe(1);
+    expect(result.variant.serving_unit).toBe('serving');
+    expect(result.variant.calories).toBe(200);
+    expect(result.variant.protein).toBe(20);
+    expect(result.variant.carbs).toBe(50);
+    expect(result.variant.fat).toBe(10);
+    expect(result.variant.provider_nutrients?.Calories).toBe(200);
+  });
+  it.each([0, -1, 'not-a-number', null, undefined])(
+    'should retain aggregate nutrition when servings is invalid: %p',
+    (servings) => {
+      const result = service.mapTandoorRecipeToSparkyFood(
+        {
+          id: 3,
+          name: 'Invalid Yield Recipe',
+          nutrition: null,
+          properties: [],
+          food_properties: {
+            1: { name: 'Calories', total_value: 600 },
+          },
+          servings,
+        },
+        userId
+      );
+
+      expect(result.variant.calories).toBe(600);
+      expect(result.variant.provider_nutrients?.Calories).toBe(600);
+    }
+  );
+  it('should not derive a yield from servings_text', () => {
+    const result = service.mapTandoorRecipeToSparkyFood(
+      {
+        id: 4,
+        name: 'Display Yield Recipe',
+        nutrition: null,
+        properties: [],
+        food_properties: {
+          1: { name: 'Calories', total_value: 600 },
+        },
+        servings_text: ['3 servings'],
+      },
+      userId
+    );
+
+    expect(result.variant.calories).toBe(600);
+  });
   it('should map nutrition from food_properties (Spanish screenshot example)', () => {
     const mockRecipe = {
       id: 2,
@@ -42,10 +105,10 @@ describe('TandoorService.mapTandoorRecipeToSparkyFood', () => {
     };
     const result = service.mapTandoorRecipeToSparkyFood(mockRecipe, userId);
     expect(result.food.name).toBe(mockRecipe.name);
-    expect(result.variant.protein).toBe(237.57);
-    expect(result.variant.fat).toBe(69.838);
-    expect(result.variant.carbs).toBe(86.365);
-    expect(result.variant.serving_size).toBe(1); // mapped data is per serving
+    expect(result.variant.protein).toBe(59.3925);
+    expect(result.variant.fat).toBe(17.4595);
+    expect(result.variant.carbs).toBe(21.59125);
+    expect(result.variant.serving_size).toBe(1);
   });
   it('should map nutrition from nutrition object (explicit structured data)', () => {
     const mockRecipe = {

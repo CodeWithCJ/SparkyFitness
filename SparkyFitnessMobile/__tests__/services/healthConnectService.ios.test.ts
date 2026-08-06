@@ -31,6 +31,7 @@ jest.mock('../../src/HealthMetrics', () => ({
     { recordType: 'ActiveCaloriesBurned', stateKey: 'isCaloriesSyncEnabled', unit: 'kcal', type: 'active_calories', readKind: 'cumulative-day' },
     { recordType: 'TotalCaloriesBurned', stateKey: 'isTotalCaloriesSyncEnabled', unit: 'kcal', type: 'total_calories', readKind: 'cumulative-day' },
     { recordType: 'RunningSpeed', stateKey: 'isRunningSpeedSyncEnabled', unit: 'm/s', type: 'running_speed', aggregationStrategy: 'min-max-avg' },
+    { recordType: 'RestingHeartRate', stateKey: 'isRestingHeartRateSyncEnabled', unit: 'bpm', type: 'resting_heart_rate' },
   ],
 }));
 
@@ -298,11 +299,13 @@ describe('syncHealthData (iOS)', () => {
       jest.useRealTimers();
     });
 
-    test('cumulative reads filter from local midnight while raw reads keep the rolling start', async () => {
-      // Regression: cumulative reads emit per-day totals, so a mid-afternoon '24h' sync
-      // with the raw rolling start produced a partial first day that overwrote yesterday's
-      // full-day server value. Pin the clock mid-afternoon so the rolling start (yesterday
-      // 15:30) is distinguishable from its local midnight.
+    test('day-aggregated reads filter from local midnight while plain raw reads keep the rolling start', async () => {
+      // Regression: day-aggregated payloads (cumulative totals and min/max/avg)
+      // land as full-day SETs on the server, so a mid-afternoon '24h' sync with
+      // the raw rolling start produced a partial first day that overwrote
+      // yesterday's full-day server value (issue #1978). Pin the clock
+      // mid-afternoon so the rolling start (yesterday 15:30) is distinguishable
+      // from its local midnight.
       jest.useFakeTimers({ now: new Date(2026, 6, 3, 15, 30, 0) });
 
       mockQueryStatisticsCollection.mockResolvedValue([sumBucket(5000, 'count')]);
@@ -312,6 +315,7 @@ describe('syncHealthData (iOS)', () => {
       const result = await syncHealthData('24h' as SyncDuration, {
         isStepsSyncEnabled: true,
         isRunningSpeedSyncEnabled: true,
+        isRestingHeartRateSyncEnabled: true,
       });
 
       expect(result.success).toBe(true);
@@ -322,11 +326,19 @@ describe('syncHealthData (iOS)', () => {
       const statsOptions = mockQueryStatisticsCollection.mock.calls[0][4];
       expect(statsOptions.filter.date.startDate).toEqual(new Date(2026, 6, 2, 0, 0, 0, 0));
 
-      // RunningSpeed (raw sample fallback — no day-statistics spec) must keep the
+      const sampleCallsByIdentifier = Object.fromEntries(
+        mockQueryQuantitySamples.mock.calls.map((call: [string, { filter: { date: { startDate: Date } } }]) => [call[0], call[1]])
+      );
+
+      // RunningSpeed (min-max-avg raw fallback — no day-statistics spec) emits
+      // full-day min/max/avg values, so its read must also cover the whole day.
+      expect(sampleCallsByIdentifier['HKQuantityTypeIdentifierRunningSpeed'].filter.date.startDate)
+        .toEqual(new Date(2026, 6, 2, 0, 0, 0, 0));
+
+      // RestingHeartRate (plain raw, no aggregation strategy) must keep the
       // requested rolling window untouched.
-      expect(mockQueryQuantitySamples).toHaveBeenCalledTimes(1);
-      const sampleOptions = mockQueryQuantitySamples.mock.calls[0][1];
-      expect(sampleOptions.filter.date.startDate).toEqual(new Date(2026, 6, 2, 15, 30, 0));
+      expect(sampleCallsByIdentifier['HKQuantityTypeIdentifierRestingHeartRate'].filter.date.startDate)
+        .toEqual(new Date(2026, 6, 2, 15, 30, 0));
     });
   });
 

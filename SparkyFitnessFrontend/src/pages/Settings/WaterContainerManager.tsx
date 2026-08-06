@@ -87,6 +87,8 @@ const WaterContainerManager: React.FC = () => {
             <Input
               id="volume"
               type="number"
+              min="0.001"
+              step="any"
               value={volume}
               onChange={(e) => setVolume(Number(e.target.value))}
               placeholder="e.g., 500"
@@ -98,6 +100,7 @@ const WaterContainerManager: React.FC = () => {
             <Input
               id="servingsPerContainer"
               type="number"
+              min="1"
               value={servingsPerContainer}
               onChange={(e) => setServingsPerContainer(Number(e.target.value))}
               placeholder="e.g., 4"
