@@ -44,12 +44,15 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
             {food.provider_verified ? (
               <VerifiedBadge size="sm" style={{ marginLeft: 4 }} />
             ) : null}
-            <ShareStatusBadge status={status} />
+            {/* Icons center on the text's full line box (descender included),
+                which reads ~1pt low against the visible letters; lift them. */}
+            <ShareStatusBadge status={status} style={{ marginTop: -1 }} />
             {isFavorite && (
               <Icon
                 name="star"
-                size={13}
+                size={16}
                 color={goldColor}
+                style={{ marginTop: -1 }}
                 accessibilityLabel="Favorite"
               />
             )}

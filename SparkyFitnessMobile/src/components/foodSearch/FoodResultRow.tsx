@@ -38,13 +38,13 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
               {item.name}
             </Text>
             {item.provider_verified ? <VerifiedBadge size="sm" style={{ marginTop: 2 }} /> : null}
-            <ShareStatusBadge status={status} style={{ marginTop: 4 }} />
+            <ShareStatusBadge status={status} style={{ marginTop: 3 }} />
             {isFavorite && (
               <Icon
                 name="star"
-                size={13}
+                size={16}
                 color={favoriteGold}
-                style={{ marginTop: 4 }}
+                style={{ marginTop: 3 }}
                 accessibilityLabel="Favorite"
               />
             )}

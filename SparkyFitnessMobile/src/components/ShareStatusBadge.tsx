@@ -27,7 +27,7 @@ const ShareStatusBadge: React.FC<ShareStatusBadgeProps> = ({ status, style }) =>
     >
       <Icon
         name={isPublic ? 'globe' : 'people'}
-        size={13}
+        size={16}
         color={isPublic ? successColor : accentColor}
       />
     </View>
