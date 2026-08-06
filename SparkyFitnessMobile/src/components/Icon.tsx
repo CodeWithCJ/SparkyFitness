@@ -68,6 +68,7 @@ const ICON_MAP = {
   'help-circle': { sf: 'questionmark.circle', ion: 'help-circle-outline' },
   'wrench': { sf: 'wrench', ion: 'build-outline' },
   'globe': { sf: 'globe', ion: 'globe-outline' },
+  'people': { sf: 'person.2.fill', ion: 'people' },
   'wifi': { sf: 'wifi', ion: 'wifi-outline' },
 
   // Food

@@ -1,58 +1,35 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import Icon from './Icon';
 
 interface ShareStatusBadgeProps {
   status: 'public' | 'family' | 'private' | null | undefined;
+  style?: StyleProp<ViewStyle>;
 }
 
-const ShareStatusBadge: React.FC<ShareStatusBadgeProps> = ({ status }) => {
-  const [accentColor, successColor, textSecondaryColor, borderSubtleColor] = useCSSVariable([
+const ShareStatusBadge: React.FC<ShareStatusBadgeProps> = ({ status, style }) => {
+  const [accentColor, successColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-success',
-    '--color-text-secondary',
-    '--color-border-subtle',
-  ]) as [string, string, string, string];
+  ]) as [string, string];
 
-  if (!status || status === 'private') return null;
+  if (status !== 'public' && status !== 'family') return null;
 
-  let borderColor = borderSubtleColor;
-  let textColor = textSecondaryColor;
-  let label = '';
-
-  if (status === 'public') {
-    borderColor = successColor || '#10B981';
-    textColor = successColor || '#10B981';
-    label = 'Public';
-  } else if (status === 'family') {
-    borderColor = accentColor || '#3B82F6';
-    textColor = accentColor || '#3B82F6';
-    label = 'Family';
-  } else {
-    return null;
-  }
+  const isPublic = status === 'public';
 
   return (
     <View
-      style={{
-        borderColor,
-        borderWidth: 1,
-        borderRadius: 4,
-        paddingHorizontal: 4,
-        paddingVertical: 2,
-        transform: [{ translateY: -2 }],
-        flexShrink: 0,
-      }}
+      accessibilityRole="image"
+      accessibilityLabel={isPublic ? 'Shared publicly' : 'Shared with family'}
+      testID={`share-status-${status}`}
+      style={[{ flexShrink: 0 }, style]}
     >
-      <Text
-        style={{
-          color: textColor,
-          fontSize: 9,
-          fontWeight: '600',
-        }}
-      >
-        {label}
-      </Text>
+      <Icon
+        name={isPublic ? 'globe' : 'people'}
+        size={13}
+        color={isPublic ? successColor : accentColor}
+      />
     </View>
   );
 };

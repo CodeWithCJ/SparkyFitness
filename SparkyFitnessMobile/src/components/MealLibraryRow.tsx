@@ -64,6 +64,14 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
               </View>
             ) : null}
             <ShareStatusBadge status={status} />
+            {isFavorite && (
+              <Icon
+                name="star"
+                size={13}
+                color={goldColor}
+                accessibilityLabel="Favorite"
+              />
+            )}
           </View>
           {meal.description ? (
             <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>
@@ -72,20 +80,9 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
           ) : null}
         </View>
         <View className="items-end">
-          <View className="flex-row items-center gap-1">
-            {isFavorite && (
-              <Icon
-                name="star"
-                size={13}
-                color={goldColor}
-                style={{ marginTop: 1 }}
-                accessibilityLabel="Favorite"
-              />
-            )}
-            <Text className="text-text-primary text-base font-semibold">
-              {foodInfo.calories} cal
-            </Text>
-          </View>
+          <Text className="text-text-primary text-base font-semibold">
+            {foodInfo.calories} cal
+          </Text>
           <Text className="text-text-secondary text-xs">
             {itemCount} {itemCount === 1 ? 'item' : 'items'}
           </Text>

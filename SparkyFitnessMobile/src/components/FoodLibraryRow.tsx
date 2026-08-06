@@ -45,6 +45,14 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
               <VerifiedBadge size="sm" style={{ marginLeft: 4 }} />
             ) : null}
             <ShareStatusBadge status={status} />
+            {isFavorite && (
+              <Icon
+                name="star"
+                size={13}
+                color={goldColor}
+                accessibilityLabel="Favorite"
+              />
+            )}
           </View>
           {food.brand ? (
             <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>
@@ -53,20 +61,9 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
           ) : null}
         </View>
         <View className="items-end">
-          <View className="flex-row items-center gap-1">
-            {isFavorite && (
-              <Icon
-                name="star"
-                size={13}
-                color={goldColor}
-                style={{ marginTop: 1 }}
-                accessibilityLabel="Favorite"
-              />
-            )}
-            <Text className="text-text-primary text-base font-semibold">
-              {food.default_variant.calories} cal
-            </Text>
-          </View>
+          <Text className="text-text-primary text-base font-semibold">
+            {food.default_variant.calories} cal
+          </Text>
           <Text className="text-text-secondary text-xs">
             {food.default_variant.serving_size} {formatServingUnit(food.default_variant.serving_unit)}
           </Text>
