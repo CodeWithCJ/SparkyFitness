@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import MealLibraryRow from '../MealLibraryRow';
 import VerifiedBadge from '../VerifiedBadge';
 import FoodResultRow from './FoodResultRow';
@@ -29,7 +30,9 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
   loadingFoodId,
   getProviderColor,
   onSelect,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <TouchableOpacity
     className="px-4 py-2 border-b border-border-subtle"
     activeOpacity={0.7}
@@ -81,7 +84,7 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
         ) : (
           <>
             <Text className="text-text-primary text-base font-semibold">
-              {item.calories} cal
+              {item.calories} {t('foodSearchUi.cal')}
             </Text>
             <Text className="text-text-secondary text-xs">
               {item.serving_description
@@ -93,7 +96,8 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
       </View>
     </View>
   </TouchableOpacity>
-);
+  );
+};
 
 interface ShowAllProviderRowProps {
   provider: ExternalProvider;
@@ -109,17 +113,20 @@ const ShowAllProviderRow: React.FC<ShowAllProviderRowProps> = ({
   count,
   accentColor,
   onSelectProvider,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <TouchableOpacity
     className="px-4 py-3 border-b border-border-subtle"
     activeOpacity={0.7}
     onPress={() => onSelectProvider(provider.id)}
   >
     <Text className="text-sm font-medium" style={{ color: accentColor }}>
-      Show all {count} {provider.provider_name} results
+      {t('foodSearchUi.showAll', { count, kind: provider.provider_name })}
     </Text>
   </TouchableOpacity>
-);
+  );
+};
 
 interface ShowAllLocalRowProps {
   section: 'foods' | 'meals';
@@ -133,17 +140,23 @@ const ShowAllLocalRow: React.FC<ShowAllLocalRowProps> = ({
   count,
   accentColor,
   onShowAll,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <TouchableOpacity
     className="px-4 py-3 border-b border-border-subtle"
     activeOpacity={0.7}
     onPress={() => onShowAll(section)}
   >
     <Text className="text-sm font-medium" style={{ color: accentColor }}>
-      Show all {count} {section === 'foods' ? 'foods' : 'meals'}
+      {t('foodSearchUi.showAll', {
+        count,
+        kind: section === 'foods' ? t('foodSearchUi.foods') : t('foodSearchUi.meals'),
+      })}
     </Text>
   </TouchableOpacity>
-);
+  );
+};
 
 const ProviderSkeletonRow: React.FC<{ textMuted: string }> = ({ textMuted }) => (
   <View className="px-4 py-3 gap-2">
@@ -171,7 +184,9 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
   pending,
   isMealBuilderMode,
   accentColor,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <View className="px-4 py-6 items-center justify-center">
     <Text
       className="text-text-secondary text-base text-center"
@@ -180,8 +195,8 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
       accessibilityElementsHidden={pending}
     >
       {isMealBuilderMode
-        ? 'No saved foods found'
-        : 'No saved foods or meals found'}
+        ? t('foodSearchUi.noSavedFoods')
+        : t('foodSearchUi.noSavedFoodsMeals')}
     </Text>
     {pending ? (
       <View
@@ -190,15 +205,16 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
         accessibilityRole="progressbar"
         accessibilityLabel={
           isMealBuilderMode
-            ? 'Searching saved foods'
-            : 'Searching saved foods and meals'
+            ? t('foodSearchUi.searchingFoods')
+            : t('foodSearchUi.searchingFoodsMeals')
         }
       >
         <ActivityIndicator size="small" color={accentColor} />
       </View>
     ) : null}
   </View>
-);
+  );
+};
 
 interface FoodSearchResultRowProps {
   row: ResultRow;

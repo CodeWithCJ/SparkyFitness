@@ -18,6 +18,7 @@ type Permission = {
 
 const mockSeedHealthData = jest.fn<Promise<SeedResult>, [number]>();
 const mockSeedHistoricalSteps = jest.fn<Promise<SeedResult>, []>();
+const mockSeedOldHealthData = jest.fn<Promise<SeedResult>, []>();
 const mockTriggerManualSync = jest.fn<Promise<void>, []>();
 const mockNotifySessionExpired = jest.fn();
 const mockGetActiveServerConfig = jest.fn<Promise<{ id: string } | null>, []>();
@@ -61,6 +62,9 @@ jest.mock('../../src/services/seedHealthData', () => ({
   },
   get seedHistoricalSteps() {
     return mockSeedHistoricalSteps;
+  },
+  get seedOldHealthData() {
+    return mockSeedOldHealthData;
   },
 }));
 jest.mock('../../src/services/backgroundSyncService', () => ({
@@ -135,6 +139,7 @@ describe('DevTools', () => {
     setTestLocale('en');
     mockSeedHealthData.mockReset();
     mockSeedHistoricalSteps.mockReset();
+    mockSeedOldHealthData.mockReset();
     mockTriggerManualSync.mockReset();
     mockNotifySessionExpired.mockReset();
     mockGetActiveServerConfig.mockReset();
@@ -169,6 +174,8 @@ describe('DevTools', () => {
     expect(view.getByText('14 Days')).toBeTruthy();
     expect(view.getByText('30 Days')).toBeTruthy();
     expect(view.getByText(/1 Year/)).toBeTruthy();
+    expect(view.getByText(/Old Data/)).toBeTruthy();
+    expect(view.getByText(/1-3 Years/)).toBeTruthy();
     expect(view.getByText('Health Connect')).toBeTruthy();
     expect(view.getByText('Health Connect Data')).toBeTruthy();
     expect(view.getByText('Background Sync')).toBeTruthy();
@@ -197,6 +204,8 @@ describe('DevTools', () => {
     expect(view.getByText('14 dni')).toBeTruthy();
     expect(view.getByText('30 dni')).toBeTruthy();
     expect(view.getByText(/1 rok/)).toBeTruthy();
+    expect(view.getByText(/Stare dane/)).toBeTruthy();
+    expect(view.getByText(/1–3 lata/)).toBeTruthy();
     expect(view.getByText('Dane Health Connect')).toBeTruthy();
     expect(view.getByText('Synchronizacja w tle')).toBeTruthy();
     expect(view.getByText('Uruchom synchronizację')).toBeTruthy();
@@ -373,6 +382,86 @@ describe('DevTools', () => {
       type: 'error',
       text1: 'Error',
       text2: 'Failed to seed historical step data: history exploded',
+    });
+  });
+
+  it('seeds old health data and reports EN toasts', async () => {
+    mockSeedOldHealthData.mockResolvedValue({
+      success: true,
+      recordsInserted: 5,
+    });
+    const view = render(<DevTools />);
+    await act(async () => {
+      fireEvent.press(view.getByText(/Old Data/));
+    });
+    expect(mockToastShow).toHaveBeenCalledWith({
+      type: 'success',
+      text1: 'Success',
+      text2: 'Seeded 5 records in clusters 1-3 years back.',
+    });
+
+    mockSeedOldHealthData.mockResolvedValue({
+      success: false,
+      recordsInserted: 0,
+      error: 'Old diagnostic',
+    });
+    await act(async () => {
+      fireEvent.press(view.getByText(/Old Data/));
+    });
+    expect(mockToastShow).toHaveBeenLastCalledWith({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Old diagnostic',
+    });
+
+    mockSeedOldHealthData.mockResolvedValue({
+      success: false,
+      recordsInserted: 0,
+    });
+    await act(async () => {
+      fireEvent.press(view.getByText(/Old Data/));
+    });
+    expect(mockToastShow).toHaveBeenLastCalledWith({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Failed to seed old health data.',
+    });
+
+    mockSeedOldHealthData.mockRejectedValue(new Error('old exploded'));
+    await act(async () => {
+      fireEvent.press(view.getByText(/Old Data/));
+    });
+    expect(mockToastShow).toHaveBeenLastCalledWith({
+      type: 'error',
+      text1: 'Error',
+      text2: 'Failed to seed old health data: old exploded',
+    });
+  });
+
+  it('seeds old health data with PL toasts', async () => {
+    setTestLocale('pl');
+    mockSeedOldHealthData.mockResolvedValue({
+      success: true,
+      recordsInserted: 5,
+    });
+    const view = render(<DevTools />);
+    await act(async () => {
+      fireEvent.press(view.getByText(/Stare dane/));
+    });
+    expect(mockToastShow).toHaveBeenCalledWith({
+      type: 'success',
+      text1: 'Sukces',
+      text2: 'Dodano 5 rekordów sprzed 1–3 lat.',
+    });
+
+    mockSeedOldHealthData.mockRejectedValue(new Error('old exploded'));
+    await act(async () => {
+      fireEvent.press(view.getByText(/Stare dane/));
+    });
+    expect(mockToastShow).toHaveBeenLastCalledWith({
+      type: 'error',
+      text1: 'Błąd',
+      text2: 'Nie udało się dodać starych danych zdrowotnych: old exploded',
     });
   });
 

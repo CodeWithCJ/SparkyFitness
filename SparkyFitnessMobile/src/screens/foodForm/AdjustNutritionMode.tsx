@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Platform, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
@@ -49,6 +50,7 @@ import {
 type AdjustNutritionParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'adjust-entry-nutrition' }>;
 
 export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionParams; navigation: FoodFormScreenProps['navigation'] }) {
+  const { t } = useTranslation();
   const {
     initialValues,
     returnKey,
@@ -202,7 +204,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
     ) {
       Toast.show({
         type: 'error',
-        text1: 'Still loading food details. Try again in a moment.',
+        text1: t('foodEditor.loadingDetails'),
       });
       return;
     }
@@ -236,7 +238,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           setPendingUnitSelection(nextUnitSelection);
           setCurrentVariantId(createdVariant.id);
         } catch {
-          Toast.show({ type: 'error', text1: 'Could not save new unit' });
+          Toast.show({ type: 'error', text1: t('foodEditor.saveUnitFailed') });
           return;
         }
       }
@@ -279,7 +281,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                   } as CreateFoodVariantPayload),
                 ),
               ).catch(() => {
-                Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+                Toast.show({ type: 'error', text1: t('foodMealScreens.someUnitsNotSaved') });
               }).finally(() => {
                 invalidateFoodCaches(queryClient, foodId);
               });
@@ -352,14 +354,14 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                         } as CreateFoodVariantPayload),
                       ),
                     ).catch(() => {
-                      Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+                      Toast.show({ type: 'error', text1: t('foodMealScreens.someUnitsNotSaved') });
                     }).finally(() => {
                       invalidateFoodCaches(queryClient, foodId);
                     });
                     setEquivalentBaseline(equivalentDraft);
                   }
                 } catch {
-                  Toast.show({ type: 'error', text1: 'Could not save new variant' });
+                  Toast.show({ type: 'error', text1: t('foodEditor.saveVariantFailed') });
                   return;
                 }
                 // Fall through to persistFoodEdits with the new variant ID so the
@@ -484,7 +486,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             setEquivalentBaseline(equivalentDraft);
           }
         } catch {
-          Toast.show({ type: 'error', text1: 'Could not save nutrition for future use' });
+          Toast.show({ type: 'error', text1: t('foodEditor.saveFutureFailed') });
         }
       }
 
@@ -514,7 +516,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
-    title: 'Adjust Nutrition',
+    title: t('screens.adjustNutrition'),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -567,10 +569,10 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           <View className="bg-surface rounded-xl p-4 shadow-sm">
             <View className="flex-row items-center justify-between">
               <Text className="text-text-secondary text-base">
-                Save nutrition for future use
+                {t('foodEditor.saveFuture')}
               </Text>
               <Switch
-                accessibilityLabel="Save nutrition for future use"
+                accessibilityLabel={t('foodEditor.saveFuture')}
                 value={updateFoodToggle}
                 onValueChange={setUpdateFoodToggle}
               />

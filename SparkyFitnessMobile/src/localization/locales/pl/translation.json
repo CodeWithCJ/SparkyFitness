@@ -102,7 +102,9 @@
       "permissionsRequired": "Wymagane uprawnienia",
       "permissionsMessage": "Nie przyznano części uprawnień. Włącz wszystkie wymagane uprawnienia zdrowotne w {{settings}}, aby synchronizować dane.",
       "allPermissionError": "Wystąpił błąd podczas żądania uprawnień zdrowotnych: {{message}}",
-      "reportError": "Nie udało się wygenerować raportu danych zdrowotnych: {{message}}"
+      "reportError": "Nie udało się wygenerować raportu danych zdrowotnych: {{message}}",
+      "importFullHistory": "Importuj pełną historię",
+      "importFullHistorySubtitle": "Jednorazowy import wszystkich dotychczasowych danych zdrowotnych"
     },
     "calorie": {
       "title": "Ustawienia kalorii i BMR",
@@ -1544,7 +1546,8 @@
     "loadingPresets": "Wczytywanie presetów treningów...",
     "tryConnection": "Sprawdź połączenie i spróbuj ponownie.",
     "tryOwnership": "Zmień filtr własności.",
-    "durationSpan": "Czas trwania treningu: {{span}}"
+    "durationSpan": "Czas trwania treningu: {{span}}",
+    "deleteExercise": "Usuń ćwiczenie"
   },
   "sync": {
     "someChangesPending": "Niektóre zmiany nie dotarły jeszcze do serwera.",
@@ -1921,7 +1924,8 @@
     "saveMeal": "Zapisz posiłek",
     "logMeal": "Zapisz posiłek",
     "deleteLoggedMeal": "Usuń posiłek",
-    "noLoggedMealFoods": "Brak produktów w tym posiłku."
+    "noLoggedMealFoods": "Brak produktów w tym posiłku.",
+    "mealLabel": "Posiłek"
   },
   "foodEditor": {
     "discardEquivalentsTitle": "Odrzucić niezapisane odpowiedniki?",
@@ -1953,7 +1957,8 @@
     "saveBarcode": "Zapisz kod kreskowy",
     "barcodeHelp": "Standardowe kody kreskowe mają od 8 do 14 cyfr.",
     "invalidAmount": "Nieprawidłowa ilość",
-    "amountPositive": "Ilość musi być większa od zera."
+    "amountPositive": "Ilość musi być większa od zera.",
+    "variantExistsQuoted": "„{{unit}}\" jest już zapisaną wersją. Zaktualizować ją tymi wartościami czy zapisać nową wersję?"
   },
   "barcodeEditor": {
     "invalid": "Nieprawidłowy kod kreskowy",
@@ -2008,7 +2013,13 @@
     "chooseSource": "Wybierz źródło",
     "chooseSourceBody": "Dotknij tutaj, aby zmienić dostawcę lub wyszukać we wszystkich źródłach.",
     "loadMore": "Załaduj więcej",
-    "failedMoreRetry": "Nie udało się załadować więcej. Dotknij, aby spróbować ponownie"
+    "failedMoreRetry": "Nie udało się załadować więcej. Dotknij, aby spróbować ponownie",
+    "foods": "produkty",
+    "meals": "posiłki",
+    "providerCouldNotLoad": "{{provider}}, nie udało się załadować, dotknij, aby ponowić",
+    "providerNoResults": "{{provider}}, brak wyników",
+    "providerResultsExpand": "{{provider}}, {{count}} wyników, dotknij, aby rozwinąć",
+    "providerResultsCollapse": "{{provider}}, {{count}} wyników, dotknij, aby zwinąć"
   },
   "photoImprove": {
     "grams": "gramów",
@@ -2180,7 +2191,9 @@
     "medications": "Leki",
     "medication": "Lek",
     "logDailyEntry": "Dzienny wpis",
-    "notificationSettings": "Powiadomienia"
+    "notificationSettings": "Powiadomienia",
+    "importHistory": "Historia importu",
+    "cyclePregnancy": "Cykl i ciąża"
   },
   "devTools": {
     "title": "Narzędzia deweloperskie",
@@ -2192,7 +2205,9 @@
       "fourteenDays": "14 dni",
       "thirtyDays": "30 dni",
       "oneYear": "1 rok",
-      "steps": "(Kroki)"
+      "steps": "(Kroki)",
+      "oldData": "Stare dane",
+      "oldRange": "(1–3 lata)"
     },
     "healthConnect": {
       "title": "Health Connect",
@@ -2250,7 +2265,13 @@
       "announcementReset": "Modal ogłoszenia systemowego pojawi się ponownie.",
       "announcementResetFailed": "Nie udało się zresetować ogłoszenia.",
       "popoverReset": "Podpowiedź „{{label}}” pojawi się ponownie.",
-      "popoverResetFailed": "Nie udało się zresetować podpowiedzi."
+      "popoverResetFailed": "Nie udało się zresetować podpowiedzi.",
+      "seedOldSeeded_one": "Dodano {{count}} rekord sprzed 1–3 lat.",
+      "seedOldSeeded_few": "Dodano {{count}} rekordy sprzed 1–3 lat.",
+      "seedOldSeeded_many": "Dodano {{count}} rekordów sprzed 1–3 lat.",
+      "seedOldSeeded_other": "Dodano {{count}} rekordów sprzed 1–3 lat.",
+      "seedOldFailedWithMessage": "Nie udało się dodać starych danych zdrowotnych: {{message}}",
+      "seedOldFailed": "Nie udało się dodać starych danych zdrowotnych."
     },
     "gallery": {
       "title": "Galeria karty cyklu",
@@ -2744,5 +2765,56 @@
       "workoutType": "trening",
       "activityType": "aktywność"
     }
+  },
+  "importHistory": {
+    "title": "Historia importu",
+    "idleHeadline": "Zaimportuj swoją historię zdrowotną",
+    "idleBody": "Zaimportuj wszystkie swoje dane z {{source}} do SparkyFitness w ramach jednorazowego uzupełnienia każdej włączonej metryki — od najwcześniejszych zapisanych danych aż do dziś.",
+    "source": "Źródło",
+    "dataTypesEnabled": "Włączone typy danych",
+    "takesMinutesNote": "Zajmie to kilka minut. Możesz wstrzymać w dowolnym momencie i kontynuować od miejsca, w którym przerwałeś.",
+    "startImport": "Rozpocznij import",
+    "syncFinishing": "Synchronizacja wciąż trwa. Zostanie to włączone za chwilę.",
+    "syncFinishingPlural": "Synchronizacja wciąż trwa. Te opcje zostaną włączone za chwilę.",
+    "dailyLimitNote": "Health Connect ogranicza ilość danych historycznych, które aplikacje mogą odczytać każdego dnia. Gdy limit zostanie osiągnięty, import automatycznie wznowi się później w miejscu przerwania.",
+    "partialAccessNote": "Nie przyznano dostępu do wszystkich danych, więc import może sięgnąć tylko około 30 dni wstecz. Udziel dostępu w ustawieniach Health Connect i zacznij od nowa, aby sięgnąć dalej.",
+    "scanning": "Skanowanie Twojej historii…",
+    "findingEarliest": "Wyszukiwanie najwcześniejszych zapisanych danych",
+    "keepOpenNote": "Podczas importu trzymaj aplikację otwartą, a urządzenie odblokowane.",
+    "pauseImport": "Wstrzymaj import",
+    "pausing": "Wstrzymywanie…",
+    "finishingPause": "Dokańczanie, a następnie wstrzymanie.",
+    "progressDays_one": "z {{formattedCount}} dnia",
+    "progressDays_few": "z {{formattedCount}} dni",
+    "progressDays_many": "z {{formattedCount}} dni",
+    "progressDays_other": "z {{formattedCount}} dni",
+    "recordsWritten": "Zapisane rekordy",
+    "timeRemaining": "Pozostały czas",
+    "aroundMonth": "Ok. {{month}}",
+    "underAMinute": "Poniżej minuty",
+    "resume": "Wznów",
+    "startOver": "Zacznij od nowa",
+    "metricSelectionNote": "Twój wybór metryk zmienił się od czasu rozpoczęcia importu. Opcja „Wznów” kontynuuje z pierwotnym wyborem, a „Zacznij od nowa” używa bieżącego.",
+    "daysSavedNote": "Zaimportowane dni są zapisywane. Rozpoczęcie od nowa odrzuca je i importuje ponownie od pierwszego dnia.",
+    "importComplete": "Import zakończony",
+    "daysImported": "dni zaimportowano",
+    "newDataNote": "Nowe dane zostaną pobrane automatycznie przez zwykłą synchronizację. Uruchom kolejny import tylko wtedy, gdy włączysz dodatkowe metryki zdrowotne.",
+    "paused": {
+      "quota": "Osiągnięto dzienny limit historii {{source}}. Twój postęp został zapisany. Wznów jutro, aby kontynuować w miejscu przerwania.",
+      "deviceLocked": "Urządzenie zablokowało się podczas importu, przez co dane zdrowotne stały się nieczytelne. Odblokuj urządzenie i wznów import.",
+      "appInactive": "Aplikacja przeszła w tło podczas importu. Trzymaj ją otwartą i odblokowaną, a następnie wznów import.",
+      "serverChanged": "Aktywny serwer zmienił się podczas importu. Przełącz się z powrotem na tamten serwer, aby wznowić, albo zacznij od nowa, aby importować na bieżący.",
+      "uploadFailed": "Przesyłanie na serwer nie powiodło się{{errorSuffix}}. Sprawdź połączenie i wznów, aby spróbować ponownie.",
+      "windowFailed": "Odczyt danych zdrowotnych nie powiódł się{{errorSuffix}}. Wznów, aby spróbować ponownie od miejsca przerwania.",
+      "alreadyRunning": "W tej chwili trwa inna synchronizacja. Poczekaj chwilę, aż się zakończy, a następnie wznów."
+    },
+    "idle": {
+      "noHistory": "Nie znaleziono danych historycznych w {{source}} dla włączonych metryk.",
+      "noMetrics": "Żadna metryka nie jest włączona. Najpierw włącz wybrane metryki w sekcji Synchronizacja zdrowotna.",
+      "noServer": "Nie skonfigurowano aktywnego serwera.",
+      "serverChanged": "Aktywny serwer zmienił się podczas importu, więc został on zatrzymany. Zacznij ponownie, aby importować na bieżący serwer.",
+      "alreadyRunning": "W tej chwili trwa inna synchronizacja. Poczekaj chwilę, aż się zakończy, a następnie rozpocznij import."
+    },
+    "completed": "Ukończono"
   }
 }

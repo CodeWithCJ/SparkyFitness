@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, ActivityIndicator, Keyboard } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Icon from '../Icon';
 import BottomSheetPicker from '../BottomSheetPicker';
 import type { PickerOption } from '../BottomSheetPicker';
@@ -48,6 +49,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
   onSelectProvider,
   onToggleProvider,
 }) => {
+  const { t } = useTranslation();
   if (!section.title) return null;
 
   // The External Results / Top Matches header doubles as the source switcher:
@@ -57,8 +59,10 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
   if (section.kind === 'online' || section.kind === 'online-top') {
     const canSwitch = providerOptions.length > 1;
     const label =
-      section.kind === 'online-top' ? 'Top Matches' : 'Online Results';
-    const value = isAllProviders ? 'All Sources' : selectedProviderName;
+      section.kind === 'online-top'
+        ? t('foodMealScreens.topMatches')
+        : t('foodMealScreens.onlineResults');
+    const value = isAllProviders ? t('foodMealScreens.allSources') : selectedProviderName;
     const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
     const header = (
       <View
@@ -90,7 +94,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
         value={selectedProvider ?? ''}
         options={providerOptions}
         onSelect={onSelectProvider}
-        title="Online provider"
+        title={t('foodMealScreens.onlineProvider')}
         renderTrigger={({ onPress }) => (
           <Pressable
             onPress={() => {
@@ -100,7 +104,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
               onPress();
             }}
             accessibilityRole="button"
-            accessibilityLabel={`Source ${value}, tap to change`}
+            accessibilityLabel={t('foodMealScreens.sourceChange', { source: value })}
           >
             {header}
           </Pressable>
@@ -133,13 +137,19 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
         accessibilityRole="button"
         accessibilityLabel={
           errored
-            ? `${provider.provider_name}, could not load, tap to retry`
+            ? t('foodSearchUi.providerCouldNotLoad', { provider: provider.provider_name })
             : empty
-              ? `${provider.provider_name}, no results`
+              ? t('foodSearchUi.providerNoResults', { provider: provider.provider_name })
               : expandable
-                ? `${provider.provider_name}, ${count} results, tap to ${
-                    expanded ? 'collapse' : 'expand'
-                  }`
+                ? expanded
+                  ? t('foodSearchUi.providerResultsCollapse', {
+                      provider: provider.provider_name,
+                      count,
+                    })
+                  : t('foodSearchUi.providerResultsExpand', {
+                      provider: provider.provider_name,
+                      count,
+                    })
                 : provider.provider_name
         }
       >
@@ -161,11 +171,11 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
           <ActivityIndicator size="small" color={textMuted} />
         ) : errored ? (
           <View className="flex-row items-center gap-1">
-            <Text className="text-text-muted text-xs">Couldn&apos;t load</Text>
+            <Text className="text-text-muted text-xs">{t('foodSearchUi.couldNotLoad')}</Text>
             <Icon name="sync" size={14} color={textMuted} />
           </View>
         ) : empty ? (
-          <Text className="text-text-muted text-xs">No results</Text>
+          <Text className="text-text-muted text-xs">{t('foodSearchUi.noResults')}</Text>
         ) : (
           <Icon
             name={expanded ? 'chevron-down' : 'chevron-forward'}

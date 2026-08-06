@@ -80,7 +80,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   }, [invalidateCache]);
 
   const renderRightActions = () => (
-    <DeleteRowAction onPress={confirmAndDelete} accessibilityLabel="Delete exercise" />
+    <DeleteRowAction onPress={confirmAndDelete} accessibilityLabel={t('workout.deleteExercise')} />
   );
 
   const { name, duration, calories } = getWorkoutSummary(session);

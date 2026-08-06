@@ -140,13 +140,27 @@ const DevTools: React.FC = () => {
     try {
       const result = await seedOldHealthData();
       if (result.success) {
-        Toast.show({ type: 'success', text1: 'Success', text2: `Seeded ${result.recordsInserted} records in clusters 1-3 years back.` });
+        Toast.show({
+          type: 'success',
+          text1: t('common.success'),
+          text2: t('devTools.toast.seedOldSeeded', {
+            count: result.recordsInserted,
+          }),
+        });
       } else {
-        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Failed to seed old health data.' });
+        Toast.show({
+          type: 'error',
+          text1: t('common.error'),
+          text2: result.error ?? t('devTools.toast.seedOldFailed'),
+        });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed old health data: ${message}` });
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: t('devTools.toast.seedOldFailedWithMessage', { message }),
+      });
     } finally {
       setIsSeeding(false);
     }
@@ -275,7 +289,7 @@ const DevTools: React.FC = () => {
           onPress={handleSeedOldData}
           disabled={isSeeding}
         >
-          <Text className="text-white text-base font-bold text-center">Old Data{'\n'}(1-3 Years)</Text>
+          <Text className="text-white text-base font-bold text-center">{t('devTools.seed.oldData')}{'\n'}{t('devTools.seed.oldRange')}</Text>
         </Button>
       </View>
 

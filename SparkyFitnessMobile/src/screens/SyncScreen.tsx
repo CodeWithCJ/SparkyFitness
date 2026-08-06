@@ -569,8 +569,8 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         {/* Import Full History */}
         <SettingsRow
           icon="history"
-          title="Import Full History"
-          subtitle="One-time import of all past health data"
+          title={t('screenCopy.sync.importFullHistory')}
+          subtitle={t('screenCopy.sync.importFullHistorySubtitle')}
           onPress={() => navigation.navigate('ImportHistory')}
           disabled={!isHealthConnectInitialized}
           iconColor={accentPrimary}

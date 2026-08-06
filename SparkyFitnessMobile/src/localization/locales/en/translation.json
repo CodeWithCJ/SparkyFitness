@@ -102,7 +102,9 @@
       "permissionsRequired": "Permissions Required",
       "permissionsMessage": "Some permissions were not granted. Please enable all required health permissions in the {{settings}} to sync all data.",
       "allPermissionError": "An error occurred while requesting health permissions: {{message}}",
-      "reportError": "Failed to generate health data report: {{message}}"
+      "reportError": "Failed to generate health data report: {{message}}",
+      "importFullHistory": "Import Full History",
+      "importFullHistorySubtitle": "One-time import of all past health data"
     },
     "calorie": {
       "title": "Calorie & BMR Settings",
@@ -1528,7 +1530,8 @@
     "failedMorePresets": "Failed to load more presets.",
     "searchWorkoutPresets": "Search workout presets...",
     "workoutPresetCount_one": "{{formattedCount}} exercise",
-    "workoutPresetCount_other": "{{formattedCount}} exercises"
+    "workoutPresetCount_other": "{{formattedCount}} exercises",
+    "deleteExercise": "Delete exercise"
   },
   "sync": {
     "someChangesPending": "Some changes have not reached the server yet.",
@@ -1903,7 +1906,8 @@
     "saveMeal": "Save meal",
     "logMeal": "Log Meal",
     "deleteLoggedMeal": "Delete Meal",
-    "noLoggedMealFoods": "No foods in this meal yet."
+    "noLoggedMealFoods": "No foods in this meal yet.",
+    "mealLabel": "Meal"
   },
   "foodEditor": {
     "discardEquivalentsTitle": "Discard unsaved equivalents?",
@@ -1935,7 +1939,8 @@
     "saveBarcode": "Save barcode",
     "barcodeHelp": "Standard barcodes are 8 to 14 digits.",
     "invalidAmount": "Invalid amount",
-    "amountPositive": "Amount must be greater than zero."
+    "amountPositive": "Amount must be greater than zero.",
+    "variantExistsQuoted": "\"{{unit}}\" is already a saved variant. Do you want to update it with these values, or save as a new variant?"
   },
   "barcodeEditor": {
     "invalid": "Invalid barcode",
@@ -1990,7 +1995,13 @@
     "chooseSource": "Choose a source",
     "chooseSourceBody": "Tap here to switch providers or search All Sources.",
     "loadMore": "Load More",
-    "failedMoreRetry": "Failed to load more. Tap to retry"
+    "failedMoreRetry": "Failed to load more. Tap to retry",
+    "foods": "foods",
+    "meals": "meals",
+    "providerCouldNotLoad": "{{provider}}, could not load, tap to retry",
+    "providerNoResults": "{{provider}}, no results",
+    "providerResultsExpand": "{{provider}}, {{count}} results, tap to expand",
+    "providerResultsCollapse": "{{provider}}, {{count}} results, tap to collapse"
   },
   "photoImprove": {
     "grams": "grams",
@@ -2162,7 +2173,9 @@
     "medications": "Medications",
     "medication": "Medication",
     "logDailyEntry": "Log Daily Entry",
-    "notificationSettings": "Notifications"
+    "notificationSettings": "Notifications",
+    "importHistory": "Import History",
+    "cyclePregnancy": "Cycle & Pregnancy"
   },
   "devTools": {
     "title": "Dev Tools",
@@ -2174,7 +2187,9 @@
       "fourteenDays": "14 Days",
       "thirtyDays": "30 Days",
       "oneYear": "1 Year",
-      "steps": "(Steps)"
+      "steps": "(Steps)",
+      "oldData": "Old Data",
+      "oldRange": "(1-3 Years)"
     },
     "healthConnect": {
       "title": "Health Connect",
@@ -2228,7 +2243,11 @@
       "announcementReset": "System announcement modal will re-appear.",
       "announcementResetFailed": "Could not reset announcement.",
       "popoverReset": "{{label}} popover will re-appear.",
-      "popoverResetFailed": "Could not reset popover."
+      "popoverResetFailed": "Could not reset popover.",
+      "seedOldSeeded_one": "Seeded {{count}} record in clusters 1-3 years back.",
+      "seedOldSeeded_other": "Seeded {{count}} records in clusters 1-3 years back.",
+      "seedOldFailedWithMessage": "Failed to seed old health data: {{message}}",
+      "seedOldFailed": "Failed to seed old health data."
     },
     "gallery": {
       "title": "Cycle Card Gallery",
@@ -2704,5 +2723,54 @@
       "workoutType": "workout",
       "activityType": "activity"
     }
+  },
+  "importHistory": {
+    "title": "Import History",
+    "idleHeadline": "Import your health history",
+    "idleBody": "Import all of your past {{source}} data into SparkyFitness with a one-time backfill of every enabled metric, from your earliest recorded data up to today.",
+    "source": "Source",
+    "dataTypesEnabled": "Data types enabled",
+    "takesMinutesNote": "Takes a few minutes. You can pause any time and pick up where you left off.",
+    "startImport": "Start Import",
+    "syncFinishing": "A sync is still finishing up. This will enable in a moment.",
+    "syncFinishingPlural": "A sync is still finishing up. These will enable in a moment.",
+    "dailyLimitNote": "Health Connect limits how much historical data apps can read each day. If that limit is reached, the import automatically resumes later where it left off.",
+    "partialAccessNote": "Access to all past data was not granted, so the import can only reach about 30 days back. Grant it from Health Connect settings and start over to go further.",
+    "scanning": "Scanning your history…",
+    "findingEarliest": "Finding your earliest recorded data",
+    "keepOpenNote": "Keep the app open and your device unlocked while the import runs.",
+    "pauseImport": "Pause Import",
+    "pausing": "Pausing…",
+    "finishingPause": "Finishing up, then pausing.",
+    "progressDays_one": "of {{formattedCount}} day",
+    "progressDays_other": "of {{formattedCount}} days",
+    "recordsWritten": "Records written",
+    "timeRemaining": "Time remaining",
+    "aroundMonth": "Around {{month}}",
+    "underAMinute": "Under a minute",
+    "resume": "Resume",
+    "startOver": "Start Over",
+    "metricSelectionNote": "Your metric selection has changed since this import started. Resume continues with the original selection and Start Over uses the current one.",
+    "daysSavedNote": "Days already imported are saved. Starting over discards them and re-imports from day 1.",
+    "importComplete": "Import complete",
+    "daysImported": "days imported",
+    "newDataNote": "New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics.",
+    "paused": {
+      "quota": "{{source}}'s daily history limit was reached. Your progress has been saved. Resume tomorrow to continue where you left off.",
+      "deviceLocked": "Your device locked during the import, so health data became unreadable. Unlock your device and resume.",
+      "appInactive": "The app went to the background during the import. Keep it open and unlocked, then resume.",
+      "serverChanged": "The active server changed during the import. Switch back to that server to resume, or start over to import into this one.",
+      "uploadFailed": "Uploading to your server failed{{errorSuffix}}. Check your connection and resume to retry.",
+      "windowFailed": "Reading health data failed{{errorSuffix}}. Resume to retry from where it stopped.",
+      "alreadyRunning": "Another sync is running right now. Wait a moment for it to finish, then resume."
+    },
+    "idle": {
+      "noHistory": "No historical data was found in {{source}} for your enabled metrics.",
+      "noMetrics": "No metrics are enabled. Turn on the metrics you want under Health Sync first.",
+      "noServer": "No active server is configured.",
+      "serverChanged": "The active server changed during the import, so it stopped. Start again to import into the current server.",
+      "alreadyRunning": "Another sync is running right now. Wait a moment for it to finish, then start the import."
+    },
+    "completed": "Completed"
   }
 }

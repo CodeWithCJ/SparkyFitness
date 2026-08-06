@@ -11,6 +11,7 @@ import {
   useFoodVariants,
 } from '../../src/hooks/useFoodVariants';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
+import { initializeI18n } from '../../src/localization/i18n';
 
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
 const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
@@ -984,6 +985,72 @@ describe('FoodFormScreen', () => {
     });
     expect(mockSaveFoodAsync).not.toHaveBeenCalled();
     expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('blocks edit-food submit when the name is missing via persistence validation', async () => {
+    // EditFoodMode validates through persistence.validateFoodForm, which resolves
+    // copy through the real i18n instance — initialize it so the toast payload
+    // carries the English text, not the key.
+    await initializeI18n('en');
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      name: '   ',
+    };
+
+    const screen = renderScreen({
+      mode: 'edit-food',
+      item: {
+        id: 'food-1',
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: 100,
+        servingUnit: 'g',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+        source: 'local',
+        originalItem: {} as any,
+      },
+      initialValues: {
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+      },
+      returnKey: 'FoodDetail-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      customNutrients: undefined,
+    });
+
+    fireEvent.press(screen.getByText('Save'));
+
+    expect(mockToast.show).toHaveBeenCalledWith({
+      type: 'error',
+      text1: 'Missing name',
+      text2: 'Please enter a food name.',
+    });
   });
 
   it('blocks submit when the serving size is invalid', () => {

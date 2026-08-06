@@ -325,7 +325,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
             ionicon: 'swap-vertical',
             role: 'secondary',
             onPress: () => exerciseListRef.current?.openReorder(),
-            accessibilityLabel: 'Reorder exercises',
+            accessibilityLabel: t('activeWorkout.header.reorderExercises'),
             identifier: 'workout-add-reorder',
           },
           saveItem,
