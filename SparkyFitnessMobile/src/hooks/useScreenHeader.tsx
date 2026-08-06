@@ -24,6 +24,7 @@ import type { AnchoredMenuItem, AnchorRect } from '../components/AnchoredMenu';
 import { useHeaderActionColors } from './useHeaderActionColors';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
+  createNativeHeaderAccentBadge,
   createNativeHeaderIconButtonItem,
   createNativeHeaderMenuButtonItem,
   createNativeHeaderTextButtonItem,
@@ -294,20 +295,7 @@ function buildNativeMenuItem(
     identifier,
     tintColor: colors.defaultColor,
     accessibilityLabel: item.accessibilityLabel,
-    badge: item.showsBadge
-      ? {
-          // The screens bridge only exposes UIBarButtonItemBadge's string
-          // variant (no .indicator), so a bullet with foreground matched to
-          // the background renders as a plain accent dot; the badge capsule
-          // sizes with the font, so a small fontSize keeps the dot compact.
-          value: '•',
-          style: {
-            backgroundColor: accentColor,
-            color: accentColor,
-            fontSize: 9,
-          },
-        }
-      : undefined,
+    badge: item.showsBadge ? createNativeHeaderAccentBadge(accentColor) : undefined,
     menuItems,
   });
 }

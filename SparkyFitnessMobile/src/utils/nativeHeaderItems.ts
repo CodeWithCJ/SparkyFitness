@@ -65,6 +65,25 @@ export function createNativeHeaderTextButtonItem({
   };
 }
 
+/**
+ * The screens bridge only exposes UIBarButtonItemBadge's string variant (no
+ * .indicator), so a bullet with foreground matched to the background renders
+ * as a plain accent dot; the badge capsule sizes with the font, so a small
+ * fontSize keeps the dot compact.
+ */
+export function createNativeHeaderAccentBadge(
+  accentColor: string,
+): NativeStackHeaderItemMenu['badge'] {
+  return {
+    value: '•',
+    style: {
+      backgroundColor: accentColor,
+      color: accentColor,
+      fontSize: 9,
+    },
+  };
+}
+
 export function createNativeHeaderMenuButtonItem({
   sfSymbol,
   menuItems,

@@ -66,6 +66,7 @@ import { mergeRecent, mergeFrequent, landingKey } from '../utils/landingLists';
 import type { LandingEntry } from '../utils/landingLists';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
+  createNativeHeaderAccentBadge,
   createNativeHeaderIconButtonItem,
   createNativeHeaderMenuButtonItem,
 } from '../utils/nativeHeaderItems';
@@ -438,19 +439,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             ? `More options, filtered to ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
             : 'More options',
           badge: isOwnershipFiltered
-            ? {
-                // The screens bridge only exposes UIBarButtonItemBadge's
-                // string variant (no .indicator), so a bullet with foreground
-                // matched to the background renders as a plain accent dot;
-                // the badge capsule sizes with the font, so a small fontSize
-                // keeps the dot compact.
-                value: '•',
-                style: {
-                  backgroundColor: accentColor,
-                  color: accentColor,
-                  fontSize: 9,
-                },
-              }
+            ? createNativeHeaderAccentBadge(accentColor)
             : undefined,
           menuItems: nativeMenuItems,
         }),

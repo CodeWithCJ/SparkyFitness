@@ -10,8 +10,8 @@ import { useServerConnection, useWorkoutPresetsLibrary, useProfile } from '../ho
 import {
   deriveShareStatus,
   filterByOwnership,
+  ownershipFilterEmptyState,
   ownershipFilterHeaderMenu,
-  OWNERSHIP_FILTER_LABELS,
 } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -62,9 +62,11 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
       return (
         <StatusView
           inline
-          title={`No presets in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`}
-          subtitle="Change the filter to see your other presets."
-          action={{ label: 'Show All', onPress: () => setOwnershipFilter('all') }}
+          {...ownershipFilterEmptyState({
+            noun: 'presets',
+            filter: ownershipFilter,
+            onReset: () => setOwnershipFilter('all'),
+          })}
         />
       );
     }

@@ -26,8 +26,8 @@ import { useServerConnection, useExternalProviders, useSuggestedExercises, useEx
 import {
   deriveShareStatus,
   filterByOwnership,
+  ownershipFilterEmptyState,
   ownershipFilterHeaderMenu,
-  OWNERSHIP_FILTER_LABELS,
 } from '../utils/shareStatus';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import ShareStatusBadge from '../components/ShareStatusBadge';
@@ -339,9 +339,11 @@ useEffect(() => {
       if (searchResults.length > 0) {
         return (
           <StatusView
-            title={`No exercises in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`}
-            subtitle="Change the filter to see your other exercises."
-            action={{ label: 'Show All', onPress: () => setOwnershipFilter('all') }}
+            {...ownershipFilterEmptyState({
+              noun: 'exercises',
+              filter: ownershipFilter,
+              onReset: () => setOwnershipFilter('all'),
+            })}
           />
         );
       }
@@ -388,9 +390,11 @@ useEffect(() => {
       if (recentExercises.length > 0 || topExercises.length > 0) {
         return (
           <StatusView
-            title={`No exercises in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`}
-            subtitle="Change the filter to see your other exercises."
-            action={{ label: 'Show All', onPress: () => setOwnershipFilter('all') }}
+            {...ownershipFilterEmptyState({
+              noun: 'exercises',
+              filter: ownershipFilter,
+              onReset: () => setOwnershipFilter('all'),
+            })}
           />
         );
       }

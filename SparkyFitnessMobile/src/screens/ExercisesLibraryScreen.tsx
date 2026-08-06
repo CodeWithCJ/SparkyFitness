@@ -10,8 +10,8 @@ import { useExercisesLibrary, useServerConnection, useProfile } from '../hooks';
 import {
   deriveShareStatus,
   filterByOwnership,
+  ownershipFilterEmptyState,
   ownershipFilterHeaderMenu,
-  OWNERSHIP_FILTER_LABELS,
 } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -63,9 +63,11 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
       return (
         <StatusView
           inline
-          title={`No exercises in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`}
-          subtitle="Change the filter to see your other exercises."
-          action={{ label: 'Show All', onPress: () => setOwnershipFilter('all') }}
+          {...ownershipFilterEmptyState({
+            noun: 'exercises',
+            filter: ownershipFilter,
+            onReset: () => setOwnershipFilter('all'),
+          })}
         />
       );
     }

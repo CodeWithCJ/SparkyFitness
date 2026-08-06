@@ -104,6 +104,48 @@ describe('pinDefaultVariantToServing', () => {
     expect(result.default_variant?.calories).toBe(231);
   });
 
+  it('pins the description match even when a same-named sibling is the default', () => {
+    const serving200 = makeVariant(1, 'serving', {
+      serving_description: '1 serving (200 g)',
+      calories: 162,
+      is_default: true,
+    });
+    const serving400 = makeVariant(1, 'serving', {
+      serving_description: '1 serving (400 g)',
+      calories: 324,
+    });
+    const detailed = makeFood([serving200, serving400]);
+
+    const result = pinDefaultVariantToServing(detailed, {
+      serving_size: 1,
+      serving_unit: 'serving',
+      serving_description: '1 serving (400 g)',
+    });
+
+    expect(result.default_variant?.calories).toBe(324);
+    expect(result.variants?.map((v) => !!v.is_default)).toEqual([false, true]);
+  });
+
+  it('keeps the default when the clicked serving has no description', () => {
+    const serving200 = makeVariant(1, 'serving', {
+      serving_description: '1 serving (200 g)',
+      calories: 162,
+    });
+    const serving400 = makeVariant(1, 'serving', {
+      serving_description: '1 serving (400 g)',
+      calories: 324,
+      is_default: true,
+    });
+    const detailed = makeFood([serving200, serving400]);
+
+    const result = pinDefaultVariantToServing(detailed, {
+      serving_size: 1,
+      serving_unit: 'serving',
+    });
+
+    expect(result).toBe(detailed);
+  });
+
   it('disambiguates same-named servings by description', () => {
     const serving200 = makeVariant(1, 'serving', {
       serving_description: '1 serving (200 g)',

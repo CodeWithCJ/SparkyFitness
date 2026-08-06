@@ -14,8 +14,8 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
   filterByOwnership,
+  ownershipFilterEmptyState,
   ownershipFilterHeaderMenu,
-  OWNERSHIP_FILTER_LABELS,
 } from '../utils/shareStatus';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodItem } from '../types/foods';
@@ -68,9 +68,11 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       return (
         <StatusView
           inline
-          title={`No foods in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`}
-          subtitle="Change the filter to see your other foods."
-          action={{ label: 'Show All', onPress: () => setOwnershipFilter('all') }}
+          {...ownershipFilterEmptyState({
+            noun: 'foods',
+            filter: ownershipFilter,
+            onReset: () => setOwnershipFilter('all'),
+          })}
         />
       );
     }

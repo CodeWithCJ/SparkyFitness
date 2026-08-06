@@ -54,6 +54,28 @@ export function ownershipFilterHeaderMenu({
 }
 
 /**
+ * Empty-state copy for a list whose visible items are all hidden by the
+ * ownership filter. Lives beside the menu factory so the wording stays
+ * aligned with OWNERSHIP_FILTER_LABELS. Spread into a StatusView alongside
+ * any layout props (e.g. `inline`).
+ */
+export function ownershipFilterEmptyState({
+  noun,
+  filter,
+  onReset,
+}: {
+  noun: string;
+  filter: OwnershipFilter;
+  onReset: () => void;
+}) {
+  return {
+    title: `No ${noun} in ${OWNERSHIP_FILTER_LABELS[filter]}`,
+    subtitle: `Change the filter to see your other ${noun}.`,
+    action: { label: 'Show All', onPress: onReset },
+  };
+}
+
+/**
  * Filters library/search items by ownership: 'mine' = owned by the current
  * user, 'family' = another user's non-public item, 'public' = shared publicly.
  * Handles both snake_case and camelCase item shapes.
