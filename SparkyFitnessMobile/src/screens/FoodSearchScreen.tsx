@@ -447,6 +447,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             item.source,
             item.id,
             providerId,
+            // Keep the serving the result row displayed so the detail view
+            // doesn't silently switch to the provider's default serving.
+            {
+              serving_size: item.serving_size,
+              serving_unit: item.serving_unit,
+              serving_description: item.serving_description,
+            },
           );
           showFoodInfo(externalFoodItemToFoodInfo(detailed));
         } catch (error) {

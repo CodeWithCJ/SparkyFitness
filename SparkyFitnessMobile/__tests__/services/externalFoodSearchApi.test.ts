@@ -1569,6 +1569,78 @@ describe('externalFoodSearchApi', () => {
         ]);
       });
 
+      test('keeps the search-row serving when a matching variant exists', () => {
+        // Regression: a FatSecret row promising "100 g" opened a preview
+        // showing "1 small" because the details' default serving won.
+        const food = {
+          name: 'Pork Chop',
+          brand: null,
+          provider_external_id: 'fs-1',
+          is_custom: false,
+          default_variant: {
+            serving_size: 1, serving_unit: 'small', calories: 118,
+            protein: 13, carbs: 0, fat: 7, is_default: true,
+          },
+          variants: [
+            {
+              serving_size: 1, serving_unit: 'small', calories: 118,
+              protein: 13, carbs: 0, fat: 7, is_default: true,
+            },
+            {
+              serving_size: 1, serving_unit: 'medium', calories: 197,
+              protein: 22, carbs: 0, fat: 11, is_default: false,
+            },
+            {
+              serving_size: 100, serving_unit: 'g', calories: 231,
+              protein: 26, carbs: 0, fat: 13, is_default: false,
+            },
+          ],
+        };
+
+        const result = transformNormalizedFood(food, 'fatsecret', {
+          serving_size: 100,
+          serving_unit: 'g',
+        });
+
+        expect(result.serving_size).toBe(100);
+        expect(result.serving_unit).toBe('g');
+        expect(result.calories).toBe(231);
+        // The provider default stays next in line, still selectable.
+        expect(result.variants![0].serving_size).toBe(100);
+        expect(result.variants![1].serving_unit).toBe('small');
+      });
+
+      test('preferred serving overrides the named-serving swap on a 100g default', () => {
+        const food = {
+          name: 'Pork Chop',
+          brand: null,
+          provider_external_id: 'fs-1',
+          is_custom: false,
+          default_variant: {
+            serving_size: 100, serving_unit: 'g', calories: 231,
+            protein: 26, carbs: 0, fat: 13, is_default: true,
+          },
+          variants: [
+            {
+              serving_size: 1, serving_unit: 'small', calories: 118,
+              protein: 13, carbs: 0, fat: 7, is_default: false,
+            },
+          ],
+        };
+
+        // Without a preferred serving the named-serving heuristic swaps
+        // display to the household size; the caller's serving pins it back.
+        expect(transformNormalizedFood(food, 'fatsecret').serving_unit).toBe('small');
+
+        const pinned = transformNormalizedFood(food, 'fatsecret', {
+          serving_size: 100,
+          serving_unit: 'g',
+        });
+        expect(pinned.serving_size).toBe(100);
+        expect(pinned.serving_unit).toBe('g');
+        expect(pinned.calories).toBe(231);
+      });
+
       test('puts default_variant first in variants array', () => {
         const defaultVariant = {
           serving_size: 140, serving_unit: 'g', calories: 220,

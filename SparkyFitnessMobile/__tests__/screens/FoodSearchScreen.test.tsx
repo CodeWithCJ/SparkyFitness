@@ -534,6 +534,27 @@ describe('FoodSearchScreen', () => {
     expect(screen.queryByText('Lunch Bowl')).toBeNull();
   });
 
+  it('forwards the tapped row serving to the detail fetch so the preview keeps it', async () => {
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] }),
+    );
+    mockFetchExternalFoodDetails.mockResolvedValue(externalItem);
+
+    const screen = renderSearching();
+
+    fireEvent.press(screen.getByText('Cheddar Cheese'));
+
+    await waitFor(() => {
+      expect(mockFetchExternalFoodDetails).toHaveBeenCalledWith(
+        'fatsecret',
+        'ext-1',
+        'p1',
+        expect.objectContaining({ serving_size: 100, serving_unit: 'g' }),
+      );
+    });
+  });
+
   it('toasts the error but still opens partial info when an online detail fetch fails', async () => {
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(
