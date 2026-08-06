@@ -23,7 +23,13 @@ import SegmentedControl from '../components/SegmentedControl';
 import { CATEGORY_ICON_MAP, exerciseFromExternalItem } from '../utils/workoutSession';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useServerConnection, useExternalProviders, useSuggestedExercises, useExerciseSearch, useProfile } from '../hooks';
-import { deriveShareStatus, filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
+import {
+  deriveShareStatus,
+  filterByOwnership,
+  ownershipFilterHeaderMenu,
+  OWNERSHIP_FILTER_LABELS,
+} from '../utils/shareStatus';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import ShareStatusBadge from '../components/ShareStatusBadge';
 import { suggestedExercisesQueryKey } from '../hooks/queryKeys';
 import { useExternalExerciseSearch } from '../hooks/useExternalExerciseSearch';
@@ -69,7 +75,8 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation,
   const { isNavigationLocked, runNavigationAction } = useNavigationActionGuard(navigation);
 
   const [activeTab, setActiveTab] = useState<TabKey>('search');
-  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
+  const ownershipFilter = useAppPreferencesStore((s) => s.exerciseSearchOwnershipFilter);
+  const setOwnershipFilter = useAppPreferencesStore((s) => s.setExerciseSearchOwnershipFilter);
   const [searchText, setSearchText] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [importingExerciseId, setImportingExerciseId] = useState<string | null>(null);
@@ -329,6 +336,15 @@ useEffect(() => {
     }
 
     if (filteredSearchResults.length === 0) {
+      if (searchResults.length > 0) {
+        return (
+          <StatusView
+            title={`No exercises in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`}
+            subtitle="Change the filter to see your other exercises."
+            action={{ label: 'Show All', onPress: () => setOwnershipFilter('all') }}
+          />
+        );
+      }
       return <StatusView title="No matching exercises found" />;
     }
 
@@ -369,6 +385,15 @@ useEffect(() => {
     }
 
     if (sections.length === 0) {
+      if (recentExercises.length > 0 || topExercises.length > 0) {
+        return (
+          <StatusView
+            title={`No exercises in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`}
+            subtitle="Change the filter to see your other exercises."
+            action={{ label: 'Show All', onPress: () => setOwnershipFilter('all') }}
+          />
+        );
+      }
       return <StatusView title="Search for an exercise to get started" />;
     }
 
@@ -592,6 +617,15 @@ useEffect(() => {
   const header = useScreenHeader({
     title: 'Exercises',
     left: { kind: 'dismiss', onPress: () => navigation.goBack(), identifier: 'exercise-search-cancel' },
+    // The filter only applies to the local library, so the Online tab drops it.
+    right: activeTab === 'search'
+      ? ownershipFilterHeaderMenu({
+          noun: 'exercises',
+          identifier: 'exercise-search-filter',
+          filter: ownershipFilter,
+          onSelect: setOwnershipFilter,
+        })
+      : undefined,
   });
 
   return (
@@ -602,22 +636,6 @@ useEffect(() => {
       <View className="px-4 mt-2">
         <SegmentedControl segments={TABS} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
-
-      {/* Ownership filter */}
-      {activeTab === 'search' && (
-        <View className="px-4 mt-2">
-          <SegmentedControl
-            segments={[
-              { key: 'all', label: 'All' },
-              { key: 'mine', label: 'Mine' },
-              { key: 'family', label: 'Family' },
-              { key: 'public', label: 'Public' },
-            ]}
-            activeKey={ownershipFilter}
-            onSelect={setOwnershipFilter}
-          />
-        </View>
-      )}
 
       {/* Search bar */}
       {renderSearchBar()}

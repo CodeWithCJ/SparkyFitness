@@ -55,6 +55,8 @@ export const PREFERENCE_DEFAULTS = {
   mealsLibraryOwnershipFilter: 'all' as OwnershipFilter,
   exercisesLibraryOwnershipFilter: 'all' as OwnershipFilter,
   workoutPresetsLibraryOwnershipFilter: 'all' as OwnershipFilter,
+  exerciseSearchOwnershipFilter: 'all' as OwnershipFilter,
+  presetSearchOwnershipFilter: 'all' as OwnershipFilter,
 } as const;
 
 export type AppPreferencesData = {
@@ -83,6 +85,8 @@ export type AppPreferencesData = {
   mealsLibraryOwnershipFilter: OwnershipFilter;
   exercisesLibraryOwnershipFilter: OwnershipFilter;
   workoutPresetsLibraryOwnershipFilter: OwnershipFilter;
+  exerciseSearchOwnershipFilter: OwnershipFilter;
+  presetSearchOwnershipFilter: OwnershipFilter;
 };
 
 export interface AppPreferencesState extends AppPreferencesData {
@@ -111,6 +115,8 @@ export interface AppPreferencesState extends AppPreferencesData {
   setMealsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
   setExercisesLibraryOwnershipFilter: (value: OwnershipFilter) => void;
   setWorkoutPresetsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
+  setExerciseSearchOwnershipFilter: (value: OwnershipFilter) => void;
+  setPresetSearchOwnershipFilter: (value: OwnershipFilter) => void;
 }
 
 /**
@@ -179,6 +185,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setMealsLibraryOwnershipFilter: (value) => set({ mealsLibraryOwnershipFilter: value }),
       setExercisesLibraryOwnershipFilter: (value) => set({ exercisesLibraryOwnershipFilter: value }),
       setWorkoutPresetsLibraryOwnershipFilter: (value) => set({ workoutPresetsLibraryOwnershipFilter: value }),
+      setExerciseSearchOwnershipFilter: (value) => set({ exerciseSearchOwnershipFilter: value }),
+      setPresetSearchOwnershipFilter: (value) => set({ presetSearchOwnershipFilter: value }),
     }),
     {
       name: STORE_KEY,
@@ -212,6 +220,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         mealsLibraryOwnershipFilter: state.mealsLibraryOwnershipFilter,
         exercisesLibraryOwnershipFilter: state.exercisesLibraryOwnershipFilter,
         workoutPresetsLibraryOwnershipFilter: state.workoutPresetsLibraryOwnershipFilter,
+        exerciseSearchOwnershipFilter: state.exerciseSearchOwnershipFilter,
+        presetSearchOwnershipFilter: state.presetSearchOwnershipFilter,
       }),
       migrate: (persistedState, version) => {
         if (
