@@ -82,12 +82,36 @@ export async function getHealthMetricSamples(
 }
 
 /**
+ * Transaction-scoped advisory lock keyed to one (user, metric, day, provider)
+ * slot, released automatically on COMMIT or ROLLBACK.
+ *
+ * SELECT ... FOR UPDATE (below) only serializes against a row that already
+ * exists. The first write for a given key has no row to lock — two concurrent
+ * "first writes" would both see no existing row, both merge onto an empty
+ * baseline, and the later INSERT's `samples = EXCLUDED.samples` would silently
+ * discard the earlier write's samples instead of merging with them. Callers
+ * must acquire this lock before the FOR UPDATE read so the second transaction
+ * blocks until the first commits, and then sees the row the first one just
+ * inserted.
+ */
+export async function acquireHealthMetricSampleLockWithClient(
+  client: HealthMetricSamplesDbClient,
+  userId: string,
+  metric: HealthMetric,
+  entryDate: string,
+  sourceProvider: string
+): Promise<void> {
+  const key = `${userId}:${metric}:${entryDate}:${sourceProvider}`;
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [key]);
+}
+
+/**
  * Row-locking read for the merge-write path: FOR UPDATE blocks a concurrent
  * writer targeting the same (user, metric, day, provider) row until this
  * transaction commits, so it always merges onto the latest data rather than a
- * stale snapshot. No row yet (first write of the day) is not an error — the
- * INSERT side of upsertHealthMetricSamplesWithClient's ON CONFLICT still
- * serializes correctly against a concurrent first insert.
+ * stale snapshot. Callers in a `merge` write must call
+ * acquireHealthMetricSampleLockWithClient first — this alone does not cover
+ * the case where no row exists yet (see that function's docs).
  */
 export async function getHealthMetricSampleRowForUpdateWithClient(
   client: HealthMetricSamplesDbClient,

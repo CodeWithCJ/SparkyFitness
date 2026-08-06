@@ -1,6 +1,7 @@
 import {
   ComparisonPredicateOperator,
   deleteObjects,
+  queryWorkoutSamples,
   requestAuthorization,
   saveWorkoutSample,
   WorkoutActivityType,
@@ -30,17 +31,51 @@ const HEART_RATE_TYPE = 'HKQuantityTypeIdentifierHeartRate' as const;
  */
 const SEED_TAG_KEY = 'SparkyFitnessSeedTag';
 
+const workoutTagFilter = (tag: string) => ({
+  metadata: {
+    withMetadataKey: SEED_TAG_KEY,
+    operatorType: ComparisonPredicateOperator.equalTo,
+    value: tag,
+  },
+});
+
+/**
+ * Deleting an HKWorkout does NOT cascade to its associated samples — HealthKit
+ * treats the workout and the heart-rate/route objects linked to it as
+ * separate objects, and cleanup of the linked ones is the app's job (Apple's
+ * own documented pattern: query with the workout predicate, delete those,
+ * then delete the workout). Without this, every re-seed would silently leave
+ * that workout's heart-rate samples and route permanently orphaned in
+ * HealthKit — deleting only the tagged HKWorkoutTypeIdentifier object hides
+ * the workout from the diary but never actually cleans up its data.
+ */
 const deletePriorSeeds = async (tag: string): Promise<void> => {
   try {
-    const deleted = await deleteObjects('HKWorkoutTypeIdentifier', {
-      metadata: {
-        withMetadataKey: SEED_TAG_KEY,
-        operatorType: ComparisonPredicateOperator.equalTo,
-        value: tag,
-      },
+    const priorWorkouts = await queryWorkoutSamples({
+      filter: workoutTagFilter(tag),
+      limit: 0,
     });
+
+    for (const workout of priorWorkouts) {
+      try {
+        await deleteObjects(HEART_RATE_TYPE, { workout });
+      } catch {
+        // No HR samples on this workout, or write auth for the type was
+        // never requested (the strength seed has none) — nothing to clean up.
+      }
+      try {
+        await deleteObjects('HKWorkoutRouteTypeIdentifier', { workout });
+      } catch {
+        // No route on this workout (e.g. the strength seed never saves one).
+      }
+    }
+
+    const deleted = await deleteObjects(
+      'HKWorkoutTypeIdentifier',
+      workoutTagFilter(tag)
+    );
     if (deleted > 0) {
-      addLog(`[seedHealthDataIOS] Deleted ${deleted} prior "${tag}" seed workout(s).`, 'INFO');
+      addLog(`[seedHealthDataIOS] Deleted ${deleted} prior "${tag}" seed workout(s) and their linked samples/routes.`, 'INFO');
     }
   } catch (error) {
     // Best-effort cleanup — a failure here must not block seeding a new one.

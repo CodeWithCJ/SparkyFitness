@@ -102,6 +102,16 @@ export async function upsertSamplesByDay(
 
     for (const bucket of byDate.values()) {
       if (mode === 'merge') {
+        // Advisory lock first: FOR UPDATE alone can't serialize a first write
+        // (no row exists yet to lock), so a second concurrent "first write" for
+        // the same key must block here, not just at the row-lock below.
+        await genericHealthRepo.acquireHealthMetricSampleLockWithClient(
+          client,
+          userId,
+          metric,
+          bucket.entry_date,
+          sourceProvider
+        );
         // Locks the row (if any) for the rest of this transaction — a second
         // concurrent merge for the same key blocks here until this COMMIT,
         // then sees this write's result rather than the pre-merge snapshot.

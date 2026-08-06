@@ -2246,6 +2246,7 @@
       "runCadenceSpM": "Run Cadence (steps/min)",
       "elevationM": "Elevation (m)",
       "heartRateTimeInZones": "Heart Rate Time in Zones",
+      "hrZonesEstimatedFromAge": "Zones are estimated from your age — Apple Health and Health Connect don't share a configured max heart rate with apps.",
       "timeInZoneS": "Time in Zone (s)",
       "lapsTable": "Laps Table",
       "loadingGarminActivityReport": "Loading Garmin activity report...",

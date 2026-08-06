@@ -194,4 +194,88 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
     expect(results[0].points).toHaveLength(2);
     expect(results[0].points[0].lat).toBe(37.7749);
   });
+
+  describe('merge-write concurrency primitives', () => {
+    it('acquireHealthMetricSampleLockWithClient takes a transaction-scoped advisory lock keyed to the (user, metric, day, provider) tuple', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }) };
+
+      await genericHealthRepo.acquireHealthMetricSampleLockWithClient(
+        client,
+        'user-1',
+        'heart_rate',
+        '2026-07-29',
+        'garmin'
+      );
+
+      expect(client.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        ['user-1:heart_rate:2026-07-29:garmin']
+      );
+    });
+
+    it('the lock key is distinct per provider — two providers on the same day/metric must not block each other', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }) };
+
+      await genericHealthRepo.acquireHealthMetricSampleLockWithClient(
+        client,
+        'user-1',
+        'heart_rate',
+        '2026-07-29',
+        'garmin'
+      );
+      await genericHealthRepo.acquireHealthMetricSampleLockWithClient(
+        client,
+        'user-1',
+        'heart_rate',
+        '2026-07-29',
+        'HealthKit'
+      );
+
+      const keys = client.query.mock.calls.map((call) => call[1][0]);
+      expect(new Set(keys).size).toBe(2);
+    });
+
+    it('getHealthMetricSampleRowForUpdateWithClient SELECTs FOR UPDATE scoped to the exact (user, metric, day, provider) row', async () => {
+      const client = {
+        query: vi.fn().mockResolvedValue({
+          rows: [
+            {
+              id: 'hms-1',
+              samples: [{ t: '2026-07-29T08:00:00.000Z', bpm: 72 }],
+            },
+          ],
+        }),
+      };
+
+      const row =
+        await genericHealthRepo.getHealthMetricSampleRowForUpdateWithClient(
+          client,
+          'user-1',
+          'heart_rate',
+          '2026-07-29',
+          'HealthKit'
+        );
+
+      expect(client.query).toHaveBeenCalledWith(
+        expect.stringContaining('FOR UPDATE'),
+        ['user-1', 'heart_rate', '2026-07-29', 'HealthKit']
+      );
+      expect(row?.id).toBe('hms-1');
+    });
+
+    it('getHealthMetricSampleRowForUpdateWithClient returns null rather than undefined when no row exists', async () => {
+      const client = { query: vi.fn().mockResolvedValue({ rows: [] }) };
+
+      const row =
+        await genericHealthRepo.getHealthMetricSampleRowForUpdateWithClient(
+          client,
+          'user-1',
+          'heart_rate',
+          '2026-07-29',
+          'HealthKit'
+        );
+
+      expect(row).toBeNull();
+    });
+  });
 });

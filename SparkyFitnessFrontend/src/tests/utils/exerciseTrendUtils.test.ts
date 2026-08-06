@@ -244,7 +244,7 @@ describe('extractTelemetryActivityEntries', () => {
 describe('providerLabel', () => {
   it('routes the one real brand-name mismatch (Apple Health) through a translation key', () => {
     expect(providerLabel('HealthKit')).toEqual({
-      label: 'activityReport.provider.appleHealth',
+      label: 'reports.activityReport.provider.appleHealth',
       isTranslationKey: true,
       fallback: 'Apple Health',
     });
