@@ -289,6 +289,10 @@ export function externalVariantToUnitVariant(
 /**
  * Prefer a provider's named serving for display while preserving reference
  * servings such as 100g/100ml as selectable/importable variants.
+ *
+ * When `preferredServing` is given (the serving the user already saw, e.g. on
+ * the tapped search-result row), a variant matching it wins over the named
+ * serving heuristic so the detail view shows the serving that was promised.
  */
 export function selectDisplayVariant<
   T extends {
@@ -298,17 +302,24 @@ export function selectDisplayVariant<
 >(
   defaultVariant: T,
   variants?: T[],
+  preferredServing?: ServingIdentity,
 ): { displayVariant: T; orderedVariants: T[] | undefined } {
   if (!variants) {
     return { displayVariant: defaultVariant, orderedVariants: undefined };
   }
 
-  const preferredVariant =
+  const requestedVariant = preferredServing
+    ? [defaultVariant, ...variants].find(variant =>
+        isSameVariant(variant, preferredServing),
+      )
+    : undefined;
+
+  const namedVariant =
     isReferenceServing(defaultVariant.serving_size, defaultVariant.serving_unit)
       ? variants.find(variant => !isMetricUnit(variant.serving_unit))
       : undefined;
 
-  const displayVariant = preferredVariant ?? defaultVariant;
+  const displayVariant = requestedVariant ?? namedVariant ?? defaultVariant;
   const orderedVariants = [displayVariant];
   if (!isSameVariant(displayVariant, defaultVariant)) {
     orderedVariants.push(defaultVariant);

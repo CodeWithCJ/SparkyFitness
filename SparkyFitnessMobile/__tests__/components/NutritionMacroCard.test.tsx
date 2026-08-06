@@ -10,6 +10,14 @@ jest.mock('../../src/components/MacroCompositionRing', () => {
   };
 });
 
+jest.mock('../../src/components/ProgressRing', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: () => <View testID="progress-ring" />,
+  };
+});
+
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useIsFocused: () => true,
@@ -89,6 +97,31 @@ describe('NutritionMacroCard', () => {
       );
       expect(getByText('Net Carbs')).toBeTruthy();
       expect(getByText('35g')).toBeTruthy();
+    });
+
+    it('renders the calorie progress ring when a calorie goal is provided', () => {
+      const { getByTestId, queryByTestId } = render(
+        <NutritionMacroCard
+          {...baseProps}
+          goalPercentages={{ calories: 30, protein: 60, carbs: 35, fat: 50 }}
+          calorieGoal={2000}
+        />,
+      );
+      expect(getByTestId('progress-ring')).toBeTruthy();
+      expect(queryByTestId('macro-composition-ring')).toBeNull();
+    });
+
+    it('renders the macro composition ring when no calorie goal is provided', () => {
+      // Per-food screens pass goal percentages without a calorie goal; a
+      // progress ring there would always render full (calories / 1).
+      const { getByTestId, queryByTestId } = render(
+        <NutritionMacroCard
+          {...baseProps}
+          goalPercentages={{ calories: 30, protein: 60, carbs: 35, fat: 50 }}
+        />,
+      );
+      expect(getByTestId('macro-composition-ring')).toBeTruthy();
+      expect(queryByTestId('progress-ring')).toBeNull();
     });
   });
 });

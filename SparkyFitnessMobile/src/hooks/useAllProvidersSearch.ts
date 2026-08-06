@@ -35,7 +35,11 @@ export function useAllProvidersSearch(
 ) {
   const { enabled = true, autoScale } = options ?? {};
   const debouncedSearch = useDebounce(searchText.trim(), 600);
-  const isSearchActive = debouncedSearch.length >= 3;
+  // Both the raw and debounced terms must clear the threshold: debounced so
+  // typing pauses gate the fetch, raw so shortening the query below the
+  // threshold deactivates the online sections immediately, not 600ms later.
+  const isSearchActive =
+    searchText.trim().length >= 3 && debouncedSearch.length >= 3;
 
   // Project the raw query results into ProviderSearchResult here, inside
   // useQueries' `combine`, rather than in a downstream useMemo over the raw

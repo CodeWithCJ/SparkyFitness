@@ -7,14 +7,20 @@ import ExerciseSearchScreen from '../../src/screens/ExerciseSearchScreen';
 import {
   useExerciseSearch,
   useExternalProviders,
+  useProfile,
   useServerConnection,
   useSuggestedExercises,
 } from '../../src/hooks';
 import { useExternalExerciseSearch } from '../../src/hooks/useExternalExerciseSearch';
 import { useNavigationActionGuard } from '../../src/hooks/useNavigationActionGuard';
 import { importExercise } from '../../src/services/api/externalExerciseSearchApi';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
 import type { Exercise } from '../../src/types/exercise';
 import type { ExternalExerciseItem } from '../../src/types/externalExercises';
+import { pressHeaderMenuAction } from './helpers/nativeHeaderTestUtils';
 
 jest.mock('../../src/hooks', () => ({
   useExerciseSearch: jest.fn(),
@@ -42,6 +48,13 @@ jest.mock('../../src/services/api/externalExerciseSearchApi', () => ({
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
   proxyHeadersToRecord: jest.fn(() => ({})),
+}));
+
+// Native-header path on both jest platforms, so the ownership filter menu is
+// mirrored into navigation.setOptions where pressHeaderMenuAction can reach it.
+jest.mock('../../src/services/nativeTabBarPreference', () => ({
+  useNativeIOSHeadersActive: () => true,
+  useNativeIOSTabsActive: () => false,
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -92,6 +105,7 @@ jest.mock('@react-navigation/native', () => ({
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<
   typeof useServerConnection
 >;
+const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
 const mockUseSuggestedExercises = useSuggestedExercises as jest.MockedFunction<
   typeof useSuggestedExercises
 >;
@@ -172,6 +186,8 @@ const openOnlineTab = (screen: ReturnType<typeof renderScreen>) => {
 describe('ExerciseSearchScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
+    mockUseProfile.mockReturnValue({ profile: { id: 'user-1' }, isLoading: false } as any);
     mockNavigation.isFocused.mockReturnValue(true);
     mockUseServerConnection.mockReturnValue({
       isConnected: true,
@@ -279,6 +295,48 @@ describe('ExerciseSearchScreen', () => {
       fireEvent.press(screen.getByLabelText('View exercise details'));
 
       expect(mockNavigation.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ownership filter', () => {
+    it('persists a filter chosen from the header menu and filters local rows', () => {
+      mockUseSuggestedExercises.mockReturnValue({
+        recentExercises: [
+          { ...localExercise, userId: 'user-1' } as Exercise,
+          {
+            ...localExercise,
+            id: 'ex-2',
+            name: 'Community Squat',
+            sharedWithPublic: true,
+          } as Exercise,
+        ],
+        topExercises: [],
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      } as any);
+
+      const screen = renderScreen();
+      expect(screen.getByText('Community Squat')).toBeTruthy();
+
+      pressHeaderMenuAction(mockNavigation, 'Mine');
+
+      expect(useAppPreferencesStore.getState().exerciseSearchOwnershipFilter).toBe('mine');
+      expect(screen.getByText('Bench Press')).toBeTruthy();
+      expect(screen.queryByText('Community Squat')).toBeNull();
+    });
+
+    it('names the filter and offers Show All when it empties the suggestions', () => {
+      useAppPreferencesStore.setState({ exerciseSearchOwnershipFilter: 'public' });
+
+      const screen = renderScreen();
+
+      expect(screen.getByText('No exercises in Public')).toBeTruthy();
+
+      fireEvent.press(screen.getByText('Show All'));
+
+      expect(useAppPreferencesStore.getState().exerciseSearchOwnershipFilter).toBe('all');
+      expect(screen.getByText('Bench Press')).toBeTruthy();
     });
   });
 

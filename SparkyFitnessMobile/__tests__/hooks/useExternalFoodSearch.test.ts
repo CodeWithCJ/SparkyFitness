@@ -47,6 +47,43 @@ describe('useExternalFoodSearch', () => {
     expect(mockSearchExternalFoods).not.toHaveBeenCalled();
   });
 
+  test('drops previous-term results immediately when the query falls below 3 characters', async () => {
+    // Regression: after searching "chicken", typing a fresh 2-char query kept
+    // chicken's online rows on screen — the debounced term lagged 600ms and
+    // keepPreviousData served the old key's rows even once disabled.
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: '1',
+          name: 'Chicken',
+          brand: null,
+          calories: 165,
+          protein: 31,
+          carbs: 0,
+          fat: 4,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'openfoodfacts',
+        },
+      ]),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ term }: { term: string }) => useExternalFoodSearch(term, 'openfoodfacts'),
+      {
+        wrapper: createQueryWrapper(queryClient),
+        initialProps: { term: 'chicken' },
+      },
+    );
+
+    await waitFor(() => expect(result.current.searchResults).toHaveLength(1));
+
+    rerender({ term: 'eg' });
+
+    expect(result.current.searchResults).toHaveLength(0);
+    expect(result.current.isSearchActive).toBe(false);
+  });
+
   test('does not fetch when enabled is false', () => {
     renderHook(
       () => useExternalFoodSearch('chicken', 'openfoodfacts', { enabled: false }),

@@ -9,6 +9,7 @@ import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import type { ExternalFoodItem, ExternalFoodVariant, ExternalFoodSearchPagination, PaginatedExternalFoodSearchResult } from '../../types/externalFoods';
 import { selectDisplayVariant } from '../../utils/foodDetails';
+import type { ServingIdentity } from '../../utils/foodDetails';
 
 interface OpenFoodFactsProduct {
   product_name: string;
@@ -463,7 +464,11 @@ export type BarcodeLookupResult =
   | { source: string; food: BarcodeFood }
   | { source: 'not_found'; food: null };
 
-export function transformNormalizedFood(food: NormalizedFood, providerType: string): ExternalFoodItem {
+export function transformNormalizedFood(
+  food: NormalizedFood,
+  providerType: string,
+  preferredServing?: ServingIdentity,
+): ExternalFoodItem {
   const dv = food.default_variant;
 
   const mapVariant = (v: NormalizedFoodVariant): ExternalFoodVariant => ({
@@ -488,9 +493,14 @@ export function transformNormalizedFood(food: NormalizedFood, providerType: stri
   });
 
   // FoodEntryAddScreen selects ext-0 (first variant) by default. Prefer the
-  // provider's named serving for display, but keep the 100g/100ml reference in
-  // the ordered list so it still imports and remains selectable.
-  const { displayVariant, orderedVariants } = selectDisplayVariant(dv, food.variants);
+  // serving the caller already showed the user, then the provider's named
+  // serving, but keep the 100g/100ml reference in the ordered list so it
+  // still imports and remains selectable.
+  const { displayVariant, orderedVariants } = selectDisplayVariant(
+    dv,
+    food.variants,
+    preferredServing,
+  );
   const variants = orderedVariants?.map(mapVariant);
 
   return {
@@ -541,6 +551,7 @@ export async function fetchExternalFoodDetails(
   providerType: string,
   externalId: string,
   providerId?: string,
+  preferredServing?: ServingIdentity,
 ): Promise<ExternalFoodItem> {
   const params = new URLSearchParams();
   if (providerId) params.set('providerId', providerId);
@@ -552,7 +563,7 @@ export async function fetchExternalFoodDetails(
     operation: `fetch ${providerType} details (v2)`,
   });
 
-  return transformNormalizedFood(response, providerType);
+  return transformNormalizedFood(response, providerType, preferredServing);
 }
 
 interface V2BarcodeResponse {

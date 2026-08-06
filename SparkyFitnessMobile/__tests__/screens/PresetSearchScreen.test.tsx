@@ -1,8 +1,12 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import PresetSearchScreen from '../../src/screens/PresetSearchScreen';
-import { useWorkoutPresets, useWorkoutPresetSearch } from '../../src/hooks';
+import { useWorkoutPresets, useWorkoutPresetSearch, useProfile } from '../../src/hooks';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
 import { useNavigationActionGuard } from '../../src/hooks/useNavigationActionGuard';
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
 import { useStartLiveWorkout } from '../../src/hooks/useStartLiveWorkout';
@@ -47,6 +51,7 @@ jest.mock('../../src/services/nativeTabBarPreference', () => ({
 }));
 
 const mockUseWorkoutPresets = useWorkoutPresets as jest.MockedFunction<typeof useWorkoutPresets>;
+const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
 const mockUseNavigationActionGuard = useNavigationActionGuard as jest.MockedFunction<
   typeof useNavigationActionGuard
 >;
@@ -115,11 +120,30 @@ function renderScreen(params?: RouteParams) {
   );
 }
 
+/**
+ * useScreenHeader is mocked out, so drive the ownership filter through the
+ * menu descriptor the screen passed to it (Show section → option onPress).
+ */
+function pressHeaderFilterOption(label: string) {
+  const config = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
+    right?: { items?: { items?: { label: string; onPress: () => void }[] }[] };
+  };
+  const option = config?.right?.items?.[0]?.items?.find((item) => item.label === label);
+  if (!option) {
+    throw new Error(`pressHeaderFilterOption: no filter option labelled "${label}"`);
+  }
+  act(() => {
+    option.onPress();
+  });
+}
+
 describe('PresetSearchScreen', () => {
   const startLiveWorkout = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
+    mockUseProfile.mockReturnValue({ profile: { id: 'user-1' }, isLoading: false } as any);
     mockUseWorkoutPresets.mockReturnValue({
       presets: [buildPreset()],
       isLoading: false,
@@ -147,6 +171,40 @@ describe('PresetSearchScreen', () => {
     );
     expect(screen.getByText('Empty workout')).toBeTruthy();
     expect(screen.getByText('Pick your first exercise')).toBeTruthy();
+  });
+
+  it('persists an ownership filter chosen from the header menu and filters the list', () => {
+    mockUseWorkoutPresets.mockReturnValue({
+      presets: [
+        buildPreset(),
+        buildPreset({ id: 8, name: 'Community Pull', user_id: 'user-2', is_public: true }),
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+
+    const screen = renderScreen();
+    expect(screen.getByText('Community Pull')).toBeTruthy();
+
+    pressHeaderFilterOption('Mine');
+
+    expect(useAppPreferencesStore.getState().presetSearchOwnershipFilter).toBe('mine');
+    expect(screen.getByText('Push Day')).toBeTruthy();
+    expect(screen.queryByText('Community Pull')).toBeNull();
+  });
+
+  it('names the filter and offers Show All when it empties the list', () => {
+    useAppPreferencesStore.setState({ presetSearchOwnershipFilter: 'public' });
+
+    const screen = renderScreen();
+
+    expect(screen.getByText('No presets in Public')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Show All'));
+
+    expect(useAppPreferencesStore.getState().presetSearchOwnershipFilter).toBe('all');
+    expect(screen.getByText('Push Day')).toBeTruthy();
   });
 
   it('starts a live workout from a tapped preset with the preset-built payload and source link', () => {

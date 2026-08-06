@@ -254,6 +254,59 @@ describe('selectDisplayVariant', () => {
     const result = selectDisplayVariant(dv, variants);
     expect(result.displayVariant).toBe(dv);
   });
+
+  it('keeps a 100g reference default when the caller asks for it', () => {
+    // Regression: a FatSecret search row promising 100g must not open a
+    // preview showing the first household size instead.
+    const dv = makeDisplayVariant(100, 'g');
+    const small = makeDisplayVariant(1, 'small');
+    const medium = makeDisplayVariant(1, 'medium');
+    const variants = [small, medium, makeDisplayVariant(100, 'g')];
+    const result = selectDisplayVariant(dv, variants, {
+      serving_size: 100,
+      serving_unit: 'g',
+    });
+    expect(result.displayVariant).toBe(dv);
+    expect(result.orderedVariants).toEqual([dv, small, medium]);
+  });
+
+  it('matches the preferred serving against non-default variants', () => {
+    const dv = makeDisplayVariant(1, 'small');
+    const medium = makeDisplayVariant(1, 'medium');
+    const reference = makeDisplayVariant(100, 'g');
+    const result = selectDisplayVariant(dv, [medium, reference], {
+      serving_size: 100,
+      serving_unit: 'g',
+    });
+    expect(result.displayVariant).toBe(reference);
+    expect(result.orderedVariants).toEqual([reference, dv, medium]);
+  });
+
+  it('falls back to the named-serving heuristic when the preferred serving matches nothing', () => {
+    const dv = makeDisplayVariant(100, 'g');
+    const serving = makeDisplayVariant(1, 'Stück', '1 Stück (30 g)');
+    const result = selectDisplayVariant(dv, [serving], {
+      serving_size: 2,
+      serving_unit: 'cup',
+    });
+    expect(result.displayVariant).toBe(serving);
+  });
+
+  it('distinguishes same-named preferred servings by metric weight', () => {
+    const reference = makeDisplayVariant(100, 'g', '100 g');
+    const package200 = makeDisplayVariant(1, 'package', '1 package (200 g)');
+    const package400 = makeDisplayVariant(1, 'package', '1 package (400 g)');
+    const result = selectDisplayVariant(
+      reference,
+      [reference, package200, package400],
+      {
+        serving_size: 1,
+        serving_unit: 'package',
+        serving_description: '1 package (400 g)',
+      },
+    );
+    expect(result.displayVariant).toBe(package400);
+  });
 });
 
 describe('formatVariantLabel', () => {

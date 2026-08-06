@@ -1,6 +1,80 @@
+import type { HeaderItem } from '../hooks/useScreenHeader';
+
 export type ShareStatus = 'public' | 'family' | 'private' | null;
 
 export type OwnershipFilter = 'all' | 'mine' | 'family' | 'public';
+
+export const OWNERSHIP_FILTER_LABELS: Record<OwnershipFilter, string> = {
+  all: 'All',
+  mine: 'Mine',
+  family: 'Family',
+  public: 'Public',
+};
+
+/**
+ * Header filter-menu descriptor shared by the library screens: a "Show"
+ * section of single-select ownership options, with the accent badge dot
+ * marking a non-default selection. The filter is a persisted device
+ * preference, so it lives behind a header menu instead of spending a
+ * permanent bar row on a rarely-changed choice. `noun` names the collection
+ * in the accessibility label ("Filter foods, filtered to Mine").
+ */
+export function ownershipFilterHeaderMenu({
+  noun,
+  identifier,
+  filter,
+  onSelect,
+}: {
+  noun: string;
+  identifier: string;
+  filter: OwnershipFilter;
+  onSelect: (filter: OwnershipFilter) => void;
+}): HeaderItem {
+  return {
+    kind: 'menu',
+    sfSymbol: 'line.3.horizontal.decrease',
+    ionicon: 'filter',
+    showsBadge: filter !== 'all',
+    accessibilityLabel:
+      filter !== 'all'
+        ? `Filter ${noun}, filtered to ${OWNERSHIP_FILTER_LABELS[filter]}`
+        : `Filter ${noun}`,
+    identifier,
+    items: [
+      {
+        label: 'Show',
+        items: (Object.keys(OWNERSHIP_FILTER_LABELS) as OwnershipFilter[]).map((option) => ({
+          label: OWNERSHIP_FILTER_LABELS[option],
+          selected: filter === option,
+          onPress: () => onSelect(option),
+        })),
+      },
+    ],
+  };
+}
+
+/**
+ * Empty-state copy for a list whose visible items are all hidden by the
+ * ownership filter. Lives beside the menu factory so the wording stays
+ * aligned with OWNERSHIP_FILTER_LABELS. Spread into a StatusView alongside
+ * any layout props (e.g. `inline`). 'all' is excluded because it hides
+ * nothing — callers keep their regular empty state for that case.
+ */
+export function ownershipFilterEmptyState({
+  noun,
+  filter,
+  onReset,
+}: {
+  noun: string;
+  filter: Exclude<OwnershipFilter, 'all'>;
+  onReset: () => void;
+}) {
+  return {
+    title: `No ${noun} in ${OWNERSHIP_FILTER_LABELS[filter]}`,
+    subtitle: `Change the filter to see your other ${noun}.`,
+    action: { label: 'Show All', onPress: onReset },
+  };
+}
 
 /**
  * Filters library/search items by ownership: 'mine' = owned by the current

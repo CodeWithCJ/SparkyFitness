@@ -1,4 +1,8 @@
-import type { NativeStackHeaderItem, NativeStackNavigationOptions } from '@react-navigation/native-stack';
+import type {
+  NativeStackHeaderItem,
+  NativeStackHeaderItemMenu,
+  NativeStackNavigationOptions,
+} from '@react-navigation/native-stack';
 
 export function createIOSNativeHeaderOptions(
   actionTintColor: string,
@@ -58,6 +62,54 @@ export function createNativeHeaderTextButtonItem({
     identifier,
     sharesBackground: true,
     disabled,
+  };
+}
+
+/**
+ * The screens bridge only exposes UIBarButtonItemBadge's string variant (no
+ * .indicator), so a bullet with foreground matched to the background renders
+ * as a plain accent dot; the badge capsule sizes with the font, so a small
+ * fontSize keeps the dot compact.
+ */
+export function createNativeHeaderAccentBadge(
+  accentColor: string,
+): NativeStackHeaderItemMenu['badge'] {
+  return {
+    value: '•',
+    style: {
+      backgroundColor: accentColor,
+      color: accentColor,
+      fontSize: 9,
+    },
+  };
+}
+
+export function createNativeHeaderMenuButtonItem({
+  sfSymbol,
+  menuItems,
+  tintColor,
+  identifier,
+  accessibilityLabel,
+  badge,
+}: {
+  sfSymbol: string;
+  menuItems: NativeStackHeaderItemMenu['menu']['items'];
+  tintColor: string;
+  identifier: string;
+  accessibilityLabel: string;
+  /** iOS 26+ system badge (UIBarButtonItemBadge); ignored on earlier versions. */
+  badge?: NativeStackHeaderItemMenu['badge'];
+}): NativeStackHeaderItem {
+  return {
+    type: 'menu',
+    label: '',
+    icon: { type: 'sfSymbol', name: sfSymbol as never },
+    tintColor,
+    accessibilityLabel,
+    identifier,
+    sharesBackground: true,
+    badge,
+    menu: { items: menuItems },
   };
 }
 

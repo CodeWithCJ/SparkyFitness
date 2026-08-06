@@ -63,7 +63,18 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
                 </Text>
               </View>
             ) : null}
-            <ShareStatusBadge status={status} />
+            {/* Icons center on the text's full line box (descender included),
+                which reads ~1pt low against the visible letters; lift them. */}
+            <ShareStatusBadge status={status} style={{ marginTop: -1 }} />
+            {isFavorite && (
+              <Icon
+                name="star"
+                size={16}
+                color={goldColor}
+                style={{ marginTop: -1 }}
+                accessibilityLabel="Favorite"
+              />
+            )}
           </View>
           {meal.description ? (
             <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>
@@ -72,20 +83,9 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
           ) : null}
         </View>
         <View className="items-end">
-          <View className="flex-row items-center gap-1">
-            {isFavorite && (
-              <Icon
-                name="star"
-                size={13}
-                color={goldColor}
-                style={{ marginTop: 1 }}
-                accessibilityLabel="Favorite"
-              />
-            )}
-            <Text className="text-text-primary text-base font-semibold">
-              {foodInfo.calories} cal
-            </Text>
-          </View>
+          <Text className="text-text-primary text-base font-semibold">
+            {foodInfo.calories} cal
+          </Text>
           <Text className="text-text-secondary text-xs">
             {itemCount} {itemCount === 1 ? 'item' : 'items'}
           </Text>
