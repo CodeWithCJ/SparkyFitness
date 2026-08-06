@@ -1232,7 +1232,8 @@
     "weightStLabel": "Weight (st, lb)",
     "bodyFatShort": "Body fat",
     "edit": "Edit measurements",
-    "fallbackLabel": "Measurement"
+    "fallbackLabel": "Measurement",
+    "customTitle": "Custom Measurements"
   },
   "addSheet": {
     "food": "Food",

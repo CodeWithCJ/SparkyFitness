@@ -76,6 +76,32 @@ describe('rowValue', () => {
   it('returns null for empty or non-numeric numeric values', () => {
     expect(rowValue('', 'numeric')).toBe(null);
     expect(rowValue('abc', 'numeric')).toBe(null);
+    expect(rowValue('1..5', 'numeric')).toBe(null);
+    expect(rowValue('1,2,3', 'numeric')).toBe(null);
+  });
+
+  it('parses locale decimal separators through parseDecimalInput', () => {
+    // Polish users type a comma decimal separator; the app's decimal-pad
+    // keyboard exposes it per device locale.
+    expect(rowValue('1,5', 'numeric')).toBe(1.5);
+    expect(rowValue('1.5', 'numeric')).toBe(1.5);
+    expect(rowValue('0', 'numeric')).toBe(0);
+    expect(rowValue('0,5', 'numeric')).toBe(0.5);
+    expect(rowValue('100', null)).toBe(100);
+  });
+
+  it('keeps zero as a real value, not an empty state', () => {
+    expect(rowValue('0', 'numeric')).toBe(0);
+    expect(rowValue('0.0', 'numeric')).toBe(0);
+  });
+
+  it('keeps negative numeric values (API has no min constraint)', () => {
+    expect(rowValue('-3', 'numeric')).toBe(-3);
+    expect(rowValue('-1,5', 'numeric')).toBe(-1.5);
+  });
+
+  it('passes very large numeric values through unchanged', () => {
+    expect(rowValue('123456789012345', 'numeric')).toBe(123456789012345);
   });
 
   it('maps boolean data types to the server boolean strings', () => {

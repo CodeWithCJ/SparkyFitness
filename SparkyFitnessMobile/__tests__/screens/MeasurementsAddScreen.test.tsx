@@ -21,12 +21,22 @@ import type { RootStackScreenProps } from '../../src/types/navigation';
 
 type ScreenProps = RootStackScreenProps<'MeasurementsAdd'>;
 
+// Locale switch for the shared t spy: resolves keys against the EN or PL
+// resource (with {{var}} interpolation) while keeping custom user names
+// literal (they are never passed through t).
+let testLocale: 'en' | 'pl' = 'en';
+const setTestLocale = (locale: 'en' | 'pl') => {
+  testLocale = locale;
+};
+
 // Shared t spy: the screen's useTranslation() calls route through it so the
 // English resource resolves keys (with {{var}} interpolation) while tests can
 // still observe what t() is asked to translate.
 const mockT = jest.fn((key: string, options?: Record<string, unknown>) => {
-  const en: unknown = require('../../src/localization/locales/en/translation.json');
-  let current: unknown = en;
+  const resources: unknown = testLocale === 'pl'
+    ? require('../../src/localization/locales/pl/translation.json')
+    : require('../../src/localization/locales/en/translation.json');
+  let current: unknown = resources;
   for (const part of key.split('.')) {
     if (current == null || typeof current !== 'object') return key;
     current = (current as Record<string, unknown>)[part];
@@ -141,6 +151,47 @@ const setPreferences = (prefs: { default_weight_unit?: string; default_measureme
   } as unknown as ReturnType<typeof usePreferences>);
 };
 
+const setCustomCategories = (categories: any[]) => {
+  mockUseCustomCategories.mockReturnValue({
+    data: categories,
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  } as unknown as ReturnType<typeof useCustomCategories>);
+};
+
+const setCustomEntries = (entries: any[]) => {
+  mockUseCustomMeasurementsByDate.mockReturnValue({
+    data: entries,
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  } as unknown as ReturnType<typeof useCustomMeasurementsByDate>);
+};
+
+const customCategory = (overrides: Record<string, unknown> = {}) => ({
+  id: 'cat-1',
+  name: 'Stress Level',
+  display_name: null,
+  measurement_type: '',
+  frequency: 'Daily',
+  data_type: 'numeric',
+  ...overrides,
+});
+
+const customEntry = (overrides: Record<string, unknown> = {}) => ({
+  id: 'entry-1',
+  category_id: 'cat-1',
+  value: '5',
+  entry_date: ENTRY_DATE,
+  entry_hour: null,
+  entry_timestamp: null,
+  notes: null,
+  source: 'manual',
+  custom_categories: null,
+  ...overrides,
+});
+
 const renderScreen = () => {
   const route: ScreenProps['route'] = {
     key: 'MeasurementsAdd-key',
@@ -204,6 +255,7 @@ const confirmClearAlert = async () => {
 describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    setTestLocale('en');
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     setMeasurements({});
     setPreferences({ default_weight_unit: 'kg', default_measurement_unit: 'cm' });
@@ -419,5 +471,295 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
       // 5 ft 10 in = 70 in = 177.8 cm
       expect(savedPayload().height).toBeCloseTo(177.8, 5);
     });
+  });
+});
+
+describe('MeasurementsAddScreen — custom measurements', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setTestLocale('en');
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    setMeasurements({});
+    setPreferences({ default_weight_unit: 'kg', default_measurement_unit: 'cm' });
+    mockUseUpsertCheckIn.mockReturnValue({
+      mutate,
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUpsertCheckIn>);
+    mockUseCustomCategories.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useCustomCategories>);
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useCustomMeasurementsByDate>);
+    mockUseSaveCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useSaveCustomMeasurement>);
+    mockUseDeleteCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useDeleteCustomMeasurement>);
+  });
+
+  const savedCustomPayload = () => {
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    };
+    expect(saveMock.mutateAsync).toHaveBeenCalled();
+    return saveMock.mutateAsync.mock.calls.at(-1)?.[0];
+  };
+
+  const deletedCustomId = () => {
+    const deleteMock = mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    };
+    expect(deleteMock.mutateAsync).toHaveBeenCalled();
+    return deleteMock.mutateAsync.mock.calls.at(-1)?.[0];
+  };
+
+  test('renders custom categories in API order with literal names and units', () => {
+    setCustomCategories([
+      customCategory({ id: 'c1', name: 'Stres', display_name: null, measurement_type: 'mmHg' }),
+      customCategory({ id: 'c2', name: 'Energy', display_name: 'Energy Level', measurement_type: '' }),
+    ]);
+    const screen = renderScreen();
+
+    expect(screen.getByText('Custom Measurements')).toBeTruthy();
+    // User names stay literal — never translated or reordered.
+    expect(screen.getByText('Stres (mmHg)')).toBeTruthy();
+    expect(screen.getByText('Energy Level')).toBeTruthy();
+  });
+
+  test('renders no custom section when there are no categories', () => {
+    setCustomCategories([]);
+    const screen = renderScreen();
+
+    expect(screen.queryByText('Custom Measurements')).toBeNull();
+  });
+
+  test('prefills a numeric zero as a real value, not an empty field', () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    setCustomEntries([customEntry({ category_id: 'c1', value: '0' })]);
+    const screen = renderScreen();
+
+    expect(screen.getByTestId('custom-input-c1').props.value).toBe('0');
+  });
+
+  test('prefills boolean true and false distinctly via tri-state control', () => {
+    setCustomCategories([
+      customCategory({ id: 'c1', data_type: 'boolean' }),
+      customCategory({ id: 'c2', data_type: 'boolean' }),
+    ]);
+    setCustomEntries([
+      customEntry({ id: 'e1', category_id: 'c1', value: 'true' }),
+      customEntry({ id: 'e2', category_id: 'c2', value: 'false' }),
+    ]);
+    const screen = renderScreen();
+
+    // Both yes/no pairs render; the false entry is a real saved value.
+    expect(screen.getAllByText('Yes')).toHaveLength(2);
+    expect(screen.getAllByText('No')).toHaveLength(2);
+  });
+
+  test('saves a new numeric custom value together with a standard field', async () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    const screen = renderScreen();
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '82.5');
+    fireEvent.changeText(getInput(screen, 'weight'), '80');
+    await pressSave(screen);
+
+    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ entryDate: ENTRY_DATE, weight: 80 }),
+    );
+    expect(savedCustomPayload()).toEqual(
+      expect.objectContaining({ category_id: 'c1', value: 82.5, entry_date: ENTRY_DATE, source: 'manual' }),
+    );
+  });
+
+  test('parses a comma decimal for a custom numeric value (PL keyboard)', async () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    const screen = renderScreen();
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '82,5');
+    await pressSave(screen);
+
+    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'c1', value: 82.5 }));
+  });
+
+  test('saves zero as a number, not as empty', async () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    const screen = renderScreen();
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '0');
+    await pressSave(screen);
+
+    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'c1', value: 0 }));
+  });
+
+  test('saves boolean false as the literal string payload', async () => {
+    setCustomCategories([customCategory({ id: 'c1', data_type: 'boolean' })]);
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getAllByText('No')[0]);
+    await pressSave(screen);
+
+    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'c1', value: 'false' }));
+  });
+
+  test('clears an existing custom value through delete after confirmation', async () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    setCustomEntries([customEntry({ category_id: 'c1', value: '5' })]);
+    const screen = renderScreen();
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '');
+    await pressSave(screen);
+    expect(mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+
+    // Confirm the clear alert; the save/delete then run.
+    const alertMock = Alert.alert as jest.Mock;
+    const buttons = alertMock.mock.calls.at(-1)?.[2] as { text: string; onPress?: () => void }[];
+    const save = buttons.find((button) => button.text === 'Save');
+    expect(save?.onPress).toBeDefined();
+    await act(async () => {
+      save?.onPress?.();
+      await Promise.resolve();
+    });
+
+    expect(deletedCustomId()).toEqual(expect.objectContaining({ id: 'entry-1' }));
+    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  test('does not delete when an empty never-prefilled field is saved', async () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    const screen = renderScreen();
+
+    await pressSave(screen);
+
+    expect(mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+    expect(mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
+  });
+
+  test('deleting one category does not affect another category value', async () => {
+    setCustomCategories([
+      customCategory({ id: 'c1' }),
+      customCategory({ id: 'c2' }),
+    ]);
+    setCustomEntries([
+      customEntry({ id: 'e1', category_id: 'c1', value: '5' }),
+      customEntry({ id: 'e2', category_id: 'c2', value: '7' }),
+    ]);
+    const screen = renderScreen();
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '');
+    await pressSave(screen);
+
+    const alertMock = Alert.alert as jest.Mock;
+    const buttons = alertMock.mock.calls.at(-1)?.[2] as { text: string; onPress?: () => void }[];
+    const save = buttons.find((button) => button.text === 'Save');
+    await act(async () => {
+      save?.onPress?.();
+      await Promise.resolve();
+    });
+
+    // Only the cleared entry is deleted; c2 stays untouched.
+    expect(deletedCustomId()).toEqual(expect.objectContaining({ id: 'e1' }));
+    const deleteMock = mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    expect(deleteMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('hourly category adds a row and saves with the chosen hour', async () => {
+    setCustomCategories([customCategory({ id: 'c1', frequency: 'Hourly' })]);
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByTestId('add-custom-c1'));
+    fireEvent.press(screen.getByTestId('hour-plus-new-1'));
+    fireEvent.changeText(screen.getByTestId('custom-input-new-1'), '10');
+    await pressSave(screen);
+
+    const payload = savedCustomPayload();
+    expect(payload.category_id).toBe('c1');
+    expect(payload.value).toBe(10);
+    expect(payload.entry_hour).toEqual(expect.any(Number));
+  });
+
+  test('unlimited category keeps existing rows read-only and saves a new row as insert', async () => {
+    setCustomCategories([customCategory({ id: 'c1', frequency: 'Unlimited', data_type: 'text' })]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: 'old' })]);
+    const screen = renderScreen();
+
+    // Existing row renders read-only (not an editable input).
+    expect(screen.getByText('old')).toBeTruthy();
+    expect(screen.queryByTestId('custom-input-e1')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('add-custom-c1'));
+    fireEvent.changeText(screen.getByTestId('custom-input-new-1'), 'new');
+    await pressSave(screen);
+
+    // Only the new row POSTs; the existing row is never re-sent or edited.
+    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'c1', value: 'new' }));
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('shows a fetch error state with retry for categories', () => {
+    mockUseCustomCategories.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useCustomCategories>);
+    const screen = renderScreen();
+
+    expect(screen.getByText("Couldn't load custom measurements.")).toBeTruthy();
+    expect(screen.getByText('Try again')).toBeTruthy();
+  });
+
+  test('partial custom save failure shows an error and does not close the screen', async () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    const screen = renderScreen();
+
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    };
+    saveMock.mutateAsync.mockRejectedValueOnce(new Error('boom'));
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '10');
+    await pressSave(screen);
+
+    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  test('renders Polish system copy while keeping custom names literal', () => {
+    setTestLocale('pl');
+    setCustomCategories([customCategory({ id: 'c1', name: 'Stres', display_name: null })]);
+    const screen = renderScreen();
+
+    expect(screen.getByText('Niestandardowe pomiary')).toBeTruthy();
+    expect(screen.getByText('Stres')).toBeTruthy();
+  });
+
+  test('boolean control exposes accessibility state on its options', () => {
+    setCustomCategories([customCategory({ id: 'c1', data_type: 'boolean' })]);
+    const screen = renderScreen();
+
+    const yes = screen.getAllByText('Yes')[0];
+    const touchable = yes.parent?.parent;
+    expect(touchable?.props.accessibilityRole).toBe('button');
+    expect(touchable?.props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: false, disabled: false }),
+    );
   });
 });

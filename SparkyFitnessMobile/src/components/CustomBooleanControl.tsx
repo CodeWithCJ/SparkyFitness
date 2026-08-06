@@ -32,6 +32,8 @@ const CustomBooleanControl: React.FC<CustomBooleanControlProps> = ({
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityState={{ selected, disabled }}
       className={`flex-1 rounded-lg border px-3 py-2 items-center ${disabled ? 'opacity-40' : ''}`}
       style={{
         borderColor: selected ? accentPrimary : borderSubtle,

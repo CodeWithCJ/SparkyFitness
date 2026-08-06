@@ -1244,7 +1244,8 @@
     "weightStLabel": "Waga (st, lb)",
     "bodyFatShort": "Tkanka tłuszczowa",
     "edit": "Edytuj pomiary",
-    "fallbackLabel": "Pomiar"
+    "fallbackLabel": "Pomiar",
+    "customTitle": "Niestandardowe pomiary"
   },
   "addSheet": {
     "food": "Jedzenie",

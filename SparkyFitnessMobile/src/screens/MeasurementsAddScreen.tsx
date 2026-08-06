@@ -789,7 +789,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={row.value}
                       onChangeText={(v) => updateCustomRowValue(cat.id, row.key, v)}
                       keyboardType={isNumeric ? 'decimal-pad' : 'default'}
-                      placeholder="0"
+                      placeholder={isNumeric ? '0' : ''}
                       returnKeyType="done"
                       testID={`custom-input-${row.key}`}
                     />
@@ -838,8 +838,9 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             value={row?.value ?? ''}
             onChangeText={(v) => setSingleCustomValue(cat.id, v)}
             keyboardType={isNumeric ? 'decimal-pad' : 'default'}
-            placeholder="0"
+            placeholder={isNumeric ? '0' : ''}
             returnKeyType="done"
+            testID={`custom-input-${cat.id}`}
           />
         )}
         {row?.entryId != null && row.value.trim() === '' ? (
@@ -1033,7 +1034,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
               customCategories.length > 0 && (
                 <View className="mt-4 mb-2">
                   <Text className="text-text-primary text-base font-semibold mb-3">
-                     {t('screenCopy.dashboardSettings.customTitle')}
+                     {t('measurements.customTitle')}
                   </Text>
                   {customCategories.map(renderCustomCategory)}
                 </View>

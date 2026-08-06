@@ -2,6 +2,7 @@ import type {
   CustomCategory,
   CustomMeasurementEntry,
 } from '../types/customMeasurements';
+import { parseDecimalInput } from './numericInput';
 
 /**
  * Pure form state for custom measurements, keyed by category id.
@@ -87,8 +88,15 @@ export function rowValue(
     return null;
   }
   if (dataType === 'numeric' || dataType == null) {
-    const parsed = Number(trimmed);
-    return Number.isNaN(parsed) ? null : parsed;
+    // parseDecimalInput is locale-aware (accepts both '.' and ',' as the
+    // decimal separator) but does not accept a leading sign. Custom numeric
+    // values have no API min constraint, so preserve the previous negative
+    // acceptance by stripping a leading '-' before parsing and re-applying it.
+    const negative = trimmed.startsWith('-');
+    const unsigned = negative ? trimmed.slice(1) : trimmed;
+    const parsed = parseDecimalInput(unsigned);
+    if (Number.isNaN(parsed)) return null;
+    return negative ? -parsed : parsed;
   }
   return trimmed;
 }
