@@ -13,9 +13,6 @@ export const SectionTitleHeader: React.FC<{ title: string }> = ({ title }) => (
 
 interface FoodSearchSectionHeaderProps {
   section: ResultSection;
-  // The switcher header is the anchor the source-switcher popover points at, so
-  // the screen holds the ref and measures it on demand.
-  onlineHeaderRef: React.RefObject<View | null>;
   providerOptions: PickerOption<string>[];
   selectedProvider: string | null;
   selectedProviderName: string;
@@ -33,7 +30,6 @@ interface FoodSearchSectionHeaderProps {
 
 const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
   section,
-  onlineHeaderRef,
   providerOptions,
   selectedProvider,
   selectedProviderName,
@@ -61,11 +57,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
     const value = isAllProviders ? 'All Sources' : selectedProviderName;
     const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
     const header = (
-      <View
-        ref={onlineHeaderRef}
-        collapsable={false}
-        className="px-4 py-1 bg-background flex-row items-center justify-between"
-      >
+      <View className="px-4 py-1 bg-background flex-row items-center justify-between">
         <Text className="text-text-muted text-xs font-bold uppercase">
           {label}
         </Text>

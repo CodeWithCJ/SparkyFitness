@@ -22,7 +22,6 @@ import AnchoredMenu, {
   measureAnchoredMenuTrigger,
 } from '../components/AnchoredMenu';
 import type { AnchoredMenuItem } from '../components/AnchoredMenu';
-import Popover from '../components/Popover';
 import StatusView from '../components/StatusView';
 import LandingEntryRow from '../components/foodSearch/LandingEntryRow';
 import FoodSearchResultRow from '../components/foodSearch/FoodSearchResultRow';
@@ -61,10 +60,6 @@ import { Meal } from '../types/meals';
 import { externalFoodItemToFoodInfo } from '../types/foodInfo';
 import type { FoodInfoItem } from '../types/foodInfo';
 import type { RootStackScreenProps } from '../types/navigation';
-import {
-  searchSourcesPopover,
-  providerSelectorPopover,
-} from '../services/foodSearchPreferences';
 import { useProviderColor } from '../utils/providerColor';
 import { interleaveTopMatches } from '../utils/topMatches';
 import { mergeRecent, mergeFrequent, landingKey } from '../utils/landingLists';
@@ -178,51 +173,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const addButtonRef = useRef<View>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<AnchorRect | null>(null);
-
-  // This screen's root View, the shared coordinate space for the in-tree
-  // coaching popovers. Their anchors are measured against it so they line up on
-  // both platforms (no cross-window offset on iOS modals).
-  const rootRef = useRef<View>(null);
-
-  // First-visit popover explaining that local + online sources are searched
-  // together, anchored under the search bar. The search bar's onLayout rect is
-  // relative to the root View, where the popover also renders, so the two share
-  // one coordinate space.
-  const [searchBarLayout, setSearchBarLayout] = useState<AnchorRect | null>(null);
-  const [introVisible, setIntroVisible] = useState(false);
-  const introHandledRef = useRef(false);
-
-  // Show the intro popover once, after the search bar has laid out and the
-  // server is connected (so the message about searching online actually
-  // applies). Runs at most once per mount; the persisted flag prevents repeats
-  // across visits.
-  React.useEffect(() => {
-    if (introHandledRef.current || !searchBarLayout || !isConnected) return;
-    introHandledRef.current = true;
-    let cancelled = false;
-    void (async () => {
-      if (await searchSourcesPopover.hasSeen()) return;
-      if (!cancelled) setIntroVisible(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [searchBarLayout, isConnected]);
-
-  const dismissIntro = useCallback(() => {
-    setIntroVisible(false);
-    void searchSourcesPopover.markSeen();
-  }, []);
-
-  // Second popover: points at the online-results source switcher once a search
-  // has produced online results, nudging the user that they can change source
-  // or search every source at once. The switcher header lives inside the
-  // scrolling list, so its position is measured on demand (relative to the root)
-  // rather than via a static onLayout rect.
-  const onlineHeaderRef = useRef<View>(null);
-  const [providerAnchor, setProviderAnchor] = useState<AnchorRect | null>(null);
-  const [providerPopoverVisible, setProviderPopoverVisible] = useState(false);
-  const providerHandledRef = useRef(false);
 
   // Local foods: the hook itself only fetches once the query is >= 2 chars.
   const { searchResults, isSearching, isSearchActive } = useFoodSearch(searchText, {
@@ -574,85 +524,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     !!selectedProviderName &&
     (isOnlineSearchActive || visibleOnlineResults.length > 0);
 
-  // Whether the online-results source switcher header is on screen — the anchor
-  // the source-switcher popover points at.
-  const onlineHeaderVisible = isAllProviders
-    ? isAllProvidersSearchActive
-    : showOnlineSection;
-
-  // Measure the switcher header relative to the root View (same space as the
-  // in-tree popover overlay) by differencing their window positions, which keeps
-  // the maths free of platform/modal/scroll offsets.
-  const measureProviderAnchor = useCallback(
-    () =>
-      new Promise<AnchorRect | null>((resolve) => {
-        const header = onlineHeaderRef.current;
-        const root = rootRef.current;
-        if (!header || !root) {
-          resolve(null);
-          return;
-        }
-        root.measureInWindow((rootX, rootY) => {
-          header.measureInWindow((hx, hy, width, height) => {
-            resolve({ x: hx - rootX, y: hy - rootY, width, height });
-          });
-        });
-      }),
-    [],
-  );
-
-  // Show the source-switcher popover once, after a search produces an online
-  // section the user can switch sources on. Gated on having more than one
-  // provider (so "change source" / "All Sources" actually applies). Claims its
-  // single per-mount attempt like the intro popover; the persisted flag stops
-  // repeats. When it appears it dismisses the intro popover (marking it seen) so
-  // the two never stack — the source nudge is the more relevant message here.
-  React.useEffect(() => {
-    if (providerHandledRef.current) return;
-    if (!isConnected || !inSearchMode) return;
-    if (providers.length <= 1 || !onlineHeaderVisible) return;
-    providerHandledRef.current = true;
-    let cancelled = false;
-    void (async () => {
-      if (await providerSelectorPopover.hasSeen()) return;
-      // Defer a frame so the freshly-rendered header has a measurable layout.
-      requestAnimationFrame(() => {
-        void measureProviderAnchor().then((rect) => {
-          if (cancelled || !rect) return;
-          // Replace the intro popover with the source nudge, marking the intro
-          // seen so it does not reappear on a later visit.
-          dismissIntro();
-          setProviderAnchor(rect);
-          setProviderPopoverVisible(true);
-        });
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    isConnected,
-    inSearchMode,
-    providers.length,
-    onlineHeaderVisible,
-    measureProviderAnchor,
-    dismissIntro,
-  ]);
-
-  const dismissProviderPopover = useCallback(() => {
-    setProviderPopoverVisible(false);
-    void providerSelectorPopover.markSeen();
-  }, []);
-
-  // If the switcher header streams out of view while the popover is open, hide
-  // it rather than leave it pointing at nothing. Not marked seen, so it can
-  // reappear on a later visit.
-  React.useEffect(() => {
-    if (providerPopoverVisible && !onlineHeaderVisible) {
-      setProviderPopoverVisible(false);
-    }
-  }, [providerPopoverVisible, onlineHeaderVisible]);
-
   const filteredFavoriteFoods = useMemo(() => filterByOwnership(favoriteFoods, ownershipFilter, profile?.id), [favoriteFoods, ownershipFilter, profile?.id]);
   const filteredFavoriteMeals = useMemo(() => filterByOwnership(favoriteMeals, ownershipFilter, profile?.id), [favoriteMeals, ownershipFilter, profile?.id]);
   const filteredRecentFoods = useMemo(() => filterByOwnership(recentFoods, ownershipFilter, profile?.id), [recentFoods, ownershipFilter, profile?.id]);
@@ -935,7 +806,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const renderResultSectionHeader = ({ section }: { section: ResultSection }) => (
     <FoodSearchSectionHeader
       section={section}
-      onlineHeaderRef={onlineHeaderRef}
       providerOptions={providerOptions}
       selectedProvider={selectedProvider}
       selectedProviderName={selectedProviderName}
@@ -1003,15 +873,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       )}
 
       <View
-        onLayout={(e) => {
-          const { x, y, width, height } = e.nativeEvent.layout;
-          // onLayout y is relative to the header row, which flows below the
-          // root's Android paddingTop. The popover overlay is absolutely
-          // positioned from the root's padding-box top (above that padding), so
-          // add the same top inset to land the anchor in the overlay's space.
-          const topInset = Platform.OS === 'android' ? insets.top : 0;
-          setSearchBarLayout((prev) => prev ?? { x, y: y + topInset, width, height });
-        }}
         className="flex-1 flex-row items-center bg-raised rounded-lg px-3 py-2.5"
         style={{
           borderWidth: 1,
@@ -1191,8 +1052,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
 
   return (
     <View
-      ref={rootRef}
-      collapsable={false}
       className="flex-1 bg-background"
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
@@ -1204,24 +1063,6 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         onClose={() => setMenuVisible(false)}
         items={menuItems}
       />
-      <Popover
-        visible={introVisible}
-        anchor={searchBarLayout}
-        onDismiss={dismissIntro}
-        title="Search everything here"
-        showDismissButton={false}
-      >
-        Saved foods, meals, and online results appear together as you type.
-      </Popover>
-      <Popover
-        visible={providerPopoverVisible}
-        anchor={providerAnchor}
-        onDismiss={dismissProviderPopover}
-        title="Choose a source"
-        showDismissButton={false}
-      >
-        Tap here to switch providers or search All Sources.
-      </Popover>
     </View>
   );
 };

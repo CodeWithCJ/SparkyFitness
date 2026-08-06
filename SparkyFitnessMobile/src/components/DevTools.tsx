@@ -8,7 +8,6 @@ import { notifySessionExpired } from '../services/api/authService';
 import { getActiveServerConfig } from '../services/storage';
 import { resetWhatsNewBanner } from '../services/whatsNewBanner';
 import { resetAnnouncementModal } from './AnnouncementModal';
-import { FOOD_SEARCH_POPOVERS } from '../services/foodSearchPreferences';
 import { CycleCardRingContent, type CycleRingContentInfo } from './CycleCard';
 import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedPermissions } from 'react-native-health-connect';
 
@@ -291,43 +290,6 @@ const DevTools: React.FC = () => {
           >
             <Text className="text-white text-base font-bold">Reset Announcement</Text>
           </Button>
-        </View>
-      </View>
-
-      <View className="mt-5">
-        <Text className="text-sm text-text-primary">Food Search Popovers</Text>
-        <Text className="text-text-muted mb-3 text-[13px]">
-          Clear a seen flag so its coaching popover re-appears on the next food
-          search.
-        </Text>
-        <View className="flex-row gap-2 flex-wrap">
-          {FOOD_SEARCH_POPOVERS.map((popover) => (
-            <Button
-              key={popover.id}
-              variant="primary"
-              className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
-              onPress={async () => {
-                try {
-                  await popover.reset();
-                  Toast.show({
-                    type: 'success',
-                    text1: 'Reset',
-                    text2: `${popover.resetLabel} popover will re-appear.`,
-                  });
-                } catch {
-                  Toast.show({
-                    type: 'error',
-                    text1: 'Error',
-                    text2: 'Could not reset popover.',
-                  });
-                }
-              }}
-            >
-              <Text className="text-white text-base font-bold">
-                {popover.resetLabel}
-              </Text>
-            </Button>
-          ))}
         </View>
       </View>
 
