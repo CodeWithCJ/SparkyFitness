@@ -26,6 +26,9 @@ const emptyPlaceholders = {
 
 const defaultProps = {
   bodyFatPercentage: '',
+  muscleMassKg: '',
+  boneMassKg: '',
+  bodyWaterPercentage: '',
   customCategories: [],
   customNotes: {},
   customValues: {},
@@ -37,6 +40,9 @@ const defaultProps = {
   neck: '',
   placeholders: emptyPlaceholders,
   setBodyFatPercentage: jest.fn(),
+  setMuscleMassKg: jest.fn(),
+  setBoneMassKg: jest.fn(),
+  setBodyWaterPercentage: jest.fn(),
   setCustomNotes: jest.fn(),
   setCustomValues: jest.fn(),
   setHeight: jest.fn(),

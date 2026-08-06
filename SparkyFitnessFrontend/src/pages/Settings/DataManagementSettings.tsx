@@ -17,21 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-// Human-friendly names for the provider `source` tags stored on synced rows.
-const SOURCE_LABELS: Record<string, string> = {
-  healthkit: 'Apple Health',
-  health_connect: 'Health Connect',
-  garmin: 'Garmin',
-  withings: 'Withings',
-  fitbit: 'Fitbit',
-  googlehealth: 'Google Health',
-  imported: 'Imported',
-  CSV: 'CSV Import',
-  CSV_Import: 'CSV Import',
-};
-
-const prettifySource = (source: string): string =>
-  SOURCE_LABELS[source] ?? source;
+import { prettifySource } from '@/utils/sourceLabels';
 
 export const DataManagementSettings = () => {
   const { t, i18n } = useTranslation();

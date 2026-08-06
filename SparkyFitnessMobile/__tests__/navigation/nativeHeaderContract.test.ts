@@ -79,12 +79,11 @@ function extractScreenNames(source: string, navigatorName: string): string[] {
 }
 
 function extractDefaultImportPaths(source: string): Map<string, string> {
+  // Matches App.tsx-style ('./src/screens/X') and safeScreens.tsx-style
+  // ('../screens/X') screen imports.
   return new Map(
-    [...source.matchAll(/^import ([A-Za-z0-9_]+) from '(\.\/src\/screens\/[^']+)';$/gm)]
-      .map(([, localName, importPath]) => [
-        localName,
-        `${importPath.replace(/^\.\//, '')}.tsx`,
-      ]),
+    [...source.matchAll(/^import ([A-Za-z0-9_]+) from '(?:\.\/src|\.\.)\/screens\/([^']+)';$/gm)]
+      .map(([, localName, screenFile]) => [localName, `src/screens/${screenFile}.tsx`]),
   );
 }
 
@@ -92,7 +91,7 @@ function extractSafeComponentNamesByScreen(source: string): Map<string, string> 
   return new Map(
     [
       ...source.matchAll(
-        /^const (Safe[A-Za-z0-9_]+) = withErrorBoundary\(([A-Za-z0-9_]+), '([^']+)'/gm,
+        /^(?:export )?const (Safe[A-Za-z0-9_]+) = withErrorBoundary\(([A-Za-z0-9_]+), '([^']+)'/gm,
       ),
     ].map(([, safeComponent, importedComponent, routeName]) => [
       routeName,
@@ -111,9 +110,12 @@ function extractStackComponentsByRoute(source: string): Map<string, string> {
   );
 }
 
-function resolveRootStackScreenFiles(appSource: string): Map<string, string> {
-  const importPaths = extractDefaultImportPaths(appSource);
-  const safeComponents = extractSafeComponentNamesByScreen(appSource);
+function resolveRootStackScreenFiles(appSource: string, safeScreensSource: string): Map<string, string> {
+  const importPaths = new Map([
+    ...extractDefaultImportPaths(appSource),
+    ...extractDefaultImportPaths(safeScreensSource),
+  ]);
+  const safeComponents = extractSafeComponentNamesByScreen(safeScreensSource);
   const stackComponents = extractStackComponentsByRoute(appSource);
   const screenFiles = new Map<string, string>();
 
@@ -122,6 +124,13 @@ function resolveRootStackScreenFiles(appSource: string): Map<string, string> {
     const screenFile = importPaths.get(importedComponent);
     if (screenFile) {
       screenFiles.set(routeName, screenFile);
+    } else if (safeComponents.has(routeName)) {
+      // A silently dropped route would exempt its screen from every check
+      // below, so a Safe* route that cannot be traced to a screen file is
+      // itself a contract violation.
+      throw new Error(
+        `Route "${routeName}" wraps "${importedComponent}" in withErrorBoundary, but its screen import was not found in App.tsx or safeScreens.tsx`,
+      );
     }
   }
 
@@ -152,7 +161,9 @@ function usesScreenHeaderAbstraction(source: string): boolean {
   return (
     /\buseScreenHeader\(/.test(source) ||
     /<ScreenHeader\b/.test(source) ||
-    source.includes('FormScreenChrome')
+    // JSX usage only: importing footer chrome (e.g. FooterSaveBar) from the
+    // FormScreenChrome module does not give a screen a header.
+    /<FormScreenChrome\b/.test(source)
   );
 }
 
@@ -307,6 +318,7 @@ function failNativeHeaderContract(message: string): never {
 describe('native header navigation contract', () => {
   const navigationSource = readMobileFile('src/types/navigation.ts');
   const appSource = readMobileFile('App.tsx');
+  const safeScreensSource = readMobileFile('src/navigation/safeScreens.tsx');
   const tabsSource = readMobileFile('src/components/TabsLayout.tsx');
 
   it('keeps RootStackParamList aligned with App.tsx native-stack screens', () => {
@@ -331,7 +343,7 @@ describe('native header navigation contract', () => {
     const rootStackRoutes = extractTypeKeys(navigationSource, 'RootStackParamList');
     const appScreens = extractScreenNames(appSource, 'Stack');
     const nativeTabScreens = extractScreenNames(tabsSource, 'NativeTab');
-    const rootStackScreenFiles = resolveRootStackScreenFiles(appSource);
+    const rootStackScreenFiles = resolveRootStackScreenFiles(appSource, safeScreensSource);
     const rootRoutesWithScreenOwnedHeaders = [...rootStackScreenFiles.entries()]
       .filter(([, screenFile]) => hasScreenOwnedHeader(readMobileFile(screenFile)))
       .map(([route]) => route);
@@ -508,7 +520,7 @@ describe('native header navigation contract', () => {
   });
 
   it('hides screen-owned React headers on iOS when native header items are used', () => {
-    const rootStackScreenFiles = resolveRootStackScreenFiles(appSource);
+    const rootStackScreenFiles = resolveRootStackScreenFiles(appSource, safeScreensSource);
     const rootStackScreenFileSet = new Set(rootStackScreenFiles.values());
     const screensWithNativeItemsAndReactHeaders = [...rootStackScreenFileSet]
       .filter((relativePath) => {

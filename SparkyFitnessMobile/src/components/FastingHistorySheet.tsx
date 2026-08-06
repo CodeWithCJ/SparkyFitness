@@ -1,32 +1,19 @@
 import React, {
   forwardRef,
-  useCallback,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Pressable,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import { ActivityIndicator, Alert, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useCSSVariable, useUniwind } from 'uniwind';
+import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 
 import Icon from './Icon';
+import { DeleteRowAction } from './SwipeableDeleteRow';
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import FastingEditSheet, { type FastingEditSheetRef } from './FastingEditSheet';
 import { FastingProtocolBadge } from './FastingSharedComponents';
 import { useFastingHistory, useDeleteFast } from '../hooks/useFasting';
@@ -39,17 +26,7 @@ import {
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
 
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => (
-        <FullWindowOverlay>{children}</FullWindowOverlay>
-      )
-    : undefined;
-
 const PAGE_SIZE = 25;
-const DELETE_ACTION_WIDTH = 80;
 
 interface FastingHistoryRowProps {
   fast: FastingLog;
@@ -84,16 +61,7 @@ const FastingHistoryRow: React.FC<FastingHistoryRowProps> = ({
     : formatLocalizedFastingTime(fast.start_time, appLocale);
 
   const renderRightActions = () => (
-    <TouchableOpacity
-      className="bg-bg-danger justify-center items-center ml-4"
-      style={{ width: DELETE_ACTION_WIDTH }}
-      onPress={() => onDelete(fast)}
-      activeOpacity={0.7}
-    >
-      <Text className="text-text-danger font-semibold text-sm">
-        {t('fasting.history.delete')}
-      </Text>
-    </TouchableOpacity>
+    <DeleteRowAction onPress={() => onDelete(fast)} className="ml-4" />
   );
 
   return (
@@ -140,13 +108,10 @@ export interface FastingHistorySheetRef {
   dismiss: () => void;
 }
 
-const FastingHistorySheet = forwardRef<FastingHistorySheetRef>(
-  (_props, ref) => {
-    const { t } = useTranslation();
-    const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const editSheetRef = useRef<FastingEditSheetRef>(null);
-    const { theme } = useUniwind();
-    const isDarkMode = theme === 'dark' || theme === 'amoled';
+const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => {
+  const { t } = useTranslation();
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const editSheetRef = useRef<FastingEditSheetRef>(null);
 
     const [limit, setLimit] = useState(PAGE_SIZE);
 
@@ -167,17 +132,7 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>(
       dismiss: () => bottomSheetRef.current?.dismiss(),
     }));
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          opacity={isDarkMode ? 0.7 : 0.5}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [isDarkMode],
-    );
+    const renderBackdrop = useSheetBackdrop();
 
     const openEdit = (fast: FastingLog) => editSheetRef.current?.present(fast);
 

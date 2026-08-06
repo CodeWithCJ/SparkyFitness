@@ -3,10 +3,9 @@ import { addLog } from '../LogService';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ApiError } from './errors';
 import { DEFAULT_API_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
+import { normalizeUrl } from '../../utils/serverUrl';
 
-export const normalizeUrl = (url: string): string => {
-  return url.endsWith('/') ? url.slice(0, -1) : url;
-};
+export { normalizeUrl };
 
 interface ApiFetchOptions {
   endpoint: string;

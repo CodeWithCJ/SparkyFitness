@@ -9,6 +9,7 @@ import {
   getAggregatedBasalEnergyByDateDetailed,
   readHealthRecords,
   readHealthRecordsDetailed,
+  readEarliestSampleDetailed,
   readMinMaxAvgByDayDetailed,
   isDatabaseInaccessibleError,
   resetDatabaseInaccessibleCount,
@@ -2053,5 +2054,140 @@ describe('databaseInaccessibleCount', () => {
 
     resetDatabaseInaccessibleCount();
     expect(getDatabaseInaccessibleCount()).toBe(0);
+  });
+});
+
+describe('readEarliestSampleDetailed', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    await initHealthConnect();
+  });
+
+  test('returns empty when HealthKit is unavailable', async () => {
+    mockIsHealthDataAvailable.mockResolvedValue(false);
+    await initHealthConnect();
+
+    const result = await readEarliestSampleDetailed('Weight');
+
+    expect(result).toEqual({ records: [] });
+    expect(mockQueryQuantitySamples).not.toHaveBeenCalled();
+  });
+
+  test('routes quantity types through an ascending limit-1 sample query from the epoch', async () => {
+    mockQueryQuantitySamples.mockResolvedValue([
+      { startDate: '2018-05-20T09:00:00Z', quantity: 80 },
+    ]);
+
+    const result = await readEarliestSampleDetailed('Weight');
+
+    expect(mockQueryQuantitySamples).toHaveBeenCalledTimes(1);
+    const [identifier, options] = mockQueryQuantitySamples.mock.calls[0];
+    expect(identifier).toBe('HKQuantityTypeIdentifierBodyMass');
+    expect(options.ascending).toBe(true);
+    expect(options.limit).toBe(1);
+    expect(options.filter.date.startDate).toEqual(new Date(0));
+    expect(result).toEqual({ records: [{ startTime: '2018-05-20T09:00:00.000Z' }] });
+  });
+
+  test('routes category types through queryCategorySamples', async () => {
+    mockQueryCategorySamples.mockResolvedValue([
+      { startDate: '2017-11-02T22:00:00Z', endDate: '2017-11-03T06:00:00Z', value: 1 },
+    ]);
+
+    const result = await readEarliestSampleDetailed('SleepSession');
+
+    const [identifier, options] = mockQueryCategorySamples.mock.calls[0];
+    expect(identifier).toBe('HKCategoryTypeIdentifierSleepAnalysis');
+    expect(options.ascending).toBe(true);
+    expect(options.limit).toBe(1);
+    expect(mockQueryQuantitySamples).not.toHaveBeenCalled();
+    expect(result.records).toEqual([{ startTime: '2017-11-02T22:00:00.000Z' }]);
+  });
+
+  test('routes workout types through queryWorkoutSamples', async () => {
+    mockQueryWorkoutSamples.mockResolvedValue([
+      { startDate: '2016-01-10T18:00:00Z', endDate: '2016-01-10T19:00:00Z' },
+    ]);
+
+    const result = await readEarliestSampleDetailed('ExerciseSession');
+
+    const [options] = mockQueryWorkoutSamples.mock.calls[0];
+    expect(options.ascending).toBe(true);
+    expect(options.limit).toBe(1);
+    expect(result.records).toEqual([{ startTime: '2016-01-10T18:00:00.000Z' }]);
+  });
+
+  test('probes BloodPressure via the systolic identifier', async () => {
+    mockQueryQuantitySamples.mockResolvedValue([
+      { startDate: '2019-08-01T08:00:00Z', quantity: 120 },
+    ]);
+
+    await readEarliestSampleDetailed('BloodPressure');
+
+    expect(mockQueryQuantitySamples).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierBloodPressureSystolic',
+      expect.objectContaining({ ascending: true, limit: 1 }),
+    );
+  });
+
+  test('TotalCaloriesBurned takes the min over basal AND active energy', async () => {
+    mockQueryQuantitySamples.mockImplementation((identifier: string) => {
+      if (identifier === 'HKQuantityTypeIdentifierBasalEnergyBurned') {
+        return Promise.resolve([{ startDate: '2020-01-01T00:00:00Z', quantity: 1500 }]);
+      }
+      if (identifier === 'HKQuantityTypeIdentifierActiveEnergyBurned') {
+        return Promise.resolve([{ startDate: '2015-06-15T10:00:00Z', quantity: 200 }]);
+      }
+      return Promise.resolve([]);
+    });
+
+    const result = await readEarliestSampleDetailed('TotalCaloriesBurned');
+
+    const probedIdentifiers = mockQueryQuantitySamples.mock.calls.map(call => call[0]);
+    expect(probedIdentifiers).toEqual(
+      expect.arrayContaining([
+        'HKQuantityTypeIdentifierBasalEnergyBurned',
+        'HKQuantityTypeIdentifierActiveEnergyBurned',
+      ]),
+    );
+    expect(result.records).toEqual([{ startTime: '2015-06-15T10:00:00.000Z' }]);
+  });
+
+  test('Nutrition takes the min over the dietary identifiers, including nutrient-only entries', async () => {
+    // A protein-only sample predating the earliest energy sample must move the floor.
+    mockQueryQuantitySamples.mockImplementation((identifier: string) => {
+      if (identifier === 'HKQuantityTypeIdentifierDietaryEnergyConsumed') {
+        return Promise.resolve([{ startDate: '2021-02-01T12:00:00Z', quantity: 500 }]);
+      }
+      if (identifier === 'HKQuantityTypeIdentifierDietaryProtein') {
+        return Promise.resolve([{ startDate: '2019-07-04T12:00:00Z', quantity: 30 }]);
+      }
+      return Promise.resolve([]);
+    });
+
+    const result = await readEarliestSampleDetailed('Nutrition');
+
+    expect(mockQueryQuantitySamples.mock.calls.length).toBeGreaterThan(1);
+    expect(result.records).toEqual([{ startTime: '2019-07-04T12:00:00.000Z' }]);
+  });
+
+  test('returns empty (no error) when no samples exist anywhere', async () => {
+    mockQueryQuantitySamples.mockResolvedValue([]);
+
+    const result = await readEarliestSampleDetailed('Weight');
+
+    expect(result).toEqual({ records: [] });
+  });
+
+  test('a locked-device failure bumps the inaccessible counter and errors the envelope', async () => {
+    resetDatabaseInaccessibleCount();
+    mockQueryQuantitySamples.mockRejectedValue(new Error('Protected health data is inaccessible'));
+
+    const result = await readEarliestSampleDetailed('Weight');
+
+    expect(result.records).toEqual([]);
+    expect(result.error).toContain('Protected health data');
+    expect(getDatabaseInaccessibleCount()).toBe(1);
   });
 });

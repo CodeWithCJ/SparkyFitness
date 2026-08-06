@@ -8,6 +8,7 @@ import {
   getAggregatedDistanceByDateDetailed,
   getAggregatedFloorsClimbedByDateDetailed,
   readHealthRecordsDetailed,
+  readEarliestRecordDetailed,
   enrichExerciseSessions,
 } from './index';
 import { transformHealthRecords } from './dataTransformation';
@@ -61,10 +62,16 @@ export const postProcessRaw = async (
 ): Promise<unknown[]> =>
   metric.recordType === 'ExerciseSession' ? enrichExerciseSessions(records) : records;
 
+/** Earliest stored record for the history-import floor probe. */
+export const readEarliestRecord = async (
+  metric: Pick<HealthMetric, 'recordType'>,
+): Promise<ReadResult<{ startTime: string }>> => readEarliestRecordDetailed(metric.recordType);
+
 export const healthReadProvider: HealthReadProvider = {
   readCumulativeByDay,
   readMinMaxAvgByDay,
   readRaw: readHealthRecordsDetailed,
+  readEarliestRecord,
   postProcessRaw,
   transform: transformHealthRecords,
 };

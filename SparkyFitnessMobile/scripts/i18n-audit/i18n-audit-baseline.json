@@ -3,6 +3,537 @@
   "findings": [
     {
       "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "App Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:App Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Dashboard",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Dashboard:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Details",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Details:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Diary",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Diary:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Diary",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Diary:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Diary",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Diary:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Diary",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Diary:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Diary",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Diary:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Exercises",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Exercises:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Food Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Food Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Foods",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Foods:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Health Sync",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Health Sync:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Library",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Library:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Library",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Library:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Library",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Library:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Library",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Library:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Meals",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Meals:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Medications",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Medications:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Presets",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Presets:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "App.tsx",
+      "value": "Settings",
+      "context": {
+        "prop": "headerBackTitle"
+      },
+      "fingerprint": "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/DevTools.tsx",
+      "value": "(1-3 Years)",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/DevTools.tsx:(1-3 Years):{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/DevTools.tsx",
+      "value": "Error",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/DevTools.tsx:Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/DevTools.tsx",
+      "value": "Error",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/DevTools.tsx:Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/DevTools.tsx",
+      "value": "Failed to seed old health data: {{dynamic}}",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/DevTools.tsx:Failed to seed old health data: {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/DevTools.tsx",
+      "value": "Old Data",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/DevTools.tsx:Old Data:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/DevTools.tsx",
+      "value": "Seeded {{dynamic}} records in clusters 1-3 years back.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/DevTools.tsx:Seeded {{dynamic}} records in clusters 1-3 years back.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/DevTools.tsx",
+      "value": "Success",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/DevTools.tsx:Success:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/EquivalentsSection.tsx",
+      "value": "+ Add equivalent",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/EquivalentsSection.tsx:+ Add equivalent:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/EquivalentsSection.tsx",
+      "value": "Equivalent sizes",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/EquivalentsSection.tsx:Equivalent sizes:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/EquivalentsSection.tsx",
+      "value": "Remove equivalent",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/EquivalentsSection.tsx:Remove equivalent:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/EquivalentsSection.tsx",
+      "value": "Select Unit",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/EquivalentsSection.tsx:Select Unit:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/EquivalentsSection.tsx",
+      "value": "unit",
+      "context": {
+        "attr": "placeholder"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/EquivalentsSection.tsx:unit:{\"attr\":\"placeholder\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodResultRow.tsx",
+      "value": "cal",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodResultRow.tsx:cal:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodResultRow.tsx",
+      "value": "Favorite",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodResultRow.tsx:Favorite:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodSearchResultRow.tsx",
+      "value": "cal",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodSearchResultRow.tsx:cal:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodSearchResultRow.tsx",
+      "value": "results",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodSearchResultRow.tsx:results:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodSearchResultRow.tsx",
+      "value": "Show all",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodSearchResultRow.tsx:Show all:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodSearchResultRow.tsx",
+      "value": "Show all",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodSearchResultRow.tsx:Show all:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodSearchSectionHeader.tsx",
+      "value": "Couldn&apos;t load",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodSearchSectionHeader.tsx:Couldn&apos;t load:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodSearchSectionHeader.tsx",
+      "value": "No results",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodSearchSectionHeader.tsx:No results:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodSearchSectionHeader.tsx",
+      "value": "Online provider",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodSearchSectionHeader.tsx:Online provider:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/FoodSearchSectionHeader.tsx",
+      "value": "Source {{dynamic}}, tap to change",
+      "context": {
+        "attr": "accessibilityLabel",
+        "form": "expression"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/FoodSearchSectionHeader.tsx:Source {{dynamic}}, tap to change:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/foodSearch/OnlineSectionFooter.tsx",
+      "value": "No online results from",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/foodSearch/OnlineSectionFooter.tsx:No online results from:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/components/SwipeableExerciseRow.tsx",
+      "value": "Delete exercise",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/components/SwipeableExerciseRow.tsx:Delete exercise:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
       "file": "src/constants/chat.ts",
       "value": "Check-in",
       "context": {
@@ -977,6 +1508,101 @@
         "prop": "text2"
       },
       "fingerprint": "hardcoded-ui-text:src/hooks/useAddFoodEntryMeal.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "Could not initialize health data access. Check your permissions in Settings.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Could not initialize health data access. Check your permissions in Settings.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "Discard & Continue",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Discard & Continue:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "Draft in Progress",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Draft in Progress:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "Go to Settings",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Go to Settings:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "Health Data Unavailable",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Health Data Unavailable:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "No Server Connected",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:No Server Connected:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "Resume Draft",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Resume Draft:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddSheetActions.ts",
+      "value": "You have an unsaved {{dynamic}} draft. What would you like to do?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:You have an unsaved {{dynamic}} draft. What would you like to do?:{\"context\":\"Alert.alert\",\"argIndex\":1}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -2031,39 +2657,798 @@
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/services/LogService.ts",
-      "value": "All",
+      "file": "src/screens/foodForm/AdjustNutritionMode.tsx",
+      "value": "Adjust Nutrition",
       "context": {
-        "prop": "label"
+        "prop": "title"
       },
-      "fingerprint": "hardcoded-ui-text:src/services/LogService.ts:All:{\"prop\":\"label\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Adjust Nutrition:{\"prop\":\"title\"}"
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/services/LogService.ts",
-      "value": "Errors Only",
+      "file": "src/screens/foodForm/AdjustNutritionMode.tsx",
+      "value": "Could not save new unit",
       "context": {
-        "prop": "label"
+        "context": "Toast.show",
+        "prop": "text1"
       },
-      "fingerprint": "hardcoded-ui-text:src/services/LogService.ts:Errors Only:{\"prop\":\"label\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Could not save new unit:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/services/LogService.ts",
-      "value": "No Debug",
+      "file": "src/screens/foodForm/AdjustNutritionMode.tsx",
+      "value": "Could not save new variant",
       "context": {
-        "prop": "label"
+        "context": "Toast.show",
+        "prop": "text1"
       },
-      "fingerprint": "hardcoded-ui-text:src/services/LogService.ts:No Debug:{\"prop\":\"label\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Could not save new variant:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
     },
     {
       "rule": "hardcoded-ui-text",
-      "file": "src/services/LogService.ts",
-      "value": "Warnings & Errors",
+      "file": "src/screens/foodForm/AdjustNutritionMode.tsx",
+      "value": "Could not save nutrition for future use",
       "context": {
-        "prop": "label"
+        "context": "Toast.show",
+        "prop": "text1"
       },
-      "fingerprint": "hardcoded-ui-text:src/services/LogService.ts:Warnings & Errors:{\"prop\":\"label\"}"
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Could not save nutrition for future use:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/AdjustNutritionMode.tsx",
+      "value": "Save nutrition for future use",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Save nutrition for future use:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/AdjustNutritionMode.tsx",
+      "value": "Save nutrition for future use",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Save nutrition for future use:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/AdjustNutritionMode.tsx",
+      "value": "Some equivalent units could not be saved",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Some equivalent units could not be saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/AdjustNutritionMode.tsx",
+      "value": "Some equivalent units could not be saved",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Some equivalent units could not be saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/AdjustNutritionMode.tsx",
+      "value": "Still loading food details. Try again in a moment.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Still loading food details. Try again in a moment.:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/BarcodeField.tsx",
+      "value": "Barcode must be 8-14 digits.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/BarcodeField.tsx:Barcode must be 8-14 digits.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/BarcodeField.tsx",
+      "value": "Barcode",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/BarcodeField.tsx:Barcode:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/BarcodeField.tsx",
+      "value": "Optional. Standard barcodes are 8 to 14 digits.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/BarcodeField.tsx:Optional. Standard barcodes are 8 to 14 digits.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Amount must be greater than zero.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Amount must be greater than zero.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Barcode must be 8-14 digits.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Barcode must be 8-14 digits.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Date",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Date:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Food saved",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Food saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Invalid amount",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Invalid amount:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Invalid barcode",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Invalid barcode:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Invalid serving size",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Invalid serving size:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Meal",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Meal:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Missing name",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Missing name:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "New Food",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:New Food:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "No meal type",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:No meal type:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "No meal types are available. Please check your account settings.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:No meal types are available. Please check your account settings.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "per serving",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:per serving:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Please enter a food name.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Please enter a food name.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Save to Database",
+      "context": {
+        "attr": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Save to Database:{\"attr\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Save to Database",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Save to Database:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Select Meal",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Select Meal:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Serving size must be greater than zero.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Serving size must be greater than zero.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/CreateFoodMode.tsx",
+      "value": "Some equivalent units could not be saved",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Some equivalent units could not be saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/EditFoodMode.tsx",
+      "value": "Could not update food",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/EditFoodMode.tsx:Could not update food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/EditFoodMode.tsx",
+      "value": "Edit Food",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/EditFoodMode.tsx:Edit Food:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/EditFoodMode.tsx",
+      "value": "Saved as new variant",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/EditFoodMode.tsx:Saved as new variant:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/EditFoodMode.tsx",
+      "value": "Still loading food details. Try again in a moment.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/EditFoodMode.tsx:Still loading food details. Try again in a moment.:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "\"{{dynamic}}\" is already a saved variant. Do you want to update it with these values, or save as a new variant?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:\"{{dynamic}}\" is already a saved variant. Do you want to update it with these values, or save as a new variant?:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Discard unsaved equivalents?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Discard unsaved equivalents?:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Discard",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Discard:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Invalid serving size",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Invalid serving size:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Missing name",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Missing name:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Please enter a food name.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Please enter a food name.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Save as new",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Save as new:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Save nutrition",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Save nutrition:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Serving size must be greater than zero.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Serving size must be greater than zero.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "Update existing",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Update existing:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/foodForm/persistence.ts",
+      "value": "You have unsaved equivalent sizes. Discard them to continue?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/foodForm/persistence.ts:You have unsaved equivalent sizes. Discard them to continue?:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "A sync is still finishing up. These will enable in a moment.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:A sync is still finishing up. These will enable in a moment.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "A sync is still finishing up. This will enable in a moment.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:A sync is still finishing up. This will enable in a moment.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "A sync is still finishing up. This will enable in a moment.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:A sync is still finishing up. This will enable in a moment.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Access to all past data was not granted, so the import can only reach about 30 days back. Grant it from Health Connect settings and start over to go further.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Access to all past data was not granted, so the import can only reach about 30 days back. Grant it from Health Connect settings and start over to go further.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Completed",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Completed:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "data into SparkyFitness with a one-time backfill of every enabled metric, from your earliest recorded data up to today.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:data into SparkyFitness with a one-time backfill of every enabled metric, from your earliest recorded data up to today.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Data types enabled",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Data types enabled:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Days already imported are saved. Starting over discards them and re-imports from day 1.",
+      "context": {
+        "attr": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Days already imported are saved. Starting over discards them and re-imports from day 1.:{\"attr\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "days imported",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:days imported:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "days",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:days:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Finding your earliest recorded data",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Finding your earliest recorded data:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Finishing up, then pausing.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Finishing up, then pausing.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Health Connect limits how much historical data apps can read each day. If that limit is reached, the import automatically resumes later where it left off.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Health Connect limits how much historical data apps can read each day. If that limit is reached, the import automatically resumes later where it left off.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Import all of your past",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Import all of your past:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Import complete",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Import complete:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Import History",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Import History:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Import your health history",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Import your health history:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Keep the app open and your device unlocked while the import runs.",
+      "context": {
+        "attr": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Keep the app open and your device unlocked while the import runs.:{\"attr\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics.",
+      "context": {
+        "attr": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics.:{\"attr\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "of",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:of:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Records written",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Records written:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Records written",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Records written:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Resume",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Resume:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Scanning your history…",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Scanning your history…:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Source",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Source:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Start Import",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Start Import:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Start Over",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Start Over:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Start Over",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Start Over:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Takes a few minutes. You can pause any time and pick up where you left off.",
+      "context": {
+        "attr": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Takes a few minutes. You can pause any time and pick up where you left off.:{\"attr\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Time remaining",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Time remaining:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/ImportHistoryScreen.tsx",
+      "value": "Your metric selection has changed since this import started. Resume continues with the original selection and Start Over uses the current one.",
+      "context": {
+        "element": "Text",
+        "form": "text"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Your metric selection has changed since this import started. Resume continues with the original selection and Start Over uses the current one.:{\"element\":\"Text\",\"form\":\"text\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/SyncScreen.tsx",
+      "value": "Import Full History",
+      "context": {
+        "attr": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/SyncScreen.tsx:Import Full History:{\"attr\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/SyncScreen.tsx",
+      "value": "One-time import of all past health data",
+      "context": {
+        "attr": "subtitle"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/SyncScreen.tsx:One-time import of all past health data:{\"attr\":\"subtitle\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/screens/WorkoutAddScreen.tsx",
+      "value": "Reorder exercises",
+      "context": {
+        "prop": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/screens/WorkoutAddScreen.tsx:Reorder exercises:{\"prop\":\"accessibilityLabel\"}"
     },
     {
       "rule": "hardcoded-ui-text",
@@ -2665,6 +4050,41 @@
     }
   ],
   "counts": {
+    "hardcoded-ui-text:App.tsx:App Settings:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Dashboard:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Details:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Diary:{\"prop\":\"headerBackTitle\"}": 5,
+    "hardcoded-ui-text:App.tsx:Exercises:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Food Settings:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Foods:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Health Sync:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Library:{\"prop\":\"headerBackTitle\"}": 4,
+    "hardcoded-ui-text:App.tsx:Meals:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Medications:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Presets:{\"prop\":\"headerBackTitle\"}": 1,
+    "hardcoded-ui-text:App.tsx:Settings:{\"prop\":\"headerBackTitle\"}": 14,
+    "hardcoded-ui-text:src/components/DevTools.tsx:(1-3 Years):{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/DevTools.tsx:Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 2,
+    "hardcoded-ui-text:src/components/DevTools.tsx:Failed to seed old health data: {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/components/DevTools.tsx:Old Data:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/DevTools.tsx:Seeded {{dynamic}} records in clusters 1-3 years back.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/components/DevTools.tsx:Success:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/components/EquivalentsSection.tsx:+ Add equivalent:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/EquivalentsSection.tsx:Equivalent sizes:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/EquivalentsSection.tsx:Remove equivalent:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/components/EquivalentsSection.tsx:Select Unit:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/components/EquivalentsSection.tsx:unit:{\"attr\":\"placeholder\"}": 1,
+    "hardcoded-ui-text:src/components/foodSearch/FoodResultRow.tsx:cal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/foodSearch/FoodResultRow.tsx:Favorite:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/components/foodSearch/FoodSearchResultRow.tsx:cal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/foodSearch/FoodSearchResultRow.tsx:results:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/foodSearch/FoodSearchResultRow.tsx:Show all:{\"element\":\"Text\",\"form\":\"text\"}": 2,
+    "hardcoded-ui-text:src/components/foodSearch/FoodSearchSectionHeader.tsx:Couldn&apos;t load:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/foodSearch/FoodSearchSectionHeader.tsx:No results:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/foodSearch/FoodSearchSectionHeader.tsx:Online provider:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/components/foodSearch/FoodSearchSectionHeader.tsx:Source {{dynamic}}, tap to change:{\"attr\":\"accessibilityLabel\",\"form\":\"expression\"}": 1,
+    "hardcoded-ui-text:src/components/foodSearch/OnlineSectionFooter.tsx:No online results from:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/components/SwipeableExerciseRow.tsx:Delete exercise:{\"attr\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/constants/chat.ts:Check-in:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/constants/chat.ts:Exercise:{\"prop\":\"label\"}": 1,
     "hardcoded-ui-text:src/constants/chat.ts:Food:{\"prop\":\"label\"}": 1,
@@ -2767,6 +4187,15 @@
     "hardcoded-ui-text:src/hooks/useAddFoodEntry.ts:Failed to add food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/hooks/useAddFoodEntryMeal.ts:Failed to add meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/hooks/useAddFoodEntryMeal.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 2,
+    "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Could not initialize health data access. Check your permissions in Settings.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Discard & Continue:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Draft in Progress:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Go to Settings:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Health Data Unavailable:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:No Server Connected:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:Resume Draft:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useAddSheetActions.ts:You have an unsaved {{dynamic}} draft. What would you like to do?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
     "hardcoded-ui-text:src/hooks/useCopyFoodEntries.ts:Failed to copy meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/hooks/useCopyFoodEntries.ts:Meal copied:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/hooks/useCopyFoodEntries.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
@@ -2863,10 +4292,83 @@
     "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Failed to update preset:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
     "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
     "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:This preset will be permanently removed from your library.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
-    "hardcoded-ui-text:src/services/LogService.ts:All:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/services/LogService.ts:Errors Only:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/services/LogService.ts:No Debug:{\"prop\":\"label\"}": 1,
-    "hardcoded-ui-text:src/services/LogService.ts:Warnings & Errors:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Adjust Nutrition:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Could not save new unit:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Could not save new variant:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Could not save nutrition for future use:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Save nutrition for future use:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Save nutrition for future use:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Some equivalent units could not be saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 2,
+    "hardcoded-ui-text:src/screens/foodForm/AdjustNutritionMode.tsx:Still loading food details. Try again in a moment.:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/BarcodeField.tsx:Barcode must be 8-14 digits.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/BarcodeField.tsx:Barcode:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/BarcodeField.tsx:Optional. Standard barcodes are 8 to 14 digits.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Amount must be greater than zero.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Barcode must be 8-14 digits.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Date:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Food saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Invalid amount:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Invalid barcode:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Invalid serving size:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Meal:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Missing name:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:New Food:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:No meal type:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:No meal types are available. Please check your account settings.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:per serving:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Please enter a food name.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Save to Database:{\"attr\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Save to Database:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Select Meal:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Serving size must be greater than zero.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/CreateFoodMode.tsx:Some equivalent units could not be saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/EditFoodMode.tsx:Could not update food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/EditFoodMode.tsx:Edit Food:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/EditFoodMode.tsx:Saved as new variant:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/EditFoodMode.tsx:Still loading food details. Try again in a moment.:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:\"{{dynamic}}\" is already a saved variant. Do you want to update it with these values, or save as a new variant?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 2,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Discard unsaved equivalents?:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Discard:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Invalid serving size:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Missing name:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Please enter a food name.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Save as new:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Save nutrition:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Serving size must be greater than zero.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:Update existing:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/screens/foodForm/persistence.ts:You have unsaved equivalent sizes. Discard them to continue?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:A sync is still finishing up. These will enable in a moment.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:A sync is still finishing up. This will enable in a moment.:{\"element\":\"Text\",\"form\":\"text\"}": 2,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Access to all past data was not granted, so the import can only reach about 30 days back. Grant it from Health Connect settings and start over to go further.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Completed:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:data into SparkyFitness with a one-time backfill of every enabled metric, from your earliest recorded data up to today.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Data types enabled:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Days already imported are saved. Starting over discards them and re-imports from day 1.:{\"attr\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:days imported:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:days:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Finding your earliest recorded data:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Finishing up, then pausing.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Health Connect limits how much historical data apps can read each day. If that limit is reached, the import automatically resumes later where it left off.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Import all of your past:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Import complete:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Import History:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Import your health history:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Keep the app open and your device unlocked while the import runs.:{\"attr\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics.:{\"attr\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:of:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Records written:{\"attr\":\"title\"}": 2,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Resume:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Scanning your history…:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Source:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Start Import:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Start Over:{\"element\":\"Text\",\"form\":\"text\"}": 2,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Takes a few minutes. You can pause any time and pick up where you left off.:{\"attr\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Time remaining:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/ImportHistoryScreen.tsx:Your metric selection has changed since this import started. Resume continues with the original selection and Start Over uses the current one.:{\"element\":\"Text\",\"form\":\"text\"}": 1,
+    "hardcoded-ui-text:src/screens/SyncScreen.tsx:Import Full History:{\"attr\":\"title\"}": 1,
+    "hardcoded-ui-text:src/screens/SyncScreen.tsx:One-time import of all past health data:{\"attr\":\"subtitle\"}": 1,
+    "hardcoded-ui-text:src/screens/WorkoutAddScreen.tsx:Reorder exercises:{\"prop\":\"accessibilityLabel\"}": 1,
     "hardcoded-ui-text:src/services/medicationReminderService.ts:Medication reminder:{\"prop\":\"title\"}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
     "hardcoded-ui-text:src/services/notifications.ts:Fasting goal reached:{\"prop\":\"title\"}": 1,

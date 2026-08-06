@@ -95,3 +95,20 @@ export function parseDecimalInput(value: string | null | undefined): number {
 
   return NaN;
 }
+
+/**
+ * Coerces an unknown numeric-ish value (number or plain numeric string) to a
+ * finite number, falling back to 0. Unlike `parseDecimalInput` this does no
+ * locale-aware separator handling — it is for API payload values, not user
+ * keyboard input.
+ */
+export function toFiniteNumber(value: unknown): number {
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number(value)
+        : Number.NaN;
+
+  return Number.isFinite(numericValue) ? numericValue : 0;
+}

@@ -1,7 +1,6 @@
 import React, { useCallback, useRef } from 'react';
-import { View, ScrollView, Switch } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
@@ -9,6 +8,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import NotificationPermissionBanner, {
   type NotificationPermissionBannerHandle,
 } from '../components/NotificationPermissionBanner';
+import Switch from '../components/ui/Switch';
 import {
   maybePromptForExactAlarmPermission,
   requestNotificationPermission,
@@ -26,11 +26,6 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
-
   const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
   const restTimerNotificationsEnabled = useAppPreferencesStore(
     (s) => s.restTimerNotificationsEnabled,
@@ -89,8 +84,6 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
     [setMedicationRemindersEnabled],
   );
 
-  const trackColor = { false: formDisabled, true: formEnabled };
-
   const header = useScreenHeader({ title: t('notifications.title'), left: { kind: 'back' } });
 
   return (
@@ -111,8 +104,6 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
             <Switch
               value={notificationsEnabled}
               onValueChange={handleNotificationsToggle}
-              trackColor={trackColor}
-              thumbColor="#FFFFFF"
             />
           }
         />
@@ -129,8 +120,6 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
                 <Switch
                   value={restTimerNotificationsEnabled}
                   onValueChange={(value) => void setRestTimerNotificationsEnabled(value)}
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
                 />
               }
             />
@@ -142,8 +131,6 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
                 <Switch
                   value={fastingGoalNotificationsEnabled}
                   onValueChange={setFastingGoalNotificationsEnabled}
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
                 />
               }
             />
@@ -160,8 +147,6 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
                 <Switch
                   value={medicationRemindersEnabled}
                   onValueChange={handleMedicationRemindersToggle}
-                  trackColor={trackColor}
-                  thumbColor="#FFFFFF"
                 />
               }
             />
@@ -174,8 +159,6 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
                   <Switch
                     value={medicationReminderRepeats}
                     onValueChange={setMedicationReminderRepeats}
-                    trackColor={trackColor}
-                    thumbColor="#FFFFFF"
                   />
                 }
               />
@@ -189,8 +172,6 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
                   <Switch
                     value={medicationReminderHideNames}
                     onValueChange={setMedicationReminderHideNames}
-                    trackColor={trackColor}
-                    thumbColor="#FFFFFF"
                   />
                 }
               />

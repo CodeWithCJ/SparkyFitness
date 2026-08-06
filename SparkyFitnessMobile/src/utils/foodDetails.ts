@@ -840,3 +840,20 @@ export function applyDisplayValuesToFoodInfo(
     variantId,
   };
 }
+
+/**
+ * Steps a serving quantity by half-serving increments. An off-grid value snaps
+ * to the nearest boundary in the tap direction (so odd typed values land back
+ * on the grid); an on-grid value steps by one increment. Never drops below one
+ * increment.
+ */
+export function nextQuantity(quantity: number, delta: number, step: number): number {
+  const increment = step * 0.5 || 1;
+  const boundary =
+    delta > 0
+      ? Math.ceil(quantity / increment) * increment
+      : Math.floor(quantity / increment) * increment;
+  const next = boundary !== quantity ? boundary : quantity + delta * increment;
+  return Math.max(increment, next);
+}
+

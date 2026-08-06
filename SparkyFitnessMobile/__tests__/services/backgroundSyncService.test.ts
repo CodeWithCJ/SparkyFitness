@@ -2,6 +2,7 @@ import {
   triggerManualSync,
   flushPendingHealthSyncCacheRefresh,
 } from '../../src/services/backgroundSyncService';
+import { setBackfillRunning, tryClaimAutoSync, isSyncInFlight } from '../../src/services/autoSyncCoordinator';
 import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
 import { TimeoutError } from '../../src/utils/concurrency';
 import { AppState } from 'react-native';
@@ -200,7 +201,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       const lastSynced = new Date('2024-01-15T08:00:00Z');
       storage.loadLastSyncedTime.mockResolvedValue(lastSynced.toISOString());
       healthService.loadHealthPreference.mockResolvedValue(true);
-      healthService.readHealthRecords.mockResolvedValue([{ value: 72 }]);
+      healthService.readHealthRecords.mockResolvedValue([{ value: 480 }]);
 
       await triggerManualSync();
 
@@ -208,8 +209,30 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       const expectedSessionStart = new Date(lastSynced.getTime() - 6 * 60 * 60 * 1000);
 
       expect(healthService.readHealthRecords).toHaveBeenCalledWith(
-        'HeartRate',
+        'SleepSession',
         expectedSessionStart,
+        now
+      );
+    });
+
+    test('uses start-of-day for min-max-avg raw reads (issue #1978)', async () => {
+      const lastSynced = new Date('2024-01-15T08:00:00Z');
+      storage.loadLastSyncedTime.mockResolvedValue(lastSynced.toISOString());
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.readHealthRecords.mockResolvedValue([{ value: 72 }]);
+
+      await triggerManualSync();
+
+      const now = new Date('2024-01-15T14:30:00Z');
+      const sessionStart = new Date(lastSynced.getTime() - 6 * 60 * 60 * 1000);
+      const expectedAggregatedStart = new Date(sessionStart);
+      expectedAggregatedStart.setHours(0, 0, 0, 0);
+
+      // A mid-day start would recompute heart_rate_min over a partial day and
+      // overwrite the server's full-day value (losing the overnight low).
+      expect(healthService.readHealthRecords).toHaveBeenCalledWith(
+        'HeartRate',
+        expectedAggregatedStart,
         now
       );
     });
@@ -838,6 +861,58 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
       expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
       expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Backfill guard', () => {
+    beforeEach(() => {
+      storage.loadLastSyncedTime.mockResolvedValue(new Date('2024-01-15T08:00:00Z').toISOString());
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([{ value: 5000 }]);
+      healthService.getAggregatedActiveCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedTotalCaloriesByDate.mockResolvedValue([]);
+      healthService.getAggregatedDistanceByDate.mockResolvedValue([]);
+      healthService.getAggregatedFloorsClimbedByDate.mockResolvedValue([]);
+      healthService.readHealthRecords.mockResolvedValue([]);
+      healthService.transformHealthRecords.mockImplementation((data: unknown[]) => data);
+    });
+
+    test('skips the entire sync while a history-import backfill is running', async () => {
+      setBackfillRunning(true);
+      try {
+        await triggerManualSync();
+      } finally {
+        setBackfillRunning(false);
+      }
+
+      expect(storage.loadLastSyncedTime).not.toHaveBeenCalled();
+      expect(healthService.getAggregatedStepsByDate).not.toHaveBeenCalled();
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      expect(storage.saveLastSyncedTime).not.toHaveBeenCalled();
+    });
+
+    test('a held auto-sync claim without a backfill still syncs (iOS observer claim-then-call path)', async () => {
+      const release = tryClaimAutoSync();
+      expect(release).not.toBeNull();
+      try {
+        await triggerManualSync();
+      } finally {
+        release?.();
+      }
+
+      expect(api.syncHealthData).toHaveBeenCalledWith([{ value: 5000 }]);
+      expect(storage.saveLastSyncedTime).toHaveBeenCalled();
+    });
+
+    test('marks a sync in flight for the whole run so a backfill cannot start mid-sync', async () => {
+      const run = triggerManualSync();
+      // Set synchronously on invocation, so a backfill starting at any await
+      // point during the run observes it.
+      expect(isSyncInFlight()).toBe(true);
+
+      await run;
+
+      expect(isSyncInFlight()).toBe(false);
     });
   });
 

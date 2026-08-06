@@ -14,6 +14,10 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (_key: string, defaultValue?: string) => defaultValue ?? _key,
   }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: () => {},
+  },
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
@@ -48,6 +52,7 @@ jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({
     fetchQuery: async () => ({ calories_per_hour: 600 }),
   }),
+  useQuery: () => ({ data: undefined, isLoading: false }),
 }));
 
 jest.mock('@/components/ExerciseHistoryDisplay', () => ({

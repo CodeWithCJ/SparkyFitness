@@ -69,14 +69,6 @@ const THRESHOLD_TO_STATUSES: Record<LogThreshold, LogStatus[]> = {
   errors_only: ['ERROR'],
 };
 
-// Options shared by both the capture-level and view-filter pickers.
-export const LOG_THRESHOLD_OPTIONS: { label: string; value: LogThreshold }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'No Debug', value: 'no_debug' },
-  { label: 'Warnings & Errors', value: 'warnings_errors' },
-  { label: 'Errors Only', value: 'errors_only' },
-];
-
 // --- Write buffering and setting caching state ---
 const FLUSH_INTERVAL_MS = 5000;
 const FLUSH_THRESHOLD = 20;

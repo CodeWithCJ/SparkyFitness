@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { syncHealthData as healthConnectSyncData } from '../services/healthConnectService';
+import { markSyncInFlight } from '../services/autoSyncCoordinator';
 import { saveLastSyncedTime } from '../services/storage';
 import { addLog } from '../services/LogService';
 import type { TimeRange } from '../services/storage';
@@ -22,19 +23,24 @@ export function useSyncHealthData(options?: {
 
   return useMutation({
     mutationFn: async ({ timeRange, healthMetricStates }: SyncHealthDataParams) => {
-      const result = await healthConnectSyncData(timeRange, healthMetricStates);
-      if (result.success) {
-        // Only read errors block the cursor; server-rejected records
-        // (uploadErrors) are logged and reported but never re-synced.
-        const hadSyncErrors = result.syncErrors.length > 0;
-        const newSyncedTime = hadSyncErrors ? null : await saveLastSyncedTime();
-        return {
-          lastSyncedTime: newSyncedTime,
-          syncErrors: result.syncErrors,
-          uploadErrors: result.uploadErrors ?? [],
-        };
+      const syncDone = markSyncInFlight();
+      try {
+        const result = await healthConnectSyncData(timeRange, healthMetricStates);
+        if (result.success) {
+          // Only read errors block the cursor; server-rejected records
+          // (uploadErrors) are logged and reported but never re-synced.
+          const hadSyncErrors = result.syncErrors.length > 0;
+          const newSyncedTime = hadSyncErrors ? null : await saveLastSyncedTime();
+          return {
+            lastSyncedTime: newSyncedTime,
+            syncErrors: result.syncErrors,
+            uploadErrors: result.uploadErrors ?? [],
+          };
+        }
+        throw new Error(result.error || 'Unknown sync error');
+      } finally {
+        syncDone();
       }
-      throw new Error(result.error || 'Unknown sync error');
     },
     onMutate: () => {
       if (showToasts) {

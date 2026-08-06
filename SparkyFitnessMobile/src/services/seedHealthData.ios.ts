@@ -5,6 +5,7 @@ import {
   requestAuthorization,
 } from '@kingstinct/react-native-healthkit';
 import { addLog } from './LogService';
+import { getErrorMessage } from '../utils/errors';
 
 // ============================================================================
 // Types
@@ -132,7 +133,7 @@ const requestWritePermissions = async (): Promise<boolean> => {
     }
     return true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     addLog(`[SeedHealthData] Failed to request write permissions: ${message}`, 'ERROR');
     return false;
   }
@@ -269,13 +270,13 @@ const seedQuantitySamples = async (
               count++;
             }
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
+            const message = getErrorMessage(error);
             addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
           }
         }
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
     }
   }
@@ -327,7 +328,7 @@ const seedHeartRate = async (dates: Date[]): Promise<number> => {
           count++;
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getErrorMessage(error);
         addLog(`[SeedHealthData] Failed to seed heart rate: ${message}`, 'WARNING');
       }
     }
@@ -378,7 +379,7 @@ const seedWeight = async (dates: Date[]): Promise<number> => {
         count++;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       addLog(`[SeedHealthData] Failed to seed weight: ${message}`, 'WARNING');
     }
   }
@@ -390,10 +391,9 @@ const seedWeight = async (dates: Date[]): Promise<number> => {
 // Height Seeder (single static value)
 // ============================================================================
 
-const seedHeight = async (): Promise<number> => {
+const seedHeight = async (date: Date): Promise<number> => {
   try {
-    const sampleTime = new Date();
-    sampleTime.setDate(sampleTime.getDate() - 1);
+    const sampleTime = new Date(date);
     sampleTime.setHours(10, 0, 0, 0);
 
     const endTime = new Date(sampleTime);
@@ -412,7 +412,7 @@ const seedHeight = async (): Promise<number> => {
 
     return success ? 1 : 0;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     addLog(`[SeedHealthData] Failed to seed height: ${message}`, 'WARNING');
     return 0;
   }
@@ -464,7 +464,7 @@ const seedHydration = async (dates: Date[]): Promise<number> => {
           count++;
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = getErrorMessage(error);
         addLog(`[SeedHealthData] Failed to seed hydration: ${message}`, 'WARNING');
       }
     }
@@ -510,7 +510,7 @@ const seedBodyTemperature = async (dates: Date[]): Promise<number> => {
         count++;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       addLog(`[SeedHealthData] Failed to seed body temperature: ${message}`, 'WARNING');
     }
   }
@@ -592,7 +592,7 @@ const seedSleep = async (dates: Date[]): Promise<number> => {
         if (currentTime >= sleepEnd) break;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       addLog(`[SeedHealthData] Failed to seed sleep: ${message}`, 'WARNING');
     }
   }
@@ -684,7 +684,7 @@ const seedWorkouts = async (dates: Date[]): Promise<number> => {
 
       count++;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       addLog(`[SeedHealthData] Failed to seed workout: ${message}`, 'WARNING');
     }
   }
@@ -788,7 +788,7 @@ const seedRunningMetric = async (
         }
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getErrorMessage(error);
       addLog(`[SeedHealthData] Failed to seed ${config.label}: ${message}`, 'WARNING');
     }
   }
@@ -857,10 +857,72 @@ export const seedHistoricalSteps = async (): Promise<SeedResult> => {
 
     return { success: true, recordsInserted: totalRecords };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     addLog(`[SeedHistoricalSteps] Error: ${message}`, 'ERROR');
     return { success: false, recordsInserted: 0, error: message };
   }
+};
+
+const seedAllForDates = async (dates: Date[]): Promise<number> => {
+  let totalRecords = 0;
+  const results: { type: string; count: number }[] = [];
+
+  // Seed quantity samples
+  for (const config of QUANTITY_CONFIGS) {
+    try {
+      const count = await seedQuantitySamples(config, dates);
+      totalRecords += count;
+      results.push({ type: config.identifier.split('Identifier')[1], count });
+      addLog(`[SeedHealthData] Seeded ${config.identifier.split('Identifier')[1]}: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = getErrorMessage(error);
+      addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
+    }
+  }
+
+  // Seeders that take the full date list, plus height on the oldest date (a
+  // static value; the oldest date is always safely in the past).
+  const oldestDate = dates[dates.length - 1] ?? new Date();
+  const namedSeeders: { type: string; run: () => Promise<number> }[] = [
+    { type: 'HeartRate', run: () => seedHeartRate(dates) },
+    { type: 'Weight', run: () => seedWeight(dates) },
+    { type: 'Height', run: () => seedHeight(oldestDate) },
+    { type: 'Hydration', run: () => seedHydration(dates) },
+    { type: 'BodyTemperature', run: () => seedBodyTemperature(dates) },
+    { type: 'Sleep', run: () => seedSleep(dates) },
+    { type: 'Workout', run: () => seedWorkouts(dates) },
+  ];
+
+  for (const seeder of namedSeeders) {
+    try {
+      const count = await seeder.run();
+      totalRecords += count;
+      results.push({ type: seeder.type, count });
+      addLog(`[SeedHealthData] Seeded ${seeder.type}: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = getErrorMessage(error);
+      addLog(`[SeedHealthData] Failed to seed ${seeder.type}: ${message}`, 'WARNING');
+    }
+  }
+
+  // Seed running metrics (many samples per day for aggregation testing)
+  for (const config of RUNNING_METRIC_CONFIGS) {
+    try {
+      const count = await seedRunningMetric(config, dates);
+      totalRecords += count;
+      results.push({ type: config.label, count });
+      addLog(`[SeedHealthData] Seeded ${config.label}: ${count} records`, 'INFO');
+    } catch (error) {
+      const message = getErrorMessage(error);
+      addLog(`[SeedHealthData] Failed to seed ${config.label}: ${message}`, 'WARNING');
+    }
+  }
+
+  const successTypes = results.filter(r => r.count > 0).length;
+  const totalTypes = results.length;
+  addLog(`[SeedHealthData] Seeded ${totalRecords} records (${successTypes}/${totalTypes} types)`, 'INFO');
+
+  return totalRecords;
 };
 
 export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
@@ -876,129 +938,80 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
       };
     }
 
-    const dates = getPastDates(days);
-    let totalRecords = 0;
-    const results: { type: string; count: number }[] = [];
-
-    // Seed quantity samples
-    for (const config of QUANTITY_CONFIGS) {
-      try {
-        const count = await seedQuantitySamples(config, dates);
-        totalRecords += count;
-        results.push({ type: config.identifier.split('Identifier')[1], count });
-        addLog(`[SeedHealthData] Seeded ${config.identifier.split('Identifier')[1]}: ${count} records`, 'INFO');
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(`[SeedHealthData] Failed to seed ${config.identifier}: ${message}`, 'WARNING');
-      }
-    }
-
-    // Seed heart rate
-    try {
-      const count = await seedHeartRate(dates);
-      totalRecords += count;
-      results.push({ type: 'HeartRate', count });
-      addLog(`[SeedHealthData] Seeded HeartRate: ${count} records`, 'INFO');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed HeartRate: ${message}`, 'WARNING');
-    }
-
-    // Seed weight
-    try {
-      const count = await seedWeight(dates);
-      totalRecords += count;
-      results.push({ type: 'Weight', count });
-      addLog(`[SeedHealthData] Seeded Weight: ${count} records`, 'INFO');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed Weight: ${message}`, 'WARNING');
-    }
-
-    // Seed height (single record)
-    try {
-      const count = await seedHeight();
-      totalRecords += count;
-      results.push({ type: 'Height', count });
-      addLog(`[SeedHealthData] Seeded Height: ${count} records`, 'INFO');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed Height: ${message}`, 'WARNING');
-    }
-
-    // Seed hydration
-    try {
-      const count = await seedHydration(dates);
-      totalRecords += count;
-      results.push({ type: 'Hydration', count });
-      addLog(`[SeedHealthData] Seeded Hydration: ${count} records`, 'INFO');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed Hydration: ${message}`, 'WARNING');
-    }
-
-    // Seed body temperature
-    try {
-      const count = await seedBodyTemperature(dates);
-      totalRecords += count;
-      results.push({ type: 'BodyTemperature', count });
-      addLog(`[SeedHealthData] Seeded BodyTemperature: ${count} records`, 'INFO');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed BodyTemperature: ${message}`, 'WARNING');
-    }
-
-    // Seed sleep
-    try {
-      const count = await seedSleep(dates);
-      totalRecords += count;
-      results.push({ type: 'Sleep', count });
-      addLog(`[SeedHealthData] Seeded Sleep: ${count} records`, 'INFO');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed Sleep: ${message}`, 'WARNING');
-    }
-
-    // Seed workouts
-    try {
-      const count = await seedWorkouts(dates);
-      totalRecords += count;
-      results.push({ type: 'Workout', count });
-      addLog(`[SeedHealthData] Seeded Workout: ${count} records`, 'INFO');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(`[SeedHealthData] Failed to seed Workout: ${message}`, 'WARNING');
-    }
-
-    // Seed running metrics (many samples per day for aggregation testing)
-    for (const config of RUNNING_METRIC_CONFIGS) {
-      try {
-        const count = await seedRunningMetric(config, dates);
-        totalRecords += count;
-        results.push({ type: config.label, count });
-        addLog(`[SeedHealthData] Seeded ${config.label}: ${count} records`, 'INFO');
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(`[SeedHealthData] Failed to seed ${config.label}: ${message}`, 'WARNING');
-      }
-    }
-
-    const successTypes = results.filter(r => r.count > 0).length;
-    const totalTypes = results.length;
-
-    addLog(`[SeedHealthData] Successfully seeded ${totalRecords} records (${successTypes}/${totalTypes} types)`, 'INFO');
+    const totalRecords = await seedAllForDates(getPastDates(days));
 
     return {
       success: true,
       recordsInserted: totalRecords,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     addLog(`[SeedHealthData] Error seeding health data: ${message}`, 'ERROR');
     return {
       success: false,
       recordsInserted: 0,
       error: message,
     };
+  }
+};
+
+const getDatesEndingDaysAgo = (endDaysAgo: number, count: number): Date[] => {
+  const dates: Date[] = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - (endDaysAgo + i));
+    date.setHours(12, 0, 0, 0);
+    dates.push(date);
+  }
+  return dates;
+};
+
+// Cluster placement for old-data seeding: a few full days just past normal
+// sync's 365-day maximum reach, another cluster two years back, and a
+// steps-only floor anchor three years back — so the history-import probe
+// floor, empty-window fast-forward, and multi-window walks all get exercised
+// without inserting thousands of records.
+const OLD_SEED_CLUSTERS = [
+  { endDaysAgo: 425, days: 3 },
+  { endDaysAgo: 735, days: 3 },
+];
+const OLD_SEED_ANCHOR_DAYS_AGO = 1100;
+
+export const seedOldHealthData = async (): Promise<SeedResult> => {
+  addLog('[SeedOldHealthData] Seeding historical clusters (1-3 years back)...', 'INFO');
+
+  try {
+    const permissionsGranted = await requestWritePermissions();
+    if (!permissionsGranted) {
+      return {
+        success: false,
+        recordsInserted: 0,
+        error: 'Write permissions not granted. Please grant permissions in Health app settings.',
+      };
+    }
+
+    let totalRecords = 0;
+    for (const cluster of OLD_SEED_CLUSTERS) {
+      totalRecords += await seedAllForDates(getDatesEndingDaysAgo(cluster.endDaysAgo, cluster.days));
+    }
+
+    const stepsConfig = QUANTITY_CONFIGS.find(
+      config => config.identifier === 'HKQuantityTypeIdentifierStepCount',
+    );
+    if (stepsConfig) {
+      totalRecords += await seedQuantitySamples(
+        stepsConfig,
+        getDatesEndingDaysAgo(OLD_SEED_ANCHOR_DAYS_AGO, 1),
+      );
+    }
+
+    addLog(`[SeedOldHealthData] Done — ${totalRecords} records seeded across 1-3 years back`, 'INFO');
+
+    return { success: true, recordsInserted: totalRecords };
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(`[SeedOldHealthData] Error: ${message}`, 'ERROR');
+    return { success: false, recordsInserted: 0, error: message };
   }
 };

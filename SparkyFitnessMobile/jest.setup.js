@@ -72,6 +72,50 @@ Object.defineProperty(Date.prototype, 'toLocaleTimeString', {
   },
 });
 
+// Same deterministic treatment for Date#toLocaleDateString: screens that format
+// month/day labels with an empty locale list (e.g. ImportHistoryScreen) must
+// render English under Jest regardless of the OS ICU default locale, while an
+// explicit locale (pl-PL) is still honored.
+const nativeToLocaleDateString = Date.prototype.toLocaleDateString;
+
+Object.defineProperty(Date.prototype, 'toLocaleDateString', {
+  configurable: true,
+  writable: true,
+  value(locales, options) {
+    const useDefaultTestLocale =
+      locales === undefined ||
+      (Array.isArray(locales) && locales.length === 0);
+
+    return nativeToLocaleDateString.call(
+      this,
+      useDefaultTestLocale ? 'en-US' : locales,
+      options,
+    );
+  },
+});
+
+// Same deterministic treatment for Number#toLocaleString: screens formatting
+// large numbers with no explicit locale (e.g. ImportHistoryScreen's record
+// totals) must render en-US grouping (1,234) under Jest regardless of the OS
+// ICU default locale, while an explicit locale is still honored.
+const nativeNumberToLocaleString = Number.prototype.toLocaleString;
+
+Object.defineProperty(Number.prototype, 'toLocaleString', {
+  configurable: true,
+  writable: true,
+  value(locales, options) {
+    const useDefaultTestLocale =
+      locales === undefined ||
+      (Array.isArray(locales) && locales.length === 0);
+
+    return nativeNumberToLocaleString.call(
+      this,
+      useDefaultTestLocale ? 'en-US' : locales,
+      options,
+    );
+  },
+});
+
 // Global react-i18next mock: components use useTranslation(), but tests don't
 // initialize the i18n instance. Resolve dotted keys against the English resource
 // so components render their default (en) copy. Other exports (initReactI18next
@@ -210,6 +254,7 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
 jest.mock('react-native-health-connect', () => ({
   initialize: jest.fn().mockResolvedValue(true),
   requestPermission: jest.fn().mockResolvedValue([]),
+  getGrantedPermissions: jest.fn().mockResolvedValue([]),
   readRecords: jest.fn().mockResolvedValue({ records: [] }),
   aggregateRecord: jest.fn().mockResolvedValue({}),
   aggregateGroupByDuration: jest.fn().mockResolvedValue([]),

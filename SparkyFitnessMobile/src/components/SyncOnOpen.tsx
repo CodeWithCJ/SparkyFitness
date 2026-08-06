@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, Switch } from 'react-native';
-import { useCSSVariable } from 'uniwind';
+import { View, Text } from 'react-native';
+import Switch from './ui/Switch';
 import { useTranslation } from 'react-i18next';
 
 interface SyncOnOpenProps {
@@ -9,10 +9,6 @@ interface SyncOnOpenProps {
 }
 
 const SyncOnOpen: React.FC<SyncOnOpenProps> = ({ isEnabled, onToggle }) => {
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
   const { t } = useTranslation();
 
   return (
@@ -23,8 +19,6 @@ const SyncOnOpen: React.FC<SyncOnOpenProps> = ({ isEnabled, onToggle }) => {
         <Switch
           onValueChange={onToggle}
           value={isEnabled}
-          trackColor={{ false: formDisabled, true: formEnabled }}
-          thumbColor="#FFFFFF"
         />
       </View>
       <Text className="text-[13px] text-text-muted leading-4.5 mt-1">

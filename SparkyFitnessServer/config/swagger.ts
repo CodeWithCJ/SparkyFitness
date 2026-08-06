@@ -1020,7 +1020,7 @@ const options = {
         WaterContainer: {
           type: 'object',
           properties: {
-            id: { type: 'string', format: 'uuid' },
+            id: { type: 'integer' },
             user_id: { type: 'string', format: 'uuid' },
             name: { type: 'string' },
             volume: { type: 'number', description: 'Volume in specified unit' },
@@ -1045,6 +1045,9 @@ const options = {
             steps: { type: 'number', nullable: true },
             height: { type: 'number', nullable: true },
             body_fat_percentage: { type: 'number', nullable: true },
+            muscle_mass_kg: { type: 'number', nullable: true },
+            bone_mass_kg: { type: 'number', nullable: true },
+            body_water_percentage: { type: 'number', nullable: true },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },

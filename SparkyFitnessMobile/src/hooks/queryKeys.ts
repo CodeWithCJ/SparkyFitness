@@ -127,7 +127,6 @@ export const cycleInsightsQueryKey = ['cycleInsights'] as const;
 export const cycleFertilityQueryKey = ['cycleFertility'] as const;
 export const cycleTestsQueryKey = ['cycleTests'] as const;
 export const cycleCorrelationsQueryKey = ['cycleCorrelations'] as const;
-export const cycleDisplayPreferencesQueryKey = ['cycleDisplayPreferences'] as const;
 
 export const pregnancyCurrentQueryKey = ['pregnancyCurrent'] as const;
 export const pregnancyOverviewQueryKey = ['pregnancyOverview'] as const;

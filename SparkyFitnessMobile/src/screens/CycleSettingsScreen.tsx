@@ -1,21 +1,23 @@
 import React, { useCallback } from 'react';
-import { View, Switch, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, ScrollView, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 import * as Sharing from 'expo-sharing';
 import { File, Paths } from 'expo-file-system';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
+import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { addLog } from '../services/LogService';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import StepperInput, { useStepperDraft } from '../components/StepperInput';
+import Switch from '../components/ui/Switch';
 import { CYCLE_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 
 import {
@@ -51,11 +53,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [accentPrimary, formEnabled, formDisabled] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const {
@@ -177,11 +174,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
   });
 
   if (isLoading || !settings) {
-    return (
-      <View className="flex-1 bg-background justify-center items-center">
-        <ActivityIndicator size="large" color={accentPrimary} />
-      </View>
-    );
+    return <StatusView loading className="bg-background" />;
   }
 
   return (
@@ -206,8 +199,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               <Switch
                 value={settings.enabled}
                 onValueChange={handleToggleEnabled}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
               />
             }
           />
@@ -278,8 +269,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                     <Switch
                       value={settings.conditions?.includes(cond.value) || false}
                       onValueChange={(val) => handleToggleCondition(cond.value, val)}
-                      trackColor={{ false: formDisabled, true: formEnabled }}
-                      thumbColor="#FFFFFF"
                     />
                   }
                 />
@@ -294,8 +283,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                   <Switch
                     value={settings.show_fertile_window}
                     onValueChange={handleToggleFertileWindow}
-                    trackColor={{ false: formDisabled, true: formEnabled }}
-                    thumbColor="#FFFFFF"
                   />
                 }
               />
@@ -306,8 +293,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                   <Switch
                     value={settings.discreet_mode}
                     onValueChange={handleToggleDiscreetMode}
-                    trackColor={{ false: formDisabled, true: formEnabled }}
-                    thumbColor="#FFFFFF"
                   />
                 }
               />
@@ -342,11 +327,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
       </ScrollView>
     </View>
   );
-};
-
-// Helper logger placeholder inside component scope
-const addLog = (msg: string, level: 'INFO' | 'ERROR') => {
-  console.log(`[CycleSettings] [${level}] ${msg}`);
 };
 
 export default CycleSettingsScreen;

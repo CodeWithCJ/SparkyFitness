@@ -21,6 +21,7 @@ if IS_CN:
 
 ALL_HEALTH_METRICS = [
     # Daily summary metrics
+    "daily_summary",
     "steps",
     "total_distance",
     "highly_active_seconds",

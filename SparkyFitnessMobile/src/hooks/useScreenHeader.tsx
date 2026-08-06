@@ -34,6 +34,11 @@ import {
 
 export type HeaderRole = 'primary' | 'secondary';
 
+/** English fallback label for header Save items (localized callers pass their own). */
+export const SAVE_LABEL = 'Save';
+/** English fallback label for a busy header Save item. */
+export const SAVING_LABEL = 'Saving…';
+
 /**
  * `native-only` items are mirrored into the native header but omitted from the
  * custom bar — used by footer-save forms whose sticky-footer Button is the

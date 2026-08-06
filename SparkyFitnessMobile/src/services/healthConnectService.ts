@@ -23,6 +23,7 @@ HealthConnectTransformation.setOwnPackageName(Application.applicationId);
 
 export const initHealthConnect = HealthConnect.initHealthConnect;
 export const requestHealthPermissions = HealthConnect.requestHealthPermissions;
+export const ensureHistoryReadPermission = HealthConnect.ensureHistoryReadPermission;
 export const readHealthRecords = HealthConnect.readHealthRecords;
 export const readHealthRecordsDetailed = HealthConnect.readHealthRecordsDetailed;
 export const getSyncStartDate = HealthConnect.getSyncStartDate;

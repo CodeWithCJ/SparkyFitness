@@ -1,4 +1,4 @@
-import React, {
+import {
   forwardRef,
   useCallback,
   useImperativeHandle,
@@ -9,18 +9,17 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import {
-  BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
   BottomSheetTextInput,
-  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useCSSVariable, useUniwind } from 'uniwind';
+import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
+import { dateTypeToDate } from './TimeSheet';
 import Toast from 'react-native-toast-message';
 
 import Button from './ui/Button';
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
 import { useStartFast } from '../hooks/useFasting';
@@ -41,22 +40,7 @@ const MIN_CUSTOM_HOURS = 1;
 const MAX_CUSTOM_HOURS = 72;
 const DEFAULT_CUSTOM_HOURS = 12;
 
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
-    : undefined;
-
 /** Normalizes the picker's 6-way `DateType` into a JS `Date`, preserving time. */
-function dateTypeToDate(date: DateType): Date | null {
-  if (!date) return null;
-  if (date instanceof Date) return date;
-  if (typeof date === 'object' && 'toDate' in date) return date.toDate();
-  if (typeof date === 'string') return new Date(date);
-  return new Date(date);
-}
-
 export interface FastingProtocolSheetRef {
   present: (initialPresetId?: string) => void;
   dismiss: () => void;
@@ -66,8 +50,6 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
   const { t } = useTranslation();
   const appLocale = getAppLocale();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const { theme } = useUniwind();
-  const isDarkMode = theme === 'dark' || theme === 'amoled';
 
   const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] = useCSSVariable([
     '--color-surface',
@@ -99,17 +81,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
     dismiss: () => bottomSheetRef.current?.dismiss(),
   }));
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        opacity={isDarkMode ? 0.7 : 0.5}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [isDarkMode],
-  );
+  const renderBackdrop = useSheetBackdrop();
 
   const handleStartChange = useCallback(({ date }: { date: DateType }) => {
     const js = dateTypeToDate(date);

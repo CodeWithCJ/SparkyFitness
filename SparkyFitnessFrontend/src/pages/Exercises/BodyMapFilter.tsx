@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import './BodyMapFilter.css';
 import { useBodyMapSvgQuery } from '@/hooks/Exercises/useExercises';
+import { svgClassToSchemaName } from '@/constants/exercises';
 
 interface BodyMapFilterProps {
   selectedMuscles: string[];
@@ -29,14 +30,6 @@ const BodyMapFilter: React.FC<BodyMapFilterProps> = ({
 
     const paths = svgElement.querySelectorAll('path[class]');
     const cleanupFunctions: (() => void)[] = [];
-
-    const svgClassToSchemaName: { [key: string]: string } = {
-      abdominal: 'abdominals',
-      lowerback: 'lower back',
-      quads: 'quadriceps',
-      obliques: 'abdominals', // Map obliques to abdominals
-      // Add other mappings if necessary, e.g., 'lats' if it appears in SVG
-    };
 
     paths.forEach((path) => {
       const svgClassName = path.getAttribute('class');

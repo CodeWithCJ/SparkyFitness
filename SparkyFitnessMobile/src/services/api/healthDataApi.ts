@@ -340,7 +340,7 @@ export const syncHealthData = async (
 
   await ensureTimezoneBootstrapped({ throwOnFailure: true });
 
-  console.log(`[API Service] Attempting to sync to URL: ${url}/api/health-data`);
+  addLog(`[API] Syncing to ${url}/api/health-data`, 'DEBUG');
 
   addLog(`[API] Starting sync of ${data.length} records to server`, 'INFO');
 
@@ -382,7 +382,7 @@ export const syncHealthData = async (
 export const checkServerConnection = async (): Promise<boolean> => {
   const config = await getActiveServerConfig();
   if (!config || !config.url) {
-    console.log('[API Service] No active server configuration found for connection check.');
+    addLog('[API] No active server configuration found for connection check.', 'DEBUG');
     return false; // No configuration, so no connection
   }
 

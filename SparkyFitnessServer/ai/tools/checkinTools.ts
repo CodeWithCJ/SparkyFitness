@@ -145,7 +145,7 @@ export function buildCheckinTools(userId: string, tz: string) {
       description: `Health tracking: weight, steps, body measurements, mood, sleep, fasting, custom metrics.
 
 Actions:
-- log_biometrics(entry_date, weight?, steps?, height?, neck?, waist?, hips?, body_fat?, weight_unit?:"kg"|"lbs", height_unit?:"cm"|"in", measurements_unit?:"cm"|"in")
+- log_biometrics(entry_date, weight?, steps?, height?, neck?, waist?, hips?, body_fat?, muscle_mass?, bone_mass?, body_water?, weight_unit?:"kg"|"lbs", height_unit?:"cm"|"in", measurements_unit?:"cm"|"in")
 - log_mood(entry_date, mood_value:1-10, notes?)
 - log_sleep(entry_date, duration_seconds?, sleep_score?:0-100, bedtime?, wake_time?, source?)
 - log_fasting(start_time:ISO8601, end_time?, fasting_status?:"ACTIVE"|"COMPLETED"|"CANCELLED", fasting_type?)
@@ -239,20 +239,21 @@ Actions:
               const defaultMeasurementUnit =
                 prefs.default_measurement_unit || 'cm';
 
-              // Convert to standard units (kg, cm) for storage
+              // Convert to standard units (kg, cm) for storage. These resolved
+              // units are also what the confirmation text reports: falling back
+              // to a literal 'kg'/'cm' there would tell the user a different
+              // unit than the one the value was actually interpreted as.
               const mUnit = args.measurements_unit || defaultMeasurementUnit;
+              const wUnit = args.weight_unit || defaultWeightUnit;
+              const hUnit = args.height_unit || defaultMeasurementUnit;
               const measurements: Record<string, number> = {};
               if (isSet(args.weight)) {
-                measurements.weight = convertWeight(
-                  args.weight,
-                  args.weight_unit || defaultWeightUnit,
-                  'kg'
-                );
+                measurements.weight = convertWeight(args.weight, wUnit, 'kg');
               }
               if (isSet(args.height)) {
                 measurements.height = convertMeasurement(
                   args.height,
-                  args.height_unit || defaultMeasurementUnit,
+                  hUnit,
                   'cm'
                 );
               }
@@ -275,6 +276,25 @@ Actions:
               if (isSet(args.steps)) {
                 measurements.steps = args.steps;
               }
+              // Smart-scale composition. Masses are stored in kg like weight;
+              // body water is already a percentage and needs no conversion.
+              if (isSet(args.muscle_mass)) {
+                measurements.muscle_mass_kg = convertWeight(
+                  args.muscle_mass,
+                  wUnit,
+                  'kg'
+                );
+              }
+              if (isSet(args.bone_mass)) {
+                measurements.bone_mass_kg = convertWeight(
+                  args.bone_mass,
+                  wUnit,
+                  'kg'
+                );
+              }
+              if (isSet(args.body_water)) {
+                measurements.body_water_percentage = args.body_water;
+              }
 
               await measurementService.upsertCheckInMeasurements(
                 userId,
@@ -285,24 +305,21 @@ Actions:
 
               const parts: string[] = [];
               if (isSet(args.weight))
-                parts.push(`weight: ${args.weight}${args.weight_unit || 'kg'}`);
+                parts.push(`weight: ${args.weight}${wUnit}`);
               if (isSet(args.steps)) parts.push(`steps: ${args.steps}`);
               if (isSet(args.height))
-                parts.push(`height: ${args.height}${args.height_unit || 'cm'}`);
+                parts.push(`height: ${args.height}${hUnit}`);
               if (isSet(args.body_fat))
                 parts.push(`body fat: ${args.body_fat}%`);
-              if (isSet(args.neck))
-                parts.push(
-                  `neck: ${args.neck}${args.measurements_unit || 'cm'}`
-                );
-              if (isSet(args.waist))
-                parts.push(
-                  `waist: ${args.waist}${args.measurements_unit || 'cm'}`
-                );
-              if (isSet(args.hips))
-                parts.push(
-                  `hips: ${args.hips}${args.measurements_unit || 'cm'}`
-                );
+              if (isSet(args.neck)) parts.push(`neck: ${args.neck}${mUnit}`);
+              if (isSet(args.waist)) parts.push(`waist: ${args.waist}${mUnit}`);
+              if (isSet(args.hips)) parts.push(`hips: ${args.hips}${mUnit}`);
+              if (isSet(args.muscle_mass))
+                parts.push(`muscle mass: ${args.muscle_mass}${wUnit}`);
+              if (isSet(args.bone_mass))
+                parts.push(`bone mass: ${args.bone_mass}${wUnit}`);
+              if (isSet(args.body_water))
+                parts.push(`body water: ${args.body_water}%`);
               const summary =
                 parts.length > 0 ? parts.join(', ') : 'no changes';
               return formatConfirmation(

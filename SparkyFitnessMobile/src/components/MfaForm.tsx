@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import FormInput from './FormInput';
@@ -71,13 +71,10 @@ export const PrimaryButton = ({
       variant="primary"
       onPress={onPress}
       disabled={isDisabled}
+      loading={loading}
       textClassName="text-[17px]"
     >
-      {loading ? (
-        <ActivityIndicator color="#fff" />
-      ) : (
-        <Text className="text-white text-[17px] font-semibold">{label}</Text>
-      )}
+      {label}
     </Button>
   );
 };

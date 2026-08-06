@@ -35,6 +35,24 @@ const logBiometricsSchema = z
       .min(0)
       .optional()
       .describe('Body fat percentage'),
+    // Smart-scale composition. The masses follow weight_unit like weight does;
+    // body_water is a percentage and is never unit-converted.
+    muscle_mass: z.coerce
+      .number()
+      .min(0)
+      .optional()
+      .describe('Muscle mass (uses weight_unit)'),
+    bone_mass: z.coerce
+      .number()
+      .min(0)
+      .optional()
+      .describe('Bone mass (uses weight_unit)'),
+    body_water: z.coerce
+      .number()
+      .min(0)
+      .max(100)
+      .optional()
+      .describe('Body water percentage'),
   })
   .strict();
 
@@ -233,6 +251,22 @@ export const manageCheckinInput = z.object({
     .optional()
     .describe('Unit for body measurements'),
   body_fat: z.coerce.number().min(0).optional().describe('Body fat percentage'),
+  muscle_mass: z.coerce
+    .number()
+    .min(0)
+    .optional()
+    .describe('Muscle mass (uses weight_unit)'),
+  bone_mass: z.coerce
+    .number()
+    .min(0)
+    .optional()
+    .describe('Bone mass (uses weight_unit)'),
+  body_water: z.coerce
+    .number()
+    .min(0)
+    .max(100)
+    .optional()
+    .describe('Body water percentage'),
   // custom metrics / categories
   category_name: z
     .string()

@@ -5,17 +5,17 @@ import {
   TouchableOpacity,
   Pressable,
   Keyboard,
-  ActivityIndicator,
 } from 'react-native';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
-import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import SafeImage from '../components/SafeImage';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import DateSelectRow from '../components/DateSelectRow';
+import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
@@ -26,7 +26,7 @@ import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExer
 import { usePreferences } from '../hooks/usePreferences';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
-import { addDays, formatDateLabel, getTodayDate } from '../utils/dateUtils';
+import { addDays, getTodayDate } from '../utils/dateUtils';
 import { buildActivitySetsPayload, isCardioModality } from '../utils/workoutSession';
 import { resolveExerciseModality } from '@workspace/shared';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
@@ -45,13 +45,11 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, textMuted, textPrimary, borderSubtle, raisedBg] = useCSSVariable([
+  const [accentPrimary, textMuted, raisedBg] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
-    '--color-text-primary',
-    '--color-border-subtle',
     '--color-raised',
-  ]) as [string, string, string, string, string];
+  ]) as [string, string, string];
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const {
@@ -129,17 +127,6 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.goBack();
   }, [discardDraft, isEditMode, hasDraftData, navigation]);
 
-  // Footer-save form: Save lives in the always-on sticky footer, so the header
-  // carries only the dismiss — a header Save would double the footer's.
-  const header = useScreenHeader({
-    left: {
-      kind: 'dismiss',
-      onPress: () => void handleCancel(),
-      disabled: isPending,
-      identifier: 'activity-add-cancel',
-    },
-  });
-
   const handleSave = useCallback(async () => {
     if (!submission.exerciseId || !submission.canSave) return;
 
@@ -205,6 +192,23 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
      createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, discardDraft, navigation, t,
   ]);
 
+  const header = useScreenHeader({
+    left: {
+      kind: 'dismiss',
+      onPress: () => void handleCancel(),
+      disabled: isPending,
+      identifier: 'activity-add-cancel',
+    },
+    right: {
+      kind: 'primary',
+      busy: isPending,
+      disabled: isPending || !canSave,
+      placement: 'native-only',
+      onPress: () => void handleSave(),
+      identifier: 'activity-add-save',
+    },
+  });
+
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {header}
@@ -249,17 +253,11 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Date row */}
             <View className="flex-row items-center mb-4">
-              <TouchableOpacity
+              <DateSelectRow
+                date={state.entryDate}
                 onPress={() => calendarSheetRef.current?.present()}
-                activeOpacity={0.7}
-                className="flex-row items-center"
-              >
-                <Text className="text-text-secondary text-base">{t('workout.date')}</Text>
-                <Text className="text-text-primary text-base font-medium mx-1.5">
-                  {formatDateLabel(state.entryDate)}
-                </Text>
-                <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-              </TouchableOpacity>
+              />
+
 
               {state.entryDate === getTodayDate() ? (
                 <TouchableOpacity activeOpacity={0.7}
@@ -389,30 +387,15 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
           </Pressable>
       </KeyboardAwareScrollView>
 
-      {/* Sticky footer */}
-      <View
-        className="px-4 py-3"
-        style={{
-          paddingBottom: Math.max(insets.bottom, 12),
-          borderTopWidth: 1,
-          borderTopColor: borderSubtle,
-        }}
-      >
-        <Button
-          variant="primary"
-          onPress={handleSave}
+      {/* Sticky footer; the native-header path shows Save in the nav bar */}
+      {!usesNativeHeader && (
+        <FooterSaveBar
+          onPress={() => void handleSave()}
           disabled={isPending || !canSave}
-          className="py-3"
-        >
-          {isPending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
-              {t('common.save')}
-            </Text>
-          )}
-        </Button>
-      </View>
+          busy={isPending}
+        />
+      )}
+
 
       <CalendarSheet
         ref={calendarSheetRef}

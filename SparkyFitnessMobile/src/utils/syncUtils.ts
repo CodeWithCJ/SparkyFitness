@@ -18,6 +18,16 @@ export const alignToLocalDayStart = (date: Date): Date => {
 };
 
 /**
+ * Returns a copy of `date` rounded up to the next local midnight (unchanged when
+ * already midnight-aligned). The lower edge of an already-covered span must round
+ * this way: rounding it down would mark hours that were never imported as covered.
+ */
+export const ceilToLocalDayStart = (date: Date): Date => {
+  const aligned = alignToLocalDayStart(date);
+  return aligned.getTime() === date.getTime() ? aligned : addLocalDays(aligned, 1);
+};
+
+/**
  * The read windows for one sync run. Raw/session reads use the exact requested
  * window; day-aggregated reads (cumulative totals, min/max/avg day statistics) use
  * the day-aligned start so complete daily values are sent, never partial slices.
@@ -35,6 +45,65 @@ export const buildForegroundWindows = (duration: SyncDuration): SyncWindows => {
     aggregatedStart: alignToLocalDayStart(sessionStart),
     end: new Date(),
   };
+};
+
+/**
+ * Adds `days` calendar days via setDate (never ms math), so crossing a DST
+ * transition still lands on the same wall-clock time instead of 23:00/01:00.
+ */
+export const addLocalDays = (date: Date, days: number): Date => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+/**
+ * Number of calendar days in [start, end). Both inputs are aligned to local
+ * midnight first, so DST-shortened/lengthened days still count as one day.
+ */
+export const countLocalDays = (start: Date, end: Date): number => {
+  let count = 0;
+  let cursor = alignToLocalDayStart(start);
+  const endAligned = alignToLocalDayStart(end);
+  while (cursor < endAligned) {
+    cursor = addLocalDays(cursor, 1);
+    count++;
+  }
+  return count;
+};
+
+/**
+ * Windows for a historical backfill span whose edges are both local midnights,
+ * so session and day-aggregated reads share the same boundaries.
+ */
+export const buildBackfillWindows = (start: Date, end: Date): SyncWindows => ({
+  sessionStart: start,
+  aggregatedStart: start,
+  end,
+});
+
+/**
+ * Partitions [floor, endEdge) into day-aligned windows of at most `maxDays`
+ * calendar days, ordered newest-first so an interrupted walk keeps the most
+ * recent history. The oldest window may be short. Returns [] when
+ * floor >= endEdge (Health Connect rejects start >= end windows).
+ */
+export const enumerateDayAlignedWindows = (
+  floor: Date,
+  endEdge: Date,
+  maxDays: number,
+): { start: Date; end: Date }[] => {
+  const windows: { start: Date; end: Date }[] = [];
+  const floorAligned = alignToLocalDayStart(floor);
+  let end = alignToLocalDayStart(endEdge);
+
+  while (end > floorAligned) {
+    const start = addLocalDays(end, -maxDays);
+    windows.push({ start: start > floorAligned ? start : floorAligned, end });
+    end = start;
+  }
+
+  return windows;
 };
 
 // Health records (sleep, workouts, etc.) can arrive in HealthKit/Health Connect hours

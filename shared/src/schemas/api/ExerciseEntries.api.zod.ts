@@ -189,6 +189,13 @@ export const updatePresetSessionRequestSchema = z
     }
   });
 
+export const activityDetailRequestItemSchema = z.object({
+  id: z.string().optional(),
+  provider_name: z.string().optional(),
+  detail_type: z.string().optional(),
+  detail_data: z.unknown().optional(),
+});
+
 export const createExerciseEntryRequestSchema = z
   .object({
     exercise_id: z.string().uuid(),
@@ -204,7 +211,49 @@ export const createExerciseEntryRequestSchema = z
     image_url: z.string().nullable().optional(),
     distance: z.coerce.number().nullable().optional(),
     avg_heart_rate: z.coerce.number().nullable().optional(),
-    activity_details: z.array(z.any()).optional(), // Keep flexible for now
+    max_heart_rate: z.coerce.number().nullable().optional(),
+    heart_rate_recovery_1min: z.coerce.number().nullable().optional(),
+    avg_respiration_brpm: z.coerce.number().nullable().optional(),
+    max_respiration_brpm: z.coerce.number().nullable().optional(),
+    avg_speed_mps: z.coerce.number().nullable().optional(),
+    max_speed_mps: z.coerce.number().nullable().optional(),
+    avg_cadence: z.coerce.number().nullable().optional(),
+    max_cadence: z.coerce.number().nullable().optional(),
+    avg_power_watts: z.coerce.number().nullable().optional(),
+    max_power_watts: z.coerce.number().nullable().optional(),
+    normalized_power_watts: z.coerce.number().nullable().optional(),
+    tss_score: z.coerce.number().nullable().optional(),
+    intensity_factor: z.coerce.number().nullable().optional(),
+    elevation_gain_meters: z.coerce.number().nullable().optional(),
+    elevation_loss_meters: z.coerce.number().nullable().optional(),
+    floors_climbed: z.coerce.number().nullable().optional(),
+    stroke_count: z.coerce.number().nullable().optional(),
+    training_load: z.coerce.number().nullable().optional(),
+    aerobic_training_effect: z.coerce.number().nullable().optional(),
+    anaerobic_training_effect: z.coerce.number().nullable().optional(),
+    vo2_max_estimate: z.coerce.number().nullable().optional(),
+    avg_temperature_celsius: z.coerce.number().nullable().optional(),
+    max_temperature_celsius: z.coerce.number().nullable().optional(),
+    weather_condition: z.string().nullable().optional(),
+    weather_temp_celsius: z.coerce.number().nullable().optional(),
+    weather_wind_speed_mps: z.coerce.number().nullable().optional(),
+    weather_humidity_percentage: z.coerce.number().nullable().optional(),
+    gear_name: z.string().nullable().optional(),
+    gear_external_id: z.string().nullable().optional(),
+    steps: z.coerce.number().nullable().optional(),
+    water_estimated: z.coerce.number().nullable().optional(),
+    moving_time_seconds: z.coerce.number().nullable().optional(),
+    elapsed_time_seconds: z.coerce.number().nullable().optional(),
+    work_time_seconds: z.coerce.number().nullable().optional(),
+    resting_calories: z.coerce.number().nullable().optional(),
+    active_calories: z.coerce.number().nullable().optional(),
+    avg_moving_speed_mps: z.coerce.number().nullable().optional(),
+    min_elevation_meters: z.coerce.number().nullable().optional(),
+    max_elevation_meters: z.coerce.number().nullable().optional(),
+    ground_contact_time_ms: z.coerce.number().nullable().optional(),
+    vertical_oscillation_mm: z.coerce.number().nullable().optional(),
+    stride_length_cm: z.coerce.number().nullable().optional(),
+    activity_details: z.array(activityDetailRequestItemSchema).optional(),
   })
   .strict();
 
@@ -235,6 +284,47 @@ export const exerciseEntryResponseSchema = z
     steps: z.number().nullable().optional(),
     category: z.string().nullable().optional(),
     superset_group: z.number().int().nullable(),
+    max_heart_rate: z.number().nullable().optional(),
+    heart_rate_recovery_1min: z.number().nullable().optional(),
+    avg_respiration_brpm: z.number().nullable().optional(),
+    max_respiration_brpm: z.number().nullable().optional(),
+    avg_speed_mps: z.number().nullable().optional(),
+    max_speed_mps: z.number().nullable().optional(),
+    avg_cadence: z.number().nullable().optional(),
+    max_cadence: z.number().nullable().optional(),
+    avg_power_watts: z.number().nullable().optional(),
+    max_power_watts: z.number().nullable().optional(),
+    normalized_power_watts: z.number().nullable().optional(),
+    tss_score: z.number().nullable().optional(),
+    intensity_factor: z.number().nullable().optional(),
+    elevation_gain_meters: z.number().nullable().optional(),
+    elevation_loss_meters: z.number().nullable().optional(),
+    floors_climbed: z.number().nullable().optional(),
+    stroke_count: z.number().nullable().optional(),
+    training_load: z.number().nullable().optional(),
+    aerobic_training_effect: z.number().nullable().optional(),
+    anaerobic_training_effect: z.number().nullable().optional(),
+    vo2_max_estimate: z.number().nullable().optional(),
+    avg_temperature_celsius: z.number().nullable().optional(),
+    max_temperature_celsius: z.number().nullable().optional(),
+    weather_condition: z.string().nullable().optional(),
+    weather_temp_celsius: z.number().nullable().optional(),
+    weather_wind_speed_mps: z.number().nullable().optional(),
+    weather_humidity_percentage: z.number().nullable().optional(),
+    gear_name: z.string().nullable().optional(),
+    gear_external_id: z.string().nullable().optional(),
+    water_estimated: z.number().nullable().optional(),
+    moving_time_seconds: z.number().nullable().optional(),
+    elapsed_time_seconds: z.number().nullable().optional(),
+    work_time_seconds: z.number().nullable().optional(),
+    resting_calories: z.number().nullable().optional(),
+    active_calories: z.number().nullable().optional(),
+    avg_moving_speed_mps: z.number().nullable().optional(),
+    min_elevation_meters: z.number().nullable().optional(),
+    max_elevation_meters: z.number().nullable().optional(),
+    ground_contact_time_ms: z.number().nullable().optional(),
+    vertical_oscillation_mm: z.number().nullable().optional(),
+    stride_length_cm: z.number().nullable().optional(),
   })
   .strict();
 
@@ -248,6 +338,8 @@ export const exerciseProgressResponseSchema = z.object({
   distance: z.number().nullable(),
   avg_heart_rate: z.number().nullable(),
   provider_name: z.string().nullable(),
+  exercise_preset_entry_id: z.string().nullable().optional(),
+  exercise_preset_entry_name: z.string().nullable().optional(),
   sets: z.array(exerciseEntrySetRequestSchema),
 });
 
@@ -349,9 +441,13 @@ export const exerciseRecentSessionSetSchema = z
   .strict()
   .refine(
     (s) =>
-      s.weight != null || s.reps != null || s.duration != null || s.distance != null,
+      s.weight != null ||
+      s.reps != null ||
+      s.duration != null ||
+      s.distance != null,
     {
-      message: "Recent-session sets must have weight, reps, duration, or distance",
+      message:
+        "Recent-session sets must have weight, reps, duration, or distance",
     },
   );
 
@@ -418,9 +514,7 @@ export type ExerciseSetStats = z.infer<typeof exerciseSetStatsSchema>;
 export type ExerciseRecentSessionSet = z.infer<
   typeof exerciseRecentSessionSetSchema
 >;
-export type ExerciseRecentSession = z.infer<
-  typeof exerciseRecentSessionSchema
->;
+export type ExerciseRecentSession = z.infer<typeof exerciseRecentSessionSchema>;
 export type ExerciseStatsResponse = z.infer<typeof exerciseStatsResponseSchema>;
 export type ImportFitFileResult = z.infer<typeof importFitFileResultSchema>;
 export type ImportFitResponse = z.infer<typeof importFitResponseSchema>;

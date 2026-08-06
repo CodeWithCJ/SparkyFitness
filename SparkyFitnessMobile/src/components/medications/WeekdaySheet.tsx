@@ -1,23 +1,11 @@
-import React, { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useCSSVariable, useUniwind } from 'uniwind';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useCSSVariable } from 'uniwind';
 import { DAY_LABELS } from '@workspace/shared';
 import Icon from '../Icon';
 import { useTranslation } from 'react-i18next';
-
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
-    : undefined;
+import { sheetContainer, useSheetBackdrop } from '../ui/sheetChrome';
 
 export interface WeekdaySheetRef {
   present: () => void;
@@ -34,8 +22,6 @@ interface WeekdaySheetProps {
  * toggles it without dismissing, so several days can be picked in one visit. */
 const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, onChange }, ref) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const { theme } = useUniwind();
-  const isDarkMode = theme === 'dark' || theme === 'amoled';
   const { t } = useTranslation();
   const translatedDayLabels = t('days.long', { returnObjects: true });
   const dayLabels = Array.isArray(translatedDayLabels) ? translatedDayLabels as string[] : DAY_LABELS;
@@ -51,17 +37,7 @@ const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, on
     dismiss: () => bottomSheetRef.current?.dismiss(),
   }));
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        opacity={isDarkMode ? 0.7 : 0.5}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [isDarkMode],
-  );
+  const renderBackdrop = useSheetBackdrop();
 
   const toggle = (day: number) => {
     const next = value.includes(day) ? value.filter((d) => d !== day) : [...value, day];

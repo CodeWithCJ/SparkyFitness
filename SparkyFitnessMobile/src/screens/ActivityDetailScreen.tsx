@@ -682,7 +682,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing && (
           <FadeView>
             <Button
-              variant="ghost"
+              variant="destructive"
               onPress={() => deleteActivity.confirmAndDelete()}
               disabled={isDeleting}
               className="mt-4"

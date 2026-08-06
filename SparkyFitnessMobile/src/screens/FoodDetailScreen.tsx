@@ -286,7 +286,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
            title={t('dashboard.noServerTitle')}
            subtitle={t('foodMeals.noServerFoodDetails')}
@@ -394,10 +394,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
 
         {canManageFood && (
           <Button
-            variant="ghost"
+            variant="destructive"
             onPress={confirmAndDelete}
             disabled={isDeletePending}
-            textClassName="text-bg-danger font-medium"
           >
              {isDeletePending ? t('foodMeals.deletingFood') : t('foodMeals.deleteFood')}
           </Button>

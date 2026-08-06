@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator, AppState } from 'react-native';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
+import SettingsRow from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SyncFrequency from '../components/SyncFrequency';
 import SyncOnOpen from '../components/SyncOnOpen';
@@ -52,6 +53,7 @@ import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { formatRelativeTime } from '../utils/dateUtils';
+import { getErrorMessage } from '../utils/errors';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { HealthMetric } from '../HealthMetrics';
 import type { HealthMetricStates, HealthDataDisplayState } from '../types/healthRecords';
@@ -80,7 +82,7 @@ const timeRangeOptions: TimeRangeOption[] = [
   { label: '', value: '365d' },
 ];
 
-const SyncScreen: React.FC<SyncScreenProps> = () => {
+const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -272,7 +274,7 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
 
           performBackgroundSync('healthkit-observer')
             .catch(error => {
-              console.error('[SyncScreen] Observer-triggered sync failed:', error);
+              addLog(`[SyncScreen] Observer-triggered sync failed: ${getErrorMessage(error)}`, 'ERROR');
             })
             .finally(() => {
               release();
@@ -563,6 +565,16 @@ const SyncScreen: React.FC<SyncScreenProps> = () => {
           </Text>
           <HealthSourceLabel className="text-center mb-2" />
         </View>
+
+        {/* Import Full History */}
+        <SettingsRow
+          icon="history"
+          title="Import Full History"
+          subtitle="One-time import of all past health data"
+          onPress={() => navigation.navigate('ImportHistory')}
+          disabled={!isHealthConnectInitialized}
+          iconColor={accentPrimary}
+        />
 
         {/* Health Disclaimer */}
         {Platform.OS === 'android' && (

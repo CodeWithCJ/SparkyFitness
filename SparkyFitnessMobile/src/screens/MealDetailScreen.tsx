@@ -242,7 +242,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
            title={t('foodMealScreens.noServer')}
            subtitle={t('mealUi.noServerDetails')}
@@ -263,7 +263,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
       return (
         <StatusView
           icon="alert-circle"
-          iconColor="#EF4444"
+          iconTone="danger"
           iconSize={64}
            title={t('foodMeals.failedToLoadMeal')}
            subtitle={t('batch.connectionRetry')}
@@ -389,12 +389,11 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
 
         {canManageMeal ? (
           <Button
-            variant="ghost"
+            variant="destructive"
             onPress={() => {
               void confirmAndDelete();
             }}
             disabled={isDeletePending}
-            textClassName="text-bg-danger font-medium"
           >
              {isDeletePending ? t('foodMealScreens.deleting') : t('foodMealScreens.deleteMeal')}
           </Button>

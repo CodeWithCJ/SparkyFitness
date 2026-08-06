@@ -4,6 +4,8 @@ import WaterIntake from '@/pages/Diary/WaterIntake';
 import { useWaterContainer } from '@/contexts/WaterContainerContext';
 import {
   useWaterIntakeQuery,
+  useManualWaterIntakeQuery,
+  useWaterIntakeLogQuery,
   useUpdateWaterIntakeMutation,
 } from '@/hooks/Diary/useWaterIntake';
 import { renderWithClient } from '../test-utils';
@@ -61,6 +63,7 @@ jest.mock('@/contexts/WaterContainerContext', () => ({
 jest.mock('@/hooks/Diary/useWaterIntake', () => ({
   useWaterGoalQuery: jest.fn().mockReturnValue({ data: 2000 }),
   useWaterIntakeQuery: jest.fn().mockReturnValue({ data: 500 }),
+  useManualWaterIntakeQuery: jest.fn().mockReturnValue({ data: 500 }),
   useUpdateWaterIntakeMutation: jest.fn(),
   useWaterIntakeLogQuery: jest.fn().mockReturnValue({ data: [] }),
   useDeleteWaterIntakeLogMutation: jest.fn().mockReturnValue({
@@ -111,6 +114,7 @@ describe('WaterIntake Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 500 });
+    (useManualWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 500 });
     (useWaterContainer as jest.Mock).mockReturnValue({
       activeContainer: mockContainers[0],
       containers: mockContainers,
@@ -163,10 +167,92 @@ describe('WaterIntake Component', () => {
   it('disables the minus button when intake is 0', () => {
     // Override the mock to simulate zero water intake for this test
     (useWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
+    (useManualWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
 
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
     const minusButton = screen.getByTestId('minus-icon').parentElement;
     expect(minusButton).toBeDisabled();
+  });
+
+  // The "-" control only removes manually logged water. When the whole day's
+  // total came from a provider sync there is nothing for it to take away, so
+  // leaving it enabled produced a "removed!" toast with an unchanged total.
+  it('disables the minus button when the day has only provider-synced water', () => {
+    (useWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 1000 });
+    (useManualWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
+
+    renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
+
+    const minusButton = screen.getByTestId('minus-icon').parentElement;
+    expect(minusButton).toBeDisabled();
+  });
+
+  it('keeps the minus button enabled when some of the day was logged manually', () => {
+    (useWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 1000 });
+    (useManualWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 250 });
+
+    renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
+
+    const minusButton = screen.getByTestId('minus-icon').parentElement;
+    expect(minusButton).not.toBeDisabled();
+  });
+
+  it('labels provider-synced drinks in the log but leaves manual ones unlabelled', () => {
+    (useWaterIntakeLogQuery as jest.Mock).mockReturnValue({
+      data: [
+        {
+          id: 'e1',
+          water_ml: 250,
+          container_name: 'Work Bottle',
+          source: 'manual',
+          logged_at: '2023-10-27T09:00:00.000Z',
+          created_at: '2023-10-27T09:00:00.000Z',
+        },
+        {
+          id: 'e2',
+          water_ml: 500,
+          container_name: 'Work Bottle',
+          source: 'health_connect',
+          logged_at: '2023-10-27T10:00:00.000Z',
+          created_at: '2023-10-27T10:00:00.000Z',
+        },
+      ],
+    });
+
+    renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
+
+    expect(screen.getByText('Health Connect')).toBeInTheDocument();
+    expect(screen.queryByText('manual')).not.toBeInTheDocument();
+  });
+
+  // Deleting a provider-synced row is futile — the provider still holds the
+  // record, so it re-inserts on the next sync. Only manual rows are deletable.
+  it('renders a delete button only on manually logged drink rows', () => {
+    (useWaterIntakeLogQuery as jest.Mock).mockReturnValue({
+      data: [
+        {
+          id: 'e1',
+          water_ml: 250,
+          container_name: 'Work Bottle',
+          source: 'manual',
+          logged_at: '2023-10-27T09:00:00.000Z',
+          created_at: '2023-10-27T09:00:00.000Z',
+        },
+        {
+          id: 'e2',
+          water_ml: 500,
+          container_name: 'Work Bottle',
+          source: 'health_connect',
+          logged_at: '2023-10-27T10:00:00.000Z',
+          created_at: '2023-10-27T10:00:00.000Z',
+        },
+      ],
+    });
+
+    renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
+
+    // One trash icon: the manual row's. The provider row renders none.
+    expect(screen.getAllByTestId('trash-icon')).toHaveLength(1);
   });
 });

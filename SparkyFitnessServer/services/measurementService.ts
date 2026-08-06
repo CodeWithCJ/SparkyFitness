@@ -50,23 +50,51 @@ function resolveHealthEntryDate(entry: any, fallbackTimezone: any) {
   } else {
     basisField = entry.date || entry.entry_date || entry.timestamp;
   }
-  // 2. If the basis is a date-only string (YYYY-MM-DD) with no timestamp,
-  // the record was already bucketed client-side. Trust the date as-is —
-  // applying timezone conversion to a UTC-midnight-parsed day string would
-  // shift negative-offset zones to the previous day.
+  // 2. If the basis is a date-only string (YYYY-MM-DD), the record was
+  // already bucketed client-side to the correct local day. Trust the date
+  // as-is — applying timezone conversion to a UTC-midnight-parsed day string
+  // would shift negative-offset zones to the previous day. A companion
+  // `entry.timestamp` (used below for entryTimestamp/entryHour) doesn't
+  // change that; basisField already prefers `date`/`entry_date` over
+  // `timestamp` as the day source (see step 1), so its presence alone
+  // shouldn't override an already-correct bucketed day.
   const basisIsDayOnly =
-    typeof basisField === 'string' &&
-    isDayString(basisField) &&
-    !entry.timestamp;
+    typeof basisField === 'string' && isDayString(basisField);
   const basisDate = new Date(basisField);
   if (isNaN(basisDate.getTime())) {
     return null;
   }
   if (basisIsDayOnly) {
+    // A companion `entry.timestamp` still carries the real logged instant
+    // (used for `logged_at`/hourly bucketing) even though the day itself
+    // comes from the trusted `date` string above.
+    const tsObj = entry.timestamp ? new Date(entry.timestamp) : null;
+    const hasValidTimestamp = tsObj !== null && !isNaN(tsObj.getTime());
+    // Apply the same record-timezone, offset, then account-fallback
+    // precedence used below (step 4) for entryHour, so an hourly bucket
+    // isn't computed in the wrong zone just because the day was pre-bucketed.
+    let entryHour = 0;
+    if (hasValidTimestamp) {
+      if (entry.record_timezone && isValidTimeZone(entry.record_timezone)) {
+        entryHour = instantHourMinute(tsObj, entry.record_timezone).hour;
+      } else if (
+        entry.record_utc_offset_minutes !== null &&
+        typeof entry.record_utc_offset_minutes === 'number'
+      ) {
+        entryHour = instantHourMinuteWithOffset(
+          tsObj,
+          entry.record_utc_offset_minutes
+        ).hour;
+      } else {
+        entryHour = instantHourMinute(tsObj, fallbackTimezone).hour;
+      }
+    }
     return {
       parsedDate: basisField,
-      entryTimestamp: basisDate.toISOString(),
-      entryHour: 0,
+      entryTimestamp: hasValidTimestamp
+        ? tsObj.toISOString()
+        : basisDate.toISOString(),
+      entryHour,
     };
   }
   // 3. Determine the timestamp for entryTimestamp (prefer explicit timestamp)
@@ -138,7 +166,7 @@ async function preCleanEntriesBySourceAndDate(
   userId: any,
   label: string,
   deleteFn: (
-    userId: unknown,
+    userId: string,
     startDate: string,
     endDate: string,
     source: string
@@ -482,8 +510,13 @@ async function upsertWaterIntake(
         authenticatedUserId
       );
       if (container) {
-        amountPerDrink =
-          Number(container.volume) / Number(container.servings_per_container);
+        // Stored rows can carry servings_per_container = 0; clamp so the
+        // division can't produce Infinity
+        const servings = Math.max(
+          1,
+          Number(container.servings_per_container) || 1
+        );
+        amountPerDrink = Number(container.volume) / servings;
         containerName = container.name || null;
       } else {
         // Fallback to default if container not found
@@ -525,12 +558,11 @@ async function upsertWaterIntake(
       // when log rows were recorded with different containers.
       const logEntries = await measurementRepository.getWaterIntakeLogByDate(
         authenticatedUserId,
-        entryDate
+        entryDate,
+        'manual'
       );
-      const entriesToRemove = Math.min(
-        Math.abs(changeDrinks),
-        logEntries.length
-      );
+      const requestedDrinks = Math.abs(changeDrinks);
+      const entriesToRemove = Math.min(requestedDrinks, logEntries.length);
       let actualMlRemoved = 0;
       for (let i = 0; i < entriesToRemove; i++) {
         const entry = logEntries[i];
@@ -542,6 +574,11 @@ async function upsertWaterIntake(
           );
         }
       }
+      // If there weren't enough individual log entries, remove remaining requested volume
+      if (entriesToRemove < requestedDrinks) {
+        const remainingDrinks = requestedDrinks - entriesToRemove;
+        actualMlRemoved += remainingDrinks * amountPerDrink;
+      }
       await measurementRepository.incrementWaterData(
         authenticatedUserId,
         actingUserId,
@@ -550,12 +587,10 @@ async function upsertWaterIntake(
         'manual'
       );
     }
-    // Return the latest record after the upsert
+    // Return the latest aggregated record across all sources after the upsert
     const finalRecord = await measurementRepository.getWaterIntakeByDate(
       authenticatedUserId,
-      entryDate,
-      // @ts-expect-error TS(2345): Argument of type '"manual"' is not assignable to p... Remove this comment to see the full error message
-      'manual'
+      entryDate
     );
     return finalRecord;
   } catch (error) {

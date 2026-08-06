@@ -17,9 +17,11 @@ import useToggle from '@/hooks/use-toggle';
 import PasswordToggle from '@/components/PasswordToggle';
 import { useResetPasswordMutation } from '@/hooks/Auth/useAuth';
 import { getErrorMessage } from '@/utils/api';
+import { useTranslation } from 'react-i18next';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, 'ResetPassword: Component rendered.');
@@ -47,8 +49,8 @@ const ResetPassword = () => {
   }, [token]);
 
   const validatePassword = (pwd: string) => {
-    if (pwd.length < 6) {
-      return 'Password must be at least 6 characters long.';
+    if (pwd.length < 8) {
+      return t('settings.accountSecurity.passwordLengthError');
     }
     if (!/[A-Z]/.test(pwd)) {
       return 'Password must contain at least one uppercase letter.';
@@ -135,6 +137,7 @@ const ResetPassword = () => {
                   setPasswordError(validatePassword(e.target.value));
                 }}
                 required
+                minLength={8}
                 autoComplete="new-password"
               />
               <PasswordToggle

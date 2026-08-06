@@ -276,6 +276,15 @@ const writeHydrationForDate = async (
   const ml = summary.waterIntake ?? 0;
   const descriptor = waterMlToSample(date, ml);
 
+  // A null descriptor with water logged means the noon anchor is still in the
+  // future — the day's sample can't be written yet. Bail before the signature
+  // check: storing the empty signature here would make every later pre-noon
+  // run report "unchanged" no matter how much the total moves.
+  if (ml > 0 && !descriptor) {
+    addLog(`[Writeback] Hydration ${date}: deferred — noon anchor still in the future`, 'DEBUG');
+    return;
+  }
+
   const signature = hydrationSignature(descriptor);
   if (signature === (await loadHealthPreference<string>(hydrationSigKey(date)))) {
     addLog(`[Writeback] Hydration ${date}: unchanged — skipped`, 'DEBUG');

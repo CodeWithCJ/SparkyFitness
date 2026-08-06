@@ -2,19 +2,18 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  Switch,
   ScrollView,
   TextInput,
   TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { toHourMinute, isEntryTimeString } from '@workspace/shared';
 
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import Switch from '../components/ui/Switch';
 import { usePreferences } from '../hooks/usePreferences';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { useExternalProviders } from '../hooks/useExternalProviders';
@@ -37,11 +36,6 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
-
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
   const { providers } = useExternalProviders();
@@ -159,8 +153,6 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
             <Switch
               onValueChange={handleShowNetCarbsToggle}
               value={showNetCarbs}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
             />
           </View>
           <Text className="text-text-secondary text-sm mt-4">
@@ -197,8 +189,6 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
             <Switch
               onValueChange={handleAutoScaleToggle}
               value={autoScale}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
             />
           </View>
           <Text className="text-text-secondary text-sm mt-4">
@@ -231,8 +221,6 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
             <Switch
               onValueChange={handleBarcodeFallbackToggle}
               value={barcodeFallback}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">

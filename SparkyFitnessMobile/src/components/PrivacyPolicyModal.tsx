@@ -6,6 +6,7 @@ import {
   Linking,
 } from 'react-native';
 import Button from './ui/Button';
+import { addLog } from '../services/LogService';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +29,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
     try {
       await Linking.openURL(PRIVACY_POLICY_URL);
     } catch (error) {
-      console.error('Failed to open privacy policy URL:', error);
+      addLog(`Failed to open privacy policy URL: ${error}`, 'ERROR');
     }
   };
 

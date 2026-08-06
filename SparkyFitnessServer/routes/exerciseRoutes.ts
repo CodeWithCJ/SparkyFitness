@@ -1599,9 +1599,7 @@ router.get(
           providerName
         );
       if (!activityDetails) {
-        return res.status(404).json({
-          error: `Activity details not found for this exercise entry and provider: ${providerName}.`,
-        });
+        return res.status(200).json({ activity: null, workout: null });
       }
       res.status(200).json(activityDetails);
     } catch (error) {

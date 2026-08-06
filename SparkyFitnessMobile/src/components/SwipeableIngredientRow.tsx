@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Alert, View, Text, TouchableOpacity } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useTranslation } from 'react-i18next';
+import { DeleteRowAction } from './SwipeableDeleteRow';
 
 interface SwipeableIngredientRowProps {
   foodName: string;
@@ -15,8 +16,6 @@ interface SwipeableIngredientRowProps {
   // body becomes a button; swipe-to-delete still works alongside it.
   onPress?: () => void;
 }
-
-const DELETE_ACTION_WIDTH = 80;
 
 const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
   foodName,
@@ -79,19 +78,8 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
     Alert.alert(foodName, message, buttons);
   };
 
-  // RN TouchableOpacity + className here, matching SwipeableFoodRow /
-  // SwipeableExerciseRow: NativeWind styles it reliably (the red background) and
-  // it works inside ReanimatedSwipeable, as those shipped rows demonstrate.
   const renderRightActions = () => (
-    <TouchableOpacity
-      className="bg-bg-danger justify-center items-center"
-      style={{ width: DELETE_ACTION_WIDTH }}
-      onPress={handleDeletePress}
-      activeOpacity={0.7}
-      disabled={disabled}
-    >
-       <Text className="text-text-danger font-semibold text-sm">{t('common.delete')}</Text>
-    </TouchableOpacity>
+    <DeleteRowAction onPress={handleDeletePress} disabled={disabled} />
   );
 
   const rowBody = (

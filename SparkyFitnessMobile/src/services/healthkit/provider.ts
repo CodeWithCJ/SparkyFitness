@@ -9,6 +9,7 @@ import {
   getAggregatedFloorsClimbedByDateDetailed,
   getAggregatedBasalEnergyByDateDetailed,
   readHealthRecordsDetailed,
+  readEarliestSampleDetailed,
   readMinMaxAvgByDayDetailed,
 } from './index';
 import { aggregateSleepSessions } from './dataAggregation';
@@ -55,12 +56,18 @@ export const postProcessRaw = async (
     ? aggregateSleepSessions(records as Parameters<typeof aggregateSleepSessions>[0])
     : records;
 
+/** Earliest stored sample for the history-import floor probe. */
+export const readEarliestRecord = async (
+  metric: Pick<HealthMetric, 'recordType'>,
+): Promise<ReadResult<{ startTime: string }>> => readEarliestSampleDetailed(metric.recordType);
+
 export const healthReadProvider: HealthReadProvider = {
   readCumulativeByDay,
   // readMinMaxAvgByDayDetailed returns null for record types without a verified
   // day-statistics spec — the engine then falls back to the raw sample path.
   readMinMaxAvgByDay: readMinMaxAvgByDayDetailed,
   readRaw: readHealthRecordsDetailed,
+  readEarliestRecord,
   postProcessRaw,
   transform: transformHealthRecords,
 };

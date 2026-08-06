@@ -34,9 +34,11 @@ import { MagicLinkRequestDialog } from './MagicLinkRequestDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { AuthResponse } from '@/types/auth';
 import { getErrorMessage } from '@/utils/api';
+import { useTranslation } from 'react-i18next';
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
   const { signIn, user: authUser, loading: authLoading } = useAuth();
   debug(loggingLevel, 'Auth: Component rendered.');
@@ -245,8 +247,8 @@ const Auth = () => {
   );
 
   const validatePassword = (pwd: string) => {
-    if (pwd.length < 6) {
-      return 'Password must be at least 6 characters long.';
+    if (pwd.length < 8) {
+      return t('settings.accountSecurity.passwordLengthError');
     }
     if (!/[A-Z]/.test(pwd)) {
       return 'Password must contain at least one uppercase letter.';
@@ -622,6 +624,7 @@ const Auth = () => {
                               );
                             }}
                             required
+                            minLength={8}
                             autoComplete="new-password"
                           />
                           <PasswordToggle

@@ -3,7 +3,47 @@ import { View, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
+import { useScreenHeader, SAVE_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
+import Button from './ui/Button';
+
+interface FooterSaveBarProps {
+  onPress: () => void;
+  disabled?: boolean;
+  busy?: boolean;
+  label?: string;
+}
+
+/**
+ * Sticky footer save bar for form screens. Screens whose Save also lives in
+ * the native header (placement: 'native-only') should render this behind a
+ * {!usesNativeHeader && …} guard so the two never show together.
+ */
+export const FooterSaveBar: React.FC<FooterSaveBarProps> = ({
+  onPress,
+  disabled,
+  busy,
+  label = SAVE_LABEL,
+}) => {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View
+      className="px-4 py-3 border-t border-border-subtle"
+      style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+    >
+      <Button
+        variant="primary"
+        onPress={onPress}
+        disabled={disabled}
+        loading={busy}
+        className="py-3"
+        textClassName="text-sm text-center"
+      >
+        {label}
+      </Button>
+    </View>
+  );
+};
 
 interface FormScreenChromeProps {
   title: string;

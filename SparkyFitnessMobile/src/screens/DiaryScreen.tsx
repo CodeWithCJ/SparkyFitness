@@ -1,11 +1,10 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import Button from '../components/ui/Button';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import Icon from '../components/Icon';
 import DateNavigator from '../components/DateNavigator';
 import FoodSummary from '../components/FoodSummary';
 import ExerciseSummary from '../components/ExerciseSummary';
@@ -226,7 +225,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
           title={t('dashboard.noServerTitle')}
           subtitle={t('diary.noServerSubtitle')}
@@ -236,32 +235,19 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     }
 
     if (isLoading || isConnectionLoading) {
-      return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text className="text-text-muted text-base mt-4">{t('diary.loading')}</Text>
-        </View>
-      );
+      return <StatusView loading title={t('diary.loading')} />;
     }
 
     if (isError) {
       return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <Icon name="alert-circle" size={64} color="#EF4444" />
-          <Text className="text-text-muted text-lg text-center mt-4">
-            {t('diary.failedToLoad')}
-          </Text>
-          <Text className="text-text-muted text-sm text-center mt-2">
-            {t('dashboard.checkConnection')}
-          </Text>
-          <Button
-            variant="primary"
-            className="px-6 mt-6"
-            onPress={() => refetch()}
-          >
-            {t('common.retry')}
-          </Button>
-        </View>
+        <StatusView
+          icon="alert-circle"
+          iconTone="danger"
+          iconSize={64}
+          title={t('diary.failedToLoad')}
+          subtitle={t('dashboard.checkConnection')}
+          action={{ label: t('common.retry'), onPress: () => refetch(), variant: 'primary' }}
+        />
       );
     }
 

@@ -46,7 +46,6 @@ export {
   cycleFertilityQueryKey,
   cycleTestsQueryKey,
   cycleCorrelationsQueryKey,
-  cycleDisplayPreferencesQueryKey,
   pregnancyCurrentQueryKey,
   pregnancyOverviewQueryKey,
   pregnancyChecklistQueryKey,

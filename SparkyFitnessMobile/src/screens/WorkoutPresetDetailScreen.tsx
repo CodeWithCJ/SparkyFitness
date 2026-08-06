@@ -338,11 +338,10 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
 
         {canManagePreset && (
           <Button
-            variant="ghost"
+            variant="destructive"
             onPress={confirmAndDelete}
             disabled={isDeletePending}
             className="mt-3"
-            textClassName="text-bg-danger font-medium"
           >
              {isDeletePending ? t('workout.deleting') : t('workout.deletePreset')}
           </Button>

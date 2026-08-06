@@ -14,7 +14,34 @@ interface SwipeableDeleteRowProps {
   children: React.ReactNode;
 }
 
-const DELETE_ACTION_WIDTH = 80;
+export const DELETE_ACTION_WIDTH = 80;
+
+/**
+ * The red swipe-open "Delete" action shared by the swipeable row family.
+ * Plain RN TouchableOpacity + className on purpose: NativeWind styles it
+ * reliably (the red background) and it works inside ReanimatedSwipeable.
+ */
+export const DeleteRowAction: React.FC<{
+  onPress: () => void;
+  disabled?: boolean;
+  className?: string;
+  accessibilityLabel?: string;
+}> = ({ onPress, disabled, className = '', accessibilityLabel }) => {
+  const { t } = useTranslation();
+  return (
+    <TouchableOpacity
+      className={`bg-bg-danger justify-center items-center ${className}`}
+      style={{ width: DELETE_ACTION_WIDTH }}
+      onPress={onPress}
+      activeOpacity={0.7}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Text className="text-text-danger font-semibold text-sm">{t('common.delete')}</Text>
+    </TouchableOpacity>
+  );
+};
 
 /**
  * Generic swipe-to-delete wrapper for list rows whose only action is removal,
@@ -59,16 +86,7 @@ const SwipeableDeleteRow: React.FC<SwipeableDeleteRowProps> = ({
     ]);
   };
 
-  const renderRightActions = () => (
-    <TouchableOpacity
-      className="bg-bg-danger justify-center items-center"
-      style={{ width: DELETE_ACTION_WIDTH }}
-      onPress={handleDeletePress}
-      activeOpacity={0.7}
-    >
-       <Text className="text-text-danger font-semibold text-sm">{t('common.delete')}</Text>
-    </TouchableOpacity>
-  );
+  const renderRightActions = () => <DeleteRowAction onPress={handleDeletePress} />;
 
   return (
     <ReanimatedSwipeable

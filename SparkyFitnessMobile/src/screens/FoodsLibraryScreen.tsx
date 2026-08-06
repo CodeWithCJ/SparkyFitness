@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, RefreshControl } from 'react-native';
+import { View, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import LibrarySearchBar from '../components/LibrarySearchBar';
@@ -12,32 +12,10 @@ import { useFavorites, useFoodsLibrary, useServerConnection, useProfile } from '
 import { foodItemToFoodInfo } from '../types/foodInfo';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodItem } from '../types/foods';
 import { useTranslation } from 'react-i18next';
-
-const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
-  items: T[],
-  filter: 'all' | 'mine' | 'family' | 'public',
-  currentUserId?: string
-) => {
-  if (filter === 'all') return items;
-  return items.filter((item) => {
-    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
-    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
-    
-    if (filter === 'mine') {
-      return isOwner;
-    }
-    if (filter === 'family') {
-      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
-    }
-    if (filter === 'public') {
-      return isPublic;
-    }
-    return true;
-  });
-};
 
 type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
 
@@ -49,7 +27,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
   const [refreshing, setRefreshing] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -65,7 +43,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     loadMore,
     refetch,
   } = useFoodsLibrary(searchText, { enabled: isConnected });
-  const filteredFoods = useMemo(() => filterItems(foods, ownershipFilter, profile?.id), [foods, ownershipFilter, profile?.id]);
+  const filteredFoods = useMemo(() => filterByOwnership(foods, ownershipFilter, profile?.id), [foods, ownershipFilter, profile?.id]);
   const { favoriteFoods } = useFavorites({ enabled: isConnected });
   const favoriteFoodIds = useMemo(
     () => new Set(favoriteFoods.map((f) => f.id)),
@@ -85,27 +63,21 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const renderEmpty = () => {
     if (foods.length > 0 && filteredFoods.length === 0) {
       return (
-        <View className="px-6 py-10 items-center">
-          <Text className="text-text-primary text-base font-medium text-center">
-            {t('foodMealScreens.noMatchingFoods')}
-          </Text>
-          <Text className="text-text-secondary text-sm mt-2 text-center">
-            {t('foodMeals.changeOwnershipFilter')}
-          </Text>
-        </View>
+        <StatusView
+          inline
+          title={t('foodMealScreens.noMatchingFoods')}
+          subtitle={t('foodMeals.changeOwnershipFilter')}
+        />
       );
     }
     return (
-      <View className="px-6 py-10 items-center">
-        <Text className="text-text-primary text-base font-medium text-center">
-          {searchText.trim().length > 0 ? t('foodMealScreens.noMatchingFoods') : t('foodMealScreens.noFoods')}
-        </Text>
-        <Text className="text-text-secondary text-sm mt-2 text-center">
-          {searchText.trim().length > 0
-            ? t('foodMealScreens.tryDifferentFoodSearch')
-            : t('foodMealScreens.foodsAppearHere')}
-        </Text>
-      </View>
+      <StatusView
+        inline
+        title={searchText.trim().length > 0 ? t('foodMealScreens.noMatchingFoods') : t('foodMealScreens.noFoods')}
+        subtitle={searchText.trim().length > 0
+          ? t('foodMealScreens.tryDifferentFoodSearch')
+          : t('foodMealScreens.foodsAppearHere')}
+      />
     );
   };
 
@@ -114,7 +86,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
            title={t('foodMealScreens.noServer')}
            subtitle={t('foodMealScreens.foodLibrarySubtitle')}
@@ -131,7 +103,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       return (
         <StatusView
           icon="alert-circle"
-          iconColor="#EF4444"
+          iconTone="danger"
           iconSize={64}
            title={t('foodMealScreens.failedFoods')}
            subtitle={t('foodMealScreens.connectionRetry')}

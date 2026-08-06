@@ -17,11 +17,13 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
+import { isManualSource, prettifySource } from '@/utils/sourceLabels';
 import { useWaterContainer } from '@/contexts/WaterContainerContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import {
   useWaterGoalQuery,
   useWaterIntakeQuery,
+  useManualWaterIntakeQuery,
   useUpdateWaterIntakeMutation,
   useWaterIntakeLogQuery,
   useDeleteWaterIntakeLogMutation,
@@ -41,6 +43,12 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const userId = activeUserId || user?.id;
   const { data: waterGoalMl = 1920 } = useWaterGoalQuery(selectedDate, userId);
   const { data: waterMl = 0 } = useWaterIntakeQuery(selectedDate, userId);
+  // Only manually logged water can be removed here; provider-synced water is
+  // owned by its provider and would just reappear on the next sync.
+  const { data: manualWaterMl = 0 } = useManualWaterIntakeQuery(
+    selectedDate,
+    userId
+  );
   const { mutate: updateWaterIntake, isPending: loading } =
     useUpdateWaterIntakeMutation();
   const { data: logEntries = [] } = useWaterIntakeLogQuery(
@@ -56,8 +64,8 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
     () => activeContainer?.id ?? null
   );
 
-  // Local state for log panel visibility
-  const [showLog, setShowLog] = useState(false);
+  // Local state for log panel visibility (defaults to open so synced/manual logs are immediately visible)
+  const [showLog, setShowLog] = useState(true);
 
   // State for editing time on a log entry
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
@@ -201,15 +209,14 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         {/* Water count display */}
         <div className="text-center mb-3">
           <div className="text-xl font-bold">
-            {convertMlToSelectedUnit(
-              waterMl,
-              currentContainer?.unit || water_display_unit
-            ).toFixed(currentContainer?.unit === 'ml' ? 0 : 2)}{' '}
-            /{' '}
-            {convertMlToSelectedUnit(
-              waterGoalMl,
-              currentContainer?.unit || water_display_unit
-            ).toFixed(currentContainer?.unit === 'ml' ? 0 : 2)}
+            {(() => {
+              const activeUnit = currentContainer?.unit || water_display_unit;
+              const val = convertMlToSelectedUnit(waterMl, activeUnit);
+              const goalVal = convertMlToSelectedUnit(waterGoalMl, activeUnit);
+              const decimals =
+                activeUnit === 'oz' ? 1 : activeUnit === 'liter' ? 2 : 0;
+              return `${parseFloat(val.toFixed(decimals))} / ${parseFloat(goalVal.toFixed(decimals))}`;
+            })()}
           </div>
           <div className="text-gray-500 text-xs">
             {currentContainer?.unit || water_display_unit}
@@ -264,9 +271,17 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
           <Button
             variant="outline"
             onClick={() => adjustWater(-1)}
-            disabled={waterMl === 0 || loading}
+            disabled={manualWaterMl <= 0 || loading}
             size="icon"
             className="h-8 w-8 rounded-full"
+            title={
+              manualWaterMl <= 0 && waterMl > 0
+                ? t(
+                    'foodDiary.waterIntake.noManualToRemove',
+                    'Only manually logged water can be removed here'
+                  )
+                : undefined
+            }
           >
             <Minus className="h-4 w-4" />
           </Button>
@@ -392,28 +407,50 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                             'Container'
                           )}
                       </span>
+                      {/* Synced entries are labelled so it's clear why the "-"
+                          control can't remove them; manual rows stay unlabelled
+                          to keep the common case uncluttered. */}
+                      {!isManualSource(entry.source) && (
+                        <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-gray-300">
+                          {prettifySource(entry.source)}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="font-medium text-blue-600 dark:text-blue-400">
-                        {convertMlToSelectedUnit(
-                          Number(entry.water_ml),
-                          displayUnit
-                        ).toFixed(displayUnit === 'ml' ? 0 : 1)}{' '}
+                        {(() => {
+                          const val = convertMlToSelectedUnit(
+                            Number(entry.water_ml),
+                            displayUnit
+                          );
+                          const decimals =
+                            displayUnit === 'oz'
+                              ? 1
+                              : displayUnit === 'liter'
+                                ? 2
+                                : 0;
+                          return parseFloat(val.toFixed(decimals));
+                        })()}{' '}
                         {displayUnit}
                       </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        onClick={() => deleteLogEntry(entry.id)}
-                        disabled={deleting}
-                        title={t(
-                          'foodDiary.waterIntake.deleteEntry',
-                          'Delete this drink'
-                        )}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      {/* Provider-synced rows get no delete: the provider still
+                          holds the record, so a deleted row just re-inserts on
+                          the next sync. */}
+                      {isManualSource(entry.source) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          onClick={() => deleteLogEntry(entry.id)}
+                          disabled={deleting}
+                          title={t(
+                            'foodDiary.waterIntake.deleteEntry',
+                            'Delete this drink'
+                          )}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

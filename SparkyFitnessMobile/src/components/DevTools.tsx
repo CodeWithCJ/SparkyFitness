@@ -13,6 +13,7 @@ import Button from './ui/Button';
 import {
   seedHealthData,
   seedHistoricalSteps,
+  seedOldHealthData,
 } from '../services/seedHealthData';
 import { triggerManualSync } from '../services/backgroundSyncService';
 import { notifySessionExpired } from '../services/api/authService';
@@ -134,6 +135,23 @@ const DevTools: React.FC = () => {
     }
   };
 
+  const handleSeedOldData = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedOldHealthData();
+      if (result.success) {
+        Toast.show({ type: 'success', text1: 'Success', text2: `Seeded ${result.recordsInserted} records in clusters 1-3 years back.` });
+      } else {
+        Toast.show({ type: 'error', text1: 'Error', text2: result.error || 'Failed to seed old health data.' });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to seed old health data: ${message}` });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   const handleSeedData = async (days: number) => {
     setIsSeeding(true);
     try {
@@ -204,7 +222,8 @@ const DevTools: React.FC = () => {
           variant="primary"
           className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
           onPress={() => handleSeedData(7)}
-          disabled={isSeeding}
+          loading={isSeeding}
+          textClassName="font-bold"
         >
           {isSeeding ? (
             <ActivityIndicator color="#fff" size="small" />
@@ -249,6 +268,15 @@ const DevTools: React.FC = () => {
             {t('devTools.seed.steps')}
           </Text>
         </Button>
+
+        <Button
+          variant="primary"
+          className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
+          onPress={handleSeedOldData}
+          disabled={isSeeding}
+        >
+          <Text className="text-white text-base font-bold text-center">Old Data{'\n'}(1-3 Years)</Text>
+        </Button>
       </View>
 
       {Platform.OS === 'android' && (
@@ -284,7 +312,8 @@ const DevTools: React.FC = () => {
             variant="primary"
             className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
             onPress={handleTriggerSync}
-            disabled={isSyncing}
+            loading={isSyncing}
+            textClassName="font-bold"
           >
             {isSyncing ? (
               <ActivityIndicator color="#fff" size="small" />

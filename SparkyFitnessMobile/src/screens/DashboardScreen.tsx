@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, RefreshControl, Pressable } from 'react-native';
-import Button from '../components/ui/Button';
+import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
@@ -93,6 +93,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), [setSelectedDate]);
   const usesNativeTabs = useNativeIOSTabsActive();
+  const insets = useSafeAreaInsets();
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const syncNativeHeaderDatePicker = useCallback(() => {
     if (!usesNativeTabs) return;
@@ -208,13 +209,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       return (
         <View className="flex-1">
           {!usesNativeTabs && (
-            <View className="px-4 pt-4 pb-5">
+            <View className="px-4 pb-5" style={{ paddingTop: insets.top + 16 }}>
               <Text className="text-2xl font-bold text-text-primary">{t('screens.dashboard')}</Text>
             </View>
           )}
           <StatusView
             icon="cloud-offline"
-            iconColor="#9CA3AF"
+            iconTone="muted"
             iconSize={64}
             title={t('dashboard.noServerTitle')}
             subtitle={t('dashboard.noServerSubtitle')}
@@ -226,33 +227,20 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
     // Loading state
     if (isLoading || isConnectionLoading || isPreferencesLoading || isMeasurementsLoading) {
-      return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text className="text-text-muted text-base mt-4">{t('dashboard.loadingSummary')}</Text>
-        </View>
-      );
+      return <StatusView loading title={t('dashboard.loadingSummary')} />;
     }
 
     // Error state
     if (isError || isPreferencesError || isMeasurementsError) {
       return (
-        <View className="flex-1 items-center justify-center p-8 shadow-sm">
-          <Icon name="alert-circle" size={64} color="#EF4444" />
-          <Text className="text-text-muted text-lg text-center mt-4">
-            {t('dashboard.failedToLoad')}
-          </Text>
-          <Text className="text-text-muted text-sm text-center mt-2">
-            {t('dashboard.checkConnection')}
-          </Text>
-          <Button
-            variant="primary"
-            className="px-6 mt-6"
-            onPress={() => refetch()}
-          >
-            {t('common.retry')}
-          </Button>
-        </View>
+        <StatusView
+          icon="alert-circle"
+          iconTone="danger"
+          iconSize={64}
+          title={t('dashboard.failedToLoad')}
+          subtitle={t('dashboard.checkConnection')}
+          action={{ label: t('common.retry'), onPress: () => refetch(), variant: 'primary' }}
+        />
       );
     }
 
@@ -438,7 +426,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <HydrationGauge
             consumed={summary.waterConsumed}
             goal={summary.waterGoal}
-            unit={waterUnit}
+            unit={waterUnit || preferences?.water_display_unit || 'ml'}
             containerVolume={servingVolume}
             onIncrement={isContainersLoaded ? incrementWater : undefined}
             onDecrement={isContainersLoaded ? decrementWater : undefined}

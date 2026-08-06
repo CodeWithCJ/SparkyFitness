@@ -1,4 +1,5 @@
 import { apiFetch } from './apiClient';
+import { getTodayDate } from '../../utils/dateUtils';
 import type { CheckInMeasurement, CheckInMeasurementRange, WaterIntake, WaterContainer, WaterIntakeResponse } from '../../types/measurements';
 import type { CustomCategory, CustomMeasurementEntry, SaveCustomMeasurementPayload } from '../../types/customMeasurements';
 
@@ -24,6 +25,32 @@ export const fetchWaterIntake = async (date: string): Promise<WaterIntake> => {
     serviceName: 'Measurements API',
     operation: 'fetch water intake',
   });
+};
+
+let lastPerRecordWaterSupport: boolean | null = null;
+
+/**
+ * Whether the active server accepts per-record water sync (upsert by
+ * source_id). Older servers instead SET the day total per incoming record, so
+ * sending individual drinks against one would leave the day at the last
+ * drink's volume — callers fall back to a single day-aggregate record there.
+ *
+ * Feature detection, not a version check: the same server release that added
+ * per-record ingestion also added the `manual_ml` breakdown to the day-totals
+ * endpoint, so its presence identifies exactly the right deploy. On probe
+ * failure the last successful answer is reused (the sync that needed it is
+ * about to fail on the same network anyway); first-ever probe failures assume
+ * support, matching current-release servers.
+ */
+export const serverSupportsPerRecordWater = async (): Promise<boolean> => {
+  try {
+    const totals = await fetchWaterIntake(getTodayDate());
+    lastPerRecordWaterSupport =
+      totals != null && typeof totals === 'object' && 'manual_ml' in totals;
+  } catch {
+    if (lastPerRecordWaterSupport === null) return true;
+  }
+  return lastPerRecordWaterSupport;
 };
 
 /**

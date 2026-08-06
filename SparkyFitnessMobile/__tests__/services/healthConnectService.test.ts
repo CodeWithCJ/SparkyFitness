@@ -309,6 +309,36 @@ describe('healthConnectService.ts (Android)', () => {
       expect(hrAvg.value).toBe(70);
     });
 
+    test('HeartRate samples in a record spanning midnight bucket to their own days', async () => {
+      // Local-naive timestamps keep the local-day bucketing deterministic
+      // regardless of the machine timezone the test runs in.
+      mockReadRecords.mockResolvedValue({
+        records: [
+          {
+            startTime: '2024-01-15T22:00:00',
+            samples: [
+              { time: '2024-01-15T23:30:00', beatsPerMinute: 55 },
+              { time: '2024-01-16T00:15:00', beatsPerMinute: 48 },
+              { time: '2024-01-16T00:45:00', beatsPerMinute: 52 },
+            ],
+          },
+        ],
+      });
+
+      const healthMetricStates: HealthMetricStates = { isHeartRateSyncEnabled: true };
+
+      await androidService.syncHealthData('24h', healthMetricStates);
+
+      const payload = mockApiSyncHealthData.mock.calls[0][0];
+      const minByDate = Object.fromEntries(
+        payload
+          .filter((r: { type: string }) => r.type === 'heart_rate_min')
+          .map((r: { date: string; value: number }) => [r.date, r.value])
+      );
+
+      expect(minByDate).toEqual({ '2024-01-15': 55, '2024-01-16': 48 });
+    });
+
     test('HeartRateVariabilityRmssd records are aggregated with min/max/avg by date', async () => {
       mockReadRecords.mockResolvedValue({
         records: [

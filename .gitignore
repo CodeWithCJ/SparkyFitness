@@ -74,4 +74,5 @@ dossier sans titre/
 /result
 /result-*
 
+# Local MCP server config (contains bearer tokens)
 .mcp.json

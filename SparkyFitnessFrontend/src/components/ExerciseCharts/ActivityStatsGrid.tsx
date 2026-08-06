@@ -3,12 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   FaRoute,
   FaClock,
-  FaWalking,
   FaMountain,
   FaFire,
   FaHeartbeat,
   FaRunning,
   FaTint,
+  FaStopwatch,
+  FaHourglassHalf,
+  FaTachometerAlt,
+  FaCloudSun,
+  FaTshirt,
 } from 'react-icons/fa';
 
 interface ActivityStatsGridProps {
@@ -20,6 +24,14 @@ interface ActivityStatsGridProps {
   heartRate: string | null;
   cadence: string | null;
   waterLoss: string | null;
+  /** Garmin-parity fields — null hides the card, matching every stat above. */
+  movingTime?: string | null;
+  elapsedTime?: string | null;
+  caloriesBreakdown?: string | null;
+  avgMovingSpeed?: string | null;
+  elevationRange?: string | null;
+  weather?: string | null;
+  gear?: string | null;
 }
 
 export const ActivityStatsGrid = ({
@@ -31,6 +43,13 @@ export const ActivityStatsGrid = ({
   heartRate,
   cadence,
   waterLoss,
+  movingTime = null,
+  elapsedTime = null,
+  caloriesBreakdown = null,
+  avgMovingSpeed = null,
+  elevationRange = null,
+  weather = null,
+  gear = null,
 }: ActivityStatsGridProps) => {
   const { t } = useTranslation();
 
@@ -68,7 +87,7 @@ export const ActivityStatsGrid = ({
             <CardTitle className="text-sm font-medium">
               {t('reports.activityReport.avgPace')}
             </CardTitle>
-            <FaWalking className="h-5 w-5 text-purple-500" />
+            <FaTachometerAlt className="h-5 w-5 text-purple-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pace}</div>
@@ -137,6 +156,100 @@ export const ActivityStatsGrid = ({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{waterLoss}</div>
+          </CardContent>
+        </Card>
+      )}
+      {movingTime !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-sm font-medium">
+              {t('reports.activityReport.movingTime', 'Moving Time')}
+            </CardTitle>
+            <FaStopwatch className="h-5 w-5 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{movingTime}</div>
+          </CardContent>
+        </Card>
+      )}
+      {elapsedTime !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-sm font-medium">
+              {t('reports.activityReport.elapsedTime', 'Elapsed Time')}
+            </CardTitle>
+            <FaHourglassHalf className="h-5 w-5 text-slate-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{elapsedTime}</div>
+          </CardContent>
+        </Card>
+      )}
+      {caloriesBreakdown !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-sm font-medium">
+              {t(
+                'reports.activityReport.caloriesBreakdown',
+                'Active / Resting'
+              )}
+            </CardTitle>
+            <FaFire className="h-5 w-5 text-orange-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{caloriesBreakdown}</div>
+          </CardContent>
+        </Card>
+      )}
+      {avgMovingSpeed !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-sm font-medium">
+              {t('reports.activityReport.avgMovingSpeed', 'Avg Moving Speed')}
+            </CardTitle>
+            <FaTachometerAlt className="h-5 w-5 text-blue-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{avgMovingSpeed}</div>
+          </CardContent>
+        </Card>
+      )}
+      {elevationRange !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-sm font-medium">
+              {t('reports.activityReport.elevationRange', 'Min / Max Elev')}
+            </CardTitle>
+            <FaMountain className="h-5 w-5 text-gray-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{elevationRange}</div>
+          </CardContent>
+        </Card>
+      )}
+      {weather !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-sm font-medium">
+              {t('reports.activityReport.weather', 'Weather')}
+            </CardTitle>
+            <FaCloudSun className="h-5 w-5 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{weather}</div>
+          </CardContent>
+        </Card>
+      )}
+      {gear !== null && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+            <CardTitle className="text-sm font-medium">
+              {t('reports.activityReport.gear', 'Gear')}
+            </CardTitle>
+            <FaTshirt className="h-5 w-5 text-indigo-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{gear}</div>
           </CardContent>
         </Card>
       )}

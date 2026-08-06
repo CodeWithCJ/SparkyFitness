@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, ScrollView, Switch, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -11,6 +11,7 @@ import { useCycleSettings } from '../hooks/useCycleSettings';
 import { usePregnancyMutations, useCurrentPregnancy } from '../hooks/usePregnancy';
 import { bulkPutLogs } from '../services/api/cycleApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { addLog } from '../services/LogService';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -21,6 +22,7 @@ import Icon from '../components/Icon';
 import PregnancyDueDateForm, {
   usePregnancyDueDateForm,
 } from '../components/wellness/pregnancy/PregnancyDueDateForm';
+import Switch from '../components/ui/Switch';
 import { CYCLE_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 
 import {
@@ -52,11 +54,10 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [accentColor, formEnabled, formDisabled] = useCSSVariable([
+  const [accentColor, formDisabled] = useCSSVariable([
     '--color-accent-primary',
-    '--color-form-enabled',
     '--color-form-disabled',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const { updateSettingsAsync } = useCycleSettings();
   const { createPregnancyAsync, updatePregnancyAsync } = usePregnancyMutations();
@@ -164,7 +165,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
       // Navigate to CycleHub
       navigation.replace('CycleHub');
     } catch (error) {
-      console.log('[Onboarding] Failed to complete setup:', error);
+      addLog(`Failed to complete cycle onboarding: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
          text1: t('mobileComponents.wellness.onboarding.failed'),
@@ -300,8 +301,6 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
                     <Switch
                       value={conditions.includes(cond.value)}
                       onValueChange={(val) => handleToggleCondition(cond.value, val)}
-                      trackColor={{ false: formDisabled, true: formEnabled }}
-                      thumbColor="#FFFFFF"
                     />
                   }
                 />

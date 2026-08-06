@@ -49,7 +49,7 @@ type SamplesSeedConfig = {
 type CustomSeedConfig = {
   recordType: string;
   seedType: 'custom';
-  seeder: (days: number) => Promise<number>;
+  seeder: (dates: Date[]) => Promise<number>;
 };
 
 type SeedConfig = IntervalSeedConfig | InstantSeedConfig | SamplesSeedConfig | CustomSeedConfig;
@@ -86,6 +86,18 @@ const getPastDates = (days: number): Date[] => {
   for (let i = 0; i < days; i++) {
     const date = new Date(now);
     date.setDate(date.getDate() - i);
+    date.setHours(12, 0, 0, 0);
+    dates.push(date);
+  }
+  return dates;
+};
+
+const getDatesEndingDaysAgo = (endDaysAgo: number, count: number): Date[] => {
+  const dates: Date[] = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - (endDaysAgo + i));
     date.setHours(12, 0, 0, 0);
     dates.push(date);
   }
@@ -216,9 +228,8 @@ const buildMultiRecordDay = (
 
 const seedIntervalRecords = async (
   config: IntervalSeedConfig,
-  days: number
+  dates: Date[]
 ): Promise<number> => {
-  const dates = getPastDates(days);
   const records = dates.flatMap((date) => {
     if (!config.recordsPerDay) {
       const startHour = getSafeHour(date, 8);
@@ -243,9 +254,8 @@ const seedIntervalRecords = async (
 
 const seedInstantRecords = async (
   config: InstantSeedConfig,
-  days: number
+  dates: Date[]
 ): Promise<number> => {
-  const dates = getPastDates(days);
   const records = dates.map((date) => {
     const hour = getSafeHour(date, 7);
     const time = new Date(date);
@@ -260,9 +270,8 @@ const seedInstantRecords = async (
 
 const seedSamplesRecords = async (
   config: SamplesSeedConfig,
-  days: number
+  dates: Date[]
 ): Promise<number> => {
-  const dates = getPastDates(days);
   const records = dates.map((date) => {
     const startHour = getSafeHour(date, 8);
     const startTime = new Date(date);
@@ -310,8 +319,7 @@ const EXERCISE_TYPES = [
   { type: 37, name: 'Hiking', durationMin: 30, durationMax: 120 },
 ];
 
-const seedHeartRate = async (days: number): Promise<number> => {
-  const dates = getPastDates(days);
+const seedHeartRate = async (dates: Date[]): Promise<number> => {
   let totalRecords = 0;
 
   for (const date of dates) {
@@ -345,8 +353,7 @@ const seedHeartRate = async (days: number): Promise<number> => {
   return totalRecords;
 };
 
-const seedWeight = async (days: number): Promise<number> => {
-  const dates = getPastDates(days);
+const seedWeight = async (dates: Date[]): Promise<number> => {
   const baseWeight = randomInt(60, 90);
 
   const records = dates.map((date, index) => {
@@ -371,8 +378,7 @@ const seedWeight = async (days: number): Promise<number> => {
   return records.length;
 };
 
-const seedBloodPressure = async (days: number): Promise<number> => {
-  const dates = getPastDates(days);
+const seedBloodPressure = async (dates: Date[]): Promise<number> => {
   const records = [];
 
   for (const date of dates) {
@@ -418,8 +424,7 @@ const seedBloodPressure = async (days: number): Promise<number> => {
   return records.length;
 };
 
-const seedHydration = async (days: number): Promise<number> => {
-  const dates = getPastDates(days);
+const seedHydration = async (dates: Date[]): Promise<number> => {
   const records = [];
 
   for (const date of dates) {
@@ -451,8 +456,7 @@ const seedHydration = async (days: number): Promise<number> => {
   return records.length;
 };
 
-const seedExerciseSessions = async (days: number): Promise<number> => {
-  const dates = getPastDates(days);
+const seedExerciseSessions = async (dates: Date[]): Promise<number> => {
   let totalRecords = 0;
 
   for (const date of dates) {
@@ -500,8 +504,7 @@ const SLEEP_STAGES = [
   { stage: 6, name: 'REM' },
 ];
 
-const seedSleepSession = async (days: number): Promise<number> => {
-  const dates = getPastDates(days);
+const seedSleepSession = async (dates: Date[]): Promise<number> => {
   let totalRecords = 0;
 
   for (const date of dates) {
@@ -553,8 +556,7 @@ const seedSleepSession = async (days: number): Promise<number> => {
   return totalRecords;
 };
 
-const seedNutrition = async (days: number): Promise<number> => {
-  const dates = getPastDates(days);
+const seedNutrition = async (dates: Date[]): Promise<number> => {
   const records = [];
 
   for (const date of dates) {
@@ -758,6 +760,39 @@ export const seedHistoricalSteps = async (): Promise<SeedResult> => {
   }
 };
 
+const seedAllForDates = async (dates: Date[]): Promise<number> => {
+  let totalRecords = 0;
+
+  for (const config of SEED_CONFIGS) {
+    try {
+      let count: number;
+
+      switch (config.seedType) {
+        case 'custom':
+          count = await config.seeder(dates);
+          break;
+        case 'interval':
+          count = await seedIntervalRecords(config, dates);
+          break;
+        case 'instant':
+          count = await seedInstantRecords(config, dates);
+          break;
+        case 'samples':
+          count = await seedSamplesRecords(config, dates);
+          break;
+      }
+
+      totalRecords += count;
+      addLog(`[SeedHealthData] Seeded ${config.recordType}`, 'INFO');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[SeedHealthData] Failed to seed ${config.recordType}: ${message}`, 'WARNING');
+    }
+  }
+
+  return totalRecords;
+};
+
 export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
   addLog(`[SeedHealthData] Starting to seed ${days} days of health data...`, 'INFO');
 
@@ -771,34 +806,7 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
       };
     }
 
-    let totalRecords = 0;
-
-    for (const config of SEED_CONFIGS) {
-      try {
-        let count: number;
-
-        switch (config.seedType) {
-          case 'custom':
-            count = await config.seeder(days);
-            break;
-          case 'interval':
-            count = await seedIntervalRecords(config, days);
-            break;
-          case 'instant':
-            count = await seedInstantRecords(config, days);
-            break;
-          case 'samples':
-            count = await seedSamplesRecords(config, days);
-            break;
-        }
-
-        totalRecords += count;
-        addLog(`[SeedHealthData] Seeded ${config.recordType}`, 'INFO');
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(`[SeedHealthData] Failed to seed ${config.recordType}: ${message}`, 'WARNING');
-      }
-    }
+    const totalRecords = await seedAllForDates(getPastDates(days));
 
     addLog(`[SeedHealthData] Successfully seeded ${totalRecords} records`, 'INFO');
 
@@ -814,5 +822,52 @@ export const seedHealthData = async (days: number = 7): Promise<SeedResult> => {
       recordsInserted: 0,
       error: message,
     };
+  }
+};
+
+// Cluster placement for old-data seeding: a few full days just past normal
+// sync's 365-day maximum reach, another cluster two years back, and a
+// steps-only floor anchor three years back — so the history-import probe
+// floor, empty-window fast-forward, and multi-window walks all get exercised
+// without inserting thousands of records.
+const OLD_SEED_CLUSTERS = [
+  { endDaysAgo: 425, days: 3 },
+  { endDaysAgo: 735, days: 3 },
+];
+const OLD_SEED_ANCHOR_DAYS_AGO = 1100;
+
+export const seedOldHealthData = async (): Promise<SeedResult> => {
+  addLog('[SeedOldHealthData] Seeding historical clusters (1-3 years back)...', 'INFO');
+
+  try {
+    const permissionsGranted = await requestWritePermissions();
+    if (!permissionsGranted) {
+      return {
+        success: false,
+        recordsInserted: 0,
+        error: 'Write permissions not granted. Please grant permissions in Health Connect settings.',
+      };
+    }
+
+    let totalRecords = 0;
+    for (const cluster of OLD_SEED_CLUSTERS) {
+      totalRecords += await seedAllForDates(getDatesEndingDaysAgo(cluster.endDaysAgo, cluster.days));
+    }
+
+    const stepsConfig = SEED_CONFIGS.find(config => config.recordType === 'Steps');
+    if (stepsConfig?.seedType === 'interval') {
+      totalRecords += await seedIntervalRecords(
+        stepsConfig,
+        getDatesEndingDaysAgo(OLD_SEED_ANCHOR_DAYS_AGO, 1),
+      );
+    }
+
+    addLog(`[SeedOldHealthData] Done — ${totalRecords} records seeded across 1-3 years back`, 'INFO');
+
+    return { success: true, recordsInserted: totalRecords };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    addLog(`[SeedOldHealthData] Error: ${message}`, 'ERROR');
+    return { success: false, recordsInserted: 0, error: message };
   }
 };

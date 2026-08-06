@@ -1,10 +1,9 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, Switch, Alert, TouchableOpacity, type TextStyle } from 'react-native';
+import { View, Text, Alert, TouchableOpacity, type TextStyle } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { useCSSVariable } from 'uniwind';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
@@ -21,6 +20,7 @@ import StepperInput from '../components/StepperInput';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import WeekdaySheet, { type WeekdaySheetRef } from '../components/medications/WeekdaySheet';
+import Switch from '../components/ui/Switch';
 import { DAY_LABELS, formatTimeOfDay, formatWithMeal } from '@workspace/shared';
 import type { CreateScheduleInput, MedicationSchedule, MedicationWithMeal } from '@workspace/shared';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
@@ -140,11 +140,6 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
-
   const { data: med, isLoading } = useMedicationDetail(medicationId);
   const existing = useMemo(
     () => med?.schedules?.find((s) => s.id === scheduleId),
@@ -671,8 +666,6 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                 <Switch
                   value={form.active}
                   onValueChange={(v) => updateField('active', v)}
-                  trackColor={{ false: formDisabled, true: formEnabled }}
-                  thumbColor="#FFFFFF"
                 />
               }
             />

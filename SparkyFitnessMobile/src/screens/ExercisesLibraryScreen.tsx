@@ -9,35 +9,12 @@ import StatusView from '../components/StatusView';
 import SegmentedControl from '../components/SegmentedControl';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useExercisesLibrary, useServerConnection, useProfile } from '../hooks';
-import { deriveShareStatus } from '../utils/shareStatus';
+import { deriveShareStatus, filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
-
-const filterItems = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
-  items: T[],
-  filter: 'all' | 'mine' | 'family' | 'public',
-  currentUserId?: string
-) => {
-  if (filter === 'all') return items;
-  return items.filter((item) => {
-    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
-    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
-    
-    if (filter === 'mine') {
-      return isOwner;
-    }
-    if (filter === 'family') {
-      return !isOwner && !isPublic && (item.user_id != null || item.userId != null);
-    }
-    if (filter === 'public') {
-      return isPublic;
-    }
-    return true;
-  });
-};
 
 type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 
@@ -75,7 +52,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const [ownershipFilter, setOwnershipFilter] = useState<'all' | 'mine' | 'family' | 'public'>('all');
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { profile } = useProfile();
@@ -91,7 +68,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     loadMore,
     refetch,
   } = useExercisesLibrary(searchText, { enabled: isConnected });
-  const filteredExercises = useMemo(() => filterItems(exercises, ownershipFilter, profile?.id), [exercises, ownershipFilter, profile?.id]);
+  const filteredExercises = useMemo(() => filterByOwnership(exercises, ownershipFilter, profile?.id), [exercises, ownershipFilter, profile?.id]);
 
   const handleExercisePress = useCallback(
     (exercise: Exercise) => {
@@ -103,27 +80,21 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   const renderEmpty = () => {
     if (exercises.length > 0 && filteredExercises.length === 0) {
       return (
-        <View className="px-6 py-10 items-center">
-          <Text className="text-text-primary text-base font-medium text-center">
-             {copy('noMatch')}
-          </Text>
-          <Text className="text-text-secondary text-sm mt-2 text-center">
-             {copy('changeFilter')}
-          </Text>
-        </View>
+        <StatusView
+          inline
+          title={copy('noMatch')}
+          subtitle={copy('changeFilter')}
+        />
       );
     }
     return (
-      <View className="px-6 py-10 items-center">
-        <Text className="text-text-primary text-base font-medium text-center">
-           {searchText.trim().length > 0 ? copy('noMatch') : copy('none')}
-        </Text>
-        <Text className="text-text-secondary text-sm mt-2 text-center">
-          {searchText.trim().length > 0
-             ? copy('searchNone')
-             : copy('description')}
-        </Text>
-      </View>
+      <StatusView
+        inline
+        title={searchText.trim().length > 0 ? copy('noMatch') : copy('none')}
+        subtitle={searchText.trim().length > 0
+          ? copy('searchNone')
+          : copy('description')}
+      />
     );
   };
 
@@ -155,7 +126,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
       return (
         <StatusView
           icon="cloud-offline"
-          iconColor="#9CA3AF"
+          iconTone="muted"
           iconSize={64}
            title={copy('noServer')}
            subtitle={copy('configure')}
@@ -176,7 +147,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
       return (
         <StatusView
           icon="alert-circle"
-          iconColor="#EF4444"
+          iconTone="danger"
           iconSize={64}
            title={copy('failed')}
            subtitle={copy('connection')}

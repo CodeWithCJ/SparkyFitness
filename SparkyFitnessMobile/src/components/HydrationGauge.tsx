@@ -109,9 +109,14 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
 
   const convertedConsumed = convertFromMl(consumed, unit);
   const convertedGoal = convertFromMl(goal, unit);
-  const useDecimals = unit === 'liter' || unit === 'oz';
-  const displayConsumed = useDecimals ? parseFloat(convertedConsumed.toFixed(1)) : Math.round(convertedConsumed);
-  const displayGoal = useDecimals ? parseFloat(convertedGoal.toFixed(1)) : Math.round(convertedGoal);
+  const formatUnitVolume = (val: number, u: string): string => {
+    const decimals = u === 'oz' ? 1 : u === 'liter' ? 2 : 0;
+    // Locale-aware formatting keeps thousands grouping and the locale's
+    // decimal separator; maximumFractionDigits alone strips trailing zeros.
+    return formatLocalizedNumber(val, { maximumFractionDigits: decimals });
+  };
+  const displayConsumed = formatUnitVolume(convertedConsumed, unit);
+  const displayGoal = formatUnitVolume(convertedGoal, unit);
   const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
 
   const showButtons = !!onIncrement || !!onDecrement;
@@ -159,11 +164,11 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
         </View>
         <View className="flex-1 items-center mr-2">
           <Text className="text-2xl font-bold text-text-primary">
-            {formatLocalizedNumber(displayConsumed)} {unitLabel}
+            {displayConsumed} {unitLabel}
           </Text>
           <Text className="text-sm text-text-secondary mt-0.5">
             {t('hydration.ofGoal', {
-              goal: formatLocalizedNumber(displayGoal),
+              goal: displayGoal,
               unit: unitLabel,
             })}
           </Text>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Switch, Image, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, Image, Platform, ActivityIndicator } from 'react-native';
 import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER } from '../HealthMetrics';
-import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
+import Switch from './ui/Switch';
 import CollapsibleSection from './CollapsibleSection';
 import { saveCollapsedCategories, loadCollapsedCategories } from '../services/storage';
 import { NO_DATA_DISPLAY } from '../services/healthDataDisplay';
@@ -69,10 +69,6 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   healthData,
   isLoadingHealthData,
 }) => {
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled'
-  ]) as [string, string];
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
   const [learnMoreExpanded, setLearnMoreExpanded] = useState(false);
@@ -152,8 +148,6 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         <Switch
           onValueChange={(newValue) => handleToggleHealthMetric(metric, newValue)}
           value={healthMetricStates[metric.stateKey]}
-          trackColor={{ false: formDisabled, true: formEnabled }}
-          thumbColor="#FFFFFF"
         />
       </View>
     );
@@ -195,8 +189,6 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         <Switch
           onValueChange={handleToggleAllMetrics}
           value={isAllMetricsEnabled}
-          trackColor={{ false: formDisabled, true: formEnabled }}
-          thumbColor="#FFFFFF"
         />
       </View>
       <Text className="text-xs text-text-muted mb-3">

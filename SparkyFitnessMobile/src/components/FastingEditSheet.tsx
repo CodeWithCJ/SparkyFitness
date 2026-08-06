@@ -1,4 +1,4 @@
-import React, {
+import {
   forwardRef,
   useCallback,
   useImperativeHandle,
@@ -7,27 +7,16 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Alert,
-  Platform,
-  Pressable,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetScrollView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useCSSVariable, useUniwind } from 'uniwind';
+import { Alert, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import Toast from 'react-native-toast-message';
 
 import Icon from './Icon';
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import { useUpdateFast, useDeleteFast } from '../hooks/useFasting';
+import { dateTypeToDate } from './TimeSheet';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
 import { getAppLocale } from '../localization';
@@ -35,24 +24,6 @@ import {
   formatLocalizedFastingDateTime,
   formatLocalizedFastingDuration,
 } from '../utils/fastingLocalization';
-
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation. No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => (
-        <FullWindowOverlay>{children}</FullWindowOverlay>
-      )
-    : undefined;
-
-/** Normalizes the picker's 6-way `DateType` into a JS `Date`, preserving time. */
-function dateTypeToDate(date: DateType): Date | null {
-  if (!date) return null;
-  if (date instanceof Date) return date;
-  if (typeof date === 'object' && 'toDate' in date) return date.toDate();
-  if (typeof date === 'string') return new Date(date);
-  return new Date(date);
-}
 
 export interface FastingEditSheetRef {
   present: (fast: FastingLog) => void;
@@ -69,8 +40,6 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
     const { t } = useTranslation();
     const appLocale = getAppLocale();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const { theme } = useUniwind();
-    const isDarkMode = theme === 'dark' || theme === 'amoled';
 
     const [
       surfaceBg,
@@ -85,7 +54,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
       '--color-accent-primary',
       '--color-text-primary',
       '--color-text-secondary',
-      '--color-bg-danger',
+      '--color-icon-danger',
     ]) as [string, string, string, string, string, string];
 
     const [fastId, setFastId] = useState<string | null>(null);
@@ -110,17 +79,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
       dismiss: () => bottomSheetRef.current?.dismiss(),
     }));
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          opacity={isDarkMode ? 0.7 : 0.5}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [isDarkMode],
-    );
+    const renderBackdrop = useSheetBackdrop();
 
     const handleStartChange = useCallback(({ date }: { date: DateType }) => {
       const js = dateTypeToDate(date);

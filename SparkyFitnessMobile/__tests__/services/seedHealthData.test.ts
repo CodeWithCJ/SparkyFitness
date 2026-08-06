@@ -195,3 +195,68 @@ describe('seedHealthData.ios.ts', () => {
     expect(result.error).toBeUndefined();
   });
 });
+
+describe('seedOldHealthData (Android)', () => {
+  const oldSeedService = require('../../src/services/seedHealthData.ts') as {
+    seedOldHealthData: () => Promise<SeedResult>;
+  };
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  const insertedTimestamps = (): number[] =>
+    mockInsertRecords.mock.calls
+      .flatMap((call) => call[0] as { startTime?: string; time?: string }[])
+      .map((record) => new Date(record.startTime ?? record.time ?? '').getTime())
+      .filter(Number.isFinite);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRequestPermission.mockImplementation((requested) => Promise.resolve(requested));
+    mockInsertRecords.mockResolvedValue(undefined);
+  });
+
+  test('seeds records only in the deep past, down to the 3-year floor anchor', async () => {
+    const result = await oldSeedService.seedOldHealthData();
+
+    expect(result.success).toBe(true);
+    expect(result.recordsInserted).toBeGreaterThan(0);
+
+    const timestamps = insertedTimestamps();
+    expect(timestamps.length).toBeGreaterThan(0);
+
+    // Everything lands beyond normal sync's 365-day reach — never in the recent span.
+    const now = Date.now();
+    for (const timestamp of timestamps) {
+      expect(now - timestamp).toBeGreaterThan(400 * DAY_MS);
+    }
+
+    // The steps-only floor anchor sits roughly three years back.
+    const oldest = Math.min(...timestamps);
+    expect(now - oldest).toBeGreaterThan(1000 * DAY_MS);
+  });
+
+  test('returns an error without inserting when permissions are denied', async () => {
+    mockRequestPermission.mockResolvedValue([]);
+
+    const result = await oldSeedService.seedOldHealthData();
+
+    expect(result.success).toBe(false);
+    expect(result.recordsInserted).toBe(0);
+    expect(result.error).toMatch(/permission/i);
+    expect(mockInsertRecords).not.toHaveBeenCalled();
+  });
+});
+
+describe('seedOldHealthData (iOS)', () => {
+  test('seeds old health data successfully with mocked HealthKit', async () => {
+    const iosService = require('../../src/services/seedHealthData.ios.ts') as {
+      seedOldHealthData: () => Promise<SeedResult>;
+    };
+
+    const result = await iosService.seedOldHealthData();
+
+    expect(result.success).toBe(true);
+    expect(result.recordsInserted).toBeGreaterThanOrEqual(0);
+    expect(result.error).toBeUndefined();
+  });
+});

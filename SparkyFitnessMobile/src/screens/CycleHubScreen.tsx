@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, ScrollView, ActivityIndicator } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../localization';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useCycleMode } from '../hooks/useCycleMode';
@@ -16,6 +15,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import SegmentedControl from '../components/SegmentedControl';
+import StatusView from '../components/StatusView';
 import CycleCalendarGrid from '../components/wellness/CycleCalendarGrid';
 import CycleHistoryList from '../components/wellness/CycleHistoryList';
 import CycleInsightsView from '../components/wellness/CycleInsightsView';
@@ -34,7 +34,6 @@ type CycleHubScreenProps = RootStackScreenProps<'CycleHub'>;
 const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
 
   const { mode, enabled, isLoading: isModeLoading, onboardedAt } = useCycleMode();
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
@@ -130,11 +129,7 @@ role: 'primary',
   });
 
   if (isLoading || !settings) {
-    return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <ActivityIndicator size="large" color={accentColor} />
-      </View>
-    );
+    return <StatusView loading className="bg-background" />;
   }
 
   return (

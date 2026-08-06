@@ -8,23 +8,11 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import {
-  BottomSheetModal,
-  BottomSheetScrollView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
-import { FullWindowOverlay } from 'react-native-screens';
-import { useUniwind, useCSSVariable } from 'uniwind';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
-
-// Render the sheet inside an iOS UIWindow so it sits above any native modal
-// presentation (the workout form screens present modally). No-op on Android.
-const sheetContainer =
-  Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
-    : undefined;
+import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 
 export interface ActionSheetItem {
   key: string;
@@ -81,8 +69,6 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
     // Back press during the close animation is still swallowed by the sheet.
     const [isOpen, setIsOpen] = useState(false);
     const { height: windowHeight } = useWindowDimensions();
-    const { theme } = useUniwind();
-    const isDarkMode = theme === 'dark' || theme === 'amoled';
 
     const [surfaceBg, textMuted, accentPrimary] = useCSSVariable([
       '--color-surface',
@@ -186,17 +172,7 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
       onDismiss?.();
     }, [onDismiss, schedulePresent]);
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          opacity={isDarkMode ? 0.7 : 0.5}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [isDarkMode],
-    );
+    const renderBackdrop = useSheetBackdrop();
 
     const handleItemPress = (item: ActionSheetItem) => {
       if (item.dismissOnPress === false) {

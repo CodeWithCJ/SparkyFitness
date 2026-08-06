@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, Image, Platform } from 'react-native';
-import { useCSSVariable } from 'uniwind';
+import { View, Text, Image, Platform } from 'react-native';
 import CollapsibleSection from './CollapsibleSection';
 import Button from './ui/Button';
 import BottomSheetPicker from './BottomSheetPicker';
+import Switch from './ui/Switch';
 import {
   WRITEBACK_METRICS,
   WRITEBACK_CATEGORY_ORDER,
@@ -52,10 +52,6 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
   onRemoveAllData,
   onRemoveDateRange,
 }) => {
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const { t } = useTranslation();
   const translate = t;
@@ -92,8 +88,6 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
       <Switch
         onValueChange={(newValue) => handleToggleWriteback(metric, newValue)}
         value={!!writebackStates[metric.id]}
-        trackColor={{ false: formDisabled, true: formEnabled }}
-        thumbColor="#FFFFFF"
       />
     </View>
   );

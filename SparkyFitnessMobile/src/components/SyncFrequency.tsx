@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, Switch, Platform } from 'react-native';
-import { useCSSVariable } from 'uniwind';
+import { View, Text, Platform } from 'react-native';
+import Switch from './ui/Switch';
 import { useTranslation } from 'react-i18next';
 
 interface SyncFrequencyProps {
@@ -9,10 +9,6 @@ interface SyncFrequencyProps {
 }
 
 const SyncFrequency: React.FC<SyncFrequencyProps> = ({ isEnabled, onToggle }) => {
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
   const { t } = useTranslation();
 
   return (
@@ -23,8 +19,6 @@ const SyncFrequency: React.FC<SyncFrequencyProps> = ({ isEnabled, onToggle }) =>
         <Switch
           onValueChange={onToggle}
           value={isEnabled}
-          trackColor={{ false: formDisabled, true: formEnabled }}
-          thumbColor="#FFFFFF"
         />
       </View>
       {Platform.OS === 'ios' && (

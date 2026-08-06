@@ -1,12 +1,12 @@
 import React, { useCallback } from 'react';
-import { View, ScrollView, Switch, Text } from 'react-native';
+import { View, ScrollView, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
 
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import SettingsRow from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import Switch from '../components/ui/Switch';
 import {
   useThemePreference,
   setThemePreference,
@@ -28,11 +28,6 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const [formEnabled, formDisabled] = useCSSVariable([
-    '--color-form-enabled',
-    '--color-form-disabled',
-  ]) as [string, string];
-
   const appTheme = useThemePreference();
   const hapticsEnabled = useAppPreferencesStore((s) => s.hapticsEnabled);
   const setHapticsEnabled = useAppPreferencesStore((s) => s.setHapticsEnabled);
@@ -113,8 +108,6 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
               <Switch
                 value={liquidGlassEnabled}
                 onValueChange={setLiquidGlassTabBarEnabled}
-                trackColor={{ false: formDisabled, true: formEnabled }}
-                thumbColor="#FFFFFF"
               />
             </View>
             <Text className="text-text-secondary text-sm mt-2">
@@ -136,8 +129,6 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
             <Switch
               value={hapticsEnabled}
               onValueChange={setHapticsEnabled}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">
@@ -151,8 +142,6 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
             <Switch
               value={soundsEnabled}
               onValueChange={setSoundsEnabled}
-              trackColor={{ false: formDisabled, true: formEnabled }}
-              thumbColor="#FFFFFF"
             />
           </View>
           <Text className="text-text-secondary text-sm mt-2">

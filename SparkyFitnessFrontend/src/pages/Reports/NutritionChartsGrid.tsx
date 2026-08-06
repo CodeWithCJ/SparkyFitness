@@ -166,19 +166,27 @@ const NutritionChartsGrid = ({
         const chartData = prepareChartData(effectiveNutritionData, chart.key);
         const yAxisDomain = getYAxisDomain(effectiveNutritionData, chart.key);
         const average = calculateAverage(chartData, chart.key);
-
-        let formattedAverage = '';
-        if (chart.key === 'calories') {
-          formattedAverage = Math.round(
-            convertEnergy(average, 'kcal', energyUnit)
-          ).toString();
-        } else {
-          formattedAverage = formatNutrientValue(
-            chart.key,
-            average,
-            customNutrients
-          );
-        }
+        // The split is shown as a SHARE, not a second and third average. The question
+        // behind it is "how much of this comes from a pill", which is a proportion;
+        // and averaging the supplement arm understates it badly on intermittent
+        // dosing, where non-dosing days drag the mean toward zero. A share is also
+        // range-independent and needs no y-axis room, which is why the split is not
+        // drawn as extra series: the domain comes from the total, so lines sitting
+        // well below it never render inside the plot.
+        const supplementAverage = calculateAverage(
+          chartData,
+          `supplement_${chart.key}`
+        );
+        const supplementShare =
+          average > 0 ? Math.round((supplementAverage / average) * 100) : 0;
+        // Hidden entirely when nothing was supplemented, so users who track no
+        // supplements see their charts exactly as before.
+        const showSupplementShare = supplementAverage > 0;
+        const formatAverage = (value: number) =>
+          chart.key === 'calories'
+            ? Math.round(convertEnergy(value, 'kcal', energyUnit)).toString()
+            : formatNutrientValue(chart.key, value, customNutrients);
+        const formattedAverage = formatAverage(average);
 
         return (
           <ZoomableChart
@@ -192,10 +200,21 @@ const NutritionChartsGrid = ({
                     <CardTitle className="text-sm">
                       {chart.label} ({chart.unit})
                     </CardTitle>
-                    <span className="text-xs text-muted-foreground font-normal">
-                      {t('reports.average', 'Avg')}: {formattedAverage}{' '}
-                      {chart.unit}
-                    </span>
+                    <div className="text-right text-xs text-muted-foreground font-normal">
+                      <div>
+                        {t('reports.average', 'Avg')}: {formattedAverage}{' '}
+                        {chart.unit}
+                      </div>
+                      {showSupplementShare && (
+                        <div>
+                          {t(
+                            'reports.supplementShare',
+                            '{{percent}}% from supplements',
+                            { percent: supplementShare }
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent
@@ -250,21 +269,27 @@ const NutritionChartsGrid = ({
                               | string
                               | number
                               | ReadonlyArray<string | number>
-                              | undefined
+                              | undefined,
+                            name: string | number | undefined
                           ) => {
                             if (value === null || value === undefined) {
-                              return 'N/A';
+                              return ['N/A', name];
                             }
 
                             const numValue = Number(
                               Array.isArray(value) ? value[0] : value
                             );
-
-                            if (chart.key === 'calories') {
-                              return `${Math.round(convertEnergy(numValue, 'kcal', energyUnit))} ${chart.unit}`;
-                            }
-
-                            return `${formatNutrientValue(chart.key, numValue, customNutrients)} ${chart.unit}`;
+                            const formattedValue =
+                              chart.key === 'calories'
+                                ? Math.round(
+                                    convertEnergy(numValue, 'kcal', energyUnit)
+                                  )
+                                : formatNutrientValue(
+                                    chart.key,
+                                    numValue,
+                                    customNutrients
+                                  );
+                            return [`${formattedValue} ${chart.unit}`, name];
                           }}
                           contentStyle={{
                             backgroundColor: 'hsl(var(--background))',
@@ -277,6 +302,7 @@ const NutritionChartsGrid = ({
                           strokeWidth={2}
                           dot={false}
                           isAnimationActive={false}
+                          name={chart.label}
                         />
                         <Line
                           type="monotone"

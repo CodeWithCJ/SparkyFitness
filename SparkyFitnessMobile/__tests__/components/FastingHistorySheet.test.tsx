@@ -12,7 +12,7 @@ const mockSwipeableProps: {
   overshootRight?: boolean;
   rightThreshold?: number;
 }[] = [];
-const mockRightActionProps: { style?: { width?: number } }[] = [];
+const mockRightActionProps: { style?: { width?: number }; onPress?: () => void }[] = [];
 const mockDeleteFast = jest.fn();
 const mockEditPresent = jest.fn();
 const mockAlert = jest.spyOn(Alert, 'alert');
@@ -90,7 +90,7 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
       const rightActions = props.renderRightActions?.();
       if (ReactNative.isValidElement(rightActions)) {
         mockRightActionProps.push(
-          rightActions.props as { style?: { width?: number } },
+          rightActions.props as { style?: { width?: number }; onPress?: () => void },
         );
       }
       return ReactNative.createElement(
@@ -229,7 +229,9 @@ describe('FastingHistorySheet', () => {
         overshootRight: false,
         rightThreshold: 40,
       });
-      expect(mockRightActionProps.at(-1)?.style?.width).toBe(80);
+      // The swipe reveals a DeleteRowAction; its width is encapsulated inside
+      // the shared component, so assert the delete press contract instead.
+      expect(mockRightActionProps.at(-1)?.onPress).toEqual(expect.any(Function));
     },
   );
 

@@ -1,8 +1,8 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, Platform } from 'react-native';
+import { View, Text } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
-import { matchFont } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
+import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
 import type {
   WeightDataPoint,
   StepsRange,
@@ -14,7 +14,7 @@ import ChartTouchOverlay, {
   type ChartTouchLayout,
 } from './ChartTouchOverlay';
 import { useTranslation } from 'react-i18next';
-import { getAppLocale, formatLocalizedNumber } from '../localization';
+import { formatLocalizedNumber } from '../localization';
 
 type WeightLineChartProps = {
   data: WeightDataPoint[];
@@ -30,32 +30,7 @@ const X_TICK_COUNT: Record<StepsRange, number> = {
   '90d': 5,
 };
 
-const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
-const font = matchFont({ fontFamily, fontSize: 12 });
-
-const formatXLabel7d = (day: string): string => {
-  if (typeof day !== 'string') return '';
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString(getAppLocale(), { weekday: 'short' });
-};
-
-const formatXLabel30d90d = (day: string): string => {
-  if (typeof day !== 'string') return '';
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
-};
-
-const formatTooltipDate = (day: string): string => {
-  const [year, month, d] = day.split('-').map(Number);
-  const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString(getAppLocale(), {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-};
+const font = makeChartFont(12);
 
 const formatTooltipWeight = (weight: number): string => formatLocalizedNumber(weight, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

@@ -476,6 +476,16 @@ describe('getActivityIcon – activity type emoji mapping', () => {
     expect(getActivityIcon('lap_swimming')).toBe('🏊');
     expect(getActivityIcon('Swim')).toBe('🏊');
   });
+
+  it('detects sports keywords from activityName when typeKey is generic or unknown', () => {
+    expect(getActivityIcon('other', 'Swimming Open Water Aigina Other')).toBe(
+      '🏊'
+    );
+    expect(getActivityIcon('custom', 'Morning Run around Central Park')).toBe(
+      '🏃'
+    );
+    expect(getActivityIcon(null, 'Evening Bike Ride')).toBe('🚴');
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

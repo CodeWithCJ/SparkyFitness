@@ -1,15 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Alert, View, Text, Pressable, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, Pressable } from 'react-native';
 import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  runOnJS,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
+import { DeleteRowAction } from './SwipeableDeleteRow';
+import { useRowCollapse } from '../hooks/useRowCollapse';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { canEditGroupedWorkout } from '@workspace/shared';
 import Icon from './Icon';
@@ -34,9 +31,6 @@ interface SwipeableExerciseRowProps {
   distanceUnit?: 'km' | 'miles';
 }
 
-const ROW_COLLAPSE_DURATION = 300;
-const DELETE_ACTION_WIDTH = 80;
-
 const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   session,
   entryDate,
@@ -47,9 +41,10 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
 }) => {
   const { t } = useTranslation();
   const swipeableRef = useRef<SwipeableMethods | null>(null);
-  const rowHeight = useSharedValue<number | null>(null);
-  const isRemoving = useSharedValue(false);
   const invalidateCacheRef = useRef<() => void>(() => {});
+  const { collapse, handleLayout, animatedStyle } = useRowCollapse(() =>
+    invalidateCacheRef.current(),
+  );
 
   const [accentPrimary, textMuted, textSecondary] = useCSSVariable([
     '--color-accent-primary',
@@ -57,18 +52,9 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
     '--color-text-secondary',
   ]) as [string, string, string];
 
-  const handleAnimationEnd = () => {
-    invalidateCacheRef.current();
-  };
-
   const onDeleteSuccess = () => {
     swipeableRef.current?.close();
-    isRemoving.value = true;
-    rowHeight.value = withTiming(0, { duration: ROW_COLLAPSE_DURATION }, (finished) => {
-      if (finished) {
-        runOnJS(handleAnimationEnd)();
-      }
-    });
+    collapse();
   };
 
   const workoutDelete = useDeleteWorkout({
@@ -85,43 +71,16 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   const { confirmAndDelete, deleteEntry, invalidateCache } =
     session.type === 'preset' ? workoutDelete : exerciseDelete;
 
-  // Keep the latest invalidateCache in a ref so the post-collapse animation
-  // callback (`handleAnimationEnd`, run via runOnJS after the delete) always
-  // invokes the current one. Written in an effect rather than during render so
-  // the value stays mutable to React's compiler.
+  // Keep the latest invalidateCache in a ref so the post-collapse callback
+  // (run via runOnJS after the delete) always invokes the current one. Written
+  // in an effect rather than during render so the value stays mutable to
+  // React's compiler.
   useEffect(() => {
     invalidateCacheRef.current = invalidateCache;
   }, [invalidateCache]);
 
-  // Declared before useAnimatedStyle so the rowHeight mutation here is not seen
-  // as modifying a value already consumed by a hook (a React compiler bailout).
-  const handleLayout = (event: { nativeEvent: { layout: { height: number } } }) => {
-    if (rowHeight.value === null) {
-      rowHeight.value = event.nativeEvent.layout.height;
-    }
-  };
-
-  const animatedStyle = useAnimatedStyle(() => {
-    if (!isRemoving.value || rowHeight.value === null) {
-      return {};
-    }
-    return {
-      height: rowHeight.value,
-      overflow: 'hidden' as const,
-    };
-  });
-
   const renderRightActions = () => (
-    <TouchableOpacity
-      className="bg-bg-danger justify-center items-center"
-      style={{ width: DELETE_ACTION_WIDTH }}
-      onPress={confirmAndDelete}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-       accessibilityLabel={t('common.delete')}
-    >
-       <Text className="text-text-danger font-semibold text-sm">{t('common.delete')}</Text>
-    </TouchableOpacity>
+    <DeleteRowAction onPress={confirmAndDelete} accessibilityLabel="Delete exercise" />
   );
 
   const { name, duration, calories } = getWorkoutSummary(session);

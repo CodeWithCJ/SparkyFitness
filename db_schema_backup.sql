@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict urj2OAVFvPTJdH8PZAYX8q12SbkE440UOncTimowmwwqIEbZV4TD3kGkjkfAIU8
+\restrict UK2vb2gfdaW09yZcXqlm0ZueUsjAQH9HYf4K0bUukTh5NeuHiY4zr9iY7KHaudD
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -41,6 +41,21 @@ CREATE FUNCTION public.acting_user_id() RETURNS uuid
     LANGUAGE sql STABLE
     AS $$
   SELECT NULLIF(current_setting('app.acting_user_id', true), '')::uuid;
+$$;
+
+
+--
+-- Name: sf_try_numeric(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sf_try_numeric(txt text) RETURNS numeric
+    LANGUAGE sql IMMUTABLE
+    AS $$
+SELECT CASE
+    WHEN txt ~ '^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]{1,4})?$'
+     AND length(txt) <= 64 THEN txt::numeric
+    ELSE NULL
+END;
 $$;
 
 
@@ -1254,7 +1269,10 @@ CREATE TABLE public.check_in_measurements (
     height numeric,
     body_fat_percentage numeric,
     created_by_user_id uuid,
-    updated_by_user_id uuid
+    updated_by_user_id uuid,
+    muscle_mass_kg numeric(5,2),
+    bone_mass_kg numeric(5,2),
+    body_water_percentage numeric(5,2)
 );
 
 
@@ -1271,7 +1289,7 @@ CREATE TABLE public.check_in_photos (
     file_path text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT check_in_photos_type_check CHECK (((photo_type)::text = ANY ((ARRAY['front'::character varying, 'back'::character varying, 'side'::character varying])::text[])))
+    CONSTRAINT check_in_photos_type_check CHECK (((photo_type)::text = ANY (ARRAY[('front'::character varying)::text, ('back'::character varying)::text, ('side'::character varying)::text])))
 );
 
 
@@ -1409,6 +1427,61 @@ CREATE TABLE public.cycles (
 
 
 --
+-- Name: daily_health_metrics; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.daily_health_metrics (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    source_provider text NOT NULL,
+    device_name text,
+    total_steps integer,
+    step_goal integer,
+    total_distance_meters numeric(10,2),
+    floors_ascended integer,
+    floors_descended integer,
+    active_calories numeric(8,2),
+    bmr_calories numeric(8,2),
+    total_calories numeric(8,2),
+    highly_active_seconds integer,
+    active_seconds integer,
+    sedentary_seconds integer,
+    moderate_intensity_minutes integer,
+    vigorous_intensity_minutes integer,
+    exercise_minutes integer,
+    stand_hours integer,
+    resting_heart_rate integer,
+    heart_rate_recovery_1min integer,
+    vo2_max numeric(4,1),
+    fitness_age numeric(4,1),
+    lactate_threshold_bpm integer,
+    lactate_threshold_speed_mps numeric(6,2),
+    walking_asymmetry_percentage numeric(5,2),
+    hill_score integer,
+    race_prediction_5k_seconds integer,
+    race_prediction_10k_seconds integer,
+    race_prediction_half_marathon_seconds integer,
+    race_prediction_marathon_seconds integer,
+    recovery_time_hours integer,
+    training_readiness_score integer,
+    endurance_score integer,
+    weekly_training_load numeric(7,2),
+    acute_training_load numeric(7,2),
+    chronic_training_load numeric(7,2),
+    acwr_ratio numeric(4,2),
+    avg_stress_level integer,
+    max_stress_level integer,
+    body_battery_charged integer,
+    body_battery_drained integer,
+    body_battery_highest integer,
+    body_battery_lowest integer,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
 -- Name: daily_sleep_need; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1508,6 +1581,46 @@ CREATE TABLE public.exercise_entries (
     superset_group integer,
     entry_time time without time zone,
     modality text,
+    max_heart_rate integer,
+    heart_rate_recovery_1min integer,
+    avg_respiration_brpm numeric(5,2),
+    max_respiration_brpm numeric(5,2),
+    avg_speed_mps numeric(6,2),
+    max_speed_mps numeric(6,2),
+    avg_cadence integer,
+    max_cadence integer,
+    avg_power_watts numeric(6,2),
+    max_power_watts numeric(6,2),
+    normalized_power_watts numeric(6,2),
+    tss_score numeric(6,2),
+    intensity_factor numeric(4,3),
+    ground_contact_time_ms numeric(5,1),
+    vertical_oscillation_mm numeric(5,1),
+    stride_length_cm numeric(5,1),
+    avg_temperature_celsius numeric(4,1),
+    max_temperature_celsius numeric(4,1),
+    elevation_gain_meters numeric(7,2),
+    elevation_loss_meters numeric(7,2),
+    floors_climbed integer,
+    stroke_count integer,
+    training_load numeric(6,2),
+    aerobic_training_effect numeric(3,1),
+    anaerobic_training_effect numeric(3,1),
+    vo2_max_estimate numeric(4,1),
+    moving_time_seconds integer,
+    elapsed_time_seconds integer,
+    work_time_seconds integer,
+    resting_calories numeric(8,2),
+    active_calories numeric(8,2),
+    avg_moving_speed_mps numeric(6,2),
+    min_elevation_meters numeric(7,2),
+    max_elevation_meters numeric(7,2),
+    weather_temp_celsius numeric(4,1),
+    weather_condition text,
+    weather_wind_speed_mps numeric(5,2),
+    weather_humidity_percentage numeric(5,2),
+    gear_name text,
+    gear_external_id text,
     CONSTRAINT exercise_entries_modality_check CHECK ((modality = ANY (ARRAY['weight_reps'::text, 'reps_only'::text, 'duration'::text, 'duration_distance'::text])))
 );
 
@@ -1549,6 +1662,69 @@ CREATE TABLE public.exercise_entry_activity_details (
     updated_by_user_id uuid,
     exercise_preset_entry_id uuid,
     CONSTRAINT chk_exercise_entry_id_or_preset_id CHECK ((((exercise_entry_id IS NOT NULL) AND (exercise_preset_entry_id IS NULL)) OR ((exercise_entry_id IS NULL) AND (exercise_preset_entry_id IS NOT NULL))))
+);
+
+
+--
+-- Name: exercise_entry_gps_points; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.exercise_entry_gps_points (
+    id uuid DEFAULT gen_random_uuid() CONSTRAINT exercise_entry_gps_points_id_not_null NOT NULL,
+    user_id uuid CONSTRAINT exercise_entry_gps_points_user_id_not_null NOT NULL,
+    exercise_entry_id uuid CONSTRAINT exercise_entry_gps_points_exercise_entry_id_not_null NOT NULL,
+    entry_date date CONSTRAINT exercise_entry_gps_points_entry_date_not_null NOT NULL,
+    points jsonb DEFAULT '[]'::jsonb CONSTRAINT exercise_entry_gps_points_points_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: exercise_entry_hr_zones; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.exercise_entry_hr_zones (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    exercise_entry_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    zone_index integer NOT NULL,
+    zone_lower_bpm integer,
+    zone_upper_bpm integer,
+    seconds_in_zone integer NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: exercise_entry_laps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.exercise_entry_laps (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    exercise_entry_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    lap_index integer NOT NULL,
+    start_time timestamp with time zone NOT NULL,
+    end_time timestamp with time zone NOT NULL,
+    duration_seconds integer NOT NULL,
+    distance_meters numeric(10,2),
+    calories numeric(8,2),
+    avg_heart_rate integer,
+    max_heart_rate integer,
+    avg_respiration_brpm numeric(5,2),
+    max_respiration_brpm numeric(5,2),
+    avg_speed_mps numeric(6,2),
+    max_speed_mps numeric(6,2),
+    avg_cadence integer,
+    avg_power_watts numeric(6,2),
+    elevation_gain_meters numeric(7,2),
+    elevation_loss_meters numeric(7,2),
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 
@@ -2057,6 +2233,24 @@ CREATE TABLE public.health_appointments (
 
 
 --
+-- Name: health_metric_samples; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.health_metric_samples (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    metric text NOT NULL,
+    entry_date date NOT NULL,
+    source_provider text NOT NULL,
+    device_name text,
+    samples jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT chk_health_metric_samples_metric CHECK ((metric = ANY (ARRAY['heart_rate'::text, 'hrv'::text, 'respiration'::text, 'spo2'::text, 'stress'::text, 'body_battery'::text])))
+);
+
+
+--
 -- Name: injection_entries; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2255,11 +2449,13 @@ CREATE TABLE public.medication_entries (
     med_name_snapshot text,
     dose_amount_snapshot numeric,
     dose_unit_snapshot character varying(20),
+    nutrients_snapshot jsonb,
     notes text,
     source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT medication_entries_nutrients_snapshot_is_object CHECK (((nutrients_snapshot IS NULL) OR (jsonb_typeof(nutrients_snapshot) = 'object'::text)))
 );
 
 
@@ -2412,11 +2608,14 @@ CREATE TABLE public.medications (
     is_active boolean DEFAULT true NOT NULL,
     is_quick boolean DEFAULT false NOT NULL,
     is_glp1 boolean DEFAULT false NOT NULL,
+    is_supplement boolean DEFAULT false NOT NULL,
+    nutrients jsonb DEFAULT '{}'::jsonb NOT NULL,
     notes text,
     source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     custom_fields jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT medications_nutrients_is_object CHECK ((jsonb_typeof(nutrients) = 'object'::text))
 );
 
 
@@ -3491,6 +3690,28 @@ COMMENT ON TABLE public.verification IS 'Better Auth verification table';
 
 
 --
+-- Name: vitals_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.vitals_entries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    entry_date date NOT NULL,
+    "timestamp" timestamp with time zone NOT NULL,
+    systolic_mmhg numeric(5,1),
+    diastolic_mmhg numeric(5,1),
+    blood_glucose_mgdl numeric(5,1),
+    body_temperature_celsius numeric(4,2),
+    meal_context text,
+    source_provider text NOT NULL,
+    device_name text,
+    external_id text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
 -- Name: water_intake; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3521,8 +3742,16 @@ CREATE TABLE public.water_intake_entries (
     source character varying(50) DEFAULT 'manual'::character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
-    logged_at timestamp with time zone DEFAULT now() NOT NULL
+    logged_at timestamp with time zone DEFAULT now() NOT NULL,
+    source_id character varying(255)
 );
+
+
+--
+-- Name: COLUMN water_intake_entries.source_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.water_intake_entries.source_id IS 'Provider-stable record id for idempotent re-sync (e.g. HealthKit uuid, Health Connect metadata.id). NULL for manual or pre-migration synced entries.';
 
 
 --
@@ -4033,6 +4262,14 @@ ALTER TABLE ONLY public.cycles
 
 
 --
+-- Name: daily_health_metrics daily_health_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.daily_health_metrics
+    ADD CONSTRAINT daily_health_metrics_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: daily_sleep_need daily_sleep_need_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4078,6 +4315,30 @@ ALTER TABLE ONLY public.exercise_entries
 
 ALTER TABLE ONLY public.exercise_entry_activity_details
     ADD CONSTRAINT exercise_entry_activity_details_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: exercise_entry_gps_points exercise_entry_gps_points_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_gps_points
+    ADD CONSTRAINT exercise_entry_gps_points_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: exercise_entry_hr_zones exercise_entry_hr_zones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_hr_zones
+    ADD CONSTRAINT exercise_entry_hr_zones_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: exercise_entry_laps exercise_entry_laps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_laps
+    ADD CONSTRAINT exercise_entry_laps_pkey PRIMARY KEY (id);
 
 
 --
@@ -4206,6 +4467,14 @@ ALTER TABLE ONLY public.goal_presets
 
 ALTER TABLE ONLY public.health_appointments
     ADD CONSTRAINT health_appointments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: health_metric_samples health_metric_samples_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.health_metric_samples
+    ADD CONSTRAINT health_metric_samples_pkey PRIMARY KEY (id);
 
 
 --
@@ -4617,6 +4886,54 @@ ALTER TABLE ONLY public.user_custom_symptoms
 
 
 --
+-- Name: daily_health_metrics uq_daily_health_metrics; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.daily_health_metrics
+    ADD CONSTRAINT uq_daily_health_metrics UNIQUE (user_id, entry_date, source_provider);
+
+
+--
+-- Name: exercise_entry_gps_points uq_exercise_entry_gps_points; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_gps_points
+    ADD CONSTRAINT uq_exercise_entry_gps_points UNIQUE (exercise_entry_id);
+
+
+--
+-- Name: exercise_entry_hr_zones uq_exercise_entry_hr_zone; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_hr_zones
+    ADD CONSTRAINT uq_exercise_entry_hr_zone UNIQUE (exercise_entry_id, zone_index);
+
+
+--
+-- Name: exercise_entry_laps uq_exercise_entry_lap; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_laps
+    ADD CONSTRAINT uq_exercise_entry_lap UNIQUE (exercise_entry_id, lap_index);
+
+
+--
+-- Name: health_metric_samples uq_health_metric_samples; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.health_metric_samples
+    ADD CONSTRAINT uq_health_metric_samples UNIQUE (user_id, metric, entry_date, source_provider);
+
+
+--
+-- Name: vitals_entries uq_vitals_entry; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vitals_entries
+    ADD CONSTRAINT uq_vitals_entry UNIQUE (user_id, source_provider, "timestamp");
+
+
+--
 -- Name: user_allergen_preferences user_allergen_preferences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4806,6 +5123,14 @@ ALTER TABLE ONLY public.user_water_containers
 
 ALTER TABLE ONLY public.verification
     ADD CONSTRAINT verification_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: vitals_entries vitals_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vitals_entries
+    ADD CONSTRAINT vitals_entries_pkey PRIMARY KEY (id);
 
 
 --
@@ -5094,6 +5419,27 @@ CREATE INDEX idx_exercise_entry_activity_details_provider_type ON public.exercis
 
 
 --
+-- Name: idx_exercise_entry_gps_points_user_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_entry_gps_points_user_date ON public.exercise_entry_gps_points USING btree (user_id, entry_date DESC);
+
+
+--
+-- Name: idx_exercise_entry_hr_zones_user_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_entry_hr_zones_user_date ON public.exercise_entry_hr_zones USING btree (user_id, entry_date DESC);
+
+
+--
+-- Name: idx_exercise_entry_laps_user_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercise_entry_laps_user_date ON public.exercise_entry_laps USING btree (user_id, entry_date DESC);
+
+
+--
 -- Name: idx_exercise_entry_sets_entry_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5315,6 +5661,13 @@ CREATE INDEX idx_medication_titration_steps_user_id ON public.medication_titrati
 --
 
 CREATE INDEX idx_medications_is_glp1 ON public.medications USING btree (user_id, is_glp1) WHERE is_glp1;
+
+
+--
+-- Name: idx_medications_is_supplement; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_medications_is_supplement ON public.medications USING btree (user_id, is_supplement) WHERE is_supplement;
 
 
 --
@@ -5577,10 +5930,24 @@ CREATE INDEX idx_verification_identifier ON public.verification USING btree (ide
 
 
 --
+-- Name: idx_vitals_user_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_vitals_user_date ON public.vitals_entries USING btree (user_id, entry_date DESC, "timestamp" DESC);
+
+
+--
 -- Name: idx_water_intake_entries_user_date; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_water_intake_entries_user_date ON public.water_intake_entries USING btree (user_id, entry_date);
+
+
+--
+-- Name: idx_water_intake_entries_user_source_source_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_water_intake_entries_user_source_source_id ON public.water_intake_entries USING btree (user_id, source, source_id) WHERE ((source IS NOT NULL) AND (source_id IS NOT NULL));
 
 
 --
@@ -5850,6 +6217,34 @@ CREATE TRIGGER trg_sync_user_mfa_global BEFORE UPDATE OF two_factor_enabled ON p
 
 
 --
+-- Name: daily_health_metrics update_daily_health_metrics_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_daily_health_metrics_updated_at BEFORE UPDATE ON public.daily_health_metrics FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: exercise_entry_gps_points update_exercise_entry_gps_points_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_exercise_entry_gps_points_updated_at BEFORE UPDATE ON public.exercise_entry_gps_points FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: exercise_entry_hr_zones update_exercise_entry_hr_zones_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_exercise_entry_hr_zones_updated_at BEFORE UPDATE ON public.exercise_entry_hr_zones FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: exercise_entry_laps update_exercise_entry_laps_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_exercise_entry_laps_updated_at BEFORE UPDATE ON public.exercise_entry_laps FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: exercise_entry_sets update_exercise_entry_sets_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5885,6 +6280,13 @@ CREATE TRIGGER update_global_settings_updated_at BEFORE UPDATE ON public.global_
 
 
 --
+-- Name: health_metric_samples update_health_metric_samples_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_health_metric_samples_updated_at BEFORE UPDATE ON public.health_metric_samples FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: meal_foods update_meal_foods_timestamp; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5903,6 +6305,13 @@ CREATE TRIGGER update_oidc_providers_updated_at BEFORE UPDATE ON public.oidc_pro
 --
 
 CREATE TRIGGER update_user_oidc_links_updated_at BEFORE UPDATE ON public.user_oidc_links FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: vitals_entries update_vitals_entries_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_vitals_entries_updated_at BEFORE UPDATE ON public.vitals_entries FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -6076,6 +6485,14 @@ ALTER TABLE ONLY public.cycles
 
 
 --
+-- Name: daily_health_metrics daily_health_metrics_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.daily_health_metrics
+    ADD CONSTRAINT daily_health_metrics_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: daily_sleep_need daily_sleep_need_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6153,6 +6570,54 @@ ALTER TABLE ONLY public.exercise_entry_activity_details
 
 ALTER TABLE ONLY public.exercise_entry_activity_details
     ADD CONSTRAINT exercise_entry_activity_details_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_entry_gps_points exercise_entry_gps_points_exercise_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_gps_points
+    ADD CONSTRAINT exercise_entry_gps_points_exercise_entry_id_fkey FOREIGN KEY (exercise_entry_id) REFERENCES public.exercise_entries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_entry_gps_points exercise_entry_gps_points_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_gps_points
+    ADD CONSTRAINT exercise_entry_gps_points_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_entry_hr_zones exercise_entry_hr_zones_exercise_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_hr_zones
+    ADD CONSTRAINT exercise_entry_hr_zones_exercise_entry_id_fkey FOREIGN KEY (exercise_entry_id) REFERENCES public.exercise_entries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_entry_hr_zones exercise_entry_hr_zones_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_hr_zones
+    ADD CONSTRAINT exercise_entry_hr_zones_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_entry_laps exercise_entry_laps_exercise_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_laps
+    ADD CONSTRAINT exercise_entry_laps_exercise_entry_id_fkey FOREIGN KEY (exercise_entry_id) REFERENCES public.exercise_entries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercise_entry_laps exercise_entry_laps_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entry_laps
+    ADD CONSTRAINT exercise_entry_laps_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -6417,6 +6882,14 @@ ALTER TABLE ONLY public.health_appointments
 
 ALTER TABLE ONLY public.health_appointments
     ADD CONSTRAINT health_appointments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: health_metric_samples health_metric_samples_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.health_metric_samples
+    ADD CONSTRAINT health_metric_samples_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7076,6 +7549,14 @@ ALTER TABLE ONLY public.user_water_containers
 
 
 --
+-- Name: vitals_entries vitals_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.vitals_entries
+    ADD CONSTRAINT vitals_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: water_intake water_intake_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7360,6 +7841,12 @@ ALTER TABLE public.cycle_test_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cycles ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: daily_health_metrics; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.daily_health_metrics ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: daily_sleep_need; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -7403,6 +7890,24 @@ ALTER TABLE public.exercise_entries ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.exercise_entry_activity_details ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: exercise_entry_gps_points; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.exercise_entry_gps_points ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: exercise_entry_hr_zones; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.exercise_entry_hr_zones ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: exercise_entry_laps; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.exercise_entry_laps ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: exercise_entry_sets; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7481,6 +7986,12 @@ ALTER TABLE public.goal_presets ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.health_appointments ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: health_metric_samples; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.health_metric_samples ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: injection_entries; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7608,6 +8119,13 @@ CREATE POLICY modify_policy ON public.custom_measurements USING (((public.authen
 
 
 --
+-- Name: daily_health_metrics modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.daily_health_metrics USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
+
+
+--
 -- Name: daily_sleep_need modify_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -7641,6 +8159,27 @@ CREATE POLICY modify_policy ON public.exercise_entry_activity_details USING ((((
   WHERE ((ee.id = exercise_entry_activity_details.exercise_entry_id) AND public.has_diary_access(ee.user_id))))) OR ((exercise_preset_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM public.exercise_preset_entries epe
   WHERE ((epe.id = exercise_entry_activity_details.exercise_preset_entry_id) AND public.has_diary_access(epe.user_id)))))));
+
+
+--
+-- Name: exercise_entry_gps_points modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.exercise_entry_gps_points USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: exercise_entry_hr_zones modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.exercise_entry_hr_zones USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: exercise_entry_laps modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.exercise_entry_laps USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
 
 
 --
@@ -7719,6 +8258,13 @@ CREATE POLICY modify_policy ON public.foods USING ((public.authenticated_user_id
 --
 
 CREATE POLICY modify_policy ON public.goal_presets USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: health_metric_samples modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.health_metric_samples USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
@@ -7951,6 +8497,13 @@ CREATE POLICY modify_policy ON public.user_preferences USING ((public.authentica
 --
 
 CREATE POLICY modify_policy ON public.user_water_containers USING (public.has_diary_access(user_id)) WITH CHECK (public.has_diary_access(user_id));
+
+
+--
+-- Name: vitals_entries modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.vitals_entries USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
@@ -8270,6 +8823,13 @@ CREATE POLICY select_policy ON public.custom_measurements FOR SELECT USING (publ
 
 
 --
+-- Name: daily_health_metrics select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.daily_health_metrics FOR SELECT USING (public.has_checkin_read_access(user_id));
+
+
+--
 -- Name: daily_sleep_need select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -8299,6 +8859,27 @@ CREATE POLICY select_policy ON public.exercise_entry_activity_details FOR SELECT
   WHERE ((ee.id = exercise_entry_activity_details.exercise_entry_id) AND public.has_diary_read_access(ee.user_id))))) OR ((exercise_preset_entry_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM public.exercise_preset_entries epe
   WHERE ((epe.id = exercise_entry_activity_details.exercise_preset_entry_id) AND public.has_diary_read_access(epe.user_id)))))));
+
+
+--
+-- Name: exercise_entry_gps_points select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.exercise_entry_gps_points FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: exercise_entry_hr_zones select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.exercise_entry_hr_zones FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: exercise_entry_laps select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.exercise_entry_laps FOR SELECT USING (public.has_diary_read_access(user_id));
 
 
 --
@@ -8389,6 +8970,13 @@ CREATE POLICY select_policy ON public.foods FOR SELECT USING (public.has_library
 --
 
 CREATE POLICY select_policy ON public.goal_presets FOR SELECT USING (public.has_diary_read_access(user_id));
+
+
+--
+-- Name: health_metric_samples select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.health_metric_samples FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
@@ -8618,6 +9206,13 @@ CREATE POLICY select_policy ON public.user_water_containers FOR SELECT USING (pu
 
 
 --
+-- Name: vitals_entries select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.vitals_entries FOR SELECT USING (public.has_checkin_read_access(user_id));
+
+
+--
 -- Name: water_intake select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -8817,6 +9412,12 @@ ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_water_containers ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: vitals_entries; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.vitals_entries ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: water_intake; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -8875,8 +9476,6 @@ ALTER TABLE public.workout_presets ENABLE ROW LEVEL SECURITY;
 --
 
 GRANT USAGE ON SCHEMA auth TO sparky_uat;
-GRANT USAGE ON SCHEMA auth TO "sparky-uat";
-GRANT USAGE ON SCHEMA auth TO "sparky uat";
 
 
 --
@@ -8884,8 +9483,6 @@ GRANT USAGE ON SCHEMA auth TO "sparky uat";
 --
 
 GRANT USAGE ON SCHEMA public TO sparky_uat;
-GRANT USAGE ON SCHEMA public TO "sparky-uat";
-GRANT USAGE ON SCHEMA public TO "sparky uat";
 
 
 --
@@ -8893,16 +9490,12 @@ GRANT USAGE ON SCHEMA public TO "sparky uat";
 --
 
 GRANT USAGE ON SCHEMA system TO sparky_uat;
-GRANT USAGE ON SCHEMA system TO "sparky-uat";
-GRANT USAGE ON SCHEMA system TO "sparky uat";
 
 
 --
 -- Name: FUNCTION acting_user_id(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.acting_user_id() TO "sparky uat";
-GRANT ALL ON FUNCTION public.acting_user_id() TO "sparky-uat";
 GRANT ALL ON FUNCTION public.acting_user_id() TO sparky_uat;
 
 
@@ -8910,8 +9503,6 @@ GRANT ALL ON FUNCTION public.acting_user_id() TO sparky_uat;
 -- Name: FUNCTION authenticated_user_id(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.authenticated_user_id() TO "sparky uat";
-GRANT ALL ON FUNCTION public.authenticated_user_id() TO "sparky-uat";
 GRANT ALL ON FUNCTION public.authenticated_user_id() TO sparky_uat;
 
 
@@ -8920,16 +9511,12 @@ GRANT ALL ON FUNCTION public.authenticated_user_id() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO sparky_uat;
-GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.calculate_mid_sleep(sleep_start_ts bigint, sleep_end_ts bigint) TO "sparky uat";
 
 
 --
 -- Name: FUNCTION can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permission_type text, auth_user_id uuid) TO sparky_uat;
 
 
@@ -8938,8 +9525,6 @@ GRANT ALL ON FUNCTION public.can_access_user_data(target_user_id uuid, permissio
 --
 
 GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_user_id uuid, p_permission text) TO "sparky uat";
 
 
 --
@@ -8947,16 +9532,12 @@ GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_
 --
 
 GRANT ALL ON FUNCTION public.clear_old_chat_history() TO sparky_uat;
-GRANT ALL ON FUNCTION public.clear_old_chat_history() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.clear_old_chat_history() TO "sparky uat";
 
 
 --
 -- Name: FUNCTION create_checkin_policy(table_name text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO "sparky uat";
-GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO sparky_uat;
 
 
@@ -8965,8 +9546,6 @@ GRANT ALL ON FUNCTION public.create_checkin_policy(table_name text) TO sparky_ua
 --
 
 GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uuid) TO "sparky uat";
 
 
 --
@@ -8974,16 +9553,12 @@ GRANT ALL ON FUNCTION public.create_default_external_data_providers(p_user_id uu
 --
 
 GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_diary_policy(table_name text) TO "sparky uat";
 
 
 --
 -- Name: FUNCTION create_global_default_providers(p_admin_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uuid) TO sparky_uat;
 
 
@@ -8992,16 +9567,12 @@ GRANT ALL ON FUNCTION public.create_global_default_providers(p_admin_user_id uui
 --
 
 GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_library_policy(table_name text, shared_column text, permissions text[]) TO "sparky uat";
 
 
 --
 -- Name: FUNCTION create_medication_policy(table_name text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_medication_policy(table_name text) TO "sparky uat";
-GRANT ALL ON FUNCTION public.create_medication_policy(table_name text) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.create_medication_policy(table_name text) TO sparky_uat;
 
 
@@ -9010,8 +9581,6 @@ GRANT ALL ON FUNCTION public.create_medication_policy(table_name text) TO sparky
 --
 
 GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO "sparky uat";
 
 
 --
@@ -9019,8 +9588,6 @@ GRANT ALL ON FUNCTION public.create_owner_centric_all_policy(table_name text) TO
 --
 
 GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO "sparky uat";
 
 
 --
@@ -9028,16 +9595,12 @@ GRANT ALL ON FUNCTION public.create_owner_centric_id_policy(table_name text) TO 
 --
 
 GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_owner_policy(table_name text, id_column text) TO "sparky uat";
 
 
 --
 -- Name: FUNCTION create_shared_owner_policy(table_name text, id_column text); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO "sparky uat";
-GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_column text) TO sparky_uat;
 
 
@@ -9046,8 +9609,6 @@ GRANT ALL ON FUNCTION public.create_shared_owner_policy(table_name text, id_colu
 --
 
 GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO "sparky uat";
 
 
 --
@@ -9055,8 +9616,6 @@ GRANT ALL ON FUNCTION public.create_user_centric_policy(table_name text) TO "spa
 --
 
 GRANT ALL ON FUNCTION public.create_user_preferences() TO sparky_uat;
-GRANT ALL ON FUNCTION public.create_user_preferences() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.create_user_preferences() TO "sparky uat";
 
 
 --
@@ -9064,8 +9623,6 @@ GRANT ALL ON FUNCTION public.create_user_preferences() TO "sparky uat";
 --
 
 GRANT ALL ON FUNCTION public.current_user_id() TO sparky_uat;
-GRANT ALL ON FUNCTION public.current_user_id() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.current_user_id() TO "sparky uat";
 
 
 --
@@ -9073,16 +9630,12 @@ GRANT ALL ON FUNCTION public.current_user_id() TO "sparky uat";
 --
 
 GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.find_user_by_email(p_email text) TO "sparky uat";
 
 
 --
 -- Name: FUNCTION fn_sync_mfa_totp_flag(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO "sparky uat";
-GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO "sparky-uat";
 GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO sparky_uat;
 
 
@@ -9090,8 +9643,6 @@ GRANT ALL ON FUNCTION public.fn_sync_mfa_totp_flag() TO sparky_uat;
 -- Name: FUNCTION fn_sync_user_mfa_global(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO "sparky uat";
-GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO "sparky-uat";
 GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO sparky_uat;
 
 
@@ -9100,8 +9651,6 @@ GRANT ALL ON FUNCTION public.fn_sync_user_mfa_global() TO sparky_uat;
 --
 
 GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO sparky_uat;
-GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO "sparky uat";
 
 
 --
@@ -9109,8 +9658,6 @@ GRANT ALL ON FUNCTION public.get_accessible_users(p_user_id uuid) TO "sparky uat
 --
 
 GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO sparky_uat;
-GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO "sparky uat";
 
 
 --
@@ -9118,16 +9665,12 @@ GRANT ALL ON FUNCTION public.get_goals_for_date(p_user_id uuid, p_date date) TO 
 --
 
 GRANT ALL ON FUNCTION public.handle_new_user() TO sparky_uat;
-GRANT ALL ON FUNCTION public.handle_new_user() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.handle_new_user() TO "sparky uat";
 
 
 --
 -- Name: FUNCTION has_any_meaningful_permission(perms jsonb); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO sparky_uat;
 
 
@@ -9135,8 +9678,6 @@ GRANT ALL ON FUNCTION public.has_any_meaningful_permission(perms jsonb) TO spark
 -- Name: FUNCTION has_checkin_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO sparky_uat;
 
 
@@ -9145,16 +9686,12 @@ GRANT ALL ON FUNCTION public.has_checkin_read_access(owner_uuid uuid) TO sparky_
 --
 
 GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO sparky_uat;
-GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_diary_access(owner_uuid uuid) TO "sparky uat";
 
 
 --
 -- Name: FUNCTION has_diary_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO sparky_uat;
 
 
@@ -9163,8 +9700,6 @@ GRANT ALL ON FUNCTION public.has_diary_read_access(owner_uuid uuid) TO sparky_ua
 --
 
 GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO sparky_uat;
-GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO "sparky uat";
 
 
 --
@@ -9172,8 +9707,6 @@ GRANT ALL ON FUNCTION public.has_family_access(owner_uuid uuid, perm text) TO "s
 --
 
 GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO sparky_uat;
-GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[]) TO "sparky uat";
 
 
 --
@@ -9181,16 +9714,12 @@ GRANT ALL ON FUNCTION public.has_family_access_or(owner_uuid uuid, perms text[])
 --
 
 GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO sparky_uat;
-GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.has_library_access_with_public(owner_uuid uuid, is_shared boolean, perms text[]) TO "sparky uat";
 
 
 --
 -- Name: FUNCTION has_medication_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_medication_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_medication_access(owner_uuid uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.has_medication_access(owner_uuid uuid) TO sparky_uat;
 
 
@@ -9198,8 +9727,6 @@ GRANT ALL ON FUNCTION public.has_medication_access(owner_uuid uuid) TO sparky_ua
 -- Name: FUNCTION has_medication_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_medication_read_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_medication_read_access(owner_uuid uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.has_medication_read_access(owner_uuid uuid) TO sparky_uat;
 
 
@@ -9207,8 +9734,6 @@ GRANT ALL ON FUNCTION public.has_medication_read_access(owner_uuid uuid) TO spar
 -- Name: FUNCTION has_profile_read_access(owner_uuid uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO sparky_uat;
 
 
@@ -9217,8 +9742,6 @@ GRANT ALL ON FUNCTION public.has_profile_read_access(owner_uuid uuid) TO sparky_
 --
 
 GRANT ALL ON FUNCTION public.is_admin() TO sparky_uat;
-GRANT ALL ON FUNCTION public.is_admin() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.is_admin() TO "sparky uat";
 
 
 --
@@ -9226,16 +9749,12 @@ GRANT ALL ON FUNCTION public.is_admin() TO "sparky uat";
 --
 
 GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO sparky_uat;
-GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric) TO "sparky uat";
 
 
 --
 -- Name: FUNCTION seed_global_providers_for_first_admin(); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO "sparky uat";
-GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO "sparky-uat";
 GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO sparky_uat;
 
 
@@ -9243,8 +9762,6 @@ GRANT ALL ON FUNCTION public.seed_global_providers_for_first_admin() TO sparky_u
 -- Name: FUNCTION set_app_context(p_user_id uuid, p_authenticated_user_id uuid); Type: ACL; Schema: public; Owner: -
 --
 
-GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO "sparky uat";
-GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO "sparky-uat";
 GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_user_id uuid) TO sparky_uat;
 
 
@@ -9253,8 +9770,6 @@ GRANT ALL ON FUNCTION public.set_app_context(p_user_id uuid, p_authenticated_use
 --
 
 GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO sparky_uat;
-GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO "sparky uat";
 
 
 --
@@ -9262,8 +9777,6 @@ GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO "sparky uat";
 --
 
 GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO sparky_uat;
-GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO "sparky uat";
 
 
 --
@@ -9271,8 +9784,6 @@ GRANT ALL ON FUNCTION public.set_updated_at_timestamp() TO "sparky uat";
 --
 
 GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_uat;
-GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO "sparky-uat";
-GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO "sparky uat";
 
 
 --
@@ -9280,8 +9791,6 @@ GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO "sparky uat";
 --
 
 GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO sparky_uat;
-GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO "sparky uat";
 
 
 --
@@ -9289,8 +9798,6 @@ GRANT ALL ON FUNCTION public.trigger_set_timestamp() TO "sparky uat";
 --
 
 GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO sparky_uat;
-GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO "sparky uat";
 
 
 --
@@ -9298,8 +9805,6 @@ GRANT ALL ON FUNCTION public.update_external_data_providers_updated_at() TO "spa
 --
 
 GRANT ALL ON FUNCTION public.update_timestamp() TO sparky_uat;
-GRANT ALL ON FUNCTION public.update_timestamp() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.update_timestamp() TO "sparky uat";
 
 
 --
@@ -9307,8 +9812,6 @@ GRANT ALL ON FUNCTION public.update_timestamp() TO "sparky uat";
 --
 
 GRANT ALL ON FUNCTION public.update_updated_at_column() TO sparky_uat;
-GRANT ALL ON FUNCTION public.update_updated_at_column() TO "sparky-uat";
-GRANT ALL ON FUNCTION public.update_updated_at_column() TO "sparky uat";
 
 
 --
@@ -9316,8 +9819,6 @@ GRANT ALL ON FUNCTION public.update_updated_at_column() TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO "sparky uat";
 
 
 --
@@ -9325,8 +9826,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO "sparky uat";
 
 
 --
@@ -9334,8 +9833,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO "sparky uat";
 
 
 --
@@ -9343,8 +9840,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.admin_activity_logs TO "sparky
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO "sparky uat";
 
 
 --
@@ -9352,8 +9847,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.ai_service_settings TO "sparky
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO "sparky uat";
 
 
 --
@@ -9361,8 +9854,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.api_key TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO "sparky uat";
 
 
 --
@@ -9370,8 +9861,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO "sparky uat
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO "sparky uat";
 
 
 --
@@ -9379,16 +9868,12 @@ GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_measurements TO "sparky uat";
 
 
 --
 -- Name: TABLE check_in_photos; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO sparky_uat;
 
 
@@ -9397,8 +9882,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.check_in_photos TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO "sparky uat";
 
 
 --
@@ -9406,16 +9889,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_categories TO "sparky u
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.custom_measurements TO "sparky uat";
 
 
 --
 -- Name: TABLE cycle_daily_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO sparky_uat;
 
 
@@ -9423,8 +9902,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_daily_entries TO sparky_
 -- Name: TABLE cycle_settings; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO sparky_uat;
 
 
@@ -9432,8 +9909,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_settings TO sparky_uat;
 -- Name: TABLE cycle_test_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO sparky_uat;
 
 
@@ -9441,9 +9916,14 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycle_test_entries TO sparky_u
 -- Name: TABLE cycles; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO sparky_uat;
+
+
+--
+-- Name: TABLE daily_health_metrics; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_health_metrics TO sparky_uat;
 
 
 --
@@ -9451,8 +9931,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.cycles TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO "sparky uat";
 
 
 --
@@ -9460,8 +9938,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.daily_sleep_need TO "sparky ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO "sparky uat";
 
 
 --
@@ -9469,8 +9945,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.day_classification_cache TO "s
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO "sparky uat";
 
 
 --
@@ -9478,8 +9952,27 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entries TO "sparky ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_details TO "sparky uat";
+
+
+--
+-- Name: TABLE exercise_entry_gps_points; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_gps_points TO sparky_uat;
+
+
+--
+-- Name: TABLE exercise_entry_hr_zones; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_hr_zones TO sparky_uat;
+
+
+--
+-- Name: TABLE exercise_entry_laps; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_laps TO sparky_uat;
 
 
 --
@@ -9487,8 +9980,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_activity_detail
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO "sparky uat";
 
 
 --
@@ -9496,8 +9987,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_entry_sets TO "sparky
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO "sparky uat";
 
 
 --
@@ -9505,8 +9994,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.exercise_entry_sets_id_seq TO "sparky uat"
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO "sparky uat";
 
 
 --
@@ -9514,8 +10001,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercise_preset_entries TO "sp
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO "sparky uat";
 
 
 --
@@ -9523,8 +10008,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.exercises TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO "sparky uat";
 
 
 --
@@ -9532,8 +10015,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_data_providers TO "sp
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO "sparky uat";
 
 
 --
@@ -9541,8 +10022,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.external_provider_types TO "sp
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO "sparky uat";
 
 
 --
@@ -9550,8 +10029,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.family_access TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO "sparky uat";
 
 
 --
@@ -9559,8 +10036,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.fasting_logs TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO "sparky uat";
 
 
 --
@@ -9568,16 +10043,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entries TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_entry_meals TO "sparky uat";
 
 
 --
 -- Name: TABLE food_favorites; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO sparky_uat;
 
 
@@ -9586,8 +10057,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_favorites TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO "sparky uat";
 
 
 --
@@ -9595,8 +10064,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.food_variants TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO "sparky uat";
 
 
 --
@@ -9604,8 +10071,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.foods TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO "sparky uat";
 
 
 --
@@ -9613,25 +10078,26 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.global_settings TO "sparky uat
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.goal_presets TO "sparky uat";
 
 
 --
 -- Name: TABLE health_appointments; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_appointments TO sparky_uat;
+
+
+--
+-- Name: TABLE health_metric_samples; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.health_metric_samples TO sparky_uat;
 
 
 --
 -- Name: TABLE injection_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO sparky_uat;
 
 
@@ -9640,8 +10106,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.injection_entries TO sparky_ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO "sparky uat";
 
 
 --
@@ -9649,8 +10113,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_foods TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments TO "sparky uat";
 
 
 --
@@ -9658,8 +10120,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_template_assignments
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO "sparky uat";
 
 
 --
@@ -9667,8 +10127,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plan_templates TO "sparky
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO "sparky uat";
 
 
 --
@@ -9676,8 +10134,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_plans TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO "sparky uat";
 
 
 --
@@ -9685,16 +10141,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meal_types TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.meals TO "sparky uat";
 
 
 --
 -- Name: TABLE medication_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO sparky_uat;
 
 
@@ -9702,8 +10154,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_entries TO sparky_u
 -- Name: TABLE medication_pens; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO sparky_uat;
 
 
@@ -9711,8 +10161,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_pens TO sparky_uat;
 -- Name: TABLE medication_route_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO sparky_uat;
 
 
@@ -9720,8 +10168,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_route_types TO spar
 -- Name: TABLE medication_schedule_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO sparky_uat;
 
 
@@ -9729,8 +10175,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedule_types TO s
 -- Name: TABLE medication_schedules; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO sparky_uat;
 
 
@@ -9738,8 +10182,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_schedules TO sparky
 -- Name: TABLE medication_titration_steps; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO sparky_uat;
 
 
@@ -9747,8 +10189,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_titration_steps TO 
 -- Name: TABLE medication_types; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO sparky_uat;
 
 
@@ -9756,8 +10196,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medication_types TO sparky_uat
 -- Name: TABLE medications; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO sparky_uat;
 
 
@@ -9766,8 +10204,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.medications TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO "sparky uat";
 
 
 --
@@ -9775,8 +10211,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.mood_entries TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO "sparky uat";
 
 
 --
@@ -9784,8 +10218,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.oidc_providers TO "sparky uat"
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO "sparky uat";
 
 
 --
@@ -9793,8 +10225,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.oidc_providers_id_seq TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO "sparky uat";
 
 
 --
@@ -9802,8 +10232,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO "sparky uat
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO "sparky uat";
 
 
 --
@@ -9811,16 +10239,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO "sparky u
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey TO "sparky uat";
 
 
 --
 -- Name: TABLE passkey_registration_tickets; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets TO sparky_uat;
 
 
@@ -9828,8 +10252,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.passkey_registration_tickets T
 -- Name: TABLE pregnancies; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO sparky_uat;
 
 
@@ -9837,8 +10259,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancies TO sparky_uat;
 -- Name: TABLE pregnancy_checklist_state; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO sparky_uat;
 
 
@@ -9846,8 +10266,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_checklist_state TO s
 -- Name: TABLE pregnancy_contractions; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO sparky_uat;
 
 
@@ -9855,8 +10273,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_contractions TO spar
 -- Name: TABLE pregnancy_kick_sessions; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO sparky_uat;
 
 
@@ -9864,8 +10280,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_kick_sessions TO spa
 -- Name: TABLE pregnancy_photos; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO sparky_uat;
 
 
@@ -9874,8 +10288,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pregnancy_photos TO sparky_uat
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO "sparky uat";
 
 
 --
@@ -9883,8 +10295,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO "sparky uat";
 
 
 --
@@ -9892,8 +10302,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.session TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO "sparky uat";
 
 
 --
@@ -9901,8 +10309,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entries TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO "sparky uat";
 
 
 --
@@ -9910,8 +10316,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_entry_stages TO "sparky 
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO "sparky uat";
 
 
 --
@@ -9919,8 +10323,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sleep_need_calculations TO "sp
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO "sparky uat";
 
 
 --
@@ -9928,16 +10330,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sparky_chat_history TO "sparky
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.sso_provider TO "sparky uat";
 
 
 --
 -- Name: TABLE symptom_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO sparky_uat;
 
 
@@ -9946,8 +10344,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.symptom_entries TO sparky_uat;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO "sparky uat";
 
 
 --
@@ -9955,16 +10351,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.two_factor TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public."user" TO "sparky uat";
 
 
 --
 -- Name: TABLE user_allergen_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO sparky_uat;
 
 
@@ -9972,8 +10364,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_allergen_preferences TO s
 -- Name: TABLE user_custom_moods; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO sparky_uat;
 
 
@@ -9982,16 +10372,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_moods TO sparky_ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_nutrients TO "sparky uat";
 
 
 --
 -- Name: TABLE user_custom_symptom_locations; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations TO sparky_uat;
 
 
@@ -9999,8 +10385,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptom_locations 
 -- Name: TABLE user_custom_symptoms; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO sparky_uat;
 
 
@@ -10008,8 +10392,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_custom_symptoms TO sparky
 -- Name: TABLE user_cycle_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences TO sparky_uat;
 
 
@@ -10017,8 +10399,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_cycle_display_preferences
 -- Name: TABLE user_dashboard_layouts; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO sparky_uat;
 
 
@@ -10027,8 +10407,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_dashboard_layouts TO spar
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO "sparky uat";
 
 
 --
@@ -10036,8 +10414,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_goals TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO "sparky uat";
 
 
 --
@@ -10045,16 +10421,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_ignored_updates TO "spark
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_meal_visibilities TO "sparky uat";
 
 
 --
 -- Name: TABLE user_medication_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_preferences TO sparky_uat;
 
 
@@ -10062,8 +10434,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_medication_display_prefer
 -- Name: TABLE user_mood_display_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences TO sparky_uat;
 
 
@@ -10072,8 +10442,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_mood_display_preferences 
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferences TO "sparky uat";
 
 
 --
@@ -10081,16 +10449,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_display_preferen
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.user_nutrient_display_preferences_id_seq TO "sparky uat";
 
 
 --
 -- Name: TABLE user_nutrient_goal_preferences; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_goal_preferences TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_goal_preferences TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_goal_preferences TO sparky_uat;
 
 
@@ -10099,8 +10463,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_nutrient_goal_preferences
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO "sparky uat";
 
 
 --
@@ -10108,8 +10470,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_oidc_links TO "sparky uat
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO "sparky uat";
 
 
 --
@@ -10117,8 +10477,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_oidc_links_id_seq TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO "sparky uat";
 
 
 --
@@ -10126,8 +10484,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_preferences TO "sparky ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO "sparky uat";
 
 
 --
@@ -10135,8 +10491,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.user_water_containers TO "spar
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO "sparky uat";
 
 
 --
@@ -10144,8 +10498,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.user_water_containers_id_seq TO "sparky ua
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO "sparky uat";
 
 
 --
@@ -10153,8 +10505,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_analysis TO "sparky uat
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO "sparky uat";
 
 
 --
@@ -10162,8 +10512,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.v_mctq_stats TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO "sparky uat";
+
+
+--
+-- Name: TABLE vitals_entries; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.vitals_entries TO sparky_uat;
 
 
 --
@@ -10171,16 +10526,12 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.verification TO "sparky uat";
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake TO "sparky uat";
 
 
 --
 -- Name: TABLE water_intake_entries; Type: ACL; Schema: public; Owner: -
 --
 
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO "sparky uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO "sparky-uat";
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO sparky_uat;
 
 
@@ -10189,8 +10540,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.water_intake_entries TO sparky
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO "sparky uat";
 
 
 --
@@ -10198,8 +10547,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.weekly_goal_plans TO "sparky u
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets TO "sparky uat";
 
 
 --
@@ -10207,8 +10554,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_assignment_sets T
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO "sparky uat";
 
 
 --
@@ -10216,8 +10561,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_assignment_sets_id_seq TO "sp
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignments TO "sparky uat";
 
 
 --
@@ -10225,8 +10568,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_template_assignme
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq TO "sparky uat";
 
 
 --
@@ -10234,8 +10575,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_template_assignments_id_seq T
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO "sparky uat";
 
 
 --
@@ -10243,8 +10582,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_plan_templates TO "spa
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO "sparky uat";
 
 
 --
@@ -10252,8 +10589,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_plan_templates_id_seq TO "sparky u
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets TO "sparky uat";
 
 
 --
@@ -10261,8 +10596,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercise_sets T
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO "sparky uat";
 
 
 --
@@ -10270,8 +10603,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercise_sets_id_seq TO "sp
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO "sparky uat";
 
 
 --
@@ -10279,8 +10610,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_preset_exercises TO "s
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO "sparky uat";
 
 
 --
@@ -10288,8 +10617,6 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_preset_exercises_id_seq TO "sparky
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO sparky_uat;
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO "sparky-uat";
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO "sparky uat";
 
 
 --
@@ -10297,8 +10624,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.workout_presets TO "sparky uat
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO sparky_uat;
-GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO "sparky-uat";
-GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO "sparky uat";
 
 
 --
@@ -10306,16 +10631,12 @@ GRANT SELECT,USAGE ON SEQUENCE public.workout_presets_id_seq TO "sparky uat";
 --
 
 GRANT SELECT ON TABLE system.schema_migrations TO sparky_uat;
-GRANT SELECT ON TABLE system.schema_migrations TO "sparky-uat";
-GRANT SELECT ON TABLE system.schema_migrations TO "sparky uat";
 
 
 --
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS TO sparky_uat;
 
 
@@ -10323,8 +10644,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT ALL ON FUNCTIONS T
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: auth; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
@@ -10332,8 +10651,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA auth GRANT SELECT,INSERT,DELE
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON SEQUENCES TO sparky_uat;
 
 
@@ -10341,8 +10658,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,USAGE ON 
 -- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS TO sparky_uat;
 
 
@@ -10350,8 +10665,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT ALL ON FUNCTIONS
 -- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: -
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky uat";
-ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO "sparky-uat";
 ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO sparky_uat;
 
 
@@ -10359,5 +10672,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE sparky IN SCHEMA public GRANT SELECT,INSERT,DE
 -- PostgreSQL database dump complete
 --
 
-\unrestrict urj2OAVFvPTJdH8PZAYX8q12SbkE440UOncTimowmwwqIEbZV4TD3kGkjkfAIU8
+\unrestrict UK2vb2gfdaW09yZcXqlm0ZueUsjAQH9HYf4K0bUukTh5NeuHiY4zr9iY7KHaudD
 

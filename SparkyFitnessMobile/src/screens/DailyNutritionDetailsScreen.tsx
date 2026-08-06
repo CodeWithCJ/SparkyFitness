@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -12,6 +12,7 @@ import { useServerConnection } from '../hooks/useServerConnection';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { NUTRIENT_META } from '../constants/nutrients';
 import NutritionMacroCard from '../components/NutritionMacroCard';
+import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodEntry } from '../types/foodEntries';
@@ -165,11 +166,7 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
   }, [summary, preferences, customDefs]);
 
   if (isLoading) {
-    return (
-      <View className="flex-1 bg-background justify-center items-center">
-        <ActivityIndicator size="large" color={accentColor} />
-      </View>
-    );
+    return <StatusView loading className="bg-background" />;
   }
 
   if (isError || !summary) {

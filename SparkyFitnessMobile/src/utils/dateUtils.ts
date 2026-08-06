@@ -16,6 +16,7 @@ export const toDateStringWithOffset = (timestamp: string | Date, offsetMinutes: 
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 };
 
+// Get today's date in YYYY-MM-DD format (local timezone)
 export const getTodayDate = (): string => {
   const now = new Date();
   const year = now.getFullYear();

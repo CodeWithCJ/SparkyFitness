@@ -16,6 +16,7 @@ import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import CustomBooleanControl from '../components/CustomBooleanControl';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useUpsertCheckIn } from '../hooks/useUpsertCheckIn';
 import { usePreferences } from '../hooks/usePreferences';
@@ -136,11 +137,10 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const usesNativeHeader = useNativeIOSHeadersActive();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
-  const [accentPrimary, borderSubtle, textSecondary] = useCSSVariable([
+  const [accentPrimary, textSecondary] = useCSSVariable([
     '--color-accent-primary',
-    '--color-border-subtle',
     '--color-text-secondary',
-  ]) as [string, string, string];
+  ]) as [string, string];
 
   const initialDate = route.params?.date ?? useDiaryDateStore.getState().selectedDate;
   const [selectedDate, setSelectedDate] = useState<string>(initialDate);
@@ -1047,29 +1047,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
       {/* Sticky footer */}
       {!usesNativeHeader && (
-      <View
-        className="px-4 py-3"
-        style={{
-          paddingBottom: Math.max(insets.bottom, 12),
-          borderTopWidth: 1,
-          borderTopColor: borderSubtle,
-        }}
-      >
-        <Button
-          variant="primary"
+        <FooterSaveBar
           onPress={handleSave}
           disabled={isSaveDisabled}
-          className="py-3"
-        >
-          {isSaving ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text className="text-sm font-semibold text-center" style={{ color: '#fff' }}>
-              {t('common.save')}
-            </Text>
-          )}
-        </Button>
-      </View>
+          busy={upsertMutation.isPending}
+        />
       )}
 
       <CalendarSheet

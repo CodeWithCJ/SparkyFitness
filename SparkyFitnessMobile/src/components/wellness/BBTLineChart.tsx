@@ -1,15 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, Platform } from 'react-native';
+import { View, Text } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
-import { matchFont } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
+import { makeChartFont, formatTooltipDate } from '../charts/chartFormatting';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
   EMPTY_CHART_TOUCH_LAYOUT,
   type ChartTouchLayout,
 } from '../ChartTouchOverlay';
 import { useTranslation } from 'react-i18next';
-import { getAppLocale, formatLocalizedNumber } from '../../localization';
+import { formatLocalizedNumber } from '../../localization';
 
 type BBTDataPoint = {
   date: string;
@@ -21,26 +21,13 @@ type BBTLineChartProps = {
   isLoading: boolean;
 };
 
-const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
-const font = matchFont({ fontFamily, fontSize: 11 });
+const font = makeChartFont(11);
 
 const formatXLabel = (day: string): string => {
   if (typeof day !== 'string') return '';
   const parts = day.split('-');
   if (parts.length < 3) return day;
   return `${parts[1]}/${parts[2]}`;
-};
-
-const formatTooltipDate = (day: string): string => {
-  const parts = day.split('-');
-  if (parts.length < 3) return day;
-  const [year, month, d] = parts.map(Number);
-  const date = new Date(year, (month || 1) - 1, d || 1);
-  return date.toLocaleDateString(getAppLocale(), {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
 };
 
 const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import NutritionMacroCard from '../components/NutritionMacroCard';
+import StatusView from '../components/StatusView';
 import SwipeableIngredientRow from '../components/SwipeableIngredientRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useMealTypes, usePreferences } from '../hooks';
@@ -320,8 +321,8 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-background justify-center items-center" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-        <ActivityIndicator size="large" color={accentColor} />
+      <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+        <StatusView loading />
       </View>
     );
   }
@@ -507,11 +508,10 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
         {/* Delete meal */}
         <Button
-          variant="ghost"
+          variant="destructive"
           onPress={confirmAndDelete}
           disabled={isRowBusy}
           className="mt-2"
-          textClassName="text-bg-danger font-medium"
         >
            {isDeletePending ? t('foodMealScreens.deleting') : t('foodMealScreens.deleteMeal')}
         </Button>
