@@ -22,7 +22,7 @@ import { updateMealType } from '../services/api/mealTypesApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { preferencesQueryKey, mealTypesQueryKey } from '../hooks/queryKeys';
-import { getMealTypeLabel } from '../constants/meals';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import type { UserPreferences } from '../types/preferences';
 import type { MealType } from '../types/mealTypes';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
@@ -321,7 +321,7 @@ const MealTypeTimeRow: React.FC<{
   return (
     <View className="flex-row items-center justify-between py-2.5 border-b border-border/40">
       <Text className="text-sm font-medium text-text-primary">
-        {getMealTypeLabel(mealType.name)}
+        {getMealTypeDisplayLabel(mealType.name, t)}
       </Text>
       <View className="flex-row items-center gap-2">
         <TextInput

@@ -15,7 +15,7 @@ import { setPendingMealIngredientSelection } from '../../services/mealBuilderSel
 import { useMealTypes, usePreferences } from '../../hooks';
 import { useSaveFood } from '../../hooks/useSaveFood';
 import { useAddFoodEntry } from '../../hooks/useAddFoodEntry';
-import { getMealTypeLabel } from '../../constants/meals';
+import { getMealTypeDisplayLabel } from '../../utils/mealNutrition';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../../utils/dateUtils';
 import { parseOptional } from '../../types/foodInfo';
 import { createFoodVariant } from '../../services/api/foodsApi';
@@ -179,7 +179,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     setQuantityTouched(true);
   };
 
-  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
+  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeDisplayLabel(mt.name, t), value: mt.id }));
 
   const [customNutrientValues, setCustomNutrientValues] = useState<Record<string, number>>({});
 
@@ -424,7 +424,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
                       className="flex-row items-center"
                     >
                       <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {getMealTypeLabel(selectedMealType.name)}
+                        {getMealTypeDisplayLabel(selectedMealType.name, t)}
                       </Text>
                       <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
                     </TouchableOpacity>

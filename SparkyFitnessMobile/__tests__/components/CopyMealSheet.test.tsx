@@ -34,7 +34,7 @@ describe('CopyMealSheet', () => {
     setTestLocale(locale);
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
-    act(() => ref.current?.present(getTodayDate(), 'Breakfast'));
+    act(() => ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'));
     expect(view.getByText(title)).toBeTruthy();
     expect(view.getByText(from)).toBeTruthy();
     expect(view.getByText(targetDate)).toBeTruthy();
@@ -51,7 +51,7 @@ describe('CopyMealSheet', () => {
     setTestLocale(locale);
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
-    act(() => ref.current?.present(addDays(getTodayDate(), -1), 'Breakfast'));
+    act(() => ref.current?.present(addDays(getTodayDate(), -1), 'breakfast-id', 'Breakfast'));
     expect(view.getByText(expected)).toBeTruthy();
     expect(view.getByTestId('date-picker').props.locale).toBe(appLocale);
   });
@@ -63,7 +63,7 @@ describe('CopyMealSheet', () => {
     setTestLocale(locale);
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
-    act(() => ref.current?.present('2026-01-02', 'Breakfast'));
+    act(() => ref.current?.present('2026-01-02', 'breakfast-id', 'Breakfast'));
     const formatted = new Date(2026, 0, 2).toLocaleDateString(appLocale, {
       weekday: 'short',
       month: 'short',
@@ -77,7 +77,7 @@ describe('CopyMealSheet', () => {
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
     const sourceDate = addDays(getTodayDate(), -2);
-    act(() => ref.current?.present(sourceDate, 'Brunch'));
+    act(() => ref.current?.present(sourceDate, 'brunch-id', 'Brunch'));
     expect(view.getByText('Brunch')).toBeTruthy();
     const copyButton = view.getByLabelText('Copy');
     fireEvent.press(copyButton);
@@ -99,7 +99,7 @@ describe('CopyMealSheet', () => {
     setTestLocale(locale);
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} isPending onCopy={jest.fn()} />);
-    act(() => ref.current?.present(getTodayDate(), 'Breakfast'));
+    act(() => ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'));
     expect(view.getByText(pending)).toBeTruthy();
   });
 });

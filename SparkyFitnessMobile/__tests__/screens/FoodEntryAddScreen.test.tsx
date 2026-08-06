@@ -671,6 +671,34 @@ describe('FoodEntryAddScreen', () => {
     expect(screen.getByDisplayValue('2.5')).toBeTruthy();
   });
 
+  it('pre-selects a mealTypeId passed through navigation and sends it in the payload', () => {
+    // Two visible meal types; the route pins the custom one.
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [
+        { id: 'meal-1', name: 'breakfast', is_visible: true, sort_order: 1 },
+        { id: 'custom-pw', name: 'Pre-Workout', is_visible: true, sort_order: 0 },
+      ] as any,
+      defaultMealTypeId: 'meal-1',
+      isLoading: false,
+      isError: false,
+    });
+
+    const screen = renderScreen({
+      item: baseMealItem,
+      date: '2026-05-15',
+      mealTypeId: 'custom-pw',
+    });
+
+    fireEvent.press(screen.getByText('Log Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_type_id: 'custom-pw',
+        meal_type: 'Pre-Workout',
+      }),
+    );
+  });
+
   it('dispatches addMeal when logging a meal item (not addEntry)', () => {
     mockUseFoodVariants.mockReturnValueOnce({
       variants: [],

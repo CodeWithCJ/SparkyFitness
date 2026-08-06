@@ -91,6 +91,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const { t } = useTranslation();
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
+  const mealTypeId = route.params?.mealTypeId;
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -346,9 +347,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         date,
         pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
         returnDepth: isMealBuilderMode ? 2 : undefined,
+        mealTypeId,
       });
     },
-    [navigation, date, isMealBuilderMode],
+    [navigation, date, isMealBuilderMode, mealTypeId],
   );
 
   const openCreateFood = useCallback(() => {

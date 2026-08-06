@@ -29,7 +29,8 @@ import {
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import type { MealTypeKey } from '../utils/mealNutrition';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
+import type { FoodEntry } from '../types/foodEntries';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -121,9 +122,17 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   ), [goToPreviousDay, goToNextDay]);
 
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), [setSelectedDate]);
-  const openMealTypeDetail = useCallback((mealType: MealTypeKey) => {
-    navigation.navigate('MealTypeDetail', { date: selectedDate, mealType });
-  }, [navigation, selectedDate]);
+  const openMealTypeDetail = useCallback(
+    (mealTypeId: string | null, mealTypeName: string, entries: FoodEntry[]) => {
+      navigation.navigate('MealTypeDetail', {
+        date: selectedDate,
+        mealTypeId: mealTypeId ?? undefined,
+        mealType: mealTypeName,
+        mealLabel: getMealTypeDisplayLabel(mealTypeName, t),
+      });
+    },
+    [navigation, selectedDate, t],
+  );
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit as 'kg' | 'lbs') ?? 'kg';

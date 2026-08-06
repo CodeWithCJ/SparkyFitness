@@ -25,7 +25,7 @@ import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { goalsQueryKey } from '../hooks/queryKeys';
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { fireSuccessHaptic } from '../services/haptics';
-import { getMealTypeLabel } from '../constants/meals';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import { formatDateLabel, getTodayDate } from '../utils/dateUtils';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
@@ -135,14 +135,14 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const mealPickerOptions = useMemo(
     () =>
       mealTypes.map((mt) => ({
-        label: getMealTypeLabel(mt.name),
+        label: getMealTypeDisplayLabel(mt.name, t),
         value: mt.id,
       })),
-    [mealTypes],
+    [mealTypes, t],
   );
   const selectedMealLabel = useMemo(() => {
     const found = mealTypes.find((mt) => mt.id === selectedMealTypeId);
-     return found ? getMealTypeLabel(found.name) : t('foodMealScreens.selectMeal');
+     return found ? getMealTypeDisplayLabel(found.name, t) : t('foodMealScreens.selectMeal');
    }, [mealTypes, selectedMealTypeId, t]);
 
   const handleSave = async () => {

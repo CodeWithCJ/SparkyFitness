@@ -24,7 +24,7 @@ import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { prefillEntryTime, userHourMinute } from '@workspace/shared';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
-import { getMealTypeLabel } from '../constants/meals';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import { goalsQueryKey } from '../hooks/queryKeys';
 import {
   useFavorites,
@@ -205,7 +205,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const { isConnected } = useServerConnection();
   const { preferences } = usePreferences({ enabled: isConnected });
   const showNetCarbs = preferences?.show_net_carbs === true;
-  const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
+  const [selectedMealId, setSelectedMealId] = useState<string | undefined>(route.params?.mealTypeId);
   // When editing an existing meal ingredient, pre-populate adjustedValues from
   // the ingredient's stored nutrition snapshot so the form shows the actual
   // saved values, not the API variant which may differ.
@@ -1106,7 +1106,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const fatGoalPct = goalPercent(scaled(displayValues.fat), goals?.fat);
 
   const mealPickerOptions = mealTypes.map((mealType) => ({
-    label: getMealTypeLabel(mealType.name),
+    label: getMealTypeDisplayLabel(mealType.name, t),
     value: mealType.id,
   }));
 
@@ -1497,7 +1497,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                       className="flex-row items-center"
                     >
                       <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {getMealTypeLabel(selectedMealType.name)}
+                        {getMealTypeDisplayLabel(selectedMealType.name, t)}
                       </Text>
                       <Icon
                         name="chevron-down"

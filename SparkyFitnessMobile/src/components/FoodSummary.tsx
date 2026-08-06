@@ -10,9 +10,9 @@ import SwipeableFoodRow from './SwipeableFoodRow';
 import {
   calculateEntryNutrition,
   calculateMealNutrition,
+  getMealTypeDisplayLabel,
   groupFoodEntriesByMealType,
   getMealPercentage,
-  getMealTypeSystemKey,
   type MealGroup,
 } from '../utils/mealNutrition';
 import { formatLocalizedNumber } from '../localization';
@@ -24,7 +24,7 @@ interface FoodSummaryProps {
   calorieGoal?: number;
   onAddFood?: () => void;
   onAdjustServing?: (entry: FoodEntry) => void;
-  onPressMealType?: (mealTypeName: string, entries: FoodEntry[]) => void;
+  onPressMealType?: (mealTypeId: string | null, mealTypeName: string, entries: FoodEntry[]) => void;
 }
 
 interface MealSectionProps {
@@ -32,7 +32,7 @@ interface MealSectionProps {
   goals?: DailyGoals;
   calorieGoal?: number;
   onAdjustServing?: (entry: FoodEntry) => void;
-  onPressMealType?: (mealTypeName: string, entries: FoodEntry[]) => void;
+  onPressMealType?: (mealTypeId: string | null, mealTypeName: string, entries: FoodEntry[]) => void;
 }
 
 function getMealTypeIcon(name: string): IconName {
@@ -54,23 +54,7 @@ const MealSection: React.FC<MealSectionProps> = ({
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
-  const label = (() => {
-    if (!group.isSystem) return group.name;
-    switch (getMealTypeSystemKey(group.name)) {
-      case 'mealTypes.breakfast':
-        return t('mealTypes.breakfast');
-      case 'mealTypes.lunch':
-        return t('mealTypes.lunch');
-      case 'mealTypes.dinner':
-        return t('mealTypes.dinner');
-      case 'mealTypes.snacks':
-        return t('mealTypes.snacks');
-      case 'mealTypes.other':
-        return t('mealTypes.other');
-      default:
-        return group.name;
-    }
-  })();
+  const label = getMealTypeDisplayLabel(group.name, t);
   const icon = getMealTypeIcon(group.name);
 
   const totalCalories = calculateMealNutrition(group.entries).values.calories;
@@ -103,7 +87,7 @@ const MealSection: React.FC<MealSectionProps> = ({
     <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm">
       {onPressMealType ? (
         <Pressable
-          onPress={() => onPressMealType(group.name, group.entries)}
+          onPress={() => onPressMealType(group.mealTypeId, group.name, group.entries)}
           className="flex-row gap-2 mb-3 items-center"
           accessibilityRole="button"
            accessibilityLabel={t('foodSummary.nutritionBreakdown', { mealType: label })}

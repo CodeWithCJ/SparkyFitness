@@ -81,6 +81,8 @@ export type RootStackParamList = {
     | {
         date?: string;
         pickerMode?: FoodPickerMode;
+        /** Optional canonical meal type id to pre-select when logging. */
+        mealTypeId?: string;
       }
     | undefined;
   FoodEntryAdd:
@@ -95,6 +97,8 @@ export type RootStackParamList = {
         pickerMode?: FoodPickerMode;
         ingredientIndex?: number;
         returnDepth?: number;
+        /** Optional canonical meal type id to pre-select when logging. */
+        mealTypeId?: string;
       };
   EditLoggedMeal: { foodEntryMealId: string; initialMeal?: FoodEntryMeal };
   FoodEntryView: {
@@ -103,7 +107,15 @@ export type RootStackParamList = {
     adjustedUnitSelection?: FoodUnitSelectionResult;
     adjustedCustomNutrients?: Record<string, string | number> | null;
   };
-  MealTypeDetail: { date: string; mealType: MealTypeKey; mealLabel?: string };
+  MealTypeDetail: {
+    date: string;
+    /** Canonical meal type id (preferred over the legacy name key). */
+    mealTypeId?: string;
+    /** Legacy name key, kept for older callers and as a name fallback. */
+    mealType?: MealTypeKey;
+    /** Pre-resolved display label (literal custom name or localized system). */
+    mealLabel?: string;
+  };
   DailyNutritionDetails: { date: string };
   NutrientTrends: {
     nutrientKey: string;

@@ -19,9 +19,9 @@ import { formatLocalizedNumber } from '../localization';
 import {
   calculateEntryNutrition,
   calculateMealNutrition,
-  filterFoodEntriesByMealType,
+  filterFoodEntriesByMealTypeId,
   getMealPercentage,
-  getMealTypeSystemKey,
+  getMealTypeDisplayLabel,
 } from '../utils/mealNutrition';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -29,7 +29,7 @@ type MealTypeDetailScreenProps = RootStackScreenProps<'MealTypeDetail'>;
 
 const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation, route }) => {
   const { t } = useTranslation();
-  const { date, mealType, mealLabel } = route.params;
+  const { date, mealType, mealTypeId, mealLabel } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -48,27 +48,34 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const systemMealType = getMealTypeSystemKey(mealType);
-  let translatedMealType: string;
-  switch (systemMealType) {
-    case 'breakfast': translatedMealType = t('mealTypes.breakfast'); break;
-    case 'lunch': translatedMealType = t('mealTypes.lunch'); break;
-    case 'dinner': translatedMealType = t('mealTypes.dinner'); break;
-    case 'snacks': translatedMealType = t('mealTypes.snacks'); break;
-    case 'other': translatedMealType = t('mealTypes.other'); break;
-    default: translatedMealType = mealType;
-  }
-  const label = mealLabel ?? translatedMealType;
+  // Resolve the display label: a pre-resolved mealLabel wins (Diary sends the
+  // literal custom name or the localized system label); otherwise resolve from
+  // the active meal type by id, then fall back to the legacy name key.
+  const resolvedName = useMemo(() => {
+    if (mealTypeId) {
+      const mt = mealTypes.find((m) => m.id === mealTypeId);
+      if (mt) return mt.name;
+    }
+    return mealType;
+  }, [mealTypeId, mealType, mealTypes]);
+  const label = mealLabel ?? getMealTypeDisplayLabel(resolvedName ?? '', t);
+  const mealTypeName = resolvedName ?? '';
   const entries = useMemo(
-    () => filterFoodEntriesByMealType(summary?.foodEntries ?? [], mealType, mealTypes),
-    [summary?.foodEntries, mealType, mealTypes],
+    () =>
+      filterFoodEntriesByMealTypeId(
+        summary?.foodEntries ?? [],
+        mealTypeId,
+        mealTypeName,
+        mealTypes,
+      ),
+    [summary?.foodEntries, mealTypeId, mealTypeName, mealTypes],
   );
   const nutrition = useMemo(() => calculateMealNutrition(entries), [entries]);
   const targetCalories = useMemo(() => {
     if (!summary?.goals || !summary?.calorieGoal) return 0;
-    const percentage = getMealPercentage(mealType, summary.goals);
+    const percentage = getMealPercentage(mealTypeName, summary.goals);
     return Math.round((summary.calorieGoal * percentage) / 100);
-  }, [summary, mealType]);
+  }, [summary, mealTypeName]);
 
   const { copyMeal, isPending: isCopying } = useCopyFoodEntries({
     onSuccess: () => copySheetRef.current?.dismiss(),
@@ -76,7 +83,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   // "other" is a synthetic bucket that aggregates every non-standard meal type,
   // so it has no single real meal type to copy from (the server would match
   // nothing). Only offer copy for concrete meal types.
-  const canCopy = isConnected && entries.length > 0 && mealType !== 'other';
+  const canCopy = isConnected && entries.length > 0 && mealTypeName.toLowerCase() !== 'other';
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -168,17 +175,34 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
   const header = useScreenHeader({
     left: { kind: 'back' },
-    right: canCopy
-      ? {
-          kind: 'icon',
-          sfSymbol: 'doc.on.doc',
-          ionicon: 'copy-outline',
-          role: 'secondary',
-          onPress: () => copySheetRef.current?.present(date, mealType),
-           accessibilityLabel: t('foodMeals.copyMealToDay'),
-          identifier: 'meal-type-detail-copy',
-        }
-      : null,
+    right: [
+      {
+        kind: 'icon',
+        sfSymbol: 'plus',
+        ionicon: 'add',
+        role: 'primary',
+        onPress: () =>
+          navigation.navigate('FoodSearch', {
+            date,
+            mealTypeId: mealTypeId ?? undefined,
+          }),
+        accessibilityLabel: t('screens.addFood'),
+        identifier: 'meal-type-detail-add',
+      },
+      ...(canCopy
+        ? [
+            {
+              kind: 'icon' as const,
+              sfSymbol: 'doc.on.doc',
+              ionicon: 'copy-outline',
+              role: 'secondary' as const,
+              onPress: () => copySheetRef.current?.present(date, mealTypeId ?? null, mealTypeName),
+              accessibilityLabel: t('foodMeals.copyMealToDay'),
+              identifier: 'meal-type-detail-copy',
+            },
+          ]
+        : []),
+    ],
   });
 
   return (

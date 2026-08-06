@@ -24,7 +24,7 @@ import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
-import { getMealTypeLabel } from '../constants/meals';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import { useMealTypes, usePreferences, useServerConnection, useCustomNutrients } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
@@ -371,7 +371,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const servingSizeRef = useRef(displayValues.servingSize);
 
   const mealPickerOptions = mealTypes.map((mealType) => ({
-    label: getMealTypeLabel(mealType.name),
+    label: getMealTypeDisplayLabel(mealType.name, t),
     value: mealType.id,
   }));
 
@@ -1121,7 +1121,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     className="flex-row items-center"
                   >
                     <Text className="text-text-primary text-base font-medium">
-                      {getMealTypeLabel(selectedMealType.name)}
+                      {getMealTypeDisplayLabel(selectedMealType.name, t)}
                     </Text>
                     <Icon
                       name="chevron-down"
@@ -1135,7 +1135,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               />
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {getMealTypeLabel(entry.meal_type)}
+                {getMealTypeDisplayLabel(entry.meal_type, t)}
               </Text>
             )}
           </View>
