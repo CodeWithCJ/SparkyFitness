@@ -40,27 +40,25 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
               {item.name}
             </Text>
             {item.provider_verified ? <VerifiedBadge size="sm" style={{ marginTop: 2 }} /> : null}
-            <ShareStatusBadge status={status} />
+            <ShareStatusBadge status={status} style={{ marginTop: 3 }} />
+            {isFavorite && (
+              <Icon
+                name="star"
+                size={16}
+                color={favoriteGold}
+                style={{ marginTop: 3 }}
+                accessibilityLabel={t('foodSearchUi.favorite')}
+              />
+            )}
           </View>
           {item.brand ? (
             <Text className="text-text-secondary text-sm mt-0.5">{item.brand}</Text>
           ) : null}
         </View>
         <View className="items-end">
-          <View className="flex-row items-center gap-1">
-            {isFavorite && (
-              <Icon
-                name="star"
-                size={13}
-                color={favoriteGold}
-                style={{ marginTop: 1 }}
-                accessibilityLabel={t('foodSearchUi.favorite')}
-              />
-            )}
-            <Text className="text-text-primary text-base font-semibold">
-              {item.default_variant.calories} {t('foodSearchUi.cal')}
-            </Text>
-          </View>
+          <Text className="text-text-primary text-base font-semibold">
+            {item.default_variant.calories} {t('foodSearchUi.cal')}
+          </Text>
           <Text className="text-text-secondary text-xs">
             {`${item.default_variant.serving_size} ${formatServingUnit(item.default_variant.serving_unit)}`}
           </Text>

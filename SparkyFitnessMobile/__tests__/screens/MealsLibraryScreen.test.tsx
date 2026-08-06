@@ -4,6 +4,11 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MealsLibraryScreen from '../../src/screens/MealsLibraryScreen';
 import { useMealSearch, useMeals, useServerConnection } from '../../src/hooks';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
+import { pressHeaderMenuAction } from './helpers/nativeHeaderTestUtils';
 
 jest.mock('../../src/hooks', () => ({
   useMeals: jest.fn(),
@@ -83,6 +88,7 @@ describe('MealsLibraryScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
     mockUseServerConnection.mockReturnValue({
       isConnected: true,
       isLoading: false,
@@ -156,6 +162,27 @@ describe('MealsLibraryScreen', () => {
     const screen = renderScreen();
 
     expect(screen.getByText('Protein Shake')).toBeTruthy();
+    expect(screen.queryByText('Overnight Oats')).toBeNull();
+  });
+
+  it('persists an ownership filter chosen from the header menu and filters the list', () => {
+    mockUseMeals.mockReturnValue({
+      meals: [
+        createMeal('meal-1', 'Overnight Oats', 350),
+        { ...createMeal('meal-2', 'Community Chili', 400), is_public: true },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen();
+    expect(screen.getByText('Overnight Oats')).toBeTruthy();
+
+    pressHeaderMenuAction(navigation, 'Public');
+
+    expect(useAppPreferencesStore.getState().mealsLibraryOwnershipFilter).toBe('public');
+    expect(screen.getByText('Community Chili')).toBeTruthy();
     expect(screen.queryByText('Overnight Oats')).toBeNull();
   });
 

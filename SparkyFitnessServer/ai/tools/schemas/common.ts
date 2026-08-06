@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { VALID_PROVIDER_TYPES } from '../../../constants/foodProviders.js';
 
 // Day-string input. Accepts strict YYYY-MM-DD plus the forgiving forms small
 // local models commonly emit: "today"/"yesterday"/"tomorrow" keywords and ISO
@@ -82,6 +83,14 @@ export const measurementsUnitEnum = z
 export const searchTypeEnum = z
   .enum(['exact', 'broad'])
   .describe('Type of search to perform');
+
+// Food providers the chatbot tools may target explicitly: every searchable
+// external provider, plus SparkyFitness' own database. Derived from the
+// canonical list so the tool schema can never drift from what
+// externalFoodSearchService actually handles.
+export const foodProviderTypeEnum = z
+  .enum(['internal', ...VALID_PROVIDER_TYPES])
+  .describe('Food provider to search');
 
 export const entryTypeEnum = z
   .enum(['food_entry', 'food_entry_meal'])

@@ -6,6 +6,7 @@ import { setBackfillRunning, tryClaimAutoSync, isSyncInFlight } from '../../src/
 import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
 import { TimeoutError } from '../../src/utils/concurrency';
 import { AppState } from 'react-native';
+import * as telemetryBudget from '../../src/services/shared/telemetryBudget';
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -176,6 +177,31 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  describe('telemetry budget (regression: manual sync must not silently cap itself)', () => {
+    test('triggerManualSync runs uncapped and interactive', async () => {
+      storage.loadLastSyncedTime.mockResolvedValue(null);
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+
+      const createCtxSpy = jest.spyOn(telemetryBudget, 'createTelemetryRunContext');
+
+      await triggerManualSync();
+
+      // triggerManualSync ('manual-sync') must not fall through to the same
+      // capped/non-interactive shape as the real OS background task and the
+      // iOS silent-delivery observer — a user explicitly tapping "sync now"
+      // would get a route-consent dialog silently suppressed and telemetry
+      // capped at BACKGROUND_TELEMETRY_BUDGET workouts, with no indication why.
+      expect(createCtxSpy).toHaveBeenCalled();
+      const runCtx = createCtxSpy.mock.results[0].value as telemetryBudget.TelemetryRunContext;
+      expect(createCtxSpy.mock.calls[0]).toEqual([]);
+      expect(runCtx.interactive).toBe(true);
+      for (let i = 0; i < telemetryBudget.BACKGROUND_TELEMETRY_BUDGET + 1; i++) {
+        expect(runCtx.claim()).toBe(true);
+      }
+    });
   });
 
   describe('Date windows', () => {

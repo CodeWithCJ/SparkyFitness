@@ -9,12 +9,10 @@ import * as genericHealthRepo from '../../models/genericHealthRepository.js';
 import { getClient } from '../../db/poolManager.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { num, str, toUtcInstant } from './garminTelemetryExtractors.js';
-import {
-  localDateTimeToUtc,
-  instantToDay,
-  HealthMetric,
-  healthMetricSamplesInitializerSchema,
-} from '@workspace/shared';
+// Shared with the generic /api/health-data workout path; Garmin keeps the
+// default 'replace' mode because it re-fetches the whole day on every sync.
+import { upsertSamplesByDay } from '../healthMetricSampleWriter.js';
+import { localDateTimeToUtc, instantToDay } from '@workspace/shared';
 
 interface ActivityWindow {
   id: string;
@@ -107,82 +105,6 @@ function matchActivityWindow(
 ): string | undefined {
   return windows.find((w) => timestampMs >= w.startMs && timestampMs <= w.endMs)
     ?.id;
-}
-
-interface WellnessSampleBucket {
-  entry_date: string;
-  device_name: string | null;
-  samples: Record<string, unknown>[];
-}
-
-/**
- * Groups flat {entry_date, timestamp, ex, sl, ...fields} samples into one
- * bucket per day and upserts each as a single health_metric_samples row.
- * Shared by the heart_rate/hrv/respiration/spo2/stress/body_battery sections
- * below so the bucketing logic only exists once. The per-metric `...fields`
- * this accepts are validated (and narrowed to the correct discriminated-union
- * shape) by healthMetricSamplesInitializerSchema.parse before the DB write.
- */
-async function upsertSamplesByDay(
-  userId: string,
-  actingUserId: string,
-  metric: HealthMetric,
-  sourceProvider: string,
-  flatSamples: Array<{
-    entry_date: string;
-    timestamp: Date;
-    ex?: string;
-    sl?: string;
-    device_name?: string | null;
-    [key: string]: unknown;
-  }>
-): Promise<number> {
-  if (flatSamples.length === 0) return 0;
-
-  const byDate = new Map<string, WellnessSampleBucket>();
-  for (const s of flatSamples) {
-    const { entry_date, timestamp, ex, sl, device_name, ...metricFields } = s;
-    const bucket = byDate.get(entry_date) ?? {
-      entry_date,
-      device_name: device_name ?? null,
-      samples: [],
-    };
-    const sample: Record<string, unknown> = {
-      t: timestamp.toISOString(),
-      ...metricFields,
-    };
-    if (ex) sample.ex = ex;
-    if (sl) sample.sl = sl;
-    bucket.samples.push(sample);
-    if (!bucket.device_name && device_name) bucket.device_name = device_name;
-    byDate.set(entry_date, bucket);
-  }
-
-  for (const bucket of byDate.values()) {
-    bucket.samples.sort((a, b) => String(a.t).localeCompare(String(b.t)));
-  }
-
-  for (const bucket of byDate.values()) {
-    // Validates AND narrows to the metric's specific sample shape (the
-    // discriminated union's whole purpose) instead of an `any`/type-assertion
-    // cast — also catches malformed upstream data at ingest with a clear error
-    // rather than a silent bad write.
-    const row = healthMetricSamplesInitializerSchema.parse({
-      user_id: userId,
-      metric,
-      entry_date: bucket.entry_date,
-      source_provider: sourceProvider,
-      device_name: bucket.device_name,
-      samples: bucket.samples,
-    });
-    await genericHealthRepo.upsertHealthMetricSamples(
-      userId,
-      actingUserId,
-      row
-    );
-  }
-
-  return byDate.size;
 }
 
 interface ProcessedResult {

@@ -107,6 +107,8 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
     },
   ];
 
+  const hasCalorieGoal = calorieGoal != null && calorieGoal > 0;
+
   const showGoalProgress =
     goalsLoading === true ||
     (goalPercentages != null &&
@@ -125,13 +127,25 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
         <View className="flex-row items-center">
           <View className="flex-1 items-center pr-2 justify-center">
             <View className="items-center justify-center relative" style={{ width: 110, height: 110 }}>
-              <ProgressRing
-                progress={calories / (calorieGoal || 1)}
-                size={100}
-                strokeWidth={8}
-                color={accentColor}
-                backgroundColor={trackColor}
-              />
+              {hasCalorieGoal ? (
+                <ProgressRing
+                  progress={calories / calorieGoal}
+                  size={100}
+                  strokeWidth={8}
+                  color={accentColor}
+                  backgroundColor={trackColor}
+                />
+              ) : (
+                // No calorie goal to measure against (e.g. per-food screens):
+                // show the macro composition breakdown instead of a goal ring.
+                <MacroCompositionRing
+                  size={100}
+                  strokeWidth={8}
+                  shares={shares}
+                  colors={{ protein: proteinColor, carbs: carbsColor, fat: fatColor }}
+                  trackColor={trackColor}
+                />
+              )}
               <View className="absolute items-center justify-center">
                 <Text className="text-text-primary text-xl font-bold">
                   {calorieGoal && calorieGoal > 0 ? formatLocalizedNumber(Math.max(0, Math.round(calorieGoal - calories))) : formatLocalizedNumber(Math.round(calories))}
@@ -141,7 +155,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                 </Text>
               </View>
             </View>
-            {calorieGoal && calorieGoal > 0 ? (
+            {hasCalorieGoal ? (
               <Text className="text-text-muted text-xs mt-2 text-center">
                 {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} {t('units.kcalShort')} ({goalPercentages?.calories}%)
               </Text>
@@ -219,7 +233,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                 </Text>
               </View>
             </View>
-            {calorieGoal && calorieGoal > 0 ? (
+            {hasCalorieGoal ? (
               <Text className="text-text-secondary text-xs font-medium mt-2 text-center">
                 {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} {t('units.kcalShort')}
               </Text>

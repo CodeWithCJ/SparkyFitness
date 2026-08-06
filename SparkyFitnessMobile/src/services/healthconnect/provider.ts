@@ -1,6 +1,9 @@
 import type { HealthMetric } from '../../HealthMetrics';
 import type { AggregatedHealthRecord, MetricConfig, ReadResult, TransformedRecord } from '../../types/healthRecords';
 import type { HealthReadProvider } from '../shared/healthSyncEngine';
+import type { TelemetryRunContext } from '../shared/telemetryBudget';
+import type { SyncWindows } from '../../utils/syncUtils';
+import { prefetchSessionRoutes } from './workoutTelemetry';
 import {
   getAggregatedStepsByDateDetailed,
   getAggregatedActiveCaloriesByDateDetailed,
@@ -59,8 +62,24 @@ export const readMinMaxAvgByDay = async (
 export const postProcessRaw = async (
   metric: Pick<HealthMetric, 'recordType'>,
   records: unknown[],
+  telemetry?: TelemetryRunContext,
 ): Promise<unknown[]> =>
-  metric.recordType === 'ExerciseSession' ? enrichExerciseSessions(records) : records;
+  metric.recordType === 'ExerciseSession' ? enrichExerciseSessions(records, telemetry) : records;
+
+/**
+ * Resolves per-session route-consent dialogs before the timed metric reads. A
+ * dialog waits on the user with no deadline, so it cannot run inside the
+ * engine's per-metric timeout without failing the sync when left unanswered.
+ */
+export const prepareInteractiveRead = async (
+  metrics: Pick<HealthMetric, 'recordType'>[],
+  windows: SyncWindows,
+): Promise<void> => {
+  if (!metrics.some(m => m.recordType === 'ExerciseSession' || m.recordType === 'Workout')) {
+    return;
+  }
+  await prefetchSessionRoutes(windows.sessionStart, windows.end);
+};
 
 /** Earliest stored record for the history-import floor probe. */
 export const readEarliestRecord = async (
@@ -73,5 +92,6 @@ export const healthReadProvider: HealthReadProvider = {
   readRaw: readHealthRecordsDetailed,
   readEarliestRecord,
   postProcessRaw,
+  prepareInteractiveRead,
   transform: transformHealthRecords,
 };

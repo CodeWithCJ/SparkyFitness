@@ -7,16 +7,13 @@ import type { PickerOption } from '../BottomSheetPicker';
 import type { ResultSection } from './types';
 
 export const SectionTitleHeader: React.FC<{ title: string }> = ({ title }) => (
-  <View className="px-4 py-1 bg-surface">
+  <View className="px-4 py-1 bg-background">
     <Text className="text-text-muted text-xs font-bold uppercase">{title}</Text>
   </View>
 );
 
 interface FoodSearchSectionHeaderProps {
   section: ResultSection;
-  // The switcher header is the anchor the source-switcher popover points at, so
-  // the screen holds the ref and measures it on demand.
-  onlineHeaderRef: React.RefObject<View | null>;
   providerOptions: PickerOption<string>[];
   selectedProvider: string | null;
   selectedProviderName: string;
@@ -34,7 +31,6 @@ interface FoodSearchSectionHeaderProps {
 
 const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
   section,
-  onlineHeaderRef,
   providerOptions,
   selectedProvider,
   selectedProviderName,
@@ -65,11 +61,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
     const value = isAllProviders ? t('foodMealScreens.allSources') : selectedProviderName;
     const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
     const header = (
-      <View
-        ref={onlineHeaderRef}
-        collapsable={false}
-        className="px-4 py-1 bg-surface flex-row items-center justify-between"
-      >
+      <View className="px-4 py-1 bg-background flex-row items-center justify-between">
         <Text className="text-text-muted text-xs font-bold uppercase">
           {label}
         </Text>
@@ -133,7 +125,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
       <Pressable
         onPress={onPress}
         disabled={!onPress}
-        className="px-4 py-2.5 bg-surface flex-row items-center justify-between border-t border-border-subtle"
+        className="px-4 py-2.5 bg-background flex-row items-center justify-between border-t border-border-subtle"
         accessibilityRole="button"
         accessibilityLabel={
           errored
@@ -162,7 +154,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
             {provider.provider_name}
           </Text>
           {expandable ? (
-            <View className="px-1.5 py-0.5 rounded-full bg-background">
+            <View className="px-1.5 py-0.5 rounded-full bg-surface">
               <Text className="text-text-secondary text-xs">{count}</Text>
             </View>
           ) : null}

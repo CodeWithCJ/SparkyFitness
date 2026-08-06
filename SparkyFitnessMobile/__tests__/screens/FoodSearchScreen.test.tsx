@@ -21,6 +21,15 @@ import {
 } from '../../src/hooks';
 import type { Meal } from '../../src/types/meals';
 import type { FoodItem } from '../../src/types/foods';
+import {
+  useAppPreferencesStore,
+  __resetAppPreferencesStoreForTests,
+} from '../../src/stores/appPreferencesStore';
+import {
+  findHeaderItemByAccessibilityLabel,
+  findHeaderMenuAction,
+  pressHeaderMenuAction,
+} from './helpers/nativeHeaderTestUtils';
 
 jest.mock('../../src/hooks', () => ({
   useExternalFoodSearch: jest.fn(),
@@ -175,6 +184,7 @@ describe('FoodSearchScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
     mockUseServerConnection.mockReturnValue({ isConnected: true } as any);
     mockUsePreferences.mockReturnValue({ preferences: {} } as any);
     mockUseFoods.mockReturnValue({
@@ -558,6 +568,123 @@ describe('FoodSearchScreen', () => {
 
     expect(screen.queryByText('Your Meals')).toBeNull();
     expect(screen.queryByText('Lunch Bowl')).toBeNull();
+  });
+
+  it('forwards the tapped row serving to the detail fetch so the preview keeps it', async () => {
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] }),
+    );
+    mockFetchExternalFoodDetails.mockResolvedValue(externalItem);
+
+    const screen = renderSearching();
+
+    fireEvent.press(screen.getByText('Cheddar Cheese'));
+
+    await waitFor(() => {
+      expect(mockFetchExternalFoodDetails).toHaveBeenCalledWith(
+        'fatsecret',
+        'ext-1',
+        'p1',
+        expect.objectContaining({ serving_size: 100, serving_unit: 'g' }),
+      );
+    });
+  });
+
+  it('persists an ownership filter chosen from the native overflow menu', () => {
+    renderSearching();
+
+    pressHeaderMenuAction(navigation, 'Mine');
+
+    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe('mine');
+  });
+
+  it('checkmarks the active filter and badges the native menu button', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'mine' });
+
+    renderSearching();
+
+    expect(findHeaderMenuAction(navigation, 'Mine')?.state).toBe('on');
+    expect(findHeaderMenuAction(navigation, 'All')?.state).toBe('off');
+    const button = findHeaderItemByAccessibilityLabel(
+      navigation,
+      'More options, filtered to Mine',
+    );
+    // Dot badge: bullet glyph with foreground matched to background.
+    expect(button?.badge?.value).toBe('•');
+  });
+
+  it('names the filter and offers Show All when it empties the search results', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'mine' });
+    // The result belongs to no known owner, so the Mine filter hides it.
+    mockUseFoodSearch.mockReturnValue({
+      searchResults: [buildFood()],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+    } as any);
+
+    const screen = renderSearching();
+
+    expect(screen.getByText('No saved foods or meals found in Mine')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Show All'));
+
+    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe('all');
+    expect(screen.getByText('Grilled Chicken')).toBeTruthy();
+  });
+
+  it('suppresses online results and disables the provider queries under Mine', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'mine' });
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] }),
+    );
+
+    const screen = renderSearching();
+
+    // Online rows never mix into a Mine/Family view: provider results are
+    // public catalog data, so the section is withheld even though the hook
+    // (mocked here) still reports results.
+    expect(screen.queryByText('Online Results')).toBeNull();
+    expect(screen.queryByText('Cheddar Cheese')).toBeNull();
+    // The queries themselves are disabled too, not just hidden.
+    expect(mockUseExternalFoodSearch).toHaveBeenLastCalledWith(
+      'chicken',
+      'fatsecret',
+      expect.objectContaining({ enabled: false }),
+    );
+    expect(mockUseAllProvidersSearch).toHaveBeenLastCalledWith(
+      'chicken',
+      expect.anything(),
+      expect.objectContaining({ enabled: false }),
+    );
+  });
+
+  it('keeps online results visible under the Public filter', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'public' });
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    mockUseExternalFoodSearch.mockReturnValue(
+      activeExternalSearch({ searchResults: [externalItem] }),
+    );
+
+    const screen = renderSearching();
+
+    expect(screen.getByText('Online Results')).toBeTruthy();
+    expect(screen.getByText('Cheddar Cheese')).toBeTruthy();
+  });
+
+  it('names the filter and offers Show All when it empties the landing', () => {
+    useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'family' });
+
+    const screen = renderLanding();
+
+    expect(screen.getByText('No foods in Family')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Show All'));
+
+    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe('all');
+    expect(screen.getByText('Search for a food or meal to log')).toBeTruthy();
   });
 
   it('toasts the error but still opens partial info when an online detail fetch fails', async () => {

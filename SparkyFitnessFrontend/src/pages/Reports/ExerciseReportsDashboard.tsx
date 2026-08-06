@@ -25,7 +25,7 @@ import {
   calculateRepsVsWeightScatterData,
   calculateTimeUnderTensionData,
   calculateVolumeTrendData,
-  extractGarminActivityEntries,
+  extractTelemetryActivityEntries,
 } from '@/utils/exerciseTrendUtils';
 import { ExerciseDashboardFilters } from '@/components/ExerciseCharts/ExerciseDashboardFilters';
 import { VolumeTrendChart } from '@/components/ExerciseCharts/VolumeTrendChart';
@@ -37,7 +37,7 @@ import { TimeUnderTensionChart } from '@/components/ExerciseCharts/TimeUnderTens
 import { BestSetRepRangeChart } from '@/components/ExerciseCharts/BestSetRepRangeChart';
 import { TrainingVolumeByMuscleGroupChart } from '@/components/ExerciseCharts/TrainingVolumeByMuscleGroupChart';
 import { PrVisualizationWidget } from '@/components/ExerciseCharts/PrVisualizationWidget';
-import { GarminActivityList } from '@/components/ExerciseCharts/GarminActivityList';
+import { ActivityTelemetryList } from '@/components/ExerciseCharts/ActivityTelemetryList';
 import { CardioVolumeIntervalChart } from '@/components/ExerciseCharts/CardioVolumeIntervalChart';
 import { ActivityInterrogationFinder } from '@/components/ExerciseCharts/ActivityInterrogationFinder';
 import { CardioPRBadgesWidget } from '@/components/ExerciseCharts/CardioPRBadgesWidget';
@@ -574,7 +574,7 @@ const ExerciseReportsDashboard = ({
   };
 
   // Collect all Garmin activity entries for the selected exercise(s)
-  const allGarminActivityEntries = extractGarminActivityEntries(
+  const allTelemetryActivityEntries = extractTelemetryActivityEntries(
     exerciseProgressData,
     selectedExercise,
     parseISO
@@ -582,7 +582,7 @@ const ExerciseReportsDashboard = ({
 
   const filteredGarminActivityEntries = (() => {
     if (viewMode === 'cardio') {
-      return allGarminActivityEntries.filter(
+      return allTelemetryActivityEntries.filter(
         (entry) =>
           (entry.distance && entry.distance > 0) ||
           !entry.sets ||
@@ -590,18 +590,18 @@ const ExerciseReportsDashboard = ({
       );
     }
     if (viewMode === 'strength') {
-      return allGarminActivityEntries.filter((entry) => {
+      return allTelemetryActivityEntries.filter((entry) => {
         const hasStrengthSets =
           entry.sets &&
           entry.sets.length > 0 &&
           entry.sets.some((s) => (s.weight || 0) > 0 || (s.reps || 0) > 0);
-        const category = (entry as unknown as { category?: string }).category;
         const isStrengthCategory =
-          category !== undefined && STRENGTH_CATEGORIES.includes(category);
+          entry.category != null &&
+          STRENGTH_CATEGORIES.includes(entry.category);
         return hasStrengthSets || isStrengthCategory;
       });
     }
-    return allGarminActivityEntries;
+    return allTelemetryActivityEntries;
   })();
 
   return (
@@ -752,7 +752,7 @@ const ExerciseReportsDashboard = ({
       )}
 
       {/* Tier 4: Synced Activity Logs (Filtered by domain) */}
-      <GarminActivityList
+      <ActivityTelemetryList
         entries={filteredGarminActivityEntries}
         formatDate={formatDateInUserTimezone}
         parseISO={parseISO}

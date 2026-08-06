@@ -138,6 +138,94 @@ export interface TransformedExerciseSession extends RecordTimezoneMetadata {
   raw_data?: unknown;
   sets?: ExerciseSet[];
   source_id?: string;
+  /**
+   * Wearable telemetry (X-Workout-Model-Version 3+). All optional so an older
+   * server drops the fields it does not know, and a newer server still accepts
+   * a session from an older app that sends none of them.
+   */
+  gps_points?: WorkoutGpsPoint[];
+  hr_samples?: WorkoutHrSample[];
+  laps?: WorkoutLapWindow[];
+  telemetry?: WorkoutTelemetry;
+}
+
+/**
+ * One GPS trackpoint. Short keys because a long activity carries thousands of
+ * these and the field names would otherwise dominate the payload; they match
+ * the JSONB shape the server stores in exercise_entry_gps_points.
+ */
+export interface WorkoutGpsPoint {
+  /** ISO 8601 instant. */
+  t: string;
+  lat: number;
+  lon: number;
+  /** Metres. */
+  alt?: number | null;
+  /** Metres per second. */
+  speed?: number | null;
+  hr?: number | null;
+  cad?: number | null;
+  /** Watts. */
+  power?: number | null;
+  /** Cumulative METRES (the session-level `distance` above is kilometres). */
+  dist?: number | null;
+  /** Horizontal accuracy, metres. */
+  hacc?: number | null;
+  /** Vertical accuracy, metres. */
+  vacc?: number | null;
+  /** Degrees. */
+  course?: number | null;
+}
+
+export interface WorkoutHrSample {
+  t: string;
+  bpm: number;
+}
+
+/**
+ * A lap boundary. Only the window is sent: the server derives distance, heart
+ * rate, speed, cadence, power and elevation for each lap from the series, so
+ * that aggregation lives in one place rather than once per platform.
+ */
+export interface WorkoutLapWindow {
+  /** 1-based. */
+  lap_index: number;
+  start_time: string;
+  end_time: string;
+}
+
+/**
+ * Whole-session summary values. Keys are deliberately the exercise_entries
+ * column names so the server can apply them without a mapping table. Anything
+ * omitted is derived server-side from the series where possible.
+ */
+export interface WorkoutTelemetry {
+  avg_heart_rate?: number | null;
+  max_heart_rate?: number | null;
+  /** Metres per second. */
+  avg_speed_mps?: number | null;
+  max_speed_mps?: number | null;
+  avg_moving_speed_mps?: number | null;
+  avg_cadence?: number | null;
+  max_cadence?: number | null;
+  avg_power_watts?: number | null;
+  max_power_watts?: number | null;
+  /** Metres. */
+  elevation_gain_meters?: number | null;
+  elevation_loss_meters?: number | null;
+  min_elevation_meters?: number | null;
+  max_elevation_meters?: number | null;
+  floors_climbed?: number | null;
+  stroke_count?: number | null;
+  moving_time_seconds?: number | null;
+  elapsed_time_seconds?: number | null;
+  active_calories?: number | null;
+  /** Milliseconds. */
+  ground_contact_time_ms?: number | null;
+  /** Millimetres. */
+  vertical_oscillation_mm?: number | null;
+  /** Centimetres. */
+  stride_length_cm?: number | null;
 }
 
 // ==========================================

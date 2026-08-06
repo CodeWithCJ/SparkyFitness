@@ -563,7 +563,10 @@ const ActivityReportVisualizer = ({
         )}
 
         {hrInTimezonesData && hrInTimezonesData.length > 0 && (
-          <ActivityHeartRateZonesChart data={hrInTimezonesData} />
+          <ActivityHeartRateZonesChart
+            data={hrInTimezonesData}
+            providerName={providerName}
+          />
         )}
       </div>
 

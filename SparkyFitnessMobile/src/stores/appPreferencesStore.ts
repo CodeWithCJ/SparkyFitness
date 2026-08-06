@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { LanguagePreference } from '../localization';
+import type { OwnershipFilter } from '../utils/shareStatus';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
 const STORE_VERSION = 1;
@@ -51,6 +52,13 @@ export const PREFERENCE_DEFAULTS = {
   restTimerSoundEnabled: true,
   workoutKeepAwakeEnabled: false,
   languagePreference: 'system' as LanguagePreference,
+  foodSearchOwnershipFilter: 'all' as OwnershipFilter,
+  foodsLibraryOwnershipFilter: 'all' as OwnershipFilter,
+  mealsLibraryOwnershipFilter: 'all' as OwnershipFilter,
+  exercisesLibraryOwnershipFilter: 'all' as OwnershipFilter,
+  workoutPresetsLibraryOwnershipFilter: 'all' as OwnershipFilter,
+  exerciseSearchOwnershipFilter: 'all' as OwnershipFilter,
+  presetSearchOwnershipFilter: 'all' as OwnershipFilter,
 } as const;
 
 export type AppPreferencesData = {
@@ -75,6 +83,13 @@ export type AppPreferencesData = {
   restTimerSoundEnabled: boolean;
   workoutKeepAwakeEnabled: boolean;
   languagePreference: LanguagePreference;
+  foodSearchOwnershipFilter: OwnershipFilter;
+  foodsLibraryOwnershipFilter: OwnershipFilter;
+  mealsLibraryOwnershipFilter: OwnershipFilter;
+  exercisesLibraryOwnershipFilter: OwnershipFilter;
+  workoutPresetsLibraryOwnershipFilter: OwnershipFilter;
+  exerciseSearchOwnershipFilter: OwnershipFilter;
+  presetSearchOwnershipFilter: OwnershipFilter;
 };
 
 export interface AppPreferencesState extends AppPreferencesData {
@@ -99,6 +114,13 @@ export interface AppPreferencesState extends AppPreferencesData {
   setRestTimerSoundEnabled: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
   setLanguagePreference: (value: LanguagePreference) => void;
+  setFoodSearchOwnershipFilter: (value: OwnershipFilter) => void;
+  setFoodsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
+  setMealsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
+  setExercisesLibraryOwnershipFilter: (value: OwnershipFilter) => void;
+  setWorkoutPresetsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
+  setExerciseSearchOwnershipFilter: (value: OwnershipFilter) => void;
+  setPresetSearchOwnershipFilter: (value: OwnershipFilter) => void;
 }
 
 /**
@@ -163,6 +185,13 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setRestTimerSoundEnabled: (value) => set({ restTimerSoundEnabled: value }),
       setWorkoutKeepAwakeEnabled: (value) => set({ workoutKeepAwakeEnabled: value }),
       setLanguagePreference: (value) => set({ languagePreference: value }),
+      setFoodSearchOwnershipFilter: (value) => set({ foodSearchOwnershipFilter: value }),
+      setFoodsLibraryOwnershipFilter: (value) => set({ foodsLibraryOwnershipFilter: value }),
+      setMealsLibraryOwnershipFilter: (value) => set({ mealsLibraryOwnershipFilter: value }),
+      setExercisesLibraryOwnershipFilter: (value) => set({ exercisesLibraryOwnershipFilter: value }),
+      setWorkoutPresetsLibraryOwnershipFilter: (value) => set({ workoutPresetsLibraryOwnershipFilter: value }),
+      setExerciseSearchOwnershipFilter: (value) => set({ exerciseSearchOwnershipFilter: value }),
+      setPresetSearchOwnershipFilter: (value) => set({ presetSearchOwnershipFilter: value }),
     }),
     {
       name: STORE_KEY,
@@ -192,6 +221,13 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
         languagePreference: state.languagePreference,
+        foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,
+        foodsLibraryOwnershipFilter: state.foodsLibraryOwnershipFilter,
+        mealsLibraryOwnershipFilter: state.mealsLibraryOwnershipFilter,
+        exercisesLibraryOwnershipFilter: state.exercisesLibraryOwnershipFilter,
+        workoutPresetsLibraryOwnershipFilter: state.workoutPresetsLibraryOwnershipFilter,
+        exerciseSearchOwnershipFilter: state.exerciseSearchOwnershipFilter,
+        presetSearchOwnershipFilter: state.presetSearchOwnershipFilter,
       }),
       migrate: (persistedState, version) => {
         if (

@@ -2002,7 +2002,10 @@
     "providerCouldNotLoad": "{{provider}}, could not load, tap to retry",
     "providerNoResults": "{{provider}}, no results",
     "providerResultsExpand": "{{provider}}, {{count}} results, tap to expand",
-    "providerResultsCollapse": "{{provider}}, {{count}} results, tap to collapse"
+    "providerResultsCollapse": "{{provider}}, {{count}} results, tap to collapse",
+    "moreOptions": "More options",
+    "options": "options",
+    "moreOptionsFiltered": "More options, filtered to {{filter}}"
   },
   "photoImprove": {
     "grams": "grams",
@@ -2190,7 +2193,12 @@
       "oneYear": "1 Year",
       "steps": "(Steps)",
       "oldData": "Old Data",
-      "oldRange": "(1-3 Years)"
+      "oldRange": "(1-3 Years)",
+      "richWorkout": "Rich Workout",
+      "richWorkoutDetail": "(Route+HR+Laps)",
+      "richWorkoutIosDetail": "(Route+HR)",
+      "richStrength": "Rich Strength",
+      "richStrengthDetail": "(Spiky HR)"
     },
     "healthConnect": {
       "title": "Health Connect",
@@ -2248,7 +2256,15 @@
       "seedOldSeeded_one": "Seeded {{count}} record in clusters 1-3 years back.",
       "seedOldSeeded_other": "Seeded {{count}} records in clusters 1-3 years back.",
       "seedOldFailedWithMessage": "Failed to seed old health data: {{message}}",
-      "seedOldFailed": "Failed to seed old health data."
+      "seedOldFailed": "Failed to seed old health data.",
+      "richWorkoutSeeded": "Seeded a 12-minute walk with route, HR, speed and laps. Run a foreground sync to pull it in.",
+      "richWorkoutIosSeeded": "Seeded a 12-minute walk with route and HR. Run a foreground sync to pull it in.",
+      "richStrengthSeeded": "Seeded a 35-minute strength session with spiky HR (no route/reps — devices never report those). Run a foreground sync to pull it in.",
+      "richStrengthIosSeeded": "Seeded a 35-minute strength session with spiky HR (no route/laps/reps — devices never report those). Run a foreground sync to pull it in.",
+      "richWorkoutFailed": "Failed to seed rich workout.",
+      "richWorkoutFailedWithMessage": "Failed to seed rich workout: {{message}}",
+      "richStrengthFailed": "Failed to seed rich strength workout.",
+      "richStrengthFailedWithMessage": "Failed to seed rich strength workout: {{message}}"
     },
     "gallery": {
       "title": "Cycle Card Gallery",
@@ -2777,5 +2793,18 @@
   "exerciseCrossfade": {
     "play": "Play exercise animation",
     "pause": "Pause exercise animation"
+  },
+  "ownershipFilters": {
+    "all": "All",
+    "mine": "Mine",
+    "family": "Family",
+    "public": "Public",
+    "show": "Show",
+    "showAll": "Show All",
+    "filter": "Filter {{noun}}",
+    "filteredTo": "Filter {{noun}}, filtered to {{filter}}",
+    "noItemsIn": "No {{noun}} in {{filter}}",
+    "changeFilter": "Change the filter to see your other {{noun}}.",
+    "inFilter": "in {{filter}}"
   }
 }

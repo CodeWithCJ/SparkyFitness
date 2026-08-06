@@ -1,11 +1,21 @@
 import { act, fireEvent } from '@testing-library/react-native';
 
+type HeaderMenuItem = {
+  type?: string;
+  label?: string;
+  state?: 'on' | 'off' | 'mixed';
+  onPress?: () => void;
+  items?: HeaderMenuItem[];
+};
+
 type HeaderItem = {
   label?: string;
   identifier?: string;
   disabled?: boolean;
   accessibilityLabel?: string;
   onPress?: () => void;
+  badge?: { value?: number | string };
+  menu?: { items: HeaderMenuItem[] };
 };
 
 /**
@@ -54,6 +64,47 @@ export function findHeaderItem(
   const items = collectHeaderItems(navigation);
   // Last write wins — return the most recently configured matching item.
   return [...items].reverse().find((item) => item?.label === label);
+}
+
+function flattenMenuItems(items: HeaderMenuItem[]): HeaderMenuItem[] {
+  return items.flatMap((item) =>
+    item.items ? [item, ...flattenMenuItems(item.items)] : [item],
+  );
+}
+
+/**
+ * Find an action inside a native header menu item (type: 'menu'), searching
+ * submenus recursively. Returns the most recently configured match.
+ */
+export function findHeaderMenuAction(
+  navigation: { setOptions?: unknown },
+  label: string,
+): HeaderMenuItem | undefined {
+  const items = collectHeaderItems(navigation);
+  for (const item of [...items].reverse()) {
+    if (!item.menu) continue;
+    const match = flattenMenuItems(item.menu.items).find(
+      (action) => action.label === label && typeof action.onPress === 'function',
+    );
+    if (match) return match;
+  }
+  return undefined;
+}
+
+/** Press an action inside a native header menu item, wrapped in act(). */
+export function pressHeaderMenuAction(
+  navigation: { setOptions?: unknown },
+  label: string,
+): void {
+  const action = findHeaderMenuAction(navigation, label);
+  if (!action?.onPress) {
+    throw new Error(
+      `pressHeaderMenuAction: no native header menu action labelled "${label}" was found`,
+    );
+  }
+  act(() => {
+    action.onPress?.();
+  });
 }
 
 export function findHeaderItemByAccessibilityLabel(

@@ -7,43 +7,30 @@ import {
   Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 import Toast from 'react-native-toast-message';
 import Button from './ui/Button';
 import {
   seedHealthData,
   seedHistoricalSteps,
   seedOldHealthData,
+  seedRichWorkout,
+  seedRichStrengthWorkout,
 } from '../services/seedHealthData';
+import {
+  seedRichWorkoutIOS,
+  seedRichStrengthWorkoutIOS,
+} from '../services/seedHealthDataIOS';
 import { triggerManualSync } from '../services/backgroundSyncService';
 import { notifySessionExpired } from '../services/api/authService';
 import { getActiveServerConfig } from '../services/storage';
 import { resetWhatsNewBanner } from '../services/whatsNewBanner';
 import { resetAnnouncementModal } from './AnnouncementModal';
 import {
-  FOOD_SEARCH_POPOVERS,
-  type FoodSearchPopover,
-} from '../services/foodSearchPreferences';
-import {
   openHealthConnectSettings,
   openHealthConnectDataManagement,
   getGrantedPermissions,
 } from 'react-native-health-connect';
 import { CycleCardRingContent, type CycleRingContentInfo } from './CycleCard';
-
-function getPopoverResetLabel(
-  t: TFunction,
-  popover: FoodSearchPopover,
-): string {
-  switch (popover.id) {
-    case 'sources':
-      return t('devTools.popovers.sources');
-    case 'provider':
-      return t('devTools.popovers.provider');
-    default:
-      return popover.resetLabel;
-  }
-}
 
 const CYCLE_GALLERY_BASE: Omit<CycleRingContentInfo, 'day' | 'phase'> = {
   avgCycleLength: 28,
@@ -198,6 +185,122 @@ const DevTools: React.FC = () => {
     }
   };
 
+  const handleSeedRichWorkout = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedRichWorkout();
+      if (result.success) {
+        Toast.show({
+          type: 'success',
+          text1: t('common.success'),
+          text2: t('devTools.toast.richWorkoutSeeded'),
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: t('common.error'),
+          text2: result.error ?? t('devTools.toast.richWorkoutFailed'),
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: t('devTools.toast.richWorkoutFailedWithMessage', { message }),
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleSeedRichStrengthWorkout = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedRichStrengthWorkout();
+      if (result.success) {
+        Toast.show({
+          type: 'success',
+          text1: t('common.success'),
+          text2: t('devTools.toast.richStrengthSeeded'),
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: t('common.error'),
+          text2: result.error ?? t('devTools.toast.richStrengthFailed'),
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: t('devTools.toast.richStrengthFailedWithMessage', { message }),
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleSeedRichWorkoutIOS = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedRichWorkoutIOS();
+      if (result.success) {
+        Toast.show({
+          type: 'success',
+          text1: t('common.success'),
+          text2: t('devTools.toast.richWorkoutIosSeeded'),
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: t('common.error'),
+          text2: result.error ?? t('devTools.toast.richWorkoutFailed'),
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: t('devTools.toast.richWorkoutFailedWithMessage', { message }),
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleSeedRichStrengthWorkoutIOS = async () => {
+    setIsSeeding(true);
+    try {
+      const result = await seedRichStrengthWorkoutIOS();
+      if (result.success) {
+        Toast.show({
+          type: 'success',
+          text1: t('common.success'),
+          text2: t('devTools.toast.richStrengthIosSeeded'),
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: t('common.error'),
+          text2: result.error ?? t('devTools.toast.richStrengthFailed'),
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Toast.show({
+        type: 'error',
+        text1: t('common.error'),
+        text2: t('devTools.toast.richStrengthFailedWithMessage', { message }),
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   const handleCheckBackgroundPermissions = async () => {
     const permissions = await getGrantedPermissions();
     const hasBackgroundAccess = permissions.some(
@@ -291,6 +394,50 @@ const DevTools: React.FC = () => {
         >
           <Text className="text-white text-base font-bold text-center">{t('devTools.seed.oldData')}{'\n'}{t('devTools.seed.oldRange')}</Text>
         </Button>
+
+        {Platform.OS === 'android' && (
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
+            onPress={handleSeedRichWorkout}
+            disabled={isSeeding}
+          >
+            <Text className="text-white text-base font-bold text-center">{t('devTools.seed.richWorkout')}{'\n'}{t('devTools.seed.richWorkoutDetail')}</Text>
+          </Button>
+        )}
+
+        {Platform.OS === 'android' && (
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
+            onPress={handleSeedRichStrengthWorkout}
+            disabled={isSeeding}
+          >
+            <Text className="text-white text-base font-bold text-center">{t('devTools.seed.richStrength')}{'\n'}{t('devTools.seed.richStrengthDetail')}</Text>
+          </Button>
+        )}
+
+        {Platform.OS === 'ios' && (
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
+            onPress={handleSeedRichWorkoutIOS}
+            disabled={isSeeding}
+          >
+            <Text className="text-white text-base font-bold text-center">{t('devTools.seed.richWorkout')}{'\n'}{t('devTools.seed.richWorkoutIosDetail')}</Text>
+          </Button>
+        )}
+
+        {Platform.OS === 'ios' && (
+          <Button
+            variant="primary"
+            className="py-2 px-4 rounded-lg my-1 self-center min-w-20"
+            onPress={handleSeedRichStrengthWorkoutIOS}
+            disabled={isSeeding}
+          >
+            <Text className="text-white text-base font-bold text-center">{t('devTools.seed.richStrength')}{'\n'}{t('devTools.seed.richStrengthDetail')}</Text>
+          </Button>
+        )}
       </View>
 
       {Platform.OS === 'android' && (
@@ -433,45 +580,6 @@ const DevTools: React.FC = () => {
               {t('devTools.announcement.reset')}
             </Text>
           </Button>
-        </View>
-      </View>
-
-      <View className="mt-5">
-        <Text className="text-sm text-text-primary">
-          {t('devTools.popovers.title')}
-        </Text>
-        <Text className="text-text-muted mb-3 text-[13px]">
-          {t('devTools.popovers.description')}
-        </Text>
-        <View className="flex-row gap-2 flex-wrap">
-          {FOOD_SEARCH_POPOVERS.map(popover => {
-            const label = getPopoverResetLabel(t, popover);
-            return (
-              <Button
-                key={popover.id}
-                variant="primary"
-                className="py-2 px-4 rounded-lg my-1 self-center min-w-30"
-                onPress={async () => {
-                  try {
-                    await popover.reset();
-                    Toast.show({
-                      type: 'success',
-                      text1: t('devTools.toast.reset'),
-                      text2: t('devTools.toast.popoverReset', { label }),
-                    });
-                  } catch {
-                    Toast.show({
-                      type: 'error',
-                      text1: t('common.error'),
-                      text2: t('devTools.toast.popoverResetFailed'),
-                    });
-                  }
-                }}
-              >
-                <Text className="text-white text-base font-bold">{label}</Text>
-              </Button>
-            );
-          })}
         </View>
       </View>
 

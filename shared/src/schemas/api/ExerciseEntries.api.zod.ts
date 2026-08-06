@@ -340,6 +340,8 @@ export const exerciseProgressResponseSchema = z.object({
   provider_name: z.string().nullable(),
   exercise_preset_entry_id: z.string().nullable().optional(),
   exercise_preset_entry_name: z.string().nullable().optional(),
+  has_telemetry: z.boolean().nullable().optional(),
+  category: z.string().nullable().optional(),
   sets: z.array(exerciseEntrySetRequestSchema),
 });
 

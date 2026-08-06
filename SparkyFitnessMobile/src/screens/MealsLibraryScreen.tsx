@@ -9,12 +9,16 @@ import { useCSSVariable } from 'uniwind';
 import StatusView from '../components/StatusView';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import MealLibraryRow from '../components/MealLibraryRow';
-import SegmentedControl from '../components/SegmentedControl';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useFavorites, useMealSearch, useMeals, useServerConnection, useProfile } from '../hooks';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  filterByOwnership,
+  ownershipFilterEmptyState,
+  ownershipFilterHeaderMenu,
+} from '../utils/shareStatus';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { Meal } from '../types/meals';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +33,8 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
+  const ownershipFilter = useAppPreferencesStore((s) => s.mealsLibraryOwnershipFilter);
+  const setOwnershipFilter = useAppPreferencesStore((s) => s.setMealsLibraryOwnershipFilter);
   const [refreshing, setRefreshing] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -84,12 +89,16 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   );
 
   const renderEmpty = () => {
-    if (displayedMeals.length > 0 && filteredMeals.length === 0) {
+    if (ownershipFilter !== 'all' && displayedMeals.length > 0 && filteredMeals.length === 0) {
       return (
         <StatusView
           inline
-          title={t('foodMeals.noMatchingMeals')}
-          subtitle={t('foodMeals.changeOwnershipFilter')}
+          {...ownershipFilterEmptyState({
+            noun: 'meals',
+            filter: ownershipFilter,
+            onReset: () => setOwnershipFilter('all'),
+            t,
+          })}
         />
       );
     }
@@ -157,28 +166,22 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
     );
   };
 
-   const header = useScreenHeader({ title: t('library.meals'), left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: t('library.meals'),
+    left: { kind: 'back' },
+    right: ownershipFilterHeaderMenu({
+      noun: 'meals',
+      identifier: 'meals-library-filter',
+      filter: ownershipFilter,
+      onSelect: setOwnershipFilter,
+      t,
+    }),
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {header}
-      {isConnected ? (
-        <>
-          {renderSearchBar()}
-          <View className="px-4 pb-2 border-b border-border-subtle">
-            <SegmentedControl
-              segments={[
-                 { key: 'all', label: t('foodMeals.all') },
-                 { key: 'mine', label: t('foodMeals.mine') },
-                 { key: 'family', label: t('foodMeals.family') },
-                 { key: 'public', label: t('foodMeals.public') },
-              ]}
-              activeKey={ownershipFilter}
-              onSelect={setOwnershipFilter}
-            />
-          </View>
-        </>
-      ) : null}
+      {isConnected ? renderSearchBar() : null}
       {renderContent()}
     </View>
   );

@@ -6,13 +6,17 @@ import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
 import FoodLibraryRow from '../components/FoodLibraryRow';
-import SegmentedControl from '../components/SegmentedControl';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useFavorites, useFoodsLibrary, useServerConnection, useProfile } from '../hooks';
 import { foodItemToFoodInfo } from '../types/foodInfo';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  filterByOwnership,
+  ownershipFilterEmptyState,
+  ownershipFilterHeaderMenu,
+} from '../utils/shareStatus';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodItem } from '../types/foods';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +31,8 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
+  const ownershipFilter = useAppPreferencesStore((s) => s.foodsLibraryOwnershipFilter);
+  const setOwnershipFilter = useAppPreferencesStore((s) => s.setFoodsLibraryOwnershipFilter);
   const [refreshing, setRefreshing] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -61,12 +66,16 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   }, [refetch]);
 
   const renderEmpty = () => {
-    if (foods.length > 0 && filteredFoods.length === 0) {
+    if (ownershipFilter !== 'all' && foods.length > 0 && filteredFoods.length === 0) {
       return (
         <StatusView
           inline
-          title={t('foodMealScreens.noMatchingFoods')}
-          subtitle={t('foodMeals.changeOwnershipFilter')}
+          {...ownershipFilterEmptyState({
+            noun: 'foods',
+            filter: ownershipFilter,
+            onReset: () => setOwnershipFilter('all'),
+            t,
+          })}
         />
       );
     }
@@ -148,32 +157,28 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     );
   };
 
-  const header = useScreenHeader({ title: t('foodMealScreens.foods'), left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: t('foodMealScreens.foods'),
+    left: { kind: 'back' },
+    right: ownershipFilterHeaderMenu({
+      noun: 'foods',
+      identifier: 'foods-library-filter',
+      filter: ownershipFilter,
+      onSelect: setOwnershipFilter,
+      t,
+    }),
+  });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
       {header}
       {isConnected ? (
-        <>
-          <LibrarySearchBar
-            value={searchText}
-            onChangeText={setSearchText}
-             placeholder={t('foodMealScreens.searchFoodsPlaceholder')}
-            isSearching={isSearching}
-          />
-          <View className="px-4 pb-2 border-b border-border-subtle">
-            <SegmentedControl
-              segments={[
-                 { key: 'all', label: t('foodMealScreens.all') },
-                 { key: 'mine', label: t('foodMealScreens.mine') },
-                 { key: 'family', label: t('foodMealScreens.family') },
-                 { key: 'public', label: t('foodMealScreens.public') },
-              ]}
-              activeKey={ownershipFilter}
-              onSelect={setOwnershipFilter}
-            />
-          </View>
-        </>
+        <LibrarySearchBar
+          value={searchText}
+          onChangeText={setSearchText}
+           placeholder={t('foodMealScreens.searchFoodsPlaceholder')}
+          isSearching={isSearching}
+        />
       ) : null}
       {renderContent()}
     </View>

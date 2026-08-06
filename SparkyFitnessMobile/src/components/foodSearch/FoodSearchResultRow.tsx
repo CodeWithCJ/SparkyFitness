@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import Button from '../ui/Button';
 import MealLibraryRow from '../MealLibraryRow';
 import VerifiedBadge from '../VerifiedBadge';
 import FoodResultRow from './FoodResultRow';
 import { landingKey } from '../../utils/landingLists';
 import { formatServingDescription, formatServingUnit } from '../../utils/foodDetails';
+import { ownershipFilterLabels, type OwnershipFilter } from '../../utils/shareStatus';
 import { mealToFoodInfo } from '../../types/foodInfo';
 import type { FoodInfoItem } from '../../types/foodInfo';
 import type { ExternalFoodItem } from '../../types/externalFoods';
@@ -178,41 +180,65 @@ interface LocalStatusRowProps {
   pending: boolean;
   isMealBuilderMode: boolean;
   accentColor: string;
+  ownershipFilter: OwnershipFilter;
+  onResetOwnershipFilter: () => void;
 }
 
 const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
   pending,
   isMealBuilderMode,
   accentColor,
+  ownershipFilter,
+  onResetOwnershipFilter,
 }) => {
   const { t } = useTranslation();
+  const isFiltered = ownershipFilter !== 'all';
+  const labels = ownershipFilterLabels(t);
+  const baseMessage = isMealBuilderMode
+    ? t('foodSearchUi.noSavedFoods')
+    : t('foodSearchUi.noSavedFoodsMeals');
+  // A persisted non-default filter can empty the local sections; naming the
+  // filter and offering the reset keeps that from reading as missing data.
+  const message = isFiltered
+    ? `${baseMessage} ${t('ownershipFilters.inFilter', { filter: labels[ownershipFilter] })}`
+    : baseMessage;
   return (
-  <View className="px-4 py-6 items-center justify-center">
-    <Text
-      className="text-text-secondary text-base text-center"
-      style={{ opacity: pending ? 0 : 1 }}
-      importantForAccessibility={pending ? 'no' : 'yes'}
-      accessibilityElementsHidden={pending}
-    >
-      {isMealBuilderMode
-        ? t('foodSearchUi.noSavedFoods')
-        : t('foodSearchUi.noSavedFoodsMeals')}
-    </Text>
-    {pending ? (
+    <View className="px-4 py-6 items-center justify-center">
       <View
-        className="absolute inset-0 items-center justify-center"
-        accessible
-        accessibilityRole="progressbar"
-        accessibilityLabel={
-          isMealBuilderMode
-            ? t('foodSearchUi.searchingFoods')
-            : t('foodSearchUi.searchingFoodsMeals')
-        }
+        className="items-center"
+        style={{ opacity: pending ? 0 : 1 }}
+        pointerEvents={pending ? 'none' : 'auto'}
+        importantForAccessibility={pending ? 'no-hide-descendants' : 'yes'}
+        accessibilityElementsHidden={pending}
       >
-        <ActivityIndicator size="small" color={accentColor} />
+        <Text className="text-text-secondary text-base text-center">
+          {message}
+        </Text>
+        {isFiltered ? (
+          <Button
+            variant="secondary"
+            onPress={onResetOwnershipFilter}
+            className="mt-3 px-5"
+          >
+            {t('ownershipFilters.showAll')}
+          </Button>
+        ) : null}
       </View>
-    ) : null}
-  </View>
+      {pending ? (
+        <View
+          className="absolute inset-0 items-center justify-center"
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={
+            isMealBuilderMode
+              ? t('foodSearchUi.searchingFoods')
+              : t('foodSearchUi.searchingFoodsMeals')
+          }
+        >
+          <ActivityIndicator size="small" color={accentColor} />
+        </View>
+      ) : null}
+    </View>
   );
 };
 
@@ -225,6 +251,8 @@ interface FoodSearchResultRowProps {
   textMuted: string;
   loadingFoodId: string | null;
   isMealBuilderMode: boolean;
+  ownershipFilter: OwnershipFilter;
+  onResetOwnershipFilter: () => void;
   getProviderColor: (providerId?: string | null) => string;
   onSelectFood: (item: FoodInfoItem) => void;
   onSelectOnlineFood: (item: ExternalFoodItem, providerId?: string) => Promise<void>;
@@ -241,6 +269,8 @@ const FoodSearchResultRow: React.FC<FoodSearchResultRowProps> = ({
   textMuted,
   loadingFoodId,
   isMealBuilderMode,
+  ownershipFilter,
+  onResetOwnershipFilter,
   getProviderColor,
   onSelectFood,
   onSelectOnlineFood,
@@ -316,6 +346,8 @@ const FoodSearchResultRow: React.FC<FoodSearchResultRowProps> = ({
           pending={row.pending}
           isMealBuilderMode={isMealBuilderMode}
           accentColor={accentColor}
+          ownershipFilter={ownershipFilter}
+          onResetOwnershipFilter={onResetOwnershipFilter}
         />
       );
   }

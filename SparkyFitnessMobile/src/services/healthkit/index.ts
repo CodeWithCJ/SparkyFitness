@@ -25,6 +25,14 @@ import { getDeviceTimezone } from '../../utils/dateUtils';
 import { toLocalDateString, mapDayStatisticsToMinMaxAvg } from './dataAggregation';
 import { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from '../shared/dataTransformation';
 import { DIETARY_WRITE_IDENTIFIERS } from './writebackMappers';
+import {
+  collectWorkoutTelemetry,
+  type WorkoutProxyLike,
+} from './workoutTelemetry';
+import {
+  createTelemetryRunContext,
+  type TelemetryRunContext,
+} from '../shared/telemetryBudget';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
@@ -128,7 +136,29 @@ const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierAppleMoveTime',
   'HKQuantityTypeIdentifierAppleExerciseTime',
   'HKQuantityTypeIdentifierAppleStandTime',
+  'HKWorkoutRouteTypeIdentifier', // GPS route attached to a workout
 ]);
+
+/**
+ * Types authorized alongside a workout read so its telemetry is readable.
+ *
+ * HealthKit authorizes each underlying type separately — workout access alone
+ * grants neither the route nor the samples recorded during it. Every entry here
+ * is only ever queried scoped to a workout, so they are requested with the
+ * workout rather than surfaced as their own toggleable metrics.
+ */
+const WORKOUT_TELEMETRY_READ_IDENTIFIERS: readonly string[] = [
+  'HKWorkoutRouteTypeIdentifier',
+  'HKQuantityTypeIdentifierHeartRate',
+  'HKQuantityTypeIdentifierRunningSpeed',
+  'HKQuantityTypeIdentifierCyclingSpeed',
+  'HKQuantityTypeIdentifierRunningPower',
+  'HKQuantityTypeIdentifierCyclingPower',
+  'HKQuantityTypeIdentifierCyclingCadence',
+  'HKQuantityTypeIdentifierRunningGroundContactTime',
+  'HKQuantityTypeIdentifierRunningVerticalOscillation',
+  'HKQuantityTypeIdentifierRunningStrideLength',
+];
 
 // Map record types to the unit we want HealthKit to return values in.
 // Without specifying a unit, HealthKit returns values in the user's preferred/locale unit,
@@ -174,7 +204,13 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   'Stress': 'HKCategoryTypeIdentifierMindfulSession', // Map Stress to MindfulSession for HealthKit
   'Workout': 'HKWorkoutTypeIdentifier', // Map Workout to HKWorkoutTypeIdentifier for HealthKit
   'CervicalMucus': 'HKCategoryTypeIdentifierCervicalMucusQuality',
-  'ExerciseRoute': 'HKWorkoutTypeIdentifier',
+  // The route is its own HealthKit type; mapping it to the workout type would
+  // authorize the workout again and leave the route unreadable. Note this
+  // recordType must not be added to a metric's `permissions`: Health Connect
+  // throws InvalidRecordType for a *read* ExerciseRoute permission, which would
+  // fail the whole Android request. iOS gets it via
+  // WORKOUT_TELEMETRY_READ_IDENTIFIERS instead.
+  'ExerciseRoute': 'HKWorkoutRouteTypeIdentifier',
   'IntermenstrualBleeding': 'HKCategoryTypeIdentifierIntermenstrualBleeding',
   'MenstruationFlow': 'HKCategoryTypeIdentifierMenstrualFlow',
   'OvulationTest': 'HKCategoryTypeIdentifierOvulationTestResult',
@@ -257,9 +293,18 @@ export const requestHealthPermissions = async (
           writePermissionsSet.add('HKQuantityTypeIdentifierBloodPressureSystolic');
           writePermissionsSet.add('HKQuantityTypeIdentifierBloodPressureDiastolic');
         }
-      } else if (p.recordType === 'Workout') {
+      } else if (p.recordType === 'Workout' || p.recordType === 'ExerciseSession') {
         if (p.accessType === 'read') {
           readPermissionsSet.add('HKWorkoutTypeIdentifier');
+          // Workout telemetry is authorized per underlying type, not by the
+          // workout: without these the route comes back empty and the
+          // per-workout sample queries throw, so a synced walk would have no
+          // map and no heart-rate chart. Requested alongside the workout itself
+          // rather than as separate metrics because they are only ever read
+          // scoped to a workout (see healthkit/workoutTelemetry.ts).
+          WORKOUT_TELEMETRY_READ_IDENTIFIERS.forEach((identifier) =>
+            readPermissionsSet.add(identifier)
+          );
         } else if (p.accessType === 'write') {
           writePermissionsSet.add('HKWorkoutTypeIdentifier');
         }
@@ -677,7 +722,8 @@ export const readMinMaxAvgByDayDetailed = async (
 type RecordHandler = (
   identifier: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  telemetry?: TelemetryRunContext
 ) => Promise<unknown[]>;
 
 // Filter helpers for date range checking. Every handler pushes the window into the
@@ -770,7 +816,7 @@ const handleReproductiveHealth: RecordHandler = async (identifier, startDate, en
 };
 
 // Handler for Workout/ExerciseSession records
-const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => {
+const handleWorkout: RecordHandler = async (_identifier, startDate, endDate, telemetry) => {
   const workouts = await queryWorkoutSamples({
     ascending: false,
     limit: 0,
@@ -783,6 +829,18 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
     const workoutEnd = new Date(w.endDate);
     return overlapsDateRange(workoutStart, workoutEnd, startDate, endDate);
   });
+
+  // Budget slots are assigned in list order (the query is newest-first) before
+  // the concurrent stats fetches start. Claiming inside the map would award
+  // slots in Promise completion order — whichever workout's reads resolve
+  // first — so a capped background run could spend its budget on old workouts
+  // while the newest go unenriched.
+  const ctx = telemetry ?? createTelemetryRunContext();
+  const telemetryAllowed = new Set<unknown>();
+  for (const w of filteredWorkouts) {
+    if (!ctx.claim()) break;
+    telemetryAllowed.add(w);
+  }
 
   // Fetch statistics (calories, distance) for each workout
   const workoutsWithStats = await Promise.all(filteredWorkouts.map(async (w) => {
@@ -845,6 +903,57 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate) => 
     if (tz) {
       record.metadata = { HKTimeZone: tz };
     }
+
+    // Elevation is not a totals field on the workout; it arrives as metadata.
+    const elevation = w as unknown as {
+      metadataElevationAscended?: { quantity?: number };
+      metadataElevationDescended?: { quantity?: number };
+      totalFlightsClimbed?: { quantity?: number } | number;
+      totalSwimmingStrokeCount?: { quantity?: number } | number;
+    };
+    const quantityOf = (v: { quantity?: number } | number | undefined) =>
+      typeof v === 'object' ? v?.quantity : v;
+
+    // These all come from the workout sample already loaded above — no route
+    // read, no per-workout sample query — so they must not be gated behind the
+    // telemetry budget below. Gating them too would mean every workout past the
+    // budget on a backfill silently loses elevation/floors/strokes/elapsed time
+    // as well, even though the budget exists only to cap the expensive reads.
+    const telemetry: Record<string, number | null | undefined> = {};
+    const gain = elevation.metadataElevationAscended?.quantity;
+    const loss = elevation.metadataElevationDescended?.quantity;
+    const floors = quantityOf(elevation.totalFlightsClimbed);
+    const strokes = quantityOf(elevation.totalSwimmingStrokeCount);
+    if (typeof gain === 'number') telemetry.elevation_gain_meters = gain;
+    if (typeof loss === 'number') telemetry.elevation_loss_meters = loss;
+    if (typeof floors === 'number') telemetry.floors_climbed = floors;
+    if (typeof strokes === 'number') telemetry.stroke_count = strokes;
+    // w.duration is a Quantity ({ unit, quantity }), not a raw number — the
+    // same shape totalEnergyBurned/totalDistance arrive in above.
+    const durationSeconds = quantityOf(
+      w.duration as { quantity?: number } | number | undefined
+    );
+    if (typeof durationSeconds === 'number') {
+      telemetry.elapsed_time_seconds = Math.round(durationSeconds);
+    }
+    if (totalEnergyBurned) telemetry.active_calories = totalEnergyBurned;
+
+    // Telemetry must be collected here, inside the closure that owns the live
+    // proxy: the per-workout sample predicate takes the proxy object itself,
+    // and the proxy cannot be carried out on the returned record.
+    if (telemetryAllowed.has(w)) {
+      const bundle = await collectWorkoutTelemetry(
+        w as unknown as WorkoutProxyLike,
+        (w as unknown as { events?: readonly { type: number; startDate: Date; endDate: Date }[] }).events,
+      );
+      if (bundle.gps_points) record.gps_points = bundle.gps_points;
+      if (bundle.hr_samples) record.hr_samples = bundle.hr_samples;
+      if (bundle.laps) record.laps = bundle.laps;
+      Object.assign(telemetry, bundle.telemetry);
+    }
+
+    if (Object.keys(telemetry).length > 0) record.telemetry = telemetry;
+
     return record;
   }));
 
@@ -1155,7 +1264,8 @@ const RECORD_HANDLERS: Record<string, RecordHandler> = {
 export const readHealthRecordsDetailed = async (
   recordType: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  telemetry?: TelemetryRunContext
 ): Promise<HealthKitReadResult> => {
   if (!isHealthKitAvailable) {
     return { records: [] };
@@ -1169,7 +1279,7 @@ export const readHealthRecordsDetailed = async (
 
     // Use registered handler if available, otherwise create a quantity handler
     const handler = RECORD_HANDLERS[recordType] || createQuantityHandler(recordType);
-    return { records: await handler(identifier, startDate, endDate) };
+    return { records: await handler(identifier, startDate, endDate, telemetry) };
   } catch (error) {
     return { records: [], error: recordReadError(error, `${recordType} read`) };
   }

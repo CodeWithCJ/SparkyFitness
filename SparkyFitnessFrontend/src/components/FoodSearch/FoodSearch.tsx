@@ -44,7 +44,10 @@ import {
   searchNutritionixOptions,
 } from '@/hooks/Foods/useNutrionix.ts';
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients.ts';
-import { convertNutritionixToFood } from '@/utils/foodSearch.ts';
+import {
+  convertNutritionixToFood,
+  pinDefaultVariantToServing,
+} from '@/utils/foodSearch.ts';
 import { dedupeAppend } from '@/utils/dedupeAppend.ts';
 import {
   mergeRecent,
@@ -1035,13 +1038,19 @@ const EnhancedFoodSearch = ({
             providerId
           )
         );
+        // Keep the serving the search card displayed as the default so the
+        // edit form doesn't silently switch to the provider's default serving.
+        const pinnedFood = pinDefaultVariantToServing(
+          detailedFood,
+          food.default_variant
+        );
         setEditingProduct({
-          ...detailedFood,
-          provider_type: detailedFood.provider_type ?? food.provider_type,
+          ...pinnedFood,
+          provider_type: pinnedFood.provider_type ?? food.provider_type,
           provider_external_id:
-            detailedFood.provider_external_id ?? food.provider_external_id,
+            pinnedFood.provider_external_id ?? food.provider_external_id,
           provider_verified:
-            detailedFood.provider_verified ?? food.provider_verified,
+            pinnedFood.provider_verified ?? food.provider_verified,
         });
         setShowEditDialog(true);
       } catch {

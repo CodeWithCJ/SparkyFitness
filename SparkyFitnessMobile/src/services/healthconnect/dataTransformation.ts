@@ -1,4 +1,5 @@
 import { addLog } from '../LogService';
+import { attachWorkoutTelemetry } from '../shared/workoutTelemetryPayload';
 import {
   TransformedExerciseSession,
   TransformedNutritionEntry,
@@ -694,7 +695,7 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       source_id: metadata?.id,
       ...extractTimezoneMetadata(rec),
     };
-    output.push(exerciseSession);
+    output.push(attachWorkoutTelemetry(exerciseSession, rec));
   },
 
   MenstruationPeriod: (rec, _record, metricConfig, output) => {

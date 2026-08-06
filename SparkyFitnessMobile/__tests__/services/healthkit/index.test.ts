@@ -838,6 +838,34 @@ describe('readHealthRecords', () => {
       );
     });
 
+    test('sets telemetry.elapsed_time_seconds from an object-shaped duration (regression: real HealthKit workouts report duration as {unit, quantity}, not a bare number)', async () => {
+      await initHealthConnect();
+
+      const mockGetStatistic = jest.fn().mockResolvedValue(undefined);
+      mockQueryWorkoutSamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T08:11:04Z',
+          workoutActivityType: 52,
+          duration: { unit: 's', quantity: 664.883847951889 },
+          totalEnergyBurned: { unit: 'kcal', quantity: 30 },
+          totalDistance: { unit: 'm', quantity: 460 },
+          getStatistic: mockGetStatistic,
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(
+        (result[0] as { telemetry?: { elapsed_time_seconds?: number } })
+          .telemetry?.elapsed_time_seconds
+      ).toBe(665);
+    });
+
     test('uses stats from getStatistic when available', async () => {
       await initHealthConnect();
 

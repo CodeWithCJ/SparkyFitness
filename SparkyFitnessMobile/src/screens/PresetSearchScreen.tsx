@@ -8,7 +8,13 @@ import Icon from '../components/Icon';
 import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useWorkoutPresets, useWorkoutPresetSearch, useRefetchOnFocus, useProfile } from '../hooks';
-import { deriveShareStatus, filterByOwnership, type OwnershipFilter } from '../utils/shareStatus';
+import {
+  deriveShareStatus,
+  filterByOwnership,
+  ownershipFilterEmptyState,
+  ownershipFilterHeaderMenu,
+} from '../utils/shareStatus';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import ShareStatusBadge from '../components/ShareStatusBadge';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
@@ -21,7 +27,6 @@ import {
   buildPresetStartExercisesPayload,
   buildSingleExerciseStartPayload,
 } from '../utils/workoutSession';
-import SegmentedControl from '../components/SegmentedControl';
 import type { Exercise } from '../types/exercise';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -47,7 +52,8 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   const { profile } = useProfile();
 
   const [searchText, setSearchText] = useState('');
-  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>('all');
+  const ownershipFilter = useAppPreferencesStore((s) => s.presetSearchOwnershipFilter);
+  const setOwnershipFilter = useAppPreferencesStore((s) => s.setPresetSearchOwnershipFilter);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [startingId, setStartingId] = useState<string | number | null>(null);
 
@@ -68,6 +74,13 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   const header = useScreenHeader({
      title: t('workout.startWorkout'),
     left: { kind: 'dismiss', onPress: handleCancel, identifier: 'preset-search-cancel' },
+    right: ownershipFilterHeaderMenu({
+      noun: 'presets',
+      identifier: 'preset-search-filter',
+      filter: ownershipFilter,
+      onSelect: setOwnershipFilter,
+      t,
+    }),
   });
 
   const handleSelectPreset = useCallback((preset: WorkoutPreset) => {
@@ -191,7 +204,19 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
        return <StatusView icon="alert-circle" title={t('workout.failedSearchPresets')} />;
     }
     if (filteredSearchResults.length === 0) {
-       return <StatusView title={t('workout.noMatchingPresets')} />;
+      if (ownershipFilter !== 'all' && searchResults.length > 0) {
+        return (
+          <StatusView
+            {...ownershipFilterEmptyState({
+              noun: 'presets',
+              filter: ownershipFilter,
+              onReset: () => setOwnershipFilter('all'),
+              t,
+            })}
+          />
+        );
+      }
+      return <StatusView title={t('workout.noMatchingPresets')} />;
     }
     return (
       <FlatList
@@ -223,8 +248,17 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
     if (presets.length === 0) {
        return <StatusView title={t('workout.noPresets')} subtitle={t('workout.startEmptyOrSave')} />;
     }
-    if (filteredPresets.length === 0) {
-       return <StatusView title={t('workout.noMatchingPresets')} subtitle={t('workout.changeOwnership')} />;
+    if (ownershipFilter !== 'all' && filteredPresets.length === 0) {
+      return (
+        <StatusView
+          {...ownershipFilterEmptyState({
+            noun: 'presets',
+            filter: ownershipFilter,
+            onReset: () => setOwnershipFilter('all'),
+            t,
+          })}
+        />
+      );
     }
     return (
       <FlatList
@@ -242,7 +276,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       {header}
 
       {/* Search bar */}
-      <View className="px-4 py-2">
+      <View className="px-4 py-2 border-b border-border-subtle">
         <View
           className="flex-row items-center bg-raised rounded-lg px-3 py-2.5"
           style={{ borderWidth: 1, borderColor: isSearchFocused ? accentColor : borderSubtle }}
@@ -271,19 +305,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
         </View>
       </View>
 
-      {/* Ownership filter */}
-      <View className="px-4 pb-2 border-b border-border-subtle">
-        <SegmentedControl
-          segments={[
-             { key: 'all', label: t('workout.all') },
-             { key: 'mine', label: t('workout.mine') },
-             { key: 'family', label: t('workout.family') },
-             { key: 'public', label: t('workout.public') },
-          ]}
-          activeKey={ownershipFilter}
-          onSelect={setOwnershipFilter}
-        />
-      </View>
+
       <TouchableOpacity
         className="flex-row items-center px-4 py-3 border-b border-border-subtle"
         activeOpacity={0.7}

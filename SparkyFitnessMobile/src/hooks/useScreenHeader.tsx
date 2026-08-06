@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -8,21 +8,27 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
+import { useCSSVariable } from 'uniwind';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import type { ParamListBase } from '@react-navigation/native';
 import type {
   NativeStackHeaderItem,
+  NativeStackHeaderItemMenu,
   NativeStackNavigationOptions,
   NativeStackNavigationProp,
 } from '@react-navigation/native-stack';
-import Icon from '../components/Icon';
+import Icon, { IconName } from '../components/Icon';
 import FadeView from '../components/FadeView';
+import AnchoredMenu, { measureAnchoredMenuTrigger } from '../components/AnchoredMenu';
+import type { AnchoredMenuItem, AnchorRect } from '../components/AnchoredMenu';
 import { useHeaderActionColors } from './useHeaderActionColors';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
+  createNativeHeaderAccentBadge,
   createNativeHeaderIconButtonItem,
+  createNativeHeaderMenuButtonItem,
   createNativeHeaderTextButtonItem,
 } from '../utils/nativeHeaderItems';
 
@@ -45,6 +51,34 @@ export const SAVING_LABEL = 'Saving…';
  * custom-path primary, so the header does not show a second Save control.
  */
 export type HeaderPlacement = 'both' | 'native-only';
+
+export type HeaderMenuAction = {
+  label: string;
+  /** SF Symbol shown on the native iOS menu row. */
+  sfSymbol?: string;
+  /** Semantic Icon name shown on the custom-path (AnchoredMenu) row. */
+  icon?: IconName;
+  /** Single-choice option row: checkmark when active, on both paths. */
+  selected?: boolean;
+  onPress: () => void;
+};
+
+/**
+ * A titled group of single-select options. Rendered as an uppercase group
+ * label on the custom path, and as an inline single-selection submenu on the
+ * native path — a titled section with a leading checkmark on the active
+ * option (the Mail-app pattern).
+ */
+export type HeaderMenuSection = {
+  label: string;
+  items: HeaderMenuAction[];
+};
+
+export type HeaderMenuEntry = HeaderMenuAction | HeaderMenuSection;
+
+function isMenuSection(entry: HeaderMenuEntry): entry is HeaderMenuSection {
+  return 'items' in entry;
+}
 
 export type HeaderItem =
   | { kind: 'back'; onPress?: () => void; disabled?: boolean; identifier?: string }
@@ -91,7 +125,22 @@ export type HeaderItem =
       busyLabel?: string;
       accessibilityLabel?: string;
       identifier?: string;
+    }
+  | {
+      // Overflow/filter menu: the system UIMenu on the native path, an
+      // AnchoredMenu dropped under the trigger on the custom path.
+      kind: 'menu';
+      /** Trigger glyphs; default to the ellipsis pair. */
+      sfSymbol?: string;
+      ionicon?: string;
+      items: HeaderMenuEntry[];
+      /** Accent dot on the trigger marking a non-default selection. */
+      showsBadge?: boolean;
+      accessibilityLabel: string;
+      identifier?: string;
     };
+
+type MenuHeaderItem = Extract<HeaderItem, { kind: 'menu' }>;
 
 export interface ScreenHeaderConfig {
   /** Centered title for the custom bar. */
@@ -131,7 +180,10 @@ function itemPlacement(item: HeaderItem): HeaderPlacement {
   return 'placement' in item ? item.placement ?? 'both' : 'both';
 }
 
-function resolvePress(item: HeaderItem, goBack: () => void): () => void {
+function resolvePress(
+  item: Exclude<HeaderItem, MenuHeaderItem>,
+  goBack: () => void,
+): () => void {
   if (item.kind === 'back') return item.onPress ?? goBack;
   return item.onPress;
 }
@@ -176,11 +228,110 @@ function resolveItemAccessibilityLabel(item: HeaderItem, t: TFunction): string {
     case 'dismiss':
       return item.accessibilityLabel ?? t('common.close');
     case 'icon':
+    case 'menu':
       return item.accessibilityLabel;
     case 'text':
     case 'primary':
       return item.accessibilityLabel ?? (isPrimaryItem(item) ? (item.label ?? t('common.save')) : item.label) ?? t('common.save');
   }
+}
+
+/**
+ * Per-menu-entry handler key inside the hook's ref map: `<item id>~<section
+ * index>[.<action index>]`. Refreshed every render like the item-level keys so
+ * native menu actions never invoke stale closures.
+ */
+function collectMenuHandlers(
+  item: HeaderItem,
+  id: string,
+  handlers: Record<string, () => void>,
+): void {
+  if (item.kind !== 'menu') return;
+  item.items.forEach((entry, i) => {
+    if (isMenuSection(entry)) {
+      entry.items.forEach((action, j) => {
+        handlers[`${id}~${i}.${j}`] = action.onPress;
+      });
+    } else {
+      handlers[`${id}~${i}`] = entry.onPress;
+    }
+  });
+}
+
+function toAnchoredMenuItems(entries: HeaderMenuEntry[], idPrefix: string): AnchoredMenuItem[] {
+  const out: AnchoredMenuItem[] = [];
+  entries.forEach((entry, i) => {
+    if (isMenuSection(entry)) {
+      out.push({ key: `${idPrefix}~${i}`, label: entry.label, isGroupLabel: true });
+      entry.items.forEach((action, j) => {
+        out.push({
+          key: `${idPrefix}~${i}.${j}`,
+          label: action.label,
+          icon: action.icon,
+          selected: action.selected,
+          onPress: action.onPress,
+        });
+      });
+    } else {
+      out.push({
+        key: `${idPrefix}~${i}`,
+        label: entry.label,
+        icon: entry.icon,
+        selected: entry.selected,
+        onPress: entry.onPress,
+      });
+    }
+  });
+  return out;
+}
+
+function toNativeMenuAction(
+  action: HeaderMenuAction,
+  onPress: () => void,
+): NativeStackHeaderItemMenu['menu']['items'][number] {
+  return {
+    type: 'action',
+    label: action.label,
+    ...(action.sfSymbol
+      ? { icon: { type: 'sfSymbol' as const, name: action.sfSymbol as never } }
+      : {}),
+    ...(action.selected !== undefined
+      ? { state: action.selected ? ('on' as const) : ('off' as const) }
+      : {}),
+    onPress,
+  };
+}
+
+function buildNativeMenuItem(
+  item: MenuHeaderItem,
+  identifier: string,
+  colors: HeaderColors,
+  accentColor: string,
+  pressFor: (handlerKey: string) => () => void,
+): NativeStackHeaderItem {
+  const menuItems: NativeStackHeaderItemMenu['menu']['items'] = item.items.map((entry, i) =>
+    isMenuSection(entry)
+      ? {
+          type: 'submenu',
+          label: entry.label,
+          inline: true,
+          multiselectable: false,
+          items: entry.items.map((action, j) =>
+            toNativeMenuAction(action, pressFor(`${identifier}~${i}.${j}`)),
+          ),
+        }
+      : toNativeMenuAction(entry, pressFor(`${identifier}~${i}`)),
+  );
+  return createNativeHeaderMenuButtonItem({
+    // Bare glyph: Liquid Glass draws its own circular button background, so
+    // circled variants would double up the ring.
+    sfSymbol: item.sfSymbol ?? 'ellipsis',
+    identifier,
+    tintColor: colors.defaultColor,
+    accessibilityLabel: item.accessibilityLabel,
+    badge: item.showsBadge ? createNativeHeaderAccentBadge(accentColor) : undefined,
+    menuItems,
+  });
 }
 
 /** Raw platform icon for the generic `icon` kind on the custom bar. */
@@ -211,10 +362,12 @@ function RawHeaderIcon({
 function HeaderBarButton({
   item,
   color,
+  badgeColor,
   onPress,
 }: {
   item: HeaderItem;
   color: string;
+  badgeColor?: string;
   onPress: () => void;
 }) {
   const { t } = useTranslation();
@@ -222,24 +375,45 @@ function HeaderBarButton({
   const busy = itemIsBusy(item);
 
   const label = resolveItemLabel(item, t);
-  const content = busy ? (
-    <ActivityIndicator size="small" color={color} />
-  ) : item.kind === 'back' ? (
-    <Icon name="chevron-back" size={22} color={color} />
-  ) : item.kind === 'dismiss' ? (
-    <Icon name="close" size={22} color={color} />
-  ) : item.kind === 'icon' ? (
-    <RawHeaderIcon
-      sf={item.sfSymbol}
-      ion={item.ionicon}
-      color={color}
-      useIoniconOnIOS={item.useIoniconOnIOS}
-    />
-  ) : (
-    <Text style={{ color, fontSize: 17, fontWeight: isPrimaryItem(item) ? '600' : '500' }}>
-      {label}
-    </Text>
-  );
+  let content: React.ReactNode;
+  if (busy) {
+    content = <ActivityIndicator size="small" color={color} />;
+  } else if (item.kind === 'back') {
+    content = <Icon name="chevron-back" size={22} color={color} />;
+  } else if (item.kind === 'dismiss') {
+    content = <Icon name="close" size={22} color={color} />;
+  } else if (item.kind === 'icon') {
+    content = (
+      <RawHeaderIcon
+        sf={item.sfSymbol}
+        ion={item.ionicon}
+        color={color}
+        useIoniconOnIOS={item.useIoniconOnIOS}
+      />
+    );
+  } else if (item.kind === 'menu') {
+    content = (
+      <View>
+        <RawHeaderIcon
+          sf={item.sfSymbol ?? 'ellipsis'}
+          ion={item.ionicon ?? 'ellipsis-horizontal'}
+          color={color}
+        />
+        {item.showsBadge && (
+          <View
+            className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full"
+            style={{ backgroundColor: badgeColor }}
+          />
+        )}
+      </View>
+    );
+  } else {
+    content = (
+      <Text style={{ color, fontSize: 17, fontWeight: isPrimaryItem(item) ? '600' : '500' }}>
+        {label}
+      </Text>
+    );
+  }
 
   return (
     <Pressable
@@ -265,7 +439,7 @@ function resolveIdentifier(item: HeaderItem, fallback: string): string {
 }
 
 function buildNativeItem(
-  item: HeaderItem,
+  item: Exclude<HeaderItem, MenuHeaderItem>,
   identifier: string,
   colors: HeaderColors,
   press: () => void,
@@ -330,6 +504,13 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { defaultColor, saveColor } = useHeaderActionColors();
   const colors: HeaderColors = { defaultColor, saveColor };
+  // The menu badge dot always takes the real accent, even on the Liquid Glass
+  // path where saveColor is coerced to the monochrome text color.
+  const accentColor = (useCSSVariable('--color-accent-primary') as string) || '#0A84FF';
+
+  // Custom-path menu presentation: which menu item is open, anchored where.
+  const [openMenu, setOpenMenu] = useState<{ id: string; anchor: AnchorRect } | null>(null);
+  const menuTriggerRefs = useRef<Record<string, View | null>>({});
 
   const { title, nativeTitle, left, right, center, borderless, nativeOptions, animateKey } = config;
   const rightItems = toRightArray(right);
@@ -353,38 +534,70 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   const nextHandlers: Record<string, () => void> = {};
 
   const goBack = () => navigation.goBack();
+  // A menu item's own press only exists on the custom path: measure the
+  // trigger and open the AnchoredMenu under it. (Natively the system presents
+  // the UIMenu itself; only the per-entry handlers fire from JS.)
+  const openAnchoredMenu = (id: string) => () =>
+    measureAnchoredMenuTrigger(menuTriggerRefs.current[id] ?? null, (anchor) =>
+      setOpenMenu({ id, anchor }),
+    );
+  const registerHandlers = (item: HeaderItem, id: string) => {
+    nextHandlers[id] = item.kind === 'menu' ? openAnchoredMenu(id) : resolvePress(item, goBack);
+    collectMenuHandlers(item, id, nextHandlers);
+  };
   const leftId = left ? resolveIdentifier(left, 'header-left') : 'header-left';
   if (left) {
-    nextHandlers[leftId] = resolvePress(left, goBack);
+    registerHandlers(left, leftId);
   }
   const rightMeta = rightItems.map((item, index) => {
     const id = resolveIdentifier(item, `header-right-${index}`);
-    nextHandlers[id] = resolvePress(item, goBack);
+    registerHandlers(item, id);
     return { item, id };
   });
   handlersRef.current = nextHandlers;
 
-// Native path: mirror the descriptor into stack options. Re-runs only when the
+  // Every visible facet of a menu item, so filter selections, badge state, and
+  // relabeled entries rebuild the native button.
+  const menuSignature = (item: HeaderItem) =>
+    item.kind === 'menu'
+      ? {
+          sfSymbol: item.sfSymbol,
+          showsBadge: !!item.showsBadge,
+          accessibilityLabel: item.accessibilityLabel,
+          entries: item.items.map((entry) =>
+            isMenuSection(entry)
+              ? {
+                  label: entry.label,
+                  items: entry.items.map((a) => ({
+                    label: a.label,
+                    selected: a.selected ?? null,
+                    sfSymbol: a.sfSymbol,
+                  })),
+                }
+              : { label: entry.label, selected: entry.selected ?? null, sfSymbol: entry.sfSymbol },
+          ),
+        }
+      : undefined;
+
   // visible signature changes; onPress is dispatched through `handlersRef`.
-  const leftSignature = left
-    ? {
-        id: leftId,
-        kind: left.kind,
-        label: resolveItemLabel(left, t),
-        busyLabel: resolveItemBusyLabel(left, t),
-        accessibilityLabel: resolveItemAccessibilityLabel(left, t),
-        sfSymbol: left.kind === 'icon' ? left.sfSymbol : undefined,
-        role: 'role' in left ? left.role : undefined,
-        disabled: itemIsDisabled(left),
-        busy: itemIsBusy(left),
-      }
-    : null;
   const signature = JSON.stringify({
     usesNativeHeader,
     defaultColor,
     saveColor,
+    accentColor,
     nativeTitle: nativeTitle ?? null,
-    left: leftSignature,
+    left: left
+      ? {
+          id: leftId,
+          kind: left.kind,
+          label: resolveItemLabel(left, t),
+          busyLabel: resolveItemBusyLabel(left, t),
+          accessibilityLabel: resolveItemAccessibilityLabel(left, t),
+          disabled: itemIsDisabled(left),
+          busy: itemIsBusy(left),
+          menu: menuSignature(left),
+        }
+      : null,
     right: rightMeta.map(({ item, id }) => ({
       id,
       kind: item.kind,
@@ -395,6 +608,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       role: 'role' in item ? item.role : undefined,
       disabled: itemIsDisabled(item),
       busy: itemIsBusy(item),
+      menu: menuSignature(item),
     })),
     nativeOptions: nativeOptions ?? null,
   });
@@ -410,13 +624,17 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     if (usesNativeHeader) {
       if (nativeTitle !== undefined) options.title = nativeTitle;
 
+      const buildItem = (item: HeaderItem, id: string): NativeStackHeaderItem | null =>
+        item.kind === 'menu'
+          ? buildNativeMenuItem(item, id, colors, accentColor, (handlerKey) => () =>
+              handlersRef.current[handlerKey]?.(),
+            )
+          : buildNativeItem(item, id, colors, () => handlersRef.current[id]?.(), t);
+
       if (!left || left.kind === 'back') {
         options.unstable_headerLeftItems = undefined;
       } else {
-         const leftNative = buildNativeItem(left, leftId, colors, () =>
-          handlersRef.current[leftId]?.(),
-          t,
-        );
+        const leftNative = buildItem(left, leftId);
         options.unstable_headerLeftItems = leftNative ? () => [leftNative] : undefined;
         // A dismiss/text left item replaces the system back button.
         if (left.kind === 'dismiss' && options.headerBackVisible === undefined) {
@@ -425,7 +643,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       }
 
       const rightNative = rightMeta
-        .map(({ item, id }) => buildNativeItem(item, id, colors, () => handlersRef.current[id]?.(), t))
+        .map(({ item, id }) => buildItem(item, id))
         .filter((entry): entry is NativeStackHeaderItem => entry !== null);
       options.unstable_headerRightItems = rightNative.length ? () => rightNative : undefined;
     }
@@ -438,25 +656,56 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
 
   if (usesNativeHeader) return null;
 
-  const leftCustom =
-    left && itemPlacement(left) !== 'native-only' ? (
-      <HeaderBarButton
-        item={left}
-        color={itemColor(left, colors)}
-        onPress={() => handlersRef.current[leftId]?.()}
-      />
-    ) : null;
-
-  const rightCustom = rightMeta
-    .filter(({ item }) => itemPlacement(item) !== 'native-only')
-    .map(({ item, id }) => (
+  // Menu triggers are wrapped in a measurable View so the press handler can
+  // anchor the AnchoredMenu under the button it came from.
+  const renderButton = (item: HeaderItem, id: string) => {
+    const button = (
       <HeaderBarButton
         key={id}
         item={item}
         color={itemColor(item, colors)}
+        badgeColor={accentColor}
         onPress={() => handlersRef.current[id]?.()}
       />
-    ));
+    );
+    if (item.kind !== 'menu') return button;
+    return (
+      <View
+        key={id}
+        ref={(node) => {
+          menuTriggerRefs.current[id] = node;
+        }}
+        collapsable={false}
+      >
+        {button}
+      </View>
+    );
+  };
+
+  const leftCustom =
+    left && itemPlacement(left) !== 'native-only' ? renderButton(left, leftId) : null;
+
+  const rightCustom = rightMeta
+    .filter(({ item }) => itemPlacement(item) !== 'native-only')
+    .map(({ item, id }) => renderButton(item, id));
+
+  const openMenuItem = (() => {
+    if (!openMenu) return null;
+    const candidates = [...(left ? [{ item: left, id: leftId }] : []), ...rightMeta];
+    const match = candidates.find(({ id }) => id === openMenu.id)?.item;
+    return match && match.kind === 'menu' ? match : null;
+  })();
+
+  const menuOverlay = (
+    <AnchoredMenu
+      visible={!!openMenuItem}
+      anchor={openMenu?.anchor ?? null}
+      items={
+        openMenu && openMenuItem ? toAnchoredMenuItems(openMenuItem.items, openMenu.id) : []
+      }
+      onClose={() => setOpenMenu(null)}
+    />
+  );
 
   const bar = (
     <View
@@ -481,8 +730,10 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     </View>
   );
 
-  if (animateKey !== undefined) {
-    return <FadeView key={animateKey}>{bar}</FadeView>;
-  }
-  return bar;
+  return (
+    <>
+      {animateKey !== undefined ? <FadeView key={animateKey}>{bar}</FadeView> : bar}
+      {menuOverlay}
+    </>
+  );
 }

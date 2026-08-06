@@ -89,7 +89,7 @@ describe('collectHealthData', () => {
     const outcomes = await collectHealthData(provider, [bmr], windows, { timeoutLabelPrefix: 'Test query' });
 
     expect(provider.readCumulativeByDay).toHaveBeenCalled();
-    expect(provider.readRaw).toHaveBeenCalledWith('BasalMetabolicRate', windows.sessionStart, windows.end);
+    expect(provider.readRaw).toHaveBeenCalledWith('BasalMetabolicRate', windows.sessionStart, windows.end, expect.anything());
     expect(outcomes[0].data).toEqual(rawRecords);
   });
 
@@ -177,7 +177,7 @@ describe('collectHealthData', () => {
     // the server, so a mid-day window start would clobber the stored day
     // values with partial-window ones (issue #1978 — heart_rate_min losing
     // the overnight low to an afternoon sync).
-    expect(provider.readRaw).toHaveBeenCalledWith('RunningSpeed', windows.aggregatedStart, windows.end);
+    expect(provider.readRaw).toHaveBeenCalledWith('RunningSpeed', windows.aggregatedStart, windows.end, expect.anything());
     expect(provider.transform).toHaveBeenCalledWith(rawSamples, runningSpeed);
     // The aggregateByDay tail runs: exactly 3 records per day.
     expect(outcomes[0].data.map((r: { type: string }) => r.type)).toEqual([
@@ -193,7 +193,7 @@ describe('collectHealthData', () => {
 
     await collectHealthData(provider, [standTime], windows, { timeoutLabelPrefix: 'Test query' });
 
-    expect(provider.readRaw).toHaveBeenCalledWith('AppleStandTime', windows.aggregatedStart, windows.end);
+    expect(provider.readRaw).toHaveBeenCalledWith('AppleStandTime', windows.aggregatedStart, windows.end, expect.anything());
   });
 
   test('rollingLookbackDays widens the raw window to the day-aligned lookback', async () => {
@@ -204,7 +204,7 @@ describe('collectHealthData', () => {
 
     // Lookback: midnight of (end − 2 days) = 2026-07-01 00:00, earlier than the
     // session start (2026-07-02 15:30) — the wider window wins.
-    expect(provider.readRaw).toHaveBeenCalledWith('Nutrition', new Date(2026, 6, 1, 0, 0, 0, 0), windows.end);
+    expect(provider.readRaw).toHaveBeenCalledWith('Nutrition', new Date(2026, 6, 1, 0, 0, 0, 0), windows.end, expect.anything());
   });
 
   test('rollingLookbackDays keeps the session window when it already reaches further back', async () => {
@@ -218,7 +218,7 @@ describe('collectHealthData', () => {
 
     await collectHealthData(provider, [nutrition], wideWindows, { timeoutLabelPrefix: 'Test query' });
 
-    expect(provider.readRaw).toHaveBeenCalledWith('Nutrition', wideWindows.sessionStart, wideWindows.end);
+    expect(provider.readRaw).toHaveBeenCalledWith('Nutrition', wideWindows.sessionStart, wideWindows.end, expect.anything());
   });
 
   test('postProcessRaw runs only on non-empty raw reads', async () => {
@@ -238,7 +238,7 @@ describe('collectHealthData', () => {
 
     const secondOutcomes = await collectHealthData(provider, [exercise], windows, { timeoutLabelPrefix: 'Test query' });
 
-    expect(provider.postProcessRaw).toHaveBeenCalledWith(exercise, rawSessions);
+    expect(provider.postProcessRaw).toHaveBeenCalledWith(exercise, rawSessions, expect.anything());
     expect(provider.transform).toHaveBeenCalledWith(enriched, exercise);
     expect(secondOutcomes[0].data).toEqual(enriched);
   });
@@ -341,7 +341,7 @@ describe('collectHealthData', () => {
 
       expect(outcomes[0].data).toEqual(drinkRecords);
       // Per-record upsert tolerates partial-day windows — the session window is fine.
-      expect(provider.readRaw).toHaveBeenCalledWith('Hydration', windows.sessionStart, windows.end);
+      expect(provider.readRaw).toHaveBeenCalledWith('Hydration', windows.sessionStart, windows.end, expect.anything());
     });
 
     test('falls back to one day-aggregate record against an older server', async () => {
@@ -360,7 +360,7 @@ describe('collectHealthData', () => {
       // The aggregate is a full-day SET on the old server, so the read must
       // start at a local day boundary — a mid-day session window (background
       // sync: lastSynced − 6h) would sum only a slice of the day.
-      expect(provider.readRaw).toHaveBeenCalledWith('Hydration', windows.aggregatedStart, windows.end);
+      expect(provider.readRaw).toHaveBeenCalledWith('Hydration', windows.aggregatedStart, windows.end, expect.anything());
     });
 
     test('does not probe the server when no per-record water metric is enabled', async () => {

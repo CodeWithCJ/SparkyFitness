@@ -5,6 +5,12 @@ import { ApiError } from './errors';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ensureTimezoneBootstrapped } from './preferencesApi';
 import { CONNECTION_CHECK_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
+import {
+  instantToDay,
+  instantToDayWithOffset,
+  isDayString,
+  isValidTimeZone,
+} from '@workspace/shared';
 import type { SleepStageEvent } from '../../types/mobileHealthData';
 
 interface BaseHealthDataPayloadItem {
@@ -153,6 +159,94 @@ export const fetchWithRetry = async (
 // chunk's pre-cleanup wipe an earlier chunk's inserts.
 const RANGE_DELETE_TYPES = new Set(['ExerciseSession', 'Workout']);
 
+// Soft cap on one workout chunk's JSON size. Reverse proxies commonly cap
+// request bodies at 10 MB; telemetry-heavy sessions run ~250 KB each, and a
+// backfill window can hold a month of them for one source, so oversized groups
+// are split at calendar-day boundaries (see splitWorkoutGroupBySize). Kept well
+// under the proxy cap to leave room for JSON escaping and header overhead.
+export const WORKOUT_CHUNK_SOFT_LIMIT_BYTES = 2 * 1024 * 1024;
+
+// Chunk day keys must match the day the server resolves for its per-request
+// range delete (resolveHealthEntryDate): the basis instant is `timestamp`,
+// bucketed in the record's own timezone or UTC offset when present. A key that
+// lands on a different day than the server's lets one chunk's pre-cleanup
+// range overlap another chunk's days and delete its freshly inserted rows.
+// Day-only basis strings are trusted as-is, exactly as the server does. The
+// final fallback must be the server's stored ACCOUNT timezone, not the device
+// timezone: ensureTimezoneBootstrapped only fills an unset account timezone
+// from the device — it preserves an existing one — so a traveling user (or a
+// device with the wrong local clock) can have a device zone that no longer
+// matches their account zone. Records with no parseable basis share one ''
+// bucket; the server excludes them from its cleanup range, so their grouping
+// is inconsequential.
+const recordDay = (
+  record: HealthDataPayloadItem,
+  accountTimezone: string
+): string => {
+  const basis =
+    record.timestamp || record.date || record.entry_date || record.startTime;
+  if (!basis) return '';
+  if (isDayString(basis)) return basis;
+  const instant = new Date(basis);
+  if (isNaN(instant.getTime())) return '';
+  if (record.record_timezone && isValidTimeZone(record.record_timezone)) {
+    return instantToDay(instant, record.record_timezone);
+  }
+  if (typeof record.record_utc_offset_minutes === 'number') {
+    return instantToDayWithOffset(instant, record.record_utc_offset_minutes);
+  }
+  return instantToDay(instant, accountTimezone);
+};
+
+/**
+ * Splits one source's workout records into chunks under the size cap without
+ * breaking the range-delete contract: whole calendar days only, packed in date
+ * order, so consecutive chunks cover disjoint contiguous day ranges and each
+ * request's server-side pre-cleanup touches no other chunk's days. A single
+ * day that alone exceeds the cap cannot be split and ships as its own chunk.
+ */
+const splitWorkoutGroupBySize = (
+  records: HealthDataPayloadItem[],
+  accountTimezone: string,
+): HealthDataPayloadItem[][] => {
+  const sizeOf = (record: HealthDataPayloadItem): number =>
+    JSON.stringify(record).length;
+
+  let totalBytes = 0;
+  const byDay = new Map<string, { records: HealthDataPayloadItem[]; bytes: number }>();
+  for (const record of records) {
+    const day = recordDay(record, accountTimezone);
+    const bytes = sizeOf(record);
+    totalBytes += bytes;
+    const bucket = byDay.get(day);
+    if (bucket) {
+      bucket.records.push(record);
+      bucket.bytes += bytes;
+    } else {
+      byDay.set(day, { records: [record], bytes });
+    }
+  }
+
+  if (totalBytes <= WORKOUT_CHUNK_SOFT_LIMIT_BYTES) return [records];
+
+  const chunks: HealthDataPayloadItem[][] = [];
+  let current: HealthDataPayloadItem[] = [];
+  let currentBytes = 0;
+  const days = [...byDay.keys()].sort();
+  for (const day of days) {
+    const bucket = byDay.get(day)!;
+    if (current.length > 0 && currentBytes + bucket.bytes > WORKOUT_CHUNK_SOFT_LIMIT_BYTES) {
+      chunks.push(current);
+      current = [];
+      currentBytes = 0;
+    }
+    current.push(...bucket.records);
+    currentBytes += bucket.bytes;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+};
+
 // Types the server ingests idempotently by natural key (no range-delete), so they
 // can be chunked freely — but each record is expensive to process server-side
 // (multiple queries / merges), so they're capped at SESSION_CHUNK_SIZE rather than
@@ -192,6 +286,7 @@ const sendHealthDataChunked = async (
   headers: Record<string, string>,
   data: HealthDataPayload,
   serverConfig: ServerConfig,
+  accountTimezone: string,
 ): Promise<HealthDataSyncSummary> => {
   const simpleRecords: HealthDataPayloadItem[] = [];
   const smallChunkRecords: HealthDataPayloadItem[] = [];
@@ -215,9 +310,12 @@ const sendHealthDataChunked = async (
 
   const chunks: HealthDataPayloadItem[][] = [];
 
-  // Exercise/Workout: one chunk per source, never split.
+  // Exercise/Workout: one chunk per source, split only at whole-day boundaries
+  // when telemetry pushes a group past the size cap.
   for (const sessionRecords of rangeDeleteBySource.values()) {
-    chunks.push(sessionRecords);
+    for (const chunk of splitWorkoutGroupBySize(sessionRecords, accountTimezone)) {
+      chunks.push(chunk);
+    }
   }
 
   // Sleep/Nutrition: chunked by SESSION_CHUNK_SIZE.
@@ -338,7 +436,11 @@ export const syncHealthData = async (
     return undefined;
   }
 
-  await ensureTimezoneBootstrapped({ throwOnFailure: true });
+  // throwOnFailure guarantees a resolved timezone here, but the fallback still
+  // covers it defensively rather than assuming the non-null return holds.
+  const accountTimezone =
+    (await ensureTimezoneBootstrapped({ throwOnFailure: true })) ??
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   addLog(`[API] Syncing to ${url}/api/health-data`, 'DEBUG');
 
@@ -349,14 +451,18 @@ export const syncHealthData = async (
       `${url}/api/health-data`,
       {
         'Content-Type': 'application/json',
-        // Declares per-set exercise durations as integer seconds. Servers read an
-        // absent header as the legacy contract, where those durations are minutes.
-        'X-Workout-Model-Version': '2',
+        // 2 declares per-set exercise durations as integer seconds (an absent
+        // header means the legacy contract, where those durations are minutes).
+        // 3 additionally signals that workout records may carry telemetry —
+        // gps_points, hr_samples, laps and telemetry. Those fields are all
+        // optional, so a server that predates 3 simply ignores them.
+        'X-Workout-Model-Version': '3',
         ...proxyHeadersToRecord(config.proxyHeaders),
         ...getAuthHeaders(config),
       },
       data,
       config,
+      accountTimezone,
     );
 
     if (summary.recordErrors.length > 0) {

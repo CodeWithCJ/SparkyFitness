@@ -26,6 +26,11 @@ const androidPermissions = [
   'android.permission.health.READ_CERVICAL_MUCUS',
   'android.permission.health.READ_CYCLING_PEDALING_CADENCE',
   'android.permission.health.READ_EXERCISE',
+  // Route data is gated separately from READ_EXERCISE and is granted per
+  // session through requestExerciseRoute's system dialog; the blanket
+  // READ_EXERCISE_ROUTES_ALL is a restricted permission Google grants only to
+  // allowlisted apps. READ_HEALTH_DATA_IN_BACKGROUND does not cover routes.
+  'android.permission.health.READ_EXERCISE_ROUTES',
   'android.permission.health.READ_DISTANCE',
   'android.permission.health.READ_ELEVATION_GAINED',
   'android.permission.health.READ_FLOORS_CLIMBED',
@@ -74,6 +79,7 @@ const devAndroidPermissions = [
   'android.permission.health.WRITE_CERVICAL_MUCUS',
   'android.permission.health.WRITE_CYCLING_PEDALING_CADENCE',
   'android.permission.health.WRITE_EXERCISE',
+  'android.permission.health.WRITE_EXERCISE_ROUTE',
   'android.permission.health.WRITE_DISTANCE',
   'android.permission.health.WRITE_ELEVATION_GAINED',
   'android.permission.health.WRITE_FLOORS_CLIMBED',
