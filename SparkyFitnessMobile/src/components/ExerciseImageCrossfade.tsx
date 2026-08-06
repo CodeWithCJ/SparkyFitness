@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -44,6 +45,7 @@ const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({
   fallback = null,
 }) => {
   const [paused, setPaused] = useState(false);
+  const { t } = useTranslation();
   const fade = useSharedValue(0);
 
   useEffect(() => {
@@ -84,7 +86,7 @@ const ExerciseImageCrossfade: React.FC<ExerciseImageCrossfadeProps> = ({
     <Pressable
       testID="exercise-image-crossfade"
       accessibilityRole="button"
-      accessibilityLabel={paused ? 'Play exercise animation' : 'Pause exercise animation'}
+      accessibilityLabel={paused ? t('exerciseCrossfade.play') : t('exerciseCrossfade.pause')}
       onPress={() => setPaused((value) => !value)}
       style={[styles.fill, mayHaveTransparency && styles.whiteBackdrop]}
     >

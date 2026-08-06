@@ -2817,5 +2817,9 @@
       "alreadyRunning": "W tej chwili trwa inna synchronizacja. Poczekaj chwilę, aż się zakończy, a następnie rozpocznij import."
     },
     "completed": "Ukończono"
+  },
+  "exerciseCrossfade": {
+    "play": "Odtwórz animację ćwiczenia",
+    "pause": "Wstrzymaj animację ćwiczenia"
   }
 }

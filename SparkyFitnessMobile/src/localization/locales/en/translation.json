@@ -2773,5 +2773,9 @@
       "alreadyRunning": "Another sync is running right now. Wait a moment for it to finish, then start the import."
     },
     "completed": "Completed"
+  },
+  "exerciseCrossfade": {
+    "play": "Play exercise animation",
+    "pause": "Pause exercise animation"
   }
 }
