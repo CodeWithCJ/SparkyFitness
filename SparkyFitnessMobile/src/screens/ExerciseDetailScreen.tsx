@@ -1,14 +1,19 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { CommonActions, StackActions } from '@react-navigation/native';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PagerView from 'react-native-pager-view';
+import { useReducedMotion } from 'react-native-reanimated';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
+import ExerciseImageCrossfade, {
+  sourceMayHaveTransparency,
+} from '../components/ExerciseImageCrossfade';
 import Icon from '../components/Icon';
+import SafeImage from '../components/SafeImage';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import ExerciseHistoryList from '../components/ExerciseHistoryList';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -16,7 +21,10 @@ import { fetchExerciseById } from '../services/api/exerciseApi';
 import { importExercise } from '../services/api/externalExerciseSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
 import { exerciseDetailQueryKey, suggestedExercisesQueryKey } from '../hooks/queryKeys';
-import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import {
+  useExerciseImageSource,
+  useImagePairAspectMatch,
+} from '../hooks/useExerciseImageSource';
 import {
   useDeleteExerciseLibrary,
   usePreferences,
@@ -29,6 +37,7 @@ import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   buildSingleExerciseStartPayload,
+  CATEGORY_ICON_MAP,
   formatRecentSessionSet,
   normalizeWeightUnit,
   resolveSnapshotModality,
@@ -46,6 +55,10 @@ type TabKey = 'summary' | 'history' | 'how-to';
 
 const DESCRIPTION_PREVIEW_LINES = 3;
 const DESCRIPTION_PREVIEW_THRESHOLD = 180;
+
+// Matches the dominant exercise image sets (4:3 photos), so cover-filled
+// frames crop little to nothing.
+const IMAGE_ASPECT_RATIO = 4 / 3;
 
 // Tab-change flings ignore touches starting this close to the left screen
 // edge so the native-stack back swipe keeps the edge to itself.
@@ -92,7 +105,9 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const textMuted = useCSSVariable('--color-text-muted') as string;
   const { getImageSource } = useExerciseImageSource();
+  const reducedMotion = useReducedMotion();
   const { profile } = useProfile();
   const { isConnected } = useServerConnection();
 
@@ -186,6 +201,8 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
       );
   }, [exercise.images, getImageSource]);
 
+  const pairAspectMatch = useImagePairAspectMatch(imageSources);
+
   const equipmentText = formatList(exercise.equipment ?? []);
   const primaryMusclesText = formatList(exercise.primary_muscles ?? []);
   const secondaryMusclesText = formatList(exercise.secondary_muscles ?? []);
@@ -258,20 +275,46 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
   const descriptionIsLong = description.length > DESCRIPTION_PREVIEW_THRESHOLD;
 
+  const imageFallback = (
+    <View className="bg-raised items-center justify-center" style={{ flex: 1 }}>
+      <Icon
+        name={(exercise.category && CATEGORY_ICON_MAP[exercise.category]) || 'exercise-weights'}
+        size={48}
+        color={textMuted}
+      />
+    </View>
+  );
+
   const imageCarousel =
     imageSources.length === 1 ? (
-      <View className="bg-surface rounded-xl overflow-hidden">
-        <Image
+      <View
+        className={`${
+          sourceMayHaveTransparency(imageSources[0].uri) ? 'bg-white' : 'bg-surface'
+        } rounded-xl overflow-hidden`}
+      >
+        <SafeImage
           source={imageSources[0]}
-          style={{ width: '100%', aspectRatio: 16 / 9 }}
-          resizeMode="cover"
+          style={{ width: '100%', aspectRatio: IMAGE_ASPECT_RATIO }}
+          contentFit={sourceMayHaveTransparency(imageSources[0].uri) ? 'contain' : 'cover'}
+          fallback={imageFallback}
+          autoplay={!reducedMotion}
+        />
+      </View>
+    ) : imageSources.length === 2 && !reducedMotion && pairAspectMatch !== false ? (
+      <View
+        className="bg-surface rounded-xl overflow-hidden"
+        style={{ width: '100%', aspectRatio: IMAGE_ASPECT_RATIO }}
+      >
+        <ExerciseImageCrossfade
+          sources={[imageSources[0], imageSources[1]]}
+          fallback={imageFallback}
         />
       </View>
     ) : imageSources.length > 1 ? (
       <View>
         <View
           className="bg-surface rounded-xl overflow-hidden"
-          style={{ width: '100%', aspectRatio: 16 / 9 }}
+          style={{ width: '100%', aspectRatio: IMAGE_ASPECT_RATIO }}
         >
           <PagerView
             style={{ flex: 1 }}
@@ -279,11 +322,16 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             onPageSelected={handleImagePageSelected}
           >
             {imageSources.map((source, index) => (
-              <View key={`${source.uri}-${index}`}>
-                <Image
+              <View
+                key={`${source.uri}-${index}`}
+                className={sourceMayHaveTransparency(source.uri) ? 'bg-white' : undefined}
+              >
+                <SafeImage
                   source={source}
                   style={{ width: '100%', height: '100%' }}
-                  resizeMode="cover"
+                  contentFit={sourceMayHaveTransparency(source.uri) ? 'contain' : 'cover'}
+                  fallback={imageFallback}
+                  autoplay={!reducedMotion}
                 />
               </View>
             ))}

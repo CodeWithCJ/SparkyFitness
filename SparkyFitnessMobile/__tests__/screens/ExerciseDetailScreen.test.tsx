@@ -19,6 +19,11 @@ import { useExerciseStats } from '../../src/hooks/useExerciseStats';
 import { useExerciseHistory } from '../../src/hooks/useExerciseHistory';
 import { fetchExerciseById } from '../../src/services/api/exerciseApi';
 import { importExercise } from '../../src/services/api/externalExerciseSearchApi';
+import {
+  useExerciseImageSource,
+  useImagePairAspectMatch,
+} from '../../src/hooks/useExerciseImageSource';
+import * as reanimated from 'react-native-reanimated';
 import type { Exercise } from '../../src/types/exercise';
 
 jest.mock('../../src/hooks', () => ({
@@ -51,6 +56,7 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 
 jest.mock('../../src/hooks/useExerciseImageSource', () => ({
   useExerciseImageSource: jest.fn(() => ({ getImageSource: jest.fn(() => null) })),
+  useImagePairAspectMatch: jest.fn(() => undefined),
 }));
 
 jest.mock('../../src/hooks/useStartLiveWorkout', () => ({
@@ -101,6 +107,12 @@ const mockFetchExerciseById = fetchExerciseById as jest.MockedFunction<
 >;
 const mockImportExercise = importExercise as jest.MockedFunction<
   typeof importExercise
+>;
+const mockUseExerciseImageSource = useExerciseImageSource as jest.MockedFunction<
+  typeof useExerciseImageSource
+>;
+const mockUseImagePairAspectMatch = useImagePairAspectMatch as jest.MockedFunction<
+  typeof useImagePairAspectMatch
 >;
 const mockConfirmAndDelete = jest.fn();
 
@@ -710,6 +722,61 @@ describe('ExerciseDetailScreen', () => {
       await waitFor(() => expect(mockImportExercise).toHaveBeenCalled());
       await act(async () => {});
       expect(navigation.dispatch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('image carousel selection', () => {
+    beforeEach(() => {
+      mockUseExerciseImageSource.mockReturnValue({
+        getImageSource: (path: string) => ({
+          uri: `https://server/uploads/${path}`,
+          headers: {},
+        }),
+      });
+    });
+
+    afterEach(() => {
+      mockUseExerciseImageSource.mockReturnValue({
+        getImageSource: jest.fn(() => null),
+      });
+      mockUseImagePairAspectMatch.mockReturnValue(undefined);
+    });
+
+    it('renders the crossfade instead of the pager for exactly two images', () => {
+      const screen = renderScreen({ images: ['a.png', 'b.png'] });
+
+      expect(screen.getByTestId('exercise-image-crossfade')).toBeTruthy();
+      expect(screen.queryByTestId('pager-view')).toBeNull();
+    });
+
+    it('falls back to the pager for two images when reduce motion is on', () => {
+      const spy = jest
+        .spyOn(reanimated, 'useReducedMotion')
+        .mockReturnValue(true);
+      try {
+        const screen = renderScreen({ images: ['a.png', 'b.png'] });
+
+        expect(screen.queryByTestId('exercise-image-crossfade')).toBeNull();
+        expect(screen.getByTestId('pager-view')).toBeTruthy();
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('falls back to the pager when the pair aspect ratios mismatch', () => {
+      mockUseImagePairAspectMatch.mockReturnValue(false);
+
+      const screen = renderScreen({ images: ['a.png', 'b.png'] });
+
+      expect(screen.queryByTestId('exercise-image-crossfade')).toBeNull();
+      expect(screen.getByTestId('pager-view')).toBeTruthy();
+    });
+
+    it('keeps the pager for more than two images', () => {
+      const screen = renderScreen({ images: ['a.png', 'b.png', 'c.png'] });
+
+      expect(screen.queryByTestId('exercise-image-crossfade')).toBeNull();
+      expect(screen.getByTestId('pager-view')).toBeTruthy();
     });
   });
 });
