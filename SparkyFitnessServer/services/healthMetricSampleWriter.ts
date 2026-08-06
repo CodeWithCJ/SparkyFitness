@@ -100,7 +100,16 @@ export async function upsertSamplesByDay(
   try {
     await client.query('BEGIN');
 
-    for (const bucket of byDate.values()) {
+    // Chronological order, not Map insertion order: two concurrent merge
+    // requests covering the same set of days in opposite orders would
+    // otherwise each hold one day's advisory lock while waiting on the
+    // other's, and Postgres aborts one transaction outright (no retry here)
+    // rather than resolving the deadlock.
+    const buckets = [...byDate.values()].sort((a, b) =>
+      a.entry_date.localeCompare(b.entry_date)
+    );
+
+    for (const bucket of buckets) {
       if (mode === 'merge') {
         // Advisory lock first: FOR UPDATE alone can't serialize a first write
         // (no row exists yet to lock), so a second concurrent "first write" for

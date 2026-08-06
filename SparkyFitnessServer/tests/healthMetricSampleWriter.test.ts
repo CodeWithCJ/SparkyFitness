@@ -135,4 +135,45 @@ describe('upsertSamplesByDay', () => {
     expect(wasReadForUpdate()).toBe(false);
     expect(writtenSamples()).toEqual([{ t: at('09:00:00'), bpm: 105 }]);
   });
+
+  it('acquires multi-day merge locks in chronological order regardless of input order', async () => {
+    // A multi-day workout (or a batch straddling midnight) can hand
+    // upsertSamplesByDay its later day's samples before its earlier day's.
+    // Two concurrent merges covering the same days in opposite orders would
+    // deadlock if each acquired its locks in encounter order — Postgres
+    // aborts one transaction outright since there is no retry here — so the
+    // lock order must be independent of input order.
+    const day1 = '2026-08-03';
+    const day2 = '2026-08-04';
+    const laterDayFirst: FlatHealthSample[] = [
+      {
+        entry_date: day2,
+        timestamp: new Date(`${day2}T09:00:00.000Z`),
+        bpm: 100,
+      },
+      {
+        entry_date: day1,
+        timestamp: new Date(`${day1}T09:00:00.000Z`),
+        bpm: 90,
+      },
+    ];
+
+    await upsertSamplesByDay(
+      'user-1',
+      'user-1',
+      'heart_rate',
+      'HealthKit',
+      laterDayFirst,
+      { mode: 'merge' }
+    );
+
+    const lockCalls = mockQuery.mock.calls.filter((call) =>
+      String(call[0]).includes('pg_advisory_xact_lock')
+    );
+    const lockedDays = lockCalls.map((call) => {
+      const key = String((call[1] as unknown[])[0]);
+      return key.split(':')[2]; // `${userId}:${metric}:${entry_date}:${sourceProvider}`
+    });
+    expect(lockedDays).toEqual([day1, day2]);
+  });
 });

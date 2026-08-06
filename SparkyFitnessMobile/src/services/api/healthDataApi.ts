@@ -172,11 +172,17 @@ export const WORKOUT_CHUNK_SOFT_LIMIT_BYTES = 2 * 1024 * 1024;
 // lands on a different day than the server's lets one chunk's pre-cleanup
 // range overlap another chunk's days and delete its freshly inserted rows.
 // Day-only basis strings are trusted as-is, exactly as the server does. The
-// device zone approximates the server's account-timezone fallback (the account
-// timezone is bootstrapped from the device). Records with no parseable basis
-// share one '' bucket; the server excludes them from its cleanup range, so
-// their grouping is inconsequential.
-const recordDay = (record: HealthDataPayloadItem): string => {
+// final fallback must be the server's stored ACCOUNT timezone, not the device
+// timezone: ensureTimezoneBootstrapped only fills an unset account timezone
+// from the device — it preserves an existing one — so a traveling user (or a
+// device with the wrong local clock) can have a device zone that no longer
+// matches their account zone. Records with no parseable basis share one ''
+// bucket; the server excludes them from its cleanup range, so their grouping
+// is inconsequential.
+const recordDay = (
+  record: HealthDataPayloadItem,
+  accountTimezone: string
+): string => {
   const basis =
     record.timestamp || record.date || record.entry_date || record.startTime;
   if (!basis) return '';
@@ -189,7 +195,7 @@ const recordDay = (record: HealthDataPayloadItem): string => {
   if (typeof record.record_utc_offset_minutes === 'number') {
     return instantToDayWithOffset(instant, record.record_utc_offset_minutes);
   }
-  return instantToDay(instant, Intl.DateTimeFormat().resolvedOptions().timeZone);
+  return instantToDay(instant, accountTimezone);
 };
 
 /**
@@ -201,6 +207,7 @@ const recordDay = (record: HealthDataPayloadItem): string => {
  */
 const splitWorkoutGroupBySize = (
   records: HealthDataPayloadItem[],
+  accountTimezone: string,
 ): HealthDataPayloadItem[][] => {
   const sizeOf = (record: HealthDataPayloadItem): number =>
     JSON.stringify(record).length;
@@ -208,7 +215,7 @@ const splitWorkoutGroupBySize = (
   let totalBytes = 0;
   const byDay = new Map<string, { records: HealthDataPayloadItem[]; bytes: number }>();
   for (const record of records) {
-    const day = recordDay(record);
+    const day = recordDay(record, accountTimezone);
     const bytes = sizeOf(record);
     totalBytes += bytes;
     const bucket = byDay.get(day);
@@ -279,6 +286,7 @@ const sendHealthDataChunked = async (
   headers: Record<string, string>,
   data: HealthDataPayload,
   serverConfig: ServerConfig,
+  accountTimezone: string,
 ): Promise<HealthDataSyncSummary> => {
   const simpleRecords: HealthDataPayloadItem[] = [];
   const smallChunkRecords: HealthDataPayloadItem[] = [];
@@ -305,7 +313,7 @@ const sendHealthDataChunked = async (
   // Exercise/Workout: one chunk per source, split only at whole-day boundaries
   // when telemetry pushes a group past the size cap.
   for (const sessionRecords of rangeDeleteBySource.values()) {
-    for (const chunk of splitWorkoutGroupBySize(sessionRecords)) {
+    for (const chunk of splitWorkoutGroupBySize(sessionRecords, accountTimezone)) {
       chunks.push(chunk);
     }
   }
@@ -428,7 +436,11 @@ export const syncHealthData = async (
     return undefined;
   }
 
-  await ensureTimezoneBootstrapped({ throwOnFailure: true });
+  // throwOnFailure guarantees a resolved timezone here, but the fallback still
+  // covers it defensively rather than assuming the non-null return holds.
+  const accountTimezone =
+    (await ensureTimezoneBootstrapped({ throwOnFailure: true })) ??
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   addLog(`[API] Syncing to ${url}/api/health-data`, 'DEBUG');
 
@@ -450,6 +462,7 @@ export const syncHealthData = async (
       },
       data,
       config,
+      accountTimezone,
     );
 
     if (summary.recordErrors.length > 0) {
