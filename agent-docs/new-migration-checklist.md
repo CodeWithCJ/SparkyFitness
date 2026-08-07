@@ -21,7 +21,7 @@ Follow this checklist whenever you add or change a server database migration —
 
 ## 4. Schema backup (automatic — nothing to run)
 
-- [ ] Do **not** update `db_schema_backup.sql` in the PR. CI regenerates it from the migrations and commits it to `main` after merge (`.github/workflows/schema-backup.yml`).
+- [ ] Do **not** update `db_schema_backup.sql` in the PR. After merge, CI regenerates it from the migrations and opens an automated sync PR (`.github/workflows/schema-backup.yml`).
 - [ ] Never edit it by hand, and never commit a copy generated from a local database — local databases drift from the migrations-derived schema.
 
 ## 5. Add Zod schema

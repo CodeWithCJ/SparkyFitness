@@ -150,7 +150,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - Always release database clients in a `finally` block
 - To learn a table's current shape, read `../shared/src/schemas/database/<Table>.zod.ts` (one small Zod file per table) instead of reading `../db_schema_backup.sql` or reconstructing it from the 185 migration files
 - New migrations belong in `db/migrations/` and must use `YYYYMMDDHHMMSS_description.sql`
-- **Never manually edit `../db_schema_backup.sql`** — CI regenerates it from the migrations and commits it to `main` after merge (`.github/workflows/schema-backup.yml`). Do not commit copies generated from a local database.
+- **Never manually edit `../db_schema_backup.sql`** — after merge, CI regenerates it from the migrations and opens an automated sync PR (`.github/workflows/schema-backup.yml`). Do not commit copies generated from a local database.
 - If you add a new table or change user-visible access behavior, follow `../agent-docs/new-migration-checklist.md`. In short, you MUST:
   1. Add/modify the RLS policies in `db/rls_policies.sql`.
   2. Update the user-facing documentation in `../docs/content/2.features/9.family-friends-sharing.md`.
