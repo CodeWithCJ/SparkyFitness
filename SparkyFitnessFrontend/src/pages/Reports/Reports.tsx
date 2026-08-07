@@ -13,7 +13,9 @@ import {
   generateReportsMeasurementsDefaultLayouts,
   useMeasurementChartWidgets,
 } from '@/pages/Reports/MeasurementChartsGrid';
-import ReportsTables from '@/pages/Reports/ReportsTables';
+import ReportsTables, {
+  type TableFilterValue,
+} from '@/pages/Reports/ReportsTables';
 import ExerciseReportsDashboard from '@/pages/Reports/ExerciseReportsDashboard';
 import SleepReport from '@/pages/Reports/SleepReport';
 import BodyBatteryCard from '@/pages/Reports/BodyBatteryCard';
@@ -95,6 +97,8 @@ const Reports = () => {
   const [activeTab, setActiveTab] = useState(
     searchParams.get('tab') || 'charts'
   );
+
+  const [selectedTable, setSelectedTable] = useState<TableFilterValue>('all');
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -303,6 +307,8 @@ const Reports = () => {
               customCategories={customCategories}
               customMeasurementsData={customMeasurementsData}
               prData={exerciseDashboardData?.prData}
+              selectedTable={selectedTable}
+              onSelectedTableChange={setSelectedTable}
               onExportFoodDiary={() =>
                 exportFoodDiary({
                   loggingLevel,
