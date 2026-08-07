@@ -2,11 +2,23 @@ import { MEAL_TYPES } from '../constants/meals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDisplayValues } from './foodDetails';
 import type { DailyGoals } from '../types/goals';
+import type { MealType } from '../types/mealTypes';
 import { calculateCustomNutrientTotals } from '../services/api/foodEntriesApi';
 
-export type MealTypeKey = (typeof MEAL_TYPES)[number] | 'other';
+export type MealTypeKey = string;
 
-export type MealEntryGroups = Record<MealTypeKey, FoodEntry[]>;
+export type MealEntryGroups = Record<string, FoodEntry[]>;
+
+export interface MealGroup {
+  mealTypeId: string | null;
+  name: string;
+  sortOrder: number;
+  entries: FoodEntry[];
+  isSystem: boolean;
+  /** Owner of the meal type definition; `null` for system types. Mirrors
+   *  `MealType.user_id` so label/icon resolution never relies on the name. */
+  user_id: string | null;
+}
 
 export interface EntryNutrition {
   calories: number;
@@ -15,36 +27,209 @@ export interface EntryNutrition {
   fat: number;
 }
 
-function emptyMealGroups(): MealEntryGroups {
-  return {
-    breakfast: [],
-    lunch: [],
-    dinner: [],
-    snacks: [],
-    other: [],
-  };
+const SYSTEM_LABELS: Record<string, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snacks: 'Snacks',
+  other: 'Other',
+};
+
+/**
+ * Static English display label for a meal type NAME. Only meaningful once the
+ * type has been confirmed as system-owned (`user_id === null`); custom types
+ * named "breakfast"/"lunch"/... must never be routed through this map.
+ */
+export function getMealTypeSystemLabel(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower === 'snack') return SYSTEM_LABELS.snacks;
+  return SYSTEM_LABELS[lower] ?? '';
 }
 
-export function getFoodEntryMealTypeKey(entry: FoodEntry): MealTypeKey {
-  const mealType = entry.meal_type?.toLowerCase() || 'snacks';
-  return MEAL_TYPES.includes(mealType as (typeof MEAL_TYPES)[number])
-    ? (mealType as MealTypeKey)
-    : 'other';
+/**
+ * Single source of truth for a KNOWN meal type's display label.
+ *
+ * The decision is based on ownership metadata, never on the name string alone:
+ * - `user_id === null` (system)  → static English label.
+ * - `user_id !== null` (custom)  → the literal user-defined name.
+ *
+ * A custom category called "breakfast", "lunch", "dinner", "snack" or
+ * "other" therefore always renders its literal name.
+ */
+export function getMealTypeDisplayLabel(
+  mealType: Pick<MealType, 'name' | 'user_id'>,
+): string {
+  if (mealType.user_id != null) return mealType.name;
+  const label = getMealTypeSystemLabel(mealType.name);
+  return label || mealType.name;
 }
 
-export function groupFoodEntriesByMealType(entries: FoodEntry[]): MealEntryGroups {
-  const grouped = emptyMealGroups();
+/**
+ * Fallback label for a HISTORICAL entry whose meal type definition is not
+ * present in the active list (deleted, hidden, or an older server). The
+ * snapshotted name is returned literally — never auto-translated just because
+ * it happens to read "breakfast" — and only entries with no name at all fall
+ * back to "Other".
+ */
+export function getHistoricalMealTypeLabel(
+  name: string | null | undefined,
+): string {
+  const trimmed = (name ?? '').trim();
+  if (!trimmed) return 'Other';
+  return trimmed;
+}
 
-  for (const entry of entries) {
-    grouped[getFoodEntryMealTypeKey(entry)].push(entry);
+/**
+ * Resolves a display label for a name by looking it up against the active
+ * meal type list first (so a system definition still gets its canonical
+ * label), falling back to the literal historical name when no definition
+ * matches.
+ */
+export function getMealTypeDisplayLabelForName(
+  name: string | null | undefined,
+  mealTypes: MealType[],
+): string {
+  const trimmed = (name ?? '').trim();
+  if (!trimmed) return 'Other';
+  const mt = mealTypes.find((m) => m.name.toLowerCase() === trimmed.toLowerCase());
+  if (mt) return getMealTypeDisplayLabel(mt);
+  return getHistoricalMealTypeLabel(trimmed);
+}
+
+export function getFoodEntryMealTypeKey(entry: FoodEntry, mealTypes: MealType[]): string {
+  if (entry.meal_type_id) {
+    const mt = mealTypes.find((m) => m.id === entry.meal_type_id);
+    if (mt) return mt.name;
+  }
+  const name = (entry.meal_type || '').toLowerCase();
+  if (name) {
+    const mt = mealTypes.find((m) => m.name.toLowerCase() === name);
+    if (mt) return mt.name;
+  }
+  if (MEAL_TYPES.includes(name as (typeof MEAL_TYPES)[number])) {
+    return name;
+  }
+  return 'other';
+}
+
+export function groupFoodEntriesByMealType(
+  entries: FoodEntry[],
+  mealTypes: MealType[],
+): MealGroup[] {
+  const typeMap = new Map<string, MealType>();
+  for (const mt of mealTypes) {
+    typeMap.set(mt.id, mt);
   }
 
-  return grouped;
+  const groupMap = new Map<string, { entries: FoodEntry[]; mt: MealType | null }>();
+  // Unmatched entries (hidden/deleted/legacy types) are grouped by their own
+  // id when present, else by their snapshotted name, so two different unknown
+  // types never collapse into a single "Other" bucket. Only entries with no
+  // id and no name fall through to the synthetic "other" group.
+  const fallbackGroups = new Map<
+    string,
+    { entries: FoodEntry[]; mealTypeId: string | null; name: string }
+  >();
+
+  for (const entry of entries) {
+    let matched: MealType | null = null;
+    if (entry.meal_type_id) {
+      matched = typeMap.get(entry.meal_type_id) ?? null;
+    }
+    if (!matched) {
+      const name = (entry.meal_type || '').toLowerCase();
+      matched = mealTypes.find((m) => m.name.toLowerCase() === name) ?? null;
+    }
+    if (matched) {
+      const key = matched.id;
+      if (!groupMap.has(key)) {
+        groupMap.set(key, { entries: [], mt: matched });
+      }
+      groupMap.get(key)!.entries.push(entry);
+    } else {
+      const fallbackName = entry.meal_type || 'other';
+      const key = entry.meal_type_id
+        ? `id:${entry.meal_type_id}`
+        : `name:${fallbackName.toLowerCase()}`;
+      if (!fallbackGroups.has(key)) {
+        fallbackGroups.set(key, {
+          entries: [],
+          mealTypeId: entry.meal_type_id ?? null,
+          name: fallbackName,
+        });
+      }
+      fallbackGroups.get(key)!.entries.push(entry);
+    }
+  }
+
+  const result: MealGroup[] = [];
+  for (const mt of mealTypes) {
+    const group = groupMap.get(mt.id);
+    if (group) {
+      result.push({
+        mealTypeId: mt.id,
+        name: mt.name,
+        sortOrder: mt.sort_order ?? 999,
+        entries: group.entries,
+        isSystem: mt.user_id === null,
+        user_id: mt.user_id ?? null,
+      });
+    }
+  }
+
+  if (fallbackGroups.size > 0) {
+    for (const group of fallbackGroups.values()) {
+      result.push({
+        mealTypeId: group.mealTypeId,
+        name: group.name,
+        sortOrder: 9999,
+        entries: group.entries,
+        isSystem: false,
+        user_id: null,
+      });
+    }
+  }
+
+  return result.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-export function filterFoodEntriesByMealType(entries: FoodEntry[], mealType: MealTypeKey): FoodEntry[] {
-  const key = mealType.toLowerCase();
-  return entries.filter((entry) => getFoodEntryMealTypeKey(entry) === key);
+export function filterFoodEntriesByMealType(
+  entries: FoodEntry[],
+  mealTypeName: string,
+  mealTypes: MealType[],
+): FoodEntry[] {
+  return entries.filter((entry) => {
+    const key = getFoodEntryMealTypeKey(entry, mealTypes);
+    return key.toLowerCase() === mealTypeName.toLowerCase();
+  });
+}
+
+/**
+ * Filters entries by canonical meal type ID first, falling back to the
+ * (snapshotted) name only for historical entries or older servers that do not
+ * send `meal_type_id`. Two categories that share the same name but have
+ * different IDs are never mixed: entries carrying an ID always match by ID.
+ */
+export function filterFoodEntriesByMealTypeId(
+  entries: FoodEntry[],
+  mealTypeId: string | null | undefined,
+  mealTypeName: string,
+  mealTypes: MealType[],
+): FoodEntry[] {
+  const nameLower = mealTypeName.toLowerCase();
+  return entries.filter((entry) => {
+    if (entry.meal_type_id) {
+      if (mealTypeId) return entry.meal_type_id === mealTypeId;
+      return (entry.meal_type || '').toLowerCase() === nameLower;
+    }
+    // Entry has no id: resolve its type by name against the active list first.
+    const entryName = (entry.meal_type || '').toLowerCase();
+    if (mealTypeId) {
+      const mt = mealTypes.find((m) => m.name.toLowerCase() === entryName);
+      return mt ? mt.id === mealTypeId : false;
+    }
+    return entryName === nameLower;
+  });
 }
 
 export function calculateEntryValue(value: number | undefined, entry: FoodEntry): number {

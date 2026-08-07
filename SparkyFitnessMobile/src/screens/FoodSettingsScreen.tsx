@@ -23,13 +23,14 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { preferencesQueryKey, mealTypesQueryKey } from '../hooks/queryKeys';
 import { getMealTypeLabel } from '../constants/meals';
+import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import type { UserPreferences } from '../types/preferences';
 import type { MealType } from '../types/mealTypes';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type FoodSettingsScreenProps = RootStackScreenProps<'FoodSettings'>;
 
-const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = () => {
+const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -131,6 +132,16 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = () => {
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
+        {/* Meal Types */}
+        <SettingsRowGroup>
+          <SettingsRow
+            icon="meal-snack"
+            title="Meal Types"
+            subtitle="Add, edit, reorder, or delete custom meal categories"
+            onPress={() => navigation.navigate('MealTypeSettings')}
+          />
+        </SettingsRowGroup>
+
         {/* Show Net Carbs */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row justify-between items-center">

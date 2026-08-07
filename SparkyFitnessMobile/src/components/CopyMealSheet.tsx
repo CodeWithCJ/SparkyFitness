@@ -14,13 +14,16 @@ import Button from './ui/Button';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import Icon from './Icon';
 import { useMealTypes } from '../hooks/useMealTypes';
-import { getMealTypeLabel } from '../constants/meals';
+import {
+  getMealTypeDisplayLabel,
+  getMealTypeDisplayLabelForName,
+} from '../utils/mealNutrition';
 import { formatDateLabel } from '../utils/dateUtils';
 import { dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
 
 export interface CopyMealSheetRef {
-  present: (sourceDate: string, sourceMealType: string) => void;
+  present: (sourceDate: string, sourceMealTypeId: string | null, sourceMealTypeName: string) => void;
   dismiss: () => void;
 }
 
@@ -47,19 +50,23 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       '--color-text-secondary',
     ]) as [string, string, string, string, string];
 
-    const [source, setSource] = useState<{ date: string; mealType: string } | null>(null);
+    const [source, setSource] = useState<{
+      date: string;
+      mealTypeId: string | null;
+      mealTypeName: string;
+    } | null>(null);
     const [targetDate, setTargetDate] = useState<string>('');
-    const [targetMealType, setTargetMealType] = useState<string>('');
+    const [targetMealTypeId, setTargetMealTypeId] = useState<string | null>(null);
 
     const { mealTypes } = useMealTypes();
 
     useImperativeHandle(ref, () => ({
-      present: (sourceDate: string, sourceMealType: string) => {
-        setSource({ date: sourceDate, mealType: sourceMealType });
+      present: (sourceDate: string, sourceMealTypeId: string | null, sourceMealTypeName: string) => {
+        setSource({ date: sourceDate, mealTypeId: sourceMealTypeId, mealTypeName: sourceMealTypeName });
         // Default to the same slot the user is viewing; they pick a new date/meal
         // before copying.
         setTargetDate(sourceDate);
-        setTargetMealType(sourceMealType);
+        setTargetMealTypeId(sourceMealTypeId);
         bottomSheetRef.current?.present();
       },
       dismiss: () => bottomSheetRef.current?.dismiss(),
@@ -91,14 +98,20 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
     );
 
     const handleCopy = useCallback(() => {
-      if (!source || !targetDate || !targetMealType) return;
+      if (!source || !targetDate || !targetMealTypeId) return;
+      // The server /food-entries/copy endpoint matches meal types by NAME only
+      // (verified contract), so the payload carries names. Selection in the UI
+      // is by canonical id; the name is resolved here so two categories that
+      // share a name but differ by id stay unambiguous client-side.
+      const targetType = mealTypes.find((mt) => mt.id === targetMealTypeId);
+      if (!targetType) return;
       onCopy({
         sourceDate: source.date,
-        sourceMealType: source.mealType,
+        sourceMealType: source.mealTypeName,
         targetDate,
-        targetMealType,
+        targetMealType: targetType.name,
       });
-    }, [source, targetDate, targetMealType, onCopy]);
+    }, [source, targetDate, targetMealTypeId, mealTypes, onCopy]);
 
     return (
       <BottomSheetModal
@@ -115,10 +128,10 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
             <View className="px-5">
               <View className="items-center mb-4">
                 <Text className="text-text-primary text-lg font-semibold text-center">
-                  Copy {getMealTypeLabel(source.mealType)}
+                  {`Copy meal: ${getMealTypeDisplayLabelForName(source.mealTypeName, mealTypes)}`}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-1 text-center">
-                  From {formatDateLabel(source.date)}
+                  {`Source date: ${formatDateLabel(source.date)}`}
                 </Text>
               </View>
 
@@ -158,11 +171,11 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-6">
                 {mealTypes.map((mt) => {
-                  const isSelected = mt.name.toLowerCase() === targetMealType.toLowerCase();
+                  const isSelected = mt.id === targetMealTypeId;
                   return (
                     <TouchableOpacity
                       key={mt.id}
-                      onPress={() => setTargetMealType(mt.name)}
+                      onPress={() => setTargetMealTypeId(mt.id)}
                       activeOpacity={0.7}
                       className={`px-4 py-2 rounded-full border ${
                         isSelected
@@ -175,7 +188,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                           isSelected ? 'text-white font-semibold' : 'text-text-primary'
                         }`}
                       >
-                        {getMealTypeLabel(mt.name)}
+                        {getMealTypeDisplayLabel(mt)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -185,12 +198,12 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
               <Button
                 variant="primary"
                 onPress={handleCopy}
+                accessibilityLabel="Copy"
                 disabled={
                   isPending ||
                   !targetDate ||
-                  !targetMealType ||
-                  (source.date === targetDate &&
-                    source.mealType.toLowerCase() === targetMealType.toLowerCase())
+                  !targetMealTypeId ||
+                  (source.date === targetDate && source.mealTypeId === targetMealTypeId)
                 }
               >
                 {isPending ? 'Copying...' : 'Copy'}
