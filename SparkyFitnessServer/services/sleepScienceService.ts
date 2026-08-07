@@ -81,10 +81,18 @@ function standardDeviation(values: any) {
     squaredDiffs.reduce((a: any, b: any) => a + b, 0) / (values.length - 1)
   );
 }
+// The fields the wall-clock helpers read from a sleep-history row: epoch-ms
+// GMT instants (pg returns the EXTRACT(EPOCH ...) numerics as strings) plus
+// the optional recording-zone metadata columns.
+type SleepZoneEntry = {
+  sleepStartTimestampGMT?: number | string | null;
+  sleepEndTimestampGMT?: number | string | null;
+  record_timezone?: string | null;
+  record_utc_offset_minutes?: number | null;
+};
 // Wall-clock hours derive from the zone the entry was recorded in when the
 // row carries one; zone-less rows fall back to the profile timezone.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getWakeHour(entry: any, timezone = 'UTC') {
+function getWakeHour(entry: SleepZoneEntry, timezone = 'UTC') {
   if (!entry.sleepEndTimestampGMT) return null;
   const ts = Number(entry.sleepEndTimestampGMT);
   if (isNaN(ts)) return null;
@@ -95,8 +103,7 @@ function getWakeHour(entry: any, timezone = 'UTC') {
   const { hour, minute } = instantHourMinuteInZone(ts, zone);
   return hour + minute / 60;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getSleepHour(entry: any, timezone = 'UTC') {
+function getSleepHour(entry: SleepZoneEntry, timezone = 'UTC') {
   if (!entry.sleepStartTimestampGMT) return null;
   const ts = Number(entry.sleepStartTimestampGMT);
   if (isNaN(ts)) return null;

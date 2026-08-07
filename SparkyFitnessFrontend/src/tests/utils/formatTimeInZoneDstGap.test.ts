@@ -1,9 +1,20 @@
 // The regression only manifests when the HOST zone has a DST spring-forward
 // gap at the rendered wall clock, so pin the host zone before any Date math
 // runs (Node re-reads process.env.TZ at each local-time computation).
+const originalTz = process.env['TZ'];
 process.env['TZ'] = 'America/New_York';
 
 import { formatTimeInZone } from '@/utils/timeFormatters';
+
+// Jest workers run several test files in one process, so the pinned zone
+// must not leak into whichever suite this worker picks up next.
+afterAll(() => {
+  if (originalTz === undefined) {
+    delete process.env['TZ'];
+  } else {
+    process.env['TZ'] = originalTz;
+  }
+});
 
 // Issue #2033 review finding: rendering a record-zone wall clock by building
 // a host-local Date normalizes nonexistent local times — New York turns

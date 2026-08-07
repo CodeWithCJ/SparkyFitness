@@ -444,6 +444,23 @@ describe('resolveRecordZone', () => {
     expect(resolveRecordZone('', NaN)).toBeNull();
     expect(resolveRecordZone(null, Infinity)).toBeNull();
   });
+  it('rejects fractional and out-of-range offsets (falls back to profile tz)', () => {
+    expect(resolveRecordZone(null, 90.5)).toBeNull();
+    expect(resolveRecordZone(null, 100000)).toBeNull();
+    expect(resolveRecordZone(null, -100000)).toBeNull();
+  });
+  it('accepts the ±14:00 spec boundary but nothing past it', () => {
+    expect(resolveRecordZone(null, 840)).toEqual({
+      kind: 'offset',
+      minutes: 840,
+    });
+    expect(resolveRecordZone(null, -840)).toEqual({
+      kind: 'offset',
+      minutes: -840,
+    });
+    expect(resolveRecordZone(null, 841)).toBeNull();
+    expect(resolveRecordZone(null, -841)).toBeNull();
+  });
 });
 // ---------------------------------------------------------------------------
 // instantHourMinuteInZone
@@ -498,5 +515,17 @@ describe('utcOffsetMinutesFromIsoString', () => {
     expect(
       utcOffsetMinutesFromIsoString('2024-06-15T22:15:00+05:99')
     ).toBeNull();
+  });
+  it('ignores a ±HH:MM suffix on a malformed datetime', () => {
+    expect(utcOffsetMinutesFromIsoString('T+05:30')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('yesterday 10pm +05:30')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('2024-06-15 +05:30')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('22:15:00+05:30')).toBeNull();
+  });
+  it('accepts seconds-less and space-separated datetimes with offsets', () => {
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15+05:30')).toBe(330);
+    expect(utcOffsetMinutesFromIsoString('2024-06-15 22:15:00-04:00')).toBe(
+      -240
+    );
   });
 });

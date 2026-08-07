@@ -223,6 +223,9 @@ export function instantHourMinuteWithOffset(
 // Record-zone precedence (per-entry recording timezone metadata)
 // ---------------------------------------------------------------------------
 
+/** Real-world UTC offsets top out at ±14:00 (spec maximum). */
+const MAX_UTC_OFFSET_MINUTES = 14 * 60;
+
 /**
  * The zone a health record was captured in: a full IANA timezone, or a fixed
  * UTC offset in minutes for sources that only report an offset. A fixed
@@ -235,13 +238,15 @@ export type RecordZone =
 
 /**
  * Resolves per-record timezone metadata with the standard precedence:
- * valid IANA timezone -> finite UTC offset minutes -> null (caller falls back
- * to the profile timezone). Never throws.
+ * valid IANA timezone -> integer UTC offset within ±14h -> null (caller falls
+ * back to the profile timezone). Never throws.
  *
- * The finite-number check is deliberately stricter than the inline precedence
- * chains in measurementService.resolveHealthEntryDate, which pass NaN through;
- * moving those chains onto this helper is a behavior change, not a pure
- * refactor.
+ * The integer-within-range check is deliberately stricter than the inline
+ * precedence chains in measurementService.resolveHealthEntryDate, which pass
+ * NaN through; moving those chains onto this helper is a behavior change, not
+ * a pure refactor. Stored metadata bypasses the ingestion caps (direct API
+ * writes forward offsets raw), so an out-of-range value must fail here rather
+ * than drive display.
  */
 export function resolveRecordZone(
   recordTimezone: string | null | undefined,
@@ -256,7 +261,8 @@ export function resolveRecordZone(
   }
   if (
     typeof recordUtcOffsetMinutes === "number" &&
-    Number.isFinite(recordUtcOffsetMinutes)
+    Number.isInteger(recordUtcOffsetMinutes) &&
+    Math.abs(recordUtcOffsetMinutes) <= MAX_UTC_OFFSET_MINUTES
   ) {
     return { kind: "offset", minutes: recordUtcOffsetMinutes };
   }
@@ -277,20 +283,24 @@ export function instantHourMinuteInZone(
  * Extracts the UTC offset (in minutes) from an ISO datetime string's explicit
  * `±HH:MM` (or `±HHMM`) suffix. An explicit offset is a recording-zone claim;
  * `Z` is not (APIs routinely normalize instants to UTC), so `Z`-suffixed,
- * naive, date-only, and unparseable strings all return null.
+ * naive, date-only, and unparseable strings all return null. The suffix only
+ * counts on a complete `YYYY-MM-DD` + time datetime — a stray `±HH:MM` on a
+ * malformed string (e.g. free-text from a chat model) is not a zone claim.
  */
 export function utcOffsetMinutesFromIsoString(
   timeStr: string | null | undefined,
 ): number | null {
   if (typeof timeStr !== "string") return null;
-  const m = /[T ].*([+-])(\d{2}):?(\d{2})$/.exec(timeStr.trim());
+  const m =
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?([+-])(\d{2}):?(\d{2})$/.exec(
+      timeStr.trim(),
+    );
   if (!m) return null;
   const hours = Number(m[2]);
   const mins = Number(m[3]);
   if (mins > 59) return null;
   const total = hours * 60 + mins;
-  // Real-world offsets top out at ±14:00 (spec maximum)
-  if (total > 14 * 60) return null;
+  if (total > MAX_UTC_OFFSET_MINUTES) return null;
   return m[1] === "-" ? -total : total;
 }
 

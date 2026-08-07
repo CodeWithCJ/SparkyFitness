@@ -173,4 +173,48 @@ describe('POST /api/measurements/import-health-data', () => {
     expect(res.statusCode).toBe(400);
     expect(measurementService.processHealthData).not.toHaveBeenCalled();
   });
+
+  it('returns 400 for a fractional record_utc_offset_minutes (integer column)', async () => {
+    const res = await post({
+      items: [
+        {
+          type: 'SleepSession',
+          date: '2026-05-05',
+          bedtime: '2026-05-05T03:00:00Z',
+          wake_time: '2026-05-05T11:00:00Z',
+          duration_in_seconds: 28800,
+          record_utc_offset_minutes: 90.5,
+        },
+      ],
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(measurementService.processHealthData).not.toHaveBeenCalled();
+  });
+
+  it('accepts a whole-minute record_utc_offset_minutes', async () => {
+    // @ts-expect-error mock
+    measurementService.processHealthData.mockResolvedValue({
+      message: 'ok',
+      processed: [],
+      errors: [],
+      skipped: [],
+    });
+
+    const res = await post({
+      items: [
+        {
+          type: 'SleepSession',
+          date: '2026-05-05',
+          bedtime: '2026-05-05T03:00:00Z',
+          wake_time: '2026-05-05T11:00:00Z',
+          duration_in_seconds: 28800,
+          record_utc_offset_minutes: -300,
+        },
+      ],
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(measurementService.processHealthData).toHaveBeenCalledTimes(1);
+  });
 });

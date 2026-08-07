@@ -580,7 +580,9 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                 start_gmt, (int, float)
                             ):
                                 offset_min = round((start_local - start_gmt) / 60000)
-                                if -960 <= offset_min <= 960:
+                                # Real-world offsets top out at +/-14:00; a
+                                # pair outside that range is corrupt data.
+                                if -840 <= offset_min <= 840:
                                     record_utc_offset_minutes = offset_min
                         else:
                             # Fallback to SleepStageLevel timestamps if summary timestamps are missing

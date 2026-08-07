@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createMockDbClient,
+  type MockDbClient,
+} from './helpers/mockDbClient.js';
 import sleepRepository from '../models/sleepRepository.js';
 import { getClient } from '../db/poolManager.js';
 
@@ -70,13 +74,10 @@ const boundValueFor = (
 };
 
 describe('sleepRepository placeholder integrity', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockDbClient;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const queryCalls = (): Array<{ text: string; values?: any[] }> =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockClient.query.mock.calls.map((call: any[]) => ({
+  const queryCalls = (): Array<{ text: string; values?: unknown[] }> =>
+    mockClient.query.mock.calls.map((call) => ({
       text: call[0],
       values: call[1],
     }));
@@ -88,10 +89,7 @@ describe('sleepRepository placeholder integrity', () => {
   };
 
   beforeEach(() => {
-    mockClient = {
-      query: vi.fn().mockResolvedValue({ rows: [] }),
-      release: vi.fn(),
-    };
+    mockClient = createMockDbClient([]);
     vi.mocked(getClient).mockResolvedValue(mockClient);
   });
 
@@ -100,7 +98,6 @@ describe('sleepRepository placeholder integrity', () => {
   });
 
   it('upsertSleepEntry INSERT: placeholders, columns, and params line up', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockClient.query.mockImplementation(async (text: string) => {
       if (text.includes('INSERT INTO sleep_entries')) {
         return { rows: [{ id: 'sleep-1' }] };
@@ -131,7 +128,6 @@ describe('sleepRepository placeholder integrity', () => {
   });
 
   it('upsertSleepEntry UPDATE: placeholders and zone-column bindings line up', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockClient.query.mockImplementation(async (text: string) => {
       if (text.includes('SELECT id FROM sleep_entries')) {
         return { rows: [{ id: 'sleep-1' }] };
@@ -160,7 +156,6 @@ describe('sleepRepository placeholder integrity', () => {
   });
 
   it('upsertSleepEntry UPDATE preserves stored zone metadata when the payload omits it', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockClient.query.mockImplementation(async (text: string) => {
       if (text.includes('SELECT id FROM sleep_entries')) {
         return { rows: [{ id: 'sleep-1' }] };
@@ -193,7 +188,6 @@ describe('sleepRepository placeholder integrity', () => {
   });
 
   it('updateSleepEntry dynamic builder: zone fields update when present', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockClient.query.mockImplementation(async (text: string) => {
       if (text.includes('UPDATE sleep_entries')) {
         return { rows: [{ id: 'sleep-1' }] };
@@ -219,7 +213,6 @@ describe('sleepRepository placeholder integrity', () => {
   });
 
   it('updateSleepEntry dynamic builder: omitted zone fields stay untouched', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockClient.query.mockImplementation(async (text: string) => {
       if (text.includes('UPDATE sleep_entries')) {
         return { rows: [{ id: 'sleep-1' }] };
