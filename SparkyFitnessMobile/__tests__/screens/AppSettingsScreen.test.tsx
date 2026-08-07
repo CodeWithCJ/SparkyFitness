@@ -12,6 +12,15 @@ jest.mock('../../src/components/BottomSheetPicker', () => ({
   default: () => null,
 }));
 
+jest.mock('../../src/services/appLanguageNative', () => ({
+  AppLanguageNative: {
+    isAvailable: false,
+    setApplicationLanguage: jest.fn(async () => undefined),
+    getApplicationLanguage: jest.fn(async () => null),
+    getEffectiveLanguage: jest.fn(async () => 'en'),
+  },
+}));
+
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: () => 0,
 }));
@@ -52,6 +61,15 @@ describe('AppSettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
+  });
+
+  it('renders the language preference row with English labels', () => {
+    const { getByText } = renderScreen();
+
+    expect(getByText('Language')).toBeTruthy();
+    expect(
+      getByText('Use your device language or choose a language for SparkyFitness.'),
+    ).toBeTruthy();
   });
 
   it('navigates to NotificationSettings from the Notifications row', () => {
