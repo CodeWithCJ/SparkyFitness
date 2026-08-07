@@ -1,6 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
-import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
+import { useMemo } from 'react';
+import { Text, View } from 'react-native';
+// Deep import: Metro resolves react-native-ui-datepicker via its "react-native"
+// field → src/index, so sub-path imports from src/ work at runtime and give us
+// the exact wheel component the library uses for its own time picker columns.
+// eslint-disable-next-line import/no-internal-modules
+import WheelPicker, {
+  type WheelPickerOption,
+} from 'react-native-ui-datepicker/src/components/time-picker/wheel-picker';
 import { useCSSVariable } from 'uniwind';
 
 interface DurationWheelProps {
@@ -9,156 +15,109 @@ interface DurationWheelProps {
   maxSec?: number;
 }
 
-function dateTypeToDate(date: DateType): Date | null {
-  if (!date) return null;
-  if (date instanceof Date) return date;
-  if (typeof date === 'object' && 'toDate' in date) return date.toDate();
-  if (typeof date === 'string') return new Date(date);
-  return new Date(date);
-}
+const ITEM_HEIGHT = 44;
 
-function secondsToDate(seconds: number): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  const mins = Math.max(0, Math.floor(seconds / 60));
-  d.setMinutes(mins);
-  return d;
-}
-
-function dateToSeconds(date: Date): number {
-  return date.getHours() * 3600 + date.getMinutes() * 60;
-}
-
-const WHEEL_ROW_HEIGHT = 44;
-
-function splitSeconds(totalSec: number): { minuteSec: number; secondsPart: number } {
-  const clamped = Math.max(0, totalSec);
-  const minuteSec = Math.floor(clamped / 60) * 60;
-  const secondsPart = clamped % 60;
-  return { minuteSec, secondsPart };
-}
+// Seconds rollover: give the wheel 10× the real range (600 items) so the user
+// can scroll up or down through many full rotations without hitting an edge.
+// The displayed text is `index % 60`; onChange strips the loop offset back to
+// the canonical 0–59 value. Start position is always the center repetition so
+// equal runway exists in both directions.
+const SEC_LOOP = 10;
+const SEC_TOTAL = 60 * SEC_LOOP; // 600
+const SEC_MID_OFFSET = Math.floor(SEC_LOOP / 2) * 60; // 300
 
 function DurationWheel({ valueSec, onChangeSec, maxSec = 900 }: DurationWheelProps) {
-  const [accentPrimary, textPrimary, borderSubtle, textMuted] = useCSSVariable([
-    '--color-accent-primary',
+  const [textPrimary, borderSubtle] = useCSSVariable([
     '--color-text-primary',
     '--color-border-subtle',
-    '--color-text-muted',
-  ]) as [string, string, string, string];
+  ]) as [string, string];
 
-  const [minuteSec, setMinuteSec] = useState(() => splitSeconds(valueSec).minuteSec);
-  const [secondsPart, setSecondsPart] = useState(() => splitSeconds(valueSec).secondsPart);
-  const secondsListRef = useRef<FlatList<number>>(null);
+  const clamped = Math.max(0, Math.min(maxSec, valueSec));
+  const currentMin = Math.floor(clamped / 60);
+  const currentSec = clamped % 60;
+  const maxMinutes = Math.floor(maxSec / 60);
 
-  useEffect(() => {
-    const next = splitSeconds(Math.max(0, Math.min(maxSec, valueSec)));
-    setMinuteSec(next.minuteSec);
-    setSecondsPart(next.secondsPart);
-    secondsListRef.current?.scrollToOffset({
-      offset: next.secondsPart * WHEEL_ROW_HEIGHT,
-      animated: false,
-    });
-  }, [maxSec, valueSec]);
-
-  const pickerStyles = useMemo(
-    () => ({
-      time_selector_label: { color: textPrimary, fontWeight: '600' as const },
-      time_label: { color: textPrimary, fontSize: 24, fontWeight: '500' as const },
-      time_selected_indicator: { backgroundColor: borderSubtle, borderRadius: 10 },
-      selected_month: { backgroundColor: accentPrimary },
-      selected_month_label: { color: '#FFFFFF' },
-    }),
-    [accentPrimary, textPrimary, borderSubtle],
+  const minuteOptions = useMemo<WheelPickerOption[]>(
+    () =>
+      Array.from({ length: maxMinutes + 1 }, (_, i) => ({
+        value: i,
+        text: String(i).padStart(2, '0'),
+      })),
+    [maxMinutes],
   );
 
-  const secondOptions = useMemo(() => Array.from({ length: 60 }, (_, i) => i), []);
+  // Each item has a unique numeric `value` (its index) so WheelPicker's
+  // findIndex lookup always lands on the correct row. Text wraps mod 60.
+  const secondOptions = useMemo<WheelPickerOption[]>(
+    () =>
+      Array.from({ length: SEC_TOTAL }, (_, i) => ({
+        value: i,
+        text: String(i % 60).padStart(2, '0'),
+      })),
+    [],
+  );
 
-  const emitNext = (nextMinuteSec: number, nextSecondsPart: number) => {
-    const total = nextMinuteSec + nextSecondsPart;
-    const clamped = Math.max(0, Math.min(maxSec, total));
-    const split = splitSeconds(clamped);
-    setMinuteSec(split.minuteSec);
-    setSecondsPart(split.secondsPart);
-    onChangeSec(clamped);
-    if (split.secondsPart !== nextSecondsPart) {
-      secondsListRef.current?.scrollToOffset({
-        offset: split.secondsPart * WHEEL_ROW_HEIGHT,
-        animated: true,
-      });
-    }
+  // Map the logical seconds value to the middle repetition so the wheel has
+  // equal room to scroll in both directions before hitting an edge.
+  const secondsWheelValue = SEC_MID_OFFSET + currentSec;
+
+  const indicatorStyle = useMemo(
+    () => ({ backgroundColor: borderSubtle, borderRadius: 8 }),
+    [borderSubtle],
+  );
+
+  const textStyle = useMemo(
+    () => ({ color: textPrimary, fontSize: 22, fontWeight: '500' as const }),
+    [textPrimary],
+  );
+
+  const handleMinuteChange = (v: number | string) => {
+    const m = Number(v);
+    const total = Math.max(0, Math.min(maxSec, m * 60 + currentSec));
+    onChangeSec(total);
   };
 
-  const onSecondsScrollEnd = (offsetY: number) => {
-    const raw = Math.round(offsetY / WHEEL_ROW_HEIGHT);
-    const nextSeconds = Math.max(0, Math.min(59, raw));
-    emitNext(minuteSec, nextSeconds);
+  const handleSecondChange = (v: number | string) => {
+    // Strip the loop offset; the canonical value is always 0–59.
+    const s = Number(v) % 60;
+    const total = Math.max(0, Math.min(maxSec, currentMin * 60 + s));
+    onChangeSec(total);
   };
 
   return (
-    <View className="flex-row items-center">
-      <View style={{ flex: 1 }}>
-        <DateTimePicker
-          mode="single"
-          date={secondsToDate(minuteSec)}
-          timePicker
-          initialView="time"
-          hideHeader
-          use12Hours={false}
-          onChange={({ date }) => {
-            const parsed = dateTypeToDate(date);
-            if (!parsed || Number.isNaN(parsed.getTime())) return;
-            emitNext(dateToSeconds(parsed), secondsPart);
-          }}
-          styles={pickerStyles}
-          containerHeight={220}
+    <View
+      className="flex-row items-center justify-center"
+      style={{ height: ITEM_HEIGHT * 5 }}
+    >
+      <View className="flex-1">
+        <WheelPicker
+          value={currentMin}
+          options={minuteOptions}
+          onChange={handleMinuteChange}
+          selectedIndicatorStyle={indicatorStyle}
+          itemTextStyle={textStyle}
+          itemHeight={ITEM_HEIGHT}
+          decelerationRate="fast"
         />
       </View>
 
-      <View style={{ width: 90, height: 220 }}>
-        <Text className="text-center text-xs font-semibold mb-1" style={{ color: textMuted }}>
-          SEC
-        </Text>
-        <View style={{ flex: 1 }}>
-          <FlatList
-            ref={secondsListRef}
-            data={secondOptions}
-            keyExtractor={(item) => String(item)}
-            getItemLayout={(_, index) => ({
-              length: WHEEL_ROW_HEIGHT,
-              offset: WHEEL_ROW_HEIGHT * index,
-              index,
-            })}
-            initialScrollIndex={secondsPart}
-            showsVerticalScrollIndicator={false}
-            snapToInterval={WHEEL_ROW_HEIGHT}
-            decelerationRate="fast"
-            contentContainerStyle={{
-              paddingVertical: WHEEL_ROW_HEIGHT * 2,
-            }}
-            onMomentumScrollEnd={(e) => onSecondsScrollEnd(e.nativeEvent.contentOffset.y)}
-            renderItem={({ item }) => (
-              <View style={{ height: WHEEL_ROW_HEIGHT }} className="items-center justify-center">
-                <Text style={{ color: item === secondsPart ? textPrimary : textMuted, fontSize: 22 }}>
-                  {String(item).padStart(2, '0')}
-                </Text>
-              </View>
-            )}
-          />
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: WHEEL_ROW_HEIGHT * 2,
-              height: WHEEL_ROW_HEIGHT,
-              borderTopWidth: 1,
-              borderBottomWidth: 1,
-              borderColor: borderSubtle,
-              borderRadius: 8,
-            }}
-          />
-        </View>
+      <Text
+        className="text-text-primary"
+        style={{ fontSize: 26, fontWeight: '300', marginHorizontal: 4, marginBottom: 2 }}
+      >
+        :
+      </Text>
+
+      <View className="flex-1">
+        <WheelPicker
+          value={secondsWheelValue}
+          options={secondOptions}
+          onChange={handleSecondChange}
+          selectedIndicatorStyle={indicatorStyle}
+          itemTextStyle={textStyle}
+          itemHeight={ITEM_HEIGHT}
+          decelerationRate="fast"
+        />
       </View>
     </View>
   );

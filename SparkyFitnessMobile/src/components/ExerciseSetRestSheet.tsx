@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import DurationWheel from './DurationWheel';
@@ -36,7 +36,7 @@ interface ExerciseSetRestSheetProps {
 }
 
 const ALL_KEY = 'all';
-const MAX_REST_SEC = 900;
+const MAX_REST_SEC = 1800;
 
 function clampRestSeconds(seconds: number): number {
   if (!Number.isFinite(seconds)) return getDefaultRestSec();
@@ -85,6 +85,16 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
       return draftBySetId[selectedKey] ?? getDefaultRestSec();
     }, [draftBySetId, selectedKey, sets]);
 
+    const highestSetRest = useMemo(() => {
+      if (sets.length === 0) return getDefaultRestSec();
+      let max = 0;
+      for (const set of sets) {
+        const value = draftBySetId[set.setId] ?? getDefaultRestSec();
+        if (value > max) max = value;
+      }
+      return max;
+    }, [draftBySetId, sets]);
+
     const handleChangeSeconds = useCallback(
       (seconds: number) => {
         const next = clampRestSeconds(seconds);
@@ -115,6 +125,9 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
       <BottomSheetModal
         ref={sheetRef}
         enableDynamicSizing
+        // On Android the sheet's content pan gesture steals vertical drags from
+        // the wheel picker's FlatLists. Must stay static; toggling it remounts content.
+        enableContentPanningGesture={Platform.OS !== 'android'}
         containerComponent={sheetContainer}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: surfaceBg }}
@@ -125,34 +138,47 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
             Rest for {title}
           </Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          <View className="flex-row flex-wrap" style={{ gap: 8 }}>
             <Pressable
               onPress={() => setSelectedKey(ALL_KEY)}
-              className="px-3 py-2 rounded-full border"
+              className="px-3 py-2 rounded-lg border items-center"
               style={{
                 borderColor: selectedKey === ALL_KEY ? accentPrimary : textMuted,
                 backgroundColor: selectedKey === ALL_KEY ? accentPrimary : 'transparent',
               }}
             >
               <Text style={{ color: selectedKey === ALL_KEY ? '#fff' : textMuted }}>All</Text>
+              <Text
+                className="text-xs mt-0.5"
+                style={{ color: selectedKey === ALL_KEY ? '#fff' : textMuted }}
+              >
+                {formatRestLabel(highestSetRest)}
+              </Text>
             </Pressable>
             {sets.map((set) => {
               const selected = selectedKey === set.setId;
+              const setRest = draftBySetId[set.setId] ?? getDefaultRestSec();
               return (
                 <Pressable
                   key={set.setId}
                   onPress={() => setSelectedKey(set.setId)}
-                  className="px-3 py-2 rounded-full border"
+                  className="px-3 py-2 rounded-lg border items-center"
                   style={{
                     borderColor: selected ? accentPrimary : textMuted,
                     backgroundColor: selected ? accentPrimary : 'transparent',
                   }}
                 >
                   <Text style={{ color: selected ? '#fff' : textMuted }}>Set {set.setNumber}</Text>
+                  <Text
+                    className="text-xs mt-0.5"
+                    style={{ color: selected ? '#fff' : textMuted }}
+                  >
+                    {formatRestLabel(setRest)}
+                  </Text>
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
 
           <View className="pt-3 pb-2">
             <DurationWheel valueSec={selectedSeconds} onChangeSec={handleChangeSeconds} maxSec={MAX_REST_SEC} />
