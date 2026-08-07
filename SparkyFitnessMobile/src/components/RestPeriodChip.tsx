@@ -21,7 +21,7 @@ export function formatRestLabel(seconds: number | null | undefined): string {
 
 /** Label a rest range as `min-max`, collapsing to a single value when equal. */
 export function formatRestRangeLabel(
-  values: Array<number | null | undefined>,
+  values: (number | null | undefined)[],
   defaultRestSec: number,
 ): string {
   const normalized = values.map((v) => (v ?? defaultRestSec));
@@ -38,7 +38,7 @@ export function formatRestRangeLabel(
 
 interface RestPeriodChipProps {
   value: number | null | undefined;
-  values?: Array<number | null | undefined>;
+  values?: (number | null | undefined)[];
   onPress?: () => void;
   readOnly?: boolean;
 }
