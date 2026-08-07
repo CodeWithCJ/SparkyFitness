@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import { getClient } from '../db/poolManager.js';
+import { createMockDbClient } from './helpers/mockDbClient.js';
 
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
@@ -19,14 +20,10 @@ vi.mock('../models/activityDetailsRepository', () => ({
 }));
 
 describe('Garmin exercise cleanup', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: ReturnType<typeof createMockDbClient>;
 
   beforeEach(() => {
-    mockClient = {
-      query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
-      release: vi.fn(),
-    };
+    mockClient = createMockDbClient([]);
     vi.mocked(getClient).mockResolvedValue(mockClient);
   });
 
