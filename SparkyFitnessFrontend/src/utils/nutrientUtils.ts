@@ -169,3 +169,28 @@ export const withNetCarbsSubstitution = <
     };
   });
 };
+
+/**
+ * The custom nutrients a food surface should render, per the user's display
+ * preference for that view group.
+ *
+ * Custom nutrients are NOT all food-facing: ones created through settings are added
+ * to the food_database view group by default, but supplement-picked ones are scoped
+ * to the goal/report groups only, so a multivitamin's 19 micronutrients don't render
+ * as always-0.0 columns on every food card. Rendering the full list would bypass
+ * that scoping.
+ *
+ * No preference row means the group was never configured (or preferences haven't
+ * loaded yet); every custom nutrient stays visible, matching the pre-preference
+ * behavior.
+ */
+export const visibleCustomNutrients = (
+  customNutrients: UserCustomNutrient[] | undefined,
+  preference: { visible_nutrients: string[] } | undefined
+): UserCustomNutrient[] => {
+  if (!customNutrients) return [];
+  if (!preference) return customNutrients;
+  return customNutrients.filter((nutrient) =>
+    preference.visible_nutrients.includes(nutrient.name)
+  );
+};
