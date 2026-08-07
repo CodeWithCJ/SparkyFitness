@@ -3,10 +3,7 @@ import { Platform } from 'react-native';
 import { render } from '@testing-library/react-native';
 
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
-import {
-  __resetAppPreferencesStoreForTests,
-  useAppPreferencesStore,
-} from '../../src/stores/appPreferencesStore';
+import { __resetAppPreferencesStoreForTests } from '../../src/stores/appPreferencesStore';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('@react-navigation/native', () => ({
