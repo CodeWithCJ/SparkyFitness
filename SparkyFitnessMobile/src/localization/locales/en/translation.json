@@ -1,0 +1,24 @@
+{
+  "common": {
+    "save": "Save",
+    "saving": "Saving…"
+  },
+  "settings": {
+    "app": "App Settings",
+    "language": {
+      "title": "Language",
+      "system": "System",
+      "english": "English",
+      "polish": "Polish"
+    }
+  },
+  "languageSettings": {
+    "subtitle": "Use your device language or choose a language for SparkyFitness."
+  },
+  "navigation": {
+    "settings": "Settings"
+  },
+  "notifications": {
+    "title": "Notifications"
+  }
+}
