@@ -253,6 +253,7 @@ describe('buildCustomOps', () => {
           hour: null,
           timestamp: '2026-07-30T08:00:00Z',
           source: 'manual',
+          rowKey: 'new-1',
         },
       ]);
     }
@@ -293,7 +294,9 @@ describe('buildCustomOps', () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.operations).toEqual([{ kind: 'delete', entryId: 'u1', categoryId: 'cat-unlimited' }]);
+      expect(result.operations).toEqual([
+        { kind: 'delete', entryId: 'u1', categoryId: 'cat-unlimited', rowKey: 'entry-u1' },
+      ]);
     }
   });
 
@@ -386,6 +389,7 @@ describe('buildCustomOps', () => {
           hour: null,
           timestamp: null,
           source: 'healthkit',
+          rowKey: 'entry-d1',
         },
       ]);
     }
@@ -415,6 +419,7 @@ describe('buildCustomOps', () => {
           hour: 8,
           timestamp: null,
           source: 'garmin',
+          rowKey: 'entry-h1',
         },
       ]);
     }
@@ -444,6 +449,7 @@ describe('buildCustomOps', () => {
           hour: null,
           timestamp: null,
           source: 'manual',
+          rowKey: 'new-1',
         },
       ]);
     }
@@ -473,6 +479,7 @@ describe('buildCustomOps', () => {
           hour: null,
           timestamp: null,
           source: 'manual',
+          rowKey: 'entry-l1',
         },
       ]);
     }
@@ -505,7 +512,8 @@ describe('entryTimestampFor', () => {
   it('builds a local-timezone timestamp on the selected day for a historical date', () => {
     const iso = entryTimestampFor('2026-01-05', 14);
 
-    expect(iso.startsWith('2026-01-05')).toBe(true);
+    // The serialized UTC instant may land on the adjacent UTC day in an
+    // extreme timezone, so assert through the local getters only.
     const date = new Date(iso);
     expect(date.getFullYear()).toBe(2026);
     expect(date.getMonth()).toBe(0);
@@ -792,6 +800,7 @@ describe('buildCustomOps - Hourly hours', () => {
           hour: 8,
           timestamp: '2026-07-30T08:00:00.000Z',
           source: 'manual',
+          rowKey: 'new-1',
         },
         {
           kind: 'save',
@@ -800,6 +809,7 @@ describe('buildCustomOps - Hourly hours', () => {
           hour: 17,
           timestamp: '2026-07-30T17:00:00.000Z',
           source: 'manual',
+          rowKey: 'new-2',
         },
       ]);
     }
@@ -881,6 +891,45 @@ describe('syncCustomForm - tombstone resurrection guard', () => {
 
     expect(form['cat-hourly'].deleted).toEqual([]);
   });
+
+  it('keeps a tombstoned Daily id out of rows when the server still returns it', () => {
+    const current: CustomFormState = {
+      'cat-daily': {
+        rows: [],
+        deleted: [{ entryId: 'e1' }],
+      },
+    };
+
+    const { form } = syncCustomForm({
+      categories: [numericCat('Daily')],
+      serverEntries: [entry('e1', 'cat-daily', '50')],
+      current,
+      dirtyKeys: new Set(),
+    });
+
+    // The single-entry path must not resurrect the tombstoned id either.
+    expect(form['cat-daily'].rows).toEqual([]);
+    expect(form['cat-daily'].deleted).toEqual([{ entryId: 'e1' }]);
+  });
+
+  it('drops a Daily tombstone once the server stops returning the id', () => {
+    const current: CustomFormState = {
+      'cat-daily': {
+        rows: [],
+        deleted: [{ entryId: 'e1' }],
+      },
+    };
+
+    const { form } = syncCustomForm({
+      categories: [numericCat('Daily')],
+      serverEntries: [],
+      current,
+      dirtyKeys: new Set(),
+    });
+
+    expect(form['cat-daily'].rows).toEqual([]);
+    expect(form['cat-daily'].deleted).toEqual([]);
+  });
 });
 
 describe('buildCustomOps - tombstone deletes', () => {
@@ -909,6 +958,7 @@ describe('buildCustomOps - tombstone deletes', () => {
           hour: 6,
           timestamp: null,
           source: 'manual',
+          rowKey: 'entry-h6',
         },
       ]);
     }
@@ -981,6 +1031,7 @@ describe('buildCustomOps - tombstone deletes', () => {
           hour: 8,
           timestamp: '2026-07-30T08:00:00.000Z',
           source: 'manual',
+          rowKey: 'new-1',
         },
       ]);
     }

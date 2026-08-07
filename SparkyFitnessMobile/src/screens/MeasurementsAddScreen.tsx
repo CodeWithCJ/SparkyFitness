@@ -151,7 +151,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const [customForm, setCustomForm] = useState<CustomFormState>({});
   const customFormRef = useRef<CustomFormState>({});
-  customFormRef.current = customForm;
+  // Keep the ref in sync outside the render body so the reconciliation effect
+  // below can read the latest form without re-running on every keystroke.
+  useEffect(() => {
+    customFormRef.current = customForm;
+  }, [customForm]);
   // Per-row dirty tracking: a refetch preserves dirty rows (local values) and
   // drops untouched rows that no longer exist on the server.
   const dirtyCustomKeysRef = useRef<Set<string>>(new Set());
@@ -578,48 +582,79 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     const doSave = async () => {
+      // Rows whose custom operation already succeeded are removed from the
+      // pending set; failed and not-yet-attempted rows stay dirty so the
+      // refetch keeps their typed values and a retry sends only the rest.
+      const remainingDirtyCustom = new Set(dirtyCustomKeysRef.current);
+      let standardPersisted = false;
+      let customSucceeded = true;
+
       try {
         for (const op of customOps) {
-          if (op.kind === 'delete') {
-            await deleteCustomMutation.mutateAsync({ id: op.entryId, entryDate: selectedDate });
-          } else {
-            // Upstream POST has documented upsert semantics: Daily/Hourly
-            // entries are matched and updated by (category, date, hour, source),
-            // so existing rows and new rows both go through POST. All/Unlimited
-            // entries are never edited in place (see buildCustomOps); their
-            // rows are read-only here so deleting and re-adding stay two
-            // explicit user actions.
-            await saveCustomMutation.mutateAsync({
-              category_id: op.categoryId,
-              value: op.value,
-              entry_date: selectedDate,
-              entry_hour: op.hour,
-              entry_timestamp: op.timestamp ?? undefined,
-              source: op.source,
-            });
+          try {
+            if (op.kind === 'delete') {
+              await deleteCustomMutation.mutateAsync({ id: op.entryId, entryDate: selectedDate });
+            } else {
+              // Upstream POST has documented upsert semantics: Daily/Hourly
+              // entries are matched and updated by (category, date, hour, source),
+              // so existing rows and new rows both go through POST. All/Unlimited
+              // entries are never edited in place (see buildCustomOps); their
+              // rows are read-only here so deleting and re-adding stay two
+              // explicit user actions.
+              await saveCustomMutation.mutateAsync({
+                category_id: op.categoryId,
+                value: op.value,
+                entry_date: selectedDate,
+                entry_hour: op.hour,
+                entry_timestamp: op.timestamp ?? undefined,
+                source: op.source,
+              });
+            }
+            // This operation reached the server successfully; it must not be
+            // retried (a blind retry could duplicate an All/Unlimited insert).
+            if (op.rowKey) remainingDirtyCustom.delete(op.rowKey);
+          } catch {
+            // Stop at the first failure; later operations remain pending.
+            customSucceeded = false;
+            break;
           }
         }
-        if (hasAnyField) {
-          await upsertMutation.mutateAsync(payload);
+
+        if (customSucceeded && hasAnyField) {
+          try {
+            await upsertMutation.mutateAsync(payload);
+            standardPersisted = true;
+          } catch {
+            customSucceeded = false;
+          }
         }
-        Toast.show({ type: 'success', text1: 'Saved' });
-        navigation.goBack();
+
+        if (customSucceeded) {
+          Toast.show({ type: 'success', text1: 'Saved' });
+          navigation.goBack();
+          return;
+        }
       } catch {
-        // A mutation failed after earlier ones may have succeeded. Do NOT show
-        // success, do NOT close the screen; refetch so the form reflects the
-        // server and surface one partial-failure message.
-        dirtyCustomKeysRef.current = new Set();
-        setCustomForm({});
-        dirtyFieldsRef.current = new Set();
-        setForm(EMPTY_FORM);
-        setPrefilledKeys(new Set());
-        await Promise.allSettled([
-          refetchMeasurements(),
-          refetchCustomCategories(),
-          refetchCustomEntries(),
-        ]);
-        Toast.show({ type: 'error', text1: 'Some changes may not have been saved.' });
+        // Unreachable in practice (every mutation above is individually
+        // caught), but keep the screen open rather than crashing.
+        customSucceeded = false;
       }
+
+      // Partial failure: do NOT clear the forms. The custom rows that failed
+      // (or never ran) keep their values via the pending dirty set, and the
+      // standard fields keep their dirty markers because the upsert did not
+      // persist (or was never attempted). Only the rows that succeeded are
+      // dropped from the pending set.
+      dirtyCustomKeysRef.current = remainingDirtyCustom;
+      if (standardPersisted) {
+        dirtyFieldsRef.current = new Set();
+      }
+      await Promise.allSettled([
+        refetchMeasurements(),
+        refetchCustomCategories(),
+        refetchCustomEntries(),
+      ]);
+      Toast.show({ type: 'error', text1: 'Some changes may not have been saved.' });
     };
 
     // Custom deletes (clearing a prefilled entry or pressing the row delete
@@ -661,7 +696,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     isLoading ||
     isPreferencesLoading ||
     isCustomDataLoading ||
-    isCustomDataError ||
     isMutationPending;
   // Closing stays available during a fetch error so the user is never trapped;
   // only an in-flight mutation blocks dismissal.
@@ -751,6 +785,8 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                           changeCustomRowHour(cat.id, row.key, ((row.hour ?? 0) + 23) % 24)
                         }
                         hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Decrease hour for ${label}`}
                         testID={`hour-minus-${row.key}`}
                       >
                         <Icon name="remove" size={16} color={accentPrimary} />
@@ -763,6 +799,8 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                           changeCustomRowHour(cat.id, row.key, ((row.hour ?? 0) + 1) % 24)
                         }
                         hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Increase hour for ${label}`}
                         testID={`hour-plus-${row.key}`}
                       >
                         <Icon name="add" size={16} color={accentPrimary} />
@@ -798,6 +836,8 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <TouchableOpacity
                   onPress={() => deleteCustomRow(cat.id, row)}
                   hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${label} entry`}
                   testID={`delete-custom-${row.key}`}
                 >
                   <Icon name="trash" size={18} color={textSecondary} />

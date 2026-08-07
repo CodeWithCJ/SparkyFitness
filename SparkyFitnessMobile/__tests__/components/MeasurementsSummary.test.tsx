@@ -19,7 +19,9 @@ describe('MeasurementsSummary', () => {
   });
 
   test('renders null when measurements object has no values and no custom measurements', () => {
-    const { toJSON } = render(<MeasurementsSummary measurements={{}} />);
+    const { toJSON } = render(
+      <MeasurementsSummary measurements={{ entry_date: '2024-06-15' }} />,
+    );
     expect(toJSON()).toBeNull();
   });
 
@@ -40,7 +42,7 @@ describe('MeasurementsSummary', () => {
   test('renders custom measurement rows', () => {
     const { getByText } = render(
       <MeasurementsSummary
-        measurements={{}}
+        measurements={undefined}
         customMeasurements={[
           {
             id: 'entry-1',
@@ -117,7 +119,7 @@ describe('MeasurementsSummary', () => {
   test('preserves empty numeric values and formats precise numeric values', () => {
     const { getByText } = render(
       <MeasurementsSummary
-        measurements={{}}
+        measurements={undefined}
         customMeasurements={[
           {
             id: 'numeric',
@@ -152,7 +154,7 @@ describe('MeasurementsSummary', () => {
   test('does not turn empty or whitespace numeric values into zero', () => {
     const { queryByText } = render(
       <MeasurementsSummary
-        measurements={{}}
+        measurements={undefined}
         customMeasurements={[
           {
             id: 'empty',

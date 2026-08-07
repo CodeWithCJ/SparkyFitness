@@ -58,8 +58,10 @@ export type CustomOp =
       hour: number | null;
       timestamp: string | null;
       source: string;
+      /** Local row key; lets a partial save drop exactly the rows that succeeded. */
+      rowKey: string;
     }
-  | { kind: 'delete'; entryId: string; categoryId: string };
+  | { kind: 'delete'; entryId: string; categoryId: string; rowKey?: string };
 
 export type BuildCustomOpsResult =
   | { ok: true; operations: CustomOp[] }
@@ -221,7 +223,15 @@ function syncSingleEntry(
   const isDirty = prevRow != null && dirtyKeys.has(prevRow.key);
   const rows: CustomRow[] = [];
 
-  if (serverEntry != null) {
+  // A tombstoned id (deleted locally, DELETE not confirmed yet) that the
+  // server still returns must not be resurrected into rows; it stays in the
+  // deleted markers until the server stops reporting it (same guard as
+  // syncMultiEntry).
+  const isTombstoned =
+    serverEntry != null &&
+    (prev?.deleted ?? []).some((d) => d.entryId === serverEntry.id);
+
+  if (serverEntry != null && !isTombstoned) {
     rows.push({
       key: isDirty && prevRow ? prevRow.key : `entry-${serverEntry.id}`,
       entryId: serverEntry.id,
@@ -330,7 +340,7 @@ export function buildCustomOps(params: {
       if (value === '') {
         // Clearing an existing entry means deleting it.
         if (row.entryId != null && dirtyKeys.has(row.key)) {
-          operations.push({ kind: 'delete', entryId: row.entryId, categoryId: cat.id });
+          operations.push({ kind: 'delete', entryId: row.entryId, categoryId: cat.id, rowKey: row.key });
         }
         continue;
       }
@@ -378,6 +388,7 @@ export function buildCustomOps(params: {
         hour: row.hour,
         timestamp: row.timestamp,
         source: row.source ?? 'manual',
+        rowKey: row.key,
       });
     }
   }

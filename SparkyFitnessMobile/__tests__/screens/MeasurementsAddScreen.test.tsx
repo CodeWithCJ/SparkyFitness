@@ -17,6 +17,7 @@ import {
 } from '../../src/hooks/useCustomMeasurements';
 import { SAVE_LABEL } from '../../src/hooks/useScreenHeader';
 import type { CheckInMeasurement } from '../../src/types/measurements';
+import type { CustomCategory, CustomMeasurementEntry } from '../../src/types/customMeasurements';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
 type ScreenProps = RootStackScreenProps<'MeasurementsAdd'>;
@@ -116,7 +117,7 @@ const setPreferences = (prefs: { default_weight_unit?: string; default_measureme
   } as unknown as ReturnType<typeof usePreferences>);
 };
 
-const setCustomCategories = (categories: any[]) => {
+const setCustomCategories = (categories: CustomCategory[]) => {
   mockUseCustomCategories.mockReturnValue({
     data: categories,
     isLoading: false,
@@ -125,7 +126,7 @@ const setCustomCategories = (categories: any[]) => {
   } as unknown as ReturnType<typeof useCustomCategories>);
 };
 
-const setCustomEntries = (entries: any[]) => {
+const setCustomEntries = (entries: CustomMeasurementEntry[]) => {
   mockUseCustomMeasurementsByDate.mockReturnValue({
     data: entries,
     isLoading: false,
@@ -503,6 +504,14 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     // User names stay literal — never translated or reordered.
     expect(screen.getByText('Stres (mmHg)')).toBeTruthy();
     expect(screen.getByText('Energy Level')).toBeTruthy();
+    // Render order follows the API array order (c1 before c2).
+    const labels = screen.getAllByText(/Stres|Energy/);
+    const labelText = (n: { props?: { children?: unknown } }) =>
+      Array.isArray(n.props?.children)
+        ? (n.props?.children as unknown[]).map(String).join('')
+        : String(n.props?.children);
+    expect(labelText(labels[0])).toBe('Stres (mmHg)');
+    expect(labelText(labels[1])).toBe('Energy Level');
   });
 
   test('renders no custom section when there are no categories', () => {
@@ -534,6 +543,17 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     // Both yes/no pairs render; the false entry is a real saved value.
     expect(screen.getAllByText('Yes')).toHaveLength(2);
     expect(screen.getAllByText('No')).toHaveLength(2);
+
+    // Tri-state selection reflects the stored value per category: c1 (true)
+    // selects its Yes option, c2 (false) selects its No option.
+    const yes0 = screen.getAllByText('Yes')[0].parent?.parent;
+    const no0 = screen.getAllByText('No')[0].parent?.parent;
+    const yes1 = screen.getAllByText('Yes')[1].parent?.parent;
+    const no1 = screen.getAllByText('No')[1].parent?.parent;
+    expect(yes0?.props.accessibilityState?.selected).toBe(true);
+    expect(no0?.props.accessibilityState?.selected).toBe(false);
+    expect(yes1?.props.accessibilityState?.selected).toBe(false);
+    expect(no1?.props.accessibilityState?.selected).toBe(true);
   });
 
   test('saves a new numeric custom value together with a standard field', async () => {
@@ -646,18 +666,26 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   });
 
   test('hourly category adds a row and saves with the chosen hour', async () => {
-    setCustomCategories([customCategory({ id: 'c1', frequency: 'Hourly' })]);
-    const screen = renderScreen();
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 0, 5, 14, 0, 0));
+    try {
+      setCustomCategories([customCategory({ id: 'c1', frequency: 'Hourly' })]);
+      const screen = renderScreen();
 
-    fireEvent.press(screen.getByTestId('add-custom-c1'));
-    fireEvent.press(screen.getByTestId('hour-plus-new-1'));
-    fireEvent.changeText(screen.getByTestId('custom-input-new-1'), '10');
-    await pressSave(screen);
+      fireEvent.press(screen.getByTestId('add-custom-c1'));
+      // addCustomRow seeds the hour from the (faked) local time 14:00; the
+      // plus button increments it to exactly 15.
+      fireEvent.press(screen.getByTestId('hour-plus-new-1'));
+      fireEvent.changeText(screen.getByTestId('custom-input-new-1'), '10');
+      await pressSave(screen);
 
-    const payload = savedCustomPayload();
-    expect(payload.category_id).toBe('c1');
-    expect(payload.value).toBe(10);
-    expect(payload.entry_hour).toEqual(expect.any(Number));
+      const payload = savedCustomPayload();
+      expect(payload.category_id).toBe('c1');
+      expect(payload.value).toBe(10);
+      expect(payload.entry_hour).toBe(15);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('unlimited category keeps existing rows read-only and saves a new row as insert', async () => {
@@ -706,6 +734,130 @@ describe('MeasurementsAddScreen — custom measurements', () => {
 
     expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  test('partial custom failure keeps unsaved rows pending and retry skips succeeded rows', async () => {
+    setCustomCategories([
+      customCategory({ id: 'c1' }),
+      customCategory({ id: 'c2' }),
+      customCategory({ id: 'c3' }),
+    ]);
+    const screen = renderScreen();
+
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    };
+    // Op #1 (c1) succeeds, op #2 (c2) fails, op #3 (c3) never runs.
+    saveMock.mutateAsync
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('boom'));
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '10');
+    fireEvent.changeText(screen.getByTestId('custom-input-c2'), '20');
+    fireEvent.changeText(screen.getByTestId('custom-input-c3'), '30');
+    await pressSave(screen);
+
+    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    // Only c1 and c2 were attempted on the first pass.
+    expect(saveMock.mutateAsync).toHaveBeenCalledTimes(2);
+
+    // Failed/not-yet-attempted rows keep their typed values.
+    expect(screen.getByTestId('custom-input-c2').props.value).toBe('20');
+    expect(screen.getByTestId('custom-input-c3').props.value).toBe('30');
+
+    // Retry sends only the remaining work — c1 (already persisted) is not
+    // re-sent, so a successful insert is never duplicated.
+    await pressSave(screen);
+    const calls = saveMock.mutateAsync.mock.calls.map((c) => c[0] as { category_id: string });
+    expect(calls.filter((p) => p.category_id === 'c1')).toHaveLength(1);
+    expect(calls.filter((p) => p.category_id === 'c2')).toHaveLength(2);
+    expect(calls.filter((p) => p.category_id === 'c3')).toHaveLength(1);
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  test('standard fields survive a custom partial failure', async () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    const screen = renderScreen();
+
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    };
+    saveMock.mutateAsync.mockRejectedValueOnce(new Error('boom'));
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '10');
+    fireEvent.changeText(getInput(screen, 'weight'), '80');
+    await pressSave(screen);
+
+    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    // The standard upsert never ran because the custom op failed first; the
+    // typed weight must not be erased.
+    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+    expect(getInput(screen, 'weight').props.value).toBe('80');
+    expect(screen.getByTestId('custom-input-c1').props.value).toBe('10');
+  });
+
+  test('retry after refetch keeps dirty values and submits only remaining work', async () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    const screen = renderScreen();
+
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    };
+    saveMock.mutateAsync.mockRejectedValueOnce(new Error('boom'));
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '10');
+    await pressSave(screen);
+
+    // The refetch reconciliation must not clobber the pending value.
+    expect(screen.getByTestId('custom-input-c1').props.value).toBe('10');
+
+    saveMock.mutateAsync.mockResolvedValueOnce(undefined);
+    await pressSave(screen);
+
+    expect(saveMock.mutateAsync).toHaveBeenCalledTimes(2);
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
+  test('custom endpoint failure does not block saving standard fields', async () => {
+    mockUseCustomCategories.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useCustomCategories>);
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useCustomMeasurementsByDate>);
+    const screen = renderScreen();
+
+    fireEvent.changeText(getInput(screen, 'weight'), '80');
+    await pressSave(screen);
+
+    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ entryDate: ENTRY_DATE, weight: 80 }),
+    );
+  });
+
+  test('icon-only row controls expose accessible names and roles', async () => {
+    setCustomCategories([customCategory({ id: 'c1', frequency: 'Hourly' })]);
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByTestId('add-custom-c1'));
+
+    const minus = screen.getByTestId('hour-minus-new-1');
+    const plus = screen.getByTestId('hour-plus-new-1');
+    const del = screen.getByTestId('delete-custom-new-1');
+
+    expect(minus.props.accessibilityRole).toBe('button');
+    expect(minus.props.accessibilityLabel).toBe('Decrease hour for Stress Level');
+    expect(plus.props.accessibilityRole).toBe('button');
+    expect(plus.props.accessibilityLabel).toBe('Increase hour for Stress Level');
+    expect(del.props.accessibilityRole).toBe('button');
+    expect(del.props.accessibilityLabel).toBe('Delete Stress Level entry');
   });
 
   test('boolean control exposes accessibility state on its options', () => {
