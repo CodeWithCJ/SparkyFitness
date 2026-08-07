@@ -45,7 +45,10 @@ import ActionSheet, {
   type ActionSheetRef,
 } from '../components/ActionSheet';
 import { type AnchorRect } from '../components/AnchoredMenu';
-import RestPeriodSheet, { type RestPeriodSheetRef } from '../components/RestPeriodSheet';
+import ExerciseSetRestSheet, {
+  type ExerciseSetRestSheetRef,
+  type ExerciseSetRestUpdate,
+} from '../components/ExerciseSetRestSheet';
 import WorkoutDurationSheet, {
   type WorkoutDurationSheetRef,
 } from '../components/WorkoutDurationSheet';
@@ -478,17 +481,26 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     [navigation, runNavigationAction],
   );
 
-  // Rest sheet (per-exercise rest duration).
-  const restSheetRef = useRef<RestPeriodSheetRef>(null);
-  const restSheetEntryIdRef = useRef<string | null>(null);
-  const handlePressRestChip = useCallback((entryId: string, currentSec: number | null) => {
-    restSheetEntryIdRef.current = entryId;
-    restSheetRef.current?.present(currentSec);
+  // Exercise rest drawer (All / per-set rest editing, committed on Done).
+  const setRestSheetRef = useRef<ExerciseSetRestSheetRef>(null);
+  const handlePressRestChip = useCallback((entryId: string, _currentSec: number | null) => {
+    const exercise = useActiveWorkoutStore
+      .getState()
+      .session?.exercises.find((e) => e.id === entryId);
+    if (!exercise) return;
+    setRestSheetRef.current?.present(
+      exercise.exercise_snapshot?.name ?? 'Exercise',
+      exercise.sets.map((set) => ({
+        setId: String(set.id),
+        setNumber: set.set_number,
+        restSec: set.rest_time,
+      })),
+    );
   }, []);
-  const handleRestChanged = useCallback((seconds: number) => {
-    const entryId = restSheetEntryIdRef.current;
-    if (entryId != null) {
-      useActiveWorkoutStore.getState().setExerciseRest(entryId, seconds);
+  const handleApplySetRests = useCallback((updates: ExerciseSetRestUpdate[]) => {
+    const store = useActiveWorkoutStore.getState();
+    for (const update of updates) {
+      store.updateSetField(update.setId, { rest_time: update.seconds });
     }
   }, []);
 
@@ -1257,7 +1269,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         </KeyboardStickyView>
       )}
 
-      <RestPeriodSheet ref={restSheetRef} onChange={handleRestChanged} />
+      <ExerciseSetRestSheet ref={setRestSheetRef} onApply={handleApplySetRests} />
 
       <WorkoutDurationSheet ref={durationSheetRef} onSave={handleDurationSave} />
 
