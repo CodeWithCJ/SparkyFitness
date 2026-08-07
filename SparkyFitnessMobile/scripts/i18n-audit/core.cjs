@@ -6,7 +6,6 @@ const { collectFindings: scanFindings, getAllSuppressionIssues } = require('./so
 const MOBILE_ROOT = path.resolve(__dirname, '..', '..');
 const EN_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', 'en', 'translation.json');
 const PL_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', 'pl', 'translation.json');
-const BASELINE_PATH = path.join(__dirname, 'i18n-audit-baseline.json');
 
 const FORBIDDEN_FILES = [
   path.join(MOBILE_ROOT, 'src', 'localization', 'mobile.pl.json'),
@@ -16,16 +15,11 @@ const FORBIDDEN_FILES = [
 
 const SOURCE_ROOTS = [path.join(MOBILE_ROOT, 'src')];
 
-const REQUIRED_PLURAL_FORMS = {
-  en: ['_one', '_other'],
-  pl: ['_one', '_few', '_many', '_other'],
-};
-
-const MIGRATORY_RULES = new Set(['hardcoded-ui-text', 'dynamic-i18n-key']);
-
 function checkForbiddenFiles(rootDir, forbiddenFiles) {
   const errors = [];
-  const files = forbiddenFiles || [
+  const files = forbiddenFiles && forbiddenFiles.length > 0
+    ? forbiddenFiles
+    : [
     path.join(rootDir, 'src', 'localization', 'mobile.pl.json'),
     path.join(rootDir, 'src', 'localization', 'mobile.pl.overrides.json'),
     path.join(rootDir, 'scripts', 'populate-mobile-polish.mjs'),
@@ -43,29 +37,6 @@ function checkForbiddenFiles(rootDir, forbiddenFiles) {
   return errors;
 }
 
-function loadBaseline(baselinePath) {
-  if (!fs.existsSync(baselinePath)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
-  } catch {
-    return null;
-  }
-}
-
-function saveBaseline(baselinePath, data) {
-  const serialized = JSON.stringify(data, null, 2) + '\n';
-  fs.writeFileSync(baselinePath, serialized, 'utf8');
-}
-
-function buildMigrationFingerprint(finding) {
-  const contextStr = finding.context ? JSON.stringify(finding.context) : '';
-  return `hardcoded-ui-text:${finding.file}:${finding.value}:${contextStr}`;
-}
-
-function buildDynamicMigrationFingerprint(finding) {
-  return `dynamic-i18n-key:${finding.file}:${finding.expression}`;
-}
-
 function localeHasKey(keySet, key) {
   if (keySet.has(key)) return true;
   // An exact key that is the base of a recognized plural group is also valid
@@ -76,14 +47,29 @@ function localeHasKey(keySet, key) {
   return false;
 }
 
+/**
+ * Runs the i18n audit.
+ *
+ * Blocking (exit != 0 when present):
+ *   - user-facing t() without an explicit English fallback
+ *   - dynamic t(variable) / unsafe template-literal translation keys
+ *   - missing static locale keys
+ *   - EN/PL structure mismatch (missing/extra keys, type mismatch)
+ *   - placeholder mismatch
+ *   - plural mismatch / missing plural forms
+ *   - duplicate/singular-plural collisions reported by the validator
+ *   - forbidden legacy Polish files
+ *   - invalid suppression directives
+ *
+ * Informational (reported in the summary, never blocking):
+ *   - hardcoded UI strings (full inventory and migration live in PR5)
+ */
 function runAudit(options = {}) {
   const rootDir = options.rootDir || MOBILE_ROOT;
   const enLocalePath = options.enLocalePath || EN_LOCALE_PATH;
   const plLocalePath = options.plLocalePath || PL_LOCALE_PATH;
-  const baselinePath = options.baselinePath || BASELINE_PATH;
   const forbiddenFiles = options.forbiddenFiles;
   const sourceRoots = options.sourceRoots || SOURCE_ROOTS;
-  const baseline = options.baseline !== undefined ? options.baseline : loadBaseline(baselinePath);
 
   const report = {
     forbidden: [],
@@ -94,9 +80,6 @@ function runAudit(options = {}) {
     missingFallbackFindings: [],
     hardcodedUiFindings: [],
     dynamicI18nFindings: [],
-    acceptedBaselineFindings: 0,
-    newFindings: [],
-    staleBaselineFindings: [],
     summary: {},
   };
 
@@ -111,6 +94,7 @@ function runAudit(options = {}) {
       rule: 'malformed-json',
       message: err.message,
     });
+    report.summary = buildSummary(report);
     return { report, hasErrors: true };
   }
 
@@ -176,243 +160,22 @@ function runAudit(options = {}) {
         message: `User-facing t("${finding.value}") without explicit English fallback at ${finding.file}:${finding.line} — pass a fallback string or defaultValue`,
       });
     } else if (finding.kind === 'dynamic-t-key') {
-      const fp = `dynamic-t-key:${finding.file}:${finding.value}`;
       report.dynamicI18nFindings.push({
         rule: 'dynamic-i18n-key',
         file: finding.file,
         line: finding.line,
         expression: finding.value,
-        fingerprint: fp,
         message: `Dynamic i18n key "${finding.value}" at ${finding.file}:${finding.line} — use a static map instead`,
       });
     } else if (finding.kind === 'hardcoded-ui-text') {
-      const fp = `hardcoded-ui-text:${finding.file}:${finding.line}:${finding.value}`;
+      // Informational only: the full hardcoded-UI inventory and its migration
+      // belong to PR5. PR3 reports the count without a checked-in snapshot.
       report.hardcodedUiFindings.push({
         rule: 'hardcoded-ui-text',
         file: finding.file,
         line: finding.line,
         value: finding.value,
         context: finding.context,
-        fingerprint: fp,
-      });
-    }
-  }
-
-  if (options.updateBaseline) {
-    const structuralErrors = [
-      ...report.forbidden,
-      ...report.localeStructuralErrors,
-      ...report.missingStaticKeys,
-      ...report.placeholderErrors,
-      ...report.pluralErrors,
-      ...report.missingFallbackFindings,
-    ];
-
-    if (structuralErrors.length > 0) {
-      report.summary = buildSummary(report);
-      return {
-        report,
-        error: new Error('Cannot update baseline due to structural errors that are not allowed in baseline'),
-      };
-    }
-
-    const migrationBaseline = [];
-    for (const finding of report.hardcodedUiFindings) {
-      migrationBaseline.push({
-        rule: 'hardcoded-ui-text',
-        file: finding.file,
-        value: finding.value,
-        context: finding.context,
-        fingerprint: buildMigrationFingerprint({ file: finding.file, value: finding.value, kind: 'hardcoded-ui-text', context: finding.context }),
-      });
-    }
-    for (const finding of report.dynamicI18nFindings) {
-      migrationBaseline.push({
-        rule: 'dynamic-i18n-key',
-        file: finding.file,
-        expression: finding.expression,
-        fingerprint: buildDynamicMigrationFingerprint({ file: finding.file, expression: finding.expression }),
-      });
-    }
-
-    migrationBaseline.sort((a, b) => {
-      const ruleCmp = (a.rule || '').localeCompare(b.rule || '');
-      if (ruleCmp !== 0) return ruleCmp;
-      return (a.fingerprint || '').localeCompare(b.fingerprint || '');
-    });
-
-    const countByFp = new Map();
-    for (const item of migrationBaseline) {
-      countByFp.set(item.fingerprint, (countByFp.get(item.fingerprint) || 0) + 1);
-    }
-
-    const baselineData = {
-      version: 1,
-      findings: migrationBaseline,
-      counts: Object.fromEntries(countByFp.entries()),
-    };
-
-    saveBaseline(baselinePath, baselineData);
-
-    report.summary = {
-      forbidden: report.forbidden.length,
-      localeStructuralErrors: report.localeStructuralErrors.length,
-      missingStaticKeys: report.missingStaticKeys.length,
-      placeholderErrors: report.placeholderErrors.length,
-      pluralErrors: report.pluralErrors.length,
-      missingFallbackFindings: report.missingFallbackFindings.length,
-      hardcodedUiFindings: report.hardcodedUiFindings.length,
-      dynamicI18nFindings: report.dynamicI18nFindings.length,
-      acceptedBaselineFindings: 0,
-      newFindings: 0,
-      staleBaselineFindings: 0,
-    };
-
-    return { report, baseline: baselineData };
-  }
-
-  if (baseline) {
-    const currentBaselineFindings = new Map();
-    for (const finding of report.hardcodedUiFindings) {
-      const fp = buildMigrationFingerprint({
-        file: finding.file,
-        value: finding.value,
-        kind: 'hardcoded-ui-text',
-        context: finding.context,
-      });
-
-      if (!currentBaselineFindings.has(fp)) {
-        currentBaselineFindings.set(fp, { count: 0, kind: 'hardcoded-ui-text' });
-      }
-      currentBaselineFindings.get(fp).count += 1;
-    }
-
-    for (const finding of report.dynamicI18nFindings) {
-      const fp = buildDynamicMigrationFingerprint({ file: finding.file, expression: finding.expression });
-      if (!currentBaselineFindings.has(fp)) {
-        currentBaselineFindings.set(fp, { count: 0, kind: 'dynamic-i18n-key' });
-      }
-      currentBaselineFindings.get(fp).count += 1;
-    }
-
-    const baselineMap = new Map();
-    for (const entry of baseline.findings) {
-      const fp = entry.fingerprint;
-      if (!baselineMap.has(fp)) {
-        baselineMap.set(fp, entry);
-      }
-    }
-
-    const baselineFindings = new Map();
-    if (baseline.counts) {
-      for (const [fp, count] of Object.entries(baseline.counts)) {
-        baselineFindings.set(fp, { count, entry: baselineMap.get(fp) });
-      }
-    } else {
-      for (const entry of baseline.findings) {
-        baselineFindings.set(entry.fingerprint, { count: 1, entry });
-      }
-    }
-
-    let acceptedCount = 0;
-
-    // Compare each fingerprint by (baselineCount, currentCount). A fingerprint
-    // may carry multiple occurrences; accepted counts are the truly accepted
-    // occurrences, computed as Math.min(baselineCount, currentCount).
-    for (const [fp, current] of currentBaselineFindings.entries()) {
-      const baselineEntry = baselineFindings.get(fp);
-      const baselineCount = baselineEntry ? baselineEntry.count : 0;
-      const currentCount = current.count;
-
-      if (baselineCount > 0) {
-        acceptedCount += Math.min(baselineCount, currentCount);
-        if (currentCount === baselineCount) {
-          continue; // equal: fully accepted, no new, no stale
-        }
-      }
-
-      // currentCount > baselineCount (or new fingerprint) → new violation.
-      if (currentCount > baselineCount) {
-        const firstFinding = report.hardcodedUiFindings.find((f) => buildMigrationFingerprint({
-          file: f.file,
-          value: f.value,
-          kind: 'hardcoded-ui-text',
-          context: f.context,
-        }) === fp) || report.dynamicI18nFindings.find((f) => buildDynamicMigrationFingerprint({ file: f.file, expression: f.expression }) === fp);
-
-        if (firstFinding) {
-          report.newFindings.push({
-            fingerprint: fp,
-            rule: current.kind,
-            baselineCount,
-            currentCount,
-            delta: currentCount - baselineCount,
-            file: firstFinding.file,
-            line: firstFinding.line,
-            value: firstFinding.value ?? firstFinding.expression,
-            message: baselineCount === 0
-              ? `New finding: "${firstFinding.value ?? firstFinding.expression}" at ${firstFinding.file}:${firstFinding.line}`
-              : `Increased occurrences of "${firstFinding.value ?? firstFinding.expression}" (${currentCount} > ${baselineCount})`,
-          });
-        }
-        continue;
-      }
-
-      // currentCount < baselineCount (partial decrease) → stale.
-      if (currentCount < baselineCount) {
-        const firstFinding = report.hardcodedUiFindings.find((f) => buildMigrationFingerprint({
-          file: f.file,
-          value: f.value,
-          kind: 'hardcoded-ui-text',
-          context: f.context,
-        }) === fp) || report.dynamicI18nFindings.find((f) => buildDynamicMigrationFingerprint({ file: f.file, expression: f.expression }) === fp);
-
-        report.staleBaselineFindings.push({
-          fingerprint: fp,
-          rule: current.kind,
-          baselineCount,
-          currentCount,
-          removed: baselineCount - currentCount,
-          file: firstFinding?.file,
-          value: firstFinding?.value ?? firstFinding?.expression,
-          message: `Stale baseline entry - occurrences decreased (${baselineCount} → ${currentCount})`,
-        });
-      }
-    }
-
-    // Fingerprints present in baseline but completely absent from current code.
-    for (const [fp, baselineEntry] of baselineFindings.entries()) {
-      if (currentBaselineFindings.has(fp)) continue;
-      report.staleBaselineFindings.push({
-        fingerprint: fp,
-        rule: baselineEntry.entry?.rule || 'unknown',
-        baselineCount: baselineEntry.count,
-        currentCount: 0,
-        removed: baselineEntry.count,
-        message: `Stale baseline entry - finding no longer present (removed ${baselineEntry.count})`,
-      });
-    }
-
-    report.acceptedBaselineFindings = acceptedCount;
-  } else {
-    for (const finding of report.hardcodedUiFindings) {
-      report.newFindings.push({
-        fingerprint: finding.fingerprint,
-        rule: 'hardcoded-ui-text',
-        file: finding.file,
-        line: finding.line,
-        value: finding.value,
-        message: `New hardcoded UI text: "${finding.value}" at ${finding.file}:${finding.line}`,
-      });
-    }
-    for (const finding of report.dynamicI18nFindings) {
-      report.newFindings.push({
-        fingerprint: finding.fingerprint,
-        rule: 'dynamic-i18n-key',
-        file: finding.file,
-        line: finding.line,
-        expression: finding.expression,
-        message: `New dynamic i18n key: ${finding.expression} at ${finding.file}:${finding.line}`,
       });
     }
   }
@@ -424,27 +187,12 @@ function runAudit(options = {}) {
     report.placeholderErrors.length,
     report.pluralErrors.length,
     report.missingFallbackFindings.length,
+    report.dynamicI18nFindings.length,
   ].reduce((a, b) => a + b, 0);
 
-  report.summary = {
-    forbidden: report.forbidden.length,
-    localeStructuralErrors: report.localeStructuralErrors.length,
-    missingStaticKeys: report.missingStaticKeys.length,
-    placeholderErrors: report.placeholderErrors.length,
-    pluralErrors: report.pluralErrors.length,
-    missingFallbackFindings: report.missingFallbackFindings.length,
-    hardcodedUiFindings: report.hardcodedUiFindings.length,
-    dynamicI18nFindings: report.dynamicI18nFindings.length,
-    acceptedBaselineFindings: report.acceptedBaselineFindings,
-    newFindings: report.newFindings.length,
-    staleBaselineFindings: report.staleBaselineFindings.length,
-  };
+  report.summary = buildSummary(report);
 
-  const hasErrors = structuralErrorCount > 0 ||
-    report.newFindings.length > 0 ||
-    report.staleBaselineFindings.length > 0;
-
-  return { report, hasErrors };
+  return { report, hasErrors: structuralErrorCount > 0 };
 }
 
 function collectFindingsForSource(rootDir, sourceRoots) {
@@ -461,26 +209,16 @@ function buildSummary(report) {
     missingFallbackFindings: report.missingFallbackFindings.length,
     hardcodedUiFindings: report.hardcodedUiFindings.length,
     dynamicI18nFindings: report.dynamicI18nFindings.length,
-    acceptedBaselineFindings: report.acceptedBaselineFindings,
-    newFindings: report.newFindings.length,
-    staleBaselineFindings: report.staleBaselineFindings.length,
   };
 }
 
 module.exports = {
   runAudit,
   checkForbiddenFiles,
-  loadBaseline,
-  saveBaseline,
-  buildMigrationFingerprint,
-  buildDynamicMigrationFingerprint,
   collectFindingsForSource,
-  REQUIRED_PLURAL_FORMS,
   FORBIDDEN_FILES,
-  BASELINE_PATH,
   MOBILE_ROOT,
   EN_LOCALE_PATH,
   PL_LOCALE_PATH,
-  MIGRATORY_RULES,
   buildSummary,
 };

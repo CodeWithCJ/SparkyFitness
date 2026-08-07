@@ -192,7 +192,7 @@ function itemIsDisabled(item: HeaderItem): boolean {
   return ('disabled' in item && !!item.disabled) || itemIsBusy(item);
 }
 
-function itemAccessibilityLabel(item: HeaderItem): string | undefined {
+function itemAccessibilityLabel(item: HeaderItem, t: TFunction): string | undefined {
   switch (item.kind) {
     case 'back':
       return 'Back';
@@ -203,7 +203,11 @@ function itemAccessibilityLabel(item: HeaderItem): string | undefined {
       return item.accessibilityLabel;
     case 'text':
     case 'primary':
-      return item.accessibilityLabel ?? item.label ?? SAVE_LABEL;
+      // Explicit caller accessibilityLabel wins; otherwise mirror the visible
+      // label of the custom path (busy only disables the button there — it
+      // never swaps the text), so the a11y label always matches the UI text
+      // instead of hard-coded English.
+      return item.accessibilityLabel ?? resolveItemLabel(item, t);
   }
 }
 
@@ -429,7 +433,7 @@ function HeaderBarButton({
       disabled={disabled}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityRole="button"
-      accessibilityLabel={itemAccessibilityLabel(item)}
+      accessibilityLabel={itemAccessibilityLabel(item, t)}
       style={disabled ? { opacity: 0.4 } : undefined}
     >
       {content}
@@ -480,17 +484,17 @@ function buildNativeItem(
     case 'primary': {
       const resolvedLabel = resolveItemLabel(item, t);
       const resolvedBusyLabel = resolveItemBusyLabel(item, t);
-      const label = itemIsBusy(item) && resolvedBusyLabel
+      const visibleLabel = itemIsBusy(item) && resolvedBusyLabel
         ? resolvedBusyLabel
         : (resolvedLabel ?? t('common.save', 'Save'));
       return createNativeHeaderTextButtonItem({
-        label,
+        label: visibleLabel,
         identifier,
         tintColor: color,
         onPress: press,
         disabled: itemIsDisabled(item),
         fontWeight: isPrimaryItem(item) ? '600' : '500',
-        accessibilityLabel: itemAccessibilityLabel(item),
+        accessibilityLabel: item.accessibilityLabel ?? visibleLabel,
       });
     }
   }
