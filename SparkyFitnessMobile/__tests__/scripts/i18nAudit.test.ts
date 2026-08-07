@@ -15,12 +15,10 @@ const collectFindings = SourceScanner.collectFindings;
 const coreMod = require('../../scripts/i18n-audit/core.cjs');
 const runAudit = coreMod.runAudit;
 const buildMigrationFingerprint = coreMod.buildMigrationFingerprint;
-const buildDynamicMigrationFingerprint = coreMod.buildDynamicMigrationFingerprint;
 
 let enLocalePath = '';
 let plLocalePath = '';
 let fixtureRoot = '';
-let sourcePath = '';
 
 async function createFixtureStructure(
   structure: Record<string, string>,
@@ -53,7 +51,6 @@ async function createFixtureStructure(
   }
 
   fixtureRoot = tmpDir;
-  sourcePath = srcDir;
 
   return tmpDir;
 }

@@ -92,8 +92,8 @@ export function installAppLanguagePackage(source: string): string {
 export interface AndroidManifestApplication {
   $?: Record<string, string>;
   name?: string;
-  'meta-data'?: Array<{ $?: Record<string, string> }>;
-  service?: Array<{ $?: Record<string, string>; 'meta-data'?: Array<{ $?: Record<string, string> }> }>;
+  'meta-data'?: { $?: Record<string, string> }[];
+  service?: { $?: Record<string, string>; 'meta-data'?: { $?: Record<string, string> }[] }[];
 }
 
 const APPCOMPAT_SERVICE = 'androidx.appcompat.app.AppLocalesMetadataHolderService';
