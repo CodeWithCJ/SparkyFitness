@@ -1,0 +1,129 @@
+name: Schema Backup
+
+# Regenerates db_schema_backup.sql from the migrations and opens a sync PR
+# when it changed. This replaces hand-running db_backup.sh: the committed file
+# is derived from a fresh database that has had every migration applied, so it
+# reflects the migrations exactly rather than any developer database (which
+# can drift).
+#
+# Why this shape: fork PRs can't receive pushes from GITHUB_TOKEN, so the
+# regeneration runs after merge on main instead of updating the PR branch; and
+# main's ruleset requires changes to arrive via reviewed pull request, so the
+# result is proposed as a PR rather than pushed directly. Use workflow_dispatch
+# to force a regeneration (e.g. after changing this workflow).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "SparkyFitnessServer/db/migrations/**"
+      - "SparkyFitnessServer/db/rls_policies.sql"
+      - "SparkyFitnessServer/db/grantPermissions.ts"
+      - "SparkyFitnessServer/utils/dbMigrations.ts"
+      - "SparkyFitnessServer/utils/applyRlsPolicies.ts"
+      - "SparkyFitnessServer/tests/migrate.script.ts"
+      - "SparkyFitnessServer/package.json"
+      - ".github/workflows/schema-backup.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Serialize runs so two close-together merges can't race on the push.
+concurrency:
+  group: schema-backup
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    name: Regenerate db_schema_backup.sql
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Keep in lockstep with the migration-check jobs in ci-tests.yml.
+        # pg_dump runs inside this container, so bumping the tag also bumps
+        # the pg_dump version recorded in the dump header.
+        image: postgres:18.3-alpine
+        # The passwords guard an empty, minutes-lived CI container; they live
+        # in repo secrets only to keep secret scanners quiet. Runs in a fork
+        # require creating both SCHEMA_BACKUP_* secrets (any value works).
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.SCHEMA_BACKUP_DB_PASSWORD }}
+          POSTGRES_DB: sparky_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      # persist-credentials off so the write-scoped token isn't readable by
+      # package scripts; create-pull-request authenticates via its token input.
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: SparkyFitnessServer
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply all migrations to an empty database
+        working-directory: SparkyFitnessServer
+        run: pnpm run test:migrations
+        env:
+          SPARKY_FITNESS_DB_HOST: localhost
+          SPARKY_FITNESS_DB_PORT: "5432"
+          SPARKY_FITNESS_DB_NAME: sparky_test
+          SPARKY_FITNESS_DB_USER: postgres
+          SPARKY_FITNESS_DB_PASSWORD: ${{ secrets.SCHEMA_BACKUP_DB_PASSWORD }}
+          SPARKY_FITNESS_APP_DB_USER: sparky_app
+          SPARKY_FITNESS_APP_DB_PASSWORD: ${{ secrets.SCHEMA_BACKUP_APP_DB_PASSWORD }}
+
+      # Same flags as db_backup.sh. Running pg_dump inside the service
+      # container guarantees its version matches the server's.
+      # pg_dump 18 emits \restrict/\unrestrict lines with a token that is
+      # random on every run; pin it so an unchanged schema produces an
+      # unchanged file.
+      - name: Dump schema
+        run: |
+          docker exec ${{ job.services.postgres.id }} \
+            pg_dump -U postgres -d sparky_test --schema-only --no-owner \
+            | sed -e 's/^\\restrict .*/\\restrict SparkyFitnessSchemaBackup/' \
+                  -e 's/^\\unrestrict .*/\\unrestrict SparkyFitnessSchemaBackup/' \
+            > db_schema_backup.sql
+
+      # No-op when the dump is unchanged. Reuses one branch, so back-to-back
+      # migration merges update the same open sync PR instead of stacking new
+      # ones.
+      - name: Open sync PR if changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: db_schema_backup.sql
+          branch: ci/schema-backup-sync
+          commit-message: "chore: sync db_schema_backup.sql with migrations"
+          title: "chore: sync db_schema_backup.sql with migrations"
+          body: >-
+            Automated schema backup regeneration
+            (`.github/workflows/schema-backup.yml`): every migration was
+            applied to an empty PostgreSQL 18.3 database and the schema was
+            dumped with `pg_dump --schema-only --no-owner`. Review the diff
+            and merge to keep `db_schema_backup.sql` aligned with the
+            migrations.
+          delete-branch: true

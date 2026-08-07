@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-08-06*
+*Last updated: 2026-08-07*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -38,7 +38,7 @@ For `docs/` and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md`. `
 - `docs/` - Nuxt / Docus docs site.
 - `SparkyFitnessGarmin/` - standalone Python integration service outside the current `pnpm` workspace.
 - `docker/`, `helm/`, `.github/` - infra and deployment assets.
-- `db_schema_backup.sql` - repo-root schema snapshot that should stay aligned with server migrations.
+- `db_schema_backup.sql` - repo-root schema snapshot kept in sync by CI (`.github/workflows/schema-backup.yml`); never hand-edit or regenerate locally.
 - `docker/.env.example` - tracked env template commonly copied to repo-root `.env`.
 
 ## Workspace Notes
@@ -72,7 +72,7 @@ Cheap ways to learn things:
   1. Create the migration file in `SparkyFitnessServer/db/migrations/YYYYMMDDHHMMSS_description.sql`.
   2. Update the Row-Level Security (RLS) policies in `SparkyFitnessServer/db/rls_policies.sql`.
   3. **Restart the server** (`pnpm start` from `SparkyFitnessServer/`) to apply the migration.
-  4. **Run the backup script** to sync `db_schema_backup.sql`: `./db_backup.sh` (Mac/Linux) or `DB Backup.cmd` (Windows) from repo root. Never manually edit the backup file.
+  4. Leave `db_schema_backup.sql` alone — after merge, CI regenerates it from the migrations and opens an automated sync PR (`.github/workflows/schema-backup.yml`). Never manually edit the backup file or commit a locally generated copy.
   5. Add or update the matching Zod schema in `shared/src/schemas/database/`.
   6. Update the user-facing documentation in `docs/content/2.features/9.family-friends-sharing.md`.
   7. Update the developer documentation in `docs/content/8.developer/11.database-security-tiers.md` to classify the table as Tier 1, Tier 2, or Tier 3.
