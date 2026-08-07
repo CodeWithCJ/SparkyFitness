@@ -296,13 +296,13 @@ describe('activeWorkoutStore', () => {
       expect(steps[2].restSec).toBe(120);
     });
 
-    it('falls back to 90s when rest_time is null', () => {
+    it('falls back to 90s when a set rest_time is null', () => {
       const session = makeSession();
       session.exercises[0].sets[0].rest_time = null;
       useActiveWorkoutStore.getState().startWorkout(session);
       const { steps } = useActiveWorkoutStore.getState();
       expect(steps[0].restSec).toBe(90);
-      expect(steps[1].restSec).toBe(90);
+      expect(steps[1].restSec).toBe(60);
     });
 
     it('snapshots exerciseName and exerciseImage per step', () => {
@@ -1861,15 +1861,15 @@ describe('activeWorkoutStore', () => {
       expect(completedSetIds['101']).toBe(FIXED_NOW);
     });
 
-    it('refreshes restSec on every step when first set rest_time changes', () => {
+    it('keeps each set restSec tied to that set when one set rest_time changes', () => {
       const updated = makeSession();
       updated.exercises[0].sets[0].rest_time = 180;
-      updated.exercises[0].sets[1].rest_time = 60; // unchanged; should still be overridden
+      updated.exercises[0].sets[1].rest_time = 60;
 
       useActiveWorkoutStore.getState().reconcileWithSession(updated);
       const { steps } = useActiveWorkoutStore.getState();
       expect(steps[0].restSec).toBe(180);
-      expect(steps[1].restSec).toBe(180);
+      expect(steps[1].restSec).toBe(60);
     });
 
     it('reorders steps to match new session order', () => {

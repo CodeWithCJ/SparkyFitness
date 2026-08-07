@@ -365,7 +365,7 @@ export interface ActiveWorkoutState {
 export type ActiveSetPatch = Partial<
   Pick<
     ExerciseEntrySetResponse,
-    'weight' | 'reps' | 'duration' | 'distance' | 'rpe' | 'set_type' | 'notes'
+    'weight' | 'reps' | 'duration' | 'distance' | 'rpe' | 'set_type' | 'notes' | 'rest_time'
   >
 >;
 
@@ -411,13 +411,17 @@ const initialData: Pick<
 /**
  * Flatten a session into the step sequence the cursor walks.
  *
- * Solo exercises contribute one step per set. Superset runs (adjacent 2+
- * exercises sharing a `superset_group`) are interleaved into rounds: round
+ * Solo exercises contribute one step per set, each carrying its own set's
+ * configured `rest_time`. A preset can vary rest per set (e.g. shorter rest
+ * after warm-up sets), and every set must speak for itself rather than the
+ * exercise's first set standing in for all of them. Superset runs (adjacent
+ * 2+ exercises sharing a `superset_group`) are interleaved into rounds: round
  * `n` is one set of each member in order (positional — members whose sets
  * are exhausted drop out). `restSec` is the rest taken *before* a step, so
- * each round's first step carries the group rest and the rest of the round
- * carries 0 — rest happens after a full round, not between partners. Drop-set
- * steps always carry 0: a drop continues the previous set with no pause.
+ * each round's first step carries that round's group rest (the anchor
+ * member's same-round set) and the rest of the round carries 0 and rest
+ * happens after a full round, not between partners. Drop-set steps always
+ * carry 0: a drop continues the previous set with no pause.
  */
 export function buildStepsFromSession(session: PresetSessionResponse): WorkoutStep[] {
   const steps: WorkoutStep[] = [];
@@ -446,9 +450,8 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
 
     const run = runByFirstEntryId.get(exercise.id);
     if (!run) {
-      const restSec = exercise.sets[0]?.rest_time ?? getDefaultRestSec();
       for (const set of exercise.sets) {
-        pushStep(exercise, set, restSec);
+        pushStep(exercise, set, set.rest_time ?? getDefaultRestSec());
       }
       continue;
     }
@@ -456,11 +459,12 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
     const members = run.entryIds.map((id) => byEntryId.get(id)!);
     for (const id of run.entryIds) consumed.add(id);
 
-    // Rest is per-round; group actions harmonize every member's rest_time,
-    // so the anchor's first set speaks for the whole group.
-    const groupRest = members[0].sets[0]?.rest_time ?? getDefaultRestSec();
+    // Rest is per-round; group actions harmonize every member's rest_time
+    // within a round, so the anchor's set for that round speaks for the
+    // whole group, but different rounds may still carry different rest.
     const roundCount = Math.max(...members.map((m) => m.sets.length));
     for (let round = 0; round < roundCount; round++) {
+      const groupRest = members[0].sets[round]?.rest_time ?? getDefaultRestSec();
       let firstInRound = true;
       for (const member of members) {
         const set = member.sets[round];
@@ -671,9 +675,10 @@ function adoptAssumedSetValues(
  * the planned interleaving — out-of-order logging makes the cursor land on an
  * interior partner (baked 0) when a real between-rounds rest is actually owed,
  * so derive the rest from the true relationship between the two sets instead.
- * Rest is per-exercise and recovers from the work just done: the completed
- * exercise's `sets[0]` speaks for it, so the timer after an exercise's final
- * set still uses that exercise's rest, not the next one's.
+ * Rest recovers from the work just done: the completed set's own `rest_time`
+ * speaks for it (not another set's — a preset can vary rest per set), so the
+ * timer after an exercise's final set still uses that set's own rest, not the
+ * next one's.
  * Drop sets take no rest before them regardless of what was just logged.
  */
 function restSecBeforeNextSet(
@@ -686,7 +691,7 @@ function restSecBeforeNextSet(
   if (isDropSetType(to.exercise.sets[to.setIndex]?.set_type)) return 0;
 
   const from = locateSet(session, completedSetId);
-  if (!from) return to.exercise.sets[0]?.rest_time ?? getDefaultRestSec();
+  if (!from) return to.exercise.sets[to.setIndex]?.rest_time ?? getDefaultRestSec();
 
   // Back-to-back superset partners: same run, different member, same round.
   const toRun = getSupersetRuns(session.exercises).find((r) =>
@@ -700,7 +705,7 @@ function restSecBeforeNextSet(
   ) {
     return 0;
   }
-  return from.exercise.sets[0]?.rest_time ?? getDefaultRestSec();
+  return from.exercise.sets[from.setIndex]?.rest_time ?? getDefaultRestSec();
 }
 
 /**

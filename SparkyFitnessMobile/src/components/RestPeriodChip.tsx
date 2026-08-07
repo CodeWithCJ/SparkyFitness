@@ -19,19 +19,40 @@ export function formatRestLabel(seconds: number | null | undefined): string {
   return seconds === 0 ? 'Off' : formatRest(seconds);
 }
 
+/** Label a rest range as `min-max`, collapsing to a single value when equal. */
+export function formatRestRangeLabel(
+  values: Array<number | null | undefined>,
+  defaultRestSec: number,
+): string {
+  const normalized = values.map((v) => (v ?? defaultRestSec));
+  if (normalized.length === 0) return formatRestLabel(defaultRestSec);
+  let min = normalized[0];
+  let max = normalized[0];
+  for (const value of normalized) {
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  if (min === max) return formatRestLabel(min);
+  return `${formatRestLabel(min)}-${formatRestLabel(max)}`;
+}
+
 interface RestPeriodChipProps {
   value: number | null | undefined;
+  values?: Array<number | null | undefined>;
   onPress?: () => void;
   readOnly?: boolean;
 }
 
-function RestPeriodChip({ value, onPress, readOnly = false }: RestPeriodChipProps) {
+function RestPeriodChip({ value, values, onPress, readOnly = false }: RestPeriodChipProps) {
   const [textMuted, accentPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-accent-primary',
   ]) as [string, string];
   const defaultRestSec = useAppPreferencesStore((s) => s.defaultRestSec);
-  const label = formatRestLabel(value ?? defaultRestSec);
+  const label =
+    values != null && values.length > 0
+      ? formatRestRangeLabel(values, defaultRestSec)
+      : formatRestLabel(value ?? defaultRestSec);
 
   if (readOnly) {
     return (
