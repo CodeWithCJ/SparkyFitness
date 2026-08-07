@@ -500,6 +500,15 @@ describe('utcOffsetMinutesFromIsoString', () => {
       utcOffsetMinutesFromIsoString('2024-06-15T22:15:00.000Z')
     ).toBeNull();
   });
+  it('treats -00:00 as unknown offset (RFC 3339 §4.3), unlike +00:00', () => {
+    expect(
+      utcOffsetMinutesFromIsoString('2024-06-15T22:15:00-00:00')
+    ).toBeNull();
+    expect(
+      utcOffsetMinutesFromIsoString('2024-06-15T22:15:00-0000')
+    ).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15:00+00:00')).toBe(0);
+  });
   it('returns null for naive, date-only, and unparseable input', () => {
     expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15:00')).toBeNull();
     expect(utcOffsetMinutesFromIsoString('2024-06-15')).toBeNull();

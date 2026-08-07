@@ -283,9 +283,10 @@ export function instantHourMinuteInZone(
  * Extracts the UTC offset (in minutes) from an ISO datetime string's explicit
  * `±HH:MM` (or `±HHMM`) suffix. An explicit offset is a recording-zone claim;
  * `Z` is not (APIs routinely normalize instants to UTC), so `Z`-suffixed,
- * naive, date-only, and unparseable strings all return null. The suffix only
- * counts on a complete `YYYY-MM-DD` + time datetime — a stray `±HH:MM` on a
- * malformed string (e.g. free-text from a chat model) is not a zone claim.
+ * naive, date-only, and unparseable strings all return null, as does the
+ * RFC 3339 unknown-offset form `-00:00`. The suffix only counts on a
+ * complete `YYYY-MM-DD` + time datetime — a stray `±HH:MM` on a malformed
+ * string (e.g. free-text from a chat model) is not a zone claim.
  */
 export function utcOffsetMinutesFromIsoString(
   timeStr: string | null | undefined,
@@ -301,6 +302,9 @@ export function utcOffsetMinutesFromIsoString(
   if (mins > 59) return null;
   const total = hours * 60 + mins;
   if (total > MAX_UTC_OFFSET_MINUTES) return null;
+  // RFC 3339 §4.3: "-00:00" declares the local offset unknown — like `Z`,
+  // not a zone claim. "+00:00" is a genuine UTC claim and stays 0.
+  if (m[1] === "-" && total === 0) return null;
   return m[1] === "-" ? -total : total;
 }
 
