@@ -11,7 +11,7 @@ Work through the checklist in order:
 
 1. Migration file in `SparkyFitnessServer/db/migrations/` (`YYYYMMDDHHMMSS_description.sql`)
 2. RLS policies in `SparkyFitnessServer/db/rls_policies.sql`
-3. Schema mirrors: `db_schema_backup.sql` + `shared/src/schemas/database/<Table>.zod.ts` (exported from `shared/src/index.ts`)
+3. Schema mirror: `shared/src/schemas/database/<Table>.zod.ts` (exported from `shared/src/index.ts`); leave `db_schema_backup.sql` alone — CI regenerates it on merge to `main`
 4. Docs: `docs/content/2.features/9.family-friends-sharing.md` + `docs/content/8.developer/11.database-security-tiers.md` (assign Tier 1/2/3)
 5. Downstream API contracts (server route/schema/tests, web, mobile)
 6. Validate: boot the server so migrations + RLS reapply, then `pnpm run validate` and nearby tests

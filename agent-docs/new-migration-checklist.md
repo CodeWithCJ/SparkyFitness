@@ -19,13 +19,10 @@ Follow this checklist whenever you add or change a server database migration —
 - [ ] Confirm the migration applies cleanly and RLS policies reapply without errors.
 - [ ] Check server logs for any migration failures.
 
-## 4. Sync the schema backup (automatic)
+## 4. Schema backup (automatic — nothing to run)
 
-- [ ] **Run the backup script** to sync `db_schema_backup.sql` with the live schema:
-  - **Mac/Linux:** `./db_backup.sh` (from repo root)
-  - **Windows:** `DB Backup.cmd` (from repo root)
-- [ ] Both scripts read `.env`, connect to the database, and overwrite `db_schema_backup.sql` with the current schema.
-- [ ] Commit the updated `db_schema_backup.sql` in the same PR.
+- [ ] Do **not** update `db_schema_backup.sql` in the PR. CI regenerates it from the migrations and commits it to `main` after merge (`.github/workflows/schema-backup.yml`).
+- [ ] Never edit it by hand, and never commit a copy generated from a local database — local databases drift from the migrations-derived schema.
 
 ## 5. Add Zod schema
 
