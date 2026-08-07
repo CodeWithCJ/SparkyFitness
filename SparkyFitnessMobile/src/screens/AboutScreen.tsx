@@ -59,7 +59,7 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
             onPress={() => openUrl(PROJECT_URL)}
             activeOpacity={0.7}
           >
-            <Text className="text-base font-semibold text-text-primary">Project on GitHub</Text>
+            <Text className="text-base font-semibold text-text-primary">Project on GitHub </Text>
             <Icon name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
@@ -68,7 +68,7 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
             onPress={() => openUrl(DOCUMENTATION_URL)}
             activeOpacity={0.7}
           >
-            <Text className="text-base font-semibold text-text-primary">Documentation</Text>
+            <Text className="text-base font-semibold text-text-primary">Documentation </Text>
             <Icon name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
 
@@ -77,7 +77,7 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
             onPress={() => openUrl(PRIVACY_POLICY_URL)}
             activeOpacity={0.7}
           >
-            <Text className="text-base font-semibold text-text-primary">Privacy Policy</Text>
+            <Text className="text-base font-semibold text-text-primary">Privacy Policy </Text>
             <Icon name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
         </View>
