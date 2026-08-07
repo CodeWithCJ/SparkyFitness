@@ -1017,7 +1017,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             {isCustomDataError ? (
               <View className="mt-4 mb-2 py-6 items-center">
                 <Text className="text-text-secondary text-sm text-center mb-3">
-                  Couldn't load custom measurements.
+                  {"Couldn't load custom measurements."}
                 </Text>
                 <Button variant="secondary" onPress={handleRetryCustomData} className="px-6">
                   <Text className="text-text-primary text-sm font-semibold">
