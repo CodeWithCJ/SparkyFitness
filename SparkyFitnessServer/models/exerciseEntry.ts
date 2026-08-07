@@ -1478,15 +1478,25 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
   userId: string,
   startDate: string,
   endDate: string,
-  entrySource: string
+  entrySource: string,
+  excludedExerciseName?: string
 ) {
   // Get IDs of exercise entries to be deleted
   const entryIdsResult = await client.query(
     `SELECT id FROM exercise_entries
      WHERE user_id = $1
        AND entry_date BETWEEN $2 AND $3
-       AND source = $4`,
-    [userId, startDate, endDate, entrySource]
+       AND source = $4
+       AND (
+         $5::text IS NULL
+         OR NOT EXISTS (
+           SELECT 1
+           FROM exercises e
+           WHERE e.id = exercise_entries.exercise_id
+             AND e.name = $5
+         )
+       )`,
+    [userId, startDate, endDate, entrySource, excludedExerciseName ?? null]
   );
   const entryIds = entryIdsResult.rows.map((row: { id: string }) => row.id);
   if (entryIds.length > 0) {
@@ -1530,7 +1540,8 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
   userId: string,
   startDate: string,
   endDate: string,
-  entrySource: string
+  entrySource: string,
+  excludedExerciseName?: string
 ) {
   const client = await getClient(userId);
   try {
@@ -1541,7 +1552,8 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
         userId,
         startDate,
         endDate,
-        entrySource
+        entrySource,
+        excludedExerciseName
       );
     await client.query('COMMIT');
     return deletedCount;
