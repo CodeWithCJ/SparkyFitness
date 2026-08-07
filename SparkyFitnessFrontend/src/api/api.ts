@@ -23,6 +23,12 @@ export const API_BASE_URL = '/api';
 const GATEWAY_RELOAD_GUARD_KEY = 'sparky_gateway_reload_guard';
 const GATEWAY_RELOAD_GUARD_TTL_MS = 10000;
 
+// Indirection so tests can observe the reload without jsdom's unimplemented
+// window.location.reload (same seam pattern as chunkRecoveryRuntime).
+export const gatewayReloadRuntime = {
+  reloadWindowLocation: () => window.location.reload(),
+};
+
 // Detects when a reverse-proxy auth gateway (e.g. Cloudflare Access) has
 // intercepted an internal API call and returned its own login/redirect page
 // instead of letting the request reach the backend. Such responses are not a
@@ -40,6 +46,13 @@ function isGatewayInterceptedResponse(response: Response): boolean {
       // Ignore malformed URLs; fall through to content-type check.
     }
   }
+  // Only sniff HTML on success responses. On an error status, an HTML body is
+  // a proxy error page (nginx 502/504, a rate-limit page, Express's default
+  // 404), not a gateway login page; reloading on those drops in-progress UI
+  // state (issue #2051), so they take the normal error-toast path instead.
+  if (!response.ok) {
+    return false;
+  }
   const contentType = response.headers.get('content-type') || '';
   return contentType.includes('text/html');
 }
@@ -52,7 +65,7 @@ function reloadOnceForGatewayInterception(): void {
     return;
   }
   sessionStorage.setItem(GATEWAY_RELOAD_GUARD_KEY, String(Date.now()));
-  window.location.reload();
+  gatewayReloadRuntime.reloadWindowLocation();
 }
 
 // A blob response is always a Blob, never the caller's generic T — the overload
