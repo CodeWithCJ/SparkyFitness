@@ -2,31 +2,35 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
 import CopyMealSheet, { type CopyMealSheetRef } from '../components/CopyMealSheet';
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useDailySummary, useServerConnection } from '../hooks';
+import { useDailySummary, useServerConnection, useMealTypes } from '../hooks';
 import { useCopyFoodEntries } from '../hooks/useCopyFoodEntries';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel } from '../utils/dateUtils';
+import { formatLocalizedNumber } from '../localization';
 import {
   calculateEntryNutrition,
   calculateMealNutrition,
-  filterFoodEntriesByMealType,
+  filterFoodEntriesByMealTypeId,
+  getHistoricalMealTypeLabel,
   getMealPercentage,
+  getMealTypeDisplayLabel,
 } from '../utils/mealNutrition';
-import { getMealTypeLabel } from '../constants/meals';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type MealTypeDetailScreenProps = RootStackScreenProps<'MealTypeDetail'>;
 
 const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation, route }) => {
-  const { date, mealType, mealLabel } = route.params;
+  const { t } = useTranslation();
+  const { date, mealType, mealTypeId, mealLabel } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -34,6 +38,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   const copySheetRef = useRef<CopyMealSheetRef>(null);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
+  const { mealTypes } = useMealTypes();
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date,
@@ -44,17 +49,37 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const label = mealLabel ?? getMealTypeLabel(mealType);
+  // Resolve the display label from the canonical definition (ownership-aware):
+  // a pre-resolved mealLabel wins (Diary sends it), otherwise resolve from the
+  // active meal type by id, then fall back to the literal historical name.
+  const resolvedType = useMemo(() => {
+    if (mealTypeId) {
+      return mealTypes.find((m) => m.id === mealTypeId) ?? null;
+    }
+    return null;
+  }, [mealTypeId, mealTypes]);
+  const mealTypeName = resolvedType?.name ?? mealType ?? '';
+  const label =
+    mealLabel ??
+    (resolvedType
+      ? getMealTypeDisplayLabel(resolvedType, t)
+      : getHistoricalMealTypeLabel(mealTypeName, t));
   const entries = useMemo(
-    () => filterFoodEntriesByMealType(summary?.foodEntries ?? [], mealType),
-    [summary?.foodEntries, mealType],
+    () =>
+      filterFoodEntriesByMealTypeId(
+        summary?.foodEntries ?? [],
+        mealTypeId,
+        mealTypeName,
+        mealTypes,
+      ),
+    [summary?.foodEntries, mealTypeId, mealTypeName, mealTypes],
   );
   const nutrition = useMemo(() => calculateMealNutrition(entries), [entries]);
   const targetCalories = useMemo(() => {
     if (!summary?.goals || !summary?.calorieGoal) return 0;
-    const percentage = getMealPercentage(mealType, summary.goals);
+    const percentage = getMealPercentage(mealTypeName, summary.goals);
     return Math.round((summary.calorieGoal * percentage) / 100);
-  }, [summary, mealType]);
+  }, [summary, mealTypeName]);
 
   const { copyMeal, isPending: isCopying } = useCopyFoodEntries({
     onSuccess: () => copySheetRef.current?.dismiss(),
@@ -62,7 +87,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   // "other" is a synthetic bucket that aggregates every non-standard meal type,
   // so it has no single real meal type to copy from (the server would match
   // nothing). Only offer copy for concrete meal types.
-  const canCopy = isConnected && entries.length > 0 && mealType !== 'other';
+  const canCopy = isConnected && entries.length > 0 && mealTypeName.toLowerCase() !== 'other';
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -77,15 +102,15 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view meal nutrition."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+           title={t('dashboard.noServerTitle')}
+           subtitle={t('foodMeals.noServerMealNutrition')}
+           action={{ label: t('dashboard.goToSettings'), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading meal..." />;
+      return <StatusView loading title={t('foodMeals.loadingMeal')} />;
     }
 
     if (isError) {
@@ -94,9 +119,9 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title="Failed to load meal"
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+          title={t('foodMeals.failedToLoadMeal')}
+          subtitle={t('batch.connectionRetry')}
+          action={{ label: t('common.retry'), onPress: () => refetch(), variant: 'primary' }}
         />
       );
     }
@@ -107,8 +132,8 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="food"
           iconTone="muted"
           iconSize={64}
-          title={`No ${label.toLowerCase()} foods`}
-          subtitle={`${formatDateLabel(date)} has no foods logged for this meal.`}
+           title={t('foodMeals.noMealFoods', { meal: label.toLowerCase() })}
+           subtitle={t('foodMeals.noFoodsLogged', { date: formatDateLabel(date) })}
         />
       );
     }
@@ -125,7 +150,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       >
         <FoodNutritionSummary
           name={label}
-          brand={targetCalories > 0 ? `${formatDateLabel(date)} · Target: ${targetCalories} Cal` : formatDateLabel(date)}
+           brand={targetCalories > 0 ? t('foodMeals.targetCalories', { date: formatDateLabel(date), calories: targetCalories }) : formatDateLabel(date)}
           values={nutrition.values}
           showNetCarbs={showNetCarbs}
           customNutrients={Object.keys(nutrition.customNutrients).length > 0 ? nutrition.customNutrients : null}
@@ -134,9 +159,9 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">
           <View className="flex-row items-center mb-3">
-            <Text className="text-base font-bold text-text-secondary flex-1">Foods</Text>
+             <Text className="text-base font-bold text-text-secondary flex-1">{t('library.foods')}</Text>
             <Text className="text-xs text-text-muted font-medium">
-              {entries.length} {entries.length === 1 ? 'item' : 'items'}
+               {formatLocalizedNumber(entries.length)} {t('mealLibrary.item', { count: entries.length })}
             </Text>
           </View>
           {entries.map((entry, index) => (
@@ -154,17 +179,34 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
 
   const header = useScreenHeader({
     left: { kind: 'back' },
-    right: canCopy
-      ? {
-          kind: 'icon',
-          sfSymbol: 'doc.on.doc',
-          ionicon: 'copy-outline',
-          role: 'secondary',
-          onPress: () => copySheetRef.current?.present(date, mealType),
-          accessibilityLabel: 'Copy meal to another day',
-          identifier: 'meal-type-detail-copy',
-        }
-      : null,
+    right: [
+      {
+        kind: 'icon',
+        sfSymbol: 'plus',
+        ionicon: 'add',
+        role: 'primary',
+        onPress: () =>
+          navigation.navigate('FoodSearch', {
+            date,
+            mealTypeId: mealTypeId ?? undefined,
+          }),
+        accessibilityLabel: t('screens.addFood'),
+        identifier: 'meal-type-detail-add',
+      },
+      ...(canCopy
+        ? [
+            {
+              kind: 'icon' as const,
+              sfSymbol: 'doc.on.doc',
+              ionicon: 'copy-outline',
+              role: 'secondary' as const,
+              onPress: () => copySheetRef.current?.present(date, mealTypeId ?? null, mealTypeName),
+              accessibilityLabel: t('foodMeals.copyMealToDay'),
+              identifier: 'meal-type-detail-copy',
+            },
+          ]
+        : []),
+    ],
   });
 
   return (

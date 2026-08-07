@@ -2,16 +2,10 @@ import AnchoredMenu, { type AnchorRect, type AnchoredMenuItem } from './Anchored
 import { SET_TYPE_OPTIONS } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
+import { useTranslation } from 'react-i18next';
 
 /** Options and labels for the metric-column picker menu the header opens. */
 const METRIC_OPTIONS: ActiveWorkoutMetricColumn[] = ['rpe', 'volume', 'e1rm', 'tenrm'];
-
-const METRIC_MENU_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
-  rpe: 'RPE',
-  volume: 'Volume',
-  e1rm: 'Est. 1RM',
-  tenrm: 'Est. 10RM',
-};
 
 /**
  * The anchored menus shared by every workout card surface (live screen,
@@ -40,6 +34,13 @@ export function MetricColumnMenu({
   includeRpe?: boolean;
   includeWeightMetrics?: boolean;
 }) {
+  const { t } = useTranslation();
+  const metricLabels: Record<ActiveWorkoutMetricColumn, string> = {
+    rpe: t('workout.metricRpe'),
+    volume: t('workout.metricVolume'),
+    e1rm: t('workout.metricE1rm'),
+    tenrm: t('workout.metricTenrm'),
+  };
   const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
   const setMetricColumn = useAppPreferencesStore((s) => s.setActiveWorkoutMetricColumn);
   const options = METRIC_OPTIONS.filter(
@@ -59,10 +60,9 @@ export function MetricColumnMenu({
       minWidth={160}
       items={options.map((option) => ({
         key: option,
-        label:
-          option === effectiveColumn
-            ? `✓ ${METRIC_MENU_LABELS[option]}`
-            : METRIC_MENU_LABELS[option],
+         label: option === effectiveColumn
+           ? t('workout.selectedMetric', { label: metricLabels[option] })
+           : metricLabels[option],
         onPress: () => setMetricColumn(option),
       }))}
     />
@@ -89,14 +89,23 @@ export function SetTypeMenu({
   onSelect: (type: (typeof SET_TYPE_OPTIONS)[number]) => void;
   onDelete?: () => void;
 }) {
+  const { t } = useTranslation();
   const current = currentType ?? 'normal';
+  const typeLabels: Record<string, string> = {
+    normal: t('workout.setTypeNormal'),
+    warmup: t('workout.setTypeWarmup'),
+    dropset: t('workout.setTypeDropSet'),
+    failure: t('workout.setTypeFailure'),
+  };
   const items: AnchoredMenuItem[] = SET_TYPE_OPTIONS.map((type) => ({
     key: type,
-    label: `${type === current ? '✓ ' : ''}${type.charAt(0).toUpperCase()}${type.slice(1)}`,
+    label: type === current
+      ? t('workout.selectedMetric', { label: typeLabels[type] ?? type })
+      : typeLabels[type] ?? type,
     onPress: () => onSelect(type),
   }));
   if (onDelete) {
-    items.push({ key: 'delete', label: 'Delete set', icon: 'trash', onPress: onDelete });
+    items.push({ key: 'delete', label: t('workout.deleteSet'), icon: 'trash', onPress: onDelete });
   }
   return (
     <AnchoredMenu

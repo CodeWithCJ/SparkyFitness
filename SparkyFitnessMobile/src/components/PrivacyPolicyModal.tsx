@@ -9,6 +9,7 @@ import Button from './ui/Button';
 import { addLog } from '../services/LogService';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
+import { useTranslation } from 'react-i18next';
 
 const PRIVACY_POLICY_URL = 'https://codewithcj.github.io/SparkyFitness/privacy_policy';
 
@@ -22,6 +23,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
   onClose,
 }) => {
   const primary = useCSSVariable('--color-accent-primary') as string;
+  const { t } = useTranslation();
 
   const handleOpenPrivacyPolicy = async () => {
     try {
@@ -47,18 +49,18 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
           <View className="items-center mb-5">
             <Icon name="shield-checkmark" size={48} color={primary} />
             <Text className="text-[22px] font-bold mt-3 text-center text-text-primary">
-              Privacy Policy
+              {t('mobileComponents.privacy.title')}
             </Text>
           </View>
 
           {/* Content */}
           <View className="mb-6">
             <Text className="text-base leading-6 text-center mb-4 text-text-primary">
-              This app does not collect, store, or sell your personal data.
+              {t('mobileComponents.privacy.noData')}
             </Text>
 
             <Text className="text-base leading-6 text-center mb-4 text-text-primary">
-              All HealthKit data stays on your device and is transmitted only to your own server.
+              {t('mobileComponents.privacy.healthData')}
             </Text>
 
             <Button
@@ -67,7 +69,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
               className="py-0 px-0"
               textClassName="text-base leading-6 text-center underline"
             >
-              Learn more in our Privacy Policy.
+              {t('mobileComponents.privacy.learnMore')}
             </Button>
           </View>
 
@@ -77,7 +79,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             onPress={onClose}
             textClassName="text-[17px]"
           >
-            Close
+            {t('common.close')}
           </Button>
         </View>
       </View>

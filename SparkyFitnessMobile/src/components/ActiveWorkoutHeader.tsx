@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import type { PresetSessionResponse } from '@workspace/shared';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
@@ -115,6 +116,7 @@ function ActiveWorkoutHeader({
   onOpenSettings,
   onClearAllSets,
 }: ActiveWorkoutHeaderProps) {
+  const { t } = useTranslation();
   const [textPrimary, textMuted, accentPrimary, successColor, trackColor, chromeBorder] =
     useCSSVariable([
       '--color-text-primary',
@@ -137,7 +139,7 @@ function ActiveWorkoutHeader({
   if (onAddExercise) {
     menuItems.push({
       key: 'add-exercise',
-      label: 'Add exercise',
+      label: t('activeWorkout.header.addExercise'),
       group: 'edit',
       onPress: onAddExercise,
     });
@@ -145,7 +147,7 @@ function ActiveWorkoutHeader({
   if (onReorder) {
     menuItems.push({
       key: 'reorder',
-      label: 'Reorder exercises',
+      label: t('activeWorkout.header.reorderExercises'),
       group: 'edit',
       onPress: onReorder,
     });
@@ -153,7 +155,7 @@ function ActiveWorkoutHeader({
   if (onRename) {
     menuItems.push({
       key: 'rename',
-      label: 'Rename workout',
+      label: t('activeWorkout.header.renameWorkout'),
       group: 'workout',
       onPress: onRename,
     });
@@ -161,7 +163,7 @@ function ActiveWorkoutHeader({
   if (onOpenSettings) {
     menuItems.push({
       key: 'workout-settings',
-      label: 'Workout settings',
+      label: t('activeWorkout.header.settings'),
       group: 'workout',
       onPress: onOpenSettings,
     });
@@ -169,7 +171,7 @@ function ActiveWorkoutHeader({
   if (onEndWorkout) {
     menuItems.push({
       key: 'end-workout',
-      label: 'End workout',
+      label: t('activeWorkout.header.endWorkout'),
       group: 'finish',
       onPress: onEndWorkout,
     });
@@ -177,7 +179,7 @@ function ActiveWorkoutHeader({
   if (onClearAllSets) {
     menuItems.push({
       key: 'clear-sets',
-      label: 'Clear all logged sets',
+      label: t('activeWorkout.header.clearAllSets'),
       group: 'danger',
       destructive: true,
       onPress: onClearAllSets,
@@ -185,7 +187,7 @@ function ActiveWorkoutHeader({
   }
   menuItems.push({
     key: 'discard',
-    label: 'Discard workout',
+    label: t('activeWorkout.header.discardWorkout'),
     group: 'danger',
     destructive: true,
     onPress: onDiscard,
@@ -200,7 +202,7 @@ function ActiveWorkoutHeader({
           usesGlass={usesGlass}
           chromeBorder={chromeBorder}
           onPress={onBack}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('activeWorkout.header.back')}
         />
 
         <View className="flex-1 items-center">
@@ -211,7 +213,7 @@ function ActiveWorkoutHeader({
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            {formatElapsed(startedAt, now)} elapsed
+            {t('activeWorkout.header.elapsedTime', { time: formatElapsed(startedAt, now) })}
           </Text>
         </View>
 
@@ -223,7 +225,7 @@ function ActiveWorkoutHeader({
           usesGlass={usesGlass}
           chromeBorder={chromeBorder}
           onPress={openMenu}
-          accessibilityLabel="Workout menu"
+          accessibilityLabel={t('activeWorkout.header.menu')}
         />
       </View>
 
@@ -258,7 +260,10 @@ function ActiveWorkoutHeader({
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            {doneCount} / {progress.length} exercises
+            {t('activeWorkout.header.exerciseProgress', {
+              completed: doneCount,
+              count: progress.length,
+            })}
           </Text>
         </View>
       </KeyboardCollapsible>

@@ -1,8 +1,9 @@
 import React, { useRef } from 'react';
 import { View, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useCycleMode } from '../hooks/useCycleMode';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -24,6 +25,7 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { mode } = useCycleMode();
+  const { t } = useTranslation();
   const { discreetMode } = useDiscreetMode();
   const calendarRef = useRef<CalendarSheetRef>(null);
   const [selectedDate, setSelectedDate] = React.useState(route.params?.date || getTodayDate());
@@ -33,11 +35,11 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
   const [isSaving, setIsSaving] = React.useState(false);
 
   const headerTitle = React.useMemo(() => {
-    if (discreetMode) return 'Log Entry';
-    if (mode === 'pregnant') return 'Log Pregnancy Entry';
-    if (mode === 'ttc') return 'Log Fertility & Test';
-    return 'Log Daily Entry';
-  }, [discreetMode, mode]);
+     if (discreetMode) return t('mobileComponents.wellness.hub.logEntry');
+     if (mode === 'pregnant') return t('mobileComponents.wellness.hub.logPregnancy');
+     if (mode === 'ttc') return t('mobileComponents.wellness.hub.logFertility');
+     return t('mobileComponents.wellness.hub.logDaily');
+   }, [discreetMode, mode, t]);
 
   const header = useScreenHeader({
     title: headerTitle,
@@ -45,8 +47,8 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
+       label: t('mobileComponents.wellness.today.save'),
+       busyLabel: t('mobileComponents.wellness.today.saving'),
       busy: isSaving,
       disabled: isSaving,
       placement: 'native-only',

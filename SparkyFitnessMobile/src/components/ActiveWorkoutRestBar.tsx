@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 
 import Icon from './Icon';
 import LiquidGlassSurface, { createLiquidGlassPillStyle } from './LiquidGlassSurface';
@@ -49,7 +50,7 @@ interface ActiveWorkoutRestBarProps {
  * control row — pause/resume + −15s on the left, the countdown centered,
  * +15s + skip on the right — with the on-deck set + target centered beneath.
  * When no timer is running (ready) it collapses to a compact on-deck row —
- * set + target on the left, a Complete Set button on the right — giving a
+ * set + target on the left, a completion button on the right — giving a
  * fixed thumb target between rests; the screen hides the bar entirely once
  * no on-deck set remains.
  *
@@ -76,6 +77,7 @@ function ActiveWorkoutRestBar({
   onCompleteSet,
   onPressBar,
 }: ActiveWorkoutRestBarProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesGlass = useNativeIOSTabsActive();
   const [accentPrimary, textMuted, trackColor, chromeBorder] = useCSSVariable([
@@ -103,7 +105,7 @@ function ActiveWorkoutRestBar({
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            Target {nextSetText}
+             {t('activeWorkout.rest.targetValue', { value: nextSetText })}
           </Text>
         )}
       </View>
@@ -111,7 +113,7 @@ function ActiveWorkoutRestBar({
         onPress={onCompleteSet}
         hitSlop={HIT_SLOP}
         accessibilityRole="button"
-        accessibilityLabel="Complete set"
+         accessibilityLabel={t('activeWorkout.rest.completeSet')}
         className="flex-row items-center rounded-full px-4 py-2.5"
         style={{ backgroundColor: accentPrimary, gap: 6 }}
       >
@@ -120,7 +122,7 @@ function ActiveWorkoutRestBar({
           className="text-sm font-semibold"
           style={{ color: '#ffffff' }}
         >
-          Complete Set
+           {t('activeWorkout.rest.completeSetTitle')}
         </Text>
       </Pressable>
     </View>
@@ -146,7 +148,7 @@ function ActiveWorkoutRestBar({
             onPress={paused ? onResume : onPause}
             hitSlop={HIT_SLOP}
             accessibilityRole="button"
-            accessibilityLabel={paused ? 'Resume rest' : 'Pause rest'}
+             accessibilityLabel={paused ? t('activeWorkout.rest.resume') : t('activeWorkout.rest.pause')}
             className="h-9 w-9 rounded-full bg-raised items-center justify-center"
           >
             <Icon
@@ -159,14 +161,14 @@ function ActiveWorkoutRestBar({
           <Pressable
             onPress={() => onAdjust(-15)}
             accessibilityRole="button"
-            accessibilityLabel="Shorten rest by 15 seconds"
+             accessibilityLabel={t('activeWorkout.rest.shortenBySeconds', { seconds: 15 })}
             className="rounded-full bg-raised px-3 py-2"
           >
             <Text
               className="text-sm font-semibold text-text-primary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              −15s
+                {t('activeWorkout.rest.subtractSecondsShort', { seconds: 15 })}
             </Text>
           </Pressable>
         </View>
@@ -185,21 +187,21 @@ function ActiveWorkoutRestBar({
           <Pressable
             onPress={() => onAdjust(15)}
             accessibilityRole="button"
-            accessibilityLabel="Extend rest by 15 seconds"
+             accessibilityLabel={t('activeWorkout.rest.extendBySeconds', { seconds: 15 })}
             className="rounded-full bg-raised px-3 py-2"
           >
             <Text
               className="text-sm font-semibold text-text-primary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              +15s
+                {t('activeWorkout.rest.addSecondsShort', { seconds: 15 })}
             </Text>
           </Pressable>
           <Pressable
             onPress={onSkip}
             hitSlop={HIT_SLOP}
             accessibilityRole="button"
-            accessibilityLabel="Skip rest"
+             accessibilityLabel={t('activeWorkout.rest.skip')}
             className="h-9 w-9 rounded-full items-center justify-center"
             style={{ backgroundColor: accentPrimary }}
           >
@@ -222,7 +224,7 @@ function ActiveWorkoutRestBar({
               className="text-xs text-text-secondary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              Target {nextSetText}
+                {t('activeWorkout.rest.targetValue', { value: nextSetText })}
             </Text>
           )}
         </View>

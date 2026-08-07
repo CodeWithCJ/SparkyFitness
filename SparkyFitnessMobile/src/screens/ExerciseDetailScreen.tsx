@@ -47,6 +47,7 @@ import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
 
 type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
 
@@ -98,6 +99,7 @@ const StatTile: React.FC<{ label: string; value: string; sub?: string }> = ({
 
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation, route }) => {
   const { item, updatedItem, hideWorkoutActions, selectionReturnKey } = route.params;
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -152,7 +154,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
         navigation.setParams({ updatedItem: updated });
         Toast.show({
           type: 'success',
-          text1: updated.sharedWithPublic ? 'Exercise shared publicly' : 'Exercise made private',
+           text1: updated.sharedWithPublic ? t('workout.exerciseShared') : t('workout.exercisePrivate'),
         });
       } catch {
         // useUpdateExercise hook already shows error Toast on failure
@@ -161,12 +163,12 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
     if (nextIsPublic) {
       Alert.alert(
-        'Make public?',
-        'This exercise will become visible to all users on this server.',
+         t('workout.makePublicTitle'),
+         t('workout.makePublicMessage'),
         [
-          { text: 'Cancel', style: 'cancel' },
+           { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Make Public',
+             text: t('workout.makePublic'),
             onPress: () => void runUpdate(),
           },
         ]
@@ -174,12 +176,12 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     } else {
       void runUpdate();
     }
-  }, [exercise.id, isPublic, updateExerciseAsync, navigation]);
+  }, [exercise.id, isPublic, updateExerciseAsync, navigation, t]);
 
   const { confirmAndDelete, isPending: isDeletePending } = useDeleteExerciseLibrary({
     exerciseId: exercise.id,
     onSuccess: () => {
-      Toast.show({ type: 'success', text1: 'Exercise deleted' });
+       Toast.show({ type: 'success', text1: t('workout.exerciseDeleted') });
       navigation.goBack();
     },
   });
@@ -233,11 +235,11 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
     imageSources.length > 0 || instructionSteps.length > 0 || description.length > 0;
 
   const segments = useMemo(() => {
-    const tabs: Segment<TabKey>[] = [{ key: 'summary', label: 'Summary' }];
-    if (historyAvailable) tabs.push({ key: 'history', label: 'History' });
-    if (hasHowToContent) tabs.push({ key: 'how-to', label: 'How to' });
+    const tabs: Segment<TabKey>[] = [{ key: 'summary', label: t('workout.summary') }];
+    if (historyAvailable) tabs.push({ key: 'history', label: t('workout.history') });
+    if (hasHowToContent) tabs.push({ key: 'how-to', label: t('workout.howTo') });
     return tabs;
-  }, [historyAvailable, hasHowToContent]);
+  }, [historyAvailable, hasHowToContent, t]);
 
   const resolvedTab: TabKey =
     (activeTab === 'history' && !historyAvailable) ||
@@ -388,7 +390,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
       } catch (error) {
         Toast.show({
           type: 'error',
-          text1: 'Failed to add exercise',
+           text1: t('workout.failedAddExercise'),
           text2: getApiErrorMessage(error) ?? undefined,
         });
         selected = null;
@@ -426,15 +428,15 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
             useIoniconOnIOS: !isPublic,
             disabled: isSharePending,
             onPress: handleToggleShare,
-            accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+             accessibilityLabel: isPublic ? t('workout.makePrivate') : t('workout.sharePublic'),
             identifier: 'exercise-detail-share',
           } as const,
           {
             kind: 'text',
-            label: 'Edit',
+             label: t('common.edit'),
             role: 'secondary',
             onPress: handleEdit,
-            accessibilityLabel: 'Edit exercise',
+             accessibilityLabel: t('workout.editExercise'),
             identifier: 'exercise-detail-edit',
           } as const,
         ]
@@ -443,12 +445,12 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
       ? [
           {
             kind: 'primary',
-            label: 'Add',
+             label: t('workout.addExerciseLabel'),
             busy: isAdding,
             onPress: () => {
               void handleAdd();
             },
-            accessibilityLabel: 'Add exercise',
+             accessibilityLabel: t('workout.addExerciseLabel'),
             identifier: 'exercise-detail-add',
           } as const,
         ]
@@ -500,7 +502,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
 
               {instructionSteps.length > 0 ? (
                 <View className="bg-surface rounded-xl p-4">
-                  <Text className="text-text-secondary text-sm mb-2">Instructions</Text>
+                   <Text className="text-text-secondary text-sm mb-2">{t('workout.instructions')}</Text>
                   {instructionSteps.map((step, index) => (
                     <View
                       key={`${index}-${step.slice(0, 12)}`}
@@ -527,7 +529,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                   }
                   className="bg-surface rounded-xl p-4"
                 >
-                  <Text className="text-text-secondary text-sm">Description</Text>
+                   <Text className="text-text-secondary text-sm">{t('workout.description')}</Text>
                   <Text
                     className="text-text-primary text-base mt-1 leading-6"
                     numberOfLines={
@@ -540,7 +542,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                   </Text>
                   {descriptionIsLong ? (
                     <Text className="text-accent-primary text-sm font-medium mt-2">
-                      {descriptionExpanded ? 'Show less' : 'Show more'}
+                       {descriptionExpanded ? t('common.showLess') : t('common.showMore')}
                     </Text>
                   ) : null}
                 </TouchableOpacity>
@@ -554,7 +556,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 <View className="flex-row gap-3">
                   {bestSet ? (
                     <StatTile
-                      label={`Best (${weightUnit})`}
+                       label={t('workout.best', { unit: weightUnit })}
                       value={formatRecentSessionSet(
                         {
                           setNumber: bestSet.setNumber,
@@ -570,7 +572,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                   ) : null}
                   {lastSet ? (
                     <StatTile
-                      label={`Last (${weightUnit})`}
+                       label={t('workout.last', { unit: weightUnit })}
                       value={formatRecentSessionSet(
                         {
                           setNumber: lastSet.setNumber,
@@ -585,7 +587,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                     />
                   ) : null}
                   {exercise.calories_per_hour > 0 ? (
-                    <StatTile label="Cal / hour" value={String(exercise.calories_per_hour)} />
+                     <StatTile label={t('workout.calPerHour')} value={String(exercise.calories_per_hour)} />
                   ) : null}
                 </View>
               ) : null}
@@ -596,7 +598,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 <View className="bg-surface rounded-xl p-4">
                   {equipmentText.length > 0 ? (
                     <View>
-                      <Text className="text-text-secondary text-sm">Equipment</Text>
+                       <Text className="text-text-secondary text-sm">{t('workout.equipment')}</Text>
                       <Text className="text-text-primary text-base font-medium mt-1">
                         {equipmentText}
                       </Text>
@@ -604,7 +606,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                   ) : null}
                   {primaryMusclesText.length > 0 ? (
                     <View className={equipmentText.length > 0 ? 'mt-3' : ''}>
-                      <Text className="text-text-secondary text-sm">Primary muscles</Text>
+                       <Text className="text-text-secondary text-sm">{t('workout.primaryMuscles')}</Text>
                       <Text className="text-text-primary text-base font-medium mt-1">
                         {primaryMusclesText}
                       </Text>
@@ -618,7 +620,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                           : ''
                       }
                     >
-                      <Text className="text-text-secondary text-sm">Secondary muscles</Text>
+                       <Text className="text-text-secondary text-sm">{t('workout.secondaryMuscles')}</Text>
                       <Text className="text-text-primary text-base font-medium mt-1">
                         {secondaryMusclesText}
                       </Text>
@@ -634,7 +636,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 >
                   <View className="flex-row items-center justify-between">
                     <Text className="text-text-primary text-base font-semibold">
-                      Exercise details
+                       {t('workout.exerciseDetails')}
                     </Text>
                     <Icon
                       name={detailsExpanded ? 'chevron-down' : 'chevron-forward'}
@@ -646,7 +648,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                     <View className="mt-3">
                       {categoryText ? (
                         <View>
-                          <Text className="text-text-secondary text-sm">Category</Text>
+                           <Text className="text-text-secondary text-sm">{t('workout.category')}</Text>
                           <Text className="text-text-primary text-base font-medium mt-1">
                             {categoryText}
                           </Text>
@@ -654,7 +656,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                       ) : null}
                       {levelText ? (
                         <View className={categoryText ? 'mt-3' : ''}>
-                          <Text className="text-text-secondary text-sm">Level</Text>
+                           <Text className="text-text-secondary text-sm">{t('workout.level')}</Text>
                           <Text className="text-text-primary text-base font-medium mt-1">
                             {levelText}
                           </Text>
@@ -662,7 +664,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                       ) : null}
                       {forceText ? (
                         <View className={categoryText || levelText ? 'mt-3' : ''}>
-                          <Text className="text-text-secondary text-sm">Force</Text>
+                           <Text className="text-text-secondary text-sm">{t('workout.force')}</Text>
                           <Text className="text-text-primary text-base font-medium mt-1">
                             {forceText}
                           </Text>
@@ -672,7 +674,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                         <View
                           className={categoryText || levelText || forceText ? 'mt-3' : ''}
                         >
-                          <Text className="text-text-secondary text-sm">Mechanic</Text>
+                           <Text className="text-text-secondary text-sm">{t('workout.mechanic')}</Text>
                           <Text className="text-text-primary text-base font-medium mt-1">
                             {mechanicText}
                           </Text>
@@ -686,7 +688,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                               : ''
                           }
                         >
-                          <Text className="text-text-secondary text-sm">Source</Text>
+                           <Text className="text-text-secondary text-sm">{t('workout.source')}</Text>
                           <Text className="text-text-primary text-base font-medium mt-1">
                             {sourceText}
                           </Text>
@@ -700,13 +702,13 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                 <>
                   <Button variant="primary" onPress={handleStartWorkout} disabled={isStarting}>
                     <Text className="text-white text-base font-semibold">
-                      {isStarting ? 'Starting…' : 'Start Workout'}
+                       {isStarting ? t('workout.starting') : t('workout.startWorkout')}
                     </Text>
                   </Button>
 
                   <Button variant="ghost" onPress={handleLog}>
                     <Text className="text-accent-primary text-base font-semibold">
-                      Log Exercise
+                       {t('workout.logExercise')}
                     </Text>
                   </Button>
                 </>

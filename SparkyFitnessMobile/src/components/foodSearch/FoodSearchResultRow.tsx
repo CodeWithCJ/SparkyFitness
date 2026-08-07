@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Button from '../ui/Button';
 import MealLibraryRow from '../MealLibraryRow';
 import VerifiedBadge from '../VerifiedBadge';
 import FoodResultRow from './FoodResultRow';
 import { landingKey } from '../../utils/landingLists';
 import { formatServingDescription, formatServingUnit } from '../../utils/foodDetails';
-import { OWNERSHIP_FILTER_LABELS, type OwnershipFilter } from '../../utils/shareStatus';
+import { ownershipFilterLabels, type OwnershipFilter } from '../../utils/shareStatus';
 import { mealToFoodInfo } from '../../types/foodInfo';
 import type { FoodInfoItem } from '../../types/foodInfo';
 import type { ExternalFoodItem } from '../../types/externalFoods';
@@ -31,7 +32,9 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
   loadingFoodId,
   getProviderColor,
   onSelect,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <TouchableOpacity
     className="px-4 py-2 border-b border-border-subtle"
     activeOpacity={0.7}
@@ -83,7 +86,7 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
         ) : (
           <>
             <Text className="text-text-primary text-base font-semibold">
-              {item.calories} cal
+              {item.calories} {t('foodSearchUi.cal')}
             </Text>
             <Text className="text-text-secondary text-xs">
               {item.serving_description
@@ -95,7 +98,8 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
       </View>
     </View>
   </TouchableOpacity>
-);
+  );
+};
 
 interface ShowAllProviderRowProps {
   provider: ExternalProvider;
@@ -111,17 +115,20 @@ const ShowAllProviderRow: React.FC<ShowAllProviderRowProps> = ({
   count,
   accentColor,
   onSelectProvider,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <TouchableOpacity
     className="px-4 py-3 border-b border-border-subtle"
     activeOpacity={0.7}
     onPress={() => onSelectProvider(provider.id)}
   >
     <Text className="text-sm font-medium" style={{ color: accentColor }}>
-      Show all {count} {provider.provider_name} results
+      {t('foodSearchUi.showAll', { count, kind: provider.provider_name })}
     </Text>
   </TouchableOpacity>
-);
+  );
+};
 
 interface ShowAllLocalRowProps {
   section: 'foods' | 'meals';
@@ -135,17 +142,23 @@ const ShowAllLocalRow: React.FC<ShowAllLocalRowProps> = ({
   count,
   accentColor,
   onShowAll,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <TouchableOpacity
     className="px-4 py-3 border-b border-border-subtle"
     activeOpacity={0.7}
     onPress={() => onShowAll(section)}
   >
     <Text className="text-sm font-medium" style={{ color: accentColor }}>
-      Show all {count} {section === 'foods' ? 'foods' : 'meals'}
+      {t('foodSearchUi.showAll', {
+        count,
+        kind: section === 'foods' ? t('foodSearchUi.foods') : t('foodSearchUi.meals'),
+      })}
     </Text>
   </TouchableOpacity>
-);
+  );
+};
 
 const ProviderSkeletonRow: React.FC<{ textMuted: string }> = ({ textMuted }) => (
   <View className="px-4 py-3 gap-2">
@@ -178,14 +191,16 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
   ownershipFilter,
   onResetOwnershipFilter,
 }) => {
+  const { t } = useTranslation();
   const isFiltered = ownershipFilter !== 'all';
+  const labels = ownershipFilterLabels(t);
   const baseMessage = isMealBuilderMode
-    ? 'No saved foods found'
-    : 'No saved foods or meals found';
+    ? t('foodSearchUi.noSavedFoods')
+    : t('foodSearchUi.noSavedFoodsMeals');
   // A persisted non-default filter can empty the local sections; naming the
   // filter and offering the reset keeps that from reading as missing data.
   const message = isFiltered
-    ? `${baseMessage} in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
+    ? `${baseMessage} ${t('ownershipFilters.inFilter', { filter: labels[ownershipFilter] })}`
     : baseMessage;
   return (
     <View className="px-4 py-6 items-center justify-center">
@@ -205,7 +220,7 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
             onPress={onResetOwnershipFilter}
             className="mt-3 px-5"
           >
-            Show All
+            {t('ownershipFilters.showAll')}
           </Button>
         ) : null}
       </View>
@@ -216,8 +231,8 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
           accessibilityRole="progressbar"
           accessibilityLabel={
             isMealBuilderMode
-              ? 'Searching saved foods'
-              : 'Searching saved foods and meals'
+              ? t('foodSearchUi.searchingFoods')
+              : t('foodSearchUi.searchingFoodsMeals')
           }
         >
           <ActivityIndicator size="small" color={accentColor} />

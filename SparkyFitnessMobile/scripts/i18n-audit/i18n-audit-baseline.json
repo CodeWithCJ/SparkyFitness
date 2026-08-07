@@ -1,0 +1,2897 @@
+{
+  "version": 1,
+  "findings": [
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/chat.ts",
+      "value": "Check-in",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/chat.ts:Check-in:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/chat.ts",
+      "value": "Exercise",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/chat.ts:Exercise:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/chat.ts",
+      "value": "Food",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/chat.ts:Food:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/chat.ts",
+      "value": "Goals",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/chat.ts:Goals:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/chat.ts",
+      "value": "Looked up {{dynamic}}",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/chat.ts:Looked up {{dynamic}}:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "Autophagy peak",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:Autophagy peak:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "Eat one large meal or spread calories over 4 hours.",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:Eat one large meal or spread calories over 4 hours.:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "Fast from sunset to morning.",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:Fast from sunset to morning.:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "Fat burning ramps up",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:Fat burning ramps up:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "Fed state · insulin elevated",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:Fed state · insulin elevated:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "Glycogen depleting · fat metabolism ramping up",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:Glycogen depleting · fat metabolism ramping up:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "Ketone production rises",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:Ketone production rises:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "More aggressive fast with a 6-hour eating window.",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:More aggressive fast with a 6-hour eating window.:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "Set your own fasting duration.",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:Set your own fasting duration.:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/fasting.ts",
+      "value": "Skip breakfast and eat during an 8-hour window.",
+      "context": {
+        "prop": "description"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/fasting.ts:Skip breakfast and eat during an 8-hour window.:{\"prop\":\"description\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/meals.ts",
+      "value": "Breakfast",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/meals.ts:Breakfast:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/meals.ts",
+      "value": "Dinner",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/meals.ts:Dinner:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/meals.ts",
+      "value": "Lunch",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/meals.ts:Lunch:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/meals.ts",
+      "value": "Other",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/meals.ts:Other:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/meals.ts",
+      "value": "Snacks",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/meals.ts:Snacks:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Calcium",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Calcium:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Calories",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Calories:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Carbs",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Carbs:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Cholesterol",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Cholesterol:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Fat",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Fat:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Fiber",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Fiber:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Glycemic Index",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Glycemic Index:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Iron",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Iron:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Mono. Fat",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Mono. Fat:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Poly. Fat",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Poly. Fat:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Potassium",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Potassium:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Protein",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Protein:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Sat. Fat",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Sat. Fat:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Sodium",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Sodium:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Sugars",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Sugars:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Trans Fat",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Trans Fat:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Vitamin A",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Vitamin A:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/constants/nutrients.ts",
+      "value": "Vitamin C",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/constants/nutrients.ts:Vitamin C:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Active Calories",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Active Calories:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Apple Exercise Time",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Apple Exercise Time:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Apple Move Time",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Apple Move Time:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Apple Stand Time",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Apple Stand Time:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Basal Body Temperature",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Basal Body Temperature:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Basal Metabolic Rate",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Basal Metabolic Rate:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Blood Alcohol Content",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Blood Alcohol Content:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Blood Glucose",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Blood Glucose:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Blood Oxygen Saturation",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Blood Oxygen Saturation:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Blood Oxygen Saturation",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Blood Oxygen Saturation:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Blood Pressure",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Blood Pressure:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Body Fat",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Body Fat:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Body Temperature",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Body Temperature:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Bone Mass",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Bone Mass:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Cervical Mucus",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Cervical Mucus:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Cervical Mucus",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Cervical Mucus:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Cycling Cadence",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Cadence:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Cycling Functional Threshold Power",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Functional Threshold Power:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Cycling Pedaling Cadence",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Pedaling Cadence:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Cycling Power",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Power:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Cycling Speed",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Speed:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Dietary Fat Total",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Dietary Fat Total:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Dietary Protein",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Dietary Protein:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Dietary Sodium",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Dietary Sodium:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Distance",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Distance:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Elevation Gained",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Elevation Gained:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Environmental Audio Exposure",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Environmental Audio Exposure:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Exercise Session",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Exercise Session:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Floors Climbed",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Floors Climbed:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Headphone Audio Exposure",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Headphone Audio Exposure:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Heart Rate Variability",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Heart Rate Variability:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Heart Rate Variability",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Heart Rate Variability:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Heart Rate",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Heart Rate:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Height",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Height:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Hydration",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Hydration:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Intermenstrual Bleeding",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Intermenstrual Bleeding:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Intermenstrual Bleeding",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Intermenstrual Bleeding:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Lean Body Mass",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Lean Body Mass:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Menstruation Flow",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Menstruation Flow:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Menstruation Period",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Menstruation Period:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Menstruation Period",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Menstruation Period:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Nutrition",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Nutrition:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Ovulation Test",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Ovulation Test:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Ovulation Test",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Ovulation Test:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Power",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Power:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Respiratory Rate",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Respiratory Rate:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Resting Heart Rate",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Resting Heart Rate:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Running Ground Contact Time",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Running Ground Contact Time:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Running Power",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Running Power:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Running Speed",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Running Speed:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Running Stride Length",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Running Stride Length:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Running Vertical Oscillation",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Running Vertical Oscillation:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Sleep Session",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Sleep Session:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Speed",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Speed:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Steps Cadence",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Steps Cadence:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Steps",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Steps:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Stress",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Stress:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Total Calories",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Total Calories:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "VO2 Max",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:VO2 Max:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Walking Asymmetry %",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Walking Asymmetry %:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Walking Double Support %",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Walking Double Support %:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Walking Speed",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Walking Speed:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Walking Step Length",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Walking Step Length:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Weight",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Weight:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/HealthMetrics.ts",
+      "value": "Wheelchair Pushes",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/HealthMetrics.ts:Wheelchair Pushes:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useActiveWorkoutAutosave.ts",
+      "value": "Changes are kept on this device and will retry.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useActiveWorkoutAutosave.ts:Changes are kept on this device and will retry.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useActiveWorkoutAutosave.ts",
+      "value": "Workout not saved",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useActiveWorkoutAutosave.ts:Workout not saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddFoodEntry.ts",
+      "value": "Failed to add food",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddFoodEntry.ts:Failed to add food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddFoodEntryMeal.ts",
+      "value": "Failed to add meal",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddFoodEntryMeal.ts:Failed to add meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useAddFoodEntryMeal.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useAddFoodEntryMeal.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCopyFoodEntries.ts",
+      "value": "Failed to copy meal",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCopyFoodEntries.ts:Failed to copy meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCopyFoodEntries.ts",
+      "value": "Meal copied",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCopyFoodEntries.ts:Meal copied:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCopyFoodEntries.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCopyFoodEntries.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Could not add manual cycle entry.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Could not add manual cycle entry.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Could not delete cycle entry.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Could not delete cycle entry.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Could not update cycle entry.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Could not update cycle entry.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Cycle entry deleted successfully.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Cycle entry deleted successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Cycle entry updated successfully.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Cycle entry updated successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Error",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Error",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Error",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Manual cycle added successfully.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Manual cycle added successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Success",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Success:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Success",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Success:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleHistory.ts",
+      "value": "Success",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Success:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleSettings.ts",
+      "value": "Could not save cycle settings. Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleSettings.ts:Could not save cycle settings. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useCycleSettings.ts",
+      "value": "Update failed",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useCycleSettings.ts:Update failed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFood.ts",
+      "value": "Are you sure you want to delete this food? Existing logged entries will stay unchanged.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Are you sure you want to delete this food? Existing logged entries will stay unchanged.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFood.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFood.ts",
+      "value": "Delete Food",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Delete Food:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFood.ts",
+      "value": "Delete",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Delete:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFood.ts",
+      "value": "Failed to delete food",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Failed to delete food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntry.ts",
+      "value": "Are you sure you want to delete this food entry?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Are you sure you want to delete this food entry?:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntry.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntry.ts",
+      "value": "Delete Entry",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Delete Entry:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntry.ts",
+      "value": "Delete",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Delete:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntry.ts",
+      "value": "Failed to delete",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Failed to delete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntry.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntryMeal.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntryMeal.ts",
+      "value": "Delete Meal",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Delete Meal:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntryMeal.ts",
+      "value": "Delete this meal?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Delete this meal?:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntryMeal.ts",
+      "value": "Delete",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Delete:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntryMeal.ts",
+      "value": "Failed to delete",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Failed to delete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useDeleteFoodEntryMeal.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Could not create exercise",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Could not create exercise:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Delete Exercise?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Delete Exercise?:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Delete",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Delete:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Delete",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Delete:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Failed to delete exercise",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Failed to delete exercise:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Failed to delete",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Failed to delete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Failed to update exercise",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Failed to update exercise:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseMutations.ts",
+      "value": "This exercise will be removed from your library. Past logged sessions are preserved.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:This exercise will be removed from your library. Past logged sessions are preserved.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseSetEditing.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseSetEditing.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseSetEditing.ts",
+      "value": "Remove \"{{dynamic}}\" and all its sets?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseSetEditing.ts:Remove \"{{dynamic}}\" and all its sets?:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseSetEditing.ts",
+      "value": "Remove Exercise?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseSetEditing.ts:Remove Exercise?:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useExerciseSetEditing.ts",
+      "value": "Remove",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useExerciseSetEditing.ts:Remove:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMeals.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMeals.ts",
+      "value": "Delete Meal",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Delete Meal:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMeals.ts",
+      "value": "Delete",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Delete:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMeals.ts",
+      "value": "Failed to create meal",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Failed to create meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMeals.ts",
+      "value": "Failed to delete meal",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Failed to delete meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMeals.ts",
+      "value": "Failed to update meal",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Failed to update meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMeals.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMeals.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMeals.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMeals.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} {{dynamic}}",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} {{dynamic}}",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} dose removed",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} dose removed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "{{dynamic}} logged",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} logged:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useMedications.ts",
+      "value": "Tap to undo",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useMedications.ts:Tap to undo:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useSaveFood.ts",
+      "value": "Failed to save food",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useSaveFood.ts:Failed to save food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useSaveFood.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useSaveFood.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useStartLiveWorkout.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useStartLiveWorkout.ts",
+      "value": "Clear & Start",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Clear & Start:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useStartLiveWorkout.ts",
+      "value": "Configure your server connection in Settings to start a workout.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Configure your server connection in Settings to start a workout.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useStartLiveWorkout.ts",
+      "value": "Go to Workout",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Go to Workout:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useStartLiveWorkout.ts",
+      "value": "No Server Connected",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:No Server Connected:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useStartLiveWorkout.ts",
+      "value": "Nothing to start",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Nothing to start:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useStartLiveWorkout.ts",
+      "value": "This preset has no exercises.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:This preset has no exercises.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useStartLiveWorkout.ts",
+      "value": "Workout in progress",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Workout in progress:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useStartLiveWorkout.ts",
+      "value": "You already have a workout in progress. Starting another clears it here. Any sets already saved stay in your diary.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:You already have a workout in progress. Starting another clears it here. Any sets already saved stay in your diary.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useSymptoms.ts",
+      "value": "Failed to remove symptom",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useSymptoms.ts:Failed to remove symptom:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useSymptoms.ts",
+      "value": "Failed to save symptom",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useSymptoms.ts:Failed to save symptom:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useSyncHealthData.ts",
+      "value": "Health data synced successfully.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Health data synced successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useSyncHealthData.ts",
+      "value": "Sync complete",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Sync complete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useSyncHealthData.ts",
+      "value": "Sync Error",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Sync Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useSyncHealthData.ts",
+      "value": "Sync incomplete",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Sync incomplete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useSyncHealthData.ts",
+      "value": "Syncing health data…",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Syncing health data…:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useToggleFavorite.ts",
+      "value": "Failed to update favorites",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useToggleFavorite.ts:Failed to update favorites:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useToggleFavorite.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useToggleFavorite.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpdateFoodEntry.ts",
+      "value": "Failed to save changes",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpdateFoodEntry.ts:Failed to save changes:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpdateFoodEntryMeal.ts",
+      "value": "Failed to save meal",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpdateFoodEntryMeal.ts:Failed to save meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCheckIn.ts",
+      "value": "Could not save measurements. Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCheckIn.ts:Could not save measurements. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCheckIn.ts",
+      "value": "Save failed",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCheckIn.ts:Save failed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCycleLog.ts",
+      "value": "Could not clear log entry. Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Could not clear log entry. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCycleLog.ts",
+      "value": "Could not save log entry. Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Could not save log entry. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCycleLog.ts",
+      "value": "Daily log cleared.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Daily log cleared.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCycleLog.ts",
+      "value": "Daily log updated successfully.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Daily log updated successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCycleLog.ts",
+      "value": "Delete failed",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Delete failed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCycleLog.ts",
+      "value": "Deleted",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Deleted:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCycleLog.ts",
+      "value": "Save failed",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Save failed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useUpsertCycleLog.ts",
+      "value": "Saved",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWaterIntakeMutation.ts",
+      "value": "Error",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWaterIntakeMutation.ts:Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWaterIntakeMutation.ts",
+      "value": "Failed to update water intake. Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWaterIntakeMutation.ts:Failed to update water intake. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWorkoutPresetMutations.ts",
+      "value": "Cancel",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Cancel:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWorkoutPresetMutations.ts",
+      "value": "Could not create workout preset",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Could not create workout preset:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWorkoutPresetMutations.ts",
+      "value": "Delete Workout Preset?",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Delete Workout Preset?:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWorkoutPresetMutations.ts",
+      "value": "Delete",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Delete:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWorkoutPresetMutations.ts",
+      "value": "Failed to delete preset",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Failed to delete preset:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWorkoutPresetMutations.ts",
+      "value": "Failed to update preset",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Failed to update preset:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWorkoutPresetMutations.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/hooks/useWorkoutPresetMutations.ts",
+      "value": "This preset will be permanently removed from your library.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:This preset will be permanently removed from your library.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/services/medicationReminderService.ts",
+      "value": "Medication reminder",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/services/medicationReminderService.ts:Medication reminder:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/services/notifications.ts",
+      "value": "Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 1
+      },
+      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.:{\"context\":\"Alert.alert\",\"argIndex\":1}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/services/notifications.ts",
+      "value": "Fasting goal reached",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:Fasting goal reached:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/services/notifications.ts",
+      "value": "Not Now",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:Not Now:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/services/notifications.ts",
+      "value": "On-time alerts",
+      "context": {
+        "context": "Alert.alert",
+        "argIndex": 0
+      },
+      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:On-time alerts:{\"context\":\"Alert.alert\",\"argIndex\":0}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/services/notifications.ts",
+      "value": "Open Settings",
+      "context": {
+        "context": "Alert.alert:button"
+      },
+      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:Open Settings:{\"context\":\"Alert.alert:button\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/services/notifications.ts",
+      "value": "You've hit your fasting goal. Great work!",
+      "context": {
+        "prop": "body"
+      },
+      "fingerprint": "hardcoded-ui-text:src/services/notifications.ts:You've hit your fasting goal. Great work!:{\"prop\":\"body\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/services/workoutDraftService.ts",
+      "value": "Failed to save draft",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text1"
+      },
+      "fingerprint": "hardcoded-ui-text:src/services/workoutDraftService.ts:Failed to save draft:{\"context\":\"Toast.show\",\"prop\":\"text1\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/services/workoutDraftService.ts",
+      "value": "Please try again.",
+      "context": {
+        "context": "Toast.show",
+        "prop": "text2"
+      },
+      "fingerprint": "hardcoded-ui-text:src/services/workoutDraftService.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/stores/activeWorkoutStore.ts",
+      "value": "Rest complete: next set up",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/stores/activeWorkoutStore.ts:Rest complete: next set up:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/stores/activeWorkoutStore.ts",
+      "value": "Rest complete",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/stores/activeWorkoutStore.ts:Rest complete:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Calcium",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Calcium:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Cholesterol",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Cholesterol:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Fiber",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Fiber:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Iron",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Iron:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Potassium",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Potassium:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Saturated Fat",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Saturated Fat:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Sodium",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Sodium:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Sugars",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Sugars:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Total Carbs",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Total Carbs:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Trans Fat",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Trans Fat:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Vitamin A",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Vitamin A:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/foodInfo.ts",
+      "value": "Vitamin C",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/foodInfo.ts:Vitamin C:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "As needed",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:As needed:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Capsule",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Capsule:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Cream",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Cream:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Cycle (on/off)",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Cycle (on/off):{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Daily",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Daily:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Drops",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Drops:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Every N days",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Every N days:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Inhaler",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Inhaler:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Injection",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Injection:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Liquid",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Liquid:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Monthly",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Monthly:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Nasal Spray",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Nasal Spray:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Other",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Other:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Patch",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Patch:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Pill",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Pill:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Specific days",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Specific days:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Suppository",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Suppository:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/types/medications.ts",
+      "value": "Tablet",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/types/medications.ts:Tablet:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/activityDetails.ts",
+      "value": "Avg Cadence",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/activityDetails.ts:Avg Cadence:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/activityDetails.ts",
+      "value": "Avg HR",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/activityDetails.ts:Avg HR:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/activityDetails.ts",
+      "value": "Elevation Gain",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/activityDetails.ts:Elevation Gain:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/activityDetails.ts",
+      "value": "HR {{dynamic}}",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/activityDetails.ts:HR {{dynamic}}:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/activityDetails.ts",
+      "value": "Max HR",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/activityDetails.ts:Max HR:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/activityDetails.ts",
+      "value": "Zone {{dynamic}}",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/activityDetails.ts:Zone {{dynamic}}:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "AI not configured",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:AI not configured:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "AI provider not allowed",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:AI provider not allowed:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "AI provider timed out",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:AI provider timed out:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "Configure an AI provider in the web app to use photo estimates.",
+      "context": {
+        "prop": "message"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Configure an AI provider in the web app to use photo estimates.:{\"prop\":\"message\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "Could not process photo",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Could not process photo:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "Couldn't reach AI provider",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Couldn't reach AI provider:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "Photo too large",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Photo too large:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "Retake the photo at lower quality.",
+      "context": {
+        "prop": "message"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Retake the photo at lower quality.:{\"prop\":\"message\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "Retake the photo.",
+      "context": {
+        "prop": "message"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Retake the photo.:{\"prop\":\"message\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "The estimate took too long. Try again, or log this food manually.",
+      "context": {
+        "prop": "message"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:The estimate took too long. Try again, or log this food manually.:{\"prop\":\"message\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "The provider blocked this image. Try another shot.",
+      "context": {
+        "prop": "message"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:The provider blocked this image. Try another shot.:{\"prop\":\"message\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "This AI provider points to a private network address. Ask an admin to configure it globally.",
+      "context": {
+        "prop": "message"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:This AI provider points to a private network address. Ask an admin to configure it globally.:{\"prop\":\"message\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "Try again, or log this food manually.",
+      "context": {
+        "prop": "message"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Try again, or log this food manually.:{\"prop\":\"message\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/foodPhotoEstimate.ts",
+      "value": "Unexpected image format",
+      "context": {
+        "prop": "title"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Unexpected image format:{\"prop\":\"title\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/nativeHeaderDatePicker.ts",
+      "value": "{{dynamic}} ▾",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/nativeHeaderDatePicker.ts:{{dynamic}} ▾:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/nativeHeaderDatePicker.ts",
+      "value": "{{dynamic}}: next day",
+      "context": {
+        "prop": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/nativeHeaderDatePicker.ts:{{dynamic}}: next day:{\"prop\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/utils/nativeHeaderDatePicker.ts",
+      "value": "{{dynamic}}: previous day",
+      "context": {
+        "prop": "accessibilityLabel"
+      },
+      "fingerprint": "hardcoded-ui-text:src/utils/nativeHeaderDatePicker.ts:{{dynamic}}: previous day:{\"prop\":\"accessibilityLabel\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/WritebackMetrics.ts",
+      "value": "Hydration",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/WritebackMetrics.ts:Hydration:{\"prop\":\"label\"}"
+    },
+    {
+      "rule": "hardcoded-ui-text",
+      "file": "src/WritebackMetrics.ts",
+      "value": "Nutrition",
+      "context": {
+        "prop": "label"
+      },
+      "fingerprint": "hardcoded-ui-text:src/WritebackMetrics.ts:Nutrition:{\"prop\":\"label\"}"
+    }
+  ],
+  "counts": {
+    "hardcoded-ui-text:src/constants/chat.ts:Check-in:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/chat.ts:Exercise:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/chat.ts:Food:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/chat.ts:Goals:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/chat.ts:Looked up {{dynamic}}:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:Autophagy peak:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:Eat one large meal or spread calories over 4 hours.:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:Fast from sunset to morning.:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:Fat burning ramps up:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:Fed state · insulin elevated:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:Glycogen depleting · fat metabolism ramping up:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:Ketone production rises:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:More aggressive fast with a 6-hour eating window.:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:Set your own fasting duration.:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/fasting.ts:Skip breakfast and eat during an 8-hour window.:{\"prop\":\"description\"}": 1,
+    "hardcoded-ui-text:src/constants/meals.ts:Breakfast:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/meals.ts:Dinner:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/meals.ts:Lunch:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/meals.ts:Other:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/meals.ts:Snacks:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Calcium:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Calories:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Carbs:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Cholesterol:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Fat:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Fiber:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Glycemic Index:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Iron:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Mono. Fat:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Poly. Fat:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Potassium:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Protein:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Sat. Fat:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Sodium:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Sugars:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Trans Fat:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Vitamin A:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/constants/nutrients.ts:Vitamin C:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Active Calories:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Apple Exercise Time:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Apple Move Time:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Apple Stand Time:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Basal Body Temperature:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Basal Metabolic Rate:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Blood Alcohol Content:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Blood Glucose:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Blood Oxygen Saturation:{\"prop\":\"label\"}": 2,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Blood Pressure:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Body Fat:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Body Temperature:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Bone Mass:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Cervical Mucus:{\"prop\":\"label\"}": 2,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Cadence:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Functional Threshold Power:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Pedaling Cadence:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Power:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Cycling Speed:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Dietary Fat Total:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Dietary Protein:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Dietary Sodium:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Distance:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Elevation Gained:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Environmental Audio Exposure:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Exercise Session:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Floors Climbed:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Headphone Audio Exposure:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Heart Rate Variability:{\"prop\":\"label\"}": 2,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Heart Rate:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Height:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Hydration:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Intermenstrual Bleeding:{\"prop\":\"label\"}": 2,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Lean Body Mass:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Menstruation Flow:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Menstruation Period:{\"prop\":\"label\"}": 2,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Nutrition:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Ovulation Test:{\"prop\":\"label\"}": 2,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Power:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Respiratory Rate:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Resting Heart Rate:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Running Ground Contact Time:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Running Power:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Running Speed:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Running Stride Length:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Running Vertical Oscillation:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Sleep Session:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Speed:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Steps Cadence:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Steps:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Stress:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Total Calories:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:VO2 Max:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Walking Asymmetry %:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Walking Double Support %:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Walking Speed:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Walking Step Length:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Weight:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/HealthMetrics.ts:Wheelchair Pushes:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/hooks/useActiveWorkoutAutosave.ts:Changes are kept on this device and will retry.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useActiveWorkoutAutosave.ts:Workout not saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useAddFoodEntry.ts:Failed to add food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useAddFoodEntryMeal.ts:Failed to add meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useAddFoodEntryMeal.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCopyFoodEntries.ts:Failed to copy meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCopyFoodEntries.ts:Meal copied:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCopyFoodEntries.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Could not add manual cycle entry.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Could not delete cycle entry.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Could not update cycle entry.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Cycle entry deleted successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Cycle entry updated successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 3,
+    "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Manual cycle added successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCycleHistory.ts:Success:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 3,
+    "hardcoded-ui-text:src/hooks/useCycleSettings.ts:Could not save cycle settings. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useCycleSettings.ts:Update failed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Are you sure you want to delete this food? Existing logged entries will stay unchanged.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Delete Food:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Delete:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFood.ts:Failed to delete food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Are you sure you want to delete this food entry?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Delete Entry:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Delete:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Failed to delete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntry.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Delete Meal:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Delete this meal?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Delete:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Failed to delete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useDeleteFoodEntryMeal.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 2,
+    "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Could not create exercise:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Delete Exercise?:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Delete:{\"context\":\"Alert.alert:button\"}": 2,
+    "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Failed to delete exercise:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Failed to delete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Failed to update exercise:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 3,
+    "hardcoded-ui-text:src/hooks/useExerciseMutations.ts:This exercise will be removed from your library. Past logged sessions are preserved.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseSetEditing.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseSetEditing.ts:Remove \"{{dynamic}}\" and all its sets?:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseSetEditing.ts:Remove Exercise?:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useExerciseSetEditing.ts:Remove:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMeals.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMeals.ts:Delete Meal:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useMeals.ts:Delete:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMeals.ts:Failed to create meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMeals.ts:Failed to delete meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMeals.ts:Failed to update meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMeals.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 3,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} {{dynamic}}:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 2,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} dose removed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:{{dynamic}} logged:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useMedications.ts:Tap to undo:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useSaveFood.ts:Failed to save food:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useSaveFood.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Clear & Start:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Configure your server connection in Settings to start a workout.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Go to Workout:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:No Server Connected:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Nothing to start:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:This preset has no exercises.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:Workout in progress:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useStartLiveWorkout.ts:You already have a workout in progress. Starting another clears it here. Any sets already saved stay in your diary.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/hooks/useSymptoms.ts:Failed to remove symptom:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useSymptoms.ts:Failed to save symptom:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Health data synced successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Sync complete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Sync Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Sync incomplete:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useSyncHealthData.ts:Syncing health data…:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useToggleFavorite.ts:Failed to update favorites:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useToggleFavorite.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpdateFoodEntry.ts:Failed to save changes:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpdateFoodEntryMeal.ts:Failed to save meal:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCheckIn.ts:Could not save measurements. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCheckIn.ts:Save failed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Could not clear log entry. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Could not save log entry. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Daily log cleared.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Daily log updated successfully.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Delete failed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Deleted:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Save failed:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useUpsertCycleLog.ts:Saved:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useWaterIntakeMutation.ts:Error:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useWaterIntakeMutation.ts:Failed to update water intake. Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Cancel:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Could not create workout preset:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Delete Workout Preset?:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Delete:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Failed to delete preset:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Failed to update preset:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/hooks/useWorkoutPresetMutations.ts:This preset will be permanently removed from your library.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/services/medicationReminderService.ts:Medication reminder:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/services/notifications.ts:Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.:{\"context\":\"Alert.alert\",\"argIndex\":1}": 1,
+    "hardcoded-ui-text:src/services/notifications.ts:Fasting goal reached:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/services/notifications.ts:Not Now:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/services/notifications.ts:On-time alerts:{\"context\":\"Alert.alert\",\"argIndex\":0}": 1,
+    "hardcoded-ui-text:src/services/notifications.ts:Open Settings:{\"context\":\"Alert.alert:button\"}": 1,
+    "hardcoded-ui-text:src/services/notifications.ts:You've hit your fasting goal. Great work!:{\"prop\":\"body\"}": 1,
+    "hardcoded-ui-text:src/services/workoutDraftService.ts:Failed to save draft:{\"context\":\"Toast.show\",\"prop\":\"text1\"}": 1,
+    "hardcoded-ui-text:src/services/workoutDraftService.ts:Please try again.:{\"context\":\"Toast.show\",\"prop\":\"text2\"}": 1,
+    "hardcoded-ui-text:src/stores/activeWorkoutStore.ts:Rest complete: next set up:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/stores/activeWorkoutStore.ts:Rest complete:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Calcium:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Cholesterol:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Fiber:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Iron:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Potassium:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Saturated Fat:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Sodium:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Sugars:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Total Carbs:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Trans Fat:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Vitamin A:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/foodInfo.ts:Vitamin C:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:As needed:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Capsule:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Cream:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Cycle (on/off):{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Daily:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Drops:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Every N days:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Inhaler:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Injection:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Liquid:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Monthly:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Nasal Spray:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Other:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Patch:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Pill:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Specific days:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Suppository:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/types/medications.ts:Tablet:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/utils/activityDetails.ts:Avg Cadence:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/utils/activityDetails.ts:Avg HR:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/utils/activityDetails.ts:Elevation Gain:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/utils/activityDetails.ts:HR {{dynamic}}:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/utils/activityDetails.ts:Max HR:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/utils/activityDetails.ts:Zone {{dynamic}}:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:AI not configured:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:AI provider not allowed:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:AI provider timed out:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Configure an AI provider in the web app to use photo estimates.:{\"prop\":\"message\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Could not process photo:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Couldn't reach AI provider:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Photo too large:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Retake the photo at lower quality.:{\"prop\":\"message\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Retake the photo.:{\"prop\":\"message\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:The estimate took too long. Try again, or log this food manually.:{\"prop\":\"message\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:The provider blocked this image. Try another shot.:{\"prop\":\"message\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:This AI provider points to a private network address. Ask an admin to configure it globally.:{\"prop\":\"message\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Try again, or log this food manually.:{\"prop\":\"message\"}": 1,
+    "hardcoded-ui-text:src/utils/foodPhotoEstimate.ts:Unexpected image format:{\"prop\":\"title\"}": 1,
+    "hardcoded-ui-text:src/utils/nativeHeaderDatePicker.ts:{{dynamic}} ▾:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/utils/nativeHeaderDatePicker.ts:{{dynamic}}: next day:{\"prop\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/utils/nativeHeaderDatePicker.ts:{{dynamic}}: previous day:{\"prop\":\"accessibilityLabel\"}": 1,
+    "hardcoded-ui-text:src/WritebackMetrics.ts:Hydration:{\"prop\":\"label\"}": 1,
+    "hardcoded-ui-text:src/WritebackMetrics.ts:Nutrition:{\"prop\":\"label\"}": 1
+  }
+}

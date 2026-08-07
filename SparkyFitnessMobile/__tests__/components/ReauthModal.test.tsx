@@ -102,7 +102,7 @@ describe('ReauthModal', () => {
     const result = renderModal();
     await flushAsync();
 
-    expect(result.getByPlaceholderText('email@example.com')).toBeTruthy();
+    expect(result.getByPlaceholderText('Email')).toBeTruthy();
     expect(result.getByPlaceholderText('Password')).toBeTruthy();
     expect(result.getByText('Sign In')).toBeTruthy();
     expect(result.getByText('Sign in with Passkey')).toBeTruthy();
@@ -171,7 +171,7 @@ describe('ReauthModal', () => {
     const result = renderModal();
     await flushAsync();
 
-    expect(result.queryByPlaceholderText('email@example.com')).toBeNull();
+    expect(result.queryByPlaceholderText('Email')).toBeNull();
     expect(result.queryByText('Sign In')).toBeNull();
     expect(result.getByText('Sign in with Google')).toBeTruthy();
     expect(result.getByText('Sign in with Passkey')).toBeTruthy();
@@ -183,7 +183,7 @@ describe('ReauthModal', () => {
     const result = renderModal();
     await flushAsync();
 
-    expect(result.getByPlaceholderText('email@example.com')).toBeTruthy();
+    expect(result.getByPlaceholderText('Email')).toBeTruthy();
     expect(result.getByText('Sign In')).toBeTruthy();
   });
 

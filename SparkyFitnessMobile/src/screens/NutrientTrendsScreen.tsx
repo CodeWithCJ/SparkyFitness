@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNutritionTrends, type TrendRange } from '../hooks/useNutritionTrends';
+import { getAppLocale } from '../localization';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
@@ -13,21 +15,24 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type NutrientTrendsScreenProps = RootStackScreenProps<'NutrientTrends'>;
 
-const RANGE_SEGMENTS: Segment<TrendRange>[] = [
-  { key: '7d', label: '7d' },
-  { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
-];
-
 const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) => {
+  const { t } = useTranslation();
   const { nutrientKey, nutrientLabel, unit, goal } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [range, setRange] = useState<TrendRange>('7d');
+  const rangeSegments = useMemo<Segment<TrendRange>[]>(
+    () => [
+      { key: '7d', label: t('sync.last7Days') },
+      { key: '30d', label: t('sync.last30Days') },
+      { key: '90d', label: t('sync.last90Days') },
+    ],
+    [t],
+  );
 
   const header = useScreenHeader({
-    title: `${nutrientLabel} Trends`,
+    title: t('batch.trendTitle', { nutrient: nutrientLabel }),
     left: { kind: 'back' },
   });
 
@@ -70,7 +75,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
     if (!stats.peakDay) return '';
     const [year, month, d] = stats.peakDay.split('-').map(Number);
     const date = new Date(year, month - 1, d);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
   }, [stats.peakDay]);
 
   if (isLoading) {
@@ -81,10 +86,10 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
     return (
       <View className="flex-1 bg-background justify-center items-center p-4">
         <Text className="text-text-primary text-base font-semibold mb-2">
-          Failed to load trend data
+           {t('batch.trendLoadFailed')}
         </Text>
         <Text className="text-text-secondary text-sm text-center">
-          Please check your connection and try again.
+           {t('batch.connectionRetry')}
         </Text>
       </View>
     );
@@ -104,7 +109,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
         {/* Segmented Range Control */}
         <View className="mb-4">
           <SegmentedControl
-            segments={RANGE_SEGMENTS}
+             segments={rangeSegments}
             activeKey={range}
             onSelect={setRange}
           />
@@ -124,18 +129,18 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
         {/* Statistics Summary Card */}
         <View className="bg-surface rounded-xl p-4 mt-4 shadow-sm">
           <Text className="text-text-primary text-base font-bold mb-3">
-            Summary Statistics
+             {t('batch.summary')}
           </Text>
 
           <View className="flex-row justify-between py-2 border-b border-border-subtle">
-            <Text className="text-text-secondary text-sm">Daily Average</Text>
+             <Text className="text-text-secondary text-sm">{t('batch.dailyAverage')}</Text>
             <Text className="text-text-primary text-sm font-semibold">
               {stats.average % 1 !== 0 ? stats.average.toFixed(1) : stats.average} {unit}
             </Text>
           </View>
 
           <View className="flex-row justify-between py-2 border-b border-border-subtle">
-            <Text className="text-text-secondary text-sm">Highest Intake Day</Text>
+             <Text className="text-text-secondary text-sm">{t('batch.highestDay')}</Text>
             <View className="items-end">
               <Text className="text-text-primary text-sm font-semibold">
                 {stats.peak % 1 !== 0 ? stats.peak.toFixed(1) : stats.peak} {unit}
@@ -149,16 +154,16 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
           {goal && goal > 0 ? (
             <>
               <View className="flex-row justify-between py-2 border-b border-border-subtle">
-                <Text className="text-text-secondary text-sm">Target Daily Goal</Text>
+                 <Text className="text-text-secondary text-sm">{t('batch.targetGoal')}</Text>
                 <Text className="text-text-primary text-sm font-semibold">
                   {Math.round(goal).toLocaleString()} {unit}
                 </Text>
               </View>
 
               <View className="flex-row justify-between py-2">
-                <Text className="text-text-secondary text-sm">Average vs. Target</Text>
+                 <Text className="text-text-secondary text-sm">{t('batch.averageTarget')}</Text>
                 <Text className="text-text-primary text-sm font-semibold">
-                  {Math.round((stats.average / goal) * 100)}% of goal
+                   {t('batch.percentOfGoal', { percent: Math.round((stats.average / goal) * 100) })}
                 </Text>
               </View>
             </>

@@ -636,7 +636,7 @@ describe('FoodEntryAddScreen', () => {
       pickerMode: 'meal-builder',
     });
 
-    fireEvent.press(screen.getByText('Add Meal'));
+      fireEvent.press(screen.getByText('Log Meal'));
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
@@ -671,6 +671,68 @@ describe('FoodEntryAddScreen', () => {
     expect(screen.getByDisplayValue('2.5')).toBeTruthy();
   });
 
+  it('pre-selects a mealTypeId passed through navigation and sends it in the payload', () => {
+    // Two visible meal types; the route pins the custom one.
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [
+        { id: 'meal-1', name: 'breakfast', is_visible: true, sort_order: 1 },
+        { id: 'custom-pw', name: 'Pre-Workout', is_visible: true, sort_order: 0 },
+      ] as any,
+      defaultMealTypeId: 'meal-1',
+      isLoading: false,
+      isError: false,
+    });
+
+    const screen = renderScreen({
+      item: baseMealItem,
+      date: '2026-05-15',
+      mealTypeId: 'custom-pw',
+    });
+
+    fireEvent.press(screen.getByText('Log Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_type_id: 'custom-pw',
+        meal_type: 'Pre-Workout',
+      }),
+    );
+  });
+
+  it('picker keeps a custom category named Lunch literal while localizing the system lunch', () => {
+    // Polish: system "lunch" renders as "Obiad"; a CUSTOM category named
+    // "Lunch" stays literal, and both are distinguishable by id.
+    (
+      globalThis as typeof globalThis & {
+        __setTestLocale: (value: 'en' | 'pl') => void;
+      }
+    ).__setTestLocale('pl');
+
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [
+        { id: 'sys-l', name: 'lunch', user_id: null, is_visible: true, sort_order: 1 },
+        { id: 'custom-l', name: 'Lunch', user_id: 'user1', is_visible: true, sort_order: 0 },
+      ] as any,
+      defaultMealTypeId: 'sys-l',
+      isLoading: false,
+      isError: false,
+    });
+
+    const screen = renderScreen({
+      item: baseMealItem,
+      date: '2026-05-15',
+    });
+
+    // System label localized; custom label literal — both present.
+    expect(screen.getAllByText('Obiad').length).toBeGreaterThan(0);
+    expect(screen.getByText('Lunch')).toBeTruthy();
+    (
+      globalThis as typeof globalThis & {
+        __setTestLocale: (value: 'en' | 'pl') => void;
+      }
+    ).__setTestLocale('en');
+  });
+
   it('dispatches addMeal when logging a meal item (not addEntry)', () => {
     mockUseFoodVariants.mockReturnValueOnce({
       variants: [],
@@ -683,7 +745,7 @@ describe('FoodEntryAddScreen', () => {
       date: '2026-05-15',
     });
 
-    fireEvent.press(screen.getByText('Add Meal'));
+    fireEvent.press(screen.getByText('Log Meal'));
 
     expect(mockAddMeal).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -25,13 +25,14 @@ import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { goalsQueryKey } from '../hooks/queryKeys';
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { fireSuccessHaptic } from '../services/haptics';
-import { getMealTypeLabel } from '../constants/meals';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import { formatDateLabel, getTodayDate } from '../utils/dateUtils';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 import type { SaveFoodPayload } from '../services/api/foodsApi';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FoodPhotoFlowScreenProps, RootStackParamList } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
 
 function saveFoodPayloadToDisplayValues(p: SaveFoodPayload): FoodDisplayValues {
   return {
@@ -58,6 +59,7 @@ function saveFoodPayloadToDisplayValues(p: SaveFoodPayload): FoodDisplayValues {
 type Props = FoodPhotoFlowScreenProps<'LogEntry'>;
 
 const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const { backColor } = useHeaderActionColors();
@@ -114,7 +116,7 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const { addEntryAsync, isPending, invalidateCache } = useAddFoodEntry({
     onSuccess: () => {
       fireSuccessHaptic();
-      Toast.show({ type: 'success', text1: 'Estimate saved' });
+       Toast.show({ type: 'success', text1: t('foodMealScreens.foodSaved') });
       navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop();
     },
   });
@@ -133,21 +135,21 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const mealPickerOptions = useMemo(
     () =>
       mealTypes.map((mt) => ({
-        label: getMealTypeLabel(mt.name),
+        label: getMealTypeDisplayLabel(mt, t),
         value: mt.id,
       })),
-    [mealTypes],
+    [mealTypes, t],
   );
   const selectedMealLabel = useMemo(() => {
     const found = mealTypes.find((mt) => mt.id === selectedMealTypeId);
-    return found ? getMealTypeLabel(found.name) : 'Select meal';
-  }, [mealTypes, selectedMealTypeId]);
+     return found ? getMealTypeDisplayLabel(found, t) : t('foodMealScreens.selectMeal');
+   }, [mealTypes, selectedMealTypeId, t]);
 
   const handleSave = async () => {
     if (isPending) return;
 
     if (!selectedMealTypeId) {
-      Toast.show({ type: 'error', text1: 'Select a meal type' });
+       Toast.show({ type: 'error', text1: t('foodMealScreens.selectMeal') });
       return;
     }
 
@@ -155,8 +157,8 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!Number.isFinite(servingsValue) || servingsValue <= 0) {
       Toast.show({
         type: 'error',
-        text1: 'Invalid servings',
-        text2: 'Servings must be a positive number.',
+         text1: t('foodMealScreens.invalidTotalServings'),
+         text2: t('foodMealScreens.totalServingsPositive'),
       });
       return;
     }
@@ -191,12 +193,12 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10 p-0"
-          accessibilityLabel="Back"
+           accessibilityLabel={t('common.back')}
         >
           <Icon name="chevron-back" size={22} color={backColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Log entry
+           {t('screens.foodEntry')}
         </Text>
       </View>
 
@@ -219,12 +221,12 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Meal row */}
         <View className="flex-row items-center mb-4">
-          <Text className="text-text-secondary text-base mr-2">Meal</Text>
+           <Text className="text-text-secondary text-base mr-2">{t('foodMealScreens.meal')}</Text>
           <BottomSheetPicker
             value={selectedMealTypeId ?? ''}
             options={mealPickerOptions}
             onSelect={(value) => setSelectedMealTypeId(value)}
-            title="Select Meal"
+             title={t('foodMealScreens.selectMeal')}
             renderTrigger={({ onPress }) => (
               <TouchableOpacity
                 onPress={onPress}
@@ -247,7 +249,7 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Date row */}
         <View className="flex-row items-center mb-4">
-          <Text className="text-text-secondary text-base mr-2">Date</Text>
+           <Text className="text-text-secondary text-base mr-2">{t('foodMealScreens.date')}</Text>
           <TouchableOpacity
             onPress={() => calendarRef.current?.present()}
             activeOpacity={0.7}
@@ -268,7 +270,7 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
 
         {/* Servings row */}
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-text-secondary text-base">Servings</Text>
+           <Text className="text-text-secondary text-base">{t('foodMealScreens.servingsLabel')}</Text>
           <StepperInput
             value={quantity}
             onChangeText={handleQuantityChange}

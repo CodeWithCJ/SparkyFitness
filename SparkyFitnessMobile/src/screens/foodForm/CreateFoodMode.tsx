@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, TouchableOpacity, Platform, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -14,7 +15,7 @@ import { setPendingMealIngredientSelection } from '../../services/mealBuilderSel
 import { useMealTypes, usePreferences } from '../../hooks';
 import { useSaveFood } from '../../hooks/useSaveFood';
 import { useAddFoodEntry } from '../../hooks/useAddFoodEntry';
-import { getMealTypeLabel } from '../../constants/meals';
+import { getMealTypeDisplayLabel } from '../../utils/mealNutrition';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../../utils/dateUtils';
 import { parseOptional } from '../../types/foodInfo';
 import { createFoodVariant } from '../../services/api/foodsApi';
@@ -45,6 +46,7 @@ type CreateFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 
 const CREATE_FORM_SOURCE_VARIANT_ID = '__create-form-source-variant__';
 
 export function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation']; routeKey: string }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [textPrimary, textSecondary] = useCSSVariable(['--color-text-primary', '--color-text-secondary']) as [string, string];
@@ -177,7 +179,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     setQuantityTouched(true);
   };
 
-  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
+  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeDisplayLabel(mt, t), value: mt.id }));
 
   const [customNutrientValues, setCustomNutrientValues] = useState<Record<string, number>>({});
 
@@ -201,16 +203,16 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
 
   const handleSubmit = async (data: FoodFormData) => {
     if (!data.name.trim()) {
-      Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
+      Toast.show({ type: 'error', text1: t('foodEditor.missingName'), text2: t('foodEditor.foodNameRequired') });
       return;
     }
     if (!parseDecimalInput(data.servingSize)) {
-      Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
+      Toast.show({ type: 'error', text1: t('foodMealScreens.invalidServingSize'), text2: t('foodEditor.invalidServingSizeMessage') });
       return;
     }
     const trimmedBarcode = barcodeInput.trim();
     if (showBarcodeField && trimmedBarcode !== '' && !BARCODE_REGEX.test(trimmedBarcode)) {
-      Toast.show({ type: 'error', text1: 'Invalid barcode', text2: 'Barcode must be 8-14 digits.' });
+      Toast.show({ type: 'error', text1: t('foodEditor.invalidBarcode'), text2: t('foodEditor.barcodeFormat') });
       return;
     }
     const resolvedBarcode = showBarcodeField
@@ -277,7 +279,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
           }),
         ),
       ).catch(() => {
-        Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+        Toast.show({ type: 'error', text1: t('foodMealScreens.someUnitsNotSaved') });
       });
     };
 
@@ -305,7 +307,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
         const savedFood = await saveFoodAsync(saveFoodPayload);
         isSavingRef.current = true;
         saveEquivalentsAsync(savedFood.id);
-        Toast.show({ type: 'success', text1: 'Food saved' });
+        Toast.show({ type: 'success', text1: t('foodMealScreens.foodSaved') });
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.
@@ -314,11 +316,11 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     }
 
     if (!quantity) {
-      Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Amount must be greater than zero.' });
+      Toast.show({ type: 'error', text1: t('foodMealScreens.invalidAmount'), text2: t('foodMealScreens.amountPositive') });
       return;
     }
     if (!effectiveMealId) {
-      Toast.show({ type: 'error', text1: 'No meal type', text2: 'No meal types are available. Please check your account settings.' });
+      Toast.show({ type: 'error', text1: t('foodEditor.noMealType'), text2: t('foodEditor.noMealTypes') });
       return;
     }
 
@@ -339,10 +341,10 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
 
   // Library mode saves a food record (a form Save); the diary/meal-builder
   // modes commit the food to the diary, so keep the "Add Food" verb there.
-  const primaryLabel = isLibraryMode ? SAVE_LABEL : 'Add Food';
+  const primaryLabel = isLibraryMode ? SAVE_LABEL : t('screens.addFood');
 
   const header = useScreenHeader({
-    title: 'New Food',
+    title: t('screens.newFood'),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -399,7 +401,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
               activeOpacity={0.7}
               className="flex-1 flex-row items-center"
             >
-              <Text className="text-text-secondary text-base mr-3">Date</Text>
+              <Text className="text-text-secondary text-base mr-3">{t('common.date')}</Text>
               <Text className="text-text-primary text-base font-medium mx-1.5">
                 {formatDateLabel(selectedDate)}
               </Text>
@@ -409,12 +411,12 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
             {/* Meal */}
             {selectedMealType ? (
               <View className="flex-1 flex-row items-center">
-                <Text className="text-text-secondary text-base mx-3">Meal</Text>
+                <Text className="text-text-secondary text-base mx-3">{t('foodMealScreens.mealLabel')}</Text>
                 <BottomSheetPicker
                   value={effectiveMealId!}
                   options={mealPickerOptions}
                   onSelect={setSelectedMealId}
-                  title="Select Meal"
+                  title={t('foodMealScreens.selectMeal')}
                   renderTrigger={({ onPress }) => (
                     <TouchableOpacity
                       onPress={onPress}
@@ -422,7 +424,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
                       className="flex-row items-center"
                     >
                       <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {getMealTypeLabel(selectedMealType.name)}
+                        {getMealTypeDisplayLabel(selectedMealType, t)}
                       </Text>
                       <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
                     </TouchableOpacity>
@@ -446,15 +448,15 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
               </Text>
             </View>
             <Text className="text-text-secondary text-sm mt-2">
-              {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
-              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} per serving
+              {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? t('foodMealScreens.serving') : t('foodMealScreens.servings')}
+              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} {t('foodMealScreens.perServing')}
             </Text>
           </View>
           {/* Save to Database */}
           <View className="flex-row items-center justify-between">
-            <Text className="text-text-secondary text-base">Save to Database</Text>
+            <Text className="text-text-secondary text-base">{t('foodEditor.saveDatabase')}</Text>
             <Switch
-              accessibilityLabel="Save to Database"
+              accessibilityLabel={t('foodEditor.saveDatabase')}
               value={saveToDatabase}
               onValueChange={setSaveToDatabase}
             />

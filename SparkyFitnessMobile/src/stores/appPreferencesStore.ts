@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import type { LanguagePreference } from '../localization';
 import type { OwnershipFilter } from '../utils/shareStatus';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
@@ -50,6 +51,7 @@ export const PREFERENCE_DEFAULTS = {
   defaultRestSec: DEFAULT_REST_SEC as number,
   restTimerSoundEnabled: true,
   workoutKeepAwakeEnabled: false,
+  languagePreference: 'system' as LanguagePreference,
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
   foodsLibraryOwnershipFilter: 'all' as OwnershipFilter,
   mealsLibraryOwnershipFilter: 'all' as OwnershipFilter,
@@ -80,6 +82,7 @@ export type AppPreferencesData = {
   defaultRestSec: number;
   restTimerSoundEnabled: boolean;
   workoutKeepAwakeEnabled: boolean;
+  languagePreference: LanguagePreference;
   foodSearchOwnershipFilter: OwnershipFilter;
   foodsLibraryOwnershipFilter: OwnershipFilter;
   mealsLibraryOwnershipFilter: OwnershipFilter;
@@ -110,6 +113,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setDefaultRestSec: (value: number) => void;
   setRestTimerSoundEnabled: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
+  setLanguagePreference: (value: LanguagePreference) => void;
   setFoodSearchOwnershipFilter: (value: OwnershipFilter) => void;
   setFoodsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
   setMealsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
@@ -180,6 +184,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
       setRestTimerSoundEnabled: (value) => set({ restTimerSoundEnabled: value }),
       setWorkoutKeepAwakeEnabled: (value) => set({ workoutKeepAwakeEnabled: value }),
+      setLanguagePreference: (value) => set({ languagePreference: value }),
       setFoodSearchOwnershipFilter: (value) => set({ foodSearchOwnershipFilter: value }),
       setFoodsLibraryOwnershipFilter: (value) => set({ foodsLibraryOwnershipFilter: value }),
       setMealsLibraryOwnershipFilter: (value) => set({ mealsLibraryOwnershipFilter: value }),
@@ -215,6 +220,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         defaultRestSec: state.defaultRestSec,
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
+        languagePreference: state.languagePreference,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,
         foodsLibraryOwnershipFilter: state.foodsLibraryOwnershipFilter,
         mealsLibraryOwnershipFilter: state.mealsLibraryOwnershipFilter,

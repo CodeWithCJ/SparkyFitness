@@ -39,6 +39,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import {{APPLICATION_ID}}.R
+import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -65,10 +66,13 @@ class CalorieWidget : GlanceAppWidget() {
         val remainingText: String
         val progress: Float
         if (snapshot == null) {
-            remainingText = "-"
+            remainingText = context.getString(R.string.widget_kcal_left_empty)
             progress = 0f
         } else {
-            remainingText = "${formatInt(snapshot.remaining)} kcal left"
+            remainingText = context.getString(
+                R.string.widget_kcal_left,
+                formatInt(context, snapshot.remaining),
+            )
             progress = snapshot.progress.coerceIn(0.0, 1.0).toFloat()
         }
 
@@ -78,6 +82,8 @@ class CalorieWidget : GlanceAppWidget() {
             .setPackage(context.packageName)
         val scanIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://scan"))
             .setPackage(context.packageName)
+        val searchFoodLabel = context.getString(R.string.widget_search_food)
+        val scanBarcodeLabel = context.getString(R.string.widget_scan_barcode)
 
         Box(
             modifier = GlanceModifier
@@ -119,7 +125,7 @@ class CalorieWidget : GlanceAppWidget() {
                     ) {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_search),
-                            contentDescription = "Search food",
+                            contentDescription = searchFoodLabel,
                             colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
                             modifier = GlanceModifier.size(24.dp),
                         )
@@ -139,7 +145,7 @@ class CalorieWidget : GlanceAppWidget() {
                     ) {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_scan),
-                            contentDescription = "Scan barcode",
+                            contentDescription = scanBarcodeLabel,
                             colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
                             modifier = GlanceModifier.size(24.dp),
                         )
@@ -193,8 +199,13 @@ class CalorieWidget : GlanceAppWidget() {
         }
     }
 
-    private fun formatInt(value: Double): String {
-        return String.format(Locale.getDefault(), "%,d", value.toLong())
+    private fun currentLocale(context: Context): Locale {
+        val locales = context.resources.configuration.locales
+        return if (locales.isEmpty) Locale.getDefault() else locales[0]
+    }
+
+    private fun formatInt(context: Context, value: Double): String {
+        return NumberFormat.getIntegerInstance(currentLocale(context)).format(value.toLong())
     }
 
     companion object {

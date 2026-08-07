@@ -7,6 +7,7 @@ import { fireSuccessHaptic } from './haptics';
 import { isRestTimerSoundEnabled, playRestCompleteSound } from './sounds';
 import { ExactAlarmBridge } from './ExactAlarmBridge';
 import { useAppPreferencesStore, __resetAppPreferencesStoreForTests } from '../stores/appPreferencesStore';
+import i18n, { initializeI18n } from '../localization/i18n';
 
 const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
@@ -37,8 +38,9 @@ let hasShownDeniedToast = false;
  */
 export async function ensureMedicationReminderChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
+  await initializeI18n();
   await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
-    name: 'Medication reminders',
+    name: i18n.t('notifications.medicationReminderChannel'),
     importance: Notifications.AndroidImportance.HIGH,
     enableVibrate: true,
   });
@@ -86,6 +88,7 @@ export async function initNotifications(): Promise<void> {
   initialized = true;
 
   try {
+    await initializeI18n();
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {
         const category = notification.request.content.categoryIdentifier;
@@ -106,12 +109,12 @@ export async function initNotifications(): Promise<void> {
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-        name: 'Workout timer',
+        name: i18n.t('notifications.workoutTimerChannel'),
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
       });
       await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
-        name: 'Fasting',
+        name: i18n.t('notifications.fastingChannel'),
         importance: Notifications.AndroidImportance.HIGH,
         enableVibrate: true,
       });
@@ -124,7 +127,7 @@ export async function initNotifications(): Promise<void> {
     await Notifications.setNotificationCategoryAsync(REST_COMPLETE_CATEGORY, [
       {
         identifier: COMPLETE_SET_ACTION,
-        buttonTitle: 'Complete Set',
+        buttonTitle: i18n.t('notifications.completeSetAction'),
         options: { opensAppToForeground: false },
       },
     ]);
@@ -132,12 +135,12 @@ export async function initNotifications(): Promise<void> {
     await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
       {
         identifier: MEDICATION_TAKEN_ACTION,
-        buttonTitle: 'Log as taken',
+        buttonTitle: i18n.t('notifications.medicationTakenAction'),
         options: { opensAppToForeground: false },
       },
       {
         identifier: MEDICATION_SKIP_ACTION,
-        buttonTitle: 'Skip',
+        buttonTitle: i18n.t('notifications.skipAction'),
         options: { opensAppToForeground: false },
       },
     ]);
@@ -148,6 +151,7 @@ export async function initNotifications(): Promise<void> {
 
 export async function ensureNotificationPermission(): Promise<boolean> {
   try {
+    await initializeI18n();
     const current = await Notifications.getPermissionsAsync();
     if (current.status === 'granted') return true;
     if (current.status === 'denied') return false;
@@ -159,8 +163,8 @@ export async function ensureNotificationPermission(): Promise<boolean> {
       hasShownDeniedToast = true;
       Toast.show({
         type: 'info',
-        text1: 'Notifications off',
-        text2: 'Timer will still alert in the app.',
+        text1: i18n.t('notifications.notificationsOff'),
+        text2: i18n.t('notifications.timerWillStillAlert'),
       });
     }
     return false;

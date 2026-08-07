@@ -9,6 +9,7 @@ import {
 import Toast from 'react-native-toast-message';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable, useUniwind } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import type {
@@ -22,7 +23,6 @@ import {
 import {
   CONFIDENCE_TONES,
   FOOD_FORM_UNIT_GROUPS,
-  OVERALL_CONFIDENCE_LABELS,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
@@ -60,7 +60,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   variants,
   selectedVariantId,
   selectedSelection,
-  title = 'Select Unit',
+  title,
   renderTrigger,
   onSelect,
 }) => {
@@ -70,6 +70,26 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   const isPresentingRef = useRef(false);
   const presentFrameRef = useRef<number | null>(null);
   const { theme } = useUniwind();
+  const { t } = useTranslation();
+  const getConfidenceAccessibilityLabel = useCallback(
+    (confidence: AiConfidence): string => {
+      const confidenceLabel = (() => {
+        switch (confidence) {
+          case 'high':
+            return t('foodMeals.confidenceHigh');
+          case 'medium':
+            return t('foodMeals.confidenceMedium');
+          case 'low':
+            return t('foodMeals.confidenceLow');
+          default:
+            return confidence;
+        }
+      })();
+      return t('foodMeals.aiEstimateWithConfidence', { confidence: confidenceLabel });
+    },
+    [t],
+  );
+  const resolvedTitle = title ?? t('foodMeals.selectUnit');
   const [
     surfaceBg,
     raisedBg,
@@ -210,14 +230,14 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       } catch {
         Toast.show({
           type: 'error',
-          text1: 'Could not update that unit',
-          text2: 'Please try again.',
+           text1: t('foodMeals.unitUpdateFailed'),
+           text2: t('common.tryAgain'),
         });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [dismissSheet, onSelect],
+    [dismissSheet, onSelect, t],
   );
 
   /**
@@ -233,8 +253,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       if (!manualVariant) {
         Toast.show({
           type: 'error',
-          text1: 'Could not update that unit',
-          text2: 'Please try again.',
+           text1: t('foodMeals.unitUpdateFailed'),
+           text2: t('common.tryAgain'),
         });
         return;
       }
@@ -249,14 +269,14 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       } catch {
         Toast.show({
           type: 'error',
-          text1: 'Could not update that unit',
-          text2: 'Please try again.',
+           text1: t('foodMeals.unitUpdateFailed'),
+           text2: t('common.tryAgain'),
         });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [buildManualVariant, dismissSheet, onSelect],
+    [buildManualVariant, dismissSheet, onSelect, t],
   );
 
   const handleUnitPress = useCallback(
@@ -283,8 +303,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         } catch {
           Toast.show({
             type: 'error',
-            text1: 'Could not update that unit',
-            text2: 'Please try again.',
+             text1: t('foodMeals.unitUpdateFailed'),
+             text2: t('common.tryAgain'),
           });
         } finally {
           setIsSubmitting(false);
@@ -303,6 +323,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       handleExistingVariantPress,
       onSelect,
       submitManualDraft,
+      t,
       variants,
     ],
   );
@@ -340,8 +361,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     const aiTone = aiConfidence ? CONFIDENCE_TONES[aiConfidence] : null;
     const aiSparkleColor = aiTone ? aiSparkleColorByTone[aiTone] : textMuted;
     const aiAccessibilityLabel = aiConfidence
-      ? `AI estimate (${OVERALL_CONFIDENCE_LABELS[aiConfidence]} confidence)`
-      : 'AI estimate';
+      ? getConfidenceAccessibilityLabel(aiConfidence)
+       : t('foodMeals.aiEstimate');
 
     return (
       <TouchableOpacity
@@ -397,8 +418,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       ? aiSparkleColorByTone[matchedAiTone]
       : textMuted;
     const matchedAiAccessibilityLabel = matchedAiConfidence
-      ? `AI estimate (${OVERALL_CONFIDENCE_LABELS[matchedAiConfidence]} confidence)`
-      : 'AI estimate';
+      ? getConfidenceAccessibilityLabel(matchedAiConfidence)
+       : t('foodMeals.aiEstimate');
     const compatible = canAutoConvertToUnit(variants, selectedVariant, unit);
     const isSelected = selectedUnitKey === normalizeUnitKey(unit);
 
@@ -458,7 +479,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         <View className="flex-1">
           <View className="px-4 py-4 border-b border-border-subtle">
             <Text className="text-lg font-semibold text-center text-text-primary">
-              {title}
+               {resolvedTitle}
             </Text>
           </View>
 
@@ -467,7 +488,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
               <>
                 <View className="px-4 py-2 bg-surface">
                   <Text className="text-xs font-semibold uppercase text-text-muted">
-                    Saved Custom Units
+                     {t('foodMeals.savedCustomUnits')}
                   </Text>
                 </View>
                 {customSavedVariants.map(renderCustomVariantRow)}

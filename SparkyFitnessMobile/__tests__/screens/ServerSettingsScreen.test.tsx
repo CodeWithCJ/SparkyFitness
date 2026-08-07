@@ -166,12 +166,12 @@ describe('ServerSettingsScreen', () => {
       expect(mockSetActiveServerConfig).not.toHaveBeenCalled();
     });
 
-    // The "Success" alert should have buttons; press OK to fire notifyNoConfigs
+    // The "Success" alert should have buttons; press Confirm to fire notifyNoConfigs
     const successCall = (Alert.alert as jest.Mock).mock.calls.find(
       (call) => call[0] === 'Success',
     );
     expect(successCall).toBeTruthy();
-    const okButton = successCall![2].find((b: any) => b.text === 'OK');
+    const okButton = successCall![2].find((b: any) => b.text === 'Confirm');
     okButton.onPress();
     expect(mockNotifyNoConfigs).toHaveBeenCalled();
   });

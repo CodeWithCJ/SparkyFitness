@@ -4,6 +4,7 @@ import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import { DAY_LABELS } from '@workspace/shared';
 import Icon from '../Icon';
+import { useTranslation } from 'react-i18next';
 import { sheetContainer, useSheetBackdrop } from '../ui/sheetChrome';
 
 export interface WeekdaySheetRef {
@@ -21,6 +22,9 @@ interface WeekdaySheetProps {
  * toggles it without dismissing, so several days can be picked in one visit. */
 const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, onChange }, ref) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const { t } = useTranslation();
+  const translatedDayLabels = t('days.long', { returnObjects: true });
+  const dayLabels = Array.isArray(translatedDayLabels) ? translatedDayLabels as string[] : DAY_LABELS;
 
   const [surfaceBg, textMuted, accentPrimary] = useCSSVariable([
     '--color-surface',
@@ -52,9 +56,10 @@ const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, on
     >
       <BottomSheetView className="pb-safe-or-5">
         <View className="px-4 py-4 border-b border-border-subtle">
-          <Text className="text-lg font-semibold text-center text-text-primary">Days of Week</Text>
+          <Text className="text-lg font-semibold text-center text-text-primary">{t('medications.daysOfWeek')}</Text>
         </View>
         {DAY_LABELS.map((label, day) => {
+          const localizedLabel = dayLabels[day] ?? label;
           const selected = value.includes(day);
           return (
             <TouchableOpacity
@@ -64,11 +69,11 @@ const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, on
               onPress={() => toggle(day)}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel={label}
+              accessibilityLabel={localizedLabel}
               accessibilityState={{ selected }}
             >
               <Text className={`text-base text-text-primary ${selected ? 'font-semibold' : ''}`}>
-                {label}
+                {localizedLabel}
               </Text>
               {selected && <Icon name="checkmark" size={20} color={accentPrimary} />}
             </TouchableOpacity>

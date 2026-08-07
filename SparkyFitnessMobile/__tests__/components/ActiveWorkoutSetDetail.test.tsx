@@ -4,6 +4,12 @@ import ActiveWorkoutSetDetail from '../../src/components/ActiveWorkoutSetDetail'
 import WorkoutNotesField from '../../src/components/WorkoutNotesField';
 import type { WorkoutCardSet } from '../../src/utils/workoutSession';
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & {
+    __setTestLocale: (value: 'en' | 'pl') => void;
+  }).__setTestLocale(locale);
+}
+
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
@@ -28,6 +34,20 @@ function makeSet(overrides?: Partial<WorkoutCardSet>): WorkoutCardSet {
 }
 
 describe('ActiveWorkoutSetDetail', () => {
+  it.each([
+    ['en', 'Set notes', 'Add a note for this set…', 'Notes for set 1'],
+    ['pl', 'Notatki serii', 'Dodaj notatkę do tej serii…', 'Notatki dla serii 1'],
+  ] as const)('renders the %s locale contract', (locale, label, placeholder, accessibilityLabel) => {
+    setTestLocale(locale);
+    const { getByLabelText, getByPlaceholderText, getByText } = render(
+      <ActiveWorkoutSetDetail set={makeSet({ notes: 'literal note' })} onCommitField={jest.fn()} />,
+    );
+    expect(getByLabelText(accessibilityLabel)).toBeTruthy();
+    expect(getByPlaceholderText(placeholder)).toBeTruthy();
+    expect(getByLabelText(accessibilityLabel).props.value).toBe('literal note');
+    expect(getByText(label)).toBeTruthy();
+  });
+
   it('commits the trimmed per-set note on blur', () => {
     const onCommitField = jest.fn();
     const { getByLabelText } = render(

@@ -84,10 +84,19 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
             try {
                 val manager = GlanceAppWidgetManager(ctx)
                 val widget = CalorieWidget()
+                var failures = 0
                 manager.getGlanceIds(CalorieWidget::class.java).forEach { id ->
-                    widget.update(ctx, id)
+                    try {
+                        widget.update(ctx, id)
+                    } catch (ignored: Exception) {
+                        failures++
+                    }
                 }
-                promise.resolve(null)
+                if (failures > 0) {
+                    promise.reject("E_RELOAD_FAILED", RuntimeException("$failures calorie widget instance(s) failed to update"))
+                } else {
+                    promise.resolve(null)
+                }
             } catch (e: Exception) {
                 promise.reject("E_RELOAD_FAILED", e)
             }
@@ -101,10 +110,19 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
             try {
                 val manager = GlanceAppWidgetManager(ctx)
                 val widget = MacroWidget()
+                var failures = 0
                 manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
-                    widget.update(ctx, id)
+                    try {
+                        widget.update(ctx, id)
+                    } catch (ignored: Exception) {
+                        failures++
+                    }
                 }
-                promise.resolve(null)
+                if (failures > 0) {
+                    promise.reject("E_RELOAD_FAILED", RuntimeException("$failures macro widget instance(s) failed to update"))
+                } else {
+                    promise.resolve(null)
+                }
             } catch (e: Exception) {
                 promise.reject("E_RELOAD_FAILED", e)
             }

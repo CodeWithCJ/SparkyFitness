@@ -1,14 +1,20 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useCurrentPregnancy, usePregnancyOverview } from '../hooks/usePregnancy';
 import { useCyclePredictionData } from '../hooks/useCyclePredictionData';
-import { getPhaseDisplayName, getPhaseColor } from '../utils/cycleDisplayUtils';
+import { getPhaseColor } from '../utils/cycleDisplayUtils';
 import { formatDate } from '../utils/dateUtils';
 import { babyWeek } from '@workspace/shared';
+import {
+  getBabyComparisonLabel,
+  getCycleCardModeTitle,
+  getCycleCardPhaseLabel,
+} from '../utils/cycleCardLocalization';
 import WombScene from './wellness/pregnancy/WombScene';
 import CycleRing from './wellness/CycleRing';
 import { useWellnessTokens } from './wellness/theme/wellnessTokens';
@@ -24,24 +30,6 @@ type CycleCardNavigation = CompositeNavigationProp<
 
 interface CycleCardProps {
   navigation: CycleCardNavigation;
-}
-
-function getModeTitle(mode?: string, discreetMode?: boolean): string {
-  if (discreetMode) return 'Wellness';
-  switch (mode) {
-    case 'pregnant':
-      return 'Pregnancy Tracking';
-    case 'ttc':
-      return 'Fertility Tracking';
-    case 'postpartum':
-      return 'Postpartum Recovery';
-    case 'menopause':
-      return 'Menopause Tracking';
-    case 'standard':
-      return 'Cycle Tracking';
-    default:
-      return 'Cycle & Pregnancy';
-  }
 }
 
 export interface CycleRingContentInfo {
@@ -63,9 +51,10 @@ export const CycleCardRingContent: React.FC<{
   title: string;
   info: CycleRingContentInfo;
 }> = ({ title, info }) => {
+  const { t } = useTranslation();
   const tokens = useWellnessTokens();
   const [textAccent] = useCSSVariable(['--color-accent-primary']) as [string];
-  const phaseName = getPhaseDisplayName(info.phase, false);
+  const phaseName = getCycleCardPhaseLabel(t, info.phase, false);
   const phaseColor = getPhaseColor(info.phase, tokens);
 
   return (
@@ -82,11 +71,11 @@ export const CycleCardRingContent: React.FC<{
 
           {info.daysLate > 0 ? (
             <Text className="text-sm font-semibold text-text-primary mt-0.5">
-              Period {info.daysLate} {info.daysLate === 1 ? 'day' : 'days'} late
+              {t('cycleCard.cycle.periodLate', { count: info.daysLate })}
             </Text>
           ) : info.nextPeriodStart ? (
             <Text className="text-sm text-text-secondary mt-0.5">
-              Next period est. {formatDate(info.nextPeriodStart)}
+              {t('cycleCard.cycle.nextPeriod', { date: formatDate(info.nextPeriodStart) })}
             </Text>
           ) : null}
         </View>
@@ -101,7 +90,7 @@ export const CycleCardRingContent: React.FC<{
         fertileEndDay={info.fertileEndDay}
         ovulationDay={info.ovulationDay}
         centerLabel=""
-        centerValue={info.day > 0 ? `Day ${info.day}` : 'Active'}
+        centerValue={info.day > 0 ? t('cycleCard.cycle.day', { day: info.day }) : t('cycleCard.cycle.active')}
         centerSub=""
         size={98}
         strokeWidth={7.5}
@@ -112,6 +101,7 @@ export const CycleCardRingContent: React.FC<{
 };
 
 const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
   const { discreetMode } = useDiscreetMode();
   const tokens = useWellnessTokens();
@@ -139,7 +129,7 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
   }
 
   const isSetup = !!settings.onboarded_at && !!settings.enabled;
-  const title = getModeTitle(settings.mode, discreetMode);
+  const title = getCycleCardModeTitle(t, settings.mode, discreetMode);
   // The cycle-ring state renders its own title so the ring can span the full
   // card height; every other state keeps the shared header row.
   const showsRingLayout = !discreetMode && !isPregnant && !!cycleInfo;
@@ -150,20 +140,24 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
         className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
         onPress={() => navigation.navigate('CycleOnboarding')}
         accessibilityRole="button"
-        accessibilityLabel="Set up cycle and pregnancy tracking"
+        accessibilityLabel={
+          discreetMode
+            ? t('cycleCard.setup.discreetAccessibility')
+            : t('cycleCard.setup.accessibility')
+        }
       >
         <View className="flex-row items-center justify-between mb-2">
           <Text className="text-md font-bold text-text-secondary">{title}</Text>
           <View className="flex-row items-center">
-            <Text className="text-md text-accent-primary font-medium">Set Up</Text>
+            <Text className="text-md text-accent-primary font-medium">{t('cycleCard.setup.action')}</Text>
             <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
           </View>
         </View>
 
         <Text className="text-sm text-text-secondary mt-1">
           {discreetMode
-            ? 'Track your wellness parameters and predictions.'
-            : 'Track cycle phases, predictions, symptoms, and pregnancy milestones.'}
+            ? t('cycleCard.setup.discreetDescription')
+            : t('cycleCard.setup.description')}
         </Text>
       </Pressable>
     );
@@ -176,7 +170,7 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
       return (
         <View className="mt-1 flex-row items-center justify-between">
           <Text className="text-base font-semibold text-text-primary">
-            {activeDay ? `Day ${activeDay}` : 'Wellness Tracking Active'}
+            {activeDay ? t('cycleCard.discreet.day', { day: activeDay }) : t('cycleCard.discreet.active')}
           </Text>
         </View>
       );
@@ -191,26 +185,34 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
             {baby && <WombScene scene={baby.wombScene} size={72} />}
             <View className="flex-1">
               <Text className="text-base font-bold text-text-primary">
-                Week {ga.week}, Day {ga.day}
+                {t('cycleCard.pregnancy.weekDay', { week: ga.week, day: ga.day })}
               </Text>
               {baby && (
                 <Text className="text-sm font-semibold mt-0.5" style={{ color: tokens.phasePregnant }}>
-                  Size of {baby.comparison}
+                  {t('cycleCard.pregnancy.comparison', {
+                    comparison: getBabyComparisonLabel(t, baby.comparison),
+                  })}
                 </Text>
               )}
               <View className="flex-row items-center gap-3 mt-1.5">
                 {baby?.lengthCm != null && (
                   <Text className="text-xs text-text-secondary">
-                    <Text className="font-medium text-text-primary">{baby.lengthCm} cm</Text>
+                    <Text className="font-medium text-text-primary">
+                      {t('cycleCard.pregnancy.length', { value: baby.lengthCm })}
+                    </Text>
                   </Text>
                 )}
                 {baby?.weightG != null && (
                   <Text className="text-xs text-text-secondary">
-                    <Text className="font-medium text-text-primary">{baby.weightG} g</Text>
+                    <Text className="font-medium text-text-primary">
+                      {t('cycleCard.pregnancy.weight', { value: baby.weightG })}
+                    </Text>
                   </Text>
                 )}
                 <Text className="text-xs text-text-secondary">
-                  {ga.daysRemaining > 0 ? `${ga.daysRemaining}d to due date` : 'Due now'}
+                  {ga.daysRemaining > 0
+                    ? t('cycleCard.pregnancy.daysToDue', { count: ga.daysRemaining })
+                    : t('cycleCard.pregnancy.dueToday')}
                 </Text>
               </View>
             </View>
@@ -220,10 +222,10 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
       return (
         <View className="mt-1">
           <Text className="text-base font-semibold text-text-primary">
-            Pregnancy Tracking Active
+            {t('cycleCard.pregnancy.active')}
           </Text>
           <Text className="text-sm text-text-secondary mt-0.5">
-            Tap to view gestational progress.
+            {t('cycleCard.pregnancy.details')}
           </Text>
         </View>
       );
@@ -236,10 +238,10 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
     return (
       <View className="mt-1">
         <Text className="text-base font-semibold text-text-primary capitalize">
-          {settings.mode} mode
+           {t('cycleCard.cycle.fallbackActive')}
         </Text>
         <Text className="text-sm text-text-secondary mt-0.5">
-          Tap to view cycle tracking hub.
+           {t('cycleCard.cycle.fallbackDetails')}
         </Text>
       </View>
     );
@@ -250,14 +252,18 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
       className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
       onPress={() => navigation.navigate('CycleHub')}
       accessibilityRole="button"
-      accessibilityLabel="Open cycle and pregnancy tracking hub"
+      accessibilityLabel={
+        discreetMode
+          ? t('cycleCard.actions.openWellnessHub')
+          : t('cycleCard.actions.openHub')
+      }
     >
       {!showsRingLayout && (
         <View className="flex-row items-center justify-between mb-2">
           <Text className="text-md font-bold text-text-secondary">{title}</Text>
 
           <View className="flex-row items-center">
-            <Text className="text-md text-accent-primary font-medium">Hub</Text>
+            <Text className="text-md text-accent-primary font-medium">{t('cycleCard.actions.hub')}</Text>
             <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
           </View>
         </View>

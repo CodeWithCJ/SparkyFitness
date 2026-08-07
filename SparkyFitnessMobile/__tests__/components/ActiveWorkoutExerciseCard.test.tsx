@@ -119,6 +119,12 @@ const mockCapturePreviousSessionSets = jest.requireMock(
   '../../src/stores/activeWorkoutStore',
 ).__capturePreviousSessionSets as jest.Mock;
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & {
+    __setTestLocale: (value: 'en' | 'pl') => void;
+  }).__setTestLocale(locale);
+}
+
 /** Stats fixture with a historical best of 100kg × 5. */
 const STATS_WITH_BEST = {
   data: {
@@ -208,6 +214,104 @@ describe('ActiveWorkoutExerciseCard', () => {
     mockUseExerciseStats.mockClear();
     mockUseExerciseStats.mockReturnValue({ data: null });
     mockCapturePrBaseline.mockClear();
+  });
+
+  it.each([
+    ['en', 'Exercise', 'Add set', 'Add set to exercise', 'Collapse exercise'],
+    ['pl', 'Ćwiczenie', 'Dodaj serię', 'Dodaj serię do ćwiczenia', 'Zwiń ćwiczenie'],
+  ] as const)('renders the %s locale contract and fallback', (locale, fallback, addSet, addSetTo, collapse) => {
+    setTestLocale(locale);
+    const exercise = makeExercise({
+      exercise_snapshot: {
+        ...makeExercise().exercise_snapshot!,
+        name: null as never,
+      },
+    });
+    const { getByText, getAllByLabelText } = renderCard(true, {
+      exercise,
+      mode: 'edit',
+      onChangeCalories: jest.fn(),
+      onPressThumb: jest.fn(),
+      noteEditorOpen: true,
+    });
+    expect(getByText(fallback)).toBeTruthy();
+    expect(getByText(addSet)).toBeTruthy();
+    expect(getAllByLabelText(addSetTo)).toHaveLength(1);
+    expect(getAllByLabelText(collapse).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['en', 'Expand exercise', 'View exercise details', 'More options for exercise', 'Exercise notes', 'Calories burned for exercise', 'Edit calories burned for exercise', 'Add set to exercise'],
+    ['pl', 'Rozwiń ćwiczenie', 'Wyświetl szczegóły ćwiczenia', 'Więcej opcji dla ćwiczenia', 'Notatki do ćwiczenia', 'Kalorie spalone podczas ćwiczenia', 'Edytuj kalorie spalone podczas ćwiczenia', 'Dodaj serię do ćwiczenia'],
+  ] as const)('uses separate %s fallback context labels', (locale, expand, viewDetails, moreOptions, notes, calories, editCalories, addSet) => {
+    setTestLocale(locale);
+    const exercise = makeExercise({
+      exercise_snapshot: {
+        ...makeExercise().exercise_snapshot!,
+        name: null as never,
+      },
+    });
+
+    const collapsed = renderCard(false, { exercise });
+    expect(collapsed.getByLabelText(expand)).toBeTruthy();
+    collapsed.unmount();
+
+    const details = renderCard(true, {
+      exercise,
+      onPressThumb: jest.fn(),
+      noteEditorOpen: true,
+      onChangeCalories: jest.fn(),
+      mode: 'edit',
+    });
+    expect(details.getByLabelText(viewDetails)).toBeTruthy();
+    expect(details.getByLabelText(moreOptions)).toBeTruthy();
+    expect(details.getByLabelText(notes)).toBeTruthy();
+    expect(details.getByLabelText(editCalories)).toBeTruthy();
+    expect(details.getByLabelText(addSet)).toBeTruthy();
+    details.unmount();
+
+    const readOnly = renderCard(true, {
+      exercise: { ...exercise, notes: 'Private note' },
+      mode: 'view',
+    });
+    expect(readOnly.getByLabelText(notes)).toBeTruthy();
+    expect(readOnly.getByLabelText(calories)).toBeTruthy();
+  });
+
+  it('keeps Bench Press literal in every named context', () => {
+    const named = makeExercise();
+    const collapsed = renderCard(false, { exercise: named });
+    expect(collapsed.getByLabelText('Expand Bench Press')).toBeTruthy();
+    collapsed.unmount();
+
+    const card = renderCard(true, {
+      exercise: named,
+      onPressThumb: jest.fn(),
+      noteEditorOpen: true,
+      onChangeCalories: jest.fn(),
+      mode: 'edit',
+    });
+    expect(card.getByText('Bench Press')).toBeTruthy();
+    expect(card.getAllByLabelText('Collapse Bench Press').length).toBeGreaterThan(0);
+    expect(card.getByLabelText('View Bench Press details')).toBeTruthy();
+    expect(card.getByLabelText('More options for Bench Press')).toBeTruthy();
+    expect(card.getByLabelText('Notes for Bench Press')).toBeTruthy();
+    expect(card.getByLabelText('Edit calories burned for Bench Press')).toBeTruthy();
+    expect(card.getByLabelText('Add set to Bench Press')).toBeTruthy();
+    card.unmount();
+
+    const readOnly = renderCard(true, {
+      exercise: { ...named, notes: 'Private note' },
+      mode: 'view',
+    });
+    expect(readOnly.getByLabelText('Notes for Bench Press')).toBeTruthy();
+    expect(readOnly.getByLabelText('Calories burned for Bench Press')).toBeTruthy();
+  });
+
+  it('keeps data exercise names literal', () => {
+    const { getByText, getAllByLabelText } = renderCard(true);
+    expect(getByText('Bench Press')).toBeTruthy();
+    expect(getAllByLabelText('Collapse Bench Press').length).toBeGreaterThan(0);
   });
 
   describe('column header per modality', () => {
@@ -523,11 +627,11 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('shows read-only calories, hidden in live mode', () => {
       const view = renderCard(true, { mode: 'view' });
-      expect(view.getByText('150 Cal')).toBeTruthy();
+      expect(view.getByText('150 kcal')).toBeTruthy();
       expect(view.queryByLabelText('Edit calories burned for Bench Press')).toBeNull();
 
       const live = renderCard(true, { mode: 'live' });
-      expect(live.queryByText('150 Cal')).toBeNull();
+      expect(live.queryByText('150 kcal')).toBeNull();
     });
 
     it('skips the exercise stats fetch', () => {
@@ -541,7 +645,7 @@ describe('ActiveWorkoutExerciseCard', () => {
         completedSetIds: {},
       });
       expect(queryByText('1 sets planned')).toBeNull();
-      expect(getByText('1 sets · 600 kg')).toBeTruthy();
+      expect(getByText('1 set · 600 kg')).toBeTruthy();
     });
 
     it('drives done/upcoming row states from completedSetIds and marks rows read-only', () => {
@@ -632,7 +736,7 @@ describe('ActiveWorkoutExerciseCard', () => {
           exercise: { ...makeExercise(), editCaloriesText: '150' },
         });
 
-        expect(getByText('150 Cal')).toBeTruthy();
+        expect(getByText('150 kcal')).toBeTruthy();
         expect(queryByLabelText('Calories burned for Bench Press')).toBeNull();
 
         fireEvent.press(getByLabelText('Edit calories burned for Bench Press'));
@@ -647,7 +751,7 @@ describe('ActiveWorkoutExerciseCard', () => {
           onChangeCalories: jest.fn(),
           exercise: { ...makeExercise(), editCaloriesText: '' },
         });
-        expect(getByText('– Cal')).toBeTruthy();
+        expect(getByText('– kcal')).toBeTruthy();
       });
 
       it('is absent without an onChangeCalories handler', () => {
@@ -659,7 +763,7 @@ describe('ActiveWorkoutExerciseCard', () => {
     it('never labels a collapsed draft as planned', () => {
       const { getByText, queryByText } = renderCard(false, { mode: 'edit' });
       expect(queryByText('1 sets planned')).toBeNull();
-      expect(getByText('1 sets · 600 kg')).toBeTruthy();
+      expect(getByText('1 set · 600 kg')).toBeTruthy();
     });
 
     describe('prefill', () => {

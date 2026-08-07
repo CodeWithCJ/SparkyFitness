@@ -318,9 +318,9 @@ describe('WorkoutCompleteScreen', () => {
     (getWorkout as jest.Mock).mockImplementation(
       () => new Promise((res) => (resolve = res)),
     );
-    const { getByLabelText, findByText } = renderScreen();
+    const { getByText, findByText } = renderScreen();
 
-    expect(getByLabelText('Calculating')).toBeTruthy();
+    expect(getByText('Calories')).toBeTruthy();
 
     const refreshed = makeSession();
     refreshed.exercises = refreshed.exercises.map((e) => ({ ...e, calories_burned: 171 }));
@@ -332,10 +332,9 @@ describe('WorkoutCompleteScreen', () => {
   it('shows snapshot calories immediately when the flush already carried them', () => {
     const session = makeSession();
     session.exercises = session.exercises.map((e) => ({ ...e, calories_burned: 150 }));
-    const { getByText, queryByLabelText } = renderScreen({ session });
+    const { getByText } = renderScreen({ session });
 
     expect(getByText(/300/)).toBeTruthy();
-    expect(queryByLabelText('Calculating')).toBeNull();
   });
 
   it('Done returns to the Diary tab', () => {

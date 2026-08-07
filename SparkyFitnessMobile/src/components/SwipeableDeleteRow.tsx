@@ -3,6 +3,7 @@ import { Alert, Text, Pressable, TouchableOpacity } from 'react-native';
 import ReanimatedSwipeable, {
   type SwipeableMethods,
 } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { useTranslation } from 'react-i18next';
 
 interface SwipeableDeleteRowProps {
   /** Names the row in the confirm dialog and long-press menu. */
@@ -25,19 +26,22 @@ export const DeleteRowAction: React.FC<{
   disabled?: boolean;
   className?: string;
   accessibilityLabel?: string;
-}> = ({ onPress, disabled, className = '', accessibilityLabel }) => (
-  <TouchableOpacity
-    className={`bg-bg-danger justify-center items-center ${className}`}
-    style={{ width: DELETE_ACTION_WIDTH }}
-    onPress={onPress}
-    activeOpacity={0.7}
-    disabled={disabled}
-    accessibilityRole="button"
-    accessibilityLabel={accessibilityLabel}
-  >
-    <Text className="text-text-danger font-semibold text-sm">Delete</Text>
-  </TouchableOpacity>
-);
+}> = ({ onPress, disabled, className = '', accessibilityLabel }) => {
+  const { t } = useTranslation();
+  return (
+    <TouchableOpacity
+      className={`bg-bg-danger justify-center items-center ${className}`}
+      style={{ width: DELETE_ACTION_WIDTH }}
+      onPress={onPress}
+      activeOpacity={0.7}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      <Text className="text-text-danger font-semibold text-sm">{t('common.delete')}</Text>
+    </TouchableOpacity>
+  );
+};
 
 /**
  * Generic swipe-to-delete wrapper for list rows whose only action is removal,
@@ -51,15 +55,16 @@ const SwipeableDeleteRow: React.FC<SwipeableDeleteRowProps> = ({
   children,
 }) => {
   const swipeableRef = useRef<SwipeableMethods | null>(null);
+  const { t } = useTranslation();
 
   const handleDeletePress = () => {
     Alert.alert(
-      `Delete ${title}?`,
+      t('common.deleteConfirmation', { title }),
       undefined,
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => swipeableRef.current?.close() },
+        { text: t('common.cancel'), style: 'cancel', onPress: () => swipeableRef.current?.close() },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             swipeableRef.current?.close();
@@ -76,8 +81,8 @@ const SwipeableDeleteRow: React.FC<SwipeableDeleteRowProps> = ({
   // The menu itself is the confirmation, so Delete fires onConfirmDelete directly.
   const handleLongPress = () => {
     Alert.alert(title, undefined, [
-      { text: 'Delete', style: 'destructive', onPress: onConfirmDelete },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: onConfirmDelete },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 

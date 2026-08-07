@@ -145,9 +145,9 @@ describe('MedicationFormScreen — optional text fields', () => {
   it('sends explicit null for cleared fields so the server clears them', () => {
     const screen = renderScreen('med-1');
 
-    fireEvent.changeText(screen.getByPlaceholderText('Blood pressure'), '');
-    fireEvent.changeText(screen.getByPlaceholderText('Dr. Ipsum'), '');
-    fireEvent.changeText(screen.getByPlaceholderText('Sunny Pharmacy'), '');
+    fireEvent.changeText(screen.getByPlaceholderText('Reason'), '');
+    fireEvent.changeText(screen.getByPlaceholderText('Prescriber'), '');
+    fireEvent.changeText(screen.getByPlaceholderText('Pharmacy'), '');
     fireEvent.changeText(screen.getByDisplayValue('Take with food'), '');
 
     pressAction(screen, mockNavigation, 'Save');
@@ -169,7 +169,7 @@ describe('MedicationFormScreen — optional text fields', () => {
   it('treats whitespace-only input as cleared', () => {
     const screen = renderScreen('med-1');
 
-    fireEvent.changeText(screen.getByPlaceholderText('Blood pressure'), '   ');
+    fireEvent.changeText(screen.getByPlaceholderText('Reason'), '   ');
 
     pressAction(screen, mockNavigation, 'Save');
 
@@ -182,7 +182,7 @@ describe('MedicationFormScreen — optional text fields', () => {
   it('passes through non-empty values trimmed', () => {
     const screen = renderScreen('med-1');
 
-    fireEvent.changeText(screen.getByPlaceholderText('Blood pressure'), '  Migraines  ');
+    fireEvent.changeText(screen.getByPlaceholderText('Reason'), '  Migraines  ');
 
     pressAction(screen, mockNavigation, 'Save');
 
@@ -206,17 +206,17 @@ describe('MedicationFormScreen — optional text fields', () => {
     );
     const screen = renderScreen();
 
-    expect(screen.queryByPlaceholderText('Dr. Ipsum')).toBeNull();
+    expect(screen.queryByPlaceholderText('Prescriber')).toBeNull();
 
     fireEvent.press(screen.getByText('Details'));
 
-    expect(screen.getByPlaceholderText('Dr. Ipsum')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Prescriber')).toBeTruthy();
   });
 
   it('starts with detail fields expanded when the medication has detail content', () => {
     const screen = renderScreen('med-1');
 
-    expect(screen.getByPlaceholderText('Dr. Ipsum')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Prescriber')).toBeTruthy();
   });
 
   it('sends null for empty optional fields on create', () => {

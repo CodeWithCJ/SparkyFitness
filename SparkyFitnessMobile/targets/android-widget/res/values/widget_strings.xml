@@ -4,4 +4,17 @@
     <string name="sparky_widget_description">Daily calorie summary with quick add shortcuts</string>
     <string name="sparky_macro_widget_name">Macros</string>
     <string name="sparky_macro_widget_description">Today\'s protein, carbs, and fat with quick add shortcuts</string>
+    <string name="widget_kcal_left">%1$s kcal left</string>
+    <string name="widget_kcal_left_empty">- kcal left</string>
+    <string name="widget_grams">%1$s g</string>
+    <string name="widget_protein">Protein</string>
+    <string name="widget_carbs">Carbs</string>
+    <string name="widget_fat">Fat</string>
+    <string name="widget_search_food">Search food</string>
+    <string name="widget_scan_barcode">Scan barcode</string>
+    <string name="widget_preview_calories_left">1,650 kcal left</string>
+    <string name="widget_preview_macros_left">1,024 kcal left</string>
+    <string name="widget_preview_grams_protein">51 g</string>
+    <string name="widget_preview_grams_carbs">136 g</string>
+    <string name="widget_preview_grams_fat">32 g</string>
 </resources>

@@ -44,6 +44,26 @@ const mockFetchFoodsPage = fetchFoodsPage as jest.MockedFunction<typeof fetchFoo
 const mockFetchExercisesCount = fetchExercisesCount as jest.MockedFunction<typeof fetchExercisesCount>;
 const mockFetchWorkoutPresetsPage = fetchWorkoutPresetsPage as jest.MockedFunction<typeof fetchWorkoutPresetsPage>;
 
+const enResource = require('../../src/localization/locales/en/translation.json');
+const plResource = require('../../src/localization/locales/pl/translation.json');
+(globalThis as any).__I18N_EN = enResource;
+(globalThis as any).__I18N_PL = plResource;
+(globalThis as any).__I18N_LANG = (globalThis as any).__I18N_LANG || 'en';
+jest.mock('react-i18next', () => {
+  const actual = jest.requireActual('react-i18next');
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string) => {
+        const res = (globalThis.__I18N_LANG === 'pl' ? globalThis.__I18N_PL : globalThis.__I18N_EN) ?? {};
+        return key.split('.').reduce((acc: any, part: string) => (acc == null ? acc : acc[part]), res) ?? key;
+      },
+      i18n: null,
+      ready: true,
+    }),
+  };
+});
+
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -429,5 +449,195 @@ describe('LibraryScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('ExerciseForm', {
       mode: 'create-exercise',
     });
+  });
+});
+
+describe('LibraryScreen localization', () => {
+  beforeAll(() => {
+    (globalThis as any).__I18N_EN = enResource;
+    (globalThis as any).__I18N_PL = plResource;
+    (globalThis as any).__I18N_LANG = 'en';
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (globalThis as any).__I18N_LANG = 'en';
+    mockUseServerConnection.mockReturnValue({
+      isConnected: true,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    mockUseRecentMeals.mockReturnValue({
+      recentMeals: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+    mockUseSuggestedExercises.mockReturnValue({
+      recentExercises: [],
+      topExercises: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+  });
+
+  const navigation = {
+    navigate: jest.fn(),
+    addListener: jest.fn(() => jest.fn()),
+  } as any;
+  const route = { key: 'Library-key', name: 'Library' as const, params: undefined };
+
+  function renderLib() {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(['foods', 'count'], 0);
+    queryClient.setQueryData(['exercises', 'count'], 0);
+    queryClient.setQueryData(['workoutPresets', 'count'], 0);
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <LibraryScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('renders Library and Create in English', () => {
+    const screen = renderLib();
+    expect(screen.getByText('Library')).toBeTruthy();
+    expect(screen.getByText('Create')).toBeTruthy();
+    expect(screen.getByText('Recently Logged')).toBeTruthy();
+    expect(screen.getByText('Food')).toBeTruthy();
+    expect(screen.getByText('Meal')).toBeTruthy();
+    expect(screen.getByText('Exercise')).toBeTruthy();
+    expect(screen.getByText('Workout preset')).toBeTruthy();
+    expect(screen.getAllByText('Manual entry')).toHaveLength(2);
+    expect(screen.getByText('Group foods')).toBeTruthy();
+    expect(screen.getByText('Exercise routine')).toBeTruthy();
+  });
+
+  it('renders Library and Create in Polish', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    const screen = renderLib();
+    expect(screen.getByText('Biblioteka')).toBeTruthy();
+    expect(screen.getByText('Utwórz')).toBeTruthy();
+    expect(screen.getByText('Ostatnio zapisane')).toBeTruthy();
+    expect(screen.getByText('Produkt')).toBeTruthy();
+    expect(screen.getByText('Posiłek')).toBeTruthy();
+    expect(screen.getByText('Ćwiczenie')).toBeTruthy();
+    expect(screen.getByText('Szablon treningu')).toBeTruthy();
+    expect(screen.getAllByText('Ręczne wprowadzanie')).toHaveLength(2);
+    expect(screen.getByText('Grupuj produkty')).toBeTruthy();
+    expect(screen.getByText('Plan treningowy')).toBeTruthy();
+  });
+
+  it('renders loading state for recent items', () => {
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderLib();
+    expect(screen.getByText('Loading recent items...')).toBeTruthy();
+  });
+
+  it('renders the Polish loading state for recent items', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderLib();
+    expect(screen.getByText('Ładowanie ostatnich pozycji...')).toBeTruthy();
+  });
+
+  it('renders recent item error and retries recent queries', () => {
+    const refetchFoods = jest.fn();
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: false,
+      isError: true,
+      error: null,
+      refetch: refetchFoods,
+    });
+
+    const screen = renderLib();
+    expect(screen.getByText('Failed to load recent items.')).toBeTruthy();
+    fireEvent.press(screen.getByText('Retry'));
+    expect(refetchFoods).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the Polish recent item error and retry action', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    mockUseFoods.mockReturnValue({
+      recentFoods: [],
+      topFoods: [],
+      isLoading: false,
+      isError: true,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderLib();
+    expect(screen.getByText('Nie udało się załadować ostatnich pozycji.')).toBeTruthy();
+    expect(screen.getByText('Spróbuj ponownie')).toBeTruthy();
+  });
+
+  it('renders the empty recent state with title and subtitle', () => {
+    const screen = renderLib();
+    expect(screen.getByText('No recent items yet')).toBeTruthy();
+    expect(screen.getByText('Foods, meals, and exercises you log will appear here for quick access.')).toBeTruthy();
+    expect(screen.getByText('Recently Logged')).toBeTruthy();
+  });
+
+  it('renders the Polish empty recent state with title and subtitle', () => {
+    (globalThis as any).__I18N_LANG = 'pl';
+    const screen = renderLib();
+    expect(screen.getByText('Brak ostatnich pozycji')).toBeTruthy();
+    expect(screen.getByText('Produkty, posiłki i ćwiczenia, które zapiszesz, pojawią się tutaj, aby zapewnić szybki dostęp.')).toBeTruthy();
+    expect(screen.getByText('Ostatnio zapisane')).toBeTruthy();
+  });
+
+  it('keeps the main library loading state separate from recent loading', () => {
+    mockUseServerConnection.mockReturnValue({
+      isConnected: false,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    const screen = renderLib();
+    expect(screen.getByText('Loading library...')).toBeTruthy();
+    expect(screen.queryByText('Loading recent items...')).toBeNull();
+
+    (globalThis as any).__I18N_LANG = 'pl';
+    screen.rerender(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <LibraryScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText('Ładowanie biblioteki...')).toBeTruthy();
   });
 });

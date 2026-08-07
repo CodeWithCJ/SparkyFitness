@@ -72,7 +72,7 @@ describe('CycleInsightsView', () => {
     const { getByText, getByTestId } = renderComponent();
 
     expect(getByText('Cycle Summary')).toBeTruthy();
-    expect(getByText('Patterns to Watch')).toBeTruthy();
+    expect(getByText('Clinical Health Alerts')).toBeTruthy();
     expect(getByText('Potential irregular cycle pattern detected.')).toBeTruthy();
     expect(getByText('Symptom Forecast')).toBeTruthy();
     expect(getByText('Cramps')).toBeTruthy();

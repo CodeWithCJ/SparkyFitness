@@ -16,15 +16,11 @@ import type { Meal, MealFood } from '../types/meals';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { useTranslation } from 'react-i18next';
 
 type MealDetailScreenProps = RootStackScreenProps<'MealDetail'>;
 
 type ViewMode = 'perServing' | 'total';
-
-const VIEW_MODE_SEGMENTS: Segment<ViewMode>[] = [
-  { key: 'perServing', label: 'Per serving' },
-  { key: 'total', label: 'Total' },
-];
 
 type MealFoodNumericField = keyof Pick<
   MealFood,
@@ -99,6 +95,11 @@ function buildMealDisplayValues(
 }
 
 const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
+  const viewModeSegments: Segment<ViewMode>[] = [
+    { key: 'perServing', label: t('mealUi.perServing') },
+    { key: 'total', label: t('mealUi.total') },
+  ];
   const { mealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -127,7 +128,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
     onSuccess: (updated) => {
       Toast.show({
         type: 'success',
-        text1: updated.is_public ? 'Meal shared publicly' : 'Meal made private',
+        text1: updated.is_public ? t('foodMeals.sharePublic') : t('foodMeals.makePrivate'),
       });
     },
   });
@@ -137,12 +138,12 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
     const nextIsPublic = !meal.is_public;
     if (nextIsPublic) {
       Alert.alert(
-        'Make public?',
-        'This meal and all of its ingredient foods will become visible to all users on this server.',
+         t('foodMeals.makePublic'),
+         t('mealUi.makePublicMessage'),
         [
-          { text: 'Cancel', style: 'cancel' },
+           { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Make Public',
+             text: t('foodMeals.makePublic'),
             onPress: () => updateMeal({ is_public: true }),
           },
         ]
@@ -150,7 +151,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
     } else {
       updateMeal({ is_public: false });
     }
-  }, [meal, updateMeal]);
+  }, [meal, updateMeal, t]);
 
   // Favorites: a saved meal can be starred from its detail screen, so the
   // library is no longer edit-only via search. Access is verified server-side
@@ -195,8 +196,8 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
             disabled: isFavoritePending,
             onPress: handleToggleFavorite,
             accessibilityLabel: isFavorite
-              ? 'Remove from favorites'
-              : 'Add to favorites',
+               ? t('foodMeals.removeFavorite')
+               : t('foodMeals.addFavorite'),
             identifier: 'meal-detail-favorite',
           } as const,
         ]
@@ -211,12 +212,12 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
             useIoniconOnIOS: !isPublic,
             disabled: isSharePending,
             onPress: handleToggleShare,
-            accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+             accessibilityLabel: isPublic ? t('foodMeals.makePrivate') : t('foodMeals.sharePublic'),
             identifier: 'meal-detail-share',
           } as const,
           {
             kind: 'text',
-            label: 'Edit',
+             label: t('common.edit'),
             role: 'secondary',
             onPress: () =>
               navigation.navigate('MealAdd', {
@@ -224,7 +225,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                 mealId: meal!.id,
                 initialMeal: meal,
               }),
-            accessibilityLabel: 'Edit meal',
+             accessibilityLabel: t('mealUi.editMeal'),
             identifier: 'meal-detail-edit',
           } as const,
         ]
@@ -243,10 +244,10 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view meal details."
+           title={t('foodMealScreens.noServer')}
+           subtitle={t('mealUi.noServerDetails')}
           action={{
-            label: 'Go to Settings',
+             label: t('common.goToSettings'),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
             variant: 'primary',
           }}
@@ -255,7 +256,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
     }
 
     if ((isLoading || isConnectionLoading) && !meal) {
-      return <StatusView loading title="Loading meal..." />;
+       return <StatusView loading title={t('foodMeals.loadingMeal')} />;
     }
 
     if (isError || !meal || !displayValues) {
@@ -264,9 +265,9 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title="Failed to load meal"
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => void refetch(), variant: 'primary' }}
+           title={t('foodMeals.failedToLoadMeal')}
+           subtitle={t('batch.connectionRetry')}
+           action={{ label: t('common.retry'), onPress: () => void refetch(), variant: 'primary' }}
         />
       );
     }
@@ -282,14 +283,14 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
       >
         <View className="gap-2">
           <SegmentedControl
-            segments={VIEW_MODE_SEGMENTS}
+            segments={viewModeSegments}
             activeKey={viewMode}
             onSelect={setViewMode}
           />
           <Text className="text-text-muted text-xs text-center">
-            Makes {meal.total_servings || 1}{' '}
+              {t('mealUi.makes')} {meal.total_servings || 1}{' '}
             {(meal.total_servings || 1) === 1 ? 'serving' : 'servings'} ·{' '}
-            {foodCount} {foodCount === 1 ? 'ingredient' : 'ingredients'}
+             {foodCount} {foodCount === 1 ? t('foodMealScreens.serving') : t('foodMealScreens.servings')}
           </Text>
         </View>
 
@@ -302,9 +303,9 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">
           <View className="flex-row items-center mb-3">
-            <Text className="text-base font-bold text-text-secondary flex-1">Foods in Meal</Text>
+             <Text className="text-base font-bold text-text-secondary flex-1">{t('foodMealScreens.foodsInMeal')}</Text>
             <Text className="text-xs text-text-muted font-medium">
-              {meal.foods.length} {meal.foods.length === 1 ? 'item' : 'items'}
+               {meal.foods.length} {meal.foods.length === 1 ? t('mealLibrary.item_one') : t('mealLibrary.item_other')}
             </Text>
           </View>
           {meal.foods.map((food, index) => {
@@ -328,7 +329,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                     }`}
                     numberOfLines={1}
                   >
-                    {isLinkedMeal ? food.child_meal_name || food.food_name : food.food_name || 'Food'}
+                     {isLinkedMeal ? food.child_meal_name || food.food_name : food.food_name || t('foodMealScreens.foods')}
                     {food.brand ? (
                       <Text className="text-text-secondary font-normal">
                         {' · '}
@@ -339,16 +340,16 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                   {isLinkedMeal ? (
                     <View className="flex-row items-center gap-1 mt-1">
                       <Icon name="link" size={12} color={textMuted} />
-                      <Text className="text-text-muted text-xs font-medium">Linked meal</Text>
+                     <Text className="text-text-muted text-xs font-medium">{t('foodMealScreens.linkedMeal')}</Text>
                     </View>
                   ) : null}
                   <Text className="text-text-muted text-sm mt-1">
-                    {protein}g protein{' · '}{carbs}g carbs{' · '}{fat}g fat
+                     {protein}g {t('foodMealScreens.protein')}{' · '}{carbs}g {t('foodMealScreens.carbs')}{' · '}{fat}g {t('foodMealScreens.fat')}
                   </Text>
                 </View>
                 <View className="items-end">
                   <Text className="text-text-primary text-base font-semibold">
-                    {calories} cal
+                     {calories} {t('foodSearchUi.cal')}
                   </Text>
                   <Text className="text-text-muted text-sm mt-1">
                     {food.quantity} {food.unit}
@@ -365,7 +366,9 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                   onPress={() =>
                     navigation.push('MealDetail', { mealId: food.child_meal_id! })
                   }
-                  accessibilityLabel={`View linked meal ${food.child_meal_name || ''}`}
+                  accessibilityLabel={t('mealUi.linkedMeal', {
+                    name: food.child_meal_name || t('foodMealScreens.meals'),
+                  })}
                   accessibilityRole="button"
                 >
                   {row}
@@ -381,7 +384,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           variant="primary"
           onPress={() => navigation.navigate('FoodEntryAdd', { item: mealToFoodInfo(meal) })}
         >
-          <Text className="text-white text-base font-semibold">Log Meal</Text>
+           <Text className="text-white text-base font-semibold">{t('foodMealScreens.logMeal')}</Text>
         </Button>
 
         {canManageMeal ? (
@@ -392,7 +395,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
             }}
             disabled={isDeletePending}
           >
-            {isDeletePending ? 'Deleting...' : 'Delete Meal'}
+             {isDeletePending ? t('foodMealScreens.deleting') : t('foodMealScreens.deleteMeal')}
           </Button>
         ) : null}
       </ScrollView>

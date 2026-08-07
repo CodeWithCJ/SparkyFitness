@@ -238,7 +238,7 @@ describe('WorkoutDetailScreen', () => {
     const screen = renderScreen(buildSession());
 
     expect(screen.getByText('Bench Press')).toBeTruthy();
-    expect(screen.getByText('1 sets · 600 kg')).toBeTruthy();
+    expect(screen.getByText('1 set · 600 kg')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Expand Bench Press'));
 
@@ -268,8 +268,8 @@ describe('WorkoutDetailScreen', () => {
     // One static checkmark for the completed set; the pending set renders
     // an empty slot, and neither exposes complete/un-complete controls.
     expect(screen.getAllByTestId('icon-checkmark')).toHaveLength(1);
-    expect(screen.queryByLabelText('Un-complete set 1')).toBeNull();
-    expect(screen.queryByLabelText('Mark set 2 complete')).toBeNull();
+    expect(screen.queryByLabelText('Mark set 1 as incomplete')).toBeNull();
+    expect(screen.queryByLabelText('Complete set 2')).toBeNull();
   });
 
   it('opens the metric menu from the column header and updates the shared store', () => {
@@ -408,7 +408,7 @@ describe('WorkoutDetailScreen', () => {
 
       // Tap the set number → set-type menu → Warmup.
       fireEvent.press(screen.getByLabelText('Change type for set 1'));
-      fireEvent.press(screen.getByLabelText('Warmup'));
+      fireEvent.press(screen.getByLabelText('Warm-up'));
 
       // Inputs are always mounted in edit mode; type an RPE and blur to snap
       // it to 0.5 steps.
@@ -439,7 +439,7 @@ describe('WorkoutDetailScreen', () => {
 
       // The completed set shows a green check that now toggles completion.
       expect(screen.getByTestId('completed-badge')).toBeTruthy();
-      expect(screen.getByLabelText('Un-complete set 1')).toBeTruthy();
+      expect(screen.getByLabelText('Mark set 1 as incomplete')).toBeTruthy();
       // The value cells stay editable (always-mounted inputs).
       expect(screen.getByLabelText('Weight')).toBeTruthy();
       expect(screen.getByLabelText('RPE')).toBeTruthy();
@@ -458,7 +458,7 @@ describe('WorkoutDetailScreen', () => {
       );
 
       fireEvent.press(screen.getByLabelText('Edit workout'));
-      fireEvent.press(screen.getByLabelText('Un-complete set 1'));
+      fireEvent.press(screen.getByLabelText('Mark set 1 as incomplete'));
       fireEvent.press(screen.getByLabelText('Save'));
 
       await waitFor(() => expect(mockUpdateSession).toHaveBeenCalled());

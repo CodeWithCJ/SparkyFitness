@@ -19,10 +19,12 @@ import {
 } from '../utils/shareStatus';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodItem } from '../types/foods';
+import { useTranslation } from 'react-i18next';
 
 type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
 
 const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -72,6 +74,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
             noun: 'foods',
             filter: ownershipFilter,
             onReset: () => setOwnershipFilter('all'),
+            t,
           })}
         />
       );
@@ -79,10 +82,10 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     return (
       <StatusView
         inline
-        title={searchText.trim().length > 0 ? 'No matching foods found' : 'No foods found'}
+        title={searchText.trim().length > 0 ? t('foodMealScreens.noMatchingFoods') : t('foodMealScreens.noFoods')}
         subtitle={searchText.trim().length > 0
-          ? 'Try a different search term to find saved foods.'
-          : 'Foods you save or log will appear here.'}
+          ? t('foodMealScreens.tryDifferentFoodSearch')
+          : t('foodMealScreens.foodsAppearHere')}
       />
     );
   };
@@ -94,15 +97,15 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your food library."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+           title={t('foodMealScreens.noServer')}
+           subtitle={t('foodMealScreens.foodLibrarySubtitle')}
+           action={{ label: t('dashboard.goToSettings'), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading foods..." />;
+      return <StatusView loading title={t('foodMealScreens.loadingFoods')} />;
     }
 
     if (isError) {
@@ -111,9 +114,9 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title="Failed to load foods"
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+           title={t('foodMealScreens.failedFoods')}
+           subtitle={t('foodMealScreens.connectionRetry')}
+           action={{ label: t('common.retry'), onPress: () => refetch(), variant: 'primary' }}
         />
       );
     }
@@ -135,7 +138,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more foods."
+             errorMessage={t('foodMealScreens.failedMoreFoods')}
             onRetry={loadMore}
           />
         }
@@ -155,13 +158,14 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   };
 
   const header = useScreenHeader({
-    title: 'Foods',
+    title: t('foodMealScreens.foods'),
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
       noun: 'foods',
       identifier: 'foods-library-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,
+      t,
     }),
   });
 
@@ -172,7 +176,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search foods..."
+           placeholder={t('foodMealScreens.searchFoodsPlaceholder')}
           isSearching={isSearching}
         />
       ) : null}

@@ -569,6 +569,7 @@ export const seedRichWorkout = async (): Promise<SeedResult> => {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         exerciseType: 79, // Walking — see EXERCISE_TYPES above
+        // i18n-audit-ignore-next-line hardcoded-ui-text -- Health Connect fixture title, not app UI
         title: 'Seeded Rich Walk',
         exerciseRoute: { route },
         metadata: clientRecordId('session'),
@@ -719,6 +720,7 @@ export const seedRichStrengthWorkout = async (): Promise<SeedResult> => {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         exerciseType: 70, // Strength Training
+        // i18n-audit-ignore-next-line hardcoded-ui-text -- Health Connect fixture title, not app UI
         title: 'Seeded Rich Strength Workout',
         metadata: clientRecordId('session'),
       },

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import type { FoodItem } from '../types/foods';
 import { formatServingUnit } from '../utils/foodDetails';
 import { useProfile } from '../hooks';
@@ -8,6 +9,7 @@ import { deriveShareStatus } from '../utils/shareStatus';
 import ShareStatusBadge from './ShareStatusBadge';
 import Icon from './Icon';
 import VerifiedBadge from './VerifiedBadge';
+import { formatLocalizedNumber } from '../localization';
 
 interface FoodLibraryRowProps {
   food: FoodItem;
@@ -24,6 +26,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
   showDivider = false,
   isFavorite = false,
 }) => {
+  const { t } = useTranslation();
   const { profile } = useProfile();
   const status = deriveShareStatus(food.user_id, food.shared_with_public, profile?.id);
   // Gold, not accent: a passive indicator, not a tap target. See MealLibraryRow.
@@ -53,7 +56,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
                 size={16}
                 color={goldColor}
                 style={{ marginTop: -1 }}
-                accessibilityLabel="Favorite"
+                accessibilityLabel={t('common.favorite')}
               />
             )}
           </View>
@@ -65,10 +68,11 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
-            {food.default_variant.calories} cal
+            {formatLocalizedNumber(food.default_variant.calories)} {t('units.calShort')}
           </Text>
           <Text className="text-text-secondary text-xs">
-            {food.default_variant.serving_size} {formatServingUnit(food.default_variant.serving_unit)}
+            {formatLocalizedNumber(food.default_variant.serving_size, { maximumFractionDigits: 20 })}{' '}
+            {formatServingUnit(food.default_variant.serving_unit)}
           </Text>
         </View>
       </View>

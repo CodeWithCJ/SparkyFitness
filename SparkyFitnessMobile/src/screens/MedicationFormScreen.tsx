@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Alert, TouchableOpacity } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,7 +8,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useMedicationDetail, useCreateMedication, useUpdateMedication } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
 import Switch from '../components/ui/Switch';
@@ -67,6 +68,7 @@ function baseFromMed(
 }
 
 const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navigation }) => {
+  const { t } = useTranslation();
   const medicationId = route.params?.medicationId;
   const isEditing = !!medicationId;
   const insets = useSafeAreaInsets();
@@ -98,7 +100,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     if (createMedication.isPending || updateMedication.isPending) return;
 
     if (!form.name.trim()) {
-      Alert.alert('Required', 'Please enter a medication name.');
+       Alert.alert(t('medications.required'), t('medications.nameRequired'));
       return;
     }
 
@@ -106,7 +108,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     const doseNum = form.doseAmount ? parseFloat(form.doseAmount) : null;
 
     if ((form.strengthValue && !Number.isFinite(strengthNum)) || (form.doseAmount && !Number.isFinite(doseNum))) {
-      Alert.alert('Invalid number', 'Please enter valid numeric values for strength and dose.');
+       Alert.alert(t('medications.invalidNumber'), t('medications.invalidStrengthDose'));
       return;
     }
 
@@ -128,7 +130,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
         { id: medicationId, body: { ...base, is_active: form.isActive } },
         {
           onSuccess: () => navigation.goBack(),
-          onError: (error) => Alert.alert('Error', `Failed to update medication: ${error.message}`),
+           onError: (error) => Alert.alert(t('common.error'), t('medications.updateFailed', { message: error.message })),
         },
       );
     } else {
@@ -138,21 +140,19 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
           onSuccess: (med) => {
             navigation.replace('MedicationDetail', { medicationId: med.id });
           },
-          onError: (error) => Alert.alert('Error', `Failed to create medication: ${error.message}`),
+           onError: (error) => Alert.alert(t('common.error'), t('medications.createFailed', { message: error.message })),
         },
       );
     }
-  }, [form, isEditing, medicationId, createMedication, updateMedication, navigation]);
+  }, [form, isEditing, medicationId, createMedication, updateMedication, navigation, t]);
 
   const header = useScreenHeader({
-    title: isEditing ? 'Edit Medication' : 'New Medication',
-    nativeTitle: isEditing ? 'Edit Medication' : 'New Medication',
+    title: isEditing ? t('medications.edit') : t('medications.new'),
+    nativeTitle: isEditing ? t('medications.edit') : t('medications.new'),
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
       busy: createMedication.isPending || updateMedication.isPending,
-      busyLabel: SAVING_LABEL,
       onPress: handleSave,
     },
   });
@@ -174,28 +174,28 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
       >
         <View className="gap-4">
           <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Name *</Text>
-            <FormInput
-              placeholder="Ipsumol"
-              value={form.name}
+             <Text className="text-text-secondary text-sm font-medium">{t('medications.nameRequiredLabel')}</Text>
+              <FormInput
+                placeholder={t('medications.namePlaceholder')}
+                value={form.name}
               onChangeText={(v) => updateField('name', v)}
               autoCapitalize="words"
             />
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Type</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('medications.type')}</Text>
             <BottomSheetPicker
               value={form.typeId}
               options={typeOptions}
               onSelect={(val) => updateField('typeId', val)}
-              title="Medication Type"
+               title={t('medications.typePicker')}
             />
           </View>
 
           <View className="flex-row gap-4">
             <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Strength</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('medications.strength')}</Text>
               <FormInput
                 placeholder="10"
                 value={form.strengthValue}
@@ -204,9 +204,9 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
               />
             </View>
             <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Unit</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('medications.unit')}</Text>
               <FormInput
-                placeholder="mg"
+                 placeholder={t('medications.unit')}
                 value={form.strengthUnit}
                 onChangeText={(v) => updateField('strengthUnit', v)}
               />
@@ -215,7 +215,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
 
           <View className="flex-row gap-4">
             <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Dose</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('medications.dose')}</Text>
               <FormInput
                 placeholder="1"
                 value={form.doseAmount}
@@ -224,9 +224,9 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
               />
             </View>
             <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Unit</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('medications.unit')}</Text>
               <FormInput
-                placeholder="tablet"
+                 placeholder={t('medications.type')}
                 value={form.doseUnit}
                 onChangeText={(v) => updateField('doseUnit', v)}
               />
@@ -242,7 +242,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
           className="flex-row items-center gap-1 py-2 self-start"
         >
           <Text className="text-text-primary font-medium" style={{ fontSize: 16 }}>
-            Details
+             {t('medications.details')}
           </Text>
           <Icon name={showDetails ? 'chevron-down' : 'chevron-forward'} size={12} color={textMuted} />
         </TouchableOpacity>
@@ -250,34 +250,34 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
         {showDetails && (
           <View className="gap-4">
             <View className="gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Reason</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('medications.reason')}</Text>
               <FormInput
-                placeholder="Blood pressure"
+                 placeholder={t('medications.reason')}
                 value={form.reason}
                 onChangeText={(v) => updateField('reason', v)}
               />
             </View>
 
             <View className="gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Prescriber</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('medications.prescriber')}</Text>
               <FormInput
-                placeholder="Dr. Ipsum"
+                 placeholder={t('medications.prescriber')}
                 value={form.prescriber}
                 onChangeText={(v) => updateField('prescriber', v)}
               />
             </View>
 
             <View className="gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Pharmacy</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('medications.pharmacy')}</Text>
               <FormInput
-                placeholder="Sunny Pharmacy"
+                 placeholder={t('medications.pharmacy')}
                 value={form.pharmacy}
                 onChangeText={(v) => updateField('pharmacy', v)}
               />
             </View>
 
             <View className="gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Notes</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('medications.notes')}</Text>
               <FormInput
                 value={form.notes}
                 onChangeText={(v) => updateField('notes', v)}
@@ -291,7 +291,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
         )}
 
         <View className="flex-row justify-between items-center">
-          <Text className="text-base text-text-primary">Active</Text>
+           <Text className="text-base text-text-primary">{t('medications.active')}</Text>
           <Switch
             value={form.isActive}
             onValueChange={(v) => updateField('isActive', v)}

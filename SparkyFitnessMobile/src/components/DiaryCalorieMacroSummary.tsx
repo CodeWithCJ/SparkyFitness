@@ -12,6 +12,8 @@ import { useCSSVariable } from 'uniwind';
 
 import Icon from './Icon';
 import NutrientPill from './NutrientPill';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { NUTRIENT_META } from '../constants/nutrients';
@@ -28,6 +30,7 @@ interface CalorieBarProps {
 }
 
 const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progressPercent }) => {
+  const { t } = useTranslation();
   const [barWidth, setBarWidth] = useState(0);
   const [trackColor, fillColor] = useCSSVariable([
     '--color-progress-track',
@@ -74,20 +77,20 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
     <View>
       <View className="flex-row justify-between items-baseline mb-3">
         <Text className="text-lg font-bold text-text-primary">
-          {Math.round(eaten).toLocaleString()}
+          {formatLocalizedNumber(Math.round(eaten))}
           {hasGoal && (
             <Text className="text-lg font-semibold text-text-muted">
-              {` / ${Math.round(goal).toLocaleString()}`}
+              {` / ${formatLocalizedNumber(Math.round(goal))}`}
             </Text>
           )}
-          <Text className="text-sm font-normal text-text-muted"> kcal</Text>
+          <Text className="text-sm font-normal text-text-muted"> {t('units.kcalShort')}</Text>
         </Text>
         {hasGoal && (
           <Text className="text-sm font-bold text-text-primary">
-            {Math.abs(Math.round(remaining)).toLocaleString()}
+            {formatLocalizedNumber(Math.abs(Math.round(remaining)))}
             <Text className="text-sm font-normal text-text-muted">
               {' '}
-              {remaining >= 0 ? 'remaining' : 'over'}
+              {remaining >= 0 ? t('commonDates.remaining') : t('commonDates.over')}
             </Text>
           </Text>
         )}
@@ -141,6 +144,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   const diarySummaryVisible = useAppPreferencesStore((s) => s.diarySummaryVisible);
   const diarySummaryExpanded = useAppPreferencesStore((s) => s.diarySummaryExpanded);
   const setDiarySummaryExpanded = useAppPreferencesStore((s) => s.setDiarySummaryExpanded);
+  const { t } = useTranslation();
   const textSecondary = useCSSVariable('--color-text-secondary') as string;
 
   const rotation = useSharedValue(diarySummaryExpanded ? 0 : -90);
@@ -164,22 +168,42 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
 
   const resolveCoreMacro = (key: (typeof CORE_MACROS)[number]) => {
     if (key === 'protein') {
-      return { label: 'Protein', consumed: summary.protein.consumed, goal: summary.protein.goal || undefined };
+      return { label: t('diarySummary.protein'), consumed: summary.protein.consumed, goal: summary.protein.goal || undefined };
     }
     if (key === 'carbs') {
       const consumed = showNetCarbs
         ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
         : summary.carbs.consumed;
       return {
-        label: showNetCarbs ? 'Net Carbs' : 'Carbs',
+        label: showNetCarbs ? t('diarySummary.netCarbs') : t('diarySummary.carbs'),
         consumed,
         goal: summary.carbs.goal || undefined,
       };
     }
     if (key === 'fat') {
-      return { label: 'Fat', consumed: summary.fat.consumed, goal: summary.fat.goal || undefined };
+      return { label: t('diarySummary.fat'), consumed: summary.fat.consumed, goal: summary.fat.goal || undefined };
     }
-    return { label: 'Fiber', consumed: summary.fiber.consumed, goal: summary.fiber.goal || undefined };
+    return { label: t('diarySummary.fiber'), consumed: summary.fiber.consumed, goal: summary.fiber.goal || undefined };
+  };
+
+  const resolveBuiltInLabel = (name: string): string | undefined => {
+    switch (name) {
+      case 'calories': return t('nutrients.calories');
+      case 'saturated_fat': return t('nutrients.saturated_fat');
+      case 'polyunsaturated_fat': return t('nutrients.polyunsaturated_fat');
+      case 'monounsaturated_fat': return t('nutrients.monounsaturated_fat');
+      case 'trans_fat': return t('nutrients.trans_fat');
+      case 'cholesterol': return t('nutrients.cholesterol');
+      case 'sodium': return t('nutrients.sodium');
+      case 'potassium': return t('nutrients.potassium');
+      case 'sugars': return t('nutrients.sugars');
+      case 'vitamin_a': return t('nutrients.vitamin_a');
+      case 'vitamin_c': return t('nutrients.vitamin_c');
+      case 'calcium': return t('nutrients.calcium');
+      case 'iron': return t('nutrients.iron');
+      case 'glycemic_index': return t('nutrients.glycemic_index');
+      default: return undefined;
+    }
   };
 
   return (
@@ -189,10 +213,12 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityState={{ expanded: diarySummaryExpanded }}
-        accessibilityHint={diarySummaryExpanded ? 'Collapse this section' : 'Expand this section'}
+         accessibilityHint={
+           diarySummaryExpanded ? t('common.collapseSection') : t('common.expandSection')
+         }
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-md font-bold text-text-secondary">Summary</Text>
+          <Text className="text-md font-bold text-text-secondary">{t('diarySummary.title')}</Text>
           <Animated.View style={chevronStyle}>
             <Icon name="chevron-down" size={20} color={textSecondary} />
           </Animated.View>
@@ -215,7 +241,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
           {customNutrientKeys.map((name) => {
             const customDef = customNutrients.find((cn) => cn.name === name);
             const meta = NUTRIENT_META[name];
-            const label = meta?.label ?? customDef?.name ?? name;
+            const label = resolveBuiltInLabel(name) ?? customDef?.name ?? name;
             const unit = meta?.unit ?? customDef?.unit ?? 'g';
             const consumed = summary.customNutrientTotals[name] ?? 0;
             const nutrientGoal = summary.customNutrientGoals[name] || undefined;

@@ -15,6 +15,12 @@ import ActiveWorkoutSetRow, {
 import type { AssumedSetValues, WorkoutCardSet } from '../../src/utils/workoutSession';
 import type { ActiveWorkoutMetricColumn } from '../../src/stores/appPreferencesStore';
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & {
+    __setTestLocale: (value: 'en' | 'pl') => void;
+  }).__setTestLocale(locale);
+}
+
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
@@ -150,6 +156,23 @@ describe('parseRpeInput', () => {
 });
 
 describe('ActiveWorkoutSetRow', () => {
+  it.each([
+    ['en', 'Weight', 'Reps', 'Duration', 'Log set 1', 'Change type for set 1', 'Delete set 1'],
+    ['pl', 'Ciężar', 'Powtórzenia', 'Czas trwania', 'Zapisz serię 1', 'Zmień typ serii 1', 'Usuń serię 1'],
+  ] as const)('renders the %s locale contract and keeps callbacks', (locale, weight, reps, duration, log, changeType, deleteLabel) => {
+    setTestLocale(locale);
+    const { getByLabelText } = renderRow({ state: 'current' });
+    const durationRow = renderRow({ state: 'current', modality: 'duration' });
+    expect(getByLabelText(weight)).toBeTruthy();
+    expect(getByLabelText(reps)).toBeTruthy();
+    expect(durationRow.getByLabelText(duration)).toBeTruthy();
+    expect(getByLabelText(log)).toBeTruthy();
+    const editRow = renderRow({ mode: 'edit', state: 'upcoming', enableSetType: true });
+    fireEvent.press(editRow.getByLabelText(changeType));
+    expect(editRow.callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.anything());
+    expect(getByLabelText(deleteLabel)).toBeTruthy();
+  });
+
   beforeEach(() => {
     (useCSSVariable as jest.Mock).mockImplementation((vars: string | string[]) =>
       Array.isArray(vars)
@@ -165,13 +188,13 @@ describe('ActiveWorkoutSetRow', () => {
       // The completion check sits outside the dimmed content so its green
       // matches the card/rail badges instead of fading with the row.
       expect(
-        StyleSheet.flatten(getByLabelText('Un-complete set 1').props.style)?.opacity,
+        StyleSheet.flatten(getByLabelText('Mark set 1 as incomplete').props.style)?.opacity,
       ).toBeUndefined();
     });
 
     it('un-completes on check press', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'done' });
-      fireEvent.press(getByLabelText('Un-complete set 1'));
+      fireEvent.press(getByLabelText('Mark set 1 as incomplete'));
       expect(callbacks.onUncomplete).toHaveBeenCalledWith('101');
     });
 
@@ -461,7 +484,7 @@ describe('ActiveWorkoutSetRow', () => {
     it('renders a static checkmark on done rows with no un-complete control', () => {
       const { getByTestId, queryByLabelText } = renderRow({ state: 'done', readOnly: true });
       expect(getByTestId('icon-checkmark')).toBeTruthy();
-      expect(queryByLabelText('Un-complete set 1')).toBeNull();
+      expect(queryByLabelText('Mark set 1 as incomplete')).toBeNull();
     });
 
     it('does not dim done rows', () => {
@@ -475,7 +498,7 @@ describe('ActiveWorkoutSetRow', () => {
       expect(done.queryByLabelText('Delete set 1')).toBeNull();
 
       const upcoming = renderRow({ state: 'upcoming', readOnly: true });
-      expect(upcoming.queryByLabelText('Mark set 1 complete')).toBeNull();
+      expect(upcoming.queryByLabelText('Complete set 1')).toBeNull();
       // View mode has no logging, so upcoming rows keep a blank last column.
       expect(upcoming.queryByLabelText('Log set 1')).toBeNull();
     });
@@ -784,7 +807,7 @@ describe('ActiveWorkoutSetRow', () => {
           enableToggle: true,
           set: editSet(),
         });
-        fireEvent.press(getByLabelText('Mark set 1 complete'));
+        fireEvent.press(getByLabelText('Complete set 1'));
         expect(callbacks.onToggleComplete).toHaveBeenCalledWith('101');
       });
 
@@ -992,8 +1015,8 @@ describe('ActiveWorkoutSetRow', () => {
           set: editSet(),
         });
         expect(getByTestId('completed-badge')).toBeTruthy();
-        expect(queryByLabelText('Un-complete set 1')).toBeNull();
-        expect(queryByLabelText('Mark set 1 complete')).toBeNull();
+        expect(queryByLabelText('Mark set 1 as incomplete')).toBeNull();
+        expect(queryByLabelText('Complete set 1')).toBeNull();
       });
 
       it('un-completes a completed set via the toggle when enabled', () => {
@@ -1004,7 +1027,7 @@ describe('ActiveWorkoutSetRow', () => {
           enableToggle: true,
           set: editSet(),
         });
-        fireEvent.press(getByLabelText('Un-complete set 1'));
+        fireEvent.press(getByLabelText('Mark set 1 as incomplete'));
         expect(callbacks.onToggleComplete).toHaveBeenCalledWith('101');
       });
 

@@ -28,6 +28,12 @@ const MUTED = COLORS['--color-text-muted'];
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & {
+    __setTestLocale: (value: 'en' | 'pl') => void;
+  }).__setTestLocale(locale);
+}
+
 function renderBar(
   overrides?: Partial<React.ComponentProps<typeof ActiveWorkoutRestBar>>,
 ) {
@@ -74,7 +80,22 @@ describe('ActiveWorkoutRestBar', () => {
 
   it('renders the target line when a next-set target is provided', () => {
     const { getByText } = renderBar({ nextSetText: '135 lbs × 8' });
-    expect(getByText('Target 135 lbs × 8')).toBeTruthy();
+    expect(getByText('Target: 135 lbs × 8')).toBeTruthy();
+  });
+
+  it.each([
+    ['en', 'Target: 135 lbs × 8', 'Complete Set', 'Pause rest', 'Skip rest'],
+    ['pl', 'Cel: 135 lbs × 8', 'Ukończ serię', 'Wstrzymaj odpoczynek', 'Pomiń odpoczynek'],
+  ] as const)('renders the %s locale contract', (locale, target, complete, pause, skip) => {
+    setTestLocale(locale);
+    const ready = renderBar({ state: 'ready', nextSetText: '135 lbs × 8' });
+    expect(ready.getByText(target)).toBeTruthy();
+    expect(ready.getByText(complete)).toBeTruthy();
+    const resting = renderBar({ nextSetText: '135 lbs × 8' });
+    fireEvent.press(resting.getByLabelText(pause));
+    fireEvent.press(resting.getByLabelText(skip));
+    expect(resting.props.onPause).toHaveBeenCalledTimes(1);
+    expect(resting.props.onSkip).toHaveBeenCalledTimes(1);
   });
 
   it('sets the progress fill width from the progress fraction', () => {
@@ -172,7 +193,7 @@ describe('ActiveWorkoutRestBar', () => {
       const { getByText, getByLabelText, queryByText, queryByTestId, queryByLabelText } =
         renderBar({ state: 'ready', nextSetText: '135 lbs × 8' });
       expect(getByText('Incline DB Press · Set 3')).toBeTruthy();
-      expect(getByText('Target 135 lbs × 8')).toBeTruthy();
+      expect(getByText('Target: 135 lbs × 8')).toBeTruthy();
       expect(getByLabelText('Complete set')).toBeTruthy();
       // Timer chrome is gone: no countdown, track, or rest controls.
       expect(queryByText('0:45')).toBeNull();

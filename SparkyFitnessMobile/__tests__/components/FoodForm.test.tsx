@@ -1001,7 +1001,7 @@ describe('FoodForm', () => {
 
     expect(Alert.alert).toHaveBeenCalledWith(
       'Manual Nutrition Update',
-      "Can't convert between units. Update nutrition values manually before saving.",
+        "Can't convert between units. Update nutrition values manually.",
       expect.arrayContaining([
         expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
         expect.objectContaining({ text: 'Save Anyway' }),
@@ -1344,6 +1344,40 @@ describe('FoodForm', () => {
         mockFoodUnitSelectorSheet.mock.calls.length - 1
       ]?.[0];
     expect(latestSheetProps?.selectedVariantId).toBeUndefined();
+  });
+
+  it('localizes the AI confidence badge and updates it when the locale changes', () => {
+    const aiVariant = {
+      id: 'variant-cup-ai',
+      food_id: 'food-1',
+      serving_size: 1,
+      serving_unit: 'cup',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      source: 'ai_estimate' as const,
+      ai_confidence: 'medium' as const,
+    };
+    const form = (
+      <FoodForm
+        initialValues={{ servingSize: '1', servingUnit: 'cup', calories: '120' }}
+        unitSelector={{
+          variants: [aiVariant],
+          selectedSelection: { kind: 'existing', variant: aiVariant },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    const screen = render(form);
+    expect(screen.getByText('Fair estimate')).toBeTruthy();
+
+    (globalThis as typeof globalThis & { __setTestLocale: (locale: 'en' | 'pl') => void }).__setTestLocale('pl');
+    screen.rerender(React.cloneElement(form));
+
+    expect(screen.getByText('Przeciętny szacunek')).toBeTruthy();
   });
 
   it('uses the Convert with AI label when AI estimation is available for an incompatible swap', async () => {

@@ -19,10 +19,13 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 type WorkoutPresetsLibraryScreenProps = RootStackScreenProps<'WorkoutPresetsLibrary'>;
 
 const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -66,6 +69,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
             noun: 'presets',
             filter: ownershipFilter,
             onReset: () => setOwnershipFilter('all'),
+            t,
           })}
         />
       );
@@ -73,10 +77,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     return (
       <StatusView
         inline
-        title={searchText.trim().length > 0 ? 'No matching presets found' : 'No workout presets yet'}
+        title={searchText.trim().length > 0 ? t('workout.noMatchingPresets') : t('workout.noWorkoutPresets')}
         subtitle={searchText.trim().length > 0
-          ? 'Try a different search term to find a workout preset.'
-          : 'Workout presets you create will appear here.'}
+          ? t('workout.tryDifferentPresetSearch')
+          : t('workout.presetsAppearHere')}
       />
     );
   };
@@ -97,7 +101,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <ShareStatusBadge status={status} />
         </View>
         <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+            {t('workout.exerciseCount', { count: exerciseCount, formattedCount: formatLocalizedNumber(exerciseCount) })}
         </Text>
       </TouchableOpacity>
     );
@@ -110,10 +114,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your workout presets."
+           title={t('workout.noServer')}
+           subtitle={t('workout.configureServer')}
           action={{
-            label: 'Go to Settings',
+             label: t('common.goToSettings'),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
             variant: 'primary',
           }}
@@ -122,7 +126,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading workout presets..." />;
+       return <StatusView loading title={t('workout.loadingPresets')} />;
     }
 
     if (isError) {
@@ -131,10 +135,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title="Failed to load workout presets"
-          subtitle="Please check your connection and try again."
+           title={t('workout.failedLoadPresetsFull')}
+           subtitle={t('workout.tryConnection')}
           action={{
-            label: 'Retry',
+             label: t('common.retry'),
             onPress: () => {
               void refetch();
             },
@@ -154,7 +158,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more presets."
+             errorMessage={t('workout.failedMorePresets')}
             onRetry={loadMore}
           />
         }
@@ -174,13 +178,14 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
   };
 
   const header = useScreenHeader({
-    title: 'Workout presets',
+    title: t('workout.presetsTitle'),
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
       noun: 'workout presets',
       identifier: 'workout-presets-library-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,
+      t,
     }),
   });
 
@@ -191,7 +196,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search workout presets..."
+           placeholder={t('workout.searchWorkoutPresets')}
           isSearching={isSearching}
         />
       ) : null}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useCycleLog } from '../../hooks/useCycleLogs';
 import { useUpsertCycleLog } from '../../hooks/useUpsertCycleLog';
@@ -33,31 +34,51 @@ interface CycleTodayViewProps {
   hideSaveButton?: boolean;
 }
 
-const FLOW_OPTIONS: { value: FlowLevel; label: string; icon: string }[] = [
-  { value: 'none', label: 'None', icon: 'flow-none' },
-  { value: 'spotting', label: 'Spot', icon: 'flow-spotting' },
-  { value: 'light', label: 'Light', icon: 'flow-light' },
-  { value: 'medium', label: 'Med', icon: 'flow-medium' },
-  { value: 'heavy', label: 'Heavy', icon: 'flow-heavy' },
+const FLOW_OPTIONS: { value: FlowLevel; icon: string }[] = [
+  { value: 'none', icon: 'flow-none' },
+  { value: 'spotting', icon: 'flow-spotting' },
+  { value: 'light', icon: 'flow-light' },
+  { value: 'medium', icon: 'flow-medium' },
+  { value: 'heavy', icon: 'flow-heavy' },
 ];
 
 // Both fields are optional, so each picker leads with an empty value the save
 // handler maps back to null.
 const MUCUS_OPTIONS = [
-  { value: '', label: 'None' },
-  { value: 'dry', label: 'Dry' },
-  { value: 'sticky', label: 'Sticky' },
-  { value: 'creamy', label: 'Creamy' },
-  { value: 'watery', label: 'Watery' },
-  { value: 'eggwhite', label: 'Egg White' },
+  { value: '' }, { value: 'dry' }, { value: 'sticky' }, { value: 'creamy' }, { value: 'watery' }, { value: 'eggwhite' },
 ];
 
 const CERVICAL_POSITION_OPTIONS = [
-  { value: '', label: 'None' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
+  { value: '' }, { value: 'low' }, { value: 'medium' }, { value: 'high' },
 ];
+
+const flowLabel = (value: FlowLevel, t: (key: string) => string): string => {
+  switch (value) {
+    case 'none': return t('mobileComponents.wellness.flow.none');
+    case 'spotting': return t('mobileComponents.wellness.flow.spotting');
+    case 'light': return t('mobileComponents.wellness.flow.light');
+    case 'medium': return t('mobileComponents.wellness.flow.medium');
+    case 'heavy': return t('mobileComponents.wellness.flow.heavy');
+  }
+};
+const mucusLabel = (value: string, t: (key: string) => string): string => {
+  switch (value) {
+    case 'dry': return t('mobileComponents.wellness.mucus.dry');
+    case 'sticky': return t('mobileComponents.wellness.mucus.sticky');
+    case 'creamy': return t('mobileComponents.wellness.mucus.creamy');
+    case 'watery': return t('mobileComponents.wellness.mucus.watery');
+    case 'eggwhite': return t('mobileComponents.wellness.mucus.eggwhite');
+    default: return t('mobileComponents.wellness.flow.none');
+  }
+};
+const positionLabel = (value: string, t: (key: string) => string): string => {
+  switch (value) {
+    case 'low': return t('mobileComponents.wellness.position.low');
+    case 'medium': return t('mobileComponents.wellness.position.medium');
+    case 'high': return t('mobileComponents.wellness.position.high');
+    default: return t('mobileComponents.wellness.flow.none');
+  }
+};
 
 const CycleTodayView: React.FC<CycleTodayViewProps> = ({
   date,
@@ -67,6 +88,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
   onDatePress,
   hideSaveButton = false,
 }) => {
+  const { t } = useTranslation();
   const { log, isLoading, refetch } = useCycleLog({ date });
   const { upsertLogAsync, isSaving } = useUpsertCycleLog();
   const { mode } = useCycleMode();
@@ -164,7 +186,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
     // partially-saved entry behind.
     const bbtVal = bbt.trim() ? parseFloat(bbt) : null;
     if (bbt.trim() && isNaN(bbtVal as number)) {
-      Toast.show({ type: 'error', text1: 'Invalid temperature input' });
+      Toast.show({ type: 'error', text1: t('mobileComponents.wellness.today.invalidTemperature') });
       return;
     }
     // Save weight only when the field was edited to a new value. An emptied
@@ -173,7 +195,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
     const weightEdited = isPregnant && weight.trim() !== '' && weight.trim() !== hydratedWeight;
     const weightVal = weightEdited ? parseFloat(weight) : null;
     if (weightEdited && isNaN(weightVal as number)) {
-      Toast.show({ type: 'error', text1: 'Invalid weight input' });
+      Toast.show({ type: 'error', text1: t('measurementsCopy.invalid', { label: t('measurementsCopy.weight') }) });
       return;
     }
 
@@ -270,8 +292,8 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
     <View className="gap-4">
       {/* Period / Flow Selector — Only for non-pregnant cycle tracking */}
       {!isPregnant && (
-        <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
-          <Text className="text-text-primary text-sm font-semibold mb-3">Menstrual Flow</Text>
+      <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
+           <Text className="text-text-primary text-sm font-semibold mb-3">{t('mobileComponents.wellness.today.flow')}</Text>
           <View className="flex-row justify-between">
             {FLOW_OPTIONS.map((opt) => {
               const isSelected = flowLevel === opt.value;
@@ -285,7 +307,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
                 >
                   <CycleIcon id={opt.icon} size={24} />
                   <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                    {opt.label}
+                     {flowLabel(opt.value, t)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -300,7 +322,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
           {onDatePress && <DateSelectRow date={date} onPress={onDatePress} />}
           <View>
             <Text className="text-text-primary text-sm font-semibold mb-2">
-              Weight ({weightUnit})
+               {t('measurementsCopy.weight')} ({weightUnit})
             </Text>
             <FormInput
               value={weight}
@@ -324,13 +346,13 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       {/* Cervical Mucus — Bottom Sheet Picker */}
       {!isPregnant && (
         <View className="bg-surface rounded-xl p-4 shadow-sm border-0 gap-2">
-          <Text className="text-text-primary text-sm font-semibold">Cervical Mucus</Text>
+             <Text className="text-text-primary text-sm font-semibold">{t('mobileComponents.wellness.today.mucus')}</Text>
           <BottomSheetPicker
-            title="Select Cervical Mucus"
-            options={MUCUS_OPTIONS}
+             title={t('mobileComponents.wellness.today.selectMucus')}
+             options={MUCUS_OPTIONS.map((option) => ({ ...option, label: mucusLabel(option.value, t) }))}
             value={mucus || ''}
             onSelect={(value) => setMucus(value || null)}
-            placeholder="Tap to select..."
+             placeholder={t('mobileComponents.wellness.today.selectPlaceholder')}
           />
         </View>
       )}
@@ -339,12 +361,12 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       {isTtc && (
         <View className="bg-surface rounded-xl p-4 shadow-sm border-0 gap-4">
           <View>
-            <Text className="text-text-primary text-sm font-semibold mb-3">Intercourse</Text>
+             <Text className="text-text-primary text-sm font-semibold mb-3">{t('mobileComponents.wellness.today.intercourse')}</Text>
             <View className="flex-row gap-2">
               {[
-                { label: 'None', val: null as boolean | null },
-                { label: 'Yes', val: true },
-                { label: 'No', val: false },
+                { label: t('mobileComponents.wellness.flow.none'), val: null as boolean | null },
+                { label: t('mobileComponents.wellness.binary.yes'), val: true },
+                { label: t('mobileComponents.wellness.binary.no'), val: false },
               ].map((opt) => {
                 const isSelected = intercourse === opt.val;
                 return (
@@ -366,11 +388,11 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
 
           {intercourse === true && (
             <View>
-              <Text className="text-text-primary text-sm font-semibold mb-3">Protection</Text>
+               <Text className="text-text-primary text-sm font-semibold mb-3">{t('mobileComponents.wellness.today.protection')}</Text>
               <View className="flex-row gap-2">
                 {[
-                  { label: 'Protected', val: true },
-                  { label: 'Unprotected', val: false },
+                   { label: t('mobileComponents.wellness.binary.protected'), val: true },
+                   { label: t('mobileComponents.wellness.binary.unprotected'), val: false },
                 ].map((opt) => {
                   const isSelected = intercourseProtected === opt.val;
                   return (
@@ -392,13 +414,13 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
           )}
 
           <View className="gap-2">
-            <Text className="text-text-primary text-sm font-semibold">Cervical Position</Text>
+            <Text className="text-text-primary text-sm font-semibold">{t('mobileComponents.wellness.today.position')}</Text>
             <BottomSheetPicker
-              title="Select Cervical Position"
-              options={CERVICAL_POSITION_OPTIONS}
+              title={t('mobileComponents.wellness.today.selectPosition')}
+               options={CERVICAL_POSITION_OPTIONS.map((option) => ({ ...option, label: positionLabel(option.value, t) }))}
               value={cervicalPosition || ''}
               onSelect={(value) => setCervicalPosition(value || null)}
-              placeholder="Tap to select..."
+              placeholder={t('mobileComponents.wellness.today.selectPlaceholder')}
             />
           </View>
         </View>
@@ -407,14 +429,14 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       {/* Basal Body Temperature — Only for non-pregnant cycle tracking */}
       {!isPregnant && (
         <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
-          <Text className="text-text-primary text-sm font-semibold mb-2">Basal Body Temperature</Text>
+          <Text className="text-text-primary text-sm font-semibold mb-2">{t('mobileComponents.wellness.today.temperature')}</Text>
           <Text className="text-text-secondary text-xs mb-3">
-            Track your waking temperature (°C) to identify biphasic shifts post-ovulation.
+            {t('mobileComponents.wellness.today.temperatureHelp')}
           </Text>
           <FormInput
             value={bbt}
             onChangeText={setBbt}
-            placeholder="e.g. 36.5"
+            placeholder={t('mobileComponents.wellness.today.temperaturePlaceholder')}
             keyboardType="decimal-pad"
           />
         </View>
@@ -422,13 +444,13 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
 
       {/* Notes */}
       <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
-        <Text className="text-text-primary text-sm font-semibold mb-2">Notes</Text>
+        <Text className="text-text-primary text-sm font-semibold mb-2">{t('mobileComponents.wellness.today.notes')}</Text>
         <TextInput
           value={notes}
           onChangeText={setNotes}
           onFocus={() => setIsNotesFocused(true)}
           onBlur={() => setIsNotesFocused(false)}
-          placeholder="Log details about how you feel, energy level..."
+          placeholder={t('mobileComponents.wellness.today.notesPlaceholder')}
           placeholderTextColor={textMuted}
           multiline
           numberOfLines={4}
@@ -443,7 +465,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       {!hideSaveButton && (
         <View className="px-4">
           <Button variant="primary" disabled={saving} onPress={handleSave}>
-            {saving ? 'Saving...' : 'Save Log Entry'}
+             {saving ? t('mobileComponents.wellness.today.saving') : t('mobileComponents.wellness.today.save')}
           </Button>
         </View>
       )}

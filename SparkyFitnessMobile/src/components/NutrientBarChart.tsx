@@ -11,6 +11,8 @@ import ChartTouchOverlay, {
   createChartTouchLayoutSignature,
   type ChartTouchLayout,
 } from './ChartTouchOverlay';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 export type NutrientChartDataPoint = {
   day: string;
@@ -47,8 +49,6 @@ const formatYLabel = (value: number) => {
   return String(value);
 };
 
-const DEFAULT_TOOLTIP = 'Press a bar for details';
-
 const NutrientTooltip: React.FC<{ text: string }> = ({ text }) => (
   <View className="h-6 justify-center mt-3 mb-1">
     <Text className="text-text-secondary text-sm text-center">{text}</Text>
@@ -64,11 +64,13 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
   unit,
   goal,
 }) => {
+  const { t } = useTranslation();
+  const defaultTooltip = t('mobileComponents.charts.pressBar');
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -85,10 +87,14 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
-  const [tooltipResetKey, setTooltipResetKey] = useState({ data, range });
-  if (tooltipResetKey.data !== data || tooltipResetKey.range !== range) {
-    setTooltipResetKey({ data, range });
-    setTooltipText(DEFAULT_TOOLTIP);
+  const [tooltipResetKey, setTooltipResetKey] = useState({ data, range, unit });
+  if (
+    tooltipResetKey.data !== data ||
+    tooltipResetKey.range !== range ||
+    tooltipResetKey.unit !== unit
+  ) {
+    setTooltipResetKey({ data, range, unit });
+    setSelectedIndex(null);
   }
 
   const handleTouchLayoutChange = useCallback(
@@ -115,19 +121,27 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
         return;
       }
 
-      const formattedVal = point.value % 1 !== 0 ? point.value.toFixed(1) : point.value;
-      setTooltipText(
-        `${formattedVal}${unit} consumed · ${formatTooltipDate(
-          point.day,
-        )}`,
-      );
+      setSelectedIndex(index);
     },
-    [data, unit],
+    [data],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(DEFAULT_TOOLTIP);
+    setSelectedIndex(null);
   }, []);
+
+  const selectedPoint = selectedIndex == null ? undefined : data[selectedIndex];
+  const tooltipText = selectedPoint
+    ? t('mobileComponents.charts.consumedOn', {
+        value: formatLocalizedNumber(
+          selectedPoint.value % 1 !== 0
+            ? Number(selectedPoint.value.toFixed(1))
+            : selectedPoint.value,
+        ),
+        unit,
+        date: formatTooltipDate(selectedPoint.day),
+      })
+    : defaultTooltip;
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
@@ -139,18 +153,18 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Loading...</Text>
+          <Text className="text-text-muted text-sm">{t('common.loading')}</Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            Failed to load trend data
+            {t('mobileComponents.charts.nutrientError')}
           </Text>
         </View>
       ) : !hasData ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            No logged intake for this period
+            {t('mobileComponents.charts.noIntake')}
           </Text>
         </View>
       ) : (

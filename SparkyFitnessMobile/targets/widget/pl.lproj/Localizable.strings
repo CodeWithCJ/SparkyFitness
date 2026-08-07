@@ -1,0 +1,15 @@
+"widget.calorie.name" = "Kalorie";
+"widget.calorie.description" = "Dzisiejsze spożycie kalorii w skrócie.";
+"widget.macro.name" = "Makroskładniki";
+"widget.macro.description" = "Dzisiejsze białko, węglowodany i tłuszcz w skrócie.";
+"widget.kcal_left" = "pozostało kcal";
+"widget.kcal" = "kcal";
+"widget.food" = "Jedzenie";
+"widget.burned" = "Spalone";
+"widget.goal" = "Cel";
+"widget.protein" = "Białko";
+"widget.carbs" = "Węglowodany";
+"widget.fat" = "Tłuszcz";
+"widget.grams" = "%@ g";
+"widget.a11y.kcal_left" = "Pozostało %@ kcal";
+"widget.a11y.kcal" = "%@ kcal";

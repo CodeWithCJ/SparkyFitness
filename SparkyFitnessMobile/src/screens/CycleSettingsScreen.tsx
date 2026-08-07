@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { View, ScrollView, Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Sharing from 'expo-sharing';
@@ -29,26 +30,28 @@ import { getExport } from '../services/api/cycleApi';
 
 type CycleSettingsScreenProps = RootStackScreenProps<'CycleSettings'>;
 
-const MODE_OPTIONS = [
-  { value: 'standard', label: 'Standard Cycle' },
-  { value: 'ttc', label: 'Trying to Conceive' },
-  { value: 'pregnant', label: 'Pregnancy Tracking' },
-  { value: 'postpartum', label: 'Postpartum' },
-  { value: 'menopause', label: 'Menopause-aware' },
-];
+const MODE_OPTIONS = ['standard', 'ttc', 'pregnant', 'postpartum', 'menopause'] as const;
+
+const modeLabel = (value: (typeof MODE_OPTIONS)[number], t: (key: string) => string): string => {
+  switch (value) {
+    case 'standard': return t('mobileComponents.wellness.settings.standard');
+    case 'ttc': return t('mobileComponents.wellness.settings.ttc');
+    case 'pregnant': return t('mobileComponents.wellness.settings.pregnant');
+    case 'postpartum': return t('mobileComponents.wellness.settings.postpartum');
+    case 'menopause': return t('mobileComponents.wellness.settings.menopause');
+  }
+};
 
 const BC_OPTIONS = BIRTH_CONTROL_METHODS.map((m) => ({
   value: m.value,
   label: m.displayName,
 }));
 
-const TERMINOLOGY_OPTIONS = [
-  { value: 'default', label: 'Default' },
-  { value: 'neutral', label: 'Gender-Neutral' },
-];
+const TERMINOLOGY_OPTIONS = ['default', 'neutral'] as const;
 
 const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
 
@@ -100,25 +103,25 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
 
   const handleResetOnboarding = useCallback(() => {
     Alert.alert(
-      'Reset Onboarding',
-      'Are you sure you want to reset your cycle onboarding? This will clear your setup progress, but your logged cycle days will remain intact.',
+      t('mobileComponents.wellness.settings.resetTitle'),
+      t('mobileComponents.wellness.settings.resetBodyAlert'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Reset',
+          text: t('mobileComponents.wellness.settings.reset'),
           style: 'destructive',
           onPress: () => {
             updateSettings({ reset_onboarding: true });
-            Toast.show({ type: 'success', text1: 'Onboarding reset completed.' });
+            Toast.show({ type: 'success', text1: t('mobileComponents.wellness.settings.resetDone') });
           },
         },
       ]
     );
-  }, [updateSettings]);
+  }, [updateSettings, t]);
 
   const handleExportData = useCallback(async () => {
     try {
-      Toast.show({ type: 'info', text1: 'Preparing Export', text2: 'Generating JSON export file...' });
+      Toast.show({ type: 'info', text1: t('mobileComponents.wellness.settings.preparing'), text2: t('mobileComponents.wellness.settings.generating') });
       const data = await getExport();
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const fileName = `sparky-womens-health-${timestamp}.json`;
@@ -134,9 +137,9 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
       file.delete();
     } catch (error) {
       addLog(`Failed to export cycle data: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Export Failed', text2: 'Could not export cycle data.' });
+      Toast.show({ type: 'error', text1: t('mobileComponents.wellness.settings.exportFailed'), text2: t('mobileComponents.wellness.settings.exportError') });
     }
-  }, []);
+  }, [t]);
 
   const cycleLengthVal = settings?.avg_cycle_length_override || CYCLE_DEFAULTS.cycleLength;
   const periodLengthVal = settings?.avg_period_length_override || CYCLE_DEFAULTS.periodLength;
@@ -163,11 +166,10 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
   });
 
   const { discreetMode } = useDiscreetMode();
-  const headerTitle = discreetMode ? 'Wellness Settings' : 'Cycle & Pregnancy';
 
   const header = useScreenHeader({
-    title: headerTitle,
-    nativeTitle: headerTitle,
+    title: discreetMode ? t('mobileComponents.wellness.settings.wellnessTitle') : t('mobileComponents.wellness.settings.title'),
+    nativeTitle: discreetMode ? t('mobileComponents.wellness.settings.wellnessTitle') : t('mobileComponents.wellness.settings.title'),
     left: { kind: 'back' },
   });
 
@@ -191,8 +193,8 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
       >
         <SettingsRowGroup>
           <SettingsRow
-            title="Enable Cycle & Pregnancy Tracking"
-            subtitle="Turn on logging, predictions, and history"
+             title={t('mobileComponents.wellness.settings.enable')}
+             subtitle={t('mobileComponents.wellness.settings.enableBody')}
             rightAccessory={
               <Switch
                 value={settings.enabled}
@@ -204,51 +206,51 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
 
         {settings.enabled && (
           <>
-            <SettingsRowGroup title="Feature Configuration">
+            <SettingsRowGroup title={t('mobileComponents.wellness.settings.configuration')}>
               <SettingsRow
-                title="Tracking Mode"
+                 title={t('mobileComponents.wellness.settings.mode')}
                 rightAccessory={
                   <BottomSheetPicker
                     value={settings.mode}
-                    options={MODE_OPTIONS}
+                     options={MODE_OPTIONS.map((value) => ({ value, label: modeLabel(value, t) }))}
                     onSelect={handleModeChange}
-                    title="Select Mode"
+                     title={t('mobileComponents.wellness.settings.selectMode')}
                     containerStyle={{ flex: 1, maxWidth: 200 }}
                   />
                 }
               />
               <SettingsRow
-                title="Birth Control Method"
+                 title={t('mobileComponents.wellness.settings.birthControl')}
                 rightAccessory={
                   <BottomSheetPicker
                     value={settings.birth_control_method}
                     options={BC_OPTIONS}
                     onSelect={handleBcChange}
-                    title="Select Method"
+                     title={t('mobileComponents.wellness.settings.selectMethod')}
                     containerStyle={{ flex: 1, maxWidth: 200 }}
                   />
                 }
               />
             </SettingsRowGroup>
 
-            <SettingsRowGroup title="Cycle Calculations Overrides">
+             <SettingsRowGroup title={t('mobileComponents.wellness.settings.calculations')}>
               <SettingsRow
-                title="Average Cycle Length"
-                subtitle={settings.avg_cycle_length_override ? 'Custom override' : 'Default/History'}
+                 title={t('mobileComponents.wellness.onboarding.avgCycle')}
+                 subtitle={settings.avg_cycle_length_override ? t('mobileComponents.wellness.settings.custom') : t('mobileComponents.wellness.settings.default')}
                 rightAccessory={
                   <StepperInput {...cycleLengthProps} keyboardType="number-pad" />
                 }
               />
               <SettingsRow
-                title="Average Period Length"
-                subtitle={settings.avg_period_length_override ? 'Custom override' : 'Default/History'}
+                 title={t('mobileComponents.wellness.onboarding.avgPeriod')}
+                 subtitle={settings.avg_period_length_override ? t('mobileComponents.wellness.settings.custom') : t('mobileComponents.wellness.settings.default')}
                 rightAccessory={
                   <StepperInput {...periodLengthProps} keyboardType="number-pad" />
                 }
               />
               <SettingsRow
-                title="Luteal Phase Length"
-                subtitle="Days post-ovulation (default 14)"
+                 title={t('mobileComponents.wellness.settings.luteal')}
+                 subtitle={t('mobileComponents.wellness.settings.lutealBody')}
                 rightAccessory={
                   <StepperInput {...lutealLengthProps} keyboardType="number-pad" />
                 }
@@ -256,8 +258,8 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
             </SettingsRowGroup>
 
             <SettingsRowGroup
-              title="Conditions"
-              subtitle="Select applicable conditions to personalize your tracking."
+               title={t('mobileComponents.wellness.settings.conditions')}
+               subtitle={t('mobileComponents.wellness.settings.conditionsBody')}
             >
               {CYCLE_CONDITIONS.map((cond) => (
                 <SettingsRow
@@ -273,10 +275,10 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               ))}
             </SettingsRowGroup>
 
-            <SettingsRowGroup title="Display Options">
+             <SettingsRowGroup title={t('mobileComponents.wellness.settings.display')}>
               <SettingsRow
-                title="Show Fertile Window"
-                subtitle="Highlight fertile days on calendar"
+                 title={t('mobileComponents.wellness.settings.fertile')}
+                 subtitle={t('mobileComponents.wellness.settings.fertileBody')}
                 rightAccessory={
                   <Switch
                     value={settings.show_fertile_window}
@@ -285,8 +287,8 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                 }
               />
               <SettingsRow
-                title="Discreet Mode"
-                subtitle='Hides "Cycle" or "Pregnancy" labels in UI'
+                 title={t('mobileComponents.wellness.settings.discreet')}
+                 subtitle={t('mobileComponents.wellness.settings.discreetBody')}
                 rightAccessory={
                   <Switch
                     value={settings.discreet_mode}
@@ -295,28 +297,28 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
                 }
               />
               <SettingsRow
-                title="Terminology"
+                 title={t('mobileComponents.wellness.settings.terminology')}
                 rightAccessory={
                   <BottomSheetPicker
                     value={settings.terminology}
-                    options={TERMINOLOGY_OPTIONS}
+                     options={TERMINOLOGY_OPTIONS.map((value) => ({ value, label: value === 'default' ? t('mobileComponents.wellness.settings.defaultTerm') : t('mobileComponents.wellness.settings.neutral') }))}
                     onSelect={handleTerminologyChange}
-                    title="Select Terminology"
+                     title={t('mobileComponents.wellness.settings.selectTerminology')}
                     containerStyle={{ flex: 1, maxWidth: 200 }}
                   />
                 }
               />
             </SettingsRowGroup>
 
-            <SettingsRowGroup title="Actions">
+             <SettingsRowGroup title={t('mobileComponents.wellness.settings.actions')}>
               <SettingsRow
-                title="Export Cycle & Pregnancy Data"
-                subtitle="Download JSON data export"
+                 title={t('mobileComponents.wellness.settings.export')}
+                 subtitle={t('mobileComponents.wellness.settings.exportBody')}
                 onPress={handleExportData}
               />
               <SettingsRow
-                title="Reset Onboarding Wizard"
-                subtitle="Restart setup walkthrough"
+                 title={t('mobileComponents.wellness.settings.reset')}
+                 subtitle={t('mobileComponents.wellness.settings.resetBody')}
                 onPress={handleResetOnboarding}
               />
             </SettingsRowGroup>

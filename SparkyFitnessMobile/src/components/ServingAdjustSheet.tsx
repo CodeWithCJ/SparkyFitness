@@ -13,6 +13,7 @@ import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
 import { formatServingUnit } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import { useTranslation } from 'react-i18next';
 
 export interface ServingAdjustSheetRef {
   present: (entry: FoodEntry) => void;
@@ -31,6 +32,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
     '--color-surface',
     '--color-text-muted',
   ]) as [string, string];
+  const { t } = useTranslation();
 
   const quantity = parseDecimalInput(quantityText) || 0;
   const totalCalories = entry && entry.serving_size > 0
@@ -117,7 +119,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
                 {entry.food_name || 'Unknown food'}
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
-                {entry.serving_size} {formatServingUnit(entry.unit)} = {entry.calories} Cal
+                {entry.serving_size} {formatServingUnit(entry.unit)} = {entry.calories} {t('units.calShort')}
               </Text>
             </View>
 
@@ -139,7 +141,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
             {/* Calories */}
             <View className="items-center mb-6">
               <Text className="text-text-primary text-2xl font-semibold">
-                {totalCalories} Cal
+                {totalCalories} {t('units.calShort')}
               </Text>
             </View>
 
@@ -163,7 +165,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
               onPress={handleDone}
               disabled={isPending || quantity <= 0}
             >
-              {isPending ? 'Saving...' : 'Done'}
+              {isPending ? t('common.saving') : t('common.done')}
             </Button>
           </>
         )}

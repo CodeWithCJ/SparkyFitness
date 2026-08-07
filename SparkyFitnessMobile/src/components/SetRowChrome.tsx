@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Keyboard,
   Platform,
@@ -230,6 +231,7 @@ export function SetInputAccessoryBar({
   onDone: () => void;
   actions: SetAccessoryAction[];
 }) {
+  const { t } = useTranslation();
   const [accentPrimary, chromeBorder] = useCSSVariable([
     '--color-accent-primary',
     '--color-chrome-border',
@@ -247,7 +249,7 @@ export function SetInputAccessoryBar({
       }}
     >
       <AccessoryPillButton
-        label="Done"
+        label={t('common.done')}
         onPress={onDone}
         accentPrimary={accentPrimary}
         chromeBorder={chromeBorder}
@@ -363,6 +365,7 @@ export function useSetEditAccessoryBar({
   onRegisterAccessoryHandle: (key: string, handle: SetRowAccessoryHandle | null) => void;
   accessoryBar: ReactNode;
 } {
+  const { t } = useTranslation();
   const handlesRef = useRef<Record<string, SetRowAccessoryHandle>>({});
   const onRegisterAccessoryHandle = useCallback(
     (key: string, handle: SetRowAccessoryHandle | null) => {
@@ -410,7 +413,7 @@ export function useSetEditAccessoryBar({
             nextField != null
               ? {
                   key: 'next',
-                  label: 'Next',
+                   label: t('editableSets.next'),
                   onPress: () => {
                     if (focusedSetClientId != null) {
                       handlesRef.current[focusedSetClientId]?.focusField(nextField);
@@ -419,7 +422,7 @@ export function useSetEditAccessoryBar({
                 }
               : {
                   key: 'next-set',
-                  label: 'Next Set',
+                   label: t('editableSets.nextSet'),
                   onPress: () => {
                     if (focusedSetClientId != null) {
                       handlesRef.current[focusedSetClientId]?.advance();
@@ -442,6 +445,7 @@ export function SetSwipeDeleteAction({
   onPress: () => void;
   accessibilityLabel?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <TouchableOpacity
       className="bg-bg-danger justify-center items-center"
@@ -450,7 +454,7 @@ export function SetSwipeDeleteAction({
       activeOpacity={0.7}
       accessibilityLabel={accessibilityLabel}
     >
-      <Text className="text-text-danger font-semibold text-sm">Delete</Text>
+       <Text className="text-text-danger font-semibold text-sm">{t('common.delete')}</Text>
     </TouchableOpacity>
   );
 }

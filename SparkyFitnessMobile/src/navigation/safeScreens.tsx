@@ -32,6 +32,7 @@ import ExerciseSearchScreen from '../screens/ExerciseSearchScreen';
 import PresetSearchScreen from '../screens/PresetSearchScreen';
 import CalorieSettingsScreen from '../screens/CalorieSettingsScreen';
 import FoodSettingsScreen from '../screens/FoodSettingsScreen';
+import MealTypeSettingsScreen from '../screens/MealTypeSettingsScreen';
 import DashboardSettingsScreen from '../screens/DashboardSettingsScreen';
 import DiarySettingsScreen from '../screens/DiarySettingsScreen';
 import WorkoutSettingsScreen from '../screens/WorkoutSettingsScreen';
@@ -97,6 +98,7 @@ export const SafeMeasurementsAdd = withErrorBoundary(MeasurementsAddScreen, 'Mea
 export const SafeChat = withErrorBoundary(ChatScreen, 'Chat', { canGoBack: true });
 export const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 export const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });
+export const SafeMealTypeSettings = withErrorBoundary(MealTypeSettingsScreen, 'MealTypeSettings', { canGoBack: true });
 export const SafeDashboardSettings = withErrorBoundary(DashboardSettingsScreen, 'DashboardSettings', { canGoBack: true });
 export const SafeDiarySettings = withErrorBoundary(DiarySettingsScreen, 'DiarySettings', { canGoBack: true });
 export const SafeWorkoutSettings = withErrorBoundary(WorkoutSettingsScreen, 'WorkoutSettings', { canGoBack: true });

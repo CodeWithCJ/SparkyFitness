@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, TouchableOpacity, Platform } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../Icon';
+import { useTranslation } from 'react-i18next';
 
 interface ScheduledDoseRowProps {
   kind: 'scheduled';
@@ -34,14 +35,14 @@ export type DoseRowProps = (ScheduledDoseRowProps | PrnDoseRowProps) & {
  * Take/Skip pair (same labels, padding, and font), so every actions
  * column keeps that width and rows don't shift between states.
  */
-const SizedActionColumn: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+const SizedActionColumn: React.FC<{ children: React.ReactNode; takeLabel: string; skipLabel: string }> = ({ children, takeLabel, skipLabel }) => (
   <View className="items-center justify-center">
     <View className="flex-row items-center opacity-0" aria-hidden>
       <View className="rounded-full px-3 py-1">
-        <Text className="text-sm font-semibold">Log</Text>
+        <Text className="text-sm font-semibold">{takeLabel}</Text>
       </View>
       <View className="rounded-full px-3 py-1 ml-1">
-        <Text className="text-sm font-semibold">Skip</Text>
+        <Text className="text-sm font-semibold">{skipLabel}</Text>
       </View>
     </View>
     <View className="absolute inset-0 items-center justify-center">{children}</View>
@@ -56,6 +57,7 @@ const SizedActionColumn: React.FC<{ children: React.ReactNode }> = ({ children }
  */
 const DoseRow: React.FC<DoseRowProps> = (props) => {
   const { title, time, subtitle, onPress } = props;
+  const { t } = useTranslation();
 
   const [iconSuccess, iconDecorative, iconDanger, accentPrimary] = useCSSVariable([
     '--color-icon-success',
@@ -88,14 +90,14 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
   const circleAccessibilityLabel =
     props.kind === 'scheduled'
       ? props.status === 'pending'
-        ? `Mark ${title} taken`
-        : `Unmark ${title}`
-      : `Log ${title}`;
+         ? t('medications.markTaken', { title })
+         : t('medications.unmark', { title })
+       : t('medications.log', { title });
 
   const renderActions = () => {
     if (props.kind === 'prn') {
       return (
-        <SizedActionColumn>
+        <SizedActionColumn takeLabel={t('medications.take')} skipLabel={t('medications.skip')}>
           <TouchableOpacity
             onPress={props.onLog}
             hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
@@ -103,7 +105,7 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             accessibilityRole="button"
             className="rounded-full px-3 py-1 bg-raised"
           >
-            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Log</Text>
+            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>{t('medications.take')}</Text>
           </TouchableOpacity>
         </SizedActionColumn>
       );
@@ -116,28 +118,28 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.6}
             accessibilityRole="button"
-            accessibilityLabel={`Log ${title} as taken`}
+            accessibilityLabel={t('medications.takeNamed', { title })}
             className="rounded-full px-3 py-1 bg-raised"
           >
-            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>Log</Text>
+            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>{t('medications.take')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={props.onSkip}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.6}
             accessibilityRole="button"
-            accessibilityLabel={`Skip ${title}`}
+             accessibilityLabel={t('medications.skipNamed', { title })}
             className="rounded-full px-3 py-1 ml-1 bg-raised"
           >
-            <Text className="text-sm font-semibold text-accent-primary">Skip</Text>
+             <Text className="text-sm font-semibold text-accent-primary">{t('medications.skip')}</Text>
           </TouchableOpacity>
         </View>
       );
     }
     return (
-      <SizedActionColumn>
+      <SizedActionColumn takeLabel={t('medications.take')} skipLabel={t('medications.skip')}>
         <Text className="text-sm text-text-secondary">
-          {props.status === 'taken' ? 'Taken' : 'Skipped'}
+           {props.status === 'taken' ? t('medications.taken') : t('medications.skipped')}
         </Text>
       </SizedActionColumn>
     );

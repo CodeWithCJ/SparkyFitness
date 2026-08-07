@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -15,12 +16,15 @@ import Toast from 'react-native-toast-message';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import { useEndFast } from '../hooks/useFasting';
-import { formatHoursMinutes, formatDateTime } from '../utils/fasting';
 import { dateTypeToDate } from './TimeSheet';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
+import { getAppLocale } from '../localization';
+import {
+  formatLocalizedFastingDateTime,
+  formatLocalizedFastingDuration,
+} from '../utils/fastingLocalization';
 
-/** Normalizes the picker's 6-way `DateType` into a JS `Date`, preserving time. */
 export interface EndFastSheetRef {
   present: (fast: FastingLog) => void;
   dismiss: () => void;
@@ -31,6 +35,8 @@ interface EndFastSheetProps {
 }
 
 const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }, ref) => {
+  const { t } = useTranslation();
+  const appLocale = getAppLocale();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] = useCSSVariable([
@@ -74,8 +80,12 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
 
   const isValid = startDate.getTime() < endDate.getTime();
   const durationLabel = useMemo(
-    () => formatHoursMinutes(Math.max(0, endDate.getTime() - startDate.getTime())),
-    [startDate, endDate],
+    () =>
+      formatLocalizedFastingDuration(
+        t,
+        Math.max(0, endDate.getTime() - startDate.getTime()),
+      ),
+    [startDate, endDate, t],
   );
 
   const pickerStyles = useMemo(
@@ -122,15 +132,15 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
       {
         onSuccess: () => {
           bottomSheetRef.current?.dismiss();
-          Toast.show({ type: 'success', text1: 'Fast ended' });
+          Toast.show({ type: 'success', text1: t('fasting.end.success') });
           onEnded?.();
         },
         onError: (error) => {
-          addLog(`Failed to end fast: ${error}`, 'ERROR');
+          addLog(`${t('fasting.end.failure')}: ${error}`, 'ERROR');
           Toast.show({
             type: 'error',
-            text1: 'Failed to end fast',
-            text2: 'Please try again.',
+            text1: t('fasting.end.failure'),
+            text2: t('fasting.toast.retry'),
           });
         },
       },
@@ -176,6 +186,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
       <DateTimePicker
         mode="single"
         date={value}
+        locale={appLocale}
         timePicker
         onChange={onChange}
         components={pickerComponents}
@@ -184,11 +195,12 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
       {/* Dedicated time wheel below the calendar, sharing the same value. */}
       <View className="border-t border-border-subtle mt-1 pt-2">
         <Text className="text-xs font-semibold uppercase text-text-muted tracking-wide mb-1 px-1">
-          Time
+          {t('fasting.management.time')}
         </Text>
         <DateTimePicker
           mode="single"
           date={value}
+          locale={appLocale}
           timePicker
           initialView="time"
           hideHeader
@@ -220,19 +232,31 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
           container absorb them. */}
       <BottomSheetScrollView contentContainerClassName="bg-surface px-5 pb-safe-or-8">
         <Text className="text-lg font-semibold text-text-primary text-center mb-1">
-          End fast
+          {t('fasting.end.title')}
         </Text>
-        <Text className="text-center text-text-secondary mb-4">{durationLabel} fasted</Text>
+        <Text className="text-center text-text-secondary mb-4">
+          {t('fasting.management.durationFasted', {
+            duration: durationLabel,
+          })}
+        </Text>
 
-        {renderRow('Started', formatDateTime(startDate), 'start')}
+        {renderRow(
+          t('fasting.management.started'),
+          formatLocalizedFastingDateTime(startDate, appLocale),
+          'start',
+        )}
         {openPicker === 'start' && renderInlinePicker(startDate, handleStartChange)}
 
-        {renderRow('Ended', formatDateTime(endDate), 'end')}
+        {renderRow(
+          t('fasting.management.ended'),
+          formatLocalizedFastingDateTime(endDate, appLocale),
+          'end',
+        )}
         {openPicker === 'end' && renderInlinePicker(endDate, handleEndChange)}
 
         {!isValid && (
-          <Text className="text-text-danger-subtle text-sm mt-3 text-center">
-            Start time must be before the end time.
+          <Text className="text-bg-danger text-sm mt-3 text-center">
+            {t('fasting.management.invalidRange')}
           </Text>
         )}
 
@@ -245,7 +269,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
         >
           <Icon name="stop" size={15} color="#FFFFFF" />
           <Text className="text-white text-base font-semibold ml-2">
-            {isPending ? 'Ending...' : 'End Fast'}
+            {isPending ? t('fasting.end.pending') : t('fasting.end.action')}
           </Text>
         </Pressable>
       </BottomSheetScrollView>

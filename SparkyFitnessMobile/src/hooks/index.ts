@@ -114,6 +114,8 @@ export {
 } from './useWorkoutPresetMutations';
 export { useExerciseSetEditing } from './useExerciseSetEditing';
 export { useWidgetSync } from './useWidgetSync';
+export { useWidgetLanguageRefresh } from './useWidgetLanguageRefresh';
+export { useIOSWidgetLanguageRefresh } from './useIOSWidgetLanguageRefresh';
 export { useProfile } from './useProfile';
 export { useActiveAiServiceSetting } from './useActiveAiServiceSetting';
 export { useUserAiConfigAllowed } from './useUserAiConfigAllowed';
@@ -127,6 +129,8 @@ export {
 } from './useFasting';
 export { useFastingTimer } from './useFastingTimer';
 export type { FastTimerValues } from './useFastingTimer';
+export { useCustomCategories, useCustomMeasurementsByDate, useSaveCustomMeasurement, useDeleteCustomMeasurement } from './useCustomMeasurements';
+export { customCategoriesQueryKey, customMeasurementsByDateQueryKey } from './queryKeys';
 export { useCustomNutrients } from './useCustomNutrients';
 export type { UserCustomNutrient } from './useCustomNutrients';
 export { useNutrientDisplayPreferences } from './useNutrientDisplayPreferences';

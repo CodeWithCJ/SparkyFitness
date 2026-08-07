@@ -262,6 +262,14 @@ const route = { key: 'ActiveWorkout-1', name: 'ActiveWorkout', params: undefined
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (
+    globalThis as typeof globalThis & {
+      __setTestLocale: (value: 'en' | 'pl') => void;
+    }
+  ).__setTestLocale(locale);
+}
+
 function renderScreen() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -546,6 +554,7 @@ describe('ActiveWorkoutScreen finish flow with a failing flush', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    setTestLocale('en');
     jest.useFakeTimers();
     __resetActiveWorkoutStoreForTests();
     __resetAppPreferencesStoreForTests();
@@ -596,6 +605,23 @@ describe('ActiveWorkoutScreen finish flow with a failing flush', () => {
 
     expect(useActiveWorkoutStore.getState().session).not.toBeNull();
     expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+
+  it('uses Polish for an alert callback created before switching locale', async () => {
+    const { getByText } = renderScreen();
+
+    fireEvent.press(getByText('End Workout') as any);
+    expect(lastAlertTitle()).toBe('End workout?');
+    const endWorkoutButton = lastAlertButton('End Workout');
+
+    setTestLocale('pl');
+    act(() => useActiveWorkoutStore.getState().renameSession('Push Day PL'));
+
+    await act(async () => {
+      endWorkoutButton.onPress?.();
+    });
+
+    expect(lastAlertTitle()).toBe('Nie udało się zapisać treningu');
   });
 });
 
@@ -693,6 +719,7 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    setTestLocale('en');
     jest.useFakeTimers();
     __resetActiveWorkoutStoreForTests();
     __resetAppPreferencesStoreForTests();
@@ -792,7 +819,7 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
     await endWorkout(getByText);
 
     act(() => {
-      lastAlertButton('Custom…').onPress?.();
+       lastAlertButton('Custom').onPress?.();
     });
     expect(mockDurationSheet.present).toHaveBeenCalledWith(5, 725);
 

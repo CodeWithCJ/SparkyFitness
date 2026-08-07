@@ -1,6 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import { View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -22,6 +23,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 type NotificationSettingsScreenProps = RootStackScreenProps<'NotificationSettings'>;
 
 const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
@@ -82,7 +84,7 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
     [setMedicationRemindersEnabled],
   );
 
-  const header = useScreenHeader({ title: 'Notifications', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('notifications.title'), left: { kind: 'back' } });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -95,8 +97,8 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
         <SettingsRow
-          title="Allow Notifications"
-          subtitle="Master switch for all alerts from SparkyFitness."
+          title={t('notifications.allow')}
+          subtitle={t('notifications.masterSwitchSubtitle')}
           subtitleNumberOfLines={0}
           rightAccessory={
             <Switch
@@ -109,10 +111,10 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
         <NotificationPermissionBanner ref={bannerRef} />
 
         {notificationsEnabled && (
-          <SettingsRowGroup title="Alerts">
+          <SettingsRowGroup title={t('notifications.alertsGroup')}>
             <SettingsRow
-              title="Rest Timer"
-              subtitle="Alert when a rest period ends, even in the background."
+              title={t('notifications.restTimer')}
+              subtitle={t('notifications.restTimerSubtitle')}
               subtitleNumberOfLines={0}
               rightAccessory={
                 <Switch
@@ -122,8 +124,8 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
               }
             />
             <SettingsRow
-              title="Fasting Goals"
-              subtitle="Alert when you reach your fasting goal."
+              title={t('notifications.fastingGoals')}
+              subtitle={t('notifications.fastingGoalsSubtitle')}
               subtitleNumberOfLines={0}
               rightAccessory={
                 <Switch
@@ -136,10 +138,10 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
         )}
 
         {notificationsEnabled && (
-          <SettingsRowGroup title="Medications">
+          <SettingsRowGroup title={t('notifications.medicationsGroup')}>
             <SettingsRow
-              title="Medication Reminders"
-              subtitle="Reminders for scheduled medications."
+              title={t('medicationReminders.title')}
+              subtitle={t('medicationReminders.subtitle')}
               subtitleNumberOfLines={0}
               rightAccessory={
                 <Switch
@@ -150,8 +152,8 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
             />
             {medicationRemindersEnabled && (
               <SettingsRow
-                title="Repeat Reminders"
-                subtitle="Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged."
+                title={t('repeatReminders.title')}
+                subtitle={t('repeatReminders.subtitle')}
                 subtitleNumberOfLines={0}
                 rightAccessory={
                   <Switch
@@ -163,8 +165,8 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
             )}
             {medicationRemindersEnabled && (
               <SettingsRow
-                title="Hide Medication Names"
-                subtitle="Show a generic reminder instead of the medication name and dose."
+                title={t('hideMedicationNames.title')}
+                subtitle={t('hideMedicationNames.subtitle')}
                 subtitleNumberOfLines={0}
                 rightAccessory={
                   <Switch

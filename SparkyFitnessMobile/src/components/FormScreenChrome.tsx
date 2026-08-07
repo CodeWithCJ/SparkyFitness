@@ -47,8 +47,8 @@ export const FooterSaveBar: React.FC<FooterSaveBarProps> = ({
 
 interface FormScreenChromeProps {
   title: string;
-  saveLabel: string;
-  savingLabel: string;
+  saveLabel?: string;
+  savingLabel?: string;
   isSaving: boolean;
   onSave: () => void;
   onCancel: () => void;

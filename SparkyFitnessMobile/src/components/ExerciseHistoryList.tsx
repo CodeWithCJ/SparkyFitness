@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ActivityIndicator } from 'react-native';
 import type {
   ExerciseEntryResponse,
@@ -10,7 +11,8 @@ import type {
 import Button from './ui/Button';
 import { useExerciseHistory } from '../hooks/useExerciseHistory';
 import { formatRecentSessionSet, matchesSetRecord } from '../utils/workoutSession';
-import { formatDateLabel } from '../utils/dateUtils';
+import { addDays, formatDate, getTodayDate } from '../utils/dateUtils';
+import type { TFunction } from 'i18next';
 
 interface ExerciseHistoryListProps {
   exerciseId: string;
@@ -67,12 +69,20 @@ const SetChip: React.FC<{
 };
 
 /** Duration/calories line for entries logged without set data (cardio, quick logs). */
-const formatEntrySummary = (entries: ExerciseEntryResponse[]): string | null => {
+function formatHistoryDate(t: TFunction, dateString: string | null | undefined): string {
+  if (!dateString) return t('exerciseHistory.unknownDate');
+  const today = getTodayDate();
+  if (dateString === today) return t('commonDates.today');
+  if (dateString === addDays(today, -1)) return t('commonDates.yesterday');
+  return formatDate(dateString);
+}
+
+const formatEntrySummary = (t: TFunction, entries: ExerciseEntryResponse[]): string | null => {
   const duration = entries.reduce((sum, e) => sum + (e.duration_minutes ?? 0), 0);
   const calories = entries.reduce((sum, e) => sum + (e.calories_burned ?? 0), 0);
   const parts: string[] = [];
-  if (duration > 0) parts.push(`${Math.round(duration)} min`);
-  if (calories > 0) parts.push(`${Math.round(calories)} cal`);
+  if (duration > 0) parts.push(t('exerciseHistory.durationSummary', { minutes: Math.round(duration) }));
+  if (calories > 0) parts.push(t('exerciseHistory.caloriesSummary', { calories: Math.round(calories) }));
   return parts.length > 0 ? parts.join(' · ') : null;
 };
 
@@ -83,7 +93,8 @@ const SessionCard: React.FC<{
   distanceUnit: 'km' | 'miles';
   modality?: ExerciseModality;
   bestSet?: ExerciseSetStats | null;
-}> = ({ session, exerciseId, weightUnit, distanceUnit, modality, bestSet }) => {
+  t: TFunction;
+}> = ({ session, exerciseId, weightUnit, distanceUnit, modality, bestSet, t }) => {
   // The history endpoint filters at the session level, so a preset session
   // still carries every exercise it contains — show only this exercise's sets.
   const entries =
@@ -105,7 +116,7 @@ const SessionCard: React.FC<{
     <View className="bg-surface rounded-xl p-4">
       <View className="flex-row items-center justify-between">
         <Text className="text-text-primary text-base font-semibold">
-          {session.entry_date ? formatDateLabel(session.entry_date) : 'Unknown date'}
+          {formatHistoryDate(t, session.entry_date)}
         </Text>
         {presetName ? (
           <Text className="text-text-muted text-sm flex-shrink ml-3" numberOfLines={1}>
@@ -128,7 +139,7 @@ const SessionCard: React.FC<{
         </View>
       ) : (
         <Text className="text-text-secondary text-sm mt-2">
-          {formatEntrySummary(entries) ?? 'No set data'}
+          {formatEntrySummary(t, entries) ?? t('exerciseHistory.noSetData')}
         </Text>
       )}
     </View>
@@ -146,6 +157,7 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   modality,
   bestSet,
 }) => {
+  const { t } = useTranslation();
   const { sessions, isLoading, isLoadingMore, isError, refetch, loadMore, hasMore } =
     useExerciseHistory({ exerciseId });
 
@@ -160,9 +172,9 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   if (isError) {
     return (
       <View className="bg-surface rounded-xl p-4 items-center">
-        <Text className="text-text-secondary text-sm">Couldn&apos;t load history.</Text>
+        <Text className="text-text-secondary text-sm">{t('exerciseHistory.loadError')}</Text>
         <Button variant="ghost" onPress={refetch}>
-          Retry
+          {t('common.retry')}
         </Button>
       </View>
     );
@@ -171,7 +183,7 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   if (sessions.length === 0) {
     return (
       <View className="bg-surface rounded-xl p-4 items-center">
-        <Text className="text-text-secondary text-sm">No sessions logged yet.</Text>
+        <Text className="text-text-secondary text-sm">{t('exerciseHistory.empty')}</Text>
       </View>
     );
   }
@@ -187,11 +199,12 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
           distanceUnit={distanceUnit}
           modality={modality}
           bestSet={bestSet}
+          t={t}
         />
       ))}
       {hasMore ? (
         <Button variant="ghost" onPress={loadMore} disabled={isLoadingMore}>
-          {isLoadingMore ? 'Loading…' : 'Load more'}
+          {isLoadingMore ? t('exerciseHistory.loading') : t('exerciseHistory.loadMore')}
         </Button>
       ) : null}
     </>

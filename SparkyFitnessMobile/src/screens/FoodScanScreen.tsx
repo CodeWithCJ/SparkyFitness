@@ -36,15 +36,16 @@ import {
   hasSeenFoodPhotoIntro,
   markFoodPhotoIntroSeen,
 } from '../services/foodPhotoIntro';
+import { useTranslation } from 'react-i18next';
 
 type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
 type ScanMode = 'barcode' | 'label' | 'photo';
 
-const SCAN_SEGMENTS: Segment<ScanMode>[] = [
-  { key: 'barcode', label: 'Barcode' },
-  { key: 'label', label: 'Label' },
-  { key: 'photo', label: 'Photo' },
+const SCAN_SEGMENT_KEYS: ScanMode[] = [
+  'barcode',
+  'label',
+  'photo',
 ];
 
 const GUIDE_WIDTH = 280;
@@ -60,6 +61,11 @@ const CORNER_STYLE = {
 };
 
 const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
+  const localizedScanSegments: Segment<ScanMode>[] = SCAN_SEGMENT_KEYS.map((key) => ({
+    key,
+    label: key === 'barcode' ? t('foodMealScreens.barcode') : key === 'label' ? t('foodMealScreens.label') : t('foodMealScreens.photo'),
+  }));
   const insets = useSafeAreaInsets();
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const [permission, requestPermission] = useCameraPermissions();
@@ -107,12 +113,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   // capture-barcode mode is barcode-only.
   const scanSegments = useMemo(() => {
     if (isCaptureBarcodeMode) {
-      return SCAN_SEGMENTS.filter((segment) => segment.key === 'barcode');
+      return localizedScanSegments.filter((segment) => segment.key === 'barcode');
     }
     return isMealBuilderMode
-      ? SCAN_SEGMENTS.filter((segment) => segment.key !== 'photo')
-      : SCAN_SEGMENTS;
-  }, [isCaptureBarcodeMode, isMealBuilderMode]);
+       ? localizedScanSegments.filter((segment) => segment.key !== 'photo')
+       : localizedScanSegments;
+   }, [isCaptureBarcodeMode, isMealBuilderMode, localizedScanSegments]);
 
   const aiSettingQuery = useActiveAiServiceSetting({
     // Skip the AI gating fetch in capture-barcode mode — Photo segment is
@@ -306,12 +312,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     try {
       const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7, shutterSound: soundsEnabled });
       if (!photo?.base64) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+        Toast.show({ type: 'error', text1: t('foodMealScreens.error'), text2: t('foodMealScreens.captureFailed') });
         return;
       }
       setCapturedPhoto({ base64: photo.base64, uri: photo.uri });
     } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+      Toast.show({ type: 'error', text1: t('foodMealScreens.error'), text2: t('foodMealScreens.captureFailed') });
     }
   };
 
@@ -351,8 +357,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     } catch {
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: 'Failed to analyze nutrition label. Please try again.',
+        text1: t('foodMealScreens.error'),
+        text2: t('foodMealScreens.tryAgain'),
       });
     } finally {
       setLabelProcessing(false);
@@ -414,7 +420,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     try {
       const photo = await cameraRef.current.takePictureAsync({ base64: false, quality: 0.7, shutterSound: soundsEnabled });
       if (!photo?.uri) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+        Toast.show({ type: 'error', text1: t('foodMealScreens.error'), text2: t('foodMealScreens.captureFailed') });
         return;
       }
       // Mark seen even if user retakes — the intro shouldn't reappear later.
@@ -424,7 +430,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         params: { date, photo: { uri: photo.uri } },
       });
     } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+      Toast.show({ type: 'error', text1: t('foodMealScreens.error'), text2: t('foodMealScreens.captureFailed') });
     }
   };
 
@@ -441,7 +447,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       if (result.canceled) return;
       const asset = result.assets?.[0];
       if (!asset?.uri) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'No photo returned by picker.' });
+        Toast.show({ type: 'error', text1: t('foodMealScreens.error'), text2: t('foodMealScreens.noPhoto') });
         return;
       }
       await markFoodPhotoIntroSeen();
@@ -450,8 +456,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         params: { date, photo: { uri: asset.uri } },
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load photo.';
-      Toast.show({ type: 'error', text1: 'Error', text2: msg });
+      const msg = err instanceof Error ? err.message : t('foodMealScreens.captureFailed');
+      Toast.show({ type: 'error', text1: t('foodMealScreens.error'), text2: msg });
     } finally {
       pickerLock.current = false;
     }
@@ -497,9 +503,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
       >
         <Text className="text-text-primary text-base text-center mb-4">
-          We need your permission to show the camera
+          {t('foodMealScreens.cameraPermission')}
         </Text>
-        <Button onPress={requestPermission} title="Grant Permission" />
+        <Button onPress={requestPermission} title={t('foodMealScreens.grantPermission')} />
       </View>
     );
   }
@@ -555,7 +561,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         <View className="absolute inset-0 justify-center items-center bg-black/40">
           <ActivityIndicator size="large" color="#fff" />
           {labelProcessing ? (
-            <Text className="text-white text-base mt-3">Analyzing label...</Text>
+            <Text className="text-white text-base mt-3">{t('foodMealScreens.analyzingLabel')}</Text>
           ) : null}
         </View>
       ) : null}
@@ -568,7 +574,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               onPress={handleRetake}
               className="flex-1 bg-white/20 py-4 rounded-lg items-center"
             >
-              <Text className="text-white font-semibold text-base">Retake</Text>
+               <Text className="text-white font-semibold text-base">{t('foodMealScreens.retake')}</Text>
             </TouchableOpacity>
             <UIButton
               variant="primary"
@@ -577,7 +583,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               }}
               className="flex-1 py-4 rounded-lg"
             >
-              Use Photo
+               {t('foodMealScreens.usePhoto')}
             </UIButton>
           </View>
         </View>
@@ -590,12 +596,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         >
           <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
             <Text className="text-text-primary text-base font-semibold">
-              {lookupError ? 'Lookup failed' : 'No match for barcode'}
+              {lookupError ? t('foodMealScreens.lookupFailed') : t('foodMealScreens.noBarcodeMatch')}
             </Text>
             <Text className="text-text-secondary text-sm text-center">
               {lookupError
                 ? lookupError.message
-                : 'You can scan the nutrition label or enter it manually.'}
+                 : t('foodMealScreens.scanLabelOrManual')}
             </Text>
             <View className="gap-3 mt-2 self-stretch">
               <UIButton
@@ -604,7 +610,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 className="rounded-lg"
                 textClassName="text-sm"
               >
-                Scan Nutrition Label
+                 {t('foodMealScreens.scanNutritionLabel')}
               </UIButton>
               <UIButton
                 variant="outline"
@@ -617,7 +623,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 className="rounded-lg"
               >
                 <Text style={{ fontSize: 14, fontWeight: '600', color: accentPrimary }}>
-                  Add Food Manually
+                   {t('foodMealScreens.addFoodManually')}
                 </Text>
               </UIButton>
             </View>
@@ -641,7 +647,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             className="text-white text-sm mt-3"
             style={{ position: 'absolute', bottom: 220 }}
           >
-            Frame the whole meal
+            {t('foodMealScreens.frameWholeMeal')}
           </Text>
         </View>
       ) : null}
@@ -653,11 +659,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         >
           <View className="self-stretch bg-surface rounded-xl p-5 gap-3">
             <Text className="text-text-primary text-base font-semibold">
-              AI photo estimates aren&apos;t set up
+              {t('foodMealScreens.photoSetupTitle')}
             </Text>
             <Text className="text-text-secondary text-sm">
-              Open SparkyFitness in a browser and visit Settings → AI to add an
-              AI provider, then return here.
+              {t('foodMealScreens.photoSetupBody')}
             </Text>
             <View className="gap-2 mt-2">
               <UIButton
@@ -666,7 +671,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 className="rounded-lg"
                 textClassName="text-sm"
               >
-                Log manually
+                {t('foodMealScreens.logManually')}
               </UIButton>
               <UIButton
                 variant="ghost"
@@ -674,7 +679,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 className="rounded-lg"
                 textClassName="text-sm"
               >
-                Not now
+                {t('foodMealScreens.notNow')}
               </UIButton>
             </View>
           </View>
@@ -702,7 +707,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   onPress={handleShowManualEntry}
                   className="bg-raised px-6 py-3 rounded-xl"
                 >
-                  <Text className="text-text-primary text-sm font-semibold">Type Barcode Instead</Text>
+                   <Text className="text-text-primary text-sm font-semibold">{t('foodMealScreens.typeBarcode')}</Text>
                 </TouchableOpacity>
               ) : null}
 
@@ -741,7 +746,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                         void handlePhotoPickFromLibrary();
                       }}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      accessibilityLabel="Choose photo from library"
+                       accessibilityLabel={t('foodMealScreens.choosePhoto')}
                       accessibilityRole="button"
                       className="bg-black/50 rounded-full items-center justify-center"
                       style={{
@@ -760,7 +765,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   <TouchableOpacity
                     onPress={() => navigation.navigate('FoodPhotoIntro', { date })}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    accessibilityLabel="How photo estimation works"
+                     accessibilityLabel={t('foodMealScreens.photoHelp')}
                     accessibilityRole="button"
                     className="bg-black/50 rounded-full items-center justify-center"
                     style={{
@@ -799,9 +804,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             bounces={false}
           >
             <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm gap-4">
-              <Text className="text-text-primary text-base font-semibold text-center">Enter Barcode</Text>
+               <Text className="text-text-primary text-base font-semibold text-center">{t('foodMealScreens.enterBarcode')}</Text>
               <FormInput
-                placeholder="Barcode number"
+                 placeholder={t('foodMealScreens.barcodeNumber')}
                 keyboardType="number-pad"
                 autoFocus
                 value={manualBarcode}
@@ -818,7 +823,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   className="flex-1 py-3 rounded-lg"
                   textClassName="text-sm"
                 >
-                  Cancel
+                   {t('common.cancel')}
                 </UIButton>
                 <UIButton
                   variant="primary"
@@ -829,7 +834,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   className="flex-1 py-3 rounded-lg"
                   textClassName="text-sm"
                 >
-                  {isCaptureBarcodeMode ? 'Use Barcode' : 'Look Up'}
+                   {isCaptureBarcodeMode ? t('foodMealScreens.useBarcode') : t('foodMealScreens.lookUp')}
                 </UIButton>
               </View>
             </View>

@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -15,10 +16,14 @@ import Toast from 'react-native-toast-message';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import { useUpdateFast, useDeleteFast } from '../hooks/useFasting';
-import { formatHoursMinutes, formatDateTime } from '../utils/fasting';
 import { dateTypeToDate } from './TimeSheet';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
+import { getAppLocale } from '../localization';
+import {
+  formatLocalizedFastingDateTime,
+  formatLocalizedFastingDuration,
+} from '../utils/fastingLocalization';
 
 export interface FastingEditSheetRef {
   present: (fast: FastingLog) => void;
@@ -32,9 +37,18 @@ interface FastingEditSheetProps {
 
 const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
   ({ onSaved }, ref) => {
+    const { t } = useTranslation();
+    const appLocale = getAppLocale();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
 
-    const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary, danger] = useCSSVariable([
+    const [
+      surfaceBg,
+      textMuted,
+      accentPrimary,
+      textPrimary,
+      textSecondary,
+      danger,
+    ] = useCSSVariable([
       '--color-surface',
       '--color-text-muted',
       '--color-accent-primary',
@@ -53,7 +67,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
     const isPending = isSavePending || isDeletePending;
 
     useImperativeHandle(ref, () => ({
-      present: (fast) => {
+      present: fast => {
         setFastId(fast.id);
         const start = new Date(fast.start_time);
         setStartDate(Number.isNaN(start.getTime()) ? new Date() : start);
@@ -78,9 +92,9 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
     }, []);
 
     const isValid = startDate.getTime() < endDate.getTime();
-    const durationLabel = useMemo(
-      () => formatHoursMinutes(Math.max(0, endDate.getTime() - startDate.getTime())),
-      [startDate, endDate],
+    const durationLabel = formatLocalizedFastingDuration(
+      t,
+      Math.max(0, endDate.getTime() - startDate.getTime()),
     );
 
     const pickerStyles = useMemo(
@@ -90,7 +104,10 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
         today: { borderColor: accentPrimary, borderWidth: 1 },
         day_label: { color: textPrimary },
         weekday_label: { color: textSecondary },
-        month_selector_label: { color: textPrimary, fontWeight: '600' as const },
+        month_selector_label: {
+          color: textPrimary,
+          fontWeight: '600' as const,
+        },
         year_selector_label: { color: textPrimary, fontWeight: '600' as const },
         time_selector_label: { color: textPrimary, fontWeight: '600' as const },
         // Hide the calendar header's time button — we render a dedicated time
@@ -130,15 +147,15 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
         {
           onSuccess: () => {
             bottomSheetRef.current?.dismiss();
-            Toast.show({ type: 'success', text1: 'Fast updated' });
+            Toast.show({ type: 'success', text1: t('fasting.edit.updated') });
             onSaved?.();
           },
-          onError: (error) => {
-            addLog(`Failed to update fast: ${error}`, 'ERROR');
+          onError: error => {
+            addLog(`${t('fasting.edit.updateFailed')}: ${error}`, 'ERROR');
             Toast.show({
               type: 'error',
-              text1: 'Failed to update fast',
-              text2: 'Please try again.',
+              text1: t('fasting.edit.updateFailed'),
+              text2: t('fasting.toast.retry'),
             });
           },
         },
@@ -147,34 +164,44 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
 
     const handleDelete = () => {
       if (!fastId) return;
-      Alert.alert('Delete fast?', 'This cannot be undone.', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            deleteFast(fastId, {
-              onSuccess: () => {
-                bottomSheetRef.current?.dismiss();
-                Toast.show({ type: 'success', text1: 'Fast deleted' });
-                onSaved?.();
-              },
-              onError: (error) => {
-                addLog(`Failed to delete fast: ${error}`, 'ERROR');
-                Toast.show({
-                  type: 'error',
-                  text1: 'Failed to delete fast',
-                  text2: 'Please try again.',
-                });
-              },
-            });
+      Alert.alert(
+        t('fasting.management.deleteTitle'),
+        t('fasting.management.deleteMessage'),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('common.delete'),
+            style: 'destructive',
+            onPress: () => {
+              deleteFast(fastId, {
+                onSuccess: () => {
+                  bottomSheetRef.current?.dismiss();
+                  Toast.show({
+                    type: 'success',
+                    text1: t('fasting.edit.deleted'),
+                  });
+                  onSaved?.();
+                },
+                onError: error => {
+                  addLog(
+                    `${t('fasting.edit.deleteFailed')}: ${error}`,
+                    'ERROR',
+                  );
+                  Toast.show({
+                    type: 'error',
+                    text1: t('fasting.edit.deleteFailed'),
+                    text2: t('fasting.toast.retry'),
+                  });
+                },
+              });
+            },
           },
-        },
-      ]);
+        ],
+      );
     };
 
     const togglePicker = (picker: 'start' | 'end') => {
-      setOpenPicker((p) => (p === picker ? null : picker));
+      setOpenPicker(p => (p === picker ? null : picker));
     };
 
     const renderRow = (
@@ -212,6 +239,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
         <DateTimePicker
           mode="single"
           date={value}
+          locale={appLocale}
           timePicker
           onChange={onChange}
           components={pickerComponents}
@@ -220,11 +248,12 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
         {/* Dedicated time wheel below the calendar, sharing the same value. */}
         <View className="border-t border-border-subtle mt-1 pt-2">
           <Text className="text-xs font-semibold uppercase text-text-muted tracking-wide mb-1 px-1">
-            Time
+            {t('fasting.management.time')}
           </Text>
           <DateTimePicker
             mode="single"
             date={value}
+            locale={appLocale}
             timePicker
             initialView="time"
             hideHeader
@@ -252,19 +281,32 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
       >
         <BottomSheetScrollView contentContainerClassName="bg-surface px-5 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-1">
-            Edit fast
+            {t('fasting.edit.title')}
           </Text>
-          <Text className="text-center text-text-secondary mb-4">{durationLabel} fasted</Text>
+          <Text className="text-center text-text-secondary mb-4">
+            {t('fasting.management.durationFasted', {
+              duration: durationLabel,
+            })}
+          </Text>
 
-          {renderRow('Started', formatDateTime(startDate), 'start')}
-          {openPicker === 'start' && renderInlinePicker(startDate, handleStartChange)}
+          {renderRow(
+            t('fasting.management.started'),
+            formatLocalizedFastingDateTime(startDate, appLocale),
+            'start',
+          )}
+          {openPicker === 'start' &&
+            renderInlinePicker(startDate, handleStartChange)}
 
-          {renderRow('Ended', formatDateTime(endDate), 'end')}
+          {renderRow(
+            t('fasting.management.ended'),
+            formatLocalizedFastingDateTime(endDate, appLocale),
+            'end',
+          )}
           {openPicker === 'end' && renderInlinePicker(endDate, handleEndChange)}
 
           {!isValid && (
-            <Text className="text-text-danger-subtle text-sm mt-3 text-center">
-              Start time must be before the end time.
+            <Text className="text-bg-danger text-sm mt-3 text-center">
+              {t('fasting.management.invalidRange')}
             </Text>
           )}
 
@@ -276,7 +318,9 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
             }`}
           >
             <Text className="text-white text-base font-semibold">
-              {isSavePending ? 'Saving...' : 'Save changes'}
+              {isSavePending
+                ? t('fasting.edit.saving')
+                : t('fasting.edit.save')}
             </Text>
           </Pressable>
 
@@ -288,8 +332,10 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
             }`}
           >
             <Icon name="trash" size={15} color={danger} />
-            <Text className="text-icon-danger text-base font-semibold ml-2">
-              {isDeletePending ? 'Deleting...' : 'Delete fast'}
+            <Text className="text-bg-danger text-base font-semibold ml-2">
+              {isDeletePending
+                ? t('fasting.edit.deleting')
+                : t('fasting.edit.delete')}
             </Text>
           </Pressable>
         </BottomSheetScrollView>

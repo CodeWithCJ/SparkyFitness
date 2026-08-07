@@ -10,6 +10,8 @@ import ChartTouchOverlay, {
   createChartTouchLayoutSignature,
   type ChartTouchLayout,
 } from './ChartTouchOverlay';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 type StepsBarChartProps = {
   data: StepsDataPoint[];
@@ -37,8 +39,6 @@ const formatYLabel = (value: number) => {
   return String(value);
 };
 
-const DEFAULT_TOOLTIP = 'Press a bar for details';
-
 const StepsTooltip: React.FC<{ text: string }> = ({ text }) => (
   <View className="h-6 justify-center mt-3 mb-1">
     <Text className="text-text-secondary text-sm text-center">{text}</Text>
@@ -51,11 +51,13 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
   isError,
   range,
 }) => {
+  const { t } = useTranslation();
+  const defaultTooltip = t('mobileComponents.charts.pressBar');
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -70,7 +72,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
   const [tooltipResetKey, setTooltipResetKey] = useState({ data, range });
   if (tooltipResetKey.data !== data || tooltipResetKey.range !== range) {
     setTooltipResetKey({ data, range });
-    setTooltipText(DEFAULT_TOOLTIP);
+    setSelectedIndex(null);
   }
 
   const handleTouchLayoutChange = useCallback(
@@ -97,41 +99,46 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
         return;
       }
 
-      setTooltipText(
-        `${point.steps.toLocaleString()} steps · ${formatTooltipDate(
-          point.day,
-        )}`,
-      );
+      setSelectedIndex(index);
     },
     [data],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(DEFAULT_TOOLTIP);
+    setSelectedIndex(null);
   }, []);
+
+  const selectedPoint = selectedIndex == null ? undefined : data[selectedIndex];
+  const tooltipText = selectedPoint
+    ? t('mobileComponents.charts.stepsOn', {
+        count: selectedPoint.steps,
+        formattedCount: formatLocalizedNumber(selectedPoint.steps),
+        date: formatTooltipDate(selectedPoint.day),
+      })
+    : defaultTooltip;
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <Text className="text-text-primary text-lg font-semibold mb-2">
-        Steps
+        {t('measurements.steps')}
       </Text>
 
       <StepsTooltip text={tooltipText} />
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Loading...</Text>
+          <Text className="text-text-muted text-sm">{t('common.loading')}</Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            Failed to load step data
+            {t('mobileComponents.charts.stepsError')}
           </Text>
         </View>
       ) : !hasData ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            No step data for this period
+            {t('mobileComponents.charts.noSteps')}
           </Text>
         </View>
       ) : (

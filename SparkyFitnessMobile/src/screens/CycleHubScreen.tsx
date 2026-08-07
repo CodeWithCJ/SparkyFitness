@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, ScrollView } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
@@ -36,6 +38,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   const { mode, enabled, isLoading: isModeLoading, onboardedAt } = useCycleMode();
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
   const { discreetMode } = useDiscreetMode();
+  const { t } = useTranslation();
 
   // Redirect to Onboarding if not enabled or not onboarded
   useEffect(() => {
@@ -55,8 +58,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'trends' | 'tools' | 'history'>('overview');
   const middleTab =
     mode === 'pregnant'
-      ? ({ key: 'tools', label: 'Tools' } as const)
-      : ({ key: 'trends', label: 'Trends' } as const);
+      ? ({ key: 'tools', label: t('mobileComponents.wellness.hub.tools') } as const)
+      : ({ key: 'trends', label: t('mobileComponents.wellness.hub.trends') } as const);
   const currentTab =
     (activeTab === 'trends' || activeTab === 'tools') && activeTab !== middleTab.key
       ? 'overview'
@@ -109,7 +112,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
     return getPhaseDisplayName(dayStats.phase, discreetMode);
   }, [dayStats, discreetMode]);
 
-  const hubTitle = discreetMode ? 'Wellness' : mode === 'pregnant' ? 'Pregnancy Hub' : 'Cycle Hub';
+  const hubTitle = discreetMode ? t('mobileComponents.wellness.hub.wellness') : mode === 'pregnant' ? t('mobileComponents.wellness.hub.pregnancy') : t('mobileComponents.wellness.hub.cycle');
 
   const header = useScreenHeader({
     title: hubTitle,
@@ -119,8 +122,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       kind: 'icon',
       ionicon: 'add-outline',
       sfSymbol: 'plus',
-      role: 'primary',
-      accessibilityLabel: 'Log Entry',
+role: 'primary',
+      accessibilityLabel: t('mobileComponents.wellness.hub.logEntry'),
       onPress: () => navigation.navigate('CycleLogModal', { date: selectedDate }),
     },
   });
@@ -140,9 +143,9 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       <View className="px-4 py-2 bg-background z-10 border-b border-border-subtle">
         <SegmentedControl
           segments={[
-            { key: 'overview', label: 'Overview' },
+            { key: 'overview', label: t('mobileComponents.wellness.hub.overview') },
             middleTab,
-            { key: 'history', label: 'History' },
+            { key: 'history', label: t('mobileComponents.wellness.hub.history') },
           ]}
           activeKey={currentTab}
           onSelect={setActiveTab}
@@ -173,8 +176,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
                     fertileEndDay={ringMarkers.fertileEndDay}
                     ovulationDay={ringMarkers.ovulationDay}
                     centerLabel={activeSegmentLabel}
-                    centerValue={dayStats.cycleDay !== null ? `Day ${dayStats.cycleDay}` : '—'}
-                    centerSub={discreetMode ? undefined : `${cycleStats.avgCycleLength} day cycle`}
+                     centerValue={dayStats.cycleDay !== null ? t('mobileComponents.wellness.hub.day', { value: dayStats.cycleDay }) : '—'}
+                      centerSub={discreetMode ? undefined : t('mobileComponents.wellness.hub.cycleLength', { count: cycleStats.avgCycleLength, formattedCount: formatLocalizedNumber(cycleStats.avgCycleLength) })}
                   />
                 </View>
 

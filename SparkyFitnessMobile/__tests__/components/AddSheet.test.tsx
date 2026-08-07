@@ -2,6 +2,32 @@ import React from 'react';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import AddSheet, { type AddSheetRef } from '../../src/components/AddSheet';
 
+const enResource = require('../../src/localization/locales/en/translation.json');
+const plResource = require('../../src/localization/locales/pl/translation.json');
+(globalThis as any).__I18N_EN = enResource;
+(globalThis as any).__I18N_PL = plResource;
+(globalThis as any).__I18N_LANG = 'en';
+
+jest.mock('react-i18next', () => {
+  const actual = jest.requireActual('react-i18next');
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string) => {
+        const resources = (globalThis.__I18N_LANG === 'pl' ? globalThis.__I18N_PL : globalThis.__I18N_EN) ?? {};
+        return key.split('.').reduce((value: unknown, part: string) => {
+          if (value && typeof value === 'object' && part in value) {
+            return (value as Record<string, unknown>)[part];
+          }
+          return undefined;
+        }, resources) ?? key;
+      },
+      i18n: null,
+      ready: true,
+    }),
+  };
+});
+
 const mockBottomSheetControls = {
   openCount: 0,
   isPresentBlocked: false,
@@ -66,6 +92,7 @@ describe('AddSheet', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (globalThis as any).__I18N_LANG = 'en';
     mockBottomSheetControls.openCount = 0;
     mockBottomSheetControls.isPresentBlocked = false;
     mockBottomSheetControls.onDismiss = undefined;
@@ -163,5 +190,50 @@ describe('AddSheet', () => {
 
     expect(props.onLogWorkout).toHaveBeenCalledTimes(1);
     expect(props.onStartWorkout).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['en', 'Back'],
+    ['pl', 'Cofnij'],
+  ] as const)('shows the localized back action in the %s exercise submenu', (language, label) => {
+    (globalThis as any).__I18N_LANG = language;
+    const { ref, getByText, queryByText } = renderAddSheet();
+
+    act(() => ref.current?.present({ initialMenu: 'exercise' }));
+
+    expect(getByText(label)).toBeTruthy();
+    expect(queryByText(['Ple', 'cy'].join(''))).toBeNull();
+  });
+
+  it.each([
+    ['en', 'Wellness'],
+    ['pl', 'Samopoczucie'],
+  ] as const)('uses the localized Wellness fallback in %s', (language, label) => {
+    (globalThis as any).__I18N_LANG = language;
+    const { ref, getByText } = renderAddSheet({
+      showCycleCard: true,
+      onOpenCycle: jest.fn(),
+      cycleLabel: undefined,
+    });
+
+    act(() => ref.current?.present());
+
+    expect(getByText(label)).toBeTruthy();
+  });
+
+  it.each(['en', 'pl'] as const)('keeps a custom cycle label literal in %s', (language) => {
+    (globalThis as any).__I18N_LANG = language;
+    const onOpenCycle = jest.fn();
+    const { ref, getByText } = renderAddSheet({
+      showCycleCard: true,
+      onOpenCycle,
+      cycleLabel: 'Moja sekcja',
+    });
+
+    act(() => ref.current?.present());
+    fireEvent.press(getByText('Moja sekcja'));
+
+    expect(getByText('Moja sekcja')).toBeTruthy();
+    expect(onOpenCycle).toHaveBeenCalledTimes(1);
   });
 });

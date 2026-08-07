@@ -4,6 +4,7 @@ import { checklistForWeek, CHECKLIST_TEMPLATES } from '@workspace/shared';
 import { usePregnancyChecklist, usePregnancyChecklistMutations } from '../../../hooks/usePregnancyChecklist';
 import Icon from '../../Icon';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 
 interface WeeklyChecklistProps {
   pregnancyId: string;
@@ -26,6 +27,7 @@ interface ChecklistRow {
 const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentWeek }) => {
   const { items, isLoading } = usePregnancyChecklist(pregnancyId);
   const { toggleAsync } = usePregnancyChecklistMutations();
+  const { t } = useTranslation();
   const [accentColor, iconSuccess, iconDecorative] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-success',
@@ -56,7 +58,7 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
         const tpl = CHECKLIST_TEMPLATES.find((t) => t.key === i.template_key);
         return {
           key: i.template_key as string,
-          title: tpl?.title ?? i.custom_title ?? i.template_key ?? 'Checklist item',
+          title: tpl?.title ?? i.custom_title ?? i.template_key ?? t('mobileComponents.checklist.item'),
           week: i.week ?? currentWeek,
           completed: true,
           persistedId: i.id,
@@ -64,7 +66,7 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
       });
 
     return [...windowRows, ...pastCompleted];
-  }, [items, currentWeek]);
+  }, [items, currentWeek, t]);
 
   const handleToggle = (row: ChecklistRow) => {
     toggleAsync({
@@ -77,13 +79,13 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
   };
 
   return (
-    <View className="bg-surface rounded-xl p-4 shadow-sm">
-      <Text className="text-base font-bold text-text-secondary mb-1">This Week&apos;s To-Do</Text>
+    <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-2">
+      <Text className="text-text-primary text-base font-bold mb-1">{t('mobileComponents.checklist.title')}</Text>
       {isLoading ? (
         <ActivityIndicator color={accentColor} />
       ) : rows.length === 0 ? (
-        <Text className="text-text-secondary text-sm py-2">
-          Nothing on your checklist for this week.
+        <Text className="text-text-secondary text-xs italic py-2">
+          {t('mobileComponents.checklist.empty')}
         </Text>
       ) : (
         rows.map((row) => (

@@ -5,6 +5,7 @@ import {
   type LiveActivity,
   type UserInteractionEvent,
 } from 'expo-widgets';
+import i18n from '../localization/i18n';
 import { useActiveWorkoutStore, type ActiveWorkoutState } from '../stores/activeWorkoutStore';
 import {
   describeActiveSet,
@@ -13,6 +14,12 @@ import {
 } from '../utils/workoutSession';
 import { createConcurrencyLimiter } from '../utils/concurrency';
 import { addLog } from './LogService';
+import {
+  buildWorkoutLiveActivityLabels,
+  resolveWorkoutLiveActivityLocale,
+  type WorkoutLiveActivityLabels,
+  type WorkoutLiveActivityLocale,
+} from './workoutLiveActivityLabels';
 import WorkoutLiveActivityFactory, {
   type WorkoutLiveActivityProps,
 } from './WorkoutLiveActivityLayout';
@@ -34,6 +41,7 @@ let initialized = false;
 let reconciled = false;
 let unsubscribeStore: (() => void) | null = null;
 let unsubscribeHydration: (() => void) | null = null;
+let unsubscribeLanguageChanged: (() => void) | null = null;
 let interactionSubscription: ReturnType<typeof addUserInteractionListener> | null = null;
 let activity: LiveActivity<WorkoutLiveActivityProps> | null = null;
 let lastSentProps: WorkoutLiveActivityProps | null = null;
@@ -126,17 +134,22 @@ function handleUserInteraction(event: UserInteractionEvent): void {
  * should be shown. Pure function of state — the frozen `elapsedLabel` for a
  * completed workout comes from the newest completion timestamp (not "now"),
  * so recomputation after a relaunch or autosave can't extend the clock.
+ *
+ * `locale` and `labels` come from the caller so the function stays pure and
+ * testable; production callers pass the current effective language.
  */
 export function computeWorkoutLiveActivityProps(
   state: Pick<
     ActiveWorkoutState,
     'sessionId' | 'session' | 'startedAt' | 'steps' | 'completedSetIds' | 'activeSetId' | 'rest'
   >,
+  locale: WorkoutLiveActivityLocale = resolveWorkoutLiveActivityLocale(i18n.resolvedLanguage),
+  labels: WorkoutLiveActivityLabels = buildWorkoutLiveActivityLabels(locale),
 ): WorkoutLiveActivityProps | null {
   const { sessionId, session, startedAt, steps, completedSetIds, activeSetId, rest } = state;
   if (sessionId == null || startedAt == null) return null;
 
-  const workoutName = session?.name ?? 'Workout';
+  const workoutName = session?.name ?? labels.workout;
 
   // A null cursor with steps means every set is logged. An empty live-start
   // workout (no exercises yet) also has a null cursor but is just beginning —
@@ -146,6 +159,8 @@ export function computeWorkoutLiveActivityProps(
     const frozenAt = completedTimes.length > 0 ? Math.max(...completedTimes) : startedAt;
     return {
       workoutName,
+      locale,
+      labels,
       startedAt,
       phase: 'complete',
       restStartedAt: null,
@@ -158,12 +173,14 @@ export function computeWorkoutLiveActivityProps(
 
   const desc = describeActiveSet(session, activeSetId);
   const setLine = desc
-    ? `${desc.exerciseName ?? 'Exercise'} · Set ${desc.setNumber} of ${desc.setCount}`
+    ? `${desc.exerciseName ?? labels.exercise} · ${labels.set} ${desc.setNumber} ${labels.setOf} ${desc.setCount}`
     : null;
 
   if (rest.state === 'resting' && rest.endsAt != null) {
     return {
       workoutName,
+      locale,
+      labels,
       startedAt,
       phase: 'resting',
       restStartedAt: rest.endsAt - rest.durationSec * 1000,
@@ -177,6 +194,8 @@ export function computeWorkoutLiveActivityProps(
   if (rest.state === 'paused' && rest.pausedRemainingMs != null) {
     return {
       workoutName,
+      locale,
+      labels,
       startedAt,
       phase: 'paused',
       restStartedAt: null,
@@ -189,6 +208,8 @@ export function computeWorkoutLiveActivityProps(
 
   return {
     workoutName,
+    locale,
+    labels,
     startedAt,
     phase: 'active',
     restStartedAt: null,
@@ -199,8 +220,30 @@ export function computeWorkoutLiveActivityProps(
   };
 }
 
+function labelsEqual(
+  a: WorkoutLiveActivityLabels,
+  b: WorkoutLiveActivityLabels,
+): boolean {
+  return (
+    a.rest === b.rest &&
+    a.paused === b.paused &&
+    a.elapsed === b.elapsed &&
+    a.workoutComplete === b.workoutComplete &&
+    a.complete === b.complete &&
+    a.addFifteenSeconds === b.addFifteenSeconds &&
+    a.addFifteenSecondsShort === b.addFifteenSecondsShort &&
+    a.skipRest === b.skipRest &&
+    a.workout === b.workout &&
+    a.exercise === b.exercise &&
+    a.set === b.set &&
+    a.setOf === b.setOf
+  );
+}
+
 function propsEqual(a: WorkoutLiveActivityProps, b: WorkoutLiveActivityProps): boolean {
   return (
+    a.locale === b.locale &&
+    labelsEqual(a.labels, b.labels) &&
     a.workoutName === b.workoutName &&
     a.startedAt === b.startedAt &&
     a.phase === b.phase &&
@@ -321,6 +364,18 @@ export async function initWorkoutLiveActivity(): Promise<void> {
 
   interactionSubscription = addUserInteractionListener(handleUserInteraction);
 
+  // Repaint the live activity in the new language when the effective locale
+  // changes mid-workout. This reuses the update path (never ends+restarts),
+  // so the instance id, timers, and phase stay intact.
+  const onLanguageChanged = () => {
+    if (!reconciled) return;
+    syncFromState();
+  };
+  i18n.on('languageChanged', onLanguageChanged);
+  unsubscribeLanguageChanged = () => {
+    i18n.off('languageChanged', onLanguageChanged);
+  };
+
   const persistApi = useActiveWorkoutStore.persist;
   if (persistApi.hasHydrated()) {
     startReconcile();
@@ -342,6 +397,8 @@ export function __resetWorkoutLiveActivityForTests(): void {
   unsubscribeStore = null;
   unsubscribeHydration?.();
   unsubscribeHydration = null;
+  unsubscribeLanguageChanged?.();
+  unsubscribeLanguageChanged = null;
   interactionSubscription?.remove();
   interactionSubscription = null;
   initialized = false;

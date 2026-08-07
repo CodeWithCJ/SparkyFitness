@@ -4,6 +4,12 @@ import { fireEvent, render } from '@testing-library/react-native';
 import type { ExerciseEntryResponse } from '@workspace/shared';
 import ActiveWorkoutRail, { type SupersetBorder } from '../../src/components/ActiveWorkoutRail';
 
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & {
+    __setTestLocale: (value: 'en' | 'pl') => void;
+  }).__setTestLocale(locale);
+}
+
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
@@ -108,6 +114,47 @@ describe('ActiveWorkoutRail superset borders', () => {
   it('draws no bar for ungrouped exercises', () => {
     const { queryByTestId } = renderRail();
     expect(queryByTestId('superset-bar-ex-c')).toBeNull();
+  });
+});
+
+describe('ActiveWorkoutRail localization', () => {
+  it.each([
+    ['en', 'Add', 'Add exercise', 'Exercise'],
+    ['pl', 'Dodaj', 'Dodaj ćwiczenie', 'Ćwiczenie'],
+  ] as const)('renders %s labels and exercise fallback', (locale, add, addExercise, fallback) => {
+    setTestLocale(locale);
+    const onPressAdd = jest.fn();
+    const { getByText, getByLabelText } = render(
+      <ActiveWorkoutRail
+        exercises={[makeExercise('fallback', null as never)]}
+        completedSetIds={{}}
+        focusedEntryId={null}
+        activeEntryId={null}
+        supersetBorders={new Map()}
+        getImageSource={() => null}
+        onPressExercise={jest.fn()}
+        onPressAdd={onPressAdd}
+      />,
+    );
+    expect(getByText(add)).toBeTruthy();
+    expect(getByLabelText(addExercise)).toBeTruthy();
+    expect(getByLabelText(fallback)).toBeTruthy();
+  });
+
+  it('keeps data exercise names literal', () => {
+    const { getByLabelText } = render(
+      <ActiveWorkoutRail
+        exercises={[makeExercise('bench', 'Bench Press')]}
+        completedSetIds={{}}
+        focusedEntryId={null}
+        activeEntryId={null}
+        supersetBorders={new Map()}
+        getImageSource={() => null}
+        onPressExercise={jest.fn()}
+        onPressAdd={jest.fn()}
+      />,
+    );
+    expect(getByLabelText('Bench Press')).toBeTruthy();
   });
 });
 

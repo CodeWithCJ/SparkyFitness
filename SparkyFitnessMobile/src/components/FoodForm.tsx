@@ -15,6 +15,7 @@ import { useServerConnection } from '../hooks';
 import { useUserAiConfigAllowed } from '../hooks/useUserAiConfigAllowed';
 import { requestAiUnitConversion } from '../services/api/aiConversionApi';
 import Toast from 'react-native-toast-message';
+import { useTranslation } from 'react-i18next';
 import type {
   EquivalentUnit,
   FoodUnitSelectionResult,
@@ -45,7 +46,6 @@ import {
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import {
   CONFIDENCE_TONES,
-  OVERALL_CONFIDENCE_LABELS,
   getConversionFactor,
   shouldOfferAiConversion,
   type AiConfidence,
@@ -112,7 +112,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   onSubmit,
   submitRequestRef,
   onServingChange,
-  submitLabel = 'Add Food',
+  submitLabel,
   isSubmitting = false,
   hideSubmitButton = false,
   showAutoScaleNutrition = false,
@@ -125,6 +125,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   customNutrients: customNutrientsProp,
   onCustomNutrientsChange,
 }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState<FoodFormData>(() =>
     buildDisplayFormState(initialValues),
   );
@@ -639,8 +640,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!(Number.isFinite(anchor.serving_size) && anchor.serving_size > 0)) {
       Toast.show({
         type: 'error',
-        text1: "Couldn't estimate",
-        text2: 'The food has no trusted default to scale from.',
+        text1: t('foodMeals.couldNotEstimate'),
+        text2: t('foodMeals.noTrustedDefault'),
       });
       return;
     }
@@ -650,7 +651,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!Number.isFinite(fromAmount) || fromAmount <= 0) {
       Toast.show({
         type: 'error',
-        text1: 'Set a serving size first',
+        text1: t('foodMeals.setServingFirst'),
       });
       return;
     }
@@ -659,6 +660,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     try {
       const result = await requestAiUnitConversion({
         foodId: unitSelector?.foodId ?? 'pending-new-food',
+        // This is a protocol fallback for unsaved foods, not user-facing copy.
         foodName: form.name.trim() || 'Untitled food',
         brand: form.brand.trim() || undefined,
         fromUnit: context.fromUnit,
@@ -756,10 +758,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
       swapContextRef.current = null;
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'AI estimate failed.';
+        err instanceof Error ? err.message : t('foodMeals.aiEstimateFailed');
       Toast.show({
         type: 'error',
-        text1: "Couldn't estimate",
+        text1: t('foodMeals.couldNotEstimate'),
         text2: message,
       });
     } finally {
@@ -834,15 +836,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
 
     Alert.alert(
-      'Manual Nutrition Update',
-      "Can't convert between units. Update nutrition values manually before saving.",
+      t('foodMeals.manualNutritionUpdate'),
+      t('foodMeals.manualNutritionMessage'),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Save Anyway',
+          text: t('foodMeals.saveAnyway'),
           onPress: submitForm,
         },
       ],
@@ -867,20 +869,20 @@ const FoodForm: React.FC<FoodFormProps> = ({
         {headerChildren}
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
           {/* Food info */}
-          {renderTextField('Food Name', 'name', 'e.g. Chicken Breast', true, 'brand')}
-          {renderTextField('Brand', 'brand', 'Optional', false, 'servingSize')}
+          {renderTextField(t('foodMeals.foodName'), 'name', t('foodMeals.foodNamePlaceholder'), true, 'brand')}
+          {renderTextField(t('foodMeals.brand'), 'brand', t('foodMeals.optional'), false, 'servingSize')}
 
           {/* Serving */}
           <View className="flex-row gap-3">
-            {renderNumericField('Serving Size', 'servingSize', undefined, false, 'calories')}
+              {renderNumericField(t('foodMeals.serving'), 'servingSize', undefined, false, 'calories')}
             <View className="gap-1.5 flex-1">
-              <Text className="text-text-secondary text-sm font-medium">Serving Unit</Text>
+               <Text className="text-text-secondary text-sm font-medium">{t('foodMeals.unit')}</Text>
               {unitSelector ? (
                 <FoodUnitSelectorSheet
                   variants={unitSelector.variants}
                   selectedVariantId={selectedSavedVariantId}
                   selectedSelection={selectedUnitSelection}
-                  title="Select Unit"
+                   title={t('foodMeals.selectUnit')}
                   onSelect={handleUnitSelectorSelection}
                   renderTrigger={({ onPress }) => (
                     <TouchableOpacity
@@ -894,7 +896,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         style={{ fontSize: 16 }}
                         numberOfLines={1}
                       >
-                        {form.servingUnit || 'unit'}
+                         {form.servingUnit || t('foodMeals.unit')}
                       </Text>
                       <Icon
                         name="chevron-down"
@@ -910,8 +912,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   value={form.servingUnit}
                   sections={SERVING_UNIT_SECTIONS}
                   onSelect={(v) => update('servingUnit', v)}
-                  title="Select Unit"
-                  placeholder="unit"
+                   title={t('foodMeals.selectUnit')}
+                   placeholder={t('foodMeals.unit')}
                   renderTrigger={({ onPress, selectedOption }) => (
                     <TouchableOpacity
                       onPress={onPress}
@@ -923,7 +925,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
                         style={{ fontSize: 16 }}
                       >
-                        {selectedOption?.label ?? 'unit'}
+                         {selectedOption?.label ?? t('foodMeals.unit')}
                       </Text>
                       <Icon
                         name="chevron-down"
@@ -950,9 +952,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
           {showAutoScaleNutrition ? (
             <View className="flex-row items-center justify-between mt-1.5">
-              <Text className="text-text-secondary text-base">Auto Scale Nutrition</Text>
+              <Text className="text-text-secondary text-base">{t('foodMeals.autoScaleNutrition')}</Text>
               <Switch
-                accessibilityLabel="Auto Scale Nutrition"
+                accessibilityLabel={t('foodMeals.autoScaleNutrition')}
                 value={autoScaleNutrition}
                 onValueChange={(value) => {
                   hasTouchedAutoScaleRef.current = true;
@@ -985,7 +987,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   className="text-sm font-medium flex-1"
                   style={{ color: infoText }}
                 >
-                  {"Can't convert between units. Update nutrition values manually."}
+                  {t('foodMeals.manualNutritionMessage')}
                 </Text>
               </View>
               {canAiConvert ? (
@@ -999,7 +1001,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     <View className="flex-row items-center gap-2">
                       <ActivityIndicator size="small" color={textPrimary} />
                       <Text className="text-text-primary font-semibold">
-                        Estimating…
+                        {t('foodMealScreens.estimatingPortions')}
                       </Text>
                     </View>
                   ) : (
@@ -1011,7 +1013,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         style={androidSparkleStyle}
                       />
                       <Text className="text-text-primary font-semibold">
-                        Convert with AI
+                         {t('foodMeals.convertWithAi')}
                       </Text>
                     </View>
                   )}
@@ -1045,20 +1047,25 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     ],
                 }}
               >
-                {
-                  OVERALL_CONFIDENCE_LABELS[
-                    selectedUnitSelection.variant
-                      .ai_confidence as AiConfidence
-                  ]
-                }{' '}
-                estimate
+                  {(() => {
+                    switch (selectedUnitSelection.variant.ai_confidence as AiConfidence) {
+                      case 'high':
+                        return t('foodMeals.confidenceEstimateHigh');
+                      case 'medium':
+                        return t('foodMeals.confidenceEstimateMedium');
+                      case 'low':
+                        return t('foodMeals.confidenceEstimateLow');
+                      default:
+                        return t('foodMeals.aiEstimate');
+                    }
+                  })()}
               </Text>
             </View>
           ) : null}
 
           <View className="gap-1.5 mt-1.5">
             <Text className="text-text-primary text-sm font-bold">
-              Calories (kcal) *
+               {t('foodMealScreens.calories')}
             </Text>
             <FormInput
               ref={fieldRefs.calories}
@@ -1158,7 +1165,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           loading={isSubmitting}
           onPress={handleSubmitPress}
         >
-          {submitLabel}
+          <Text className="text-white text-base font-semibold">{submitLabel ?? t('foodMeals.addFood')}</Text>
         </Button>
         )}
       </ScrollView>

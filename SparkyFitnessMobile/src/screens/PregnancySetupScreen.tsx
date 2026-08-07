@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -17,6 +18,7 @@ type Props = RootStackScreenProps<'PregnancySetup'>;
 
 const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const existing = route.params?.pregnancy;
   const isEdit = !!existing?.id;
@@ -37,7 +39,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSave = async () => {
     const error = form.validate();
     if (error) {
-      Toast.show({ type: 'error', text1: 'Check the dates', text2: error });
+      Toast.show({ type: 'error', text1: t('mobileComponents.wellness.setup.checkDates'), text2: error });
       return;
     }
     const body = {
@@ -48,19 +50,19 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       if (isEdit && existing?.id) {
         await updatePregnancyAsync({ id: existing.id, body });
-        Toast.show({ type: 'success', text1: 'Pregnancy updated' });
+        Toast.show({ type: 'success', text1: t('mobileComponents.wellness.setup.updated') });
       } else {
         await createPregnancyAsync(body);
-        Toast.show({ type: 'success', text1: 'Pregnancy set up' });
+        Toast.show({ type: 'success', text1: t('mobileComponents.wellness.setup.created') });
       }
       navigation.goBack();
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not save pregnancy' });
+      Toast.show({ type: 'error', text1: t('mobileComponents.wellness.setup.saveError') });
     }
   };
 
   const header = useScreenHeader({
-    title: isEdit ? 'Edit Pregnancy' : 'Pregnancy Setup',
+    title: isEdit ? t('mobileComponents.wellness.setup.editTitle') : t('mobileComponents.wellness.setup.newTitle'),
     left: { kind: 'back' },
   });
 
@@ -74,12 +76,12 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
       {header}
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 96 }}>
         <Text className="text-text-secondary text-sm mb-4">
-          Tell us how to estimate your due date. You can change this later.
+          {t('mobileComponents.wellness.setup.description')}
         </Text>
 
         <PregnancyDueDateForm form={form}>
           <SettingsRow
-            title="Number of babies"
+            title={t('mobileComponents.wellness.setup.babies')}
             rightAccessory={
               <StepperInput {...fetusCountProps} keyboardType="number-pad" compact />
             }
@@ -98,7 +100,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
         }}
       >
         <Button variant="primary" disabled={isSaving} onPress={handleSave}>
-          {isSaving ? 'Saving…' : 'Save'}
+          {isSaving ? t('mobileComponents.wellness.setup.saving') : t('mobileComponents.wellness.setup.save')}
         </Button>
       </View>
     </View>

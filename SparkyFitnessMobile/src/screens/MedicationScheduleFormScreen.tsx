@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Alert, TouchableOpacity, type TextStyle } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +14,7 @@ import {
   useDeleteMedicationSchedule,
 } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import FormInput from '../components/FormInput';
 import StepperInput from '../components/StepperInput';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
@@ -133,6 +134,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
   route,
   navigation,
 }) => {
+  const { t } = useTranslation();
   const { medicationId, scheduleId } = route.params;
   const isEditing = !!scheduleId;
   const insets = useSafeAreaInsets();
@@ -241,17 +243,17 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
     const type = form.scheduleTypeId;
     if (usesDaysOfWeek(type) && form.daysOfWeek.length === 0) {
-      Alert.alert('Required', 'Select at least one day of the week.');
+      Alert.alert(t('medications.required'), t('medications.selectDay'));
       return;
     }
     if (usesIntervalDays(type)) {
       const interval = parseInt(form.intervalDays, 10);
       if (!Number.isFinite(interval) || interval < 1) {
-        Alert.alert('Invalid interval', 'Interval must be at least 1 day.');
+         Alert.alert(t('medications.invalidInterval'), t('medications.intervalMinimum'));
         return;
       }
       if (!form.startDate) {
-        Alert.alert('Required', 'Every N days schedules need a start date.');
+         Alert.alert(t('medications.required'), t('medications.intervalStartRequired'));
         return;
       }
     }
@@ -259,38 +261,38 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
       const on = parseInt(form.cycleOnDays, 10);
       const off = parseInt(form.cycleOffDays, 10);
       if (!Number.isFinite(on) || on < 1 || !Number.isFinite(off) || off < 0) {
-        Alert.alert('Invalid cycle', 'Days on must be at least 1 and days off at least 0.');
+         Alert.alert(t('medications.invalidCycle'), t('medications.cycleInvalid'));
         return;
       }
       if (!form.startDate) {
-        Alert.alert('Required', 'Cycle schedules need a start date.');
+         Alert.alert(t('medications.required'), t('medications.cycleStartRequired'));
         return;
       }
     }
     if (usesDayOfMonth(type)) {
       const day = parseInt(form.dayOfMonth, 10);
       if (!Number.isFinite(day) || day < 1 || day > 31) {
-        Alert.alert('Invalid day', 'Day of month must be between 1 and 31.');
+         Alert.alert(t('medications.invalidDay'), t('medications.dayRange'));
         return;
       }
     }
     if (form.doseAmount) {
       const dose = parseFloat(form.doseAmount);
       if (!Number.isFinite(dose) || dose <= 0) {
-        Alert.alert('Invalid dose', 'Please enter a valid dose amount.');
+         Alert.alert(t('medications.invalidDose'), t('medications.doseRequired'));
         return;
       }
     }
     if (isPrnType(type) && form.prnMaxPerDay) {
       const max = parseInt(form.prnMaxPerDay, 10);
       if (!Number.isFinite(max) || max < 1) {
-        Alert.alert('Invalid limit', 'Max per day must be at least 1.');
+         Alert.alert(t('medications.invalidLimit'), t('medications.limitMinimum'));
         return;
       }
     }
     // Lexical compare is safe for YYYY-MM-DD strings.
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
-      Alert.alert('Invalid dates', 'End date must be on or after the start date.');
+       Alert.alert(t('medications.invalidDates'), t('medications.endDateRange'));
       return;
     }
 
@@ -300,7 +302,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         { id: scheduleId, medicationId, body },
         {
           onSuccess: () => navigation.goBack(),
-          onError: (error) => Alert.alert('Error', `Failed to update schedule: ${error.message}`),
+           onError: (error) => Alert.alert(t('common.error'), t('medications.updateScheduleFailed', { message: error.message })),
         },
       );
     } else {
@@ -308,7 +310,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         { medicationId, body },
         {
           onSuccess: () => navigation.goBack(),
-          onError: (error) => Alert.alert('Error', `Failed to create schedule: ${error.message}`),
+           onError: (error) => Alert.alert(t('common.error'), t('medications.createScheduleFailed', { message: error.message })),
         },
       );
     }
@@ -322,14 +324,15 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
     createScheduleMutation,
     updateScheduleMutation,
     navigation,
+    t,
   ]);
 
   const handleDelete = useCallback(() => {
     if (!isEditing || !scheduleId || !existing) return;
-    Alert.alert('Delete Schedule', 'Delete this schedule? Logged doses are kept.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('medications.deleteSchedule'), t('medications.deleteScheduleConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => {
           deleteScheduleMutation.mutate(
@@ -338,24 +341,22 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
               onSuccess: () => navigation.goBack(),
               onError: (error) => {
                 addLog(`Failed to delete schedule: ${error.message}`, 'ERROR');
-                Toast.show({ type: 'error', text1: 'Failed to delete schedule' });
+                 Toast.show({ type: 'error', text1: t('medicationScheduleEditor.failedDelete') });
               },
             },
           );
         },
       },
     ]);
-  }, [isEditing, scheduleId, existing, medicationId, deleteScheduleMutation, navigation]);
+  }, [isEditing, scheduleId, existing, medicationId, deleteScheduleMutation, navigation, t]);
 
   const header = useScreenHeader({
-    title: isEditing ? 'Edit Schedule' : 'New Schedule',
-    nativeTitle: isEditing ? 'Edit Schedule' : 'New Schedule',
+    title: isEditing ? t('medicationScheduleEditor.editTitle') : t('medicationScheduleEditor.newTitle'),
+    nativeTitle: isEditing ? t('medicationScheduleEditor.editTitle') : t('medicationScheduleEditor.newTitle'),
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
       busy: createScheduleMutation.isPending || updateScheduleMutation.isPending,
-      busyLabel: SAVING_LABEL,
       disabled: isEditing && !existing,
       onPress: handleSave,
     },
@@ -374,12 +375,12 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
   const withMealOptions = useMemo(
     () => [
-      { label: 'None', value: '' },
+       { label: t('medicationScheduleEditor.none'), value: '' },
       { label: formatWithMeal('before'), value: 'before' },
       { label: formatWithMeal('with'), value: 'with' },
       { label: formatWithMeal('after'), value: 'after' },
     ],
-    [],
+    [t],
   );
 
   const type = form.scheduleTypeId;
@@ -387,10 +388,10 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
   const daysSummary =
     form.daysOfWeek.length === 7
-      ? 'Every day'
+       ? t('medicationScheduleEditor.everyDay')
       : form.daysOfWeek.length > 0
         ? form.daysOfWeek.map((d) => DAY_LABELS[d]).join(', ')
-        : 'None';
+        : t('medicationScheduleEditor.none');
 
   if (isEditing && !existing) {
     return (
@@ -401,7 +402,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         {header}
         <View className="flex-1 items-center justify-center">
           <Text className="text-text-muted text-base">
-            {isLoading || !med ? 'Loading...' : 'Schedule not found'}
+            {isLoading || !med ? t('medicationScheduleEditor.loading') : t('medicationScheduleEditor.notFound')}
           </Text>
         </View>
       </View>
@@ -426,8 +427,8 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         <SettingsRowGroup>
           {!isPrnType(type) && (
             <SettingsRow
-              title="Time"
-              accessibilityLabel="Set time"
+               title={t('medicationScheduleEditor.time')}
+               accessibilityLabel={t('medicationScheduleEditor.setTime')}
               onPress={() => timeSheetRef.current?.present()}
               rightAccessory={
                 <View className="flex-row items-center gap-3">
@@ -436,9 +437,9 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                       activeOpacity={0.7}
                       onPress={() => updateField('timeOfDay', '')}
                       accessibilityRole="button"
-                      accessibilityLabel="Clear time"
+                       accessibilityLabel={t('medicationScheduleEditor.clearTime')}
                     >
-                      <Text className="text-text-link text-sm font-medium">Clear</Text>
+                       <Text className="text-text-link text-sm font-medium">{t('common.clear')}</Text>
                     </TouchableOpacity>
                   )}
                   <Text className="text-base text-text-secondary">
@@ -453,10 +454,10 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
             value={form.scheduleTypeId}
             options={typeOptions}
             onSelect={handleSelectType}
-            title="Schedule Type"
+             title={t('medicationScheduleEditor.scheduleType')}
             renderTrigger={({ onPress, selectedOption }) => (
               <SettingsRow
-                title="Frequency"
+                 title={t('medicationScheduleEditor.frequency')}
                 onPress={onPress}
                 rightAccessory={
                   <Text className="text-base text-text-secondary">
@@ -469,8 +470,8 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
           {usesDaysOfWeek(type) && (
             <SettingsRow
-              title="Days of week"
-              accessibilityLabel="Select days of week"
+               title={t('medicationScheduleEditor.daysOfWeek')}
+               accessibilityLabel={t('medicationScheduleEditor.selectDays')}
               onPress={() => weekdaySheetRef.current?.present()}
               rightAccessory={
                 <Text className="text-base text-text-secondary">{daysSummary}</Text>
@@ -480,7 +481,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
           {usesIntervalDays(type) && (
             <SettingsRow
-              title="Every N days"
+               title={t('medicationScheduleEditor.everyNDays')}
               rightAccessory={
                 <StepperInput
                   value={form.intervalDays}
@@ -496,7 +497,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
           {usesDayOfMonth(type) && (
             <SettingsRow
-              title="Day of month"
+               title={t('medicationScheduleEditor.dayOfMonth')}
               rightAccessory={
                 <StepperInput
                   value={form.dayOfMonth}
@@ -512,7 +513,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
           {usesCycle(type) && (
             <SettingsRow
-              title="Days on"
+               title={t('medicationScheduleEditor.daysOn')}
               rightAccessory={
                 <StepperInput
                   value={form.cycleOnDays}
@@ -527,7 +528,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
           )}
           {usesCycle(type) && (
             <SettingsRow
-              title="Days off"
+               title={t('medicationScheduleEditor.daysOff')}
               rightAccessory={
                 <StepperInput
                   value={form.cycleOffDays}
@@ -543,10 +544,10 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
           {isPrnType(type) && (
             <SettingsRow
-              title="Reason"
+               title={t('medicationScheduleEditor.reason')}
               rightAccessory={
                 <FormInput
-                  placeholder="Headache"
+                   placeholder={t('medicationScheduleEditor.reasonPlaceholder')}
                   value={form.prnReason}
                   onChangeText={(v) => updateField('prnReason', v)}
                   style={INLINE_INPUT_STYLE}
@@ -556,7 +557,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
           )}
           {isPrnType(type) && (
             <SettingsRow
-              title="Max per day"
+               title={t('medicationScheduleEditor.maxPerDay')}
               rightAccessory={
                 <StepperInput
                   value={form.prnMaxPerDay}
@@ -564,7 +565,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                   onIncrement={() => stepInt('prnMaxPerDay', form.prnMaxPerDay, 1, 1)}
                   onDecrement={() => stepInt('prnMaxPerDay', form.prnMaxPerDay, -1, 1)}
                   keyboardType="number-pad"
-                  placeholder="No limit"
+                   placeholder={t('medicationScheduleEditor.noLimit')}
                   compact
                 />
               }
@@ -574,7 +575,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
         {!isPrnType(type) && form.timeOfDay === '' && (
           <Text className="text-sm text-text-muted px-4 -mt-2 mb-4">
-            A schedule without a time won&apos;t get a reminder.
+             {t('medicationScheduleEditor.noTimeReminder')}
           </Text>
         )}
 
@@ -583,7 +584,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
             title={med?.dose_unit ? `Dose override (${med.dose_unit})` : 'Dose override'}
             rightAccessory={
               <FormInput
-                placeholder="Default"
+                 placeholder={t('medicationScheduleEditor.default')}
                 value={form.doseAmount}
                 onChangeText={(v) => updateField('doseAmount', v)}
                 keyboardType="decimal-pad"
@@ -595,10 +596,10 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
             value={form.withMeal}
             options={withMealOptions}
             onSelect={(val) => updateField('withMeal', val)}
-            title="With Meal"
+             title={t('medicationScheduleEditor.withMealPicker')}
             renderTrigger={({ onPress, selectedOption }) => (
               <SettingsRow
-                title="With meal"
+                 title={t('medicationScheduleEditor.withMeal')}
                 onPress={onPress}
                 rightAccessory={
                   <Text className="text-base text-text-secondary">
@@ -612,8 +613,8 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
         <SettingsRowGroup>
           <SettingsRow
-            title={startRequired ? 'Start date *' : 'Start date'}
-            accessibilityLabel="Set start date"
+             title={startRequired ? `${t('medicationScheduleEditor.startDate')} *` : t('medicationScheduleEditor.startDate')}
+             accessibilityLabel={t('medicationScheduleEditor.setStartDate')}
             onPress={() => startCalendarRef.current?.present()}
             rightAccessory={
               <View className="flex-row items-center gap-3">
@@ -622,9 +623,9 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                     activeOpacity={0.7}
                     onPress={() => updateField('startDate', '')}
                     accessibilityRole="button"
-                    accessibilityLabel="Clear start date"
+                     accessibilityLabel={t('medicationScheduleEditor.clearStartDate')}
                   >
-                    <Text className="text-text-link text-sm font-medium">Clear</Text>
+                     <Text className="text-text-link text-sm font-medium">{t('common.clear')}</Text>
                   </TouchableOpacity>
                 )}
                 <Text className="text-base text-text-secondary">
@@ -634,8 +635,8 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
             }
           />
           <SettingsRow
-            title="End date"
-            accessibilityLabel="Set end date"
+             title={t('medicationScheduleEditor.endDate')}
+             accessibilityLabel={t('medicationScheduleEditor.setEndDate')}
             onPress={() => endCalendarRef.current?.present()}
             rightAccessory={
               <View className="flex-row items-center gap-3">
@@ -644,9 +645,9 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                     activeOpacity={0.7}
                     onPress={() => updateField('endDate', '')}
                     accessibilityRole="button"
-                    accessibilityLabel="Clear end date"
+                     accessibilityLabel={t('medicationScheduleEditor.clearEndDate')}
                   >
-                    <Text className="text-text-link text-sm font-medium">Clear</Text>
+                     <Text className="text-text-link text-sm font-medium">{t('common.clear')}</Text>
                   </TouchableOpacity>
                 )}
                 <Text className="text-base text-text-secondary">
@@ -660,7 +661,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         {isEditing && (
           <SettingsRowGroup>
             <SettingsRow
-              title="Active"
+               title={t('medicationScheduleEditor.active')}
               rightAccessory={
                 <Switch
                   value={form.active}
@@ -674,7 +675,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         {isEditing && (
           <TouchableOpacity className="p-4" onPress={handleDelete}>
             <Text className="text-base font-medium text-center text-text-danger-subtle">
-              Delete Schedule
+               {t('medicationScheduleEditor.delete')}
             </Text>
           </TouchableOpacity>
         )}

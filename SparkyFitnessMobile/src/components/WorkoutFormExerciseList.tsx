@@ -29,6 +29,7 @@ import { useSupersetBorders } from './ActiveWorkoutRail';
 import type { WorkoutDraftExercise, WorkoutSetMetaPatch } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
+import { useTranslation } from 'react-i18next';
 
 interface WorkoutFormExerciseListProps {
   exercises: WorkoutDraftExercise[];
@@ -176,6 +177,7 @@ const WorkoutFormExerciseList = forwardRef<
   },
   ref,
 ) {
+  const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const cardExercises = useMemo(
@@ -468,21 +470,21 @@ const WorkoutFormExerciseList = forwardRef<
     if (onViewExercise) {
       items.push({
         key: 'view',
-        label: 'View exercise',
+         label: t('workout.viewExercise'),
         onPress: () => handleViewExercise(clientId),
       });
     }
     if (setExerciseNotes) {
       items.push({
         key: 'notes',
-        label: 'Notes',
+         label: t('workout.notes'),
         onPress: () => handleToggleExerciseNote(clientId),
       });
     }
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
-        label: 'Superset with…',
+         label: t('workout.supersetWith'),
         // Keeps the sheet presented; the candidate list swaps in place.
         dismissOnPress: false,
         onPress: () => {
@@ -493,14 +495,14 @@ const WorkoutFormExerciseList = forwardRef<
     if (groupedIds.has(clientId)) {
       items.push({
         key: 'ungroup',
-        label: 'Remove from superset',
+         label: t('workout.removeFromSuperset'),
         onPress: () => ungroupExercise(clientId),
       });
     }
     if (onReplaceExercise) {
       items.push({
         key: 'replace',
-        label: 'Replace exercise',
+         label: t('workout.replaceExercise'),
         onPress: () => onReplaceExercise(clientId),
       });
     }
@@ -516,7 +518,7 @@ const WorkoutFormExerciseList = forwardRef<
       if (!cardioForm && target?.sets.some(s => s.completedAt != null)) {
         items.push({
           key: 'clear',
-          label: 'Clear logged sets',
+           label: t('workout.clearLoggedSets'),
           destructive: true,
           onPress: () => clearExerciseCompletions(clientId),
         });
@@ -524,7 +526,7 @@ const WorkoutFormExerciseList = forwardRef<
     }
     items.push({
       key: 'remove',
-      label: 'Remove exercise',
+       label: t('workout.removeExercise'),
       destructive: true,
       onPress: () => {
         const exercise = exercises.find(e => e.clientId === clientId);
@@ -533,6 +535,7 @@ const WorkoutFormExerciseList = forwardRef<
     });
     return items;
   }, [
+    t,
     overflowMenu,
     exercises,
     cardExercises,
@@ -640,7 +643,7 @@ const WorkoutFormExerciseList = forwardRef<
         >
           <Icon name="add-circle" size={20} color={accentPrimary} />
           <Text className="text-lg font-medium ml-2" style={{ color: accentPrimary }}>
-            Add Exercise
+             {t('workout.addExercise')}
           </Text>
         </TouchableOpacity>
       </Animated.View>
@@ -658,9 +661,9 @@ const WorkoutFormExerciseList = forwardRef<
         ref={overflowSheetRef}
         title={
           overflowMenu?.mode === 'pick'
-            ? 'Superset with…'
+             ? t('workout.supersetWith')
             : (exercises.find(e => e.clientId === overflowMenu?.clientId)?.exerciseName ??
-              'Exercise')
+              t('workout.exercise'))
         }
         items={overflowMenuItems}
         onBack={

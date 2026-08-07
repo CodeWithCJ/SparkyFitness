@@ -1,9 +1,24 @@
+import type { TFunction } from 'i18next';
 import type { HeaderItem } from '../hooks/useScreenHeader';
 
 export type ShareStatus = 'public' | 'family' | 'private' | null;
 
 export type OwnershipFilter = 'all' | 'mine' | 'family' | 'public';
 
+/**
+ * Localized labels for the ownership filter options. The labels are system
+ * copy (never user data), so they resolve through the active i18n instance.
+ */
+export function ownershipFilterLabels(t: TFunction): Record<OwnershipFilter, string> {
+  return {
+    all: t('ownershipFilters.all'),
+    mine: t('ownershipFilters.mine'),
+    family: t('ownershipFilters.family'),
+    public: t('ownershipFilters.public'),
+  };
+}
+
+/** Legacy constant kept for non-UI callers; UI should use ownershipFilterLabels(t). */
 export const OWNERSHIP_FILTER_LABELS: Record<OwnershipFilter, string> = {
   all: 'All',
   mine: 'Mine',
@@ -24,12 +39,15 @@ export function ownershipFilterHeaderMenu({
   identifier,
   filter,
   onSelect,
+  t,
 }: {
   noun: string;
   identifier: string;
   filter: OwnershipFilter;
   onSelect: (filter: OwnershipFilter) => void;
+  t: TFunction;
 }): HeaderItem {
+  const labels = ownershipFilterLabels(t);
   return {
     kind: 'menu',
     sfSymbol: 'line.3.horizontal.decrease',
@@ -37,14 +55,14 @@ export function ownershipFilterHeaderMenu({
     showsBadge: filter !== 'all',
     accessibilityLabel:
       filter !== 'all'
-        ? `Filter ${noun}, filtered to ${OWNERSHIP_FILTER_LABELS[filter]}`
-        : `Filter ${noun}`,
+        ? t('ownershipFilters.filteredTo', { noun, filter: labels[filter] })
+        : t('ownershipFilters.filter', { noun }),
     identifier,
     items: [
       {
-        label: 'Show',
-        items: (Object.keys(OWNERSHIP_FILTER_LABELS) as OwnershipFilter[]).map((option) => ({
-          label: OWNERSHIP_FILTER_LABELS[option],
+        label: t('ownershipFilters.show'),
+        items: (Object.keys(labels) as OwnershipFilter[]).map((option) => ({
+          label: labels[option],
           selected: filter === option,
           onPress: () => onSelect(option),
         })),
@@ -64,15 +82,18 @@ export function ownershipFilterEmptyState({
   noun,
   filter,
   onReset,
+  t,
 }: {
   noun: string;
   filter: Exclude<OwnershipFilter, 'all'>;
   onReset: () => void;
+  t: TFunction;
 }) {
+  const labels = ownershipFilterLabels(t);
   return {
-    title: `No ${noun} in ${OWNERSHIP_FILTER_LABELS[filter]}`,
-    subtitle: `Change the filter to see your other ${noun}.`,
-    action: { label: 'Show All', onPress: onReset },
+    title: t('ownershipFilters.noItemsIn', { noun, filter: labels[filter] }),
+    subtitle: t('ownershipFilters.changeFilter', { noun }),
+    action: { label: t('ownershipFilters.showAll'), onPress: onReset },
   };
 }
 

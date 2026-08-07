@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useCycleTests, useCycleTestMutations } from '../../../hooks/useCycleTests';
 import { formatDate, addDays } from '../../../utils/dateUtils';
@@ -15,23 +16,31 @@ interface TestQuickLogProps {
 
 type TestType = 'opk' | 'hpt';
 
-const RESULTS: Record<TestType, { value: string; label: string }[]> = {
+const resultLabel = (value: string, t: (key: string) => string): string => {
+  switch (value) {
+    case 'negative': return t('mobileComponents.wellness.tests.negative');
+    case 'low': return t('mobileComponents.wellness.tests.low');
+    case 'high': return t('mobileComponents.wellness.tests.high');
+    case 'peak': return t('mobileComponents.wellness.tests.peak');
+    case 'faint': return t('mobileComponents.wellness.tests.faint');
+    case 'positive': return t('mobileComponents.wellness.tests.positive');
+    default: return value;
+  }
+};
+
+const RESULTS: Record<TestType, { value: string }[]> = {
   opk: [
-    { value: 'negative', label: 'Negative' },
-    { value: 'low', label: 'Low' },
-    { value: 'high', label: 'High' },
-    { value: 'peak', label: 'Peak' },
+     { value: 'negative' }, { value: 'low' }, { value: 'high' }, { value: 'peak' },
   ],
   hpt: [
-    { value: 'negative', label: 'Negative' },
-    { value: 'faint', label: 'Faint' },
-    { value: 'positive', label: 'Positive' },
+     { value: 'negative' }, { value: 'faint' }, { value: 'positive' },
   ],
 };
 
 const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [testType, setTestType] = useState<TestType>('opk');
+  const { t } = useTranslation();
 
   const { tests, isLoading } = useCycleTests(addDays(date, -14), date);
   const { createTestEntryAsync, isCreating, deleteTestEntryAsync } = useCycleTestMutations();
@@ -39,9 +48,9 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
   const handleLog = async (result: string) => {
     try {
       await createTestEntryAsync({ entry_date: date, test_type: testType, result });
-      Toast.show({ type: 'success', text1: 'Test logged' });
+       Toast.show({ type: 'success', text1: t('mobileComponents.wellness.tests.logged') });
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not log test' });
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.tests.logError') });
     }
   };
 
@@ -50,19 +59,19 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
     try {
       await deleteTestEntryAsync(entry.id);
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not remove test' });
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.tests.removeError') });
     }
   };
 
   return (
     <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
-      <Text className="text-text-primary text-sm font-semibold">Log a Test</Text>
+       <Text className="text-text-primary text-sm font-semibold">{t('mobileComponents.wellness.tests.title')}</Text>
 
       {/* SegmentedControl tabs */}
       <SegmentedControl
         segments={[
-          { key: 'opk', label: 'Ovulation (OPK)' },
-          { key: 'hpt', label: 'Pregnancy (HPT)' },
+           { key: 'opk', label: t('mobileComponents.wellness.tests.opk') },
+           { key: 'hpt', label: t('mobileComponents.wellness.tests.hpt') },
         ]}
         activeKey={testType}
         onSelect={(key) => setTestType(key)}
@@ -77,7 +86,7 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
             onPress={() => handleLog(r.value)}
             className="rounded-xl bg-raised px-4 py-2 border border-border-subtle"
           >
-            <Text className="text-text-primary text-xs font-semibold">{r.label}</Text>
+             <Text className="text-text-primary text-xs font-semibold">{resultLabel(r.value, t)}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -88,13 +97,16 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
       ) : tests.length > 0 ? (
         <View className="gap-2 mt-2">
           <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider">
-            Recent Logged Tests
+             {t('mobileComponents.wellness.tests.recent')}
           </Text>
           <View className="rounded-xl overflow-hidden">
             {tests.slice(0, 6).map((entry, idx) => (
               <SwipeableDeleteRow
                 key={entry.id ?? `test-${idx}`}
-                title={`${entry.test_type.toUpperCase()} · ${entry.result}`}
+                 title={t('mobileComponents.wellness.tests.deleteTitle', {
+                   testType: entry.test_type.toUpperCase(),
+                   result: entry.result,
+                 })}
                 onConfirmDelete={() => handleDelete(entry)}
                 className={`flex-row items-center justify-between py-2.5 ${
                   idx < Math.min(tests.length, 6) - 1 ? 'border-b border-border-subtle' : ''

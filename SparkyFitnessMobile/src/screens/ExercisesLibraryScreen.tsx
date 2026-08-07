@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -23,6 +24,30 @@ import type { RootStackScreenProps } from '../types/navigation';
 type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 
 const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
+  const copy = (key: string) => {
+    switch (key) {
+      case 'title': return t('screenCopy.exerciseLibrary.title', { defaultValue: 'Exercises' });
+      case 'search': return t('screenCopy.exerciseLibrary.search', { defaultValue: 'Search exercises...' });
+      case 'all': return t('screenCopy.exerciseLibrary.all', { defaultValue: 'All' });
+      case 'mine': return t('screenCopy.exerciseLibrary.mine', { defaultValue: 'Mine' });
+      case 'family': return t('screenCopy.exerciseLibrary.family', { defaultValue: 'Family' });
+      case 'public': return t('screenCopy.exerciseLibrary.public', { defaultValue: 'Public' });
+      case 'noMatch': return t('screenCopy.exerciseLibrary.noMatch', { defaultValue: 'No matching exercises found' });
+      case 'changeFilter': return t('screenCopy.exerciseLibrary.changeFilter', { defaultValue: 'Try changing your ownership filter.' });
+      case 'none': return t('screenCopy.exerciseLibrary.none', { defaultValue: 'No exercises found' });
+      case 'searchNone': return t('screenCopy.exerciseLibrary.searchNone', { defaultValue: 'Try a different search term to find saved exercises.' });
+      case 'description': return t('screenCopy.exerciseLibrary.description', { defaultValue: 'Exercises you save or log will appear here.' });
+      case 'noServer': return t('screenCopy.exerciseLibrary.noServer', { defaultValue: 'No server configured' });
+      case 'configure': return t('screenCopy.exerciseLibrary.configure', { defaultValue: 'Configure your server connection in Settings to view your exercise library.' });
+      case 'loading': return t('screenCopy.exerciseLibrary.loading', { defaultValue: 'Loading exercises...' });
+      case 'failed': return t('screenCopy.exerciseLibrary.failed', { defaultValue: 'Failed to load exercises' });
+      case 'connection': return t('screenCopy.exerciseLibrary.connection', { defaultValue: 'Please check your connection and try again.' });
+      case 'retry': return t('screenCopy.exerciseLibrary.retry', { defaultValue: 'Retry' });
+      case 'moreFailed': return t('screenCopy.exerciseLibrary.moreFailed', { defaultValue: 'Failed to load more exercises.' });
+      default: return key;
+    }
+  };
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -67,6 +92,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
             noun: 'exercises',
             filter: ownershipFilter,
             onReset: () => setOwnershipFilter('all'),
+            t,
           })}
         />
       );
@@ -74,10 +100,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     return (
       <StatusView
         inline
-        title={searchText.trim().length > 0 ? 'No matching exercises found' : 'No exercises found'}
+        title={searchText.trim().length > 0 ? copy('noMatch') : copy('none')}
         subtitle={searchText.trim().length > 0
-          ? 'Try a different search term to find saved exercises.'
-          : 'Exercises you save or log will appear here.'}
+          ? copy('searchNone')
+          : copy('description')}
       />
     );
   };
@@ -112,10 +138,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view your exercise library."
+           title={copy('noServer')}
+           subtitle={copy('configure')}
           action={{
-            label: 'Go to Settings',
+             label: t('common.goToSettings'),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
             variant: 'primary',
           }}
@@ -124,7 +150,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading exercises..." />;
+       return <StatusView loading title={copy('loading')} />;
     }
 
     if (isError) {
@@ -133,10 +159,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title="Failed to load exercises"
-          subtitle="Please check your connection and try again."
+           title={copy('failed')}
+           subtitle={copy('connection')}
           action={{
-            label: 'Retry',
+             label: copy('retry'),
             onPress: () => {
               void refetch();
             },
@@ -156,7 +182,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more exercises."
+             errorMessage={copy('moreFailed')}
             onRetry={loadMore}
           />
         }
@@ -180,13 +206,14 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   };
 
   const header = useScreenHeader({
-    title: 'Exercises',
+    title: copy('title'),
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
       noun: 'exercises',
       identifier: 'exercises-library-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,
+      t,
     }),
   });
 
@@ -197,7 +224,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search exercises..."
+           placeholder={copy('search')}
           isSearching={isSearching}
         />
       ) : null}

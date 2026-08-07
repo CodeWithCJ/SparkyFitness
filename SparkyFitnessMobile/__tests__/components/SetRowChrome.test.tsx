@@ -4,6 +4,8 @@ import { KeyboardEvents } from 'react-native-keyboard-controller';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import {
   useSetEditAccessoryBar,
+  SetInputAccessoryBar,
+  SetSwipeDeleteAction,
   type SetRowAccessoryHandle,
 } from '../../src/components/SetRowChrome';
 import {
@@ -13,6 +15,10 @@ import {
 
 function makeHandle(): SetRowAccessoryHandle {
   return { log: jest.fn(), focusField: jest.fn(), advance: jest.fn() };
+}
+
+function setTestLocale(locale: 'en' | 'pl'): void {
+  (globalThis as typeof globalThis & { __setTestLocale: (value: 'en' | 'pl') => void }).__setTestLocale(locale);
 }
 
 /**
@@ -50,6 +56,8 @@ function Harness({
 }
 
 describe('useSetEditAccessoryBar', () => {
+  beforeEach(() => setTestLocale('en'));
+
   afterEach(() => {
     __resetAppPreferencesStoreForTests();
   });
@@ -76,7 +84,7 @@ describe('useSetEditAccessoryBar', () => {
     expect(utils.getByText('Next')).toBeTruthy();
 
     utils.rerender(<Harness {...props} activeSetField="rpe" />);
-    expect(utils.getByText('Next Set')).toBeTruthy();
+    expect(utils.getByText('Next set')).toBeTruthy();
   });
 
   it('walks a duration cell straight to RPE, then Next Set', () => {
@@ -88,20 +96,20 @@ describe('useSetEditAccessoryBar', () => {
     expect(handles.set1.focusField).toHaveBeenCalledWith('rpe');
 
     utils.rerender(<Harness {...props} activeSetField="duration" rpeEnabled={false} />);
-    expect(utils.getByText('Next Set')).toBeTruthy();
+    expect(utils.getByText('Next set')).toBeTruthy();
   });
 
   it('skips the RPE hop when RPE is disabled (preset form) or another metric column shows', () => {
     const handles = { set1: makeHandle() };
     const props = { activeSetKey: 'ex1:set1', onDeactivateSet: jest.fn(), handles };
     const noRpe = render(<Harness {...props} activeSetField="reps" rpeEnabled={false} />);
-    expect(noRpe.getByText('Next Set')).toBeTruthy();
+    expect(noRpe.getByText('Next set')).toBeTruthy();
     noRpe.unmount();
 
     // Nothing is mounted, so the store write needs no act wrapper.
     useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('volume');
     const volume = render(<Harness {...props} activeSetField="reps" />);
-    expect(volume.getByText('Next Set')).toBeTruthy();
+    expect(volume.getByText('Next set')).toBeTruthy();
   });
 
   it("dispatches in-row hops through the focused set's focusField", () => {
@@ -134,7 +142,7 @@ describe('useSetEditAccessoryBar', () => {
         handles={{ set1: focused }}
       />,
     );
-    fireEvent.press(getByText('Next Set'));
+    fireEvent.press(getByText('Next set'));
     expect(focused.advance).toHaveBeenCalledTimes(1);
     expect(focused.focusField).not.toHaveBeenCalled();
   });
@@ -226,5 +234,23 @@ describe('useSetEditAccessoryBar', () => {
     rerender(<Harness {...props} handles={{}} />);
     fireEvent.press(getByText('Next'));
     expect(handle.focusField).not.toHaveBeenCalled();
+  });
+
+  it('localizes accessory actions and swipe delete in Polish', () => {
+    setTestLocale('pl');
+    const handle = makeHandle();
+    const view = render(
+      <Harness activeSetKey="ex1:set1" activeSetField="rpe" onDeactivateSet={jest.fn()} handles={{ set1: handle }} />,
+    );
+    expect(view.getByText('Gotowe')).toBeTruthy();
+    expect(view.getByText('Następna seria')).toBeTruthy();
+    const deleteView = render(<SetSwipeDeleteAction onPress={jest.fn()} />);
+    expect(deleteView.getByText('Usuń')).toBeTruthy();
+  });
+
+  it('localizes an explicitly rendered Done-only accessory in Polish', () => {
+    setTestLocale('pl');
+    const view = render(<SetInputAccessoryBar onDone={jest.fn()} actions={[]} />);
+    expect(view.getByText('Gotowe')).toBeTruthy();
   });
 });

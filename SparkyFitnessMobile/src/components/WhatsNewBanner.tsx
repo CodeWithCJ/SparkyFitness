@@ -8,6 +8,7 @@ import LiquidGlassSurface, {
   createLiquidGlassPillStyle,
 } from './LiquidGlassSurface';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { useTranslation } from 'react-i18next';
 import {
   WHATS_NEW_CONTENT_VERSION,
   getLastSeenWhatsNewVersion,
@@ -91,6 +92,7 @@ export function useWhatsNewBannerState(): WhatsNewBannerState {
 export const WhatsNewBannerContent: React.FC<
   WhatsNewBannerProps & { state: WhatsNewBannerState }
 > = ({ reserveAddButtonClearance = false, presentation = 'legacy', state }) => {
+  const { t } = useTranslation();
   const [accentPrimary, textMuted, chromeBorder] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -108,7 +110,7 @@ export const WhatsNewBannerContent: React.FC<
         <Pressable
           onPress={state.open}
           accessibilityRole="button"
-          accessibilityLabel="See what's new in this update"
+           accessibilityLabel={t('whatsNewBanner.openAccessibility')}
           className="flex-row items-center px-4 py-3"
         >
           <View className="h-9 w-9 items-center justify-center rounded-full bg-accent-primary/15">
@@ -116,17 +118,17 @@ export const WhatsNewBannerContent: React.FC<
           </View>
           <View className="flex-1 px-3">
             <Text className="text-sm font-semibold text-text-primary">
-              What&apos;s new
+              {t('whatsNewBanner.title')}
             </Text>
             <Text numberOfLines={1} className="text-xs text-text-secondary">
-              See what&apos;s improved in this update
+              {t('whatsNewBanner.subtitle')}
             </Text>
           </View>
           <Pressable
             onPress={state.dismiss}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityRole="button"
-            accessibilityLabel="Dismiss"
+             accessibilityLabel={t('common.dismiss')}
             className="p-2"
           >
             <Icon name="close" size={20} color={textMuted} weight="bold" />
@@ -148,7 +150,7 @@ export const WhatsNewBannerContent: React.FC<
       <Pressable
         onPress={state.open}
         accessibilityRole="button"
-        accessibilityLabel="See what's new in this update"
+         accessibilityLabel={t('whatsNewBanner.openAccessibility')}
         className="flex-row items-center px-3 py-2"
       >
         <View className="h-8 w-8 items-center justify-center rounded-full bg-accent-primary/15">
@@ -161,17 +163,17 @@ export const WhatsNewBannerContent: React.FC<
         </View>
         <View className="flex-1 px-2.5">
           <Text className="text-sm font-semibold text-text-primary">
-            What&apos;s new
+            {t('whatsNewBanner.title')}
           </Text>
           <Text numberOfLines={1} className="text-xs text-text-secondary">
-            See what&apos;s improved in this update
+            {t('whatsNewBanner.subtitle')}
           </Text>
         </View>
         <Pressable
           onPress={state.dismiss}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           accessibilityRole="button"
-          accessibilityLabel="Dismiss"
+           accessibilityLabel={t('common.dismiss')}
           className="p-1.5"
         >
           <Icon name="close" size={18} color={textMuted} weight="bold" />

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
@@ -21,10 +22,12 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
   const { photos, isLoading } = usePregnancyPhotos(pregnancyId);
   const { uploadAsync, isUploading, deleteAsync } = usePregnancyPhotoMutations();
   const { activeConfig } = useServerConfigs();
-  const [accentColor, dangerColor] = useCSSVariable([
+  const { t } = useTranslation();
+  const [accentColor, dangerColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-danger',
-  ]) as [string, string];
+    '--color-text-muted',
+  ]) as [string, string, string];
 
   const actionSheetRef = useRef<ActionSheetRef>(null);
   const pickerLock = useRef(false);
@@ -41,7 +44,7 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       if (source === 'camera') {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) {
-          Toast.show({ type: 'error', text1: 'Camera permission required' });
+           Toast.show({ type: 'error', text1: t('mobileComponents.wellness.photos.cameraPermission') });
           return;
         }
         result = await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.7 });
@@ -55,17 +58,14 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       if (result.canceled) return;
       const uri = result.assets?.[0]?.uri;
       if (!uri) {
-        Toast.show({ type: 'error', text1: 'No photo returned by picker.' });
+         Toast.show({ type: 'error', text1: t('mobileComponents.wellness.photos.noPhoto') });
         return;
       }
       await uploadAsync({ pregnancyId, week: currentWeek, uri });
-      Toast.show({ type: 'success', text1: 'Photo added' });
-    } catch (err) {
-      Toast.show({
-        type: 'error',
-        text1: 'Could not upload photo',
-        text2: getApiErrorMessage(err) ?? undefined,
-      });
+       Toast.show({ type: 'success', text1: t('mobileComponents.wellness.photos.added') });
+     } catch (err) {
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.photos.uploadError') });
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.photos.uploadError'), text2: getApiErrorMessage(err) ?? undefined });
     } finally {
       pickerLock.current = false;
     }
@@ -76,14 +76,14 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       await deleteAsync(photo.id);
       setSelectedPhoto(null);
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not remove photo' });
+       Toast.show({ type: 'error', text1: t('mobileComponents.wellness.photos.removeError') });
     }
   };
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-base font-bold text-text-secondary">Bump Photos</Text>
+         <Text className="text-text-primary text-base font-bold">{t('mobileComponents.wellness.photos.title')}</Text>
         <TouchableOpacity
           disabled={isUploading}
           onPress={() => actionSheetRef.current?.present()}
@@ -94,9 +94,9 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
             <ActivityIndicator size="small" color={accentColor} />
           ) : (
             <>
-              <Icon name="add" size={18} color={accentColor} />
-              <Text className="font-semibold text-sm ml-1" style={{ color: accentColor }}>
-                Add Photo
+              <Icon name="add" size={16} color={accentColor} />
+              <Text className="text-xs font-semibold" style={{ color: accentColor }}>
+                 {t('mobileComponents.wellness.photos.add')}
               </Text>
             </>
           )}
@@ -107,7 +107,7 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
         <ActivityIndicator color={accentColor} />
       ) : photos.length === 0 ? (
         <Text className="text-text-secondary text-xs italic py-2">
-          Capture your first bump photo to start a weekly journal.
+           {t('mobileComponents.wellness.photos.empty')}
         </Text>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -123,7 +123,7 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
                   className="w-24 h-24 rounded-xl bg-raised"
                   resizeMode="cover"
                 />
-                <Text className="text-text-secondary text-xs mt-1">Week {photo.week}</Text>
+                 <Text className="text-text-secondary text-xs mt-1">{t('mobileComponents.wellness.photos.week', { week: photo.week })}</Text>
                 {selectedPhoto?.id === photo.id && (
                   <TouchableOpacity
                     onPress={() => handleDelete(photo)}
@@ -132,7 +132,7 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
                   >
                     <Icon name="trash" size={14} color={dangerColor} />
                     <Text className="text-xs" style={{ color: dangerColor }}>
-                      Remove
+                       {t('mobileComponents.wellness.photos.remove')}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -143,17 +143,17 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       )}
 
       {selectedPhoto?.entry_date && (
-        <Text className="text-text-secondary text-xs">
-          Taken {formatDate(selectedPhoto.entry_date)}
+        <Text className="text-text-secondary text-xs" style={{ color: textMuted }}>
+           {t('mobileComponents.wellness.photos.taken', { date: formatDate(selectedPhoto.entry_date) })}
         </Text>
       )}
 
       <ActionSheet
         ref={actionSheetRef}
-        title="Add Bump Photo"
+         title={t('mobileComponents.wellness.photos.addTitle')}
         items={[
-          { key: 'camera', label: 'Take Photo', onPress: () => pickAndUpload('camera') },
-          { key: 'library', label: 'Choose from Library', onPress: () => pickAndUpload('library') },
+           { key: 'camera', label: t('mobileComponents.wellness.photos.take'), onPress: () => pickAndUpload('camera') },
+           { key: 'library', label: t('mobileComponents.wellness.photos.library'), onPress: () => pickAndUpload('library') },
         ]}
       />
     </View>

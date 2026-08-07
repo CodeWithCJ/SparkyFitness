@@ -118,7 +118,7 @@ describe('CycleOnboardingScreen', () => {
   it('renders Step 1 on mount', () => {
     const { getByText } = renderScreen();
     expect(getByText('What is your tracking goal?')).toBeTruthy();
-    expect(getByText('Standard Menstrual Cycle')).toBeTruthy();
+    expect(getByText('Standard Cycle')).toBeTruthy();
     expect(getByText('Next Step')).toBeTruthy();
   });
 

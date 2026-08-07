@@ -9,6 +9,7 @@ import {
   WRITEBACK_CATEGORY_ORDER,
   type WritebackMetric,
 } from '../WritebackMetrics';
+import { useTranslation } from 'react-i18next';
 
 interface HealthDataWritebackProps {
   writebackStates: Record<string, boolean>;
@@ -31,6 +32,15 @@ const groupByCategory = (metrics: WritebackMetric[]): Record<string, WritebackMe
     {} as Record<string, WritebackMetric[]>,
   );
 
+const WRITEBACK_METRIC_LABEL_KEYS: Record<string, string> = {
+  nutrition: 'healthWriteback.metrics.nutrition',
+  hydration: 'healthWriteback.metrics.hydration',
+};
+
+const WRITEBACK_CATEGORY_LABEL_KEYS: Record<string, string> = {
+  Nutrition: 'healthDataSync.categories.Nutrition',
+};
+
 /**
  * Opt-in toggles for writing SparkyFitness diary data out to the OS health store
  * (Health Connect on Android, Apple Health on iOS). Grouped into accordion categories
@@ -43,12 +53,14 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
   onRemoveDateRange,
 }) => {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const { t } = useTranslation();
+  const translate = t;
 
   if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
     return null;
   }
 
-  const storeName = Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
+  const storeName = Platform.OS === 'ios' ? t('healthDataSync.appleHealth') : t('healthDataSync.healthConnect');
   const grouped = groupByCategory(WRITEBACK_METRICS);
 
   const toggleCategory = (category: string) => {
@@ -68,7 +80,9 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
       <View className="flex-row items-center flex-1 mr-2">
         <Image source={metric.icon} className="w-6 h-6" />
         <Text className="ml-2 text-base text-text-primary flex-shrink" numberOfLines={1}>
-          {metric.label}
+          {WRITEBACK_METRIC_LABEL_KEYS[metric.id]
+            ? translate(WRITEBACK_METRIC_LABEL_KEYS[metric.id])
+            : metric.label}
         </Text>
       </View>
       <Switch
@@ -80,9 +94,9 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold mb-1 text-text-primary">Write to {storeName}</Text>
+      <Text className="text-lg font-bold mb-1 text-text-primary">{t('healthWriteback.writeTo', { storeName })}</Text>
       <Text className="text-sm text-text-muted mb-3">
-        Syncs the data you log in SparkyFitness out to {storeName}, keeping the two in sync.
+        {t('healthWriteback.description', { storeName })}
       </Text>
       {WRITEBACK_CATEGORY_ORDER.map((category) => {
         const metricsInCategory = grouped[category];
@@ -92,7 +106,9 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
         return (
           <CollapsibleSection
             key={category}
-            title={category}
+            title={WRITEBACK_CATEGORY_LABEL_KEYS[category]
+              ? translate(WRITEBACK_CATEGORY_LABEL_KEYS[category])
+              : category}
             expanded={!collapsedCategories.has(category)}
             onToggle={() => toggleCategory(category)}
             itemCount={metricsInCategory.length}
@@ -103,16 +119,16 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
       })}
       <BottomSheetPicker<RemoveScope>
         value={'' as RemoveScope}
-        title={`Remove from ${storeName}`}
+         title={t('healthWriteback.removeTitle', { storeName })}
         options={[
-          { label: 'All time', value: 'all' },
-          { label: 'Pick a date range…', value: 'range' },
+           { label: t('healthWriteback.allTime'), value: 'all' },
+           { label: t('healthWriteback.pickDateRange'), value: 'range' },
         ]}
         onSelect={(scope) => (scope === 'all' ? onRemoveAllData() : onRemoveDateRange())}
         renderTrigger={({ onPress }) => (
           <Button variant="ghost" onPress={onPress} className="mt-2 py-1 px-0 self-start">
             <Text className="text-sm font-medium text-text-danger-subtle">
-              Remove SparkyFitness data from {storeName}
+              {t('healthWriteback.removeData', { storeName })}
             </Text>
           </Button>
         )}

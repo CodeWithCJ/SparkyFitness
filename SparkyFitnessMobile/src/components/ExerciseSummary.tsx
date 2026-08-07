@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SwipeableExerciseRow from './SwipeableExerciseRow';
@@ -25,18 +26,19 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
   weightUnit = 'kg',
   distanceUnit = 'km',
 }) => {
+  const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   if (exerciseEntries.length === 0) {
     const emptyContent = (
-      <Text className="text-text-muted text-base">Tap to add exercise</Text>
+      <Text className="text-text-muted text-base">{t('exerciseSummary.tapToAdd')}</Text>
     );
     if (onAddExercise) {
       return (
         <Pressable
           onPress={onAddExercise}
           accessibilityRole="button"
-          accessibilityLabel="Add exercise"
+           accessibilityLabel={t('exerciseSummary.add')}
           className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
         >
           {emptyContent}
@@ -54,7 +56,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
     <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm overflow-hidden">
       <View className="flex-row items-center gap-2 mb-2">
         <Icon name="exercise" size={18} color={accentPrimary} />
-        <Text className="text-base font-bold text-text-secondary">Exercise</Text>
+        <Text className="text-base font-bold text-text-secondary">{t('exerciseSummary.title')}</Text>
       </View>
       {exerciseEntries.map((session, index) => (
         <SwipeableExerciseRow

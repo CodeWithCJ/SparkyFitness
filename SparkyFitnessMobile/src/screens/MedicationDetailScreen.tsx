@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -14,6 +15,7 @@ import {
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { getAppLocale } from '../localization';
 import Icon from '../components/Icon';
 import DoseRow from '../components/medications/DoseRow';
 import {
@@ -34,6 +36,7 @@ import { addLog } from '../services/LogService';
 type MedicationDetailScreenProps = RootStackScreenProps<'MedicationDetail'>;
 
 const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, navigation }) => {
+  const { t } = useTranslation();
   const { medicationId } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -68,58 +71,58 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
   const handleDelete = useCallback(() => {
     if (!med) return;
     Alert.alert(
-      'Delete Medication',
-      `Are you sure you want to delete '${med.name}'? This will also remove all schedules and logged entries.`,
+      t('medications.delete'),
+      t('medications.deleteConfirm', { name: med.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: () => {
             deleteMedicationMutation.mutate(med.id, {
               onSuccess: () => navigation.goBack(),
               onError: (error) => {
                 addLog(`Failed to delete medication: ${error.message}`, 'ERROR');
-                Toast.show({ type: 'error', text1: 'Failed to delete medication' });
+                Toast.show({ type: 'error', text1: t('medications.deleteFailed') });
               },
             });
           },
         },
       ],
     );
-  }, [med, deleteMedicationMutation, navigation]);
+  }, [med, deleteMedicationMutation, navigation, t]);
 
   const handleRemoveDose = useCallback(
     (entry: MedicationEntry) => {
       Alert.alert(
-        'Remove Dose',
-        `Remove this logged dose from ${entry.taken_at ? new Date(entry.taken_at).toLocaleTimeString() : 'today'}?`,
+        t('medications.removeDose'),
+         t('medications.removeDoseConfirm', { time: entry.taken_at ? new Date(entry.taken_at).toLocaleTimeString(getAppLocale()) : t('medications.today') }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Remove',
+            text: t('common.delete'),
             style: 'destructive',
             onPress: () =>
               deleteEntryMutation.mutate(entry.id, {
                 onError: (error) => {
                   addLog(`Failed to remove dose: ${error.message}`, 'ERROR');
-                  Toast.show({ type: 'error', text1: 'Failed to remove dose' });
+                  Toast.show({ type: 'error', text1: t('medications.removeDoseFailed') });
                 },
               }),
           },
         ],
       );
     },
-    [deleteEntryMutation],
+    [deleteEntryMutation, t],
   );
 
   const header = useScreenHeader({
-    title: med?.name ?? 'Medication',
-    nativeTitle: med?.name ?? 'Medication',
+    title: med?.name ?? t('medications.titleSingular'),
+    nativeTitle: med?.name ?? t('medications.titleSingular'),
     left: { kind: 'back' },
     right: {
       kind: 'text',
-      label: 'Edit',
+       label: t('common.edit'),
       onPress: () => navigation.navigate('MedicationForm', { medicationId }),
     },
   });
@@ -134,7 +137,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
       {header}
       {isLoading || !med ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-text-muted text-base">Loading...</Text>
+          <Text className="text-text-muted text-base">{t('common.loading')}</Text>
         </View>
       ) : (
       <ScrollView
@@ -152,11 +155,11 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           {strengthLabel != null && (
             <Text className="text-sm text-text-secondary mt-0.5">{strengthLabel}</Text>
           )}
-          {!med.is_active && (
-            <View className="self-start mt-2">
-              <Text className="text-base font-bold text-text-muted">Inactive</Text>
-            </View>
-          )}
+{!med.is_active && (
+              <View className="self-start rounded-full px-2.5 py-0.5 mt-2 border border-chrome-border">
+                <Text className="text-xs text-text-muted">{t('medications.inactiveLabel')}</Text>
+              </View>
+            )}
         </View>
 
         {med.is_active && (
@@ -177,7 +180,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
               />
             ))}
             {dueDoses.length === 0 && !isPrn && (
-              <Text className="text-sm text-text-muted py-2">No doses scheduled for this day.</Text>
+              <Text className="text-sm text-text-muted py-2">{t('medications.noDosesToday')}</Text>
             )}
             {isPrn && (
               <>
@@ -185,7 +188,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                   kind="prn"
                   count={todayPrnDoses.length}
                   onLog={() => logPrn(med)}
-                  title="As needed"
+                   title={t('medications.asNeeded')}
                   subtitle={formatDose(med) ?? undefined}
                 />
                 {todayPrnDoses.map((dose) => (
@@ -193,8 +196,8 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                     <View className="flex-1">
                       <Text className="text-base text-text-primary">
                         {dose.taken_at
-                          ? new Date(dose.taken_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-                          : 'Logged'}
+                           ? new Date(dose.taken_at).toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' })
+                           : t('medications.logged')}
                       </Text>
                       {dose.notes && (
                         <Text className="text-xs text-text-muted mt-0.5">{dose.notes}</Text>
@@ -205,7 +208,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       activeOpacity={0.6}
                       accessibilityRole="button"
-                      accessibilityLabel="Remove dose"
+                      accessibilityLabel={t('medications.removeDose')}
                       className="ml-3"
                     >
                       <Icon name="trash" size={18} color={iconDanger} />
@@ -219,15 +222,15 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
 
         <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
           <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-sm font-semibold text-text-secondary">Schedules</Text>
+            <Text className="text-sm font-semibold text-text-secondary">{t('medications.schedules')}</Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('MedicationScheduleForm', { medicationId })}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.6}
               accessibilityRole="button"
-              accessibilityLabel="Add schedule"
+              accessibilityLabel={t('medications.addSchedule')}
             >
-              <Text className="text-sm font-semibold text-accent-primary">Add</Text>
+              <Text className="text-sm font-semibold text-accent-primary">{t('medications.add')}</Text>
             </TouchableOpacity>
           </View>
           {(med.schedules ?? []).map((sched, index) => {
@@ -237,7 +240,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
               if (scheduleDose != null) parts.push(scheduleDose);
             }
             if (sched.with_meal) parts.push(formatWithMeal(sched.with_meal));
-            if (sched.active === false) parts.push('Inactive');
+             if (sched.active === false) parts.push(t('medications.inactiveLabel'));
             const subtitle = parts.join(' · ');
             return (
               <View key={sched.id}>
@@ -261,18 +264,18 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
               </View>
             );
           })}
-          {(!med.schedules || med.schedules.length === 0) && (
-            <Text className="text-sm self-center text-text-muted">No schedule. Doses are logged as needed.</Text>
-          )}
+{(!med.schedules || med.schedules.length === 0) && (
+              <Text className="text-sm self-center text-text-muted">{t('medications.noSchedules')}</Text>
+            )}
         </View>
 
         {(med.prescriber || med.pharmacy || med.rx_number || med.notes) && (
           <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-            <Text className="text-sm font-semibold text-text-secondary mb-1">Details</Text>
-            {med.prescriber && <InfoRow label="Prescriber" value={med.prescriber} />}
-            {med.pharmacy && <InfoRow label="Pharmacy" value={med.pharmacy} />}
-            {med.rx_number && <InfoRow label="Rx number" value={med.rx_number} />}
-            {med.notes && <InfoRow label="Notes" value={med.notes} />}
+            <Text className="text-sm font-semibold text-text-secondary mb-1">{t('medications.details')}</Text>
+            {med.prescriber && <InfoRow label={t('medications.prescriber')} value={med.prescriber} />}
+            {med.pharmacy && <InfoRow label={t('medications.pharmacy')} value={med.pharmacy} />}
+            {med.rx_number && <InfoRow label={t('medications.rxNumber')} value={med.rx_number} />}
+            {med.notes && <InfoRow label={t('medications.notes')} value={med.notes} />}
           </View>
         )}
 
@@ -281,7 +284,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
           onPress={handleDelete}
         >
           <Text className="text-base font-medium text-center text-text-danger-subtle">
-            Delete Medication
+             {t('medications.delete')}
           </Text>
         </TouchableOpacity>
       </ScrollView>

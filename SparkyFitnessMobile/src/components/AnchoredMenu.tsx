@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon, { IconName } from './Icon';
 
 export type AnchorRect = {
@@ -69,6 +70,7 @@ const AnchoredMenu: React.FC<Props> = ({
   onClose,
   minWidth = 200,
 }) => {
+  const { t } = useTranslation();
   const { width: screenWidth } = useWindowDimensions();
   const accentColor = String(useCSSVariable('--color-accent-primary'));
   const textPrimary = String(useCSSVariable('--color-text-primary'));
@@ -104,7 +106,7 @@ const AnchoredMenu: React.FC<Props> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable className="flex-1" onPress={onClose} accessibilityLabel="Dismiss menu">
+      <Pressable className="flex-1" onPress={onClose} accessibilityLabel={t('anchoredMenu.dismiss')}>
         {/* Entrance-only animation: dismissal must stay instant (see the
             animationType note above), so only the content animates in. */}
         <Animated.View

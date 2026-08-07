@@ -6,6 +6,8 @@ import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-nativ
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { WATER_UNIT_LABELS } from '../utils/unitConversions';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 interface ContainerOption {
   id: number;
@@ -46,6 +48,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   onIncrement, onDecrement, disableDecrement,
   containers, activeContainerId, onSelectContainer,
 }) => {
+  const { t } = useTranslation();
   const hydrationColor = useCSSVariable('--color-hydration') as string;
   const trackColor = useCSSVariable('--color-progress-track') as string;
   const outlineColor = useCSSVariable('--color-border-strong') as string;
@@ -108,9 +111,9 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   const convertedGoal = convertFromMl(goal, unit);
   const formatUnitVolume = (val: number, u: string): string => {
     const decimals = u === 'oz' ? 1 : u === 'liter' ? 2 : 0;
-    // toLocaleString keeps thousands grouping and the locale's decimal
-    // separator; maximumFractionDigits alone strips trailing zeros.
-    return val.toLocaleString(undefined, { maximumFractionDigits: decimals });
+    // Locale-aware formatting keeps thousands grouping and the locale's
+    // decimal separator; maximumFractionDigits alone strips trailing zeros.
+    return formatLocalizedNumber(val, { maximumFractionDigits: decimals });
   };
   const displayConsumed = formatUnitVolume(convertedConsumed, unit);
   const displayGoal = formatUnitVolume(convertedGoal, unit);
@@ -122,13 +125,14 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-3">Hydration</Text>
+      <Text className="text-md font-bold text-text-secondary mb-3">{t('hydration.title')}</Text>
       <View className="flex-row items-center">
         <View className="flex-row items-center mr-4">
           {showButtons && (
             <Button
               variant="ghost"
               onPress={onDecrement}
+              accessibilityLabel={t('hydration.remove')}
               disabled={disableDecrement || noContainer}
               className="p-2"
               style={disableDecrement || noContainer ? { opacity: 0.3 } : undefined}
@@ -149,6 +153,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
             <Button
               variant="ghost"
               onPress={onIncrement}
+              accessibilityLabel={t('hydration.add')}
               disabled={noContainer}
               className="p-2"
               style={noContainer ? { opacity: 0.3 } : undefined}
@@ -162,7 +167,10 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
             {displayConsumed} {unitLabel}
           </Text>
           <Text className="text-sm text-text-secondary mt-0.5">
-            of {displayGoal} {unitLabel}
+            {t('hydration.ofGoal', {
+              goal: displayGoal,
+              unit: unitLabel,
+            })}
           </Text>
           {showChips && (
             <View className="flex-row flex-wrap justify-center mt-2 gap-1">
@@ -186,12 +194,15 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
       </View>
       {showButtons && containerVolume != null && !showChips && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel} per bottle
+          {t('hydration.perBottle', {
+            volume: formatLocalizedNumber(convertFromMl(containerVolume, unit), { maximumFractionDigits: 1 }),
+            unit: unitLabel,
+          })}
         </Text>
       )}
       {showButtons && containerVolume == null && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          Configure water container on server to{'\n'}enable quick add/remove buttons
+          {t('hydration.configureContainer')}
         </Text>
       )}
     </View>

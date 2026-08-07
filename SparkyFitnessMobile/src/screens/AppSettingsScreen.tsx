@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, ScrollView } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, ScrollView, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import SettingsRow from '../components/SettingsRow';
@@ -16,17 +17,15 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  setAppLanguagePreference,
+  type LanguagePreference,
+} from '../localization';
 
 type AppSettingsScreenProps = RootStackScreenProps<'AppSettings'>;
 
-const themeOptions: { label: string; value: ThemePreference }[] = [
-  { label: 'Light', value: 'Light' },
-  { label: 'Dark', value: 'Dark' },
-  { label: 'AMOLED', value: 'Amoled' },
-  { label: 'System', value: 'System' },
-];
-
 const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const appTheme = useThemePreference();
@@ -38,10 +37,30 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   const setLiquidGlassTabBarEnabled = useAppPreferencesStore(
     (s) => s.setLiquidGlassTabBarEnabled,
   );
+  const languagePreference = useAppPreferencesStore((s) => s.languagePreference);
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const header = useScreenHeader({ title: 'App Settings', left: { kind: 'back' } });
+  const handleLanguageSelect = useCallback(
+    (value: LanguagePreference) => {
+      void setAppLanguagePreference(value);
+    },
+    [],
+  );
+
+  const languagePickerOptions = [
+    { label: t('settings.language.system'), value: 'system' as LanguagePreference },
+    { label: t('settings.language.english'), value: 'en' as LanguagePreference },
+    { label: t('settings.language.polish'), value: 'pl' as LanguagePreference },
+  ];
+  const themePickerOptions = [
+    { label: t('settings.theme.light'), value: 'Light' as ThemePreference },
+    { label: t('settings.theme.dark'), value: 'Dark' as ThemePreference },
+    { label: t('settings.theme.amoled'), value: 'Amoled' as ThemePreference },
+    { label: t('settings.theme.system'), value: 'System' as ThemePreference },
+  ];
+
+  const header = useScreenHeader({ title: t('settings.app'), left: { kind: 'back' } });
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -53,62 +72,82 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
         }}
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
-        <SettingsRow
-          title="Theme"
-          rightAccessory={
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base text-text-primary">{t('settings.theme.title')}</Text>
             <BottomSheetPicker
               value={appTheme}
-              options={themeOptions}
+              options={themePickerOptions}
               onSelect={setThemePreference}
-              title="Theme"
+              title={t('settings.theme.title')}
               containerStyle={{ flex: 1, maxWidth: 200 }}
             />
-          }
-        />
+          </View>
+        </View>
+
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base text-text-primary">{t('settings.language.title')}</Text>
+            <BottomSheetPicker
+              value={languagePreference}
+              options={languagePickerOptions}
+              onSelect={handleLanguageSelect}
+              title={t('settings.language.title')}
+              containerStyle={{ flex: 1, maxWidth: 200 }}
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-2">
+            {t('languageSettings.subtitle')}
+          </Text>
+        </View>
 
         {supportsLiquidGlassTabBar && (
-          <SettingsRow
-            title="Liquid Glass navigation"
-            subtitle="Use the iOS 26 glass tab bar and screen headers."
-            subtitleNumberOfLines={0}
-            rightAccessory={
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base text-text-primary">{t('liquidGlass.title')}</Text>
               <Switch
                 value={liquidGlassEnabled}
                 onValueChange={setLiquidGlassTabBarEnabled}
               />
-            }
-          />
+            </View>
+            <Text className="text-text-secondary text-sm mt-2">
+              {t('liquidGlass.subtitle')}
+            </Text>
+          </View>
         )}
+
         <SettingsRow
-          title="Notifications"
-          subtitle="Rest timers, fasting goals, and medication reminders."
+          title={t('notifications.title')}
+          subtitle={t('notifications.subtitle')}
           subtitleNumberOfLines={0}
           onPress={() => navigation.navigate('NotificationSettings')}
         />
 
-        <SettingsRow
-          title="Haptic Feedback"
-          subtitle="Light vibrations for timers and confirmations."
-          subtitleNumberOfLines={0}
-          rightAccessory={
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base text-text-primary">{t('haptics.title')}</Text>
             <Switch
               value={hapticsEnabled}
               onValueChange={setHapticsEnabled}
             />
-          }
-        />
+          </View>
+          <Text className="text-text-secondary text-sm mt-2">
+            {t('haptics.subtitle')}
+          </Text>
+        </View>
 
-        <SettingsRow
-          title="Camera shutter"
-          subtitle="Play a sound when capturing photos."
-          subtitleNumberOfLines={0}
-          rightAccessory={
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base text-text-primary">{t('cameraShutter.title')}</Text>
             <Switch
               value={soundsEnabled}
               onValueChange={setSoundsEnabled}
             />
-          }
-        />
+          </View>
+          <Text className="text-text-secondary text-sm mt-2">
+            {t('cameraShutter.subtitle')}
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );

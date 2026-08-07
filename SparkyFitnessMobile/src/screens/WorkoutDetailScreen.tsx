@@ -56,15 +56,18 @@ import {
 } from '../services/notifications';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
+import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { UpdatePresetSessionRequest } from '@workspace/shared';
 import { canEditGroupedWorkout } from '@workspace/shared';
+import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const [session, setSession] = useState(route.params.session);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -324,17 +327,17 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const setMenuItems = useMemo<ActionSheetItem[]>(() => {
     if (setMenuTargetId == null) return [];
     const items: ActionSheetItem[] = [
-      { key: 'edit', label: 'Edit', onPress: startEditing },
+      { key: 'edit', label: t('common.edit'), onPress: startEditing },
     ];
     if (!isWorkoutActive) {
       items.push({
         key: 'start-here',
-        label: 'Start workout here',
+        label: t('workout.startHere'),
         onPress: () => beginWorkout(setMenuTargetId),
       });
     }
     return items;
-  }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout]);
+  }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout, t]);
 
   // "Save as preset": review-and-save through the preset create form,
   // prefilled from this session. Not gated on canEdit — templating a synced
@@ -388,8 +391,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       if (exercisesModifiedRef.current && !submission.canSave) {
         Toast.show({
           type: 'error',
-          text1: 'Workout needs an exercise',
-          text2: 'Add at least one exercise with a set or delete the workout.',
+          text1: t('workout.workoutNeedsExercise'),
+          text2: t('workout.addExerciseOrDelete'),
         });
         return;
       }
@@ -410,9 +413,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       deactivateSet();
     } catch (error) {
       addLog(`Failed to save workout: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
+      Toast.show({ type: 'error', text1: t('workout.failedToSaveWorkout'), text2: t('workout.pleaseTryAgain') });
     }
-  }, [submission, normalizedDate, editNotes, updateSession, session, invalidateSessionCache, deactivateSet, exercisesModifiedRef]);
+  }, [submission, normalizedDate, editNotes, updateSession, session, invalidateSessionCache, deactivateSet, exercisesModifiedRef, t]);
 
   // --- Read-only render helpers ---
 
@@ -483,7 +486,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     return (
       <View className="bg-surface rounded-xl p-4 mt-4">
-        <Text className="text-base font-semibold text-text-primary mb-2">Details</Text>
+        <Text className="text-base font-semibold text-text-primary mb-2">{t('workout.details')}</Text>
         {items.map((item, i) => (
           <View
             key={`${item.label}-${i}`}
@@ -520,19 +523,19 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const summaryItems: { value: string; label: string }[] = [];
     summaryItems.push({
       value: String(exerciseCount),
-      label: exerciseCount === 1 ? 'Exercise' : 'Exercises',
+        label: t('workout.exerciseCount', { count: exerciseCount, formattedCount: formatLocalizedNumber(exerciseCount) }),
     });
-    if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: 'Sets' });
+     if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: t('workout.setsLabel') });
     if (totalVolume > 0) {
       const volumeLabel = isEditing
         ? `${Math.round(totalVolume).toLocaleString()} ${weightUnit}`
         : formatVolume(totalVolume, weightUnit);
-      summaryItems.push({ value: volumeLabel, label: 'Volume' });
+       summaryItems.push({ value: volumeLabel, label: t('workout.volume') });
     }
     if (totalCalories > 0) {
       summaryItems.push({
         value: Math.round(totalCalories).toLocaleString(),
-        label: 'Calories',
+         label: t('workout.caloriesLabel'),
       });
     }
     if (summaryItems.length === 0) return null;
@@ -561,12 +564,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const canReorderEdit = canReorderDraftExercises(formState.exercises);
   const saveHeaderItem: HeaderItem = {
     kind: 'primary',
-    label: SAVE_LABEL,
-    busyLabel: SAVING_LABEL,
     busy: isSaving,
     disabled: isSaving || !hasEditedExercisesWithSets,
     onPress: handleSave,
-    accessibilityLabel: 'Save',
+     accessibilityLabel: t('common.save'),
     identifier: 'workout-detail-save',
   };
   const reorderHeaderItem: HeaderItem = {
@@ -575,7 +576,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     ionicon: 'swap-vertical',
     role: 'secondary',
     onPress: () => exerciseListRef.current?.openReorder(),
-    accessibilityLabel: 'Reorder exercises',
+     accessibilityLabel: t('workout.reorderExercises'),
     identifier: 'workout-detail-reorder',
   };
   const saveAsPresetHeaderItem: HeaderItem = {
@@ -584,7 +585,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     ionicon: 'bookmark-outline',
     role: 'secondary',
     onPress: handleSaveAsPreset,
-    accessibilityLabel: 'Save as preset',
+     accessibilityLabel: t('workout.saveAsPresetLabel'),
     identifier: 'workout-detail-save-as-preset',
   };
 
@@ -604,7 +605,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           kind: 'dismiss',
           onPress: cancelEditing,
           disabled: isSaving,
-          accessibilityLabel: 'Cancel',
+           accessibilityLabel: t('common.cancel'),
           identifier: 'workout-detail-cancel',
         }
       : { kind: 'back' },
@@ -617,10 +618,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             saveAsPresetHeaderItem,
             {
               kind: 'text',
-              label: 'Edit',
+               label: t('common.edit'),
               role: 'secondary',
               onPress: startEditing,
-              accessibilityLabel: 'Edit workout',
+               accessibilityLabel: t('workout.editWorkout'),
               identifier: 'workout-detail-edit',
             },
           ]
@@ -649,11 +650,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View className="mb-4">
           {isEditing ? (
             <FadeView key="edit-title">
-              <Text className="text-sm font-medium text-text-secondary mb-1">Name</Text>
+               <Text className="text-sm font-medium text-text-secondary mb-1">{t('workout.name')}</Text>
               <FormInput
                 value={formState.name}
                 onChangeText={setFormName}
-                placeholder="Workout Name"
+                 placeholder={t('workout.workoutNamePlaceholder')}
                 className="mb-2"
               />
             </FadeView>
@@ -688,7 +689,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Start Workout button */}
         {!isEditing && canEdit && !isWorkoutActive && (
           <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
-            Start Workout
+             {t('workout.startWorkout')}
           </Button>
         )}
 
@@ -738,11 +739,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing && (
           <FadeView>
             <View className="mt-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
+               <Text className="text-sm font-medium text-text-secondary mb-1">{t('workout.notes')}</Text>
               <FormInput
                 value={editNotes}
                 onChangeText={setEditNotes}
-                placeholder="Add notes..."
+                 placeholder={t('workout.addNotesPlaceholder')}
                 multiline
                 style={{ minHeight: 60 }}
               />
@@ -754,7 +755,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {!isEditing && session.notes && (
           <FadeView>
             <View className="mt-4 px-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
+               <Text className="text-sm font-medium text-text-secondary mb-1">{t('workout.notes')}</Text>
               <Text className="text-sm text-text-primary">{session.notes}</Text>
             </View>
           </FadeView>

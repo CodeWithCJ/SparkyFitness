@@ -28,6 +28,7 @@ import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { usePreferences } from '../hooks/usePreferences';
 import { useProfile } from '../hooks/useProfile';
 import { useUpdateWorkoutPreset } from '../hooks/useWorkoutPresetMutations';
+import { getAppLocale } from '../localization';
 import { getWorkout } from '../services/api/exerciseApi';
 import { getWorkoutPresetById } from '../services/api/workoutPresetsApi';
 import { getActiveServerConfig } from '../services/storage';
@@ -53,22 +54,21 @@ import {
 } from '../utils/workoutSession';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { WorkoutPreset } from '../types/workoutPresets';
+import { useTranslation } from 'react-i18next';
 
 type Props = RootStackScreenProps<'WorkoutComplete'>;
 
 /** Keeps the update-preset alert off the confetti burst and success haptic. */
 const UPDATE_PRESET_PROMPT_DELAY_MS = 800;
 
-const RPE_TONE_LABELS: Record<RpeTone, string> = {
-  easy: 'Easy',
-  moderate: 'Moderate',
-  hard: 'Hard',
-  max: 'Max effort',
+const rpeToneLabel = (t: (key: string) => string, tone: RpeTone): string => {
+  switch (tone) {
+    case 'easy': return t('workout.rpeEasy');
+    case 'moderate': return t('workout.rpeModerate');
+    case 'hard': return t('workout.rpeHard');
+    case 'max': return t('workout.rpeMax');
+  }
 };
-
-function setsNoun(count: number): string {
-  return count === 1 ? 'set' : 'sets';
-}
 
 // --- Confetti (records variant only) ---
 
@@ -191,7 +191,7 @@ function CaloriesShimmer() {
   }, [opacity, reducedMotion]);
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
-    <Animated.View style={animatedStyle} accessibilityLabel="Calculating">
+    <Animated.View style={animatedStyle}>
       <View className="bg-raised rounded-md mt-1" style={{ width: 58, height: 20 }} />
     </Animated.View>
   );
@@ -260,6 +260,8 @@ function DockedActionButton({
 }
 
 function WorkoutCompleteScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
+  const setsNoun = (count: number) => count === 1 ? t('workout.set') : t('workout.sets');
   const insets = useSafeAreaInsets();
   const {
     session,
@@ -389,17 +391,17 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
       // re-runs the effect and fires it then.
       promptedRef.current = true;
       Alert.alert(
-        'Update preset?',
-        `Today's workout differs from "${sourcePreset.name}". Update the preset to match?`,
+         t('workout.updatePresetTitle'),
+         t('workout.todayDiffers', { name: sourcePreset.name }),
         [
-          { text: 'Keep Preset', style: 'cancel' },
+           { text: t('workout.keepPreset'), style: 'cancel' },
           {
-            text: 'Update',
+             text: t('workout.updatePreset'),
             onPress: () => {
               void (async () => {
                 try {
                   await updatePresetAsync({ id: presetId, payload: { exercises } });
-                  Toast.show({ type: 'success', text1: 'Preset updated' });
+                   Toast.show({ type: 'success', text1: t('workout.presetUpdatedToast') });
                 } catch {
                   // useUpdateWorkoutPreset already showed the failure toast.
                 }
@@ -410,14 +412,14 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
       );
     }, UPDATE_PRESET_PROMPT_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [isFocused, sourcePreset, presetUpdateExercises, profile?.id, updatePresetAsync]);
+  }, [isFocused, sourcePreset, presetUpdateExercises, profile?.id, updatePresetAsync, t]);
 
   const rpeTone = summary.averageRpe != null ? getRpeTone(summary.averageRpe) : null;
   const rpeToneColor = String(
     useCSSVariable(RPE_TONE_VARS[rpeTone ?? 'easy']),
   );
 
-  const finishedTimeText = new Date(finishedAt).toLocaleTimeString([], {
+  const finishedTimeText = new Date(finishedAt).toLocaleTimeString(getAppLocale(), {
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -448,14 +450,14 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
         <View className="items-center px-6 pt-7 pb-5">
           {hasRecords && <ConfettiBurst />}
           <HeroCheck />
-          <Text className="text-2xl font-bold text-text-primary mt-3">Workout Complete</Text>
+          <Text className="text-2xl font-bold text-text-primary mt-3">{t('workout.workoutComplete')}</Text>
           <Text className="text-[15px] font-semibold text-text-secondary mt-1">
             {session.name}
           </Text>
           <Text className="text-sm font-medium text-text-muted mt-1">
             {allSetsLogged ? (
               <>
-                All{' '}
+                 {t('workout.all')}{' '}
                 <Text className="font-semibold text-text-secondary">
                   {summary.totalSetCount} {setsNoun(summary.totalSetCount)}
                 </Text>{' '}
@@ -464,7 +466,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             ) : (
               <>
                 <Text className="font-semibold text-text-secondary">
-                  {summary.completedSetCount} of {summary.totalSetCount}{' '}
+                   {summary.completedSetCount} {t('workout.of')} {summary.totalSetCount}{' '}
                   {setsNoun(summary.totalSetCount)}
                 </Text>{' '}
                 logged
@@ -477,10 +479,10 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
 
         <View className="px-4">
           <View className="flex-row gap-2">
-            <StatTile icon="timer" label="Duration">
+            <StatTile icon="timer" label={t('workout.durationLabel')}>
               <StatValue value={durationMinutes > 0 ? formatDuration(durationMinutes) : '—'} />
             </StatTile>
-            <StatTile icon="exercise-weights" label="Volume">
+            <StatTile icon="exercise-weights" label={t('workout.volume')}>
               {summary.volumeKg > 0 ? (
                 <StatValue
                   value={Math.round(weightFromKg(summary.volumeKg, weightUnit)).toLocaleString()}
@@ -492,7 +494,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             </StatTile>
           </View>
           <View className="flex-row gap-2 mt-2">
-            <StatTile icon="checkmark-circle" label="Sets">
+            <StatTile icon="checkmark-circle" label={t('workout.setsLabel')}>
               <Text
                 className="text-xl font-bold text-text-primary mt-0.5"
                 style={{ fontVariant: ['tabular-nums'] }}
@@ -505,7 +507,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 </Text>
               </Text>
             </StatTile>
-            <StatTile icon="flame" label="Calories">
+            <StatTile icon="flame" label={t('workout.caloriesLabel')}>
               {caloriesValue != null ? (
                 <StatValue value={Math.round(caloriesValue).toLocaleString()} unit="Cal" />
               ) : caloriesFailed ? (
@@ -518,7 +520,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
 
           {summary.totalDistanceKm > 0 && (
             <View className="flex-row gap-2 mt-2">
-              <StatTile icon="exercise-running" label="Distance">
+               <StatTile icon="exercise-running" label={t('workout.distanceLabel')}>
                 <StatValue
                   value={String(
                     parseFloat(
@@ -537,12 +539,12 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 className="text-xs font-semibold uppercase text-text-muted"
                 style={{ letterSpacing: 0.6 }}
               >
-                Average RPE
+                 {t('workout.averageRpe')}
               </Text>
               <Text className="text-xs font-semibold ml-auto" style={{ color: rpeToneColor }}>
-                {RPE_TONE_LABELS[rpeTone]}
+                 {rpeToneLabel(t, rpeTone)}
               </Text>
-              <Text
+             <Text
                 className="text-base font-bold ml-2"
                 style={{ color: rpeToneColor, fontVariant: ['tabular-nums'] }}
               >
@@ -597,13 +599,13 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             className="text-xs font-bold uppercase text-text-muted"
             style={{ letterSpacing: 1 }}
           >
-            Exercises
+             {t('workout.exercises')}
           </Text>
           <Text
             className="ml-auto text-xs font-bold uppercase text-text-muted"
             style={{ letterSpacing: 1 }}
           >
-            Volume
+             {t('workout.volume')}
           </Text>
         </View>
         <View className="border-t border-border-subtle">
@@ -646,7 +648,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                       `${row.totalSetCount} ${setsNoun(row.totalSetCount)}`
                     ) : (
                       <Text className="font-semibold">
-                        {row.completedSetCount} of {row.totalSetCount}{' '}
+                         {row.completedSetCount} {t('workout.of')} {row.totalSetCount}{' '}
                         {setsNoun(row.totalSetCount)}
                       </Text>
                     )}
@@ -675,11 +677,11 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
         style={{ paddingBottom: insets.bottom + 12 }}
       >
         <View className="flex-row gap-2 mb-2">
-          <DockedActionButton icon="bookmark" label="Save as Preset" onPress={handleSaveAsPreset} />
-          <DockedActionButton icon="list" label="View Workout" onPress={handleViewWorkout} />
+           <DockedActionButton icon="bookmark" label={t('workout.saveAsPreset')} onPress={handleSaveAsPreset} />
+           <DockedActionButton icon="list" label={t('workout.viewWorkout')} onPress={handleViewWorkout} />
         </View>
         <Button variant="primary" onPress={handleDone}>
-          Done
+           {t('common.done')}
         </Button>
       </View>
     </View>

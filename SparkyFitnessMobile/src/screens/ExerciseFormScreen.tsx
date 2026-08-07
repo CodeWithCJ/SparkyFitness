@@ -16,43 +16,43 @@ import type {
   RootStackScreenProps,
 } from '../types/navigation';
 import type { CreateExercisePayload, UpdateExercisePayload } from '../services/api/exerciseApi';
-import { SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
 
 const CATEGORY_OPTIONS = [
-  { label: 'General', value: 'general' },
-  { label: 'Strength', value: 'strength' },
-  { label: 'Cardio', value: 'cardio' },
-  { label: 'Yoga', value: 'yoga' },
-  { label: 'Powerlifting', value: 'powerlifting' },
-  { label: 'Olympic Weightlifting', value: 'olympic weightlifting' },
-  { label: 'Strongman', value: 'strongman' },
-  { label: 'Plyometrics', value: 'plyometrics' },
-  { label: 'Stretching', value: 'stretching' },
-  { label: 'Isometric', value: 'isometric' },
+  { labelKey: 'workout.categoryGeneral', value: 'general' },
+  { labelKey: 'workout.categoryStrength', value: 'strength' },
+  { labelKey: 'workout.categoryCardio', value: 'cardio' },
+  { labelKey: 'workout.categoryYoga', value: 'yoga' },
+  { labelKey: 'workout.categoryPowerlifting', value: 'powerlifting' },
+  { labelKey: 'workout.categoryOlympicWeightlifting', value: 'olympic weightlifting' },
+  { labelKey: 'workout.categoryStrongman', value: 'strongman' },
+  { labelKey: 'workout.categoryPlyometrics', value: 'plyometrics' },
+  { labelKey: 'workout.categoryStretching', value: 'stretching' },
+  { labelKey: 'workout.categoryIsometric', value: 'isometric' },
 ] as const;
 
 const MODALITY_OPTIONS = [
-  { label: 'Weight & Reps', value: 'weight_reps' },
-  { label: 'Reps', value: 'reps_only' },
-  { label: 'Duration', value: 'duration' },
-  { label: 'Duration & Distance', value: 'duration_distance' },
+  { labelKey: 'workout.modalityWeightReps', value: 'weight_reps' },
+  { labelKey: 'workout.modalityReps', value: 'reps_only' },
+  { labelKey: 'workout.modalityDuration', value: 'duration' },
+  { labelKey: 'workout.modalityDurationDistance', value: 'duration_distance' },
 ] as const;
 
 const LEVEL_OPTIONS = [
-  { label: 'Beginner', value: 'beginner' },
-  { label: 'Intermediate', value: 'intermediate' },
-  { label: 'Expert', value: 'expert' },
+  { labelKey: 'workout.levelBeginner', value: 'beginner' },
+  { labelKey: 'workout.levelIntermediate', value: 'intermediate' },
+  { labelKey: 'workout.levelExpert', value: 'expert' },
 ] as const;
 
 const FORCE_OPTIONS = [
-  { label: 'Pull', value: 'pull' },
-  { label: 'Push', value: 'push' },
-  { label: 'Static', value: 'static' },
+  { labelKey: 'workout.forcePull', value: 'pull' },
+  { labelKey: 'workout.forcePush', value: 'push' },
+  { labelKey: 'workout.forceStatic', value: 'static' },
 ] as const;
 
 const MECHANIC_OPTIONS = [
-  { label: 'Compound', value: 'compound' },
-  { label: 'Isolation', value: 'isolation' },
+  { labelKey: 'workout.mechanicCompound', value: 'compound' },
+  { labelKey: 'workout.mechanicIsolation', value: 'isolation' },
 ] as const;
 
 type EditParams = Extract<RootStackParamList['ExerciseForm'], { mode: 'edit-exercise' }>;
@@ -76,6 +76,34 @@ const titleCase = (value: string): string =>
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
+
+const translateOptionLabel = (t: (key: string) => string, key: string): string => {
+  switch (key) {
+    case 'workout.categoryGeneral': return t('workout.categoryGeneral');
+    case 'workout.categoryStrength': return t('workout.categoryStrength');
+    case 'workout.categoryCardio': return t('workout.categoryCardio');
+    case 'workout.categoryYoga': return t('workout.categoryYoga');
+    case 'workout.categoryPowerlifting': return t('workout.categoryPowerlifting');
+    case 'workout.categoryOlympicWeightlifting': return t('workout.categoryOlympicWeightlifting');
+    case 'workout.categoryStrongman': return t('workout.categoryStrongman');
+    case 'workout.categoryPlyometrics': return t('workout.categoryPlyometrics');
+    case 'workout.categoryStretching': return t('workout.categoryStretching');
+    case 'workout.categoryIsometric': return t('workout.categoryIsometric');
+    case 'workout.modalityWeightReps': return t('workout.modalityWeightReps');
+    case 'workout.modalityReps': return t('workout.modalityReps');
+    case 'workout.modalityDuration': return t('workout.modalityDuration');
+    case 'workout.modalityDurationDistance': return t('workout.modalityDurationDistance');
+    case 'workout.levelBeginner': return t('workout.levelBeginner');
+    case 'workout.levelIntermediate': return t('workout.levelIntermediate');
+    case 'workout.levelExpert': return t('workout.levelExpert');
+    case 'workout.forcePull': return t('workout.forcePull');
+    case 'workout.forcePush': return t('workout.forcePush');
+    case 'workout.forceStatic': return t('workout.forceStatic');
+    case 'workout.mechanicCompound': return t('workout.mechanicCompound');
+    case 'workout.mechanicIsolation': return t('workout.mechanicIsolation');
+    default: return titleCase(key);
+  }
+};
 
 interface ExerciseFormState {
   name: string;
@@ -121,20 +149,12 @@ const SectionHeader: React.FC<{ children: string }> = ({ children }) => (
   </Text>
 );
 
-const labelForOption = (
-  options: readonly { label: string; value: string }[],
-  value: string | null,
-): string => {
-  if (!value) return 'Select…';
-  const match = options.find((opt) => opt.value === value);
-  return match ? match.label : titleCase(value);
-};
-
 const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
   state,
   setState,
   showCategory,
 }) => {
+  const { t } = useTranslation();
   const textMuted = useCSSVariable('--color-text-muted') as string;
   const [showAdvanced, setShowAdvanced] = useState(() => hasAdvancedContent(state));
 
@@ -144,11 +164,11 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       !CATEGORY_OPTIONS.some((opt) => opt.value === state.category)
     ) {
       return [
-        ...CATEGORY_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value })),
-        { label: titleCase(state.category), value: state.category },
+         ...CATEGORY_OPTIONS.map((opt) => ({ labelKey: opt.labelKey, value: opt.value })),
+         { labelKey: titleCase(state.category), value: state.category },
       ];
     }
-    return CATEGORY_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value }));
+     return CATEGORY_OPTIONS.map((opt) => ({ labelKey: opt.labelKey, value: opt.value }));
   }, [state.category]);
 
   const modalityOptions = useMemo(() => {
@@ -157,16 +177,16 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       !MODALITY_OPTIONS.some((opt) => opt.value === state.modality)
     ) {
       return [
-        ...MODALITY_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value })),
-        { label: titleCase(state.modality), value: state.modality },
+         ...MODALITY_OPTIONS.map((opt) => ({ labelKey: opt.labelKey, value: opt.value })),
+         { labelKey: titleCase(state.modality), value: state.modality },
       ];
     }
-    return MODALITY_OPTIONS.map((opt) => ({ label: opt.label, value: opt.value }));
+     return MODALITY_OPTIONS.map((opt) => ({ labelKey: opt.labelKey, value: opt.value }));
   }, [state.modality]);
 
   const renderPicker = (
     label: string,
-    options: readonly { label: string; value: string }[],
+    options: readonly { labelKey: string; value: string }[],
     value: string | null,
     onSelect: (next: string) => void,
   ) => (
@@ -174,9 +194,9 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       <Text className="text-text-secondary text-sm font-medium">{label}</Text>
       <BottomSheetPicker<string>
         value={value ?? ''}
-        options={options.map((opt) => ({ label: opt.label, value: opt.value }))}
+        options={options.map((opt) => ({ label: translateOptionLabel(t, opt.labelKey), value: opt.value }))}
         onSelect={onSelect}
-        title={`Select ${label}`}
+        title={t('workout.select', { label })}
         renderTrigger={({ onPress }) => (
           <TouchableOpacity
             onPress={onPress}
@@ -185,7 +205,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
             style={{ height: 44 }}
           >
             <Text className="text-text-primary" style={{ fontSize: 16 }}>
-              {labelForOption(options, value)}
+              {value ? translateOptionLabel(t, options.find((opt) => opt.value === value)?.labelKey ?? value) : t('workout.selectValue')}
             </Text>
             <Icon name="chevron-down" size={16} color={textMuted} />
           </TouchableOpacity>
@@ -197,9 +217,9 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
       <View className="gap-1.5">
-        <Text className="text-text-secondary text-sm font-medium">Name *</Text>
+         <Text className="text-text-secondary text-sm font-medium">{t('workout.nameRequired')}</Text>
         <FormInput
-          placeholder="e.g. Bulgarian Split Squat"
+          placeholder={t('workout.exerciseNamePlaceholder')}
           value={state.name}
           onChangeText={(name) => setState((prev) => ({ ...prev, name }))}
           autoCapitalize="words"
@@ -210,7 +230,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       </View>
 
       {showCategory
-        ? renderPicker('Category', categoryOptions, state.category, (category) =>
+         ? renderPicker(t('workout.category'), categoryOptions, state.category, (category) =>
             setState((prev) => ({
               ...prev,
               category,
@@ -221,13 +241,13 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
           )
         : null}
 
-      {renderPicker('Tracking Type', modalityOptions, state.modality, (modality) =>
+      {renderPicker(t('workout.trackingType'), modalityOptions, state.modality, (modality) =>
         setState((prev) => ({ ...prev, modality, modalityManuallySet: true })),
       )}
 
       <View className="gap-1.5">
         <Text className="text-text-secondary text-sm font-medium">
-          Calories per Hour
+          {t('workout.caloriesPerHour')}
         </Text>
         <FormInput
           placeholder="0"
@@ -243,9 +263,9 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       </View>
 
       <View className="gap-1.5">
-        <Text className="text-text-secondary text-sm font-medium">Description</Text>
+         <Text className="text-text-secondary text-sm font-medium">{t('workout.description')}</Text>
         <FormInput
-          placeholder="Optional notes about the exercise"
+          placeholder={t('workout.optionalExerciseNotes')}
           value={state.description}
           onChangeText={(description) =>
             setState((prev) => ({ ...prev, description }))
@@ -264,7 +284,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
         className="flex-row items-center justify-between py-2"
       >
         <Text className="text-text-primary font-medium" style={{ fontSize: 16 }}>
-          Advanced
+          {t('workout.advanced')}
         </Text>
         <Icon
           name={showAdvanced ? 'chevron-down' : 'chevron-forward'}
@@ -275,14 +295,14 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
       {showAdvanced ? (
         <View className="gap-4">
-          <SectionHeader>Muscles</SectionHeader>
+           <SectionHeader>{t('workout.muscles')}</SectionHeader>
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
-              Primary muscles
+               {t('workout.primaryMuscles')}
             </Text>
             <FormInput
-              placeholder="Comma-separated (e.g. quadriceps, glutes)"
+              placeholder={t('workout.commaSeparatedMuscles')}
               value={state.primaryMuscles}
               onChangeText={(primaryMuscles) =>
                 setState((prev) => ({ ...prev, primaryMuscles }))
@@ -294,10 +314,10 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
-              Secondary muscles
+               {t('workout.secondaryMuscles')}
             </Text>
             <FormInput
-              placeholder="Comma-separated"
+              placeholder={t('workout.commaSeparated')}
               value={state.secondaryMuscles}
               onChangeText={(secondaryMuscles) =>
                 setState((prev) => ({ ...prev, secondaryMuscles }))
@@ -307,26 +327,26 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
             />
           </View>
 
-          <SectionHeader>Classification</SectionHeader>
+           <SectionHeader>{t('workout.classification')}</SectionHeader>
 
-          {renderPicker('Level', LEVEL_OPTIONS, state.level, (level) =>
+           {renderPicker(t('workout.level'), LEVEL_OPTIONS, state.level, (level) =>
             setState((prev) => ({ ...prev, level })),
           )}
-          {renderPicker('Force', FORCE_OPTIONS, state.force, (force) =>
+           {renderPicker(t('workout.force'), FORCE_OPTIONS, state.force, (force) =>
             setState((prev) => ({ ...prev, force })),
           )}
-          {renderPicker('Mechanic', MECHANIC_OPTIONS, state.mechanic, (mechanic) =>
+           {renderPicker(t('workout.mechanic'), MECHANIC_OPTIONS, state.mechanic, (mechanic) =>
             setState((prev) => ({ ...prev, mechanic })),
           )}
 
-          <SectionHeader>Details</SectionHeader>
+           <SectionHeader>{t('workout.details')}</SectionHeader>
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
-              Equipment
+               {t('workout.equipment')}
             </Text>
             <FormInput
-              placeholder="Comma-separated (e.g. dumbbell, bench)"
+              placeholder={t('workout.commaSeparatedEquipment')}
               value={state.equipment}
               onChangeText={(equipment) =>
                 setState((prev) => ({ ...prev, equipment }))
@@ -338,10 +358,10 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
-              Instructions
+               {t('workout.instructions')}
             </Text>
             <FormInput
-              placeholder="One step per line"
+              placeholder={t('workout.oneStepPerLine')}
               value={state.instructions}
               onChangeText={(instructions) =>
                 setState((prev) => ({ ...prev, instructions }))
@@ -359,6 +379,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
 const validateAndParseCalories = (
   text: string,
+  t: (key: string) => string,
 ): { ok: true; value?: number } | { ok: false } => {
   const trimmed = text.trim();
   if (trimmed.length === 0) return { ok: true, value: undefined };
@@ -366,8 +387,8 @@ const validateAndParseCalories = (
   if (Number.isNaN(parsed)) {
     Toast.show({
       type: 'error',
-      text1: 'Invalid calories per hour',
-      text2: 'Please enter a valid number.',
+       text1: t('workout.invalidCalories'),
+       text2: t('workout.invalidNumber'),
     });
     return { ok: false };
   }
@@ -425,6 +446,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     force: null,
     mechanic: null,
   });
+  const { t } = useTranslation();
   const { createExerciseAsync, isPending } = useCreateExercise();
 
   const handleSave = async () => {
@@ -432,20 +454,20 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
     if (!trimmedName) {
       Toast.show({
         type: 'error',
-        text1: 'Missing name',
-        text2: 'Please enter an exercise name.',
+        text1: t('workout.missingName'),
+        text2: t('workout.exerciseNameRequired'),
       });
       return;
     }
 
-    const calories = validateAndParseCalories(state.caloriesPerHourText);
+    const calories = validateAndParseCalories(state.caloriesPerHourText, t);
     if (!calories.ok) return;
 
     const payload = buildCreatePayload(trimmedName, state, calories.value);
 
     try {
       const created = await createExerciseAsync(payload);
-      Toast.show({ type: 'success', text1: 'Exercise created' });
+      Toast.show({ type: 'success', text1: t('workout.exerciseCreated') });
       navigation.replace('ExerciseDetail', { item: created });
     } catch {
       // Error toast handled in useCreateExercise.
@@ -454,10 +476,8 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
 
   return (
     <FormScreenChrome
-      title="New Exercise"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
-      isSaving={isPending}
+       title={t('screens.newExercise')}
+       isSaving={isPending}
       onSave={() => {
         void handleSave();
       }}
@@ -570,6 +590,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     force: exercise.force ?? null,
     mechanic: exercise.mechanic ?? null,
   }));
+  const { t } = useTranslation();
   const { updateExerciseAsync, isPending } = useUpdateExercise();
 
   const handleSave = async () => {
@@ -577,13 +598,13 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     if (!trimmedName) {
       Toast.show({
         type: 'error',
-        text1: 'Missing name',
-        text2: 'Please enter an exercise name.',
+        text1: t('workout.missingName'),
+        text2: t('workout.exerciseNameRequired'),
       });
       return;
     }
 
-    const calories = validateAndParseCalories(state.caloriesPerHourText);
+    const calories = validateAndParseCalories(state.caloriesPerHourText, t);
     if (!calories.ok) return;
 
     const payload = buildEditPayload(exercise, state, calories.value);
@@ -595,7 +616,7 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
 
     try {
       const updated = await updateExerciseAsync({ id: exercise.id, payload });
-      Toast.show({ type: 'success', text1: 'Exercise updated' });
+      Toast.show({ type: 'success', text1: t('workout.exerciseUpdated') });
       navigation.dispatch({
         ...CommonActions.setParams({ updatedItem: updated }),
         source: returnKey,
@@ -608,10 +629,8 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
 
   return (
     <FormScreenChrome
-      title="Edit Exercise"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
-      isSaving={isPending}
+       title={t('screens.editExercise')}
+       isSaving={isPending}
       onSave={() => {
         void handleSave();
       }}

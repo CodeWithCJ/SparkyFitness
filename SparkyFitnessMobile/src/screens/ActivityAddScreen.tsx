@@ -19,7 +19,8 @@ import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
@@ -35,6 +36,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 type Props = RootStackScreenProps<'ActivityAdd'>;
 
 const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const entry = route.params?.entry;
   const initialDate = route.params?.date ?? useDiaryDateStore.getState().selectedDate;
   const popCount = route.params?.popCount ?? 1;
@@ -183,11 +185,11 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
       }
     } catch (error) {
       addLog(`Failed to save activity: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
+      Toast.show({ type: 'error', text1: t('workout.failedSaveActivity'), text2: t('common.tryAgain') });
     }
   }, [
     submission, isEditMode, entry, popCount, modality,
-    createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, discardDraft, navigation,
+     createEntry, updateEntry, invalidateCreateCache, invalidateUpdateCache, discardDraft, navigation, t,
   ]);
 
   const header = useScreenHeader({
@@ -199,8 +201,6 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
       busy: isPending,
       disabled: isPending || !canSave,
       placement: 'native-only',
@@ -227,7 +227,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     className="text-xl font-bold text-text-primary rounded-lg"
                     value={state.name}
                     onChangeText={setName}
-                    placeholder="Activity"
+                    placeholder={t('workout.selectActivityPlaceholder')}
                     returnKeyType="done"
                     autoFocus
                     selectTextOnFocus
@@ -243,7 +243,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     activeOpacity={0.6}
                   >
                     <Text className="text-xl font-bold text-text-primary">
-                      {state.name || state.exerciseName || 'Activity'}
+                       {state.name || state.exerciseName || t('workout.activity')}
                     </Text>
                     <Icon name="pencil" size={20} color={textMuted} />
                   </TouchableOpacity>
@@ -258,19 +258,20 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 onPress={() => calendarSheetRef.current?.present()}
               />
 
+
               {state.entryDate === getTodayDate() ? (
                 <TouchableOpacity activeOpacity={0.7}
                   className="flex-row items-center mx-4"
                   onPress={() => setDate(addDays(getTodayDate(), -1))}
                 >
-                  <Text className="text-text-link text-sm font-medium mx-1.5">Use Yesterday</Text>
+                  <Text className="text-text-link text-sm font-medium mx-1.5">{t('workout.useYesterday')}</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity activeOpacity={0.7}
                   className="flex-row items-center mx-4"
                   onPress={() => setDate(getTodayDate())}
                 >
-                  <Text className="text-text-link text-sm font-medium mx-1.5">Use Today</Text>
+                  <Text className="text-text-link text-sm font-medium mx-1.5">{t('workout.useToday')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -307,7 +308,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   <View className="flex-row items-center">
                     <Icon name="add-circle" size={20} color={accentPrimary} />
                     <Text className="text-base font-medium ml-3" style={{ color: accentPrimary }}>
-                      Select Activity
+                       {t('workout.selectActivity')}
                     </Text>
                   </View>
                 </FadeView>
@@ -316,7 +317,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Duration */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Duration (min)</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">{t('workout.duration')}</Text>
               <FormInput
                 value={state.duration}
                 onChangeText={setDuration}
@@ -329,7 +330,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Distance */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-text-secondary mb-1.5">
-                Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
+                 {t('workout.distance')} ({distanceUnit === 'miles' ? 'mi' : 'km'})
               </Text>
               <FormInput
                 value={state.distance}
@@ -342,7 +343,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Calories */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Calories</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">{t('workout.calories')}</Text>
               <FormInput
                 value={state.calories}
                 onChangeText={setCalories}
@@ -351,13 +352,13 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 returnKeyType="done"
               />
               <Text className="text-xs text-text-muted mt-1">
-                {state.caloriesManuallySet ? 'Custom' : 'Auto-calculated'}
+                 {state.caloriesManuallySet ? t('workout.custom') : t('workout.autoCalculated')}
               </Text>
             </View>
 
             {/* Avg Heart Rate */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Avg Heart Rate (bpm)</Text>
+               <Text className="text-sm font-medium text-text-secondary mb-1.5">{t('workout.avgHeartRate')}</Text>
               <FormInput
                 value={state.avgHeartRate}
                 onChangeText={setAvgHeartRate}
@@ -369,11 +370,11 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Notes */}
             <View className="mb-6">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Notes</Text>
+               <Text className="text-sm font-medium text-text-secondary mb-1.5">{t('workout.notes')}</Text>
               <FormInput
                 value={state.notes}
                 onChangeText={setNotes}
-                placeholder="Optional notes..."
+                 placeholder={t('workout.optionalNotes')}
                 multiline
                 textAlignVertical="top"
                 returnKeyType="default"
@@ -394,6 +395,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
           busy={isPending}
         />
       )}
+
 
       <CalendarSheet
         ref={calendarSheetRef}

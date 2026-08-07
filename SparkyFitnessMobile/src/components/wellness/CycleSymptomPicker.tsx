@@ -4,6 +4,7 @@ import { BUILT_IN_CYCLE_SYMPTOMS, type CycleSymptomDef } from '@workspace/shared
 import CycleIcon from './CycleIcon';
 
 import { useCycleMode } from '../../hooks/useCycleMode';
+import { useTranslation } from 'react-i18next';
 
 interface CycleSymptomPickerProps {
   /** Draft selection of symptom display names; owned by the parent form. */
@@ -48,6 +49,7 @@ const STANDARD_TOP_SYMPTOMS = [
  */
 const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ selected, onToggle, loading }) => {
   const { mode } = useCycleMode();
+  const { t } = useTranslation();
   const isPregnant = mode === 'pregnant';
   const [showAll, setShowAll] = React.useState(false);
 
@@ -78,10 +80,10 @@ const CycleSymptomPicker: React.FC<CycleSymptomPickerProps> = ({ selected, onTog
   return (
     <View className="gap-2">
       <View className="flex-row items-center justify-between mb-1">
-        <Text className="text-text-primary text-sm font-semibold">Symptoms</Text>
+        <Text className="text-text-primary text-sm font-semibold">{t('mobileComponents.symptoms.title')}</Text>
         <TouchableOpacity onPress={() => setShowAll((v) => !v)} activeOpacity={0.7}>
-          <Text className="text-accent-primary text-sm font-semibold">
-            {showAll ? 'Show less' : 'Show all'}
+          <Text className="text-accent-primary text-xs font-semibold">
+            {showAll ? t('mobileComponents.symptoms.showLess') : t('mobileComponents.symptoms.showAll')}
           </Text>
         </TouchableOpacity>
       </View>

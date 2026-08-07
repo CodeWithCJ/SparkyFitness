@@ -6,20 +6,7 @@ import { getTodayDate, formatDate, addDays } from '../../../utils/dateUtils';
 import BottomSheetPicker from '../../BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../../CalendarSheet';
 import SettingsRow, { SettingsRowGroup } from '../../SettingsRow';
-
-const BASIS_OPTIONS: { value: PregnancyDueDateBasis; label: string }[] = [
-  { value: 'manual', label: 'Due date' },
-  { value: 'scan', label: 'Ultrasound scan' },
-  { value: 'lmp', label: 'Last period (LMP)' },
-  { value: 'conception', label: 'Conception date' },
-];
-
-const DATE_FIELD_LABEL: Record<PregnancyDueDateBasis, string> = {
-  lmp: 'First day of last period',
-  conception: 'Conception date',
-  manual: 'Estimated due date',
-  scan: 'Estimated due date (from scan)',
-};
+import { useTranslation } from 'react-i18next';
 
 // A pregnancy runs ~280 days; term is capped at 42 weeks (294 days). Allow a
 // little slack for overdue (past) and very-early (future) due dates.
@@ -108,24 +95,37 @@ interface PregnancyDueDateFormProps {
  */
 const PregnancyDueDateForm: React.FC<PregnancyDueDateFormProps> = ({ form, children }) => {
   const calendarRef = useRef<CalendarSheetRef>(null);
+  const { t } = useTranslation();
+  const basisOptions = [
+    { value: 'manual' as const, label: t('mobileComponents.wellness.setupBasis.manual') },
+    { value: 'scan' as const, label: t('mobileComponents.wellness.setupBasis.scan') },
+    { value: 'lmp' as const, label: t('mobileComponents.wellness.setupBasis.lmp') },
+    { value: 'conception' as const, label: t('mobileComponents.wellness.setupBasis.conception') },
+  ];
+  const dateFieldLabel = {
+    lmp: t('mobileComponents.wellness.setupField.lmp'),
+    conception: t('mobileComponents.wellness.setupField.conception'),
+    manual: t('mobileComponents.wellness.setupField.manual'),
+    scan: t('mobileComponents.wellness.setupField.scan'),
+  }[form.basis];
 
   return (
     <View>
       <SettingsRowGroup>
         <SettingsRow
-          title="Based on"
+           title={t('mobileComponents.wellness.setup.basedOn')}
           rightAccessory={
             <BottomSheetPicker
               value={form.basis}
-              options={BASIS_OPTIONS}
+               options={basisOptions}
               onSelect={form.setBasis}
-              title="Estimate due date by"
+               title={t('mobileComponents.wellness.setup.estimateBy')}
               containerStyle={{ flex: 1, maxWidth: 210 }}
             />
           }
         />
         <SettingsRow
-          title={DATE_FIELD_LABEL[form.basis]}
+           title={dateFieldLabel}
           rightAccessory={
             <TouchableOpacity onPress={() => calendarRef.current?.present()}>
               <Text className="text-accent-primary text-base font-semibold">
@@ -138,7 +138,7 @@ const PregnancyDueDateForm: React.FC<PregnancyDueDateFormProps> = ({ form, child
       </SettingsRowGroup>
 
       <View className="bg-surface rounded-2xl p-4 mt-4 border border-border-subtle shadow-sm">
-        <Text className="text-text-secondary text-xs">Estimated due date</Text>
+         <Text className="text-text-secondary text-xs">{t('mobileComponents.wellness.setup.due')}</Text>
         <Text className="text-text-primary text-lg font-bold">
           {formatDate(form.computedDueDate)}
         </Text>

@@ -389,4 +389,39 @@ describe('ImportHistoryScreen', () => {
     fireEvent.press(getByText('Start Over'));
     expect(state.startOver).toHaveBeenCalledTimes(1);
   });
+
+  test('idle renders Polish copy when the app language is Polish', async () => {
+    (
+      globalThis as typeof globalThis & {
+        __setTestLocale: (value: 'en' | 'pl') => void;
+      }
+    ).__setTestLocale('pl');
+    const state = runner();
+    mockUseBackfillRunner.mockReturnValue(state);
+
+    const { getByText } = renderScreen();
+    await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
+
+    expect(getByText('Zaimportuj swoją historię zdrowotną')).toBeTruthy();
+    expect(getByText('Rozpocznij import')).toBeTruthy();
+    expect(getByText('Źródło')).toBeTruthy();
+    expect(getByText('Włączone typy danych')).toBeTruthy();
+  });
+
+  test('interrupted renders Polish copy for resume and start over', async () => {
+    (
+      globalThis as typeof globalThis & {
+        __setTestLocale: (value: 'en' | 'pl') => void;
+      }
+    ).__setTestLocale('pl');
+    const state = runner({ status: 'interrupted', lastOutcome: 'cancelled', checkpoint: checkpoint() });
+    mockUseBackfillRunner.mockReturnValue(state);
+
+    const { getByText } = renderScreen();
+    await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
+
+    expect(getByText('Wznów')).toBeTruthy();
+    expect(getByText('Zacznij od nowa')).toBeTruthy();
+    expect(getByText('z 44 dni')).toBeTruthy();
+  });
 });

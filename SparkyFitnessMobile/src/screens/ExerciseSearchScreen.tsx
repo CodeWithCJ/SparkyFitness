@@ -43,6 +43,7 @@ import { getApiErrorMessage } from '../services/api/errors';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useTranslation } from 'react-i18next';
 
 type ExerciseSearchScreenProps = RootStackScreenProps<'ExerciseSearch'>;
 
@@ -53,13 +54,14 @@ type ExerciseSection = {
 
 type TabKey = 'search' | 'online';
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'search', label: 'Search' },
-  { key: 'online', label: 'Online' },
+const TABS: { key: TabKey; labelKey: 'workout.search' | 'workout.online' }[] = [
+  { key: 'search', labelKey: 'workout.search' },
+  { key: 'online', labelKey: 'workout.online' },
 ] as const;
 
 const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation, route }) => {
   const { returnKey } = route.params;
+  const { t } = useTranslation();
 
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -161,7 +163,7 @@ useEffect(() => {
       // apiFetch already logs the failure; surface it so the tap isn't silent.
       Toast.show({
         type: 'error',
-        text1: 'Failed to add exercise',
+        text1: t('workout.failedAdd'),
         text2: getApiErrorMessage(error) ?? undefined,
       });
     }
@@ -169,7 +171,7 @@ useEffect(() => {
     // whole component. Every path above falls through to this cleanup.
     importInFlightRef.current = false;
     setImportingExerciseId(null);
-  }, [queryClient, handleSelectExercise, navigation]);
+  }, [queryClient, handleSelectExercise, navigation, t]);
 
   const handlePreviewExercise = useCallback((item: Exercise) => {
     runNavigationAction(() => {
@@ -254,7 +256,7 @@ useEffect(() => {
           activeOpacity={0.7}
           hitSlop={8}
           disabled={isNavigationLocked || importingExerciseId !== null}
-          accessibilityLabel="View exercise details"
+           accessibilityLabel={t('workout.viewExerciseDetails')}
           onPress={() => handlePreviewExercise(item)}
         >
           <Icon name="info-circle" size={22} color={accentColor} />
@@ -271,6 +273,7 @@ useEffect(() => {
     textMuted,
     getImageSource,
     profile,
+    t,
   ]);
 
   const filteredRecentExercises = useMemo(() => filterByOwnership(recentExercises, ownershipFilter, profile?.id), [recentExercises, ownershipFilter, profile?.id]);
@@ -279,11 +282,11 @@ useEffect(() => {
 
   const sections = useMemo(() => {
     const allSections: ExerciseSection[] = [
-      { title: 'Recent', data: filteredRecentExercises },
-      { title: 'Popular', data: filteredTopExercises },
+       { title: t('workout.recent'), data: filteredRecentExercises },
+       { title: t('workout.popular'), data: filteredTopExercises },
     ];
     return allSections.filter((section) => section.data.length > 0);
-  }, [filteredRecentExercises, filteredTopExercises]);
+  }, [filteredRecentExercises, filteredTopExercises, t]);
 
   const renderSectionHeader = ({ section }: { section: ExerciseSection }) => (
     <View className="px-4 py-2 bg-background">
@@ -304,7 +307,7 @@ useEffect(() => {
           <TextInput
             className="text-text-primary"
             style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-            placeholder="Search exercises..."
+             placeholder={t('workout.searchExercises')}
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -332,7 +335,7 @@ useEffect(() => {
     }
 
     if (isSearchError) {
-      return <StatusView icon="alert-circle" title="Failed to search exercises" />;
+       return <StatusView icon="alert-circle" title={t('workout.failedSearchExercises')} />;
     }
 
     if (filteredSearchResults.length === 0) {
@@ -343,11 +346,12 @@ useEffect(() => {
               noun: 'exercises',
               filter: ownershipFilter,
               onReset: () => setOwnershipFilter('all'),
+              t,
             })}
           />
         );
       }
-      return <StatusView title="No matching exercises found" />;
+      return <StatusView title={t('workout.noMatchingExercises')} />;
     }
 
     return (
@@ -365,7 +369,7 @@ useEffect(() => {
 
   const renderSearchTab = () => {
     if (!isConnected) {
-      return <StatusView icon="cloud-offline" title="Connect to a server to view exercises" />;
+       return <StatusView icon="cloud-offline" title={t('workout.connectToView')} />;
     }
 
     if (isSearchActive) {
@@ -380,8 +384,8 @@ useEffect(() => {
       return (
         <StatusView
           icon="alert-circle"
-          title="Failed to load exercises"
-          action={{ label: 'Retry', onPress: () => refetchSuggested() }}
+           title={t('workout.failedLoadExercises')}
+           action={{ label: t('common.retry'), onPress: () => refetchSuggested() }}
         />
       );
     }
@@ -394,11 +398,12 @@ useEffect(() => {
               noun: 'exercises',
               filter: ownershipFilter,
               onReset: () => setOwnershipFilter('all'),
+              t,
             })}
           />
         );
       }
-      return <StatusView title="Search for an exercise to get started" />;
+      return <StatusView title={t('workout.searchExerciseToStart')} />;
     }
 
     return (
@@ -467,7 +472,7 @@ useEffect(() => {
           activeOpacity={0.7}
           hitSlop={8}
           disabled={isNavigationLocked || isImportInFlight}
-          accessibilityLabel="View exercise details"
+           accessibilityLabel={t('workout.viewExerciseDetails')}
           onPress={() => handlePreviewExternalExercise(item)}
         >
           {importingExerciseId === item.id ? (
@@ -489,7 +494,7 @@ useEffect(() => {
           className="py-3"
           textClassName="text-sm"
         >
-          Failed to load more. Tap to retry
+           {t('workout.failedLoadMore')}
         </Button>
       );
     }
@@ -508,7 +513,7 @@ useEffect(() => {
           className="py-4 mb-4"
           textClassName="text-sm"
         >
-          Load More
+           {t('workout.loadMore')}
         </Button>
       );
     }
@@ -521,11 +526,11 @@ useEffect(() => {
     }
 
     if (isOnlineSearchError) {
-      return <StatusView icon="alert-circle" title={`Failed to search ${selectedProviderName}`} />;
+       return <StatusView icon="alert-circle" title={t('workout.failedSearchProvider', { provider: selectedProviderName })} />;
     }
 
     if (onlineSearchResults.length === 0) {
-      return <StatusView title="No matching exercises found" />;
+       return <StatusView title={t('workout.noMatchingExercises')} />;
     }
 
     return (
@@ -544,7 +549,7 @@ useEffect(() => {
 
   const renderOnlineTab = () => {
     if (!isConnected) {
-      return <StatusView icon="cloud-offline" title="Connect to a server to search online exercises" />;
+       return <StatusView icon="cloud-offline" title={t('workout.connectToSearch')} />;
     }
 
     if (isProvidersLoading) {
@@ -555,14 +560,14 @@ useEffect(() => {
       return (
         <StatusView
           icon="alert-circle"
-          title="Failed to load providers"
-          action={{ label: 'Retry', onPress: () => refetchProviders() }}
+           title={t('workout.failedLoadProviders')}
+           action={{ label: t('common.retry'), onPress: () => refetchProviders() }}
         />
       );
     }
 
     if (providers.length === 0) {
-      return <StatusView icon="globe" iconColor={textMuted} title="No online exercise providers configured" />;
+       return <StatusView icon="globe" iconColor={textMuted} title={t('workout.noProviders')} />;
     }
 
     return (
@@ -603,7 +608,7 @@ useEffect(() => {
         {isOnlineSearchActive ? (
           renderOnlineSearchResults()
         ) : (
-          <StatusView icon="search" iconColor={textSecondary} title={`Search ${selectedProviderName} for exercises`} />
+           <StatusView icon="search" iconColor={textSecondary} title={t('workout.searchProviderExercises', { provider: selectedProviderName })} />
         )}
       </View>
     );
@@ -619,7 +624,7 @@ useEffect(() => {
   };
 
   const header = useScreenHeader({
-    title: 'Exercises',
+     title: t('workout.exercises'),
     left: { kind: 'dismiss', onPress: () => navigation.goBack(), identifier: 'exercise-search-cancel' },
     // The filter only applies to the local library, so the Online tab drops it.
     right: activeTab === 'search'
@@ -628,6 +633,7 @@ useEffect(() => {
           identifier: 'exercise-search-filter',
           filter: ownershipFilter,
           onSelect: setOwnershipFilter,
+          t,
         })
       : undefined,
   });
@@ -638,8 +644,9 @@ useEffect(() => {
 
       {/* Segmented control */}
       <View className="px-4 mt-2">
-        <SegmentedControl segments={TABS} activeKey={activeTab} onSelect={setActiveTab} />
+       <SegmentedControl segments={TABS.map((tab) => ({ key: tab.key, label: tab.key === 'search' ? t('workout.search') : t('workout.online') }))} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
+
 
       {/* Search bar */}
       {renderSearchBar()}

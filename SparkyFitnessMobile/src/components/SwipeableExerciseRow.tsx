@@ -20,6 +20,7 @@ import {
 } from '../utils/workoutSession';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import { useDeleteExerciseEntry, useDeleteWorkout } from '../hooks/useExerciseMutations';
+import { useTranslation } from 'react-i18next';
 
 interface SwipeableExerciseRowProps {
   session: ExerciseSessionResponse;
@@ -38,6 +39,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   weightUnit = 'kg',
   distanceUnit = 'km',
 }) => {
+  const { t } = useTranslation();
   const swipeableRef = useRef<SwipeableMethods | null>(null);
   const invalidateCacheRef = useRef<() => void>(() => {});
   const { collapse, handleLayout, animatedStyle } = useRowCollapse(() =>
@@ -78,7 +80,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   }, [invalidateCache]);
 
   const renderRightActions = () => (
-    <DeleteRowAction onPress={confirmAndDelete} accessibilityLabel="Delete exercise" />
+    <DeleteRowAction onPress={confirmAndDelete} accessibilityLabel={t('workout.deleteExercise')} />
   );
 
   const { name, duration, calories } = getWorkoutSummary(session);
@@ -91,8 +93,8 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
 
   const handleLongPress = () => {
     Alert.alert(name, undefined, [
-      { text: 'Delete', style: 'destructive', onPress: deleteEntry },
-      { text: 'Cancel', style: 'cancel' },
+       { text: t('common.delete'), style: 'destructive', onPress: deleteEntry },
+       { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 

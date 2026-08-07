@@ -13,6 +13,7 @@ import {
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 
@@ -39,6 +40,7 @@ export function PickerTrigger({
   accessibilityLabel,
   containerStyle,
 }: PickerTriggerProps) {
+  const { t } = useTranslation();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
   return (
     <TouchableOpacity
@@ -48,7 +50,7 @@ export function PickerTrigger({
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint="Opens selection menu"
+       accessibilityHint={t('picker.opensSelectionMenu')}
     >
       <Text className="text-base flex-1 text-text-primary">{label}</Text>
       <Icon name="chevron-down" size={16} color={textMuted} />
@@ -77,11 +79,12 @@ function BottomSheetPicker<T extends string | number>({
   options,
   sections,
   onSelect,
-  placeholder = 'Select an option',
+  placeholder,
   title,
   containerStyle,
   renderTrigger,
 }: BottomSheetPickerProps<T>) {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [primary, textMuted, surfaceBg] = useCSSVariable([
     '--color-accent-primary',
@@ -102,7 +105,8 @@ function BottomSheetPicker<T extends string | number>({
   );
 
   const selectedOption = flatOptions.find((opt) => opt.value === value);
-  const displayText = selectedOption?.label || placeholder;
+  const resolvedPlaceholder = placeholder ?? t('picker.selectOption');
+  const displayText = selectedOption?.label || resolvedPlaceholder;
 
   // For long lists (>8 items), use a fixed max height with scrolling
   // For short lists, use dynamic sizing to fit content exactly
@@ -189,7 +193,7 @@ function BottomSheetPicker<T extends string | number>({
         <PickerTrigger
           label={displayText}
           onPress={handleOpen}
-          accessibilityLabel={title || placeholder}
+           accessibilityLabel={title || resolvedPlaceholder}
           containerStyle={containerStyle}
         />
       )}

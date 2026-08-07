@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
@@ -32,13 +33,17 @@ import {
 
 type CycleOnboardingScreenProps = RootStackScreenProps<'CycleOnboarding'>;
 
-const MODE_OPTIONS = [
-  { value: 'standard', label: 'Standard Menstrual Cycle' },
-  { value: 'ttc', label: 'Trying to Conceive (TTC)' },
-  { value: 'pregnant', label: 'Pregnancy Tracking' },
-  { value: 'postpartum', label: 'Postpartum / Recovery' },
-  { value: 'menopause', label: 'Menopause Transition' },
-];
+const MODE_OPTIONS = ['standard', 'ttc', 'pregnant', 'postpartum', 'menopause'] as const;
+
+const modeLabel = (value: (typeof MODE_OPTIONS)[number], t: (key: string) => string): string => {
+  switch (value) {
+    case 'standard': return t('mobileComponents.wellness.settings.standard');
+    case 'ttc': return t('mobileComponents.wellness.settings.ttc');
+    case 'pregnant': return t('mobileComponents.wellness.settings.pregnant');
+    case 'postpartum': return t('mobileComponents.wellness.settings.postpartum');
+    case 'menopause': return t('mobileComponents.wellness.settings.menopause');
+  }
+};
 
 const BC_OPTIONS = BIRTH_CONTROL_METHODS.map((m) => ({
   value: m.value,
@@ -47,6 +52,7 @@ const BC_OPTIONS = BIRTH_CONTROL_METHODS.map((m) => ({
 
 const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor, formDisabled] = useCSSVariable([
     '--color-accent-primary',
@@ -94,7 +100,11 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
     if (mode === 'pregnant') {
       const dateError = dueDateForm.validate();
       if (dateError) {
-        Toast.show({ type: 'error', text1: 'Check the dates', text2: dateError });
+        Toast.show({
+          type: 'error',
+          text1: t('mobileComponents.wellness.setup.checkDates'),
+          text2: dateError,
+        });
         setStep(2);
         return;
       }
@@ -148,8 +158,8 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
 
       Toast.show({
         type: 'success',
-        text1: 'Setup complete!',
-        text2: 'Your wellness profile has been initialized.',
+         text1: t('mobileComponents.wellness.onboarding.success'),
+         text2: t('mobileComponents.wellness.onboarding.successBody'),
       });
 
       // Navigate to CycleHub
@@ -158,8 +168,8 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
       addLog(`Failed to complete cycle onboarding: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Setup failed',
-        text2: 'Could not complete onboarding. Please try again.',
+         text1: t('mobileComponents.wellness.onboarding.failed'),
+         text2: t('mobileComponents.wellness.onboarding.failedBody'),
       });
     } finally {
       setLoading(false);
@@ -167,10 +177,10 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
   };
 
   const header = useScreenHeader({
-    title: `Setup: Step ${step} of 4`,
+    title: t('mobileComponents.wellness.onboarding.step', { step }),
     left: step > 1
-      ? { kind: 'primary', label: 'Back', onPress: () => setStep((s) => s - 1) }
-      : { kind: 'primary', label: 'Back', onPress: () => navigation.goBack() },
+      ? { kind: 'primary', label: t('mobileComponents.wellness.onboarding.back'), onPress: () => setStep((s) => s - 1) }
+      : { kind: 'primary', label: t('mobileComponents.wellness.onboarding.back'), onPress: () => navigation.goBack() },
   });
 
   return (
@@ -188,18 +198,18 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
       >
         {step === 1 && (
           <View className="gap-4">
-            <Text className="text-xl font-bold text-text-primary">What is your tracking goal?</Text>
+             <Text className="text-xl font-bold text-text-primary">{t('mobileComponents.wellness.onboarding.goal')}</Text>
             <Text className="text-text-secondary text-sm mb-2">
-              Select the mode that best fits your current health focus. You can change this anytime in settings.
+               {t('mobileComponents.wellness.onboarding.goalBody')}
             </Text>
             <SettingsRowGroup>
-              {MODE_OPTIONS.map((opt) => {
-                const isSelected = mode === opt.value;
+               {MODE_OPTIONS.map((value) => {
+                 const isSelected = mode === value;
                 return (
                   <SettingsRow
-                    key={opt.value}
-                    title={opt.label}
-                    onPress={() => setMode(opt.value as CycleMode)}
+                     key={value}
+                     title={modeLabel(value, t)}
+                     onPress={() => setMode(value as CycleMode)}
                     rightAccessory={
                       <Icon
                         name={isSelected ? 'radio-button-on' : 'radio-button-off'}
@@ -216,40 +226,40 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
 
         {step === 2 && (
           <View className="gap-4">
-            <Text className="text-xl font-bold text-text-primary">Dates & Averages</Text>
+             <Text className="text-xl font-bold text-text-primary">{t('mobileComponents.wellness.onboarding.dates')}</Text>
             {mode === 'pregnant' ? (
               <View className="gap-4">
                 <Text className="text-text-secondary text-sm">
-                  Tell us how to estimate your due date. You can change this later in settings.
-                </Text>
-                <PregnancyDueDateForm form={dueDateForm} />
+                   {t('mobileComponents.wellness.setup.description')}
+                 </Text>
+                 <PregnancyDueDateForm form={dueDateForm} />
               </View>
             ) : mode === 'postpartum' || mode === 'menopause' ? (
               <View className="bg-surface rounded-xl p-4 shadow-sm border border-border-subtle">
-                <Text className="text-text-primary text-base font-semibold mb-2">No configuration needed</Text>
+                 <Text className="text-text-primary text-base font-semibold mb-2">{t('mobileComponents.wellness.onboarding.noConfig')}</Text>
                 <Text className="text-text-secondary text-sm">
-                  We will tailor your insights to hormonal recovery or menopause transition symptoms. Let&apos;s move on to the next step.
+                   {t('mobileComponents.wellness.onboarding.noConfigBody')}
                 </Text>
               </View>
             ) : (
               <View className="gap-4">
                 <Text className="text-text-secondary text-sm">
-                  Help us build predictions for your cycle.
+                   {t('mobileComponents.wellness.onboarding.predictionHelp')}
                 </Text>
                 <SettingsRowGroup>
                   <SettingsRow
-                    title="Last Period Start Date"
+                     title={t('mobileComponents.wellness.onboarding.startDate')}
                     subtitle={lastPeriodStart}
                     onPress={() => calendarSheetRef.current?.present()}
                   />
                   <SettingsRow
-                    title="Average Cycle Length"
+                     title={t('mobileComponents.wellness.onboarding.avgCycle')}
                     rightAccessory={
                       <StepperInput {...cycleLengthProps} keyboardType="number-pad" />
                     }
                   />
                   <SettingsRow
-                    title="Average Period Length"
+                     title={t('mobileComponents.wellness.onboarding.avgPeriod')}
                     rightAccessory={
                       <StepperInput {...periodLengthProps} keyboardType="number-pad" />
                     }
@@ -262,26 +272,26 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
 
         {step === 3 && (
           <View className="gap-4">
-            <Text className="text-xl font-bold text-text-primary">Profile & Conditions</Text>
+             <Text className="text-xl font-bold text-text-primary">{t('mobileComponents.wellness.onboarding.profile')}</Text>
             <Text className="text-text-secondary text-sm">
-              Select any relevant conditions or birth control methods to personalize your tracking.
+               {t('mobileComponents.wellness.onboarding.profileBody')}
             </Text>
             <SettingsRowGroup>
               <SettingsRow
-                title="Birth Control Method"
+                 title={t('mobileComponents.wellness.onboarding.birthControl')}
                 rightAccessory={
                   <BottomSheetPicker
                     value={birthControl}
                     options={BC_OPTIONS}
                     onSelect={setBirthControl}
-                    title="Select Method"
+                     title={t('mobileComponents.wellness.onboarding.selectMethod')}
                     containerStyle={{ flex: 1, maxWidth: 200 }}
                   />
                 }
               />
             </SettingsRowGroup>
 
-            <Text className="text-base font-semibold text-text-primary mt-4 mb-2">Conditions</Text>
+             <Text className="text-base font-semibold text-text-primary mt-4 mb-2">{t('mobileComponents.wellness.onboarding.conditions')}</Text>
             <SettingsRowGroup>
               {CYCLE_CONDITIONS.map((cond) => (
                 <SettingsRow
@@ -301,16 +311,14 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
 
         {step === 4 && (
           <View className="gap-4">
-            <Text className="text-xl font-bold text-text-primary">Disclaimer & Complete</Text>
+             <Text className="text-xl font-bold text-text-primary">{t('mobileComponents.wellness.onboarding.disclaimer')}</Text>
             <View className="bg-surface border border-border-subtle rounded-xl p-4 shadow-sm">
               <View className="flex-row items-center gap-2 mb-2">
                 <Icon name="warning" size={18} color="#D97706" />
-                <Text className="text-text-primary font-bold">Medical Disclaimer</Text>
+                 <Text className="text-text-primary font-bold">{t('mobileComponents.wellness.onboarding.medical')}</Text>
               </View>
               <Text className="text-text-secondary text-sm leading-5">
-                The SparkyFitness Wellness and Reproductive Health Tracker is designed to help you track predictions, symptoms, and physiological parameters. It is NOT intended to be used as a contraceptive method or as a diagnostic/treatment tool.
-                {"\n\n"}
-                Always consult with a qualified medical professional for health concerns.
+                 {t('mobileComponents.wellness.onboarding.medicalBody')}
               </Text>
             </View>
 
@@ -318,7 +326,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
               <ActivityIndicator size="large" color={accentColor} className="mt-4" />
             ) : (
               <Button variant="primary" className="mt-4" onPress={handleComplete}>
-                Accept & Initialize Profile
+                 {t('mobileComponents.wellness.onboarding.accept')}
               </Button>
             )}
           </View>
@@ -339,7 +347,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({ navigatio
           }}
         >
           <Button variant="primary" onPress={() => setStep((s) => s + 1)}>
-            Next Step
+             {t('mobileComponents.wellness.onboarding.next')}
           </Button>
         </View>
       )}

@@ -58,7 +58,7 @@ const mockFetchAuthSettings = fetchAuthSettings as jest.MockedFunction<typeof fe
 const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<typeof saveServerConfig>;
 
 const URL_PLACEHOLDER = 'https://your-server-url.com';
-const EMAIL_PLACEHOLDER = 'email@example.com';
+const EMAIL_PLACEHOLDER = 'Email';
 
 /** Default settings: email sign-in enabled, no OIDC. */
 const emailAuthSettings: AuthSettings = {
@@ -175,7 +175,7 @@ describe('ServerConfigModal', () => {
 
       fireEvent.press(result.getByText('API Key'));
 
-      expect(result.getByPlaceholderText('Uds3d8i...')).toBeTruthy();
+      expect(result.getByPlaceholderText('API Key')).toBeTruthy();
       expect(result.queryByPlaceholderText(EMAIL_PLACEHOLDER)).toBeNull();
       expect(result.queryByPlaceholderText('Password')).toBeNull();
     });
@@ -215,7 +215,7 @@ describe('ServerConfigModal', () => {
 
       expect(result.getByDisplayValue('https://example.com')).toBeTruthy();
       // API Key tab should be active, so API key field is shown
-      expect(result.getByPlaceholderText('Uds3d8i...')).toBeTruthy();
+      expect(result.getByPlaceholderText('API Key')).toBeTruthy();
     });
 
     it('pre-fills URL and defaults to Sign In tab when editing a session config', async () => {
@@ -240,7 +240,7 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      expect(result.getByPlaceholderText('Uds3d8i...')).toBeTruthy();
+      expect(result.getByPlaceholderText('API Key')).toBeTruthy();
     });
   });
 
@@ -452,7 +452,7 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'my-api-key');
+      fireEvent.changeText(result.getByPlaceholderText('API Key'), 'my-api-key');
 
       await act(async () => {
         pressConnectButton(result);
@@ -488,7 +488,7 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'bad-key');
+      fireEvent.changeText(result.getByPlaceholderText('API Key'), 'bad-key');
 
       await act(async () => {
         pressConnectButton(result);
@@ -506,7 +506,7 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'my-key');
+      fireEvent.changeText(result.getByPlaceholderText('API Key'), 'my-key');
 
       await act(async () => {
         pressConnectButton(result);
@@ -888,7 +888,7 @@ describe('ServerConfigModal', () => {
 
       // Switch to API Key tab and enter a key
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'new-api-key');
+      fireEvent.changeText(result.getByPlaceholderText('API Key'), 'new-api-key');
 
       await act(async () => {
         fireEvent.press(result.getByText('Save'));

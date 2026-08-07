@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
+import i18n from '../../localization/i18n';
 import type { QueryClient } from '@tanstack/react-query';
 import type { FoodFormData } from '../../components/FoodForm';
 import { parseOptional } from '../../types/foodInfo';
@@ -75,11 +76,11 @@ export function equivalentsDiffer(a: EquivalentUnit[], b: EquivalentUnit[]): boo
 export function confirmDiscardEquivalents(): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(
-      'Discard unsaved equivalents?',
-      'You have unsaved equivalent sizes. Discard them to continue?',
+      i18n.t('foodEditor.discardEquivalentsTitle'),
+      i18n.t('foodEditor.discardEquivalentsMessage'),
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Discard', style: 'destructive', onPress: () => resolve(true) },
+        { text: i18n.t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+        { text: i18n.t('workout.discard'), style: 'destructive', onPress: () => resolve(true) },
       ],
       { onDismiss: () => resolve(false) },
     );
@@ -89,12 +90,12 @@ export function confirmDiscardEquivalents(): Promise<boolean> {
 export function confirmVariantOverwrite(unitLabel: string): Promise<'overwrite' | 'new' | 'cancel'> {
   return new Promise((resolve) => {
     Alert.alert(
-      'Save nutrition',
-      `"${unitLabel}" is already a saved variant. Do you want to update it with these values, or save as a new variant?`,
+      i18n.t('foodEditor.saveNutrition'),
+      i18n.t('foodEditor.variantExistsQuoted', { unit: unitLabel }),
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve('cancel') },
-        { text: 'Save as new', onPress: () => resolve('new') },
-        { text: 'Update existing', style: 'destructive', onPress: () => resolve('overwrite') },
+        { text: i18n.t('common.cancel'), style: 'cancel', onPress: () => resolve('cancel') },
+        { text: i18n.t('foodEditor.saveAsNew'), onPress: () => resolve('new') },
+        { text: i18n.t('foodEditor.updateExisting'), style: 'destructive', onPress: () => resolve('overwrite') },
       ],
       { onDismiss: () => resolve('cancel') },
     );
@@ -103,13 +104,21 @@ export function confirmVariantOverwrite(unitLabel: string): Promise<'overwrite' 
 
 export function validateFoodForm(data: FoodFormData): boolean {
   if (!data.name.trim()) {
-    Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
+    Toast.show({
+      type: 'error',
+      text1: i18n.t('foodEditor.missingName'),
+      text2: i18n.t('foodEditor.foodNameRequired'),
+    });
     return false;
   }
 
   const servingSize = parseDecimalInput(data.servingSize);
   if (!Number.isFinite(servingSize) || servingSize <= 0) {
-    Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
+    Toast.show({
+      type: 'error',
+      text1: i18n.t('foodMealScreens.invalidServingSize'),
+      text2: i18n.t('foodEditor.invalidServingSizeMessage'),
+    });
     return false;
   }
 

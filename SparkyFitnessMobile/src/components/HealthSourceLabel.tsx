@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Displays the platform's health data source ("Apple Health" on iOS, "Health Connect"
@@ -14,10 +15,16 @@ interface HealthSourceLabelProps {
   className?: string;
 }
 
-const HealthSourceLabel: React.FC<HealthSourceLabelProps> = ({ className }) => (
-  <Text className={`text-text-muted text-xs ${className ?? ''}`}>
-    <Text className="font-bold">Source:</Text> {healthSourceName}
-  </Text>
-);
+const HealthSourceLabel: React.FC<HealthSourceLabelProps> = ({ className }) => {
+  const { t } = useTranslation();
+  return (
+    <Text className={`text-text-muted text-xs ${className ?? ''}`}>
+      <Text className="font-bold">{t('mobileComponents.healthSource.source')}:</Text>{' '}
+      {Platform.OS === 'ios'
+        ? t('mobileComponents.healthSource.appleHealth')
+        : t('mobileComponents.healthSource.healthConnect')}
+    </Text>
+  );
+};
 
 export default HealthSourceLabel;

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } 
 import { View, Text, Pressable, LayoutAnimation } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import Icon, { type IconName } from './Icon';
 import Button from './ui/Button';
 import { useSheetBackdrop } from './ui/sheetChrome';
@@ -37,6 +38,7 @@ interface ActionCard {
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
   ({ onAddFood, onStartWorkout, onAddActivity, onLogWorkout, onSyncHealthData, onBarcodeScan, onAddMeasurements, onAskSparky, onOpenCycle, showCycleCard, cycleLabel, cycleIcon, onDismissWithoutAction }, ref) => {
+    const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
@@ -162,10 +164,10 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     }, [clearScheduledPresent]);
 
     const cards: ActionCard[] = [
-      { label: 'Food', icon: 'food', onPress: onAddFood },
-      { label: 'Exercise', icon: 'exercise-weights' },
-      { label: 'Measurements', icon: 'measurements', onPress: onAddMeasurements },
-      { label: 'Scan Food', icon: 'scan', onPress: onBarcodeScan },
+      { label: t('addSheet.food'), icon: 'food', onPress: onAddFood },
+      { label: t('addSheet.exercise'), icon: 'exercise-weights' },
+      { label: t('addSheet.measurements'), icon: 'measurements', onPress: onAddMeasurements },
+      { label: t('addSheet.scanFood'), icon: 'scan', onPress: onBarcodeScan },
     ];
 
     const renderCard = (card: ActionCard) => (
@@ -256,13 +258,13 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
               >
                 <Icon name="chevron-back" size={20} color={accentPrimary} />
                 <Text className="text-sm font-medium ml-1" style={{ color: accentPrimary }}>
-                  Back
+                  {t('common.back')}
                 </Text>
               </Pressable>
               <View className="flex-row">
-                {renderExerciseOption('Workout', 'Live sets & reps', 'exercise-weights', onStartWorkout)}
-                {renderExerciseOption('Activity', 'Duration & distance', 'exercise-running-filled', onAddActivity)}
-                {renderExerciseOption('Log Workout', 'Past sets & reps', 'pencil', onLogWorkout)}
+                {renderExerciseOption(t('addSheet.workout'), t('addSheet.exerciseSubtitleWorkout'), 'exercise-weights', onStartWorkout)}
+                {renderExerciseOption(t('addSheet.activity'), t('addSheet.exerciseSubtitleActivity'), 'exercise-running-filled', onAddActivity)}
+                {renderExerciseOption(t('addSheet.logWorkout'), t('addSheet.exerciseSubtitleLog'), 'pencil', onLogWorkout)}
               </View>
             </>
           ) : (
@@ -276,10 +278,10 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
                 {renderCard(cards[3])}
               </View>
               {showCycleCard && onOpenCycle
-                ? renderSecondaryRow(cycleLabel ?? 'Wellness', cycleIcon ?? 'wellness-filled', onOpenCycle)
+                ? renderSecondaryRow(cycleLabel ?? t('addSheet.wellness'), cycleIcon ?? 'wellness-filled', onOpenCycle)
                 : null}
-              {renderSecondaryRow('Ask Sparky', 'sparkles', onAskSparky)}
-              {renderSecondaryRow('Sync Health Data', 'sync', onSyncHealthData)}
+              {renderSecondaryRow(t('addSheet.askSparky'), 'sparkles', onAskSparky)}
+              {renderSecondaryRow(t('addSheet.syncHealthData'), 'sync', onSyncHealthData)}
             </>
           )}
         </BottomSheetView>

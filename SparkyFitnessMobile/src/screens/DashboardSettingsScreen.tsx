@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +38,7 @@ const SERVER_DEFAULT_SUMMARY_NUTRIENTS = [
 ];
 
 const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -103,7 +105,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
       if (context?.previous) {
         queryClient.setQueryData(nutrientDisplayPreferencesQueryKey, context.previous);
       }
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update setting.' });
+      Toast.show({ type: 'error', text1: t('common.error'), text2: t('foodMeals.failedToUpdateSetting') });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: nutrientDisplayPreferencesQueryKey });
@@ -126,11 +128,10 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
       return (
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <Text className="text-base font-semibold text-text-primary mb-2">
-            No custom nutrients
+            {copy('none')}
           </Text>
           <Text className="text-text-secondary text-sm">
-            Custom nutrients are created in the SparkyFitness web app. Once you add
-            some, they will appear here so you can choose which show on your Dashboard.
+            {copy('noneDescription')}
           </Text>
         </View>
       );
@@ -155,7 +156,26 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
     );
   };
 
-  const header = useScreenHeader({ title: 'Dashboard Settings', left: { kind: 'back' } });
+  const copy = (key: string) => {
+    switch (key) {
+      case 'title': return t('screenCopy.dashboardSettings.title', { defaultValue: 'Dashboard Settings' });
+      case 'ask': return t('screenCopy.dashboardSettings.ask', { defaultValue: 'Ask Sparky' });
+      case 'askDescription': return t('screenCopy.dashboardSettings.askDescription', { defaultValue: 'Show the Ask Sparky chat launcher on the Dashboard' });
+      case 'hydration': return t('screenCopy.dashboardSettings.hydration', { defaultValue: 'Hydration' });
+      case 'hydrationDescription': return t('screenCopy.dashboardSettings.hydrationDescription', { defaultValue: 'Show the hydration card on the Dashboard' });
+      case 'fasting': return t('screenCopy.dashboardSettings.fasting', { defaultValue: 'Fasting' });
+      case 'fastingDescription': return t('screenCopy.dashboardSettings.fastingDescription', { defaultValue: 'Show the fasting card on the Dashboard' });
+      case 'cycle': return t('screenCopy.dashboardSettings.cycle', { defaultValue: 'Cycle & Pregnancy' });
+      case 'cycleDescription': return t('screenCopy.dashboardSettings.cycleDescription', { defaultValue: 'Show the wellness card on the Dashboard' });
+      case 'medications': return t('screenCopy.dashboardSettings.medications', { defaultValue: 'Medications' });
+      case 'medicationsDescription': return t('screenCopy.dashboardSettings.medicationsDescription', { defaultValue: 'Show the medications card on the Dashboard' });
+      case 'customTitle': return t('screenCopy.dashboardSettings.customTitle', { defaultValue: 'Custom Nutrient Display' });
+      case 'none': return t('screenCopy.dashboardSettings.none', { defaultValue: 'No custom nutrients' });
+      case 'noneDescription': return t('screenCopy.dashboardSettings.noneDescription', { defaultValue: 'Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Dashboard.' });
+      default: return key;
+    }
+  };
+  const header = useScreenHeader({ title: copy('title'), left: { kind: 'back' } });
 
   return (
     <View
@@ -173,8 +193,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
       >
         <SettingsRowGroup>
           <SettingsRow
-            title="Ask Sparky"
-            subtitle="Show the Ask Sparky chat launcher on the Dashboard"
+             title={copy('ask')}
+             subtitle={copy('askDescription')}
             rightAccessory={
               <Switch
                 value={askSparkyVisible}
@@ -183,8 +203,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             }
           />          
           <SettingsRow
-            title="Hydration"
-            subtitle="Show the hydration card on the Dashboard"
+             title={copy('hydration')}
+             subtitle={copy('hydrationDescription')}
             rightAccessory={
               <Switch
                 value={hydrationCardVisible}
@@ -193,8 +213,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             }
           />
           <SettingsRow
-            title="Fasting"
-            subtitle="Show the fasting card on the Dashboard"
+             title={copy('fasting')}
+             subtitle={copy('fastingDescription')}
             rightAccessory={
               <Switch
                 value={fastingCardVisible}
@@ -203,8 +223,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             }
           />
           <SettingsRow
-            title="Cycle & Pregnancy"
-            subtitle="Show the wellness card on the Dashboard"
+             title={copy('cycle')}
+             subtitle={copy('cycleDescription')}
             rightAccessory={
               <Switch
                 value={cycleCardVisible}
@@ -213,8 +233,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             }
           />
           <SettingsRow
-            title="Medications"
-            subtitle="Show the medications card on the Dashboard"
+             title={copy('medications')}
+             subtitle={copy('medicationsDescription')}
             rightAccessory={
               <Switch
                 value={medicationsCardVisible}
@@ -226,7 +246,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
         </SettingsRowGroup>
 
         <Text className="text-base font-semibold text-text-primary mb-4">
-          Custom Nutrient Display
+           {copy('customTitle')}
         </Text>
 
         {renderContent()}

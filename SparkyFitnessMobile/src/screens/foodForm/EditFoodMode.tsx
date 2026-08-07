@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
@@ -75,6 +76,7 @@ function buildUpdatedFoodInfo(item: FoodInfoItem, data: FoodFormData, variantId:
 }
 
 export function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
+  const { t } = useTranslation();
   const { item, initialValues, returnKey, foodId, variantId, customNutrients } = params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -268,7 +270,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
       // row would be misclassified as a create and duplicate the existing variant.
       Toast.show({
         type: 'error',
-        text1: 'Still loading food details. Try again in a moment.',
+        text1: t('foodEditor.loadingDetails'),
       });
       return;
     }
@@ -383,7 +385,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
             invalidateFoodCaches(queryClient, foodId);
             // Skip the diff/overwrite path — new variant is already saved.
             setEquivalentBaseline(equivalentDraft);
-            Toast.show({ type: 'success', text1: 'Saved as new variant' });
+            Toast.show({ type: 'success', text1: t('foodEditor.savedNewVariant') });
             isSavingRef.current = true;
             navigation.dispatch({
               ...CommonActions.setParams({
@@ -452,7 +454,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
 
       navigation.goBack();
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not update food' });
+      Toast.show({ type: 'error', text1: t('foodEditor.updateFailed') });
     } finally {
       setIsSubmitting(false);
     }
@@ -461,7 +463,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
-    title: 'Edit Food',
+    title: t('screens.editFood'),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),

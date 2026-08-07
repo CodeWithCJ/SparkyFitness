@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { formatLocalizedNumber } from '../localization';
 
 interface NutrientPillProps {
   label: string;
@@ -16,8 +17,8 @@ const NutrientPill: React.FC<NutrientPillProps> = ({ label, consumed, goal, unit
       </Text>
       <Text className="text-xs font-bold text-text-primary text-center" numberOfLines={1}>
         {goal && goal > 0
-          ? `${Math.round(consumed)}${unit} / ${Math.round(goal)}${unit}`
-          : `${Math.round(consumed)}${unit}`}
+          ? `${formatLocalizedNumber(Math.round(consumed))}${unit} / ${formatLocalizedNumber(Math.round(goal))}${unit}`
+          : `${formatLocalizedNumber(Math.round(consumed))}${unit}`}
       </Text>
     </View>
   );

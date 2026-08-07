@@ -11,20 +11,20 @@ interface ToastTapProps {
   onPress?: () => void;
 }
 
-const variantTokens: Record<ToastVariant, { bg: string; text: string; border: string }> = {
+const variantTokens: Record<ToastVariant, { bg: string; foreground: string; border: string }> = {
   success: {
     bg: '--color-bg-success',
-    text: '--color-text-success',
+    foreground: '--color-text-success',
     border: '--color-bg-success',
   },
   error: {
     bg: '--color-bg-danger',
-    text: '--color-text-danger',
+    foreground: '--color-text-danger',
     border: '--color-bg-danger',
   },
   info: {
     bg: '--color-surface',
-    text: '--color-text-primary',
+    foreground: '--color-text-primary',
     border: '--color-accent-primary',
   },
 };
@@ -41,7 +41,7 @@ function ToastContent({
   onPress?: () => void;
 }) {
   const tokens = variantTokens[variant];
-  const [bgColor, textColor] = useCSSVariable([tokens.bg, tokens.text]) as [
+  const [bgColor, textColor] = useCSSVariable([tokens.bg, tokens.foreground]) as [
     string,
     string,
   ];

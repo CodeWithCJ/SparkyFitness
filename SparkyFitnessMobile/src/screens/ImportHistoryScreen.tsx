@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
 
@@ -31,39 +33,44 @@ const healthSourceName = Platform.OS === 'android' ? 'Health Connect' : 'Apple H
 
 /** Why the run stopped, for abnormal stops only; a plain manual pause needs no
  *  explanation beyond the paused UI itself. */
-const pausedReasonCopy = (outcome: BackfillOutcome | null, error?: string): string | null => {
+const pausedReasonCopy = (
+  t: TFunction,
+  outcome: BackfillOutcome | null,
+  error?: string,
+): string | null => {
+  const errorSuffix = error ? ` (${error})` : '';
   switch (outcome) {
     case 'quota':
-      return `${healthSourceName}'s daily history limit was reached. Your progress has been saved. Resume tomorrow to continue where you left off.`;
+      return t('importHistory.paused.quota', { source: healthSourceName });
     case 'device-locked':
-      return 'Your device locked during the import, so health data became unreadable. Unlock your device and resume.';
+      return t('importHistory.paused.deviceLocked');
     case 'app-inactive':
-      return 'The app went to the background during the import. Keep it open and unlocked, then resume.';
+      return t('importHistory.paused.appInactive');
     case 'server-changed':
-      return 'The active server changed during the import. Switch back to that server to resume, or start over to import into this one.';
+      return t('importHistory.paused.serverChanged');
     case 'upload-failed':
-      return `Uploading to your server failed${error ? ` (${error})` : ''}. Check your connection and resume to retry.`;
+      return t('importHistory.paused.uploadFailed', { errorSuffix });
     case 'window-failed':
-      return `Reading health data failed${error ? ` (${error})` : ''}. Resume to retry from where it stopped.`;
+      return t('importHistory.paused.windowFailed', { errorSuffix });
     case 'already-running':
-      return 'Another sync is running right now. Wait a moment for it to finish, then resume.';
+      return t('importHistory.paused.alreadyRunning');
     default:
       return null;
   }
 };
 
-const idleNoticeCopy = (outcome: BackfillOutcome | null): string | null => {
+const idleNoticeCopy = (t: TFunction, outcome: BackfillOutcome | null): string | null => {
   switch (outcome) {
     case 'no-history':
-      return `No historical data was found in ${healthSourceName} for your enabled metrics.`;
+      return t('importHistory.idle.noHistory', { source: healthSourceName });
     case 'no-metrics':
-      return 'No metrics are enabled. Turn on the metrics you want under Health Sync first.';
+      return t('importHistory.idle.noMetrics');
     case 'no-server':
-      return 'No active server is configured.';
+      return t('importHistory.idle.noServer');
     case 'server-changed':
-      return 'The active server changed during the import, so it stopped. Start again to import into the current server.';
+      return t('importHistory.idle.serverChanged');
     case 'already-running':
-      return 'Another sync is running right now. Wait a moment for it to finish, then start the import.';
+      return t('importHistory.idle.alreadyRunning');
     default:
       return null;
   }
@@ -75,9 +82,9 @@ const monthYearLabel = (date: Date): string =>
 const fullDateLabel = (date: Date): string =>
   date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
 
-const timeRemainingLabel = (ms: number): string => {
+const timeRemainingLabel = (t: TFunction, ms: number): string => {
   const minutes = ms / 60_000;
-  if (minutes < 1) return 'Under a minute';
+  if (minutes < 1) return t('importHistory.underAMinute');
   return formatDuration(minutes);
 };
 
@@ -110,6 +117,7 @@ const ProgressSummary: React.FC<ProgressSummaryProps> = ({
   timeRemaining,
   paused,
 }) => {
+  const { t } = useTranslation();
   const percent = totalDays > 0 ? Math.min(100, Math.round((importedDays / totalDays) * 100)) : 0;
   return (
     <View>
@@ -117,11 +125,18 @@ const ProgressSummary: React.FC<ProgressSummaryProps> = ({
         <Text className="text-5xl font-extrabold text-text-primary">
           {importedDays.toLocaleString()}
         </Text>
-        <Text className="text-xl text-text-muted">of {totalDays.toLocaleString()} days</Text>
+        <Text className="text-xl text-text-muted">
+          {t('importHistory.progressDays', {
+            count: totalDays,
+            formattedCount: totalDays.toLocaleString(),
+          })}
+        </Text>
       </View>
       <View className="flex-row items-center justify-between mt-6">
         <Text className="text-base text-text-primary">
-          {windowStart ? `Around ${monthYearLabel(windowStart)}` : ' '}
+          {windowStart
+            ? t('importHistory.aroundMonth', { month: monthYearLabel(windowStart) })
+            : ' '}
         </Text>
         <Text
           className={`text-base font-medium ${paused ? 'text-text-muted' : 'text-text-secondary'}`}
@@ -137,7 +152,7 @@ const ProgressSummary: React.FC<ProgressSummaryProps> = ({
       </View>
       <SettingsRowGroup className="mt-6 mb-0">
         <SettingsRow
-          title="Records written"
+          title={t('importHistory.recordsWritten')}
           rightAccessory={
             <Text className="text-base font-semibold text-text-primary">
               {recordsUploaded.toLocaleString()}
@@ -145,7 +160,7 @@ const ProgressSummary: React.FC<ProgressSummaryProps> = ({
           }
         />
         <SettingsRow
-          title="Time remaining"
+          title={t('importHistory.timeRemaining')}
           rightAccessory={
             timeRemaining ? (
               <Text className="text-base font-semibold text-text-primary">{timeRemaining}</Text>
@@ -160,6 +175,7 @@ const ProgressSummary: React.FC<ProgressSummaryProps> = ({
 };
 
 const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -201,10 +217,10 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
   }, [cancel]);
   const handleStartOver = useCallback(() => startOver(), [startOver]);
 
-  const header = useScreenHeader({ title: 'Import History', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('importHistory.title'), left: { kind: 'back' } });
 
   const startDisabled = !isHealthStoreInitialized || syncClaimed;
-  const idleNotice = idleNoticeCopy(lastOutcome);
+  const idleNotice = idleNoticeCopy(t, lastOutcome);
 
   // Live progress while a run is importing; the checkpoint carries the same
   // numbers across a remount so a paused run still shows where it stopped.
@@ -226,7 +242,7 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
           }
         : null;
 
-  const pausedReason = pausedReasonCopy(lastOutcome, lastError);
+  const pausedReason = pausedReasonCopy(t, lastOutcome, lastError);
   const iconWarning = useCSSVariable('--color-icon-warning') as string;
 
   return (
@@ -247,20 +263,21 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
 
         {status === 'idle' && (
           <View>
-            <Text className="text-text-primary text-xl py-4 font-semibold">Import your health history</Text>
+            <Text className="text-text-primary text-xl py-4 font-semibold">
+              {t('importHistory.idleHeadline')}
+            </Text>
             <Text className="text-text-primary text-base">
-              Import all of your past {healthSourceName} data into SparkyFitness with a one-time backfill of every enabled metric, from your earliest recorded data up to today.
-
+              {t('importHistory.idleBody', { source: healthSourceName })}
             </Text>
             <SettingsRowGroup className="mt-4 mb-0">
               <SettingsRow
-                title="Source"
+                title={t('importHistory.source')}
                 rightAccessory={
                   <Text className="text-base text-text-secondary">{healthSourceName}</Text>
                 }
               />
               <SettingsRow
-                title="Data types enabled"
+                title={t('importHistory.dataTypesEnabled')}
                 rightAccessory={
                   enabledMetricCount != null ? (
                     <Text className="text-base text-text-secondary">
@@ -272,31 +289,32 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
             </SettingsRowGroup>
             <InfoNote
               icon="clock"
-              text="Takes a few minutes. You can pause any time and pick up where you left off."
+              text={t('importHistory.takesMinutesNote')}
             />
 
             {idleNotice && (
               <Text className="text-text-secondary text-sm mt-3 font-semibold">{idleNotice}</Text>
             )}
             <Button className="mt-6" onPress={handleStart} disabled={startDisabled}>
-              <Text className="text-white text-lg font-semibold">Start Import</Text>
+              <Text className="text-white text-lg font-semibold">
+                {t('importHistory.startImport')}
+              </Text>
             </Button>
             {syncClaimed && (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                A sync is still finishing up. This will enable in a moment.
+                {t('importHistory.syncFinishing')}
               </Text>
             )}
             {!isHealthStoreInitialized && (
               <Text className="text-icon-danger mt-3 text-center">
                 {isAndroid
-                  ? 'Health Connect is not available. Please make sure it is installed and enabled.'
-                  : 'Health data (HealthKit) is not available. Please enable Health access in the iOS Health app.'}
+                  ? t('screenCopy.sync.healthUnavailableAndroid')
+                  : t('screenCopy.sync.healthUnavailableIos')}
               </Text>
             )}
             {isAndroid && (
               <Text className="text-text-muted text-sm mt-4">
-                Health Connect limits how much historical data apps can read each day. If that limit is reached, the
-                import automatically resumes later where it left off.
+                {t('importHistory.dailyLimitNote')}
               </Text>
             )}
           </View>
@@ -309,26 +327,27 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
               <ProgressSummary
                 {...importStats}
                 timeRemaining={
-                  estimatedMsRemaining != null ? timeRemainingLabel(estimatedMsRemaining) : null
+                  estimatedMsRemaining != null ? timeRemainingLabel(t, estimatedMsRemaining) : null
                 }
                 paused={false}
               />
             ) : (
               <View className="py-8 items-center">
                 <ActivityIndicator />
-                <Text className="text-text-primary text-base mt-4">Scanning your history…</Text>
+                <Text className="text-text-primary text-base mt-4">
+                  {t('importHistory.scanning')}
+                </Text>
                 <Text className="text-text-secondary text-sm mt-1">
-                  Finding your earliest recorded data
+                  {t('importHistory.findingEarliest')}
                 </Text>
               </View>
             )}
             {isAndroid && progress?.historyAccessGranted === false && (
               <Text className="text-text-muted text-xs mt-3">
-                Access to all past data was not granted, so the import can only reach about 30
-                days back. Grant it from Health Connect settings and start over to go further.
+                {t('importHistory.partialAccessNote')}
               </Text>
             )}
-            <InfoNote text="Keep the app open and your device unlocked while the import runs." />
+            <InfoNote text={t('importHistory.keepOpenNote')} />
             <Button
               variant="secondary"
               className="mt-6"
@@ -336,12 +355,12 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
               disabled={pauseRequested}
             >
               <Text className="text-text-primary text-lg font-semibold">
-                {pauseRequested ? 'Pausing…' : 'Pause Import'}
+                {pauseRequested ? t('importHistory.pausing') : t('importHistory.pauseImport')}
               </Text>
             </Button>
             {pauseRequested && (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                Finishing up, then pausing.
+                {t('importHistory.finishingPause')}
               </Text>
             )}
           </View>
@@ -363,23 +382,26 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
             )}
             {frozenSelectionDiffers && (
               <Text testID="metric-selection-notice" className="text-text-muted text-xs mt-3">
-                Your metric selection has changed since this import started. Resume continues
-                with the original selection and Start Over uses the current one.
+                {t('importHistory.metricSelectionNote')}
               </Text>
             )}
-            <InfoNote text="Days already imported are saved. Starting over discards them and re-imports from day 1." />
+            <InfoNote text={t('importHistory.daysSavedNote')} />
             <Button className="mt-6" onPress={handleStart} disabled={startDisabled}>
               <View className="flex-row items-center gap-2">
                 <Icon name="play" size={18} color="#fff" />
-                <Text className="text-white text-lg font-semibold">Resume</Text>
+                <Text className="text-white text-lg font-semibold">
+                  {t('importHistory.resume')}
+                </Text>
               </View>
             </Button>
             <Button variant="ghost" className="mt-2" onPress={handleStartOver} disabled={startDisabled}>
-              <Text className="text-accent-primary text-base font-semibold">Start Over</Text>
+              <Text className="text-accent-primary text-base font-semibold">
+                {t('importHistory.startOver')}
+              </Text>
             </Button>
             {syncClaimed && (
               <Text testID="sync-claimed-note" className="text-text-muted text-xs mt-2 text-center">
-                A sync is still finishing up. These will enable in a moment.
+                {t('importHistory.syncFinishingPlural')}
               </Text>
             )}
           </View>
@@ -392,14 +414,18 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
                 <Text className="text-5xl font-extrabold text-text-primary">
                   {importStats.totalDays.toLocaleString()}
                 </Text>
-                <Text className="text-xl text-text-muted">days imported</Text>
+                <Text className="text-xl text-text-muted">
+                  {t('importHistory.daysImported')}
+                </Text>
               </View>
             ) : (
-              <Text className="text-text-primary text-xl py-4 font-semibold">Import complete</Text>
+              <Text className="text-text-primary text-xl py-4 font-semibold">
+                {t('importHistory.importComplete')}
+              </Text>
             )}
             <SettingsRowGroup className="mt-6 mb-0">
               <SettingsRow
-                title="Records written"
+                title={t('importHistory.recordsWritten')}
                 rightAccessory={
                   <Text className="text-base font-semibold text-text-primary">
                     {(checkpoint?.recordsUploaded ?? 0).toLocaleString()}
@@ -408,7 +434,7 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
               />
               {checkpoint?.completedAt && (
                 <SettingsRow
-                  title="Completed"
+                  title={t('importHistory.completed')}
                   rightAccessory={
                     <Text className="text-base text-text-secondary">
                       {fullDateLabel(new Date(checkpoint.completedAt))}
@@ -417,13 +443,15 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
                 />
               )}
             </SettingsRowGroup>
-            <InfoNote text="New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics." />
+            <InfoNote text={t('importHistory.newDataNote')} />
             <Button variant="ghost" className="mt-6" onPress={handleStartOver} disabled={startDisabled}>
-              <Text className="text-accent-primary text-base font-semibold">Start Over</Text>
+              <Text className="text-accent-primary text-base font-semibold">
+                {t('importHistory.startOver')}
+              </Text>
             </Button>
             {syncClaimed && (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                A sync is still finishing up. This will enable in a moment.
+                {t('importHistory.syncFinishing')}
               </Text>
             )}
           </View>

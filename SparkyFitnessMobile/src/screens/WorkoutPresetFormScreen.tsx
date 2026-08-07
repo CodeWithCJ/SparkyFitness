@@ -17,7 +17,8 @@ import { useExerciseSetEditing } from '../hooks/useExerciseSetEditing';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useWorkoutPresetForm, type PresetDraft } from '../hooks/useWorkoutPresetForm';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { SAVE_LABEL, SAVING_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
+import { useTranslation } from 'react-i18next';
+import { type HeaderItem } from '../hooks/useScreenHeader';
 import { buildPresetExercisesPayload, canReorderDraftExercises } from '../utils/workoutSession';
 import type { WorkoutSetMetaPatch } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
@@ -90,14 +91,15 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   onViewExercise,
   listRef,
 }) => {
+  const { t } = useTranslation();
   const { getImageSource } = useExerciseImageSource();
 
   return (
     <View className="gap-4">
       <View className="gap-1.5">
-        <Text className="text-text-secondary text-sm font-medium">Name *</Text>
+         <Text className="text-text-secondary text-sm font-medium">{t('workout.nameRequired')}</Text>
         <FormInput
-          placeholder="e.g. Push Day"
+          placeholder={t('workout.presetNamePlaceholder')}
           value={state.name}
           onChangeText={setName}
           autoCapitalize="words"
@@ -108,9 +110,9 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
       </View>
 
       <View className="gap-1.5">
-        <Text className="text-text-secondary text-sm font-medium">Description</Text>
+         <Text className="text-text-secondary text-sm font-medium">{t('workout.presetDescription')}</Text>
         <FormInput
-          placeholder="Optional notes about this routine"
+          placeholder={t('workout.optionalPresetNotes')}
           value={state.description}
           onChangeText={setDescription}
           multiline
@@ -166,6 +168,7 @@ interface CreatePresetModeProps {
 }
 
 const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, params }) => {
+  const { t } = useTranslation();
   const { sourceSession } = params;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = getWeightUnit(preferences?.default_weight_unit);
@@ -256,7 +259,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
         ionicon: 'swap-vertical',
         role: 'secondary',
         onPress: () => exerciseListRef.current?.openReorder(),
-        accessibilityLabel: 'Reorder exercises',
+         accessibilityLabel: t('workout.reorderExercises'),
         identifier: 'preset-create-reorder',
       }
     : null;
@@ -280,8 +283,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
     if (!trimmedName) {
       Toast.show({
         type: 'error',
-        text1: 'Missing name',
-        text2: 'Please enter a name for this preset.',
+         text1: t('workout.presetMissingName'),
+         text2: t('workout.presetNameRequired'),
       });
       return;
     }
@@ -290,8 +293,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
     if (exercisesWithSets.length === 0) {
       Toast.show({
         type: 'error',
-        text1: 'Add an exercise',
-        text2: 'Add at least one exercise with a set before saving.',
+         text1: t('workout.addExercise'),
+         text2: t('workout.presetAddBeforeSave'),
       });
       return;
     }
@@ -306,7 +309,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
 
     try {
       const created = await createPresetAsync(payload);
-      Toast.show({ type: 'success', text1: 'Workout preset created' });
+       Toast.show({ type: 'success', text1: t('workout.presetCreated') });
       navigation.replace('WorkoutPresetDetail', { preset: created });
     } catch {
       // Error toast handled in useCreateWorkoutPreset.
@@ -314,10 +317,8 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
   };
   return (
     <FormScreenChrome
-      title="New Preset"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
-      isSaving={isPending}
+       title={t('screens.newPreset')}
+       isSaving={isPending}
       headerAction={reorderAction}
       keyboardAccessory={accessoryBar}
       onSave={() => {
@@ -391,6 +392,7 @@ export function buildPresetEditPayload(args: {
 }
 
 const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, params }) => {
+  const { t } = useTranslation();
   const { preset, returnKey } = params;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = getWeightUnit(preferences?.default_weight_unit);
@@ -481,7 +483,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         ionicon: 'swap-vertical',
         role: 'secondary',
         onPress: () => exerciseListRef.current?.openReorder(),
-        accessibilityLabel: 'Reorder exercises',
+         accessibilityLabel: t('workout.reorderExercises'),
         identifier: 'preset-edit-reorder',
       }
     : null;
@@ -505,8 +507,8 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     if (!trimmedName) {
       Toast.show({
         type: 'error',
-        text1: 'Missing name',
-        text2: 'Please enter a name for this preset.',
+         text1: t('workout.presetMissingName'),
+         text2: t('workout.presetNameRequired'),
       });
       return;
     }
@@ -531,7 +533,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
 
     try {
       const updated = await updatePresetAsync({ id: preset.id, payload });
-      Toast.show({ type: 'success', text1: 'Workout preset updated' });
+       Toast.show({ type: 'success', text1: t('workout.presetUpdated') });
       navigation.dispatch({
         ...CommonActions.setParams({ updatedPreset: updated }),
         source: returnKey,
@@ -543,10 +545,8 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
   };
   return (
     <FormScreenChrome
-      title="Edit Preset"
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
-      isSaving={isPending}
+       title={t('screens.editPreset')}
+       isSaving={isPending}
       headerAction={reorderAction}
       keyboardAccessory={accessoryBar}
       onSave={() => {

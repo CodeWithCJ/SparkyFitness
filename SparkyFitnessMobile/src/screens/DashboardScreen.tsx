@@ -48,12 +48,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { NUTRIENT_META } from '../constants/nutrients';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
-
-const RANGE_SEGMENTS: Segment<StepsRange>[] = [
-  { key: '7d', label: '7d' },
-  { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
-];
+import { useTranslation } from 'react-i18next';
 
 type DashboardScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Dashboard'>,
@@ -61,6 +56,12 @@ type DashboardScreenProps = CompositeScreenProps<
 >;
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
+  const rangeSegments: Segment<StepsRange>[] = [
+    { key: '7d', label: t('dashboard.range7d') },
+    { key: '30d', label: t('dashboard.range30d') },
+    { key: '90d', label: t('dashboard.range90d') },
+  ];
   const queryClient = useQueryClient();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
@@ -105,7 +106,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         onDatePress: openCalendar,
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
-        accessibilityLabel: 'Choose dashboard date',
+        accessibilityLabel: t('dashboard.chooseDate'),
       },
     );
   }, [
@@ -115,6 +116,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     navigation,
     openCalendar,
     selectedDate,
+    t,
     usesNativeTabs,
   ]);
 
@@ -208,16 +210,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <View className="flex-1">
           {!usesNativeTabs && (
             <View className="px-4 pb-5" style={{ paddingTop: insets.top + 16 }}>
-              <Text className="text-2xl font-bold text-text-primary">Dashboard</Text>
+              <Text className="text-2xl font-bold text-text-primary">{t('screens.dashboard')}</Text>
             </View>
           )}
           <StatusView
             icon="cloud-offline"
             iconTone="muted"
             iconSize={64}
-            title="No server configured"
-            subtitle="Configure your server connection in Settings to view your daily summary."
-            action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
+            title={t('dashboard.noServerTitle')}
+            subtitle={t('dashboard.noServerSubtitle')}
+            action={{ label: t('dashboard.goToSettings'), onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
           />
         </View>
       );
@@ -225,7 +227,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
     // Loading state
     if (isLoading || isConnectionLoading || isPreferencesLoading || isMeasurementsLoading) {
-      return <StatusView loading title="Loading summary..." />;
+      return <StatusView loading title={t('dashboard.loadingSummary')} />;
     }
 
     // Error state
@@ -235,9 +237,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title="Failed to load summary"
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+          title={t('dashboard.failedToLoad')}
+          subtitle={t('dashboard.checkConnection')}
+          action={{ label: t('common.retry'), onPress: () => refetch(), variant: 'primary' }}
         />
       );
     }
@@ -288,7 +290,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             className="flex-row items-center bg-surface rounded-lg  px-4 py-3 mb-3 shadow-sm"
           >
             <Icon name="sparkles" size={18} color={accentColor} />
-            <Text className="text-text-muted text-base ml-3">Ask Sparky…</Text>
+            <Text className="text-text-muted text-base ml-3">{t('dashboard.askSparky')}</Text>
           </Pressable>
         )}
 
@@ -309,9 +311,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                 onPress={() => navigation.navigate('DailyNutritionDetails', { date: summary.date })}
                 className="flex-row justify-between items-center mb-2 px-1"
               >
-                <Text className="text-md font-bold text-text-secondary">Nutrients</Text>
+                <Text className="text-md font-bold text-text-secondary">{t('dashboard.nutrients')}</Text>
                 <View className="flex-row items-center">
-                  <Text className="text-xs font-semibold text-accent-primary mr-1">Details</Text>
+                  <Text className="text-xs font-semibold text-accent-primary mr-1">{t('dashboard.details')}</Text>
                   <Icon name="chevron-forward" size={14} color={accentColor} />
                 </View>
               </Pressable>
@@ -322,7 +324,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   const customDef = !meta
                     ? customNutrients.find((cn) => cn.name === nutrientKey)
                     : undefined;
-                  const label = meta?.label ?? customDef?.name ?? nutrientKey;
+                  // Built-in core macros resolve their label through static
+                  // translation keys; user-defined nutrients keep their literal
+                  // name (never translated).
+                  let builtInLabel: string | undefined;
+                  switch (nutrientKey) {
+                    case 'protein':
+                      builtInLabel = t('macroLabels.protein');
+                      break;
+                    case 'carbs':
+                      builtInLabel = t('macroLabels.carbs');
+                      break;
+                    case 'fat':
+                      builtInLabel = t('macroLabels.fat');
+                      break;
+                    case 'dietary_fiber':
+                      builtInLabel = t('macroLabels.fiber');
+                      break;
+                  }
+                  const label = builtInLabel ?? customDef?.name ?? nutrientKey;
                   const unit = meta?.unit ?? customDef?.unit ?? 'g';
 
                   // Use theme-aware CSS variable colors for the 4 core macros;
@@ -361,7 +381,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   else if (nutrientKey === 'dietary_fiber') goal = summary.fiber.goal || undefined;
                   else goal = summary.customNutrientGoals[nutrientKey] || undefined;
 
-                  const displayLabel = nutrientKey === 'carbs' && showNetCarbs ? 'Net Carbs' : label;
+                  const displayLabel = nutrientKey === 'carbs' && showNetCarbs ? t('macroLabels.netCarbs') : label;
 
                   return (
                     <MacroCard
@@ -385,8 +405,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
             onPress={() => navigation.navigate('FoodSearch', { date: selectedDate })}
           >
-            <Text className="text-md font-bold text-text-primary mb-4">Food</Text>
-            <Text className="text-text-muted text-sm text-center mb-4">Tap to add food</Text>
+            <Text className="text-md font-bold text-text-primary mb-4">{t('dashboard.food')}</Text>
+            <Text className="text-text-muted text-sm text-center mb-4">{t('dashboard.tapToAddFood')}</Text>
           </Pressable>
         )}
 
@@ -429,8 +449,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
         {medicationsCardVisible && <MedicationsCard navigation={navigation} />}
 
-        <Text className="text-text-primary text-xl font-bold mb-2">Health Trends</Text>
-        <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
+        <Text className="text-text-primary text-xl font-bold mb-2">{t('dashboard.healthTrends')}</Text>
+        <SegmentedControl segments={rangeSegments} activeKey={stepsRange} onSelect={setStepsRange} />
 
         <HealthTrendsPager
           stepsData={stepsData}
@@ -461,7 +481,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     <View className="flex-1 bg-background">
       {!isConnectionLoading && isConnected ? (
         <DateNavigator
-          title="Dashboard"
+          title={t('screens.dashboard')}
           selectedDate={selectedDate}
           onPreviousDay={goToPreviousDay}
           onNextDay={goToNextDay}
