@@ -3,7 +3,6 @@ import { Text, View } from 'react-native';
 // Deep import: Metro resolves react-native-ui-datepicker via its "react-native"
 // field → src/index, so sub-path imports from src/ work at runtime and give us
 // the exact wheel component the library uses for its own time picker columns.
-// eslint-disable-next-line import/no-internal-modules
 import WheelPicker, {
   type WheelPickerOption,
 } from 'react-native-ui-datepicker/src/components/time-picker/wheel-picker';
