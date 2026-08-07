@@ -37,6 +37,8 @@ async function upsertSleepEntry(
       avg_overnight_hrv,
       body_battery_change,
       resting_heart_rate,
+      record_timezone,
+      record_utc_offset_minutes,
     } = sleepEntryData;
     let sleepEntryId = id;
     // If no ID is provided, check for an existing entry for this user, date, and source to prevent duplicates
@@ -54,7 +56,11 @@ async function upsertSleepEntry(
       }
     }
     if (sleepEntryId) {
-      // Attempt to update existing entry
+      // Attempt to update existing entry. The recording-zone columns use
+      // COALESCE so a payload without zone metadata (older mobile client,
+      // provider fallback branch) preserves a previously captured zone
+      // instead of erasing it; clearing to NULL is only possible through
+      // updateSleepEntry's explicit-null path.
       const updateQuery = `
                 UPDATE sleep_entries
                 SET
@@ -81,6 +87,8 @@ async function upsertSleepEntry(
                     avg_overnight_hrv = $23,
                     body_battery_change = $24,
                     resting_heart_rate = $25,
+                    record_timezone = COALESCE($26, record_timezone),
+                    record_utc_offset_minutes = COALESCE($27, record_utc_offset_minutes),
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = $1 AND user_id = $2
                 RETURNING id;
@@ -111,6 +119,8 @@ async function upsertSleepEntry(
         avg_overnight_hrv,
         body_battery_change,
         resting_heart_rate,
+        record_timezone,
+        record_utc_offset_minutes,
       ]);
       if (updateResult.rows.length > 0) {
         sleepEntryId = updateResult.rows[0].id;
@@ -124,8 +134,8 @@ async function upsertSleepEntry(
     } else {
       // Insert new entry
       const insertQuery = `
-                INSERT INTO sleep_entries (user_id, entry_date, bedtime, wake_time, duration_in_seconds, time_asleep_in_seconds, sleep_score, source, deep_sleep_seconds, light_sleep_seconds, rem_sleep_seconds, awake_sleep_seconds, average_spo2_value, lowest_spo2_value, highest_spo2_value, average_respiration_value, lowest_respiration_value, highest_respiration_value, awake_count, avg_sleep_stress, restless_moments_count, avg_overnight_hrv, body_battery_change, resting_heart_rate)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+                INSERT INTO sleep_entries (user_id, entry_date, bedtime, wake_time, duration_in_seconds, time_asleep_in_seconds, sleep_score, source, deep_sleep_seconds, light_sleep_seconds, rem_sleep_seconds, awake_sleep_seconds, average_spo2_value, lowest_spo2_value, highest_spo2_value, average_respiration_value, lowest_respiration_value, highest_respiration_value, awake_count, avg_sleep_stress, restless_moments_count, avg_overnight_hrv, body_battery_change, resting_heart_rate, record_timezone, record_utc_offset_minutes)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
                 RETURNING id;
             `;
       const insertResult = await client.query(insertQuery, [
@@ -153,6 +163,8 @@ async function upsertSleepEntry(
         avg_overnight_hrv,
         body_battery_change,
         resting_heart_rate,
+        record_timezone,
+        record_utc_offset_minutes,
       ]);
       sleepEntryId = insertResult.rows[0].id;
       log(
@@ -557,6 +569,8 @@ async function getSleepEntriesByUserIdAndDateRange(
             se.avg_overnight_hrv,
             se.body_battery_change,
             se.resting_heart_rate,
+            se.record_timezone,
+            se.record_utc_offset_minutes,
             se.created_at,
             se.updated_at,
             COALESCE(
@@ -620,6 +634,8 @@ async function updateSleepEntry(
       avg_overnight_hrv,
       body_battery_change,
       resting_heart_rate,
+      record_timezone,
+      record_utc_offset_minutes,
       stage_events, // Extract stage_events
     } = updateData;
     const updateFields = [];
@@ -716,6 +732,14 @@ async function updateSleepEntry(
     if (resting_heart_rate !== undefined) {
       updateFields.push(`resting_heart_rate = $${paramIndex++} `);
       updateValues.push(resting_heart_rate);
+    }
+    if (record_timezone !== undefined) {
+      updateFields.push(`record_timezone = $${paramIndex++} `);
+      updateValues.push(record_timezone);
+    }
+    if (record_utc_offset_minutes !== undefined) {
+      updateFields.push(`record_utc_offset_minutes = $${paramIndex++} `);
+      updateValues.push(record_utc_offset_minutes);
     }
     // Add updated_by_user_id
     updateFields.push(`updated_by_user_id = $${paramIndex++}`);
@@ -914,6 +938,8 @@ async function getSleepEntriesWithAllDetailsByUserIdAndDateRange(
             se.avg_overnight_hrv,
             se.body_battery_change,
             se.resting_heart_rate,
+            se.record_timezone,
+            se.record_utc_offset_minutes,
             se.created_at,
             se.updated_at,
             json_agg(

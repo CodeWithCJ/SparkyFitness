@@ -4,6 +4,7 @@ import exerciseRepository from '../../models/exercise.js';
 import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
+import { utcOffsetMinutesFromIsoString } from '@workspace/shared';
 /**
  * Helper to get a value from a Polar object regardless of hyphen or underscore usage.
  */
@@ -436,10 +437,17 @@ async function processPolarSleep(
         0;
       const totalDurationSec =
         lightSleepSec + deepSleepSec + remSleepSec + awakeSec;
+      // The raw sleep-start-time string carries the recording zone as a
+      // ±HH:MM suffix that parsePolarToUTC normalizes away; naive or
+      // date-only strings yield null and stamp nothing.
+      const recordUtcOffsetMinutes = utcOffsetMinutesFromIsoString(startTime);
       const sleepEntryData = {
         entry_date: entryDate,
         bedtime: parsePolarToUTC(startTime),
         wake_time: parsePolarToUTC(endTime),
+        ...(recordUtcOffsetMinutes !== null
+          ? { record_utc_offset_minutes: recordUtcOffsetMinutes }
+          : {}),
         duration_in_seconds: totalDurationSec,
         time_asleep_in_seconds: lightSleepSec + deepSleepSec + remSleepSec,
         sleep_score: getVal(night, 'sleep-score'),

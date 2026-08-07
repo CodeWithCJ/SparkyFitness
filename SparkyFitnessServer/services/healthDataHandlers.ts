@@ -952,6 +952,8 @@ const sleepSessionHandler: HealthTypeHandler = {
         light_sleep_seconds: Number(entry.light_sleep_seconds) || 0,
         rem_sleep_seconds: Number(entry.rem_sleep_seconds) || 0,
         awake_sleep_seconds: Number(entry.awake_sleep_seconds) || 0,
+        record_timezone: entry.record_timezone,
+        record_utc_offset_minutes: entry.record_utc_offset_minutes,
       };
       const sleepEntryResult = await ctx.processSleepEntry(
         ctx.userId,

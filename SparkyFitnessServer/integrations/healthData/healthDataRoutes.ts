@@ -76,7 +76,13 @@ router.post(
   checkPermissionMiddleware('diary'),
   async (req, res, next) => {
     try {
-      const { bedtime, wake_time, duration_in_seconds } = req.body;
+      const {
+        bedtime,
+        wake_time,
+        duration_in_seconds,
+        record_timezone,
+        record_utc_offset_minutes,
+      } = req.body;
       if (!bedtime || !wake_time || !duration_in_seconds) {
         return res.status(400).json({
           error:
@@ -91,6 +97,8 @@ router.post(
         wake_time: new Date(wake_time),
         duration_in_seconds: duration_in_seconds,
         source: 'manual',
+        record_timezone: record_timezone,
+        record_utc_offset_minutes: record_utc_offset_minutes,
       };
       const result = await measurementService.processSleepEntry(
         req.userId,

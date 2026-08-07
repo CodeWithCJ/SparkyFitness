@@ -213,6 +213,15 @@ const mapSleepRow = (
   const wakeTime = cell(row, 'wake_time');
   if (!isBlank(bedtime)) item['bedtime'] = bedtime.trim();
   if (!isBlank(wakeTime)) item['wake_time'] = wakeTime.trim();
+  // Optional recording-zone columns: an IANA zone name and/or a UTC offset
+  // in minutes. Rows without them display in the profile timezone.
+  const recordTimezone = cell(row, 'record_timezone');
+  if (!isBlank(recordTimezone)) item['record_timezone'] = recordTimezone.trim();
+  const offsetRead = readNumber(row, 'record_utc_offset_minutes', format);
+  if (!offsetRead.ok)
+    return numberError(row, 'record_utc_offset_minutes', offsetRead.raw);
+  if (offsetRead.value !== undefined)
+    item['record_utc_offset_minutes'] = offsetRead.value;
   for (const field of SLEEP_NUMERIC_FIELDS) {
     const read = readNumber(row, field, format);
     if (!read.ok) return numberError(row, field, read.raw);

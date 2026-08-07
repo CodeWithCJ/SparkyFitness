@@ -555,6 +555,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
 
                         bedtime_dt = None
                         wake_time_dt = None
+                        record_utc_offset_minutes = None
 
                         # Prioritize sleep_summary's sleepStartTimestampGMT and sleepEndTimestampGMT
                         if sleep_summary.get(
@@ -568,6 +569,19 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                 sleep_summary["sleepEndTimestampGMT"] / 1000,
                                 tz=timezone.utc,
                             )
+                            # The Local/GMT timestamp pair encodes the watch's
+                            # UTC offset at recording time; the server uses it
+                            # to display bed/wake in the recording zone.
+                            start_local = sleep_summary.get(
+                                "sleepStartTimestampLocal"
+                            )
+                            start_gmt = sleep_summary.get("sleepStartTimestampGMT")
+                            if isinstance(start_local, (int, float)) and isinstance(
+                                start_gmt, (int, float)
+                            ):
+                                offset_min = round((start_local - start_gmt) / 60000)
+                                if -960 <= offset_min <= 960:
+                                    record_utc_offset_minutes = offset_min
                         else:
                             # Fallback to SleepStageLevel timestamps if summary timestamps are missing
                             stage_events_raw = sleep_data_raw.get("sleepLevels", [])
@@ -615,7 +629,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                 or 0
                             )
                             logger.info(
-                                f"[GARMIN_SYNC] Sleep stages from dailySleepDTO: deep={deep_sleep}, light={light_sleep}, rem={rem_sleep}, awake={awake_sleep}"
+                                f"[GARMIN_SYNC] Sleep stages from dailySleepDTO: deep={deep_sleep}, light={light_sleep}, rem={rem_sleep}, awake={awake_sleep}, record_utc_offset_minutes={record_utc_offset_minutes}"
                             )
 
                             sleep_entry_data = {
@@ -673,6 +687,10 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                 ),
                                 "stage_events": [],  # This will be populated below
                             }
+                            if record_utc_offset_minutes is not None:
+                                sleep_entry_data["record_utc_offset_minutes"] = (
+                                    record_utc_offset_minutes
+                                )
 
                             # Process Sleep Levels (Stages) - only sum if dailySleepDTO didn't have the values
                             sleep_levels_intraday = sleep_data_raw.get("sleepLevels")
