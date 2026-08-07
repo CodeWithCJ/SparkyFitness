@@ -7,8 +7,6 @@ import { calculateCustomNutrientTotals } from '../services/api/foodEntriesApi';
 
 export type MealTypeKey = string;
 
-export type MealEntryGroups = Record<string, FoodEntry[]>;
-
 export interface MealGroup {
   mealTypeId: string | null;
   name: string;
@@ -96,6 +94,25 @@ export function getMealTypeDisplayLabelForName(
   return getHistoricalMealTypeLabel(trimmed);
 }
 
+/**
+ * Resolves the display label for a FOOD ENTRY by canonical id first, falling
+ * back to name-only resolution only when the entry has no `meal_type_id`.
+ * An id that exists but no longer resolves (deleted/hidden custom type) keeps
+ * its literal historical name instead of being rematched to an active type
+ * that merely shares the name.
+ */
+export function getFoodEntryMealTypeLabel(
+  entry: { meal_type_id?: string | null; meal_type?: string | null },
+  mealTypes: MealType[],
+): string {
+  if (entry.meal_type_id) {
+    const mt = mealTypes.find((m) => m.id === entry.meal_type_id);
+    if (mt) return getMealTypeDisplayLabel(mt);
+    return getHistoricalMealTypeLabel(entry.meal_type);
+  }
+  return getMealTypeDisplayLabelForName(entry.meal_type, mealTypes);
+}
+
 export function getFoodEntryMealTypeKey(entry: FoodEntry, mealTypes: MealType[]): string {
   if (entry.meal_type_id) {
     const mt = mealTypes.find((m) => m.id === entry.meal_type_id);
@@ -134,9 +151,15 @@ export function groupFoodEntriesByMealType(
   for (const entry of entries) {
     let matched: MealType | null = null;
     if (entry.meal_type_id) {
+      // The id is canonical: resolve by id only. When it exists but does not
+      // resolve (deleted/hidden custom type), the entry falls through to the
+      // id-based historical fallback below — it is NEVER rematched to an
+      // active type that merely shares the name (a deleted custom "breakfast"
+      // must not merge into the system Breakfast group).
       matched = typeMap.get(entry.meal_type_id) ?? null;
-    }
-    if (!matched) {
+    } else {
+      // Name-based matching is allowed only for entries without an id (legacy
+      // servers / pre-id records).
       const name = (entry.meal_type || '').toLowerCase();
       matched = mealTypes.find((m) => m.name.toLowerCase() === name) ?? null;
     }
@@ -191,6 +214,21 @@ export function groupFoodEntriesByMealType(
   }
 
   return result.sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+/**
+ * Display label for a grouped section. System groups (isSystem === true) use
+ * the ownership-aware system label; every fallback/historical group
+ * (isSystem === false, including id-based fallbacks whose `user_id` is null)
+ * keeps its literal snapshotted name. Consumers must branch on `isSystem`, not
+ * on `user_id`, so a deleted custom type named "breakfast" never renders as
+ * the translated system "Breakfast".
+ */
+export function getMealGroupLabel(group: MealGroup): string {
+  if (group.isSystem) {
+    return getMealTypeDisplayLabel({ name: group.name, user_id: group.user_id });
+  }
+  return getHistoricalMealTypeLabel(group.name);
 }
 
 export function filterFoodEntriesByMealType(

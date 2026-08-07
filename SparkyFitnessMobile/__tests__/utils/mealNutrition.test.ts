@@ -1,6 +1,8 @@
 import {
   getFoodEntryMealTypeKey,
+  getFoodEntryMealTypeLabel,
   getHistoricalMealTypeLabel,
+  getMealGroupLabel,
   getMealTypeDisplayLabel,
   getMealTypeDisplayLabelForName,
   getMealPercentage,
@@ -8,6 +10,7 @@ import {
   filterFoodEntriesByMealTypeId,
   calculateEntryNutrition,
   calculateMealNutrition,
+  type MealGroup,
 } from '../../src/utils/mealNutrition';
 import type { DailyGoals } from '../../src/types/goals';
 import type { FoodEntry } from '../../src/types/foodEntries';
@@ -370,5 +373,118 @@ describe('getMealPercentage', () => {
 
   it('returns 0 when there are no goals', () => {
     expect(getMealPercentage('breakfast', undefined)).toBe(0);
+  });
+});
+
+describe('groupFoodEntriesByMealType — canonical ID contract', () => {
+  it('keeps a deleted custom type separate from an active system type with the same name', () => {
+    const types: MealType[] = [
+      { id: 'system-breakfast', name: 'breakfast', sort_order: 10, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+    ];
+    const entries = [
+      // Historical entry whose custom type was deleted — id no longer resolves.
+      { id: 'e1', meal_type_id: 'custom-old-1', meal_type: 'breakfast' },
+      // Entry referencing the active system type.
+      { id: 'e2', meal_type_id: 'system-breakfast', meal_type: 'breakfast' },
+    ] as FoodEntry[];
+
+    const groups = groupFoodEntriesByMealType(entries, types);
+
+    const sysGroup = groups.find((g) => g.mealTypeId === 'system-breakfast');
+    const histGroup = groups.find((g) => g.mealTypeId === 'custom-old-1');
+    expect(sysGroup?.entries.map((e) => e.id)).toEqual(['e2']);
+    // The deleted custom id must NOT merge into the active system Breakfast.
+    expect(histGroup?.entries.map((e) => e.id)).toEqual(['e1']);
+    expect(histGroup?.isSystem).toBe(false);
+    expect(histGroup?.name).toBe('breakfast');
+  });
+
+  it('matches by name only when the entry has no meal_type_id', () => {
+    const types: MealType[] = [
+      { id: 'system-breakfast', name: 'breakfast', sort_order: 10, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+    ];
+    const groups = groupFoodEntriesByMealType(
+      [{ id: 'e1', meal_type_id: null, meal_type: 'breakfast' }] as FoodEntry[],
+      types,
+    );
+    expect(groups).toHaveLength(1);
+    expect(groups[0].mealTypeId).toBe('system-breakfast');
+    expect(groups[0].isSystem).toBe(true);
+  });
+});
+
+describe('getMealGroupLabel — historical groups stay literal', () => {
+  it('keeps a fallback group literal (never translated to the system label)', () => {
+    const group: MealGroup = {
+      mealTypeId: 'custom-old-1',
+      name: 'breakfast',
+      sortOrder: 9999,
+      entries: [],
+      isSystem: false,
+      user_id: null,
+    };
+    expect(getMealGroupLabel(group)).toBe('breakfast');
+  });
+
+  it('renders a system group through the canonical English label', () => {
+    const group: MealGroup = {
+      mealTypeId: 'system-breakfast',
+      name: 'breakfast',
+      sortOrder: 10,
+      entries: [],
+      isSystem: true,
+      user_id: null,
+    };
+    expect(getMealGroupLabel(group)).toBe('Breakfast');
+  });
+});
+
+describe('groupFoodEntriesByMealType — distinct historical fallback groups', () => {
+  it('groups two no-id historical entries by their own names', () => {
+    const groups = groupFoodEntriesByMealType(
+      [
+        { id: 'e1', meal_type_id: null, meal_type: 'Morning Snack' },
+        { id: 'e2', meal_type_id: null, meal_type: 'Night Snack' },
+      ] as FoodEntry[],
+      [],
+    );
+
+    expect(groups).toHaveLength(2);
+    expect(groups.map((g) => g.name).sort()).toEqual(['Morning Snack', 'Night Snack']);
+    // Both are fallback groups: never system, and each keeps its own id-less key.
+    expect(groups.every((g) => g.isSystem === false && g.mealTypeId === null)).toBe(true);
+  });
+});
+
+describe('getFoodEntryMealTypeLabel — id-first label resolution', () => {
+  const types: MealType[] = [
+    { id: 'system-breakfast', name: 'breakfast', sort_order: 10, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+    { id: 'custom-b', name: 'breakfast', sort_order: 20, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  ];
+
+  it('resolves an active definition by id with ownership-aware display', () => {
+    expect(
+      getFoodEntryMealTypeLabel({ meal_type_id: 'custom-b', meal_type: 'breakfast' }, types),
+    ).toBe('breakfast');
+    expect(
+      getFoodEntryMealTypeLabel({ meal_type_id: 'system-breakfast', meal_type: 'breakfast' }, types),
+    ).toBe('Breakfast');
+  });
+
+  it('keeps an unknown historical id literal instead of rematching by name', () => {
+    // custom-old-1 no longer resolves; even though an active system "breakfast"
+    // exists, the literal historical label wins.
+    expect(
+      getFoodEntryMealTypeLabel({ meal_type_id: 'custom-old-1', meal_type: 'breakfast' }, types),
+    ).toBe('breakfast');
+  });
+
+  it('uses name-only resolution only when the id is absent', () => {
+    // Only the system definition is active here, so the name-only path resolves
+    // to the canonical English label.
+    const onlySystem: MealType[] = [types[0]];
+    expect(
+      getFoodEntryMealTypeLabel({ meal_type_id: null, meal_type: 'breakfast' }, onlySystem),
+    ).toBe('Breakfast');
   });
 });

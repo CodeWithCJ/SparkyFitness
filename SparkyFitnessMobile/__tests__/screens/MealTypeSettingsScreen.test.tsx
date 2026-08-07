@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -312,10 +312,12 @@ describe('MealTypeSettingsScreen', () => {
   });
 
   it('does not open the rename/reorder edit modal for system meal types', async () => {
-    const { findByText, queryByText } = renderScreen();
+    const { findByText, getByText, queryByText } = renderScreen();
     await findByText('breakfast');
-    // System rows are not tappable for editing (name/sort_order are locked by
-    // the backend); only the custom row opens the edit modal.
+    // Actually press the system row: system rows are not tappable for editing
+    // (name/sort_order are locked by the backend), so the edit modal must not
+    // appear even after an explicit press.
+    fireEvent.press(getByText('breakfast'));
     expect(queryByText('Edit Meal Type')).toBeNull();
   });
 
@@ -334,5 +336,60 @@ describe('MealTypeSettingsScreen', () => {
     await waitFor(() => {
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: mealTypesQueryKey });
     });
+  });
+
+  it('gives the visibility and quick-log switches distinct accessible labels', async () => {
+    const { findByText, getByLabelText } = renderScreen();
+    await findByText('breakfast');
+    expect(getByLabelText('Visible breakfast')).toBeTruthy();
+    expect(getByLabelText('Quick log breakfast')).toBeTruthy();
+    expect(getByLabelText('Visible Pre-Workout')).toBeTruthy();
+    expect(getByLabelText('Quick log Pre-Workout')).toBeTruthy();
+  });
+
+  it('keeps unblurred time text across a parent re-render and saves on blur', async () => {
+    const updateSpy = jest
+      .spyOn(mealTypesApi, 'updateMealType')
+      .mockResolvedValue({ ...systemMealTypes[0], default_time: '09:15' } as any);
+    const { findByLabelText, queryClient } = renderScreen();
+    const input = await findByLabelText('Default time for breakfast');
+    fireEvent.changeText(input, '09:15');
+
+    // Re-render the row through a query invalidation + refetch. Because
+    // DefaultTimeInput lives at module scope, its identity is stable and the
+    // unblurred text survives; a nested definition would remount and reset it.
+    await act(async () => {
+      queryClient.invalidateQueries({ queryKey: mealTypesQueryKey });
+      await Promise.resolve();
+    });
+
+    expect(input.props.value).toBe('09:15');
+    fireEvent(input, 'blur');
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('sys-b', { default_time: '09:15' });
+    });
+  });
+
+  it('add modal and edit modal close via onRequestClose', async () => {
+    const { getByLabelText, getByText, queryByText, UNSAFE_getAllByType } = renderScreen();
+    const Modal = require('react-native').Modal;
+
+    // Open the add modal and simulate Android back (onRequestClose).
+    fireEvent.press(getByLabelText('Add meal type'));
+    const addModal = UNSAFE_getAllByType(Modal).find((m: any) => m.props.visible === true);
+    expect(addModal).toBeTruthy();
+    await act(async () => {
+      addModal.props.onRequestClose();
+    });
+    expect(queryByText('Add Meal Type')).toBeNull();
+
+    // Open the edit modal via the custom row and simulate back.
+    fireEvent.press(await getByText('Pre-Workout'));
+    const editModal = UNSAFE_getAllByType(Modal).find((m: any) => m.props.visible === true);
+    expect(editModal).toBeTruthy();
+    await act(async () => {
+      editModal.props.onRequestClose();
+    });
+    expect(queryByText('Edit Meal Type')).toBeNull();
   });
 });

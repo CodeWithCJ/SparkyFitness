@@ -9,7 +9,7 @@ import SwipeableFoodRow from './SwipeableFoodRow';
 import {
   calculateEntryNutrition,
   calculateMealNutrition,
-  getMealTypeDisplayLabel,
+  getMealGroupLabel,
   groupFoodEntriesByMealType,
   getMealPercentage,
   type MealGroup,
@@ -51,7 +51,7 @@ const MealSection: React.FC<MealSectionProps> = ({
 }) => {
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
-  const label = getMealTypeDisplayLabel({ name: group.name, user_id: group.user_id });
+  const label = getMealGroupLabel(group);
   // Icons follow the same ownership rule as labels: a custom category named
   // "breakfast" still gets the neutral icon, never the system one.
   const icon = group.isSystem ? getMealTypeIcon(group.name) : 'meal-snack';
@@ -154,7 +154,11 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
     <View className="gap-2 mb-2">
       {visibleGroups.map((group) => (
         <MealSection
-          key={group.mealTypeId ?? 'other'}
+          key={
+            group.mealTypeId
+              ? `meal:${group.mealTypeId}`
+              : `historical:${group.name.toLowerCase()}`
+          }
           group={group}
           goals={goals}
           calorieGoal={calorieGoal}

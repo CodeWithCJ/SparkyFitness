@@ -50,6 +50,44 @@ function parseSortOrder(raw: string): number | null {
   return Number.parseInt(trimmed, 10);
 }
 
+interface DefaultTimeInputProps {
+  mealType: MealType;
+  onSave: (mealType: MealType, raw: string) => void;
+}
+
+/**
+ * Inline HH:MM editor for a meal type's default time. Defined at module scope
+ * (not inside the screen) so its component identity is stable across parent
+ * re-renders — a nested definition would remount the input on every render and
+ * drop unblurred text when a mutation/refetch re-renders the row.
+ */
+const DefaultTimeInput: React.FC<DefaultTimeInputProps> = ({ mealType, onSave }) => {
+  const [val, setVal] = useState(toHourMinute(mealType.default_time) || '');
+  // Keep the field in sync when the server returns a fresh value after a
+  // refetch (e.g. after an edit elsewhere clears or changes the time).
+  const [prevSaved, setPrevSaved] = useState(toHourMinute(mealType.default_time) || '');
+  const effective = toHourMinute(mealType.default_time) || '';
+  if (effective !== prevSaved) {
+    setPrevSaved(effective);
+    setVal(effective);
+  }
+  return (
+    <TextInput
+      value={val}
+      onChangeText={setVal}
+      onBlur={() => {
+        if (val.trim() === (toHourMinute(mealType.default_time) || '')) return;
+        onSave(mealType, val);
+      }}
+      placeholder="HH:MM"
+      placeholderTextColor="#9CA3AF"
+      className="bg-background border border-border text-text-primary text-xs px-2 py-1 rounded w-20 text-center"
+      keyboardType="numbers-and-punctuation"
+      accessibilityLabel={`Default time for ${mealType.name}`}
+    />
+  );
+};
+
 const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -236,33 +274,6 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     },
   });
 
-  const DefaultTimeInput: React.FC<{ mealType: MealType }> = ({ mealType }) => {
-    const [val, setVal] = useState(toHourMinute(mealType.default_time) || '');
-    // Keep the field in sync when the server returns a fresh value after a
-    // refetch (e.g. after an edit elsewhere clears or changes the time).
-    const [prevSaved, setPrevSaved] = useState(toHourMinute(mealType.default_time) || '');
-    const effective = toHourMinute(mealType.default_time) || '';
-    if (effective !== prevSaved) {
-      setPrevSaved(effective);
-      setVal(effective);
-    }
-    return (
-      <TextInput
-        value={val}
-        onChangeText={setVal}
-        onBlur={() => {
-          if (val.trim() === (toHourMinute(mealType.default_time) || '')) return;
-          saveDefaultTime(mealType, val);
-        }}
-        placeholder="HH:MM"
-        placeholderTextColor="#9CA3AF"
-        className="bg-background border border-border text-text-primary text-xs px-2 py-1 rounded w-20 text-center"
-        keyboardType="numbers-and-punctuation"
-        accessibilityLabel={`Default time for ${mealType.name}`}
-      />
-    );
-  };
-
   const renderMealTypeRow = (mt: MealType, isCustom: boolean) => (
     <View
       key={mt.id}
@@ -290,7 +301,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           </Text>
         </View>
       )}
-      <DefaultTimeInput mealType={mt} />
+      <DefaultTimeInput mealType={mt} onSave={saveDefaultTime} />
       <View className="flex-row items-center gap-2 ml-2">
         <View className="items-center">
           <Text className="text-[10px] text-text-muted mb-0.5">Visible</Text>
@@ -301,6 +312,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             }
             trackColor={{ false: formDisabled, true: formEnabled }}
             thumbColor="#FFFFFF"
+            accessibilityLabel={`Visible ${mt.name}`}
           />
         </View>
         <View className="items-center">
@@ -312,6 +324,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             }
             trackColor={{ false: formDisabled, true: formEnabled }}
             thumbColor="#FFFFFF"
+            accessibilityLabel={`Quick log ${mt.name}`}
           />
         </View>
         {isCustom && (
@@ -384,7 +397,12 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         </ScrollView>
       )}
 
-      <Modal visible={addModalVisible} transparent animationType="fade">
+      <Modal
+        visible={addModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAddModalVisible(false)}
+      >
         <Pressable
           className="flex-1 bg-black/50 items-center justify-center px-6"
           onPress={() => setAddModalVisible(false)}
@@ -441,7 +459,12 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         </Pressable>
       </Modal>
 
-      <Modal visible={editModalVisible} transparent animationType="fade">
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
         <Pressable
           className="flex-1 bg-black/50 items-center justify-center px-6"
           onPress={() => setEditModalVisible(false)}

@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
@@ -105,6 +106,22 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       // share a name but differ by id stay unambiguous client-side.
       const targetType = mealTypes.find((mt) => mt.id === targetMealTypeId);
       if (!targetType) return;
+
+      // A name-only endpoint cannot tell two same-named types apart. Block the
+      // copy instead of silently copying to/from the wrong type.
+      const nameIsAmbiguous = (name: string) => {
+        const lower = name.toLowerCase();
+        return mealTypes.filter((mt) => mt.name.toLowerCase() === lower).length > 1;
+      };
+      if (nameIsAmbiguous(source.mealTypeName) || nameIsAmbiguous(targetType.name)) {
+        Toast.show({
+          type: 'error',
+          text1: "Can't copy meal",
+          text2: 'Duplicate meal-type names cannot currently be used for Copy Meal.',
+        });
+        return;
+      }
+
       onCopy({
         sourceDate: source.date,
         sourceMealType: source.mealTypeName,

@@ -25,7 +25,10 @@ import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel, normalizeDate } from '../utils/dateUtils';
-import { getMealTypeDisplayLabel, getMealTypeDisplayLabelForName } from '../utils/mealNutrition';
+import {
+  getFoodEntryMealTypeLabel,
+  getMealTypeDisplayLabel,
+} from '../utils/mealNutrition';
 import { buildMealIngredientDraftFromEntryMealFood } from '../utils/mealBuilderDraft';
 import { formatCaloriesDisplay, formatServingSizeDisplay } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
@@ -432,7 +435,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               />
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {getMealTypeDisplayLabelForName(meal.meal_type, mealTypes)}
+                {getFoodEntryMealTypeLabel(meal, mealTypes)}
               </Text>
             )}
           </View>

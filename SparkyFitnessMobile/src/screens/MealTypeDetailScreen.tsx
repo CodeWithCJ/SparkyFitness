@@ -187,7 +187,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
         onPress: () =>
           navigation.navigate('FoodSearch', {
             date,
-            mealTypeId: mealTypeId ?? undefined,
+            mealTypeId: resolvedType?.id,
           }),
         accessibilityLabel: 'Add Food',
         identifier: 'meal-type-detail-add',

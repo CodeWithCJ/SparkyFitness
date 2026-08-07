@@ -24,7 +24,10 @@ import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
-import { getMealTypeDisplayLabel, getMealTypeDisplayLabelForName } from '../utils/mealNutrition';
+import {
+  getFoodEntryMealTypeLabel,
+  getMealTypeDisplayLabel,
+} from '../utils/mealNutrition';
 import { useMealTypes, usePreferences, useServerConnection, useCustomNutrients } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
@@ -1135,7 +1138,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               />
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {getMealTypeDisplayLabelForName(entry.meal_type, mealTypes)}
+                {getFoodEntryMealTypeLabel(entry, mealTypes)}
               </Text>
             )}
           </View>
