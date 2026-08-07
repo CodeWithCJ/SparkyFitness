@@ -126,6 +126,10 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     name: APP_NAME,
     slug: APP_SLUG,
     version: packageJson.version,
+    locales: {
+      en: './locales/en.json',
+      pl: './locales/pl.json',
+    },
     ios: {
       bundleIdentifier: isDev
         ? DEV_BUNDLE_IDENTIFIER
@@ -169,9 +173,19 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         },
       ],
       './plugins/withGlanceAndroidSupport',
+      './plugins/withAppLanguage',
       './plugins/withCalorieWidget',
       './plugins/withExactAlarmModule',
       './plugins/withEnrichedMarkdownNoMath',
+      [
+        'expo-localization',
+        {
+          supportedLocales: {
+            ios: ['en', 'pl'],
+            android: ['en', 'pl'],
+          },
+        },
+      ],
       [
         'expo-widgets',
         {
