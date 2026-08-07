@@ -70,7 +70,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
         setSets(normalizedSets);
         setInitialBySetId(byId);
         setDraftBySetId(byId);
-        setSelectedKey(ALL_KEY);
+        setSelectedKey(normalizedSets[0]?.setId ?? ALL_KEY);
         sheetRef.current?.present();
       },
       dismiss: () => sheetRef.current?.dismiss(),
@@ -144,13 +144,26 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
               className="px-3 py-2 rounded-lg border items-center"
               style={{
                 borderColor: selectedKey === ALL_KEY ? accentPrimary : textMuted,
-                backgroundColor: selectedKey === ALL_KEY ? accentPrimary : 'transparent',
+                backgroundColor: 'transparent',
               }}
             >
-              <Text style={{ color: selectedKey === ALL_KEY ? '#fff' : textMuted }}>All</Text>
               <Text
-                className="text-xs mt-0.5"
-                style={{ color: selectedKey === ALL_KEY ? '#fff' : textMuted }}
+                className={
+                  selectedKey === ALL_KEY
+                    ? 'font-semibold text-text-primary'
+                    : 'text-text-secondary'
+                }
+                style={selectedKey === ALL_KEY ? { color: accentPrimary } : undefined}
+              >
+                All
+              </Text>
+              <Text
+                className={
+                  selectedKey === ALL_KEY
+                    ? 'text-xs mt-0.5 font-semibold text-text-primary'
+                    : 'text-xs mt-0.5 text-text-primary'
+                }
+                style={selectedKey === ALL_KEY ? { color: accentPrimary } : undefined}
               >
                 {formatRestLabel(highestSetRest)}
               </Text>
@@ -165,16 +178,25 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                   className="px-3 py-2 rounded-lg border items-center"
                   style={{
                     borderColor: selected ? accentPrimary : textMuted,
-                    backgroundColor: selected ? accentPrimary : 'transparent',
+                    backgroundColor: 'transparent',
                   }}
                 >
-                  <Text style={{ color: selected ? '#fff' : textMuted }}>Set {set.setNumber}</Text>
-                  <Text
-                    className="text-xs mt-0.5"
-                    style={{ color: selected ? '#fff' : textMuted }}
-                  >
+                    <Text
+                      className={selected ? 'font-semibold text-text-primary' : 'text-text-secondary'}
+                      style={selected ? { color: accentPrimary } : undefined}
+                    >
+                      Set {set.setNumber}
+                    </Text>
+                    <Text
+                      className={
+                        selected
+                          ? 'text-xs mt-0.5 font-semibold text-text-primary'
+                          : 'text-xs mt-0.5 text-text-primary'
+                      }
+                      style={selected ? { color: accentPrimary } : undefined}
+                    >
                     {formatRestLabel(setRest)}
-                  </Text>
+                    </Text>
                 </Pressable>
               );
             })}

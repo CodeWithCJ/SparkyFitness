@@ -85,39 +85,48 @@ function DurationWheel({ valueSec, onChangeSec, maxSec = 900 }: DurationWheelPro
   };
 
   return (
-    <View
-      className="flex-row items-center justify-center"
-      style={{ height: ITEM_HEIGHT * 5 }}
-    >
-      <View className="flex-1">
-        <WheelPicker
-          value={currentMin}
-          options={minuteOptions}
-          onChange={handleMinuteChange}
-          selectedIndicatorStyle={indicatorStyle}
-          itemTextStyle={textStyle}
-          itemHeight={ITEM_HEIGHT}
-          decelerationRate="fast"
-        />
+    <View style={{ height: ITEM_HEIGHT * 5 + 22 }}>
+      <View className="flex-row items-center justify-center mb-1">
+        <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+          Minutes
+        </Text>
+        <View style={{ width: 18 }} />
+        <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
+          Seconds
+        </Text>
       </View>
 
-      <Text
-        className="text-text-primary"
-        style={{ fontSize: 26, fontWeight: '300', marginHorizontal: 4, marginBottom: 2 }}
-      >
-        :
-      </Text>
+      <View className="flex-row items-center justify-center">
+        <View className="flex-1">
+          <WheelPicker
+            value={currentMin}
+            options={minuteOptions}
+            onChange={handleMinuteChange}
+            selectedIndicatorStyle={indicatorStyle}
+            itemTextStyle={textStyle}
+            itemHeight={ITEM_HEIGHT}
+            decelerationRate="fast"
+          />
+        </View>
 
-      <View className="flex-1">
-        <WheelPicker
-          value={secondsWheelValue}
-          options={secondOptions}
-          onChange={handleSecondChange}
-          selectedIndicatorStyle={indicatorStyle}
-          itemTextStyle={textStyle}
-          itemHeight={ITEM_HEIGHT}
-          decelerationRate="fast"
-        />
+        <Text
+          className="text-text-primary"
+          style={{ fontSize: 26, fontWeight: '300', marginHorizontal: 4, marginBottom: 2 }}
+        >
+          :
+        </Text>
+
+        <View className="flex-1">
+          <WheelPicker
+            value={secondsWheelValue}
+            options={secondOptions}
+            onChange={handleSecondChange}
+            selectedIndicatorStyle={indicatorStyle}
+            itemTextStyle={textStyle}
+            itemHeight={ITEM_HEIGHT}
+            decelerationRate="fast"
+          />
+        </View>
       </View>
     </View>
   );
