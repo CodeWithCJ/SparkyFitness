@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
+import { isEntryTimeString, toHourMinute } from '@workspace/shared';
 
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -33,6 +34,22 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type MealTypeSettingsScreenProps = RootStackScreenProps<'MealTypeSettings'>;
 
+interface MealTypeFormState {
+  name: string;
+  sortOrder: string;
+  defaultTime: string;
+}
+
+const emptyForm: MealTypeFormState = { name: '', sortOrder: '', defaultTime: '' };
+
+/** Parses a user-entered order into a valid integer, or null when invalid. */
+function parseSortOrder(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (!/^-?\d+$/.test(trimmed)) return null;
+  return Number.parseInt(trimmed, 10);
+}
+
 const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -45,9 +62,8 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [form, setForm] = useState<MealTypeFormState>(emptyForm);
   const [editingType, setEditingType] = useState<MealType | null>(null);
-  const [editName, setEditName] = useState('');
 
   const { data: mealTypes, isLoading, isError, refetch } = useQuery({
     queryKey: mealTypesQueryKey,
@@ -60,7 +76,8 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   }, [queryClient]);
 
   const createMutation = useMutation({
-    mutationFn: (name: string) => createMealType({ name, sort_order: 99 }),
+    mutationFn: (data: { name: string; sort_order: number; default_time: string | null }) =>
+      createMealType(data),
     onSuccess: () => {
       invalidate();
       Toast.show({ type: 'success', text1: 'Meal type created' });
@@ -104,27 +121,89 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   );
 
   const handleAdd = useCallback(() => {
-    const name = newName.trim();
-    if (!name) return;
-    createMutation.mutate(name);
-    setNewName('');
+    const name = form.name.trim();
+    if (!name) {
+      Toast.show({ type: 'error', text1: 'Name is required' });
+      return;
+    }
+    const sortOrder = parseSortOrder(form.sortOrder);
+    if (sortOrder === null) {
+      Toast.show({ type: 'error', text1: 'Invalid order', text2: 'Enter a whole number.' });
+      return;
+    }
+    const defaultTime = form.defaultTime.trim();
+    if (defaultTime && !isEntryTimeString(defaultTime)) {
+      Toast.show({ type: 'error', text1: 'Invalid time', text2: 'Use 24-hour HH:MM (e.g. 07:30, 17:00).' });
+      return;
+    }
+    createMutation.mutate({
+      name,
+      sort_order: sortOrder,
+      default_time: defaultTime || null,
+    });
+    setForm(emptyForm);
     setAddModalVisible(false);
-  }, [newName, createMutation]);
+  }, [form, createMutation]);
 
   const handleEditSave = useCallback(() => {
     if (!editingType) return;
-    const name = editName.trim();
-    if (!name) return;
-    updateMutation.mutate({ id: editingType.id, data: { name } });
+    const name = form.name.trim();
+    if (!name) {
+      Toast.show({ type: 'error', text1: 'Name is required' });
+      return;
+    }
+    const sortOrder = parseSortOrder(form.sortOrder);
+    if (sortOrder === null) {
+      Toast.show({ type: 'error', text1: 'Invalid order', text2: 'Enter a whole number.' });
+      return;
+    }
+    const defaultTime = form.defaultTime.trim();
+    if (defaultTime && !isEntryTimeString(defaultTime)) {
+      Toast.show({ type: 'error', text1: 'Invalid time', text2: 'Use 24-hour HH:MM (e.g. 07:30, 17:00).' });
+      return;
+    }
+    updateMutation.mutate({
+      id: editingType.id,
+      data: {
+        name,
+        sort_order: sortOrder,
+        default_time: defaultTime || null,
+      },
+    });
     setEditModalVisible(false);
     setEditingType(null);
-  }, [editingType, editName, updateMutation]);
+    setForm(emptyForm);
+  }, [editingType, form, updateMutation]);
 
   const openEdit = useCallback((mt: MealType) => {
     setEditingType(mt);
-    setEditName(mt.name);
+    setForm({
+      name: mt.name,
+      sortOrder: String(mt.sort_order ?? ''),
+      defaultTime: toHourMinute(mt.default_time) || '',
+    });
     setEditModalVisible(true);
   }, []);
+
+  const saveDefaultTime = useCallback(
+    (mt: MealType, raw: string) => {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        updateMutation.mutate({ id: mt.id, data: { default_time: null } });
+        return;
+      }
+      if (isEntryTimeString(trimmed)) {
+        updateMutation.mutate({ id: mt.id, data: { default_time: trimmed } });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Invalid time',
+          text2: 'Use 24-hour HH:MM (e.g. 07:30, 17:00).',
+        });
+      }
+    },
+    [updateMutation],
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -149,7 +228,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       ionicon: 'add-outline',
       role: 'primary',
       onPress: () => {
-        setNewName('');
+        setForm(emptyForm);
         setAddModalVisible(true);
       },
       accessibilityLabel: 'Add meal type',
@@ -157,23 +236,62 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     },
   });
 
+  const DefaultTimeInput: React.FC<{ mealType: MealType }> = ({ mealType }) => {
+    const [val, setVal] = useState(toHourMinute(mealType.default_time) || '');
+    // Keep the field in sync when the server returns a fresh value after a
+    // refetch (e.g. after an edit elsewhere clears or changes the time).
+    const [prevSaved, setPrevSaved] = useState(toHourMinute(mealType.default_time) || '');
+    const effective = toHourMinute(mealType.default_time) || '';
+    if (effective !== prevSaved) {
+      setPrevSaved(effective);
+      setVal(effective);
+    }
+    return (
+      <TextInput
+        value={val}
+        onChangeText={setVal}
+        onBlur={() => {
+          if (val.trim() === (toHourMinute(mealType.default_time) || '')) return;
+          saveDefaultTime(mealType, val);
+        }}
+        placeholder="HH:MM"
+        placeholderTextColor="#9CA3AF"
+        className="bg-background border border-border text-text-primary text-xs px-2 py-1 rounded w-20 text-center"
+        keyboardType="numbers-and-punctuation"
+        accessibilityLabel={`Default time for ${mealType.name}`}
+      />
+    );
+  };
+
   const renderMealTypeRow = (mt: MealType, isCustom: boolean) => (
     <View
       key={mt.id}
       className="flex-row items-center py-3 px-4 bg-surface border-b border-border/40"
     >
-      <TouchableOpacity
-        className="flex-1"
-        onPress={() => openEdit(mt)}
-        activeOpacity={0.6}
-      >
-        <Text className="text-base text-text-primary font-medium">{mt.name}</Text>
-        <Text className="text-xs text-text-muted mt-0.5">
-          {isCustom ? 'Custom' : 'System'}
-          {mt.sort_order != null ? ` · Order: ${mt.sort_order}` : ''}
-        </Text>
-      </TouchableOpacity>
-      <View className="flex-row items-center gap-3">
+      {isCustom ? (
+        <TouchableOpacity
+          className="flex-1"
+          onPress={() => openEdit(mt)}
+          activeOpacity={0.6}
+          accessibilityLabel={`Edit ${mt.name}`}
+        >
+          <Text className="text-base text-text-primary font-medium">{mt.name}</Text>
+          <Text className="text-xs text-text-muted mt-0.5">
+            Custom
+            {mt.sort_order != null ? ` · Order: ${mt.sort_order}` : ''}
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <View className="flex-1">
+          <Text className="text-base text-text-primary font-medium">{mt.name}</Text>
+          <Text className="text-xs text-text-muted mt-0.5">
+            System
+            {mt.sort_order != null ? ` · Order: ${mt.sort_order}` : ''}
+          </Text>
+        </View>
+      )}
+      <DefaultTimeInput mealType={mt} />
+      <View className="flex-row items-center gap-2 ml-2">
         <View className="items-center">
           <Text className="text-[10px] text-text-muted mb-0.5">Visible</Text>
           <Switch
@@ -276,15 +394,33 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             onPress={() => {}}
           >
             <Text className="text-lg font-bold text-text-primary mb-4">Add Meal Type</Text>
+            <Text className="text-xs font-semibold text-text-muted uppercase mb-1">Name</Text>
             <TextInput
-              value={newName}
-              onChangeText={setNewName}
+              value={form.name}
+              onChangeText={(name) => setForm((f) => ({ ...f, name }))}
               placeholder="e.g. Pre-Workout"
               placeholderTextColor="#9CA3AF"
               className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base"
               autoFocus
-              onSubmitEditing={handleAdd}
               returnKeyType="done"
+            />
+            <Text className="text-xs font-semibold text-text-muted uppercase mt-4 mb-1">Order</Text>
+            <TextInput
+              value={form.sortOrder}
+              onChangeText={(sortOrder) => setForm((f) => ({ ...f, sortOrder }))}
+              placeholder="e.g. 11"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base"
+            />
+            <Text className="text-xs font-semibold text-text-muted uppercase mt-4 mb-1">Default Time</Text>
+            <TextInput
+              value={form.defaultTime}
+              onChangeText={(defaultTime) => setForm((f) => ({ ...f, defaultTime }))}
+              placeholder="HH:MM (e.g. 07:30)"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numbers-and-punctuation"
+              className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base"
             />
             <View className="flex-row justify-end gap-3 mt-5">
               <TouchableOpacity
@@ -296,6 +432,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
               <TouchableOpacity
                 onPress={handleAdd}
                 className="px-4 py-2 bg-accent-primary rounded-lg"
+                accessibilityLabel="Create meal type"
               >
                 <Text className="text-white font-semibold text-base">Add</Text>
               </TouchableOpacity>
@@ -313,16 +450,34 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             className="bg-surface rounded-xl w-full max-w-sm p-6"
             onPress={() => {}}
           >
-            <Text className="text-lg font-bold text-text-primary mb-4">Rename Meal Type</Text>
+            <Text className="text-lg font-bold text-text-primary mb-4">Edit Meal Type</Text>
+            <Text className="text-xs font-semibold text-text-muted uppercase mb-1">Name</Text>
             <TextInput
-              value={editName}
-              onChangeText={setEditName}
+              value={form.name}
+              onChangeText={(name) => setForm((f) => ({ ...f, name }))}
               placeholder="Name"
               placeholderTextColor="#9CA3AF"
               className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base"
               autoFocus
-              onSubmitEditing={handleEditSave}
               returnKeyType="done"
+            />
+            <Text className="text-xs font-semibold text-text-muted uppercase mt-4 mb-1">Order</Text>
+            <TextInput
+              value={form.sortOrder}
+              onChangeText={(sortOrder) => setForm((f) => ({ ...f, sortOrder }))}
+              placeholder="e.g. 11"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base"
+            />
+            <Text className="text-xs font-semibold text-text-muted uppercase mt-4 mb-1">Default Time</Text>
+            <TextInput
+              value={form.defaultTime}
+              onChangeText={(defaultTime) => setForm((f) => ({ ...f, defaultTime }))}
+              placeholder="HH:MM (e.g. 07:30)"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="numbers-and-punctuation"
+              className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base"
             />
             <View className="flex-row justify-end gap-3 mt-5">
               <TouchableOpacity
@@ -334,6 +489,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
               <TouchableOpacity
                 onPress={handleEditSave}
                 className="px-4 py-2 bg-accent-primary rounded-lg"
+                accessibilityLabel="Save meal type"
               >
                 <Text className="text-white font-semibold text-base">Save</Text>
               </TouchableOpacity>
