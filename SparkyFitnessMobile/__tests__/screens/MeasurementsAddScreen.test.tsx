@@ -797,6 +797,43 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(screen.getByTestId('custom-input-c1').props.value).toBe('10');
   });
 
+  test('a confirmed delete is not re-sent by a retry after a later failure', async () => {
+    setCustomCategories([
+      customCategory({ id: 'c1', frequency: 'Hourly' }),
+      customCategory({ id: 'c2' }),
+    ]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '5' })]);
+    const screen = renderScreen();
+
+    const deleteMock = mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    };
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    };
+
+    // Delete the existing e1 row via its delete button (creates a tombstone).
+    fireEvent.press(screen.getByTestId('delete-custom-entry-e1'));
+    // Add a value for c2 that fails on the first save attempt.
+    fireEvent.changeText(screen.getByTestId('custom-input-c2'), '20');
+
+    deleteMock.mutateAsync.mockResolvedValueOnce(undefined);
+    saveMock.mutateAsync.mockRejectedValueOnce(new Error('boom'));
+    await pressSave(screen);
+    await confirmClearAlert(screen);
+
+    expect(deleteMock.mutateAsync).toHaveBeenCalledTimes(1);
+
+    // Retry: the confirmed delete must not be re-sent; only the failed c2
+    // save is retried.
+    saveMock.mutateAsync.mockResolvedValueOnce(undefined);
+    await pressSave(screen);
+
+    expect(deleteMock.mutateAsync).toHaveBeenCalledTimes(1);
+    expect(saveMock.mutateAsync).toHaveBeenCalledTimes(2);
+    expect(mockNavigation.goBack).toHaveBeenCalled();
+  });
+
   test('retry after refetch keeps dirty values and submits only remaining work', async () => {
     setCustomCategories([customCategory({ id: 'c1' })]);
     const screen = renderScreen();

@@ -594,6 +594,20 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           try {
             if (op.kind === 'delete') {
               await deleteCustomMutation.mutateAsync({ id: op.entryId, entryDate: selectedDate });
+              // A confirmed delete must never be retried: drop its tombstone so
+              // a retry after a later partial failure cannot re-send the delete
+              // for an already-removed entry id.
+              setCustomForm((prev) => {
+                const catForm = prev[op.categoryId];
+                if (!catForm) return prev;
+                return {
+                  ...prev,
+                  [op.categoryId]: {
+                    ...catForm,
+                    deleted: catForm.deleted.filter((d) => d.entryId !== op.entryId),
+                  },
+                };
+              });
             } else {
               // Upstream POST has documented upsert semantics: Daily/Hourly
               // entries are matched and updated by (category, date, hour, source),
