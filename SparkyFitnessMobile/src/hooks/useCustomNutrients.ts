@@ -25,6 +25,7 @@ export function useCustomNutrients({ enabled = true }: UseCustomNutrientsOptions
     customNutrients: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
+    isRefetching: query.isRefetching,
     error: query.error,
     refetch: query.refetch,
   };

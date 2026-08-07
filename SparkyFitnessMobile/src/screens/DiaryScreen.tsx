@@ -18,6 +18,7 @@ import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
 import { useMeasurements } from '../hooks/useMeasurements';
+import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import {
@@ -131,21 +132,45 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const { getImageSource } = useExerciseImageSource();
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
-  const { summary, isLoading, isError, refetch } = useDailySummary({
+  const {
+    summary,
+    isLoading,
+    isError,
+    refetch,
+    isRefetching: isSummaryRefetching,
+  } = useDailySummary({
     date: selectedDate,
     enabled: isConnected,
   });
-  const { measurements, refetch: refetchMeasurements } = useMeasurements({
+  const {
+    measurements,
+    refetch: refetchMeasurements,
+    isRefetching: isMeasurementsRefetching,
+  } = useMeasurements({
     date: selectedDate,
     enabled: isConnected,
   });
-  const { customNutrients } = useCustomNutrients({ enabled: isConnected });
-  const { preferences: nutrientPrefs } = useNutrientDisplayPreferences({ enabled: isConnected });
+  const {
+    data: customMeasurements,
+    refetch: refetchCustomMeasurements,
+    isRefetching: isCustomMeasurementsRefetching,
+  } = useCustomMeasurementsByDate(selectedDate, { enabled: isConnected });
+  const {
+    customNutrients,
+    refetch: refetchCustomNutrients,
+    isRefetching: isCustomNutrientsRefetching,
+  } = useCustomNutrients({ enabled: isConnected });
+  const {
+    preferences: nutrientPrefs,
+    refetch: refetchNutrientPrefs,
+    isRefetching: isNutrientPrefsRefetching,
+  } = useNutrientDisplayPreferences({ enabled: isConnected });
   const diaryNutrientRow = nutrientPrefs.find(
     (p) => p.view_group === 'diary' && p.platform === 'mobile',
   );
   const customNutrientKeys = (diaryNutrientRow?.visible_nutrients ?? []).slice(0, 4);
   const hasAnyMeasurement = useMemo(() => {
+    if (customMeasurements && customMeasurements.length > 0) return true;
     if (!measurements) return false;
     return (
       measurements.weight != null ||
@@ -156,15 +181,40 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       measurements.hips != null ||
       measurements.steps != null
     );
-  }, [measurements]);
+  }, [measurements, customMeasurements]);
 
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const onRefresh = useCallback(async () => {
+    if (!isConnected) return;
     setRefreshing(true);
-    await Promise.all([refetch(), refetchMeasurements()]);
-    setRefreshing(false);
-  }, [refetch, refetchMeasurements]);
+    try {
+      await Promise.all([
+        refetch(),
+        refetchMeasurements(),
+        refetchCustomMeasurements(),
+        refetchCustomNutrients(),
+        refetchNutrientPrefs(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [
+    isConnected,
+    refetch,
+    refetchMeasurements,
+    refetchCustomMeasurements,
+    refetchCustomNutrients,
+    refetchNutrientPrefs,
+  ]);
+
+  const isRefreshing =
+    refreshing ||
+    isSummaryRefetching ||
+    isMeasurementsRefetching ||
+    isCustomMeasurementsRefetching ||
+    isCustomNutrientsRefetching ||
+    isNutrientPrefsRefetching;
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -216,7 +266,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
         automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
         {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
@@ -271,6 +321,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             />
             <MeasurementsSummary
               measurements={measurements}
+              customMeasurements={customMeasurements}
               weightMode={weightMode}
               bodyUnit={bodyUnit}
               heightMode={heightMode}
