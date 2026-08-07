@@ -55,6 +55,21 @@ const nullableOptionalLegacyNumber = z.preprocess((value) => {
   return coerceLegacyNumber(value);
 }, z.number().nullable().optional());
 
+// Same coercion as nullableOptionalLegacyNumber, but whole numbers only.
+// Used for integer columns like record_utc_offset_minutes, where a fractional
+// value must fail validation here instead of erroring at the database layer.
+const nullableOptionalLegacyInteger = z.preprocess((value) => {
+  if (value === '') {
+    return undefined;
+  }
+
+  if (value === null) {
+    return null;
+  }
+
+  return coerceLegacyNumber(value);
+}, z.number().int().nullable().optional());
+
 // Same coercion as nullableOptionalLegacyNumber, plus a domain range. Used for
 // the smart-scale columns so this route enforces the same bounds as the other
 // two write paths (ai/tools/schemas/checkin.ts and the processHealthData
@@ -250,7 +265,7 @@ export const ImportHealthDataItemSchema = z
     source: optionalLegacyString,
     source_id: optionalLegacyString,
     record_timezone: nullableOptionalLegacyString,
-    record_utc_offset_minutes: nullableOptionalLegacyNumber,
+    record_utc_offset_minutes: nullableOptionalLegacyInteger,
     // Sleep session fields (only present on SleepSession rows).
     bedtime: optionalLegacyString,
     wake_time: optionalLegacyString,

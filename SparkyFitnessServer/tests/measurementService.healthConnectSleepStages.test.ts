@@ -97,6 +97,7 @@ describe('processHealthData Health Connect sleep stages', () => {
         light_sleep_seconds: 22500,
         rem_sleep_seconds: 1800,
         awake_sleep_seconds: 900,
+        record_timezone: 'America/New_York',
         record_utc_offset_minutes: -300,
         stage_events: [
           {
@@ -170,6 +171,10 @@ describe('processHealthData Health Connect sleep stages', () => {
         light_sleep_seconds: 22500,
         rem_sleep_seconds: 1800,
         awake_sleep_seconds: 900,
+        // Issue #2033: mobile-sent recording-zone metadata must survive the
+        // sleepSessionHandler field whitelist all the way to the upsert.
+        record_timezone: 'America/New_York',
+        record_utc_offset_minutes: -300,
       })
     );
     expect(

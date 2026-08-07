@@ -385,3 +385,55 @@ describe('processGoogleActivities — exercise record null guard', () => {
     );
   });
 });
+
+// ─── Sleep recording-zone stamp (issue #2033) ───────────────────────────────
+
+describe('processGoogleSleep — recording-zone stamp', () => {
+  it('stamps record_utc_offset_minutes for a string startTime with an explicit offset', async () => {
+    await processGoogleSleep(
+      UID,
+      CID,
+      dataPoints(
+        sleepPoint('2026-05-01T23:30:00-04:00', '2026-05-02T07:00:00-04:00')
+      )
+    );
+    const entry = vi.mocked(sleepRepository.upsertSleepEntry).mock.calls[0][2];
+    expect(entry.record_utc_offset_minutes).toBe(-240);
+  });
+
+  it('stamps nothing for a Z-suffixed string (no zone claim)', async () => {
+    await processGoogleSleep(
+      UID,
+      CID,
+      dataPoints(sleepPoint('2026-05-01T23:30:00Z', '2026-05-02T07:00:00Z'))
+    );
+    const entry = vi.mocked(sleepRepository.upsertSleepEntry).mock.calls[0][2];
+    expect(entry.record_utc_offset_minutes).toBeUndefined();
+  });
+
+  it('stamps nothing for the {date,time} object form', async () => {
+    const point = {
+      sleep: {
+        summary: {
+          minutesAsleep: '420',
+          minutesInSleepPeriod: '450',
+          minutesToFallAsleep: '10',
+        },
+        interval: {
+          startTime: {
+            date: { year: 2026, month: 5, day: 1 },
+            time: { hours: 23, minutes: 30 },
+          },
+          endTime: {
+            date: { year: 2026, month: 5, day: 2 },
+            time: { hours: 7, minutes: 0 },
+          },
+        },
+        stages: [],
+      },
+    };
+    await processGoogleSleep(UID, CID, dataPoints(point));
+    const entry = vi.mocked(sleepRepository.upsertSleepEntry).mock.calls[0][2];
+    expect(entry.record_utc_offset_minutes).toBeUndefined();
+  });
+});

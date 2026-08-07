@@ -231,6 +231,51 @@ describe('processOuraSleep', () => {
     });
   });
 
+  it('stamps record_utc_offset_minutes from the offset-suffixed bedtime_start for main sleep and naps', async () => {
+    await processOuraSleep(
+      UID,
+      CID,
+      [
+        sleepPeriod({
+          bedtime_start: '2026-07-14T23:00:00+02:00',
+          bedtime_end: '2026-07-15T07:00:00+02:00',
+        }),
+        sleepPeriod({
+          id: 'nap-1',
+          type: 'late_nap',
+          bedtime_start: '2026-07-15T13:00:00-04:00',
+          bedtime_end: '2026-07-15T13:30:00-04:00',
+          time_in_bed: 1800,
+          total_sleep_duration: 1500,
+        }),
+      ],
+      []
+    );
+
+    expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledTimes(2);
+    const calls = vi.mocked(sleepRepository.upsertSleepEntry).mock.calls;
+    const main = calls.find((c) => c[2].source === 'Oura')![2];
+    const nap = calls.find((c) => c[2].source === 'Oura Nap')![2];
+    expect(main.record_utc_offset_minutes).toBe(120);
+    expect(nap.record_utc_offset_minutes).toBe(-240);
+  });
+
+  it('stamps no offset when bedtime_start is UTC-normalized with Z (no zone claim)', async () => {
+    await processOuraSleep(
+      UID,
+      CID,
+      [
+        sleepPeriod({
+          bedtime_start: '2026-07-14T23:00:00Z',
+          bedtime_end: '2026-07-15T07:00:00Z',
+        }),
+      ],
+      []
+    );
+    const entry = vi.mocked(sleepRepository.upsertSleepEntry).mock.calls[0][2];
+    expect(entry.record_utc_offset_minutes).toBeNull();
+  });
+
   it('skips rest and deleted sleep periods', async () => {
     await processOuraSleep(
       UID,

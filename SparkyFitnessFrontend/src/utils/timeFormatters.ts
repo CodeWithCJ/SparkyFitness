@@ -1,4 +1,9 @@
 import { format } from 'date-fns';
+import {
+  instantHourMinuteInZone,
+  resolveRecordZone,
+  type RecordZone,
+} from '@workspace/shared';
 
 export function normalizeTimeFormat(timeFormat: string): string {
   if (timeFormat === 'h:mm A') return 'h:mm aa'; // date-fns `aa` -> AM/PM
@@ -73,6 +78,48 @@ export function formatTimeOfDayString(
   const date = new Date(2000, 0, 1, h, m, 0, 0);
   if (isNaN(date.getTime())) return '';
   return formatTimeWithPreference(date, timeFormat);
+}
+
+/**
+ * Formats a UTC instant as a time-of-day string in the given record zone
+ * (IANA timezone or fixed UTC offset), honoring the user's 12h/24h
+ * time-format preference. Renders from extracted hour/minute rather than a
+ * host-local Date so a wall clock that falls inside the browser zone's DST
+ * spring-forward gap is not normalized an hour forward. Deliberately
+ * independent of PreferencesContext so nothing routes through its
+ * literal-date-string heuristics.
+ */
+export function formatTimeInZone(
+  instant: Date | string | number,
+  zone: RecordZone,
+  timeFormat: string
+): string {
+  const date = instant instanceof Date ? instant : new Date(instant);
+  if (isNaN(date.getTime())) return '';
+  const { hour, minute } = instantHourMinuteInZone(date, zone);
+  return formatTimeOfDayString(`${hour}:${minute}`, timeFormat);
+}
+
+/**
+ * Resolves the display zone for a sleep entry: the entry's recorded IANA
+ * timezone, else its recorded UTC offset, else the profile timezone.
+ */
+export function sleepEntryZone(
+  entry: {
+    record_timezone?: string | null;
+    record_utc_offset_minutes?: number | null;
+  },
+  fallbackTz: string
+): RecordZone {
+  return (
+    resolveRecordZone(
+      entry.record_timezone,
+      entry.record_utc_offset_minutes
+    ) ?? {
+      kind: 'tz',
+      tz: fallbackTz,
+    }
+  );
 }
 
 export const formatSecondsClock = (totalSeconds: number): string => {

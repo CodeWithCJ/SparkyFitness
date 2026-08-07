@@ -220,6 +220,95 @@ export function instantHourMinuteWithOffset(
 }
 
 // ---------------------------------------------------------------------------
+// Record-zone precedence (per-entry recording timezone metadata)
+// ---------------------------------------------------------------------------
+
+/** Real-world UTC offsets top out at ±14:00 (spec maximum). */
+const MAX_UTC_OFFSET_MINUTES = 14 * 60;
+
+/**
+ * The zone a health record was captured in: a full IANA timezone, or a fixed
+ * UTC offset in minutes for sources that only report an offset. A fixed
+ * offset cannot follow DST, so a session spanning a transition can show up to
+ * 1h skew on one endpoint — accepted trade-off.
+ */
+export type RecordZone =
+  | { kind: "tz"; tz: string }
+  | { kind: "offset"; minutes: number };
+
+/**
+ * Resolves per-record timezone metadata with the standard precedence:
+ * valid IANA timezone -> integer UTC offset within ±14h -> null (caller falls
+ * back to the profile timezone). Never throws.
+ *
+ * The integer-within-range check is deliberately stricter than the inline
+ * precedence chains in measurementService.resolveHealthEntryDate, which pass
+ * NaN through; moving those chains onto this helper is a behavior change, not
+ * a pure refactor. Stored metadata bypasses the ingestion caps (direct API
+ * writes forward offsets raw), so an out-of-range value must fail here rather
+ * than drive display.
+ */
+export function resolveRecordZone(
+  recordTimezone: string | null | undefined,
+  recordUtcOffsetMinutes: number | null | undefined,
+): RecordZone | null {
+  if (
+    typeof recordTimezone === "string" &&
+    recordTimezone !== "" &&
+    isValidTimeZone(recordTimezone)
+  ) {
+    return { kind: "tz", tz: recordTimezone };
+  }
+  if (
+    typeof recordUtcOffsetMinutes === "number" &&
+    Number.isInteger(recordUtcOffsetMinutes) &&
+    Math.abs(recordUtcOffsetMinutes) <= MAX_UTC_OFFSET_MINUTES
+  ) {
+    return { kind: "offset", minutes: recordUtcOffsetMinutes };
+  }
+  return null;
+}
+
+/** Returns the hour and minute of an instant in a record zone (IANA or fixed offset). */
+export function instantHourMinuteInZone(
+  ts: Date | string | number,
+  zone: RecordZone,
+): { hour: number; minute: number } {
+  return zone.kind === "tz"
+    ? instantHourMinute(ts, zone.tz)
+    : instantHourMinuteWithOffset(ts, zone.minutes);
+}
+
+/**
+ * Extracts the UTC offset (in minutes) from an ISO datetime string's explicit
+ * `±HH:MM` (or `±HHMM`) suffix. An explicit offset is a recording-zone claim;
+ * `Z` is not (APIs routinely normalize instants to UTC), so `Z`-suffixed,
+ * naive, date-only, and unparseable strings all return null, as does the
+ * RFC 3339 unknown-offset form `-00:00`. The suffix only counts on a
+ * complete `YYYY-MM-DD` + time datetime — a stray `±HH:MM` on a malformed
+ * string (e.g. free-text from a chat model) is not a zone claim.
+ */
+export function utcOffsetMinutesFromIsoString(
+  timeStr: string | null | undefined,
+): number | null {
+  if (typeof timeStr !== "string") return null;
+  const m =
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?([+-])(\d{2}):?(\d{2})$/.exec(
+      timeStr.trim(),
+    );
+  if (!m) return null;
+  const hours = Number(m[2]);
+  const mins = Number(m[3]);
+  if (mins > 59) return null;
+  const total = hours * 60 + mins;
+  if (total > MAX_UTC_OFFSET_MINUTES) return null;
+  // RFC 3339 §4.3: "-00:00" declares the local offset unknown — like `Z`,
+  // not a zone claim. "+00:00" is a genuine UTC claim and stays 0.
+  if (m[1] === "-" && total === 0) return null;
+  return m[1] === "-" ? -total : total;
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
 

@@ -4,7 +4,11 @@ import exerciseRepository from '../../models/exercise.js';
 import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
-import { instantToDay, instantHourMinute } from '@workspace/shared';
+import {
+  instantToDay,
+  instantHourMinute,
+  utcOffsetMinutesFromIsoString,
+} from '@workspace/shared';
 import type {
   OuraSleepPeriod,
   OuraDailySleep,
@@ -232,6 +236,11 @@ async function processOuraSleep(
       entry_date: day,
       bedtime: new Date(period.bedtime_start).toISOString(),
       wake_time: new Date(period.bedtime_end).toISOString(),
+      // Oura's bedtime_start carries the recording zone as a ±HH:MM suffix
+      // that toISOString() discards; keep it as an offset stamp.
+      record_utc_offset_minutes: utcOffsetMinutesFromIsoString(
+        period.bedtime_start
+      ),
       duration_in_seconds: period.time_in_bed || 0,
       time_asleep_in_seconds: period.total_sleep_duration || 0,
       sleep_score: scoreByDay.get(day) || 0,
@@ -288,6 +297,9 @@ async function processOuraSleep(
       entry_date: day,
       bedtime: new Date(naps[0].bedtime_start).toISOString(),
       wake_time: new Date(naps[naps.length - 1].bedtime_end).toISOString(),
+      record_utc_offset_minutes: utcOffsetMinutesFromIsoString(
+        naps[0].bedtime_start
+      ),
       duration_in_seconds: timeInBed,
       time_asleep_in_seconds: timeAsleep,
       sleep_score: 0,
