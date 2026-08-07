@@ -1,6 +1,9 @@
-import { render, screen, within } from '@testing-library/react';
+import { useState } from 'react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import ReportsTables from '@/pages/Reports/ReportsTables';
+import ReportsTables, {
+  type TableFilterValue,
+} from '@/pages/Reports/ReportsTables';
 import type { DailyExerciseEntry } from '@/types/reports';
 
 let mockShowNetCarbs = false;
@@ -67,22 +70,33 @@ const durationOnlyExerciseEntry = {
   ],
 } as unknown as DailyExerciseEntry;
 
-const renderTable = (exerciseEntries: DailyExerciseEntry[] = []) =>
-  render(
-    <ReportsTables
-      tabularData={[baseEntry]}
-      exerciseEntries={exerciseEntries}
-      measurementData={[]}
-      customCategories={[]}
-      customMeasurementsData={[]}
-      prData={undefined}
-      onExportFoodDiary={() => {}}
-      onExportBodyMeasurements={() => {}}
-      onExportCustomMeasurements={() => {}}
-      onExportExerciseEntries={() => {}}
-      customNutrients={[]}
-    />
-  );
+const renderTable = (
+  exerciseEntries: DailyExerciseEntry[] = [],
+  initialTable: TableFilterValue = 'all'
+) => {
+  const Wrapper = () => {
+    const [selectedTable, setSelectedTable] =
+      useState<TableFilterValue>(initialTable);
+    return (
+      <ReportsTables
+        tabularData={[baseEntry]}
+        exerciseEntries={exerciseEntries}
+        measurementData={[]}
+        customCategories={[]}
+        customMeasurementsData={[]}
+        prData={undefined}
+        selectedTable={selectedTable}
+        onSelectedTableChange={setSelectedTable}
+        onExportFoodDiary={() => {}}
+        onExportBodyMeasurements={() => {}}
+        onExportCustomMeasurements={() => {}}
+        onExportExerciseEntries={() => {}}
+        customNutrients={[]}
+      />
+    );
+  };
+  return render(<Wrapper />);
+};
 
 describe('ReportsTables net carbs', () => {
   beforeEach(() => {
@@ -127,5 +141,32 @@ describe('ReportsTables duration-only exercise sets', () => {
     expect(
       cells.filter((c) => c.textContent === '-').length
     ).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('ReportsTables table type filter', () => {
+  it('renders all tables by default', () => {
+    renderTable();
+    expect(screen.getByText('Food Diary Table')).toBeInTheDocument();
+    expect(screen.getByText('Exercise Entries Table')).toBeInTheDocument();
+    expect(screen.getByText('Body Measurements Table')).toBeInTheDocument();
+  });
+
+  it('shows only the selected table when a filter is chosen', async () => {
+    renderTable();
+
+    fireEvent.click(screen.getByRole('combobox'));
+    const option = await screen.findByRole('option', {
+      name: /body measurements/i,
+    });
+    fireEvent.click(option);
+
+    expect(
+      screen.getAllByText('Body Measurements Table').length
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('Food Diary Table')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Exercise Entries Table')
+    ).not.toBeInTheDocument();
   });
 });
