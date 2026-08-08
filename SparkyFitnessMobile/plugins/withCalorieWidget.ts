@@ -16,11 +16,11 @@ import {
 import fs from 'fs';
 import path from 'path';
 
-const WIDGET_PACKAGE = 'com.sparkyapps.sparkyfitness.widget';
+export const WIDGET_PACKAGE = 'com.sparkyapps.sparkyfitness.widget';
 const WIDGET_PACKAGE_IMPORT = `import ${WIDGET_PACKAGE}.CalorieWidgetPackage`;
 const WIDGET_PACKAGE_ADD_LINE = 'add(CalorieWidgetPackage())';
 
-const WIDGET_RECEIVERS = [
+export const WIDGET_RECEIVERS = [
   {
     name: `${WIDGET_PACKAGE}.CalorieWidgetReceiver`,
     label: '@string/sparky_calorie_widget_name',
@@ -31,14 +31,113 @@ const WIDGET_RECEIVERS = [
     label: '@string/sparky_macro_widget_name',
     provider: '@xml/sparky_macro_widget_info',
   },
-];
+] as const;
 
 const TEMPLATE_SUFFIX = '.tmpl';
 const SOURCE_DIR_NAME = 'targets/android-widget';
 const KOTLIN_SUBDIR = 'kotlin';
 const RES_SUBDIR = 'res';
 
-async function copyTree(
+export interface AndroidManifestApplication {
+  $?: Record<string, string>;
+  receiver?: Array<{
+    $?: Record<string, string>;
+    'intent-filter'?: unknown[];
+    'meta-data'?: unknown[];
+  }>;
+}
+
+export function addWidgetReceivers(
+  application: AndroidManifestApplication | undefined,
+): AndroidManifestApplication | undefined {
+  if (!application) return application;
+
+  application.receiver = application.receiver ?? [];
+  for (const receiver of WIDGET_RECEIVERS) {
+    const existing = application.receiver.find(
+      (r: { $?: Record<string, string> }) =>
+        r.$?.['android:name'] === receiver.name,
+    );
+
+    const receiverConfig = existing ?? {};
+    receiverConfig.$ = {
+      ...(receiverConfig.$ ?? {}),
+      'android:name': receiver.name,
+      'android:exported': 'false',
+      'android:label': receiver.label,
+    };
+    receiverConfig['intent-filter'] = [
+      {
+        action: [
+          {
+            $: {
+              'android:name': 'android.appwidget.action.APPWIDGET_UPDATE',
+            },
+          },
+        ],
+      },
+    ];
+    receiverConfig['meta-data'] = [
+      {
+        $: {
+          'android:name': 'android.appwidget.provider',
+          'android:resource': receiver.provider,
+        },
+      },
+    ];
+
+    if (!existing) {
+      application.receiver.push(receiverConfig as never);
+    }
+  }
+
+  return application;
+}
+
+export function installWidgetPackages(source: string): string {
+  let src = source;
+
+  if (!src.includes(WIDGET_PACKAGE_IMPORT)) {
+    const importBlockMatch = src.match(/((?:^import [^\n]+\n)+)/m);
+    if (importBlockMatch) {
+      const block = importBlockMatch[1];
+      src = src.replace(block, `${block}${WIDGET_PACKAGE_IMPORT}\n`);
+    } else {
+      src = `${WIDGET_PACKAGE_IMPORT}\n${src}`;
+    }
+  }
+
+  if (!src.includes(WIDGET_PACKAGE_ADD_LINE)) {
+    const applyMatch = src.match(
+      /PackageList\(this\)\.packages\.apply\s*\{\s*\n/,
+    );
+    if (applyMatch && applyMatch.index !== undefined) {
+      const insertAt = applyMatch.index + applyMatch[0].length;
+      src =
+        src.slice(0, insertAt) +
+        `              ${WIDGET_PACKAGE_ADD_LINE}\n` +
+        src.slice(insertAt);
+    } else {
+      throw new Error(
+        '[withCalorieWidget] Could not locate PackageList(this).packages.apply { block in MainApplication.',
+      );
+    }
+  }
+
+  return src;
+}
+
+export function substituteApplicationId(
+  contents: Buffer,
+  applicationId: string,
+): Buffer {
+  const substituted = contents
+    .toString('utf8')
+    .replace(/\{\{APPLICATION_ID\}\}/g, applicationId);
+  return Buffer.from(substituted, 'utf8');
+}
+
+export async function copyTree(
   srcDir: string,
   destDir: string,
   transform?: (srcPath: string, contents: Buffer) => { destName: string; contents: Buffer },
@@ -83,12 +182,9 @@ const withCalorieWidget: ConfigPlugin = (config) => {
       await copyTree(kotlinSrc, kotlinDest, (srcPath, contents) => {
         const base = path.basename(srcPath);
         if (base.endsWith(TEMPLATE_SUFFIX)) {
-          const substituted = contents
-            .toString('utf8')
-            .replace(/\{\{APPLICATION_ID\}\}/g, applicationId);
           return {
             destName: base.slice(0, -TEMPLATE_SUFFIX.length),
-            contents: Buffer.from(substituted, 'utf8'),
+            contents: substituteApplicationId(contents, applicationId),
           };
         }
         return { destName: base, contents };
@@ -102,87 +198,14 @@ const withCalorieWidget: ConfigPlugin = (config) => {
 
   config = withAndroidManifest(config, (config) => {
     const app = config.modResults.manifest.application?.[0];
-    if (!app) return config;
-
-    app.receiver = app.receiver ?? [];
-    for (const receiver of WIDGET_RECEIVERS) {
-      const existing = app.receiver.find(
-        (r: { $?: Record<string, string> }) =>
-          r.$?.['android:name'] === receiver.name,
-      ) as
-        | {
-            $?: Record<string, string>;
-            'intent-filter'?: unknown[];
-            'meta-data'?: unknown[];
-          }
-        | undefined;
-
-      const receiverConfig = existing ?? {};
-      receiverConfig.$ = {
-        ...(receiverConfig.$ ?? {}),
-        'android:name': receiver.name,
-        'android:exported': 'false',
-        'android:label': receiver.label,
-      };
-      receiverConfig['intent-filter'] = [
-        {
-          action: [
-            {
-              $: {
-                'android:name': 'android.appwidget.action.APPWIDGET_UPDATE',
-              },
-            },
-          ],
-        },
-      ];
-      receiverConfig['meta-data'] = [
-        {
-          $: {
-            'android:name': 'android.appwidget.provider',
-            'android:resource': receiver.provider,
-          },
-        },
-      ];
-
-      if (!existing) {
-        app.receiver.push(receiverConfig as unknown as never);
-      }
-    }
-
+    addWidgetReceivers(app as AndroidManifestApplication | undefined);
     return config;
   });
 
   config = withMainApplication(config, (config) => {
-    let src = config.modResults.contents;
-
-    if (!src.includes(WIDGET_PACKAGE_IMPORT)) {
-      const importBlockMatch = src.match(/((?:^import [^\n]+\n)+)/m);
-      if (importBlockMatch) {
-        const block = importBlockMatch[1];
-        src = src.replace(block, `${block}${WIDGET_PACKAGE_IMPORT}\n`);
-      } else {
-        src = `${WIDGET_PACKAGE_IMPORT}\n${src}`;
-      }
-    }
-
-    if (!src.includes(WIDGET_PACKAGE_ADD_LINE)) {
-      const applyMatch = src.match(
-        /PackageList\(this\)\.packages\.apply\s*\{\s*\n/,
-      );
-      if (applyMatch && applyMatch.index !== undefined) {
-        const insertAt = applyMatch.index + applyMatch[0].length;
-        src =
-          src.slice(0, insertAt) +
-          `              ${WIDGET_PACKAGE_ADD_LINE}\n` +
-          src.slice(insertAt);
-      } else {
-        throw new Error(
-          '[withCalorieWidget] Could not locate PackageList(this).packages.apply { block in MainApplication.',
-        );
-      }
-    }
-
-    config.modResults.contents = src;
+    config.modResults.contents = installWidgetPackages(
+      config.modResults.contents,
+    );
     return config;
   });
 
