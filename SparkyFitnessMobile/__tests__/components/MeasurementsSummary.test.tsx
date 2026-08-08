@@ -251,6 +251,9 @@ describe('MeasurementsSummary', () => {
         ]}
       />,
     );
+    // The rendered value text must show the literal 0 (not empty) so a real
+    // zero cannot be silently dropped by formatting.
+    expect(getByText('0')).toBeTruthy();
     expect(getByText('Zero')).toBeTruthy();
   });
 
@@ -270,6 +273,8 @@ describe('MeasurementsSummary', () => {
         ]}
       />,
     );
+    // Boolean false is a real value: the tile renders 'false' text.
+    expect(getByText('false')).toBeTruthy();
     expect(getByText('Flag')).toBeTruthy();
   });
 

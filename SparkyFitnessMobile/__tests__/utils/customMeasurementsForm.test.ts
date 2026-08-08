@@ -14,7 +14,6 @@ const dailyCat = (id: string, dataType = 'numeric'): CustomCategoryMeta => ({
   id,
   name: id,
   display_name: id,
-  measurement_type: '',
   data_type: dataType,
 });
 

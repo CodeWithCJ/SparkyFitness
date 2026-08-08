@@ -928,7 +928,7 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   });
 
   test('integrated health-heavy account does not flood the add screen', async () => {
-    // 40 auto-generated health categories from realistic repository contracts
+    // 100+ auto-generated health categories from realistic repository contracts
     // (DEFAULT_UNITS keys, aggregated variants, Garmin raw, Oura/Fitbit/Polar/
     // Withings/Google names) plus one manual Daily category, one renamed former
     // sync category, and a Garmin raw structured-value category.
@@ -978,9 +978,13 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     // Manual + renamed categories render as editable inputs.
     expect(screen.getByTestId('custom-input-manual-1')).toBeTruthy();
     expect(screen.getByTestId('custom-input-renamed-1')).toBeTruthy();
-    // None of the health categories render (no flood).
-    expect(screen.queryByTestId('custom-input-health-0')).toBeNull();
-    expect(screen.queryByTestId('custom-input-health-99')).toBeNull();
+    // None of the health categories render (no flood) — index-independent:
+    // no input whose testID matches the health-* pattern exists.
+    const rendered = screen.UNSAFE_getAllByType(require('react-native').TextInput);
+    const healthInputs = rendered.filter((el: { props?: { testID?: string } }) =>
+      el.props?.testID?.startsWith('custom-input-health-'),
+    );
+    expect(healthInputs).toHaveLength(0);
     // Hourly is hidden.
     expect(screen.queryByTestId('custom-input-hourly-1')).toBeNull();
     // Standard built-ins remain present and usable.
