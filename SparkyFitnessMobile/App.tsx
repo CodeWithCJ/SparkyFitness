@@ -60,6 +60,7 @@ import {
   SafeMeasurementsAdd,
   SafeChat,
   SafeCalorieSettings,
+  SafeMealTypeSettings,
   SafeFoodSettings,
   SafeDashboardSettings,
   SafeDiarySettings,
@@ -578,6 +579,11 @@ function AppContent() {
             name="FoodSettings"
             component={SafeFoodSettings}
             options={createStackScreenOptions('Food Settings', { headerBackTitle: 'Settings' })}
+          />
+          <Stack.Screen
+            name="MealTypeSettings"
+            component={SafeMealTypeSettings}
+            options={createStackScreenOptions('Meal Types', { headerBackTitle: 'Settings' })}
           />
           <Stack.Screen
             name="DashboardSettings"
