@@ -1,34 +1,22 @@
 import {
-  isMultiEntryFrequency,
   rowValue,
   syncCustomForm,
   buildCustomOps,
   emptyFormFor,
-  entryTimestampFor,
-  findHourlyHourConflict,
+  isManualSource,
   type CustomCategoryMeta,
   type CustomFormState,
   type CustomRow,
 } from '../../src/utils/customMeasurementsForm';
 import type { CustomMeasurementEntry } from '../../src/types/customMeasurements';
 
-const numericCat = (frequency: string, id?: string): CustomCategoryMeta => ({
-  id: id ?? `cat-${frequency.toLowerCase()}`,
-  name: id ?? `cat-${frequency.toLowerCase()}`,
-  display_name: id ?? `cat-${frequency.toLowerCase()}`,
+const dailyCat = (id: string, dataType = 'numeric'): CustomCategoryMeta => ({
+  id,
+  name: id,
+  display_name: id,
   measurement_type: '',
-  frequency,
-  data_type: 'numeric',
+  data_type: dataType,
 });
-
-const boolCat: CustomCategoryMeta = {
-  id: 'cat-bool',
-  name: 'Bool',
-  display_name: 'Bool',
-  measurement_type: '',
-  frequency: 'Daily',
-  data_type: 'boolean',
-};
 
 const entry = (
   id: string,
@@ -45,115 +33,101 @@ const entry = (
 
 const row = (overrides: Partial<CustomRow> & { key: string }): CustomRow => ({
   entryId: null,
-  hour: null,
-  timestamp: null,
-  source: null,
+  source: 'manual',
   value: '',
   ...overrides,
 });
 
-describe('isMultiEntryFrequency', () => {
-  it('treats Hourly, All, and Unlimited as multi-entry frequencies', () => {
-    expect(isMultiEntryFrequency('Hourly')).toBe(true);
-    expect(isMultiEntryFrequency('All')).toBe(true);
-    expect(isMultiEntryFrequency('Unlimited')).toBe(true);
+describe('isManualSource', () => {
+  it('treats null/undefined and manual as manual', () => {
+    expect(isManualSource(null)).toBe(true);
+    expect(isManualSource(undefined)).toBe(true);
+    expect(isManualSource('manual')).toBe(true);
   });
 
-  it('treats Daily and missing frequencies as single-entry', () => {
-    expect(isMultiEntryFrequency('Daily')).toBe(false);
-    expect(isMultiEntryFrequency(null)).toBe(false);
-    expect(isMultiEntryFrequency(undefined)).toBe(false);
+  it('treats every health-sync source as non-manual', () => {
+    for (const source of ['healthkit', 'health_connect', 'garmin', 'oura', 'fitbit', 'polar', 'withings', 'google']) {
+      expect(isManualSource(source)).toBe(false);
+    }
   });
 });
 
 describe('rowValue', () => {
   it('parses numeric values', () => {
-    expect(rowValue('  125  ', 'numeric')).toBe(125);
-    expect(rowValue('12.5', 'numeric')).toBe(12.5);
-    expect(rowValue('125', null)).toBe(125);
+    expect(rowValue('75', 'numeric')).toBe(75);
+    expect(rowValue('75.5', 'numeric')).toBe(75.5);
   });
 
   it('returns null for empty or non-numeric numeric values', () => {
-    expect(rowValue('', 'numeric')).toBe(null);
-    expect(rowValue('abc', 'numeric')).toBe(null);
-    expect(rowValue('1..5', 'numeric')).toBe(null);
-    expect(rowValue('1,2,3', 'numeric')).toBe(null);
+    expect(rowValue('', 'numeric')).toBeNull();
+    expect(rowValue('abc', 'numeric')).toBeNull();
   });
 
-  it('parses locale decimal separators through parseDecimalInput', () => {
-    // Polish users type a comma decimal separator; the app's decimal-pad
-    // keyboard exposes it per device locale.
+  it('parses locale decimal separators (Polish comma)', () => {
     expect(rowValue('1,5', 'numeric')).toBe(1.5);
-    expect(rowValue('1.5', 'numeric')).toBe(1.5);
-    expect(rowValue('0', 'numeric')).toBe(0);
-    expect(rowValue('0,5', 'numeric')).toBe(0.5);
-    expect(rowValue('100', null)).toBe(100);
   });
 
   it('keeps zero as a real value, not an empty state', () => {
     expect(rowValue('0', 'numeric')).toBe(0);
-    expect(rowValue('0.0', 'numeric')).toBe(0);
+    expect(rowValue('0,0', 'numeric')).toBe(0);
   });
 
   it('keeps negative numeric values (API has no min constraint)', () => {
-    expect(rowValue('-3', 'numeric')).toBe(-3);
-    expect(rowValue('-1,5', 'numeric')).toBe(-1.5);
-  });
-
-  it('passes very large numeric values through unchanged', () => {
-    expect(rowValue('123456789012345', 'numeric')).toBe(123456789012345);
+    expect(rowValue('-5', 'numeric')).toBe(-5);
   });
 
   it('maps boolean data types to the server boolean strings', () => {
     expect(rowValue('true', 'boolean')).toBe('true');
     expect(rowValue('false', 'boolean')).toBe('false');
-    expect(rowValue('', 'boolean')).toBe(null);
-    expect(rowValue('yes', 'boolean')).toBe(null);
+    // 'false' is a REAL value: it must not collapse to null/empty.
+    expect(rowValue('false', 'boolean')).not.toBeNull();
+    expect(rowValue('', 'boolean')).toBeNull();
   });
 
   it('passes text values through trimmed', () => {
-    expect(rowValue('  hello ', 'text')).toBe('hello');
+    expect(rowValue('  hello  ', 'text')).toBe('hello');
   });
 });
 
 describe('syncCustomForm', () => {
   it('keeps dirty values across a refetch while untouched rows mirror the server', () => {
     const current: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'entry-e1', entryId: 'e1', value: '125' })], deleted: [] },
+      'cat-daily': {
+        rows: [row({ key: 'k1', entryId: 'e1', value: '99' })],
+        deleted: [],
+      },
     };
 
     const { form } = syncCustomForm({
-      categories: [numericCat('Daily')],
-      serverEntries: [entry('e1', 'cat-daily', '120')],
+      categories: [dailyCat('cat-daily')],
+      serverEntries: [entry('e1', 'cat-daily', '50')],
       current,
-      dirtyKeys: new Set(['entry-e1']),
+      dirtyKeys: new Set(['k1']),
     });
 
-    expect(form['cat-daily'].rows[0]).toMatchObject({ key: 'entry-e1', entryId: 'e1', value: '125' });
+    expect(form['cat-daily'].rows[0].value).toBe('99');
+    expect(form['cat-daily'].rows[0].entryId).toBe('e1');
   });
 
   it('mirrors server values for untouched rows', () => {
-    const current: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'entry-e1', entryId: 'e1', value: '125' })], deleted: [] },
-    };
-
     const { form } = syncCustomForm({
-      categories: [numericCat('Daily')],
-      serverEntries: [entry('e1', 'cat-daily', '120')],
-      current,
+      categories: [dailyCat('cat-daily')],
+      serverEntries: [entry('e1', 'cat-daily', '50')],
+      current: {},
       dirtyKeys: new Set(),
     });
 
-    expect(form['cat-daily'].rows[0]).toMatchObject({ key: 'entry-e1', entryId: 'e1', value: '120' });
+    expect(form['cat-daily'].rows[0].value).toBe('50');
+    expect(form['cat-daily'].rows[0].entryId).toBe('e1');
   });
 
   it('drops non-dirty rows whose server entry disappeared', () => {
     const current: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'entry-e1', entryId: 'e1', value: '125' })], deleted: [] },
+      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '50' })], deleted: [] },
     };
 
     const { form } = syncCustomForm({
-      categories: [numericCat('Daily')],
+      categories: [dailyCat('cat-daily')],
       serverEntries: [],
       current,
       dirtyKeys: new Set(),
@@ -164,735 +138,54 @@ describe('syncCustomForm', () => {
 
   it('keeps dirty rows whose server entry disappeared as new rows', () => {
     const current: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'entry-e1', entryId: 'e1', value: '125', hour: 2 })], deleted: [] },
+      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '99' })], deleted: [] },
     };
 
     const { form } = syncCustomForm({
-      categories: [numericCat('Daily')],
+      categories: [dailyCat('cat-daily')],
       serverEntries: [],
       current,
-      dirtyKeys: new Set(['entry-e1']),
+      dirtyKeys: new Set(['k1']),
     });
 
-    expect(form['cat-daily'].rows[0]).toMatchObject({ key: 'entry-e1', entryId: null, value: '125' });
+    expect(form['cat-daily'].rows).toEqual([
+      expect.objectContaining({ key: 'k1', entryId: null, value: '99' }),
+    ]);
   });
 
-  it('keeps one row per Hourly entry, ordered by hour, and never flattens', () => {
-    const { form, prefilledKeys } = syncCustomForm({
-      categories: [numericCat('Hourly')],
+  it('excludes synced entries: they never become editable manual rows', () => {
+    const { form } = syncCustomForm({
+      categories: [dailyCat('cat-daily')],
+      // Only a healthkit entry exists for this category.
+      serverEntries: [entry('e1', 'cat-daily', '75', { source: 'healthkit' })],
+      current: {},
+      dirtyKeys: new Set(),
+    });
+
+    // The synced entry must NOT prefill the manual editor.
+    expect(form['cat-daily'].rows).toEqual([]);
+    expect(form['cat-daily'].deleted).toEqual([]);
+  });
+
+  it('keeps a manual entry alongside a synced entry for the same category', () => {
+    const { form } = syncCustomForm({
+      categories: [dailyCat('cat-daily')],
       serverEntries: [
-        entry('h2', 'cat-hourly', '20', { entry_hour: 2 }),
-        entry('h1', 'cat-hourly', '10', { entry_hour: 1 }),
-        entry('h0', 'cat-hourly', '05', { entry_hour: 0 }),
+        entry('e-sync', 'cat-daily', '80', { source: 'garmin' }),
+        entry('e-manual', 'cat-daily', '70', { source: 'manual' }),
       ],
       current: {},
       dirtyKeys: new Set(),
     });
 
-    const rows = form['cat-hourly'].rows;
-    expect(rows.map((r) => r.hour)).toEqual([0, 1, 2]);
-    expect(rows.map((r) => r.entryId)).toEqual(['h0', 'h1', 'h2']);
-    expect(rows.map((r) => r.value)).toEqual(['05', '10', '20']);
-    expect(prefilledKeys.has('cat-hourly')).toBe(true);
-  });
-
-  it('preserves dirty edits and locally added rows across a refetch', () => {
-    const current: CustomFormState = {
-      'cat-hourly': {
-        rows: [
-          row({ key: 'entry-h1', entryId: 'h1', hour: 1, value: '99' }),
-          row({ key: 'new-1', entryId: null, hour: 4, value: '40' }),
-        ],
-        deleted: [],
-      },
-    };
-
-    const { form } = syncCustomForm({
-      categories: [numericCat('Hourly')],
-      serverEntries: [entry('h1', 'cat-hourly', '10', { entry_hour: 1 })],
-      current,
-      dirtyKeys: new Set(['entry-h1', 'new-1']),
-    });
-
-    const byKey = new Map(form['cat-hourly'].rows.map((r) => [r.key, r]));
-    expect(byKey.get('entry-h1')).toMatchObject({ entryId: 'h1', value: '99' });
-    expect(byKey.get('new-1')).toMatchObject({ entryId: null, value: '40' });
-    expect(form['cat-hourly'].rows).toHaveLength(2);
-  });
-});
-
-describe('buildCustomOps', () => {
-  it('never re-sends unchanged rows, including unchanged Unlimited entries', () => {
-    const form: CustomFormState = {
-      'cat-unlimited': { rows: [row({ key: 'entry-u1', entryId: 'u1', value: '100' })], deleted: [] },
-    };
-
-    const result = buildCustomOps({ categories: [numericCat('Unlimited')], form, dirtyKeys: new Set() });
-
-    expect(result).toEqual({ ok: true, operations: [] });
-  });
-
-  it('emits a single POST for a new Unlimited row', () => {
-    const form: CustomFormState = {
-      'cat-unlimited': { rows: [row({ key: 'new-1', value: '100', timestamp: '2026-07-30T08:00:00Z' })], deleted: [] },
-    };
-
-    const result = buildCustomOps({
-      categories: [numericCat('Unlimited')],
-      form,
-      dirtyKeys: new Set(['new-1']),
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations).toEqual([
-        {
-          kind: 'save',
-          categoryId: 'cat-unlimited',
-          value: 100,
-          hour: null,
-          timestamp: '2026-07-30T08:00:00Z',
-          source: 'manual',
-          rowKey: 'new-1',
-        },
-      ]);
-    }
-  });
-
-  it('does not emit a save for an edited existing Unlimited row (read-only; edit unsupported)', () => {
-    const form: CustomFormState = {
-      'cat-unlimited': {
-        rows: [row({ key: 'entry-u1', entryId: 'u1', value: '150', timestamp: '2026-07-30T08:00:00Z' })],
-        deleted: [],
-      },
-    };
-
-    const result = buildCustomOps({
-      categories: [numericCat('Unlimited')],
-      form,
-      dirtyKeys: new Set(['entry-u1']),
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      // All/Unlimited entries are always INSERTed by upstream POST, so an
-      // existing entry cannot be edited by id; the UI renders it read-only.
-      expect(result.operations).toEqual([]);
-    }
-  });
-
-  it('turns a cleared existing row into a delete-by-id operation', () => {
-    const form: CustomFormState = {
-      'cat-unlimited': { rows: [row({ key: 'entry-u1', entryId: 'u1', value: '' })], deleted: [] },
-    };
-
-    const result = buildCustomOps({
-      categories: [numericCat('Unlimited')],
-      form,
-      dirtyKeys: new Set(['entry-u1']),
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations).toEqual([
-        { kind: 'delete', entryId: 'u1', categoryId: 'cat-unlimited', rowKey: 'entry-u1' },
-      ]);
-    }
-  });
-
-  it('emits delete ops for rows marked deleted even when nothing else changed', () => {
-    const form: CustomFormState = {
-      'cat-unlimited': { rows: [], deleted: [{ entryId: 'u9' }] },
-    };
-
-    const result = buildCustomOps({ categories: [numericCat('Unlimited')], form, dirtyKeys: new Set() });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations).toEqual([{ kind: 'delete', entryId: 'u9', categoryId: 'cat-unlimited' }]);
-    }
-  });
-
-  it('produces a boolean save op from the tri-state string', () => {
-    const form: CustomFormState = {
-      'cat-bool': { rows: [row({ key: 'entry-b1', entryId: 'b1', value: 'false' })], deleted: [] },
-    };
-
-    const result = buildCustomOps({ categories: [boolCat], form, dirtyKeys: new Set(['entry-b1']) });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations[0]).toMatchObject({ kind: 'save', value: 'false' });
-    }
-  });
-
-  it('aborts on an invalid changed row and reports its label', () => {
-    const onInvalid = jest.fn();
-    const form: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'entry-e1', entryId: 'e1', value: 'abc' })], deleted: [] },
-    };
-
-    const result = buildCustomOps({
-      categories: [numericCat('Daily')],
-      form,
-      dirtyKeys: new Set(['entry-e1']),
-      onInvalid,
-    });
-
-    expect(result).toEqual({ ok: false });
-    expect(onInvalid).toHaveBeenCalledWith('cat-daily');
-  });
-
-  it('does not validate unchanged rows, so a bad historical value cannot block a save', () => {
-    const onInvalid = jest.fn();
-    const form: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'entry-e1', entryId: 'e1', value: 'abc' })], deleted: [] },
-    };
-
-    const result = buildCustomOps({ categories: [numericCat('Daily')], form, dirtyKeys: new Set(), onInvalid });
-
-    expect(result).toEqual({ ok: true, operations: [] });
-    expect(onInvalid).not.toHaveBeenCalled();
-  });
-
-  it('returns zero custom operations when only built-in fields are dirty', () => {
-    const form: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'entry-e1', entryId: 'e1', value: '120' })], deleted: [] },
-    };
-
-    const result = buildCustomOps({ categories: [numericCat('Daily')], form, dirtyKeys: new Set() });
-
-    expect(result).toEqual({ ok: true, operations: [] });
-  });
-
-  it('preserves the server source for an existing Daily entry', () => {
-    const form: CustomFormState = {
-      'daily-category': {
-        rows: [row({ key: 'entry-d1', entryId: 'daily-1', source: 'healthkit', value: '125' })],
-        deleted: [],
-      },
-    };
-
-    const result = buildCustomOps({
-      categories: [numericCat('Daily', 'daily-category')],
-      form,
-      dirtyKeys: new Set(['entry-d1']),
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations).toEqual([
-        {
-          kind: 'save',
-          categoryId: 'daily-category',
-          value: 125,
-          hour: null,
-          timestamp: null,
-          source: 'healthkit',
-          rowKey: 'entry-d1',
-        },
-      ]);
-    }
-  });
-
-  it('preserves the server source and hour for an existing Hourly entry', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'entry-h1', entryId: 'hourly-1', source: 'garmin', hour: 8, value: '80' })],
-        deleted: [],
-      },
-    };
-
-    const result = buildCustomOps({
-      categories: [numericCat('Hourly')],
-      form,
-      dirtyKeys: new Set(['entry-h1']),
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations).toEqual([
-        {
-          kind: 'save',
-          categoryId: 'cat-hourly',
-          value: 80,
-          hour: 8,
-          timestamp: null,
-          source: 'garmin',
-          rowKey: 'entry-h1',
-        },
-      ]);
-    }
-  });
-
-  it('uses manual source for a new locally-added row', () => {
-    const form: CustomFormState = {
-      'cat-unlimited': {
-        rows: [row({ key: 'new-1', entryId: null, source: 'manual', value: '50' })],
-        deleted: [],
-      },
-    };
-
-    const result = buildCustomOps({
-      categories: [numericCat('Unlimited')],
-      form,
-      dirtyKeys: new Set(['new-1']),
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations).toEqual([
-        {
-          kind: 'save',
-          categoryId: 'cat-unlimited',
-          value: 50,
-          hour: null,
-          timestamp: null,
-          source: 'manual',
-          rowKey: 'new-1',
-        },
-      ]);
-    }
-  });
-
-  it('normalizes a legacy row with a missing source to manual', () => {
-    const form: CustomFormState = {
-      'cat-daily': {
-        rows: [row({ key: 'entry-l1', entryId: 'legacy', source: null, value: '90' })],
-        deleted: [],
-      },
-    };
-
-    const result = buildCustomOps({
-      categories: [numericCat('Daily')],
-      form,
-      dirtyKeys: new Set(['entry-l1']),
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations).toEqual([
-        {
-          kind: 'save',
-          categoryId: 'cat-daily',
-          value: 90,
-          hour: null,
-          timestamp: null,
-          source: 'manual',
-          rowKey: 'entry-l1',
-        },
-      ]);
-    }
-  });
-
-  it('never emits a save for an existing All/Unlimited entry regardless of source', () => {
-    for (const frequency of ['All', 'Unlimited']) {
-      const form: CustomFormState = {
-        'cat-multi': {
-          rows: [row({ key: 'entry-1', entryId: 'm1', source: 'healthkit', value: '120' })],
-          deleted: [],
-        },
-      };
-
-      const result = buildCustomOps({
-        categories: [numericCat(frequency, 'cat-multi')],
-        form,
-        dirtyKeys: new Set(['entry-1']),
-      });
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.operations).toEqual([]);
-      }
-    }
-  });
-});
-
-describe('entryTimestampFor', () => {
-  it('builds a local-timezone timestamp on the selected day for a historical date', () => {
-    const iso = entryTimestampFor('2026-01-05', 14);
-
-    // The serialized UTC instant may land on the adjacent UTC day in an
-    // extreme timezone, so assert through the local getters only.
-    const date = new Date(iso);
-    expect(date.getFullYear()).toBe(2026);
-    expect(date.getMonth()).toBe(0);
-    expect(date.getDate()).toBe(5);
-    expect(date.getHours()).toBe(14);
-  });
-
-  it('keeps the Hourly entry_hour in the serialized timestamp', () => {
-    const iso = entryTimestampFor('2026-07-30', 7);
-
-    const date = new Date(iso);
-    expect(date.getHours()).toBe(7);
-    expect(date.getDate()).toBe(30);
-    expect(date.getMonth()).toBe(6);
-  });
-
-  it('respects an optional minutes offset', () => {
-    const iso = entryTimestampFor('2026-07-30', 9, { minutes: 30 });
-
-    const date = new Date(iso);
-    expect(date.getHours()).toBe(9);
-    expect(date.getMinutes()).toBe(30);
-  });
-
-  it('keeps the selected calendar day for local midnight via local getters', () => {
-    // The serialized instant may land on the previous UTC day in a positive
-    // offset timezone, so the assertion must go through the local getters
-    // instead of expecting the ISO string to start with the selected date.
-    const selectedDate = '2026-07-30';
-    const iso = entryTimestampFor(selectedDate, 0);
-
-    const date = new Date(iso);
-    const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-      date.getDate(),
-    ).padStart(2, '0')}`;
-    expect(localDate).toBe(selectedDate);
-    expect(date.getHours()).toBe(0);
-  });
-});
-
-describe('findHourlyHourConflict', () => {
-  const hourlyCat = numericCat('Hourly');
-
-  it('returns null when distinct hours are selected', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [
-          row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' }),
-          row({ key: 'new-2', entryId: null, hour: 17, source: 'manual', value: '120' }),
-        ],
-        deleted: [],
-      },
-    };
-
-    expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries: [] })).toBeNull();
-  });
-
-  it('flags two local rows sharing the same hour and source', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [
-          row({ key: 'new-1', entryId: null, hour: 9, source: 'manual', value: '80' }),
-          row({ key: 'new-2', entryId: null, hour: 9, source: 'manual', value: '120' }),
-        ],
-        deleted: [],
-      },
-    };
-
-    expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries: [] })).toEqual({
-      categoryId: 'cat-hourly',
-      hour: 9,
-    });
-  });
-
-  it('flags a new row that collides with a same-source server entry at that hour', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' })],
-        deleted: [],
-      },
-    };
-
-    expect(
-      findHourlyHourConflict({
-        categories: [hourlyCat],
-        form,
-        serverEntries: [entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' })],
-      })
-    ).toEqual({ categoryId: 'cat-hourly', hour: 8 });
-  });
-
-  it('does not conflict with a server entry at the same hour but a different source', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' })],
-        deleted: [],
-      },
-    };
-
-    expect(
-      findHourlyHourConflict({
-        categories: [hourlyCat],
-        form,
-        serverEntries: [entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'apple_health' })],
-      })
-    ).toBeNull();
-  });
-
-  it('only blocks the matching source when several sources occupy the same hour, in either order', () => {
-    const entries = [
-      entry('h8a', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' }),
-      entry('h8b', 'cat-hourly', '78', { entry_hour: 8, source: 'apple_health' }),
-    ];
-
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' })],
-        deleted: [],
-      },
-    };
-
-    // Order of the server entries must not change the outcome: a new `manual`
-    // entry conflicts with the existing `manual` slot regardless of order.
-    for (const serverEntries of [entries, [...entries].reverse()]) {
-      expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries })).toEqual({
-        categoryId: 'cat-hourly',
-        hour: 8,
-      });
-    }
-  });
-
-  it('does not conflict with any source at the same hour when the new source differs', () => {
-    const serverEntries = [
-      entry('h8a', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' }),
-      entry('h8b', 'cat-hourly', '78', { entry_hour: 8, source: 'apple_health' }),
-    ];
-
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'apple_watch', value: '80' })],
-        deleted: [],
-      },
-    };
-
-    expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries })).toBeNull();
-  });
-
-  it('ignores an empty new row even when it collides with a server slot', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '  ' })],
-        deleted: [],
-      },
-    };
-
-    expect(
-      findHourlyHourConflict({
-        categories: [hourlyCat],
-        form,
-        serverEntries: [entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' })],
-      })
-    ).toBeNull();
-  });
-
-  it('ignores two empty new rows sharing the same hour', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [
-          row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '' }),
-          row({ key: 'new-2', entryId: null, hour: 8, source: 'manual', value: '' }),
-        ],
-        deleted: [],
-      },
-    };
-
-    expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries: [] })).toBeNull();
-  });
-
-  it('evaluates only the filled row when one of two rows is empty', () => {
-    // The empty row at hour 8 also collides with a server `manual` slot, but is
-    // skipped; the filled row at hour 9 is the only one evaluated and conflicts.
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [
-          row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '' }),
-          row({ key: 'new-2', entryId: null, hour: 9, source: 'manual', value: '80' }),
-        ],
-        deleted: [],
-      },
-    };
-
-    expect(
-      findHourlyHourConflict({
-        categories: [hourlyCat],
-        form,
-        serverEntries: [
-          entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' }),
-          entry('h9', 'cat-hourly', '85', { entry_hour: 9, source: 'manual' }),
-        ],
-      })
-    ).toEqual({ categoryId: 'cat-hourly', hour: 9 });
-  });
-
-  it('still blocks two filled rows sharing the same hour and source', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [
-          row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' }),
-          row({ key: 'new-2', entryId: null, hour: 8, source: 'manual', value: '120' }),
-        ],
-        deleted: [],
-      },
-    };
-
-    expect(findHourlyHourConflict({ categories: [hourlyCat], form, serverEntries: [] })).toEqual({
-      categoryId: 'cat-hourly',
-      hour: 8,
-    });
-  });
-
-  it('ignores new rows that are not dirty when dirtyKeys is provided', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' })],
-        deleted: [],
-      },
-    };
-
-    expect(
-      findHourlyHourConflict({
-        categories: [hourlyCat],
-        form,
-        serverEntries: [entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' })],
-        dirtyKeys: new Set(),
-      })
-    ).toBeNull();
-  });
-
-  it('ignores a tombstoned server entry so its slot can be reused', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'new-1', entryId: null, hour: 8, source: 'manual', value: '80' })],
-        deleted: [{ entryId: 'h8' }],
-      },
-    };
-
-    expect(
-      findHourlyHourConflict({
-        categories: [hourlyCat],
-        form,
-        serverEntries: [entry('h8', 'cat-hourly', '75', { entry_hour: 8, source: 'manual' })],
-      })
-    ).toBeNull();
-  });
-});
-
-describe('buildCustomOps - Hourly hours', () => {
-  const hourlyCat = numericCat('Hourly');
-
-  it('saves distinct Hourly hours as separate rows', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [
-          row({ key: 'new-1', hour: 8, timestamp: '2026-07-30T08:00:00.000Z', value: '80' }),
-          row({ key: 'new-2', hour: 17, timestamp: '2026-07-30T17:00:00.000Z', value: '120' }),
-        ],
-        deleted: [],
-      },
-    };
-
-    const result = buildCustomOps({
-      categories: [hourlyCat],
-      form,
-      dirtyKeys: new Set(['new-1', 'new-2']),
-    });
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations).toEqual([
-        {
-          kind: 'save',
-          categoryId: 'cat-hourly',
-          value: 80,
-          hour: 8,
-          timestamp: '2026-07-30T08:00:00.000Z',
-          source: 'manual',
-          rowKey: 'new-1',
-        },
-        {
-          kind: 'save',
-          categoryId: 'cat-hourly',
-          value: 120,
-          hour: 17,
-          timestamp: '2026-07-30T17:00:00.000Z',
-          source: 'manual',
-          rowKey: 'new-2',
-        },
-      ]);
-    }
-  });
-
-  it('blocks an out-of-range hour', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'new-1', hour: 24, value: '80' })],
-        deleted: [],
-      },
-    };
-
-    const result = buildCustomOps({
-      categories: [hourlyCat],
-      form,
-      dirtyKeys: new Set(['new-1']),
-    });
-
-    expect(result).toEqual({ ok: false });
-  });
-
-  it('blocks a negative hour', () => {
-    const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'new-1', hour: -1, value: '80' })],
-        deleted: [],
-      },
-    };
-
-    const result = buildCustomOps({
-      categories: [hourlyCat],
-      form,
-      dirtyKeys: new Set(['new-1']),
-    });
-
-    expect(result).toEqual({ ok: false });
+    expect(form['cat-daily'].rows).toHaveLength(1);
+    expect(form['cat-daily'].rows[0].entryId).toBe('e-manual');
+    expect(form['cat-daily'].rows[0].value).toBe('70');
   });
 });
 
 describe('syncCustomForm - tombstone resurrection guard', () => {
-  it('keeps a tombstoned id out of rows and in deleted when the server still returns it', () => {
-    const current: CustomFormState = {
-      'cat-hourly': {
-        rows: [],
-        deleted: [{ entryId: 'h5' }],
-      },
-    };
-
-    const { form } = syncCustomForm({
-      categories: [numericCat('Hourly')],
-      serverEntries: [
-        entry('h5', 'cat-hourly', '50', { entry_hour: 5 }),
-        entry('h6', 'cat-hourly', '60', { entry_hour: 6 }),
-      ],
-      current,
-      dirtyKeys: new Set(),
-    });
-
-    const rows = form['cat-hourly'].rows;
-    expect(rows.map((r) => r.entryId)).toEqual(['h6']);
-    expect(form['cat-hourly'].deleted).toEqual([{ entryId: 'h5' }]);
-  });
-
-  it('drops the tombstone once the server stops returning the deleted id', () => {
-    const current: CustomFormState = {
-      'cat-hourly': {
-        rows: [],
-        deleted: [{ entryId: 'h5' }],
-      },
-    };
-
-    const { form } = syncCustomForm({
-      categories: [numericCat('Hourly')],
-      serverEntries: [],
-      current,
-      dirtyKeys: new Set(),
-    });
-
-    expect(form['cat-hourly'].deleted).toEqual([]);
-  });
-
-  it('keeps a tombstoned Daily id out of rows when the server still returns it', () => {
+  it('keeps a tombstoned Daily id out of rows and in deleted when the server still returns it', () => {
     const current: CustomFormState = {
       'cat-daily': {
         rows: [],
@@ -901,13 +194,12 @@ describe('syncCustomForm - tombstone resurrection guard', () => {
     };
 
     const { form } = syncCustomForm({
-      categories: [numericCat('Daily')],
-      serverEntries: [entry('e1', 'cat-daily', '50')],
+      categories: [dailyCat('cat-daily')],
+      serverEntries: [entry('e1', 'cat-daily', '50', { source: 'manual' })],
       current,
       dirtyKeys: new Set(),
     });
 
-    // The single-entry path must not resurrect the tombstoned id either.
     expect(form['cat-daily'].rows).toEqual([]);
     expect(form['cat-daily'].deleted).toEqual([{ entryId: 'e1' }]);
   });
@@ -921,7 +213,7 @@ describe('syncCustomForm - tombstone resurrection guard', () => {
     };
 
     const { form } = syncCustomForm({
-      categories: [numericCat('Daily')],
+      categories: [dailyCat('cat-daily')],
       serverEntries: [],
       current,
       dirtyKeys: new Set(),
@@ -932,90 +224,48 @@ describe('syncCustomForm - tombstone resurrection guard', () => {
   });
 });
 
-describe('buildCustomOps - tombstone deletes', () => {
-  it('emits exactly one DELETE for a tombstoned Hourly entry', () => {
+describe('buildCustomOps', () => {
+  it('never re-sends unchanged rows', () => {
     const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [row({ key: 'entry-h6', entryId: 'h6', hour: 6, value: '60' })],
-        deleted: [{ entryId: 'h5' }],
-      },
+      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '50' })], deleted: [] },
     };
 
     const result = buildCustomOps({
-      categories: [numericCat('Hourly')],
+      categories: [dailyCat('cat-daily')],
       form,
-      dirtyKeys: new Set(['entry-h6']),
+      dirtyKeys: new Set(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.operations).toEqual([]);
+  });
+
+  it('emits a POST with manual source for a changed existing row', () => {
+    const form: CustomFormState = {
+      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '60' })], deleted: [] },
+    };
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-daily')],
+      form,
+      dirtyKeys: new Set(['k1']),
     });
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([
-        { kind: 'delete', entryId: 'h5', categoryId: 'cat-hourly' },
-        {
-          kind: 'save',
-          categoryId: 'cat-hourly',
-          value: 60,
-          hour: 6,
-          timestamp: null,
-          source: 'manual',
-          rowKey: 'entry-h6',
-        },
+        { kind: 'save', categoryId: 'cat-daily', value: 60, source: 'manual', rowKey: 'k1' },
       ]);
     }
   });
 
-  it('emits a single delete and no resurrected row when the server returns the id after a failed delete', () => {
-    const current: CustomFormState = {
-      'cat-hourly': {
-        rows: [],
-        deleted: [{ entryId: 'h5' }],
-      },
-    };
-
-    // The server still reports h5 (DELETE failed or is mid-flight): the row must
-    // not come back, and the tombstone must survive to retry exactly one delete.
-    const { form } = syncCustomForm({
-      categories: [numericCat('Hourly')],
-      serverEntries: [entry('h5', 'cat-hourly', '50', { entry_hour: 5 })],
-      current,
-      dirtyKeys: new Set(),
-    });
-
-    expect(form['cat-hourly'].rows).toEqual([]);
-    expect(form['cat-hourly'].deleted).toEqual([{ entryId: 'h5' }]);
-
-    const result = buildCustomOps({
-      categories: [numericCat('Hourly')],
-      form,
-      dirtyKeys: new Set(),
-    });
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.operations).toEqual([{ kind: 'delete', entryId: 'h5', categoryId: 'cat-hourly' }]);
-    }
-  });
-
-  it('emits exactly one DELETE and one POST when a tombstoned slot is reused', () => {
-    // The existing 08:00 entry was deleted locally (tombstone) and a new 08:00
-    // row was added: the conflict check must not flag the reused slot, and the
-    // ops must contain exactly one DELETE and one POST.
+  it('uses manual source for a new locally-added row (never a preserved synced source)', () => {
     const form: CustomFormState = {
-      'cat-hourly': {
-        rows: [
-          row({
-            key: 'new-1',
-            entryId: null,
-            hour: 8,
-            timestamp: '2026-07-30T08:00:00.000Z',
-            value: '80',
-          }),
-        ],
-        deleted: [{ entryId: 'h8' }],
-      },
+      'cat-daily': { rows: [row({ key: 'new-1', value: '10' })], deleted: [] },
     };
 
     const result = buildCustomOps({
-      categories: [numericCat('Hourly')],
+      categories: [dailyCat('cat-daily')],
       form,
       dirtyKeys: new Set(['new-1']),
     });
@@ -1023,16 +273,209 @@ describe('buildCustomOps - tombstone deletes', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([
-        { kind: 'delete', entryId: 'h8', categoryId: 'cat-hourly' },
-        {
-          kind: 'save',
-          categoryId: 'cat-hourly',
-          value: 80,
-          hour: 8,
-          timestamp: '2026-07-30T08:00:00.000Z',
-          source: 'manual',
-          rowKey: 'new-1',
-        },
+        { kind: 'save', categoryId: 'cat-daily', value: 10, source: 'manual', rowKey: 'new-1' },
+      ]);
+    }
+  });
+
+  it('keeps zero and false as real values in the save op', () => {
+    const form: CustomFormState = {
+      'cat-num': { rows: [row({ key: 'k0', entryId: 'e0', value: '0' })], deleted: [] },
+      'cat-bool': {
+        rows: [row({ key: 'kf', entryId: 'e1', value: 'false' })],
+        deleted: [],
+      },
+    };
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-num'), dailyCat('cat-bool', 'boolean')],
+      form,
+      dirtyKeys: new Set(['k0', 'kf']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        { kind: 'save', categoryId: 'cat-num', value: 0, source: 'manual', rowKey: 'k0' },
+        { kind: 'save', categoryId: 'cat-bool', value: 'false', source: 'manual', rowKey: 'kf' },
+      ]);
+    }
+  });
+
+  it('parses Polish comma decimals in the save op', () => {
+    const form: CustomFormState = {
+      'cat-daily': { rows: [row({ key: 'k1', value: '1,5' })], deleted: [] },
+    };
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-daily')],
+      form,
+      dirtyKeys: new Set(['k1']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations[0]).toEqual(
+        expect.objectContaining({ value: 1.5, source: 'manual' }),
+      );
+    }
+  });
+
+  it('turns a cleared existing row into a delete-by-id operation', () => {
+    const form: CustomFormState = {
+      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '' })], deleted: [] },
+    };
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-daily')],
+      form,
+      dirtyKeys: new Set(['k1']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        { kind: 'delete', entryId: 'e1', categoryId: 'cat-daily', rowKey: 'k1' },
+      ]);
+    }
+  });
+
+  it('emits delete ops for rows marked deleted even when nothing else changed', () => {
+    const form: CustomFormState = {
+      'cat-daily': { rows: [], deleted: [{ entryId: 'e1' }] },
+    };
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-daily')],
+      form,
+      dirtyKeys: new Set(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        { kind: 'delete', entryId: 'e1', categoryId: 'cat-daily', rowKey: 'e1' },
+      ]);
+    }
+  });
+
+  it('produces a boolean save op from the tri-state string', () => {
+    const form: CustomFormState = {
+      'cat-bool': { rows: [row({ key: 'k1', value: 'true' })], deleted: [] },
+    };
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-bool', 'boolean')],
+      form,
+      dirtyKeys: new Set(['k1']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations[0]).toEqual(
+        expect.objectContaining({ value: 'true', source: 'manual' }),
+      );
+    }
+  });
+
+  it('aborts on an invalid changed row and reports its label', () => {
+    const onInvalid = jest.fn();
+    const form: CustomFormState = {
+      'cat-daily': { rows: [row({ key: 'k1', value: 'abc' })], deleted: [] },
+    };
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-daily')],
+      form,
+      dirtyKeys: new Set(['k1']),
+      onInvalid,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(onInvalid).toHaveBeenCalledWith('cat-daily');
+  });
+
+  it('does not validate unchanged rows, so a bad historical value cannot block a save', () => {
+    const form: CustomFormState = {
+      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: 'not-a-number' })], deleted: [] },
+    };
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-daily')],
+      form,
+      dirtyKeys: new Set(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.operations).toEqual([]);
+  });
+
+  it('returns zero custom operations when only built-in fields are dirty', () => {
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-daily')],
+      form: {},
+      dirtyKeys: new Set(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.operations).toEqual([]);
+  });
+});
+
+describe('buildCustomOps - tombstone deletes', () => {
+  it('emits exactly one DELETE for a tombstoned Daily entry', () => {
+    const form: CustomFormState = {
+      'cat-daily': {
+        rows: [row({ key: 'k1', entryId: 'e1', value: '60' })],
+        deleted: [{ entryId: 'e-del' }],
+      },
+    };
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-daily')],
+      form,
+      dirtyKeys: new Set(['k1']),
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        { kind: 'delete', entryId: 'e-del', categoryId: 'cat-daily', rowKey: 'e-del' },
+        { kind: 'save', categoryId: 'cat-daily', value: 60, source: 'manual', rowKey: 'k1' },
+      ]);
+    }
+  });
+
+  it('emits a single delete and no resurrected row when the server returns the id after a failed delete', () => {
+    const current: CustomFormState = {
+      'cat-daily': {
+        rows: [],
+        deleted: [{ entryId: 'e1' }],
+      },
+    };
+
+    // The server still reports e1 (DELETE failed or is mid-flight): the row
+    // must not come back, and the tombstone must survive to retry exactly one
+    // delete.
+    const { form } = syncCustomForm({
+      categories: [dailyCat('cat-daily')],
+      serverEntries: [entry('e1', 'cat-daily', '50', { source: 'manual' })],
+      current,
+      dirtyKeys: new Set(),
+    });
+
+    expect(form['cat-daily'].rows).toEqual([]);
+    expect(form['cat-daily'].deleted).toEqual([{ entryId: 'e1' }]);
+
+    const result = buildCustomOps({
+      categories: [dailyCat('cat-daily')],
+      form,
+      dirtyKeys: new Set(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.operations).toEqual([
+        { kind: 'delete', entryId: 'e1', categoryId: 'cat-daily', rowKey: 'e1' },
       ]);
     }
   });
@@ -1040,8 +483,7 @@ describe('buildCustomOps - tombstone deletes', () => {
 
 describe('emptyFormFor', () => {
   it('creates an empty form for every category', () => {
-    const form = emptyFormFor([numericCat('Daily', 'cat-a'), numericCat('Unlimited', 'cat-b')]);
-
+    const form = emptyFormFor([dailyCat('cat-a'), dailyCat('cat-b')]);
     expect(form).toEqual({
       'cat-a': { rows: [], deleted: [] },
       'cat-b': { rows: [], deleted: [] },

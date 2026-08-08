@@ -54,6 +54,8 @@ export {
   medicationsListQueryKey,
   medicationDetailQueryKey,
   medicationEntriesQueryKey,
+  customCategoriesQueryKey,
+  customMeasurementsByDateQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useServerConfigs } from './useServerConfigs';
@@ -128,7 +130,6 @@ export {
 export { useFastingTimer } from './useFastingTimer';
 export type { FastTimerValues } from './useFastingTimer';
 export { useCustomCategories, useCustomMeasurementsByDate, useSaveCustomMeasurement, useDeleteCustomMeasurement } from './useCustomMeasurements';
-export { customCategoriesQueryKey, customMeasurementsByDateQueryKey } from './queryKeys';
 export { useCustomNutrients } from './useCustomNutrients';
 export type { UserCustomNutrient } from './useCustomNutrients';
 export { useNutrientDisplayPreferences } from './useNutrientDisplayPreferences';

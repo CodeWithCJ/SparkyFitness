@@ -341,4 +341,32 @@ describe('DiaryScreen custom queries', () => {
     );
     expect(getByTestId('date-navigator')).toBeTruthy();
   });
+
+  test('Test G — a failing custom refetch does not block the other refetches nor throw', async () => {
+    const refetchReject = jest.fn().mockRejectedValue(new Error('boom'));
+    configureOnlineData();
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: refetchReject,
+    } as any);
+    const { UNSAFE_getByType, UNSAFE_queryByType } = renderScreen();
+
+    const refreshControl = UNSAFE_queryByType(RefreshControl);
+    const onRefresh = refreshControl?.props.onRefresh as () => Promise<void>;
+
+    await expect(async () => {
+      await onRefresh();
+    }).not.toThrow();
+
+    // Every other query still ran.
+    expect(refetchSummary).toHaveBeenCalled();
+    expect(refetchMeasurements).toHaveBeenCalled();
+    expect(refetchCustomNutrients).toHaveBeenCalled();
+    expect(refetchNutrientPrefs).toHaveBeenCalled();
+    // Spinner tears down after the rejected query.
+    expect(UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+  });
+
 });

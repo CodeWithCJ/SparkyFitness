@@ -665,48 +665,6 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 
-  test('hourly category adds a row and saves with the chosen hour', async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date(2026, 0, 5, 14, 0, 0));
-    try {
-      setCustomCategories([customCategory({ id: 'c1', frequency: 'Hourly' })]);
-      const screen = renderScreen();
-
-      fireEvent.press(screen.getByTestId('add-custom-c1'));
-      // addCustomRow seeds the hour from the (faked) local time 14:00; the
-      // plus button increments it to exactly 15.
-      fireEvent.press(screen.getByTestId('hour-plus-new-1'));
-      fireEvent.changeText(screen.getByTestId('custom-input-new-1'), '10');
-      await pressSave(screen);
-
-      const payload = savedCustomPayload();
-      expect(payload.category_id).toBe('c1');
-      expect(payload.value).toBe(10);
-      expect(payload.entry_hour).toBe(15);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  test('unlimited category keeps existing rows read-only and saves a new row as insert', async () => {
-    setCustomCategories([customCategory({ id: 'c1', frequency: 'Unlimited', data_type: 'text' })]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: 'old' })]);
-    const screen = renderScreen();
-
-    // Existing row renders read-only (not an editable input).
-    expect(screen.getByText('old')).toBeTruthy();
-    expect(screen.queryByTestId('custom-input-e1')).toBeNull();
-
-    fireEvent.press(screen.getByTestId('add-custom-c1'));
-    fireEvent.changeText(screen.getByTestId('custom-input-new-1'), 'new');
-    await pressSave(screen);
-
-    // Only the new row POSTs; the existing row is never re-sent or edited.
-    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'c1', value: 'new' }));
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
-    expect(saveMock).toHaveBeenCalledTimes(1);
-  });
-
   test('shows a fetch error state with retry for categories', () => {
     mockUseCustomCategories.mockReturnValue({
       data: undefined,
@@ -799,7 +757,7 @@ describe('MeasurementsAddScreen — custom measurements', () => {
 
   test('a confirmed delete is not re-sent by a retry after a later failure', async () => {
     setCustomCategories([
-      customCategory({ id: 'c1', frequency: 'Hourly' }),
+      customCategory({ id: 'c1', frequency: 'Daily' }),
       customCategory({ id: 'c2' }),
     ]);
     setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '5' })]);
@@ -879,20 +837,12 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     );
   });
 
-  test('icon-only row controls expose accessible names and roles', async () => {
-    setCustomCategories([customCategory({ id: 'c1', frequency: 'Hourly' })]);
+  test('delete control exposes an accessible name and role', () => {
+    setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '5' })]);
     const screen = renderScreen();
 
-    fireEvent.press(screen.getByTestId('add-custom-c1'));
-
-    const minus = screen.getByTestId('hour-minus-new-1');
-    const plus = screen.getByTestId('hour-plus-new-1');
-    const del = screen.getByTestId('delete-custom-new-1');
-
-    expect(minus.props.accessibilityRole).toBe('button');
-    expect(minus.props.accessibilityLabel).toBe('Decrease hour for Stress Level');
-    expect(plus.props.accessibilityRole).toBe('button');
-    expect(plus.props.accessibilityLabel).toBe('Increase hour for Stress Level');
+    const del = screen.getByTestId('delete-custom-entry-e1');
     expect(del.props.accessibilityRole).toBe('button');
     expect(del.props.accessibilityLabel).toBe('Delete Stress Level entry');
   });
@@ -908,4 +858,139 @@ describe('MeasurementsAddScreen — custom measurements', () => {
       expect.objectContaining({ selected: false, disabled: false }),
     );
   });
+
+  test('hides health-sync categories and Hourly/All/Unlimited from the manual Daily editor', () => {
+    setCustomCategories([
+      customCategory({ id: 'manual-1', name: 'My Daily', frequency: 'Daily' }),
+      customCategory({ id: 'sync-1', name: 'HRV_SDNN_min', frequency: 'Daily' }),
+      customCategory({ id: 'sync-2', name: 'Resting Heart Rate', frequency: 'Daily' }),
+      customCategory({ id: 'sync-3', name: 'Raw Stress Data', frequency: 'Daily', data_type: 'text', measurement_type: 'JSON' }),
+      customCategory({ id: 'hourly-1', name: 'Hourly Thing', frequency: 'Hourly' }),
+      customCategory({ id: 'all-1', name: 'All Things', frequency: 'All' }),
+      customCategory({ id: 'unl-1', name: 'Unlimited Things', frequency: 'Unlimited' }),
+    ]);
+    const screen = renderScreen();
+
+    // Manual Daily category is visible.
+    expect(screen.getByTestId('custom-input-manual-1')).toBeTruthy();
+    // Health-sync categories are hidden (exact-name matching, canonical name).
+    expect(screen.queryByTestId('custom-input-sync-1')).toBeNull();
+    expect(screen.queryByTestId('custom-input-sync-2')).toBeNull();
+    // Garmin raw-JSON category is hidden too.
+    expect(screen.queryByTestId('custom-input-sync-3')).toBeNull();
+    // Hourly / All / Unlimited are not exposed at all.
+    expect(screen.queryByTestId('custom-input-hourly-1')).toBeNull();
+    expect(screen.queryByTestId('custom-input-all-1')).toBeNull();
+    expect(screen.queryByTestId('custom-input-unl-1')).toBeNull();
+    expect(screen.queryByTestId('add-custom-hourly-1')).toBeNull();
+    expect(screen.queryByTestId('add-custom-all-1')).toBeNull();
+  });
+
+  test('a renamed former sync category becomes visible again', () => {
+    setCustomCategories([
+      // The user renamed the canonical health category away from its name, so
+      // exact-name matching no longer hides it (maintainer expectation).
+      customCategory({ id: 'renamed-1', name: 'My HRV Notes', frequency: 'Daily', data_type: 'text' }),
+    ]);
+    const screen = renderScreen();
+
+    expect(screen.getByTestId('custom-input-renamed-1')).toBeTruthy();
+  });
+
+  test('a synced entry is never prefilled as editable manual state', () => {
+    setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
+    // Only a healthkit entry exists for this category.
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '75', source: 'healthkit' })]);
+    const screen = renderScreen();
+
+    // The synced value must NOT prefill the editable input.
+    expect(screen.getByTestId('custom-input-c1').props.value).toBe('');
+  });
+
+  test('a new manual value for a synced category saves with source manual', async () => {
+    setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '75', source: 'garmin' })]);
+    const screen = renderScreen();
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '80');
+    await pressSave(screen);
+
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    expect(saveMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category_id: 'c1',
+        value: 80,
+        source: 'manual',
+      }),
+    );
+    // The synced entry is never deleted/overwritten by this save.
+    expect(mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  test('integrated health-heavy account does not flood the add screen', async () => {
+    // 40 auto-generated health categories from realistic repository contracts
+    // (DEFAULT_UNITS keys, aggregated variants, Garmin raw, Oura/Fitbit/Polar/
+    // Withings/Google names) plus one manual Daily category, one renamed former
+    // sync category, and a Garmin raw structured-value category.
+    const healthNames = [
+      'steps', 'heart_rate', 'HeartRate', 'Active Calories', 'ActiveCaloriesBurned',
+      'total_calories', 'TotalCaloriesBurned', 'distance', 'Distance', 'floors_climbed',
+      'FloorsClimbed', 'weight', 'Weight', 'sleep_session', 'SleepSession', 'stress',
+      'Stress', 'blood_pressure', 'BloodPressure', 'basal_metabolic_rate',
+      'BasalMetabolicRate', 'blood_glucose', 'BloodGlucose', 'body_fat', 'BodyFat',
+      'body_temperature', 'BodyTemperature', 'resting_heart_rate', 'RestingHeartRate',
+      'HRV', 'HRV_SDNN', 'respiratory_rate', 'RespiratoryRate', 'oxygen_saturation',
+      'OxygenSaturation', 'BloodOxygenSaturation', 'vo2_max', 'Vo2Max', 'hydration',
+      'Hydration', 'HRV_SDNN_min', 'HRV_SDNN_max', 'HRV_SDNN_avg', 'heart_rate_min',
+      'heart_rate_max', 'heart_rate_avg', 'running_speed_min', 'running_speed_max',
+      'running_speed_avg', 'cycling_power_min', 'cycling_power_max', 'cycling_power_avg',
+      'apple_move_time', 'apple_exercise_time', 'apple_stand_time', 'dietary_fat_total',
+      'dietary_protein', 'dietary_sodium', 'environmental_audio_exposure_min',
+      'headphone_audio_exposure_max', 'cycling_ftp', 'Metabolism', 'Activity Score',
+      'Readiness Score', 'Skin Temperature Variation', 'SpO2',
+      'Breathing Disturbance Index', 'Stress High Minutes', 'Recovery High Minutes',
+      'Vascular Age', 'VO2 Max', 'Heart Rate', 'Maximum Heart Rate', 'Aerobic Threshold',
+      'Anaerobic Threshold', 'Steps', 'Daily Calories', 'Nightly Recharge Score',
+      'ANS Charge', 'Overnight HRV', 'Overnight RHR', 'Breathing Rate',
+      'Fat Free Mass', 'Fat Mass Weight', 'Blood Pressure', 'Body Temperature',
+      'Blood Oxygen (SpO2)', 'Skin Temperature', 'Pulse Wave Velocity',
+      'Heart Health', 'ECG Metrics', 'Body Water Breakdown', 'Nerve Health',
+      'Segmental Body Comp', 'Sleep Metrics', 'Stress Metrics', 'Visceral Fat',
+      'Floors', 'Minutes Sedentary', 'Minutes Lightly Active', 'Minutes Fairly Active',
+      'Minutes Very Active', 'Raw Stress Data',
+    ];
+    setCustomCategories([
+      ...healthNames.map((name, idx) =>
+        customCategory({
+          id: `health-${idx}`,
+          name,
+          frequency: 'Daily',
+          data_type: name === 'Raw Stress Data' ? 'text' : 'numeric',
+          measurement_type: name === 'Raw Stress Data' ? 'JSON' : '',
+        }),
+      ),
+      customCategory({ id: 'manual-1', name: 'My Daily', frequency: 'Daily' }),
+      customCategory({ id: 'renamed-1', name: 'My HRV Notes', frequency: 'Daily', data_type: 'text' }),
+      customCategory({ id: 'hourly-1', name: 'Hourly Thing', frequency: 'Hourly' }),
+    ]);
+    const screen = renderScreen();
+
+    // Manual + renamed categories render as editable inputs.
+    expect(screen.getByTestId('custom-input-manual-1')).toBeTruthy();
+    expect(screen.getByTestId('custom-input-renamed-1')).toBeTruthy();
+    // None of the health categories render (no flood).
+    expect(screen.queryByTestId('custom-input-health-0')).toBeNull();
+    expect(screen.queryByTestId('custom-input-health-99')).toBeNull();
+    // Hourly is hidden.
+    expect(screen.queryByTestId('custom-input-hourly-1')).toBeNull();
+    // Standard built-ins remain present and usable.
+    expect(screen.getAllByPlaceholderText('0').length).toBeGreaterThanOrEqual(7);
+
+    // Manual values can still be saved.
+    fireEvent.changeText(screen.getByTestId('custom-input-manual-1'), '42');
+    fireEvent.changeText(getInput(screen, 'weight'), '80');
+    await pressSave(screen);
+    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'manual-1', value: 42, source: 'manual' }));
+  });
+
 });

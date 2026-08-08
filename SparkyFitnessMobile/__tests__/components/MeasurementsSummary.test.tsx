@@ -175,4 +175,140 @@ describe('MeasurementsSummary', () => {
     );
     expect(queryByText('0 m')).toBeNull();
   });
+
+  test('Diary shows only manual custom entries', () => {
+    const manualEntry = {
+      id: 'entry-manual',
+      category_id: 'cat-1',
+      value: '120',
+      entry_date: '2024-06-15',
+      source: 'manual',
+      custom_categories: {
+        id: 'cat-1',
+        name: 'Blood Pressure',
+        measurement_type: 'mmHg',
+        frequency: 'Daily',
+      },
+    };
+    const syncedEntry = {
+      id: 'entry-sync',
+      category_id: 'cat-2',
+      value: '75',
+      entry_date: '2024-06-15',
+      source: 'healthkit',
+      custom_categories: {
+        id: 'cat-2',
+        name: 'Resting Heart Rate',
+        measurement_type: 'bpm',
+        frequency: 'Daily',
+      },
+    };
+    const { getByText, queryByText } = render(
+      <MeasurementsSummary
+        measurements={undefined}
+        customMeasurements={[manualEntry, syncedEntry]}
+      />,
+    );
+    // Manual entry appears.
+    expect(getByText('Blood Pressure')).toBeTruthy();
+    expect(getByText('120 mmHg')).toBeTruthy();
+    // Synced entry does NOT appear as a Diary tile.
+    expect(queryByText('Resting Heart Rate')).toBeNull();
+  });
+
+  test('Diary shows nothing when only synced custom entries exist', () => {
+    const { toJSON } = render(
+      <MeasurementsSummary
+        measurements={undefined}
+        customMeasurements={[
+          {
+            id: 'entry-sync',
+            category_id: 'cat-1',
+            value: '75',
+            entry_date: '2024-06-15',
+            source: 'garmin',
+            custom_categories: { name: 'Heart Rate', measurement_type: 'bpm', frequency: 'Daily' },
+          },
+        ]}
+      />,
+    );
+    expect(toJSON()).toBeNull();
+  });
+
+  test('manual entry with value 0 still appears', () => {
+    const { getByText } = render(
+      <MeasurementsSummary
+        measurements={undefined}
+        customMeasurements={[
+          {
+            id: 'entry-zero',
+            category_id: 'cat-1',
+            value: '0',
+            entry_date: '2024-06-15',
+            source: 'manual',
+            custom_categories: { name: 'Zero', measurement_type: '', frequency: 'Daily', data_type: 'numeric' },
+          },
+        ]}
+      />,
+    );
+    expect(getByText('Zero')).toBeTruthy();
+  });
+
+  test('manual boolean false still appears', () => {
+    const { getByText } = render(
+      <MeasurementsSummary
+        measurements={undefined}
+        customMeasurements={[
+          {
+            id: 'entry-false',
+            category_id: 'cat-1',
+            value: 'false',
+            entry_date: '2024-06-15',
+            source: 'manual',
+            custom_categories: { name: 'Flag', measurement_type: '', frequency: 'Daily', data_type: 'boolean' },
+          },
+        ]}
+      />,
+    );
+    expect(getByText('Flag')).toBeTruthy();
+  });
+
+  test('mixture of manual and synced entries shows only manual tiles', () => {
+    const { getByText, queryByText } = render(
+      <MeasurementsSummary
+        measurements={{ entry_date: '2024-06-15', weight: 75 }}
+        customMeasurements={[
+          {
+            id: 'e1',
+            category_id: 'c1',
+            value: '50',
+            entry_date: '2024-06-15',
+            source: 'manual',
+            custom_categories: { name: 'Manual A', measurement_type: '', frequency: 'Daily' },
+          },
+          {
+            id: 'e2',
+            category_id: 'c2',
+            value: '60',
+            entry_date: '2024-06-15',
+            source: 'oura',
+            custom_categories: { name: 'Oura Metric', measurement_type: '', frequency: 'Daily' },
+          },
+          {
+            id: 'e3',
+            category_id: 'c3',
+            value: '70',
+            entry_date: '2024-06-15',
+            source: 'withings',
+            custom_categories: { name: 'Withings Metric', measurement_type: '', frequency: 'Daily' },
+          },
+        ]}
+      />,
+    );
+    expect(getByText('Weight')).toBeTruthy();
+    expect(getByText('Manual A')).toBeTruthy();
+    expect(queryByText('Oura Metric')).toBeNull();
+    expect(queryByText('Withings Metric')).toBeNull();
+  });
+
 });

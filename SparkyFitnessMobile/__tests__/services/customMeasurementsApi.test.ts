@@ -96,7 +96,7 @@ describe('customMeasurementsApi', () => {
   });
 
   describe('saveCustomMeasurement', () => {
-    test('sends POST with category_id, value, entry_date', async () => {
+    test('sends POST with the complete body (category_id, value, entry_date, source)', async () => {
       const savedEntry = {
         id: 'entry-1', category_id: 'cat-1', value: '75', entry_date: '2024-06-15',
       };
@@ -106,6 +106,7 @@ describe('customMeasurementsApi', () => {
         category_id: 'cat-1',
         value: 75,
         entry_date: '2024-06-15',
+        source: 'manual',
       });
 
       expect(result.value).toBe('75');
@@ -113,20 +114,14 @@ describe('customMeasurementsApi', () => {
         'https://example.com/api/measurements/custom-entries',
         expect.objectContaining({
           method: 'POST',
-          body: expect.stringContaining('"category_id":"cat-1"'),
+          headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            category_id: 'cat-1',
+            value: 75,
+            entry_date: '2024-06-15',
+            source: 'manual',
+          }),
         }),
-      );
-    });
-
-    test('sends POST with category_id, value, entry_date', async () => {
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'e1', category_id: 'cat-1', value: '75', entry_date: '2024-06-15' }) });
-
-      const result = await saveCustomMeasurement({ category_id: 'cat-1', value: 75, entry_date: '2024-06-15' });
-
-      expect(result.id).toBe('e1');
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/measurements/custom-entries',
-        expect.objectContaining({ method: 'POST', body: expect.stringContaining('"category_id":"cat-1"') }),
       );
     });
   });

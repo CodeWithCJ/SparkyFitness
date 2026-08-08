@@ -30,9 +30,9 @@ export function useUpsertCheckIn(options?: { showErrorToast?: boolean }) {
     },
     onError: (error) => {
       addLog(`Failed to upsert check-in: ${error}`, 'ERROR');
-      // Standalone callers (e.g. VitalsCard) rely on this toast. Multi-mutation
-      // flows pass showErrorToast:false so the orchestrating screen owns the
-      // single user-facing error message.
+      // Standalone callers rely on this toast. Multi-mutation flows pass
+      // showErrorToast:false so the orchestrating screen owns the single
+      // user-facing error message.
       if (options?.showErrorToast !== false) {
         Toast.show({
           type: 'error',

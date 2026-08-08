@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
-interface CustomBooleanControlProps {
+interface YesNoClearControlProps {
   /**
    * Tri-state value: '' (no entry), 'true', or 'false'. A missing entry is
    * deliberately NOT shown as "No" — all options render unselected.
@@ -12,7 +12,7 @@ interface CustomBooleanControlProps {
   labels: { yes: string; no: string; clear: string };
 }
 
-const CustomBooleanControl: React.FC<CustomBooleanControlProps> = ({
+const YesNoClearControl: React.FC<YesNoClearControlProps> = ({
   value,
   onChange,
   labels,
@@ -57,4 +57,4 @@ const CustomBooleanControl: React.FC<CustomBooleanControlProps> = ({
   );
 };
 
-export default CustomBooleanControl;
+export default YesNoClearControl;

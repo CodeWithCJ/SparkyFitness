@@ -170,7 +170,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   );
   const customNutrientKeys = (diaryNutrientRow?.visible_nutrients ?? []).slice(0, 4);
   const hasAnyMeasurement = useMemo(() => {
-    if (customMeasurements && customMeasurements.length > 0) return true;
+    // Only MANUAL custom entries make the Measurements section meaningful — a
+    // user with pages of health-synced custom entries should not see the
+    // section flash on their behalf.
+    const manualCustom =
+      customMeasurements?.filter((e) => e.source == null || e.source === 'manual') ?? [];
+    if (manualCustom.length > 0) return true;
     if (!measurements) return false;
     return (
       measurements.weight != null ||
@@ -183,13 +188,27 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     );
   }, [measurements, customMeasurements]);
 
+  // Manual-only custom entries for the Diary tiles: health-synced entries are
+  // filtered here (before presentation) so MeasurementsSummary never receives
+  // them; the component itself re-filters defensively too.
+  const manualCustomMeasurements = useMemo(
+    () =>
+      (customMeasurements ?? []).filter(
+        (e) => e.source == null || e.source === 'manual',
+      ),
+    [customMeasurements],
+  );
+
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const onRefresh = useCallback(async () => {
     if (!isConnected) return;
     setRefreshing(true);
+    // Error-isolated refresh: one failing query must not prevent the others
+    // from completing nor produce an unhandled rejection. The spinner is torn
+    // down in `finally` regardless of individual query outcomes.
     try {
-      await Promise.all([
+      await Promise.allSettled([
         refetch(),
         refetchMeasurements(),
         refetchCustomMeasurements(),
@@ -321,7 +340,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             />
             <MeasurementsSummary
               measurements={measurements}
-              customMeasurements={customMeasurements}
+              customMeasurements={manualCustomMeasurements}
               weightMode={weightMode}
               bodyUnit={bodyUnit}
               heightMode={heightMode}
