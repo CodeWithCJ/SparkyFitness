@@ -17,7 +17,7 @@ import Icon from './Icon';
 import { useMealTypes } from '../hooks/useMealTypes';
 import {
   getMealTypeDisplayLabel,
-  getMealTypeDisplayLabelForName,
+  getHistoricalMealTypeLabel,
 } from '../utils/mealNutrition';
 import { formatDateLabel } from '../utils/dateUtils';
 import { dayToPickerDate, localDateToDay } from '@workspace/shared';
@@ -98,6 +98,20 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       [targetDate],
     );
 
+    // Resolve the SOURCE title by canonical meal type ID first: an active
+    // definition wins (ownership-aware label); an unknown/historical source id
+    // keeps its literal snapshotted name. Never picks the first same-named
+    // item — a custom "breakfast" stays literal instead of becoming the
+    // system "Breakfast".
+    const sourceTitle = useMemo(() => {
+      if (!source) return '';
+      if (source.mealTypeId) {
+        const mt = mealTypes.find((m) => m.id === source.mealTypeId);
+        if (mt) return getMealTypeDisplayLabel(mt);
+      }
+      return getHistoricalMealTypeLabel(source.mealTypeName);
+    }, [source, mealTypes]);
+
     const handleCopy = useCallback(() => {
       if (!source || !targetDate || !targetMealTypeId) return;
       // The server /food-entries/copy endpoint matches meal types by NAME only
@@ -145,7 +159,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
             <View className="px-5">
               <View className="items-center mb-4">
                 <Text className="text-text-primary text-lg font-semibold text-center">
-                  {`Copy meal: ${getMealTypeDisplayLabelForName(source.mealTypeName, mealTypes)}`}
+                  {`Copy meal: ${sourceTitle}`}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-1 text-center">
                   {`Source date: ${formatDateLabel(source.date)}`}

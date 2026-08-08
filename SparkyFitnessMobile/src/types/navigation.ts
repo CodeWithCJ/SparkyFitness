@@ -158,13 +158,15 @@ export type RootStackParamList = {
         returnDepth?: number;
         initialMode?: 'barcode' | 'label' | 'photo';
         providerId?: string;
+        /** Preserved when the scan was started from a meal detail screen. */
+        mealTypeId?: string;
       }
     | {
         mode: 'capture-barcode';
         returnKey: string;
       }
     | undefined;
-  FoodPhotoIntro: { date?: string } | undefined;
+  FoodPhotoIntro: { date?: string; mealTypeId?: string } | undefined;
   FoodPhotoFlow: NavigatorScreenParams<FoodPhotoFlowParamList>;
   MealAdd:
     | {
@@ -251,6 +253,8 @@ export type FoodPhotoFlowParamList = {
     initialDescription?: string;
     initialTotalWeight?: string;
     initialWeightUnit?: 'g' | 'oz';
+    /** Preserved when the photo flow was started from a meal detail screen. */
+    mealTypeId?: string;
   };
   EstimateReview: {
     date?: string;
@@ -260,10 +264,14 @@ export type FoodPhotoFlowParamList = {
       totalWeight?: number;
       weightUnit?: 'g' | 'oz';
     };
+    /** Preserved when the photo flow was started from a meal detail screen. */
+    mealTypeId?: string;
   };
   LogEntry: {
     date?: string;
     saveFoodPayload: SaveFoodPayload;
+    /** Preselected meal type when the flow was started from a meal detail. */
+    mealTypeId?: string;
   };
 };
 

@@ -105,4 +105,29 @@ describe('CopyMealSheet', () => {
       expect.objectContaining({ type: 'error' }),
     );
   });
+
+  it('resolves the source title by ID: a custom type named breakfast stays literal', () => {
+    useMealTypesMock.mockReturnValue({
+      mealTypes: [
+        { id: 'breakfast-id', name: 'Breakfast', user_id: null },
+        // A CUSTOM type deliberately named with a lowercase system key.
+        { id: 'breakfast-custom', name: 'breakfast', user_id: 'user2' },
+      ],
+    });
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
+    // Source id = the CUSTOM type -> its literal name wins, never the system
+    // "Breakfast" label, and never the first same-named item.
+    act(() => ref.current?.present(getTodayDate(), 'breakfast-custom', 'breakfast'));
+    expect(view.getByText('Copy meal: breakfast')).toBeTruthy();
+    expect(view.queryByText('Copy meal: Breakfast')).toBeNull();
+  });
+
+  it('resolves a historical (unresolved) source id to the literal snapshotted name', () => {
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
+    act(() => ref.current?.present(getTodayDate(), 'deleted-custom-id', 'my old meal'));
+    expect(view.getByText('Copy meal: my old meal')).toBeTruthy();
+  });
+
 });

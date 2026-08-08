@@ -112,4 +112,50 @@ describe('FoodSummary', () => {
     expect(view.queryByTestId('icon-meal-breakfast')).toBeNull();
     expect(view.getByTestId('icon-meal-snack')).toBeTruthy();
   });
+
+  it('system breakfast receives the configured target calories', () => {
+    const goals = { breakfast_percentage: 25 } as any;
+    const { getByText } = render(
+      <FoodSummary
+        foodEntries={[entry('e1', 'sys-b', 'breakfast')]}
+        mealTypes={mealTypes}
+        goals={goals}
+        calorieGoal={2000}
+      />,
+    );
+    // 25% of 2000 = 500 Cal target shown alongside the meal calories.
+    expect(getByText(/\/ 500/)).toBeTruthy();
+  });
+
+  it('a CUSTOM type named breakfast never inherits the system target calories', () => {
+    const goals = { breakfast_percentage: 25 } as any;
+    const { queryByText } = render(
+      <FoodSummary
+        foodEntries={[entry('e2', 'custom-b', 'breakfast')]}
+        mealTypes={mealTypes}
+        goals={goals}
+        calorieGoal={2000}
+      />,
+    );
+    // No target chip at all — the custom category must not receive the system
+    // Breakfast target.
+    expect(queryByText(/\/ 500/)).toBeNull();
+    expect(queryByText(/\/ \d+/)).toBeNull();
+  });
+
+  it('a historical (unresolved) group never inherits target calories', () => {
+    const goals = { breakfast_percentage: 25 } as any;
+    const { queryByText } = render(
+      <FoodSummary
+        // A deleted/unknown custom name with no id: falls into its own literal
+        // historical group (isSystem=false) and must not receive any target.
+        foodEntries={[{ id: 'e3', meal_type_id: null, meal_type: 'my deleted custom' } as FoodEntry]}
+        mealTypes={mealTypes}
+        goals={goals}
+        calorieGoal={2000}
+      />,
+    );
+    expect(queryByText(/\/ 500/)).toBeNull();
+  });
+
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import MealTypeDetailScreen from '../../src/screens/MealTypeDetailScreen';
 import { useDailySummary, useServerConnection, useMealTypes } from '../../src/hooks';
 import { usePreferences } from '../../src/hooks/usePreferences';
@@ -36,9 +36,26 @@ jest.mock('../../src/hooks/useCopyFoodEntries', () => ({
   useCopyFoodEntries: jest.fn(),
 }));
 
-jest.mock('../../src/hooks/useScreenHeader', () => ({
-  useScreenHeader: () => null,
-}));
+jest.mock('../../src/hooks/useScreenHeader', () => {
+  const ReactModule = require('react');
+  const { Pressable } = require('react-native');
+  return {
+    useScreenHeader: (config: any) => {
+      const items = Array.isArray(config.right) ? config.right : config.right ? [config.right] : [];
+      return ReactModule.createElement(
+        ReactModule.Fragment,
+        null,
+        items.map((item: any, i: number) =>
+          ReactModule.createElement(Pressable, {
+            key: i,
+            accessibilityLabel: item.accessibilityLabel,
+            onPress: item.onPress,
+          }),
+        ),
+      );
+    },
+  };
+});
 
 jest.mock('../../src/services/nativeTabBarPreference', () => ({
   useNativeIOSHeadersActive: () => false,
@@ -189,4 +206,23 @@ describe('MealTypeDetailScreen', () => {
     expect(view.queryByText('Dinner')).toBeNull();
     expect(view.getAllByTestId('food-row')).toHaveLength(1);
   });
+
+  it('Add Food header action navigates to FoodSearch preserving the canonical mealTypeId', () => {
+    const view = renderScreen({ date: '2026-01-01', mealTypeId: 'custom-pw', mealType: 'Pre-Workout' });
+    fireEvent.press(view.getByLabelText('Add Food'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('FoodSearch', {
+      date: '2026-01-01',
+      mealTypeId: 'custom-pw',
+    });
+  });
+
+  it('Add Food never passes a stale hidden/deleted id (resolvedType missing -> no id)', () => {
+    const view = renderScreen({ date: '2026-01-01', mealTypeId: 'gone-id', mealType: 'Old Custom' });
+    fireEvent.press(view.getByLabelText('Add Food'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('FoodSearch', {
+      date: '2026-01-01',
+      mealTypeId: undefined,
+    });
+  });
+
 });

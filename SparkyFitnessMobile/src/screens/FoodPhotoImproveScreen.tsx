@@ -119,6 +119,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const { backColor } = useHeaderActionColors();
 
   const { date, photo } = route.params;
+  const mealTypeId = route.params.mealTypeId;
 
   // The scan screen hands off a single photo; the user composes the rest of the
   // image set here. Seeded from the handoff photo.
@@ -349,6 +350,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
               totalWeight: payloadWeight,
               weightUnit: payloadWeight !== undefined ? weightUnit : undefined,
             },
+            mealTypeId: mealTypeId ?? undefined,
           });
         },
         onError: (error) => {

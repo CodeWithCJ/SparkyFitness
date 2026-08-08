@@ -4,7 +4,8 @@ import { useCSSVariable } from 'uniwind';
 import type { FoodEntry } from '../types/foodEntries';
 import type { DailyGoals } from '../types/goals';
 import type { MealType } from '../types/mealTypes';
-import Icon, { type IconName } from './Icon';
+import Icon from './Icon';
+import { MEAL_CONFIG } from '../constants/meals';
 import SwipeableFoodRow from './SwipeableFoodRow';
 import {
   calculateEntryNutrition,
@@ -33,14 +34,16 @@ interface MealSectionProps {
   onPressMealType?: (mealTypeId: string | null, mealTypeName: string, entries: FoodEntry[]) => void;
 }
 
-function getMealTypeIcon(name: string): IconName {
-  const lower = name.toLowerCase();
-  if (lower === 'breakfast') return 'meal-breakfast';
-  if (lower === 'lunch') return 'meal-lunch';
-  if (lower === 'dinner') return 'meal-dinner';
-  if (lower === 'snacks' || lower === 'snack') return 'meal-snack';
-  return 'meal-snack';
-}
+const EmptyState: React.FC<{ onAddFood?: () => void }> = ({ onAddFood }) => (
+  <Pressable
+    onPress={onAddFood}
+    accessibilityRole="button"
+    accessibilityLabel="Tap to add food"
+    className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
+  >
+    <Text className="text-text-muted text-base">Tap to add food</Text>
+  </Pressable>
+);
 
 const MealSection: React.FC<MealSectionProps> = ({
   group,
@@ -53,15 +56,22 @@ const MealSection: React.FC<MealSectionProps> = ({
 
   const label = getMealGroupLabel(group);
   // Icons follow the same ownership rule as labels: a custom category named
-  // "breakfast" still gets the neutral icon, never the system one.
-  const icon = group.isSystem ? getMealTypeIcon(group.name) : 'meal-snack';
+  // "breakfast" still gets the neutral icon, never the system one. The system
+  // icon comes from the canonical MEAL_CONFIG — no parallel map.
+  const icon =
+    group.isSystem && MEAL_CONFIG[group.name.toLowerCase()]?.icon
+      ? MEAL_CONFIG[group.name.toLowerCase()].icon
+      : 'meal-snack';
 
   const totalCalories = calculateMealNutrition(group.entries).values.calories;
   const targetCalories = React.useMemo(() => {
-    if (!goals || !calorieGoal) return 0;
+    // Target-calorie percentages are only meaningful for SYSTEM meal types: a
+    // custom type named "breakfast" (or a historical group) must never inherit
+    // the system Breakfast target calories.
+    if (!group.isSystem || !goals || !calorieGoal) return 0;
     const percentage = getMealPercentage(group.name, goals);
     return Math.round((calorieGoal * percentage) / 100);
-  }, [goals, calorieGoal, group.name]);
+  }, [group.isSystem, group.name, goals, calorieGoal]);
 
   const headerContent = (
     <>
@@ -122,37 +132,20 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
   onPressMealType,
 }) => {
   if (foodEntries.length === 0) {
-    return (
-      <Pressable
-        onPress={onAddFood}
-        accessibilityRole="button"
-        accessibilityLabel="Tap to add food"
-        className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
-      >
-        <Text className="text-text-muted text-base">Tap to add food</Text>
-      </Pressable>
-    );
+    return <EmptyState onAddFood={onAddFood} />;
   }
 
+  // groupFoodEntriesByMealType only creates groups that have entries, so the
+  // previous visibleGroups re-filter was redundant.
   const groups = groupFoodEntriesByMealType(foodEntries, mealTypes);
-  const visibleGroups = groups.filter((g) => g.entries.length > 0);
 
-  if (visibleGroups.length === 0) {
-    return (
-      <Pressable
-        onPress={onAddFood}
-        accessibilityRole="button"
-        accessibilityLabel="Tap to add food"
-        className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
-      >
-        <Text className="text-text-muted text-base">Tap to add food</Text>
-      </Pressable>
-    );
+  if (groups.length === 0) {
+    return <EmptyState onAddFood={onAddFood} />;
   }
 
   return (
     <View className="gap-2 mb-2">
-      {visibleGroups.map((group) => (
+      {groups.map((group) => (
         <MealSection
           key={
             group.mealTypeId

@@ -162,6 +162,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
 
     navigation.navigate('LogEntry', {
       date,
+      mealTypeId: route.params.mealTypeId ?? undefined,
       saveFoodPayload: {
         name: data.name.trim(),
         brand: data.brand.trim() ? data.brand.trim() : null,

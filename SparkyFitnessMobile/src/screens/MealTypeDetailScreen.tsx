@@ -74,11 +74,15 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
     [summary?.foodEntries, mealTypeId, mealTypeName, mealTypes],
   );
   const nutrition = useMemo(() => calculateMealNutrition(entries), [entries]);
+  const isSystemMealType = resolvedType ? resolvedType.user_id === null : false;
   const targetCalories = useMemo(() => {
-    if (!summary?.goals || !summary?.calorieGoal) return 0;
+    // Target-calorie percentages are only meaningful for SYSTEM meal types: a
+    // custom type named "breakfast" (or a historical group) must never inherit
+    // the system Breakfast target calories.
+    if (!isSystemMealType || !summary?.goals || !summary?.calorieGoal) return 0;
     const percentage = getMealPercentage(mealTypeName, summary.goals);
     return Math.round((summary.calorieGoal * percentage) / 100);
-  }, [summary, mealTypeName]);
+  }, [isSystemMealType, summary, mealTypeName]);
 
   const { copyMeal, isPending: isCopying } = useCopyFoodEntries({
     onSuccess: () => copySheetRef.current?.dismiss(),

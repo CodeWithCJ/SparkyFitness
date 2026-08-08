@@ -74,6 +74,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const lookupParams = params?.mode === 'capture-barcode' ? undefined : params;
   const isCaptureBarcodeMode = !!captureParams;
   const captureReturnKey = captureParams?.returnKey;
+  const mealTypeId = lookupParams?.mealTypeId;
   const [scanMode, setScanMode] = useState<ScanMode>(() => {
     if (isCaptureBarcodeMode) {
       // Capture-only mode: lock to barcode regardless of any other params.
@@ -187,6 +188,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           date,
           pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
           returnDepth,
+          mealTypeId,
         });
       } else {
         if (shouldFireSuccessHaptic) {
@@ -250,6 +252,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           date,
           pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
           returnDepth,
+          mealTypeId,
         });
       }
     } catch (error) {
@@ -421,7 +424,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       await markFoodPhotoIntroSeen();
       navigation.replace('FoodPhotoFlow', {
         screen: 'Improve',
-        params: { date, photo: { uri: photo.uri } },
+        params: { date, photo: { uri: photo.uri }, mealTypeId: mealTypeId ?? undefined },
       });
     } catch {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
@@ -447,7 +450,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       await markFoodPhotoIntroSeen();
       navigation.replace('FoodPhotoFlow', {
         screen: 'Improve',
-        params: { date, photo: { uri: asset.uri } },
+        params: { date, photo: { uri: asset.uri }, mealTypeId: mealTypeId ?? undefined },
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load photo.';

@@ -62,7 +62,7 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const { backColor } = useHeaderActionColors();
 
-  const { saveFoodPayload } = route.params;
+  const { saveFoodPayload, mealTypeId: initialMealTypeId } = route.params;
 
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const [selectedMealTypeId, setSelectedMealTypeId] = useState<string | null>(null);
@@ -105,9 +105,12 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     fat: goalPercent(displayValues.fat * servingsNumber, goals?.fat),
   };
 
-  // Default the meal type once the default arrives. Done during render (instead
-  // of in an effect); the `!selectedMealTypeId` guard makes it self-limiting.
-  if (!selectedMealTypeId && defaultMealTypeId) {
+  // Preselect the originating meal type (MealTypeDetail → search → photo flow);
+  // otherwise default once the default arrives. Done during render (instead of
+  // in an effect); the `!selectedMealTypeId` guard makes it self-limiting.
+  if (!selectedMealTypeId && initialMealTypeId) {
+    setSelectedMealTypeId(initialMealTypeId);
+  } else if (!selectedMealTypeId && defaultMealTypeId) {
     setSelectedMealTypeId(defaultMealTypeId);
   }
 

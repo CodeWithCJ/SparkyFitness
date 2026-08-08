@@ -751,4 +751,28 @@ describe('FoodSearchScreen', () => {
     expect(refetchRecentMeals).toHaveBeenCalled();
     expect(refetchTopMeals).toHaveBeenCalled();
   });
+
+  it('forwards mealTypeId through to the barcode scanner (FoodScan)', () => {
+    const withMealTypeRoute = {
+      key: 'FoodSearch-key',
+      name: 'FoodSearch' as const,
+      params: { date: '2026-01-01', mealTypeId: 'custom-pw' },
+    };
+    // Landing render (empty query) shows the Scan Food button.
+    const screen = render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodSearchScreen navigation={navigation} route={withMealTypeRoute} />
+      </SafeAreaProvider>,
+    );
+    const scanButton = screen.getByLabelText('Scan Food');
+    fireEvent.press(scanButton);
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodScan',
+      expect.objectContaining({
+        date: '2026-01-01',
+        mealTypeId: 'custom-pw',
+      }),
+    );
+  });
+
 });
