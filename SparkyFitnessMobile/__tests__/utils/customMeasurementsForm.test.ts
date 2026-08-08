@@ -27,6 +27,9 @@ const entry = (
   category_id: categoryId,
   value,
   entry_date: '2026-07-30',
+  // The DB column is NOT NULL DEFAULT 'manual', so manual is the default here;
+  // synced/null cases override it explicitly.
+  source: 'manual',
   ...extra,
 });
 
@@ -38,10 +41,12 @@ const row = (overrides: Partial<CustomRow> & { key: string }): CustomRow => ({
 });
 
 describe('isManualSource', () => {
-  it('treats null/undefined and manual as manual', () => {
-    expect(isManualSource(null)).toBe(true);
-    expect(isManualSource(undefined)).toBe(true);
+  it('only treats the literal string manual as manual (strict DB contract)', () => {
     expect(isManualSource('manual')).toBe(true);
+    // The DB column is NOT NULL DEFAULT 'manual' — null/undefined are NOT
+    // manual, matching the strict maintainer contract.
+    expect(isManualSource(null)).toBe(false);
+    expect(isManualSource(undefined)).toBe(false);
   });
 
   it('treats every health-sync source as non-manual', () => {
@@ -164,6 +169,31 @@ describe('syncCustomForm', () => {
     // The synced entry must NOT prefill the manual editor.
     expect(form['cat-daily'].rows).toEqual([]);
     expect(form['cat-daily'].deleted).toEqual([]);
+  });
+
+  it('excludes a null-source entry: it never prefills the manual editor', () => {
+    const { form } = syncCustomForm({
+      categories: [dailyCat('cat-daily')],
+      // A legacy entry with no source column value: the DB contract has
+      // NOT NULL DEFAULT 'manual', so null is NOT manual and must not prefill.
+      serverEntries: [entry('e1', 'cat-daily', '75', { source: null })],
+      current: {},
+      dirtyKeys: new Set(),
+    });
+
+    expect(form['cat-daily'].rows).toEqual([]);
+    expect(form['cat-daily'].deleted).toEqual([]);
+  });
+
+  it('excludes a missing/undefined source entry', () => {
+    const { form } = syncCustomForm({
+      categories: [dailyCat('cat-daily')],
+      serverEntries: [entry('e1', 'cat-daily', '75', { source: undefined })],
+      current: {},
+      dirtyKeys: new Set(),
+    });
+
+    expect(form['cat-daily'].rows).toEqual([]);
   });
 
   it('keeps a manual entry alongside a synced entry for the same category', () => {

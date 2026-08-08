@@ -49,6 +49,7 @@ describe('MeasurementsSummary', () => {
             category_id: 'cat-1',
             value: '120',
             entry_date: '2024-06-15',
+            source: 'manual',
             custom_categories: {
               id: 'cat-1',
               name: 'Blood Pressure',
@@ -61,6 +62,7 @@ describe('MeasurementsSummary', () => {
             category_id: 'cat-2',
             value: '95',
             entry_date: '2024-06-15',
+            source: 'manual',
             custom_categories: {
               id: 'cat-2',
               name: 'Blood Sugar',
@@ -91,6 +93,7 @@ describe('MeasurementsSummary', () => {
             category_id: 'cat-1',
             value: '120',
             entry_date: '2024-06-15',
+            source: 'manual',
             custom_categories: {
               id: 'cat-1',
               name: 'Blood Pressure',
@@ -126,6 +129,7 @@ describe('MeasurementsSummary', () => {
             category_id: 'cat-1',
             value: '1.23456789',
             entry_date: '2024-06-15',
+            source: 'manual',
             custom_categories: { name: 'Glucose', display_name: null, measurement_type: 'mg/dL', frequency: 'Daily', data_type: 'numeric' },
           },
           {
@@ -133,6 +137,7 @@ describe('MeasurementsSummary', () => {
             category_id: 'cat-2',
             value: '   ',
             entry_date: '2024-06-15',
+            source: 'manual',
             custom_categories: { name: 'Blank', display_name: null, measurement_type: 'm', frequency: 'Daily', data_type: 'numeric' },
           },
           {
@@ -140,6 +145,7 @@ describe('MeasurementsSummary', () => {
             category_id: 'cat-3',
             value: 'not-a-number',
             entry_date: '2024-06-15',
+            source: 'manual',
             custom_categories: { name: 'Note', display_name: null, measurement_type: '', frequency: 'Daily', data_type: 'numeric' },
           },
         ]}
@@ -161,6 +167,7 @@ describe('MeasurementsSummary', () => {
             category_id: 'cat-empty',
             value: '',
             entry_date: '2024-06-15',
+            source: 'manual',
             custom_categories: { name: 'Empty', display_name: null, measurement_type: 'm', frequency: 'Daily', data_type: 'numeric' },
           },
           {
@@ -168,6 +175,7 @@ describe('MeasurementsSummary', () => {
             category_id: 'cat-spaces',
             value: '   ',
             entry_date: '2024-06-15',
+            source: 'manual',
             custom_categories: { name: 'Spaces', display_name: null, measurement_type: 'm', frequency: 'Daily', data_type: 'numeric' },
           },
         ]}
@@ -314,6 +322,26 @@ describe('MeasurementsSummary', () => {
     expect(getByText('Manual A')).toBeTruthy();
     expect(queryByText('Oura Metric')).toBeNull();
     expect(queryByText('Withings Metric')).toBeNull();
+  });
+
+  test('Diary excludes custom entries with a null/missing source', () => {
+    const { toJSON } = render(
+      <MeasurementsSummary
+        measurements={undefined}
+        customMeasurements={[
+          {
+            id: 'entry-null',
+            category_id: 'cat-1',
+            value: '75',
+            entry_date: '2024-06-15',
+            source: null,
+            custom_categories: { name: 'Null Source', measurement_type: '', frequency: 'Daily' },
+          },
+        ]}
+      />,
+    );
+    // Strict contract: only literal 'manual' creates a tile.
+    expect(toJSON()).toBeNull();
   });
 
 });

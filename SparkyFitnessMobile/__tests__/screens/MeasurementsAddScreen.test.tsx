@@ -907,6 +907,30 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(screen.getByTestId('custom-input-c1').props.value).toBe('');
   });
 
+  test('a null-source entry is not prefilled as editable manual state', () => {
+    setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
+    // Null source is NOT manual per the strict DB contract, so it must not
+    // prefill the manual editor either.
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '75', source: null })]);
+    const screen = renderScreen();
+
+    expect(screen.getByTestId('custom-input-c1').props.value).toBe('');
+  });
+
+  test('a user-entered value for a category with a synced entry saves as a fresh manual operation', async () => {
+    setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '75', source: 'healthkit' })]);
+    const screen = renderScreen();
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '90');
+    await pressSave(screen);
+
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    expect(saveMock).toHaveBeenCalledWith(
+      expect.objectContaining({ category_id: 'c1', value: 90, source: 'manual' }),
+    );
+  });
+
   test('a new manual value for a synced category saves with source manual', async () => {
     setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
     setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '75', source: 'garmin' })]);

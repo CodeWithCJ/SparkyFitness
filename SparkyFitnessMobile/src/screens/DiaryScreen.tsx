@@ -19,6 +19,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
+import { isManualSource } from '../utils/customMeasurementsForm';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import {
@@ -137,7 +138,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     isLoading,
     isError,
     refetch,
-    isRefetching: isSummaryRefetching,
   } = useDailySummary({
     date: selectedDate,
     enabled: isConnected,
@@ -145,7 +145,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const {
     measurements,
     refetch: refetchMeasurements,
-    isRefetching: isMeasurementsRefetching,
   } = useMeasurements({
     date: selectedDate,
     enabled: isConnected,
@@ -153,17 +152,14 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const {
     data: customMeasurements,
     refetch: refetchCustomMeasurements,
-    isRefetching: isCustomMeasurementsRefetching,
   } = useCustomMeasurementsByDate(selectedDate, { enabled: isConnected });
   const {
     customNutrients,
     refetch: refetchCustomNutrients,
-    isRefetching: isCustomNutrientsRefetching,
   } = useCustomNutrients({ enabled: isConnected });
   const {
     preferences: nutrientPrefs,
     refetch: refetchNutrientPrefs,
-    isRefetching: isNutrientPrefsRefetching,
   } = useNutrientDisplayPreferences({ enabled: isConnected });
   const diaryNutrientRow = nutrientPrefs.find(
     (p) => p.view_group === 'diary' && p.platform === 'mobile',
@@ -173,8 +169,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     // Only MANUAL custom entries make the Measurements section meaningful — a
     // user with pages of health-synced custom entries should not see the
     // section flash on their behalf.
-    const manualCustom =
-      customMeasurements?.filter((e) => e.source == null || e.source === 'manual') ?? [];
+    const manualCustom = customMeasurements?.filter((e) => isManualSource(e.source)) ?? [];
     if (manualCustom.length > 0) return true;
     if (!measurements) return false;
     return (
@@ -192,10 +187,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   // filtered here (before presentation) so MeasurementsSummary never receives
   // them; the component itself re-filters defensively too.
   const manualCustomMeasurements = useMemo(
-    () =>
-      (customMeasurements ?? []).filter(
-        (e) => e.source == null || e.source === 'manual',
-      ),
+    () => (customMeasurements ?? []).filter((e) => isManualSource(e.source)),
     [customMeasurements],
   );
 
@@ -227,13 +219,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     refetchNutrientPrefs,
   ]);
 
-  const isRefreshing =
-    refreshing ||
-    isSummaryRefetching ||
-    isMeasurementsRefetching ||
-    isCustomMeasurementsRefetching ||
-    isCustomNutrientsRefetching ||
-    isNutrientPrefsRefetching;
+  const isRefreshing = refreshing;
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {

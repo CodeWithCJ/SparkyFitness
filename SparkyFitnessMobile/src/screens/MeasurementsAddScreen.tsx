@@ -511,7 +511,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       // pending set; failed and not-yet-attempted rows stay dirty so the
       // refetch keeps their typed values and a retry sends only the rest.
       const remainingDirtyCustom = new Set(dirtyCustomKeysRef.current);
-      let standardPersisted = false;
       let customSucceeded = true;
 
       try {
@@ -558,7 +557,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         if (customSucceeded && hasAnyField) {
           try {
             await upsertMutation.mutateAsync(payload);
-            standardPersisted = true;
           } catch {
             customSucceeded = false;
           }
@@ -581,9 +579,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       // persist (or was never attempted). Only the rows that succeeded are
       // dropped from the pending set.
       dirtyCustomKeysRef.current = remainingDirtyCustom;
-      if (standardPersisted) {
-        dirtyFieldsRef.current = new Set();
-      }
       await Promise.allSettled([
         refetchMeasurements(),
         refetchCustomCategories(),

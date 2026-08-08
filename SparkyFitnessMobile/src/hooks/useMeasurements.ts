@@ -21,7 +21,6 @@ export function useMeasurements({ date, enabled = true }: UseMeasurementsOptions
     measurements: query.data,
     isLoading: query.isLoading,
     isError: query.isError,
-    isRefetching: query.isRefetching,
     error: query.error,
     refetch: query.refetch,
   };

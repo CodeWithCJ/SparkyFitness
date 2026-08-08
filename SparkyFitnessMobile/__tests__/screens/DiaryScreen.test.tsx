@@ -209,33 +209,32 @@ const configureOnlineData = (overrides: {
   customNutrientsRefetching?: boolean;
   nutrientPrefsRefetching?: boolean;
 } = {}) => {
+  // The hooks no longer expose isRefetching (removed with the aggregate
+  // spinner); the override fields below intentionally simulate a background
+  // refetch to prove the RefreshControl ignores it.
+  void overrides;
   mockUseDailySummary.mockReturnValue({
     summary: baseSummary,
     isLoading: false,
     isError: false,
-    isRefetching: overrides.summaryRefetching ?? false,
     refetch: refetchSummary,
   } as any);
   mockUseMeasurements.mockReturnValue({
     measurements: null,
     isLoading: false,
     isError: false,
-    isRefetching: overrides.measurementsRefetching ?? false,
     refetch: refetchMeasurements,
   } as any);
   mockUseCustomMeasurementsByDate.mockReturnValue({
     data: [],
-    isRefetching: overrides.customMeasurementsRefetching ?? false,
     refetch: refetchCustomMeasurements,
   } as any);
   mockUseCustomNutrients.mockReturnValue({
     customNutrients: [],
-    isRefetching: overrides.customNutrientsRefetching ?? false,
     refetch: refetchCustomNutrients,
   } as any);
   mockUseNutrientDisplayPreferences.mockReturnValue({
     preferences: [],
-    isRefetching: overrides.nutrientPrefsRefetching ?? false,
     refetch: refetchNutrientPrefs,
   } as any);
 };
@@ -308,18 +307,44 @@ describe('DiaryScreen custom queries', () => {
     expect(refetchSummary).not.toHaveBeenCalled();
   });
 
-  test('Test E — refreshing spinner reflects custom query refetch', () => {
-    configureOnlineData({ customMeasurementsRefetching: true });
+  test('Test E — background query refetches never show the pull-to-refresh spinner', () => {
+    // Cache invalidations (e.g. swipe-deleting a row) refetch the queries in
+    // the background; even when every query reports isRefetching, the native
+    // RefreshControl spinner must stay off because the user did not pull.
+    configureOnlineData({
+      summaryRefetching: true,
+      measurementsRefetching: true,
+      customMeasurementsRefetching: true,
+      customNutrientsRefetching: true,
+      nutrientPrefsRefetching: true,
+    });
 
-    const { UNSAFE_getByType, rerender } = renderScreen();
+    const { UNSAFE_getByType } = renderScreen();
+    expect(UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+  });
+
+  test('Test E2 — a manual pull shows the spinner while pending and clears after settlement', async () => {
+    let resolveSummary!: () => void;
+    refetchSummary.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveSummary = resolve;
+      }),
+    );
+    const { UNSAFE_getByType } = renderScreen();
+    const refreshControl = UNSAFE_getByType(RefreshControl);
+
+    let refreshPromise!: Promise<void>;
+    act(() => {
+      refreshPromise = fireEvent(refreshControl, 'refresh') as unknown as Promise<void>;
+    });
+    // The local user-initiated refreshing state is on while the queries are
+    // still pending.
     expect(UNSAFE_getByType(RefreshControl).props.refreshing).toBe(true);
 
-    configureOnlineData();
-    rerender(
-      <SafeAreaProvider initialMetrics={{ frame, insets }}>
-        <DiaryScreen navigation={mockNavigation} route={{} as any} />
-      </SafeAreaProvider>,
-    );
+    await act(async () => {
+      resolveSummary();
+      await refreshPromise;
+    });
     expect(UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
   });
 

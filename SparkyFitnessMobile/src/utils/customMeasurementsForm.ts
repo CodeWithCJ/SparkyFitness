@@ -65,9 +65,11 @@ export type CustomCategoryMeta = Pick<
   'id' | 'name' | 'display_name' | 'data_type'
 >;
 
-/** Manual entries only — health-synced rows (healthkit/garmin/...) are excluded. */
+/** Manual entries only. Strict contract matching the DB column
+ * (`source VARCHAR(50) NOT NULL DEFAULT 'manual'`): null/undefined/missing
+ * sources are NOT manual — only the literal string 'manual' is. */
 export function isManualSource(source: string | null | undefined): boolean {
-  return source == null || source === 'manual';
+  return source === 'manual';
 }
 
 export function rowValue(
@@ -97,10 +99,11 @@ export function rowValue(
 
 /**
  * Reconciles server entries with the local Daily form. Rules:
- * - Only manual entries (source === 'manual' or legacy null) become editable
- *   rows. A synced entry for the same category is never prefilled as manual
- *   state — the user can add a fresh manual value that the backend keeps
- *   separate by source.
+ * - Only manual entries (source === 'manual') become editable
+ *   rows. A synced entry (or a null/missing source — the DB column is
+ *   NOT NULL DEFAULT 'manual') for the same category is never prefilled as
+ *   manual state — the user can add a fresh manual value that the backend
+ *   keeps separate by source.
  * - Dirty rows keep their local value; non-dirty rows mirror the server.
  * - A non-dirty entry that disappears from the response is dropped.
  * - A dirty row whose entry disappears is kept and re-targeted as a new row so

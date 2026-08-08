@@ -11,6 +11,7 @@ import {
 } from '../utils/unitConversions';
 import type { CheckInMeasurement } from '../types/measurements';
 import type { CustomMeasurementEntry } from '../types/customMeasurements';
+import { isManualSource } from '../utils/customMeasurementsForm';
 
 interface MeasurementsSummaryProps {
   measurements: CheckInMeasurement | undefined;
@@ -103,12 +104,13 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
   }
 
   if (customMeasurements) {
-    // Diary tiles only show MANUAL custom entries. Health-synced entries
-    // (healthkit / Health Connect / garmin / oura / fitbit / polar / withings /
-    // ...) are filtered before presentation so they never render as editable
-    // summary tiles. Ordinary built-in measurements are untouched.
+    // Diary tiles only show MANUAL custom entries (strict source contract).
+    // Health-synced entries (healthkit / Health Connect / garmin / oura /
+    // fitbit / polar / withings / ...) are filtered before presentation so
+    // they never render as editable summary tiles. Ordinary built-in
+    // measurements are untouched.
     for (const entry of customMeasurements) {
-      if (entry.source != null && entry.source !== 'manual') continue;
+      if (!isManualSource(entry.source)) continue;
       const cat = entry.custom_categories;
       const label = cat?.display_name ?? cat?.name ?? 'Measurement';
       const suffix = cat?.measurement_type ? ` ${cat.measurement_type}` : '';
