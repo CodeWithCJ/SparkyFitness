@@ -2,6 +2,7 @@ import {
   forwardRef,
   useCallback,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -24,12 +25,11 @@ export interface MealTypeFormSheetRef {
 export interface MealTypeFormValues {
   name: string;
   defaultTime: string;
-  isVisible: boolean;
   showInQuickLog: boolean;
 }
 
 interface MealTypeFormSheetProps {
-  /** True when the sheet is used for a system type (no name editing, no delete). */
+  /** True when the sheet is used for a system type (no name editing). */
   isSystem?: boolean;
   isSaving?: boolean;
   /** Saves the form. Returns true when the caller should close the sheet. */
@@ -39,18 +39,19 @@ interface MealTypeFormSheetProps {
 const emptyValues: MealTypeFormValues = {
   name: '',
   defaultTime: '',
-  isVisible: true,
-  showInQuickLog: false,
+  showInQuickLog: true,
 };
 
 /**
  * Shared Add/Edit form for meal types, presented as a bottom sheet reusing the
  * app's established BottomSheetModal pattern (CopyMealSheet / FastingEditSheet).
  *
- * A single parameterized sheet replaces the previous copy-paste Add/Edit
- * modals. Raw `sort_order` is intentionally NOT editable here — custom ordering
- * is done via drag-and-drop on the settings screen and the backend stores the
- * integer.
+ * Single parameterized sheet (no copy-paste Add/Edit twins). Raw `sort_order`
+ * is intentionally NOT editable here — custom ordering is drag-and-drop on the
+ * settings screen and the backend stores the integer. Visibility is NOT
+ * user-configurable on mobile (product decision): Diary sections are
+ * data-driven; existing backend `is_visible` state is preserved by omission
+ * from the edit payload.
  */
 const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProps>(
   ({ isSystem = false, isSaving = false, onSave }, ref) => {
@@ -78,7 +79,6 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
         setValues({
           name: mealType.name,
           defaultTime: toHourMinute(mealType.default_time) || '',
-          isVisible: mealType.is_visible,
           showInQuickLog: mealType.show_in_quick_log,
         });
         bottomSheetRef.current?.present();
@@ -105,14 +105,15 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
       setValues((prev) => ({ ...prev, defaultTime: `${hh}:${mm}` }));
     }, []);
 
-    const timeValue = values.defaultTime
-      ? (() => {
-          const d = new Date();
-          const [h, m] = values.defaultTime.split(':').map(Number);
-          d.setHours(h, m, 0, 0);
-          return d;
-        })()
-      : new Date();
+    // Stable Date instance: recreating it on every render (e.g. when typing the
+    // name) would reseed the wheel with an unrelated time.
+    const timeValue = useMemo(() => {
+      if (!values.defaultTime) return new Date();
+      const d = new Date();
+      const [h, m] = values.defaultTime.split(':').map(Number);
+      d.setHours(h, m, 0, 0);
+      return d;
+    }, [values.defaultTime]);
 
     const hasDefaultTime = values.defaultTime !== '';
 
@@ -141,7 +142,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
                 value={values.name}
                 onChangeText={(name) => setValues((prev) => ({ ...prev, name }))}
                 placeholder="e.g. Pre-Workout"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={textMuted}
                 className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base mb-4"
                 autoFocus={mode === 'add'}
                 returnKeyType="done"
@@ -200,16 +201,6 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
 
           <View className="flex-row justify-between items-center py-3 border-t border-border-subtle">
             <Text className="text-base font-medium text-text-primary flex-shrink">
-              Visible
-            </Text>
-            <Switch
-              value={values.isVisible}
-              onValueChange={(val) => setValues((prev) => ({ ...prev, isVisible: val }))}
-              accessibilityLabel="Visible"
-            />
-          </View>
-          <View className="flex-row justify-between items-center py-3 border-t border-border-subtle">
-            <Text className="text-base font-medium text-text-primary flex-shrink">
               Quick log
             </Text>
             <Switch
@@ -229,7 +220,6 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
               onSave({
                 name: values.name.trim(),
                 defaultTime: values.defaultTime,
-                isVisible: values.isVisible,
                 showInQuickLog: values.showInQuickLog,
               })
             }

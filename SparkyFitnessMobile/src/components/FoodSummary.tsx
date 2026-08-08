@@ -55,13 +55,13 @@ const MealSection: React.FC<MealSectionProps> = ({
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const label = getMealGroupLabel(group);
-  // Icons follow the same ownership rule as labels: a custom category named
-  // "breakfast" still gets the neutral icon, never the system one. The system
-  // icon comes from the canonical MEAL_CONFIG — no parallel map.
-  const icon =
-    group.isSystem && MEAL_CONFIG[group.name.toLowerCase()]?.icon
-      ? MEAL_CONFIG[group.name.toLowerCase()].icon
-      : 'meal-snack';
+  // Single canonical MEAL_CONFIG lookup (read once, reuse both fields). A
+  // custom category named "breakfast" still gets the neutral icon, never the
+  // system one — ownership is decided by isSystem, not by the name.
+  const systemConfig = group.isSystem
+    ? MEAL_CONFIG[group.name.toLowerCase()]
+    : undefined;
+  const icon = systemConfig?.icon ?? 'meal-snack';
 
   const totalCalories = calculateMealNutrition(group.entries).values.calories;
   const targetCalories = React.useMemo(() => {

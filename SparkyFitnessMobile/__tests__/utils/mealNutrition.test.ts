@@ -432,7 +432,7 @@ describe('blank historical meal type compatibility', () => {
   it('groups a blank-name entry into the synthetic Other bucket', () => {
     const { getMealGroupLabel, groupFoodEntriesByMealType } = require('../../src/utils/mealNutrition');
     const groups = groupFoodEntriesByMealType(
-      [{ id: 'e1', meal_type_id: null, meal_type: '' } as any],
+      [{ id: 'e1', meal_type_id: null, meal_type: '' } as FoodEntry],
       [],
     );
     expect(groups).toHaveLength(1);
@@ -443,7 +443,7 @@ describe('blank historical meal type compatibility', () => {
 
   it('detail filter matches a blank-name entry under the other bucket', () => {
     const { filterFoodEntriesByMealTypeId } = require('../../src/utils/mealNutrition');
-    const entries = [{ id: 'e1', meal_type_id: null, meal_type: '' } as any];
+    const entries = [{ id: 'e1', meal_type_id: null, meal_type: '' } as FoodEntry];
     // Opening "Other" from the summary must show the blank-name entry.
     expect(filterFoodEntriesByMealTypeId(entries, null, 'other', [])).toHaveLength(1);
     expect(filterFoodEntriesByMealTypeId(entries, null, 'Other', [])).toHaveLength(1);

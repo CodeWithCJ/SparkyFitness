@@ -1,6 +1,5 @@
 import React, {
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -47,6 +46,7 @@ import MealTypeTimePickerSheet, {
 } from '../components/MealTypeTimePickerSheet';
 import { MEAL_CONFIG } from '../constants/meals';
 import { computeReorderTargetIndex } from '../components/WorkoutReorderList';
+import type { IconName } from '../components/Icon';
 import type { MealType } from '../types/mealTypes';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -59,6 +59,184 @@ const LONG_PRESS_MS = 150;
 /** Custom types get sequential sort_order starting at 100 (web convention). */
 const CUSTOM_SORT_BASE = 100;
 const CUSTOM_SORT_STEP = 10;
+
+/** Canonical system icon for a system meal-type name (MEAL_CONFIG, snack alias). */
+function getSystemMealTypeIcon(name: string): IconName {
+  const lower = name.toLowerCase();
+  const key = lower === 'snack' ? 'snacks' : lower;
+  return (MEAL_CONFIG[key]?.icon as IconName | undefined) ?? 'meal-snack';
+}
+
+/**
+ * Module-scope custom meal-type row. Declared OUTSIDE the screen component so
+ * the component type is stable across parent renders (a nested declaration
+ * would remount every row on each render — bad for gesture-driven rows).
+ * Gesture.Pan / useAnimatedStyle / runOnJS live here; values and callbacks
+ * are passed as props.
+ */
+const CustomMealTypeRow: React.FC<{
+  mt: MealType;
+  index: number;
+  orderedCustomTypesLength: number;
+  onEdit: (mt: MealType) => void;
+  onDelete: (mt: MealType) => void;
+  onTime: (mt: MealType) => void;
+  onMove: (fromIndex: number, toIndex: number) => void;
+  onToggleQuickLog: (mt: MealType) => void;
+  iconDanger: string;
+  textMuted: string;
+  textSecondary: string;
+  activeDragIndex: SharedValue<number>;
+  panY: SharedValue<number>;
+  strides: number[];
+  offsets: number[];
+}> = ({
+  mt,
+  index,
+  orderedCustomTypesLength,
+  onEdit,
+  onDelete,
+  onTime,
+  onMove,
+  onToggleQuickLog,
+  iconDanger,
+  textMuted,
+  textSecondary,
+  activeDragIndex,
+  panY,
+  strides,
+  offsets,
+}) => {
+  const dragGesture = Gesture.Pan()
+    .activateAfterLongPress(LONG_PRESS_MS)
+    .onStart(() => {
+      activeDragIndex.value = index;
+      panY.value = 0;
+    })
+    .onUpdate((event) => {
+      panY.value = event.translationY;
+    })
+    .onEnd(() => {
+      const from = activeDragIndex.value;
+      const to = computeReorderTargetIndex(strides, offsets, from, panY.value);
+      activeDragIndex.value = -1;
+      panY.value = 0;
+      if (from >= 0 && from !== to) {
+        // Worklet → JS boundary: onMove must run on the JS thread.
+        runOnJS(onMove)(from, to);
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const active = activeDragIndex.value;
+    if (active === index) {
+      return {
+        transform: [{ translateY: panY.value }, { scale: 1.02 }],
+        zIndex: 10,
+        elevation: 8,
+        shadowOpacity: 0.16,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+      };
+    }
+    // Other rows open a gap for the drag, matching the workout reorder list.
+    // The target is derived from the live translation so it tracks the
+    // finger (never equals `active` after a move).
+    const target =
+      active >= 0
+        ? computeReorderTargetIndex(strides, offsets, active, panY.value)
+        : -1;
+    let shift = 0;
+    if (active >= 0 && target >= 0) {
+      if (active < index && index <= target) shift = -(CUSTOM_ROW_HEIGHT + CUSTOM_ROW_GAP);
+      else if (target <= index && index < active) shift = CUSTOM_ROW_HEIGHT + CUSTOM_ROW_GAP;
+    }
+    return {
+      transform: [
+        { translateY: withSpring(shift, { damping: 44, stiffness: 960 }) },
+        { scale: 1 },
+      ],
+      zIndex: 0,
+      elevation: 0,
+      shadowOpacity: 0,
+    };
+  });
+
+  const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
+    if (event.nativeEvent.actionName === 'increment') {
+      onMove(index, Math.min(index + 1, orderedCustomTypesLength - 1));
+    } else if (event.nativeEvent.actionName === 'decrement') {
+      onMove(index, Math.max(index - 1, 0));
+    }
+  };
+
+  return (
+    <Animated.View
+      key={mt.id}
+      testID={`meal-type-custom-${mt.id}`}
+      className="bg-surface border-b border-border/40"
+      style={[animatedStyle]}
+    >
+      <View
+        className="flex-row items-center py-3 px-4"
+        style={{ minHeight: CUSTOM_ROW_HEIGHT }}
+      >
+        <TouchableOpacity
+          className="flex-1 flex-shrink"
+          onPress={() => onEdit(mt)}
+          activeOpacity={0.6}
+          accessibilityLabel={`Edit ${mt.name}`}
+          testID={`edit-custom-${mt.id}`}
+        >
+          <Text className="text-base text-text-primary font-medium" numberOfLines={1}>
+            {mt.name}
+          </Text>
+          <Text className="text-xs text-text-muted mt-0.5">Custom</Text>
+        </TouchableOpacity>
+        <MealTypeTimeCell
+          mealType={mt}
+          onPress={() => onTime(mt)}
+          textSecondary={textSecondary}
+        />
+        <TouchableOpacity
+          onPress={() => onDelete(mt)}
+          className="p-2 ml-1"
+          accessibilityLabel={`Delete ${mt.name}`}
+          testID={`delete-custom-${mt.id}`}
+        >
+          <Icon name="trash" size={18} color={iconDanger} />
+        </TouchableOpacity>
+      </View>
+      <View className="flex-row items-center justify-between px-4 pb-2">
+        <View className="flex-row items-center gap-3">
+          <View className="items-start">
+            <Text className="text-xs text-text-muted mb-0.5">Quick log</Text>
+            <Switch
+              value={mt.show_in_quick_log}
+              onValueChange={() => onToggleQuickLog(mt)}
+              accessibilityLabel={`Quick log ${mt.name}`}
+            />
+          </View>
+        </View>
+        <GestureDetector gesture={dragGesture}>
+          <View
+            testID={`drag-handle-${mt.id}`}
+            className="px-3 py-2"
+            accessibilityRole="adjustable"
+            accessibilityLabel={`Reorder ${mt.name}`}
+            accessibilityActions={[
+              { name: 'decrement', label: 'Move up' },
+              { name: 'increment', label: 'Move down' },
+            ]}
+            onAccessibilityAction={handleAccessibilityAction}
+          >
+            <Icon name="reorder-handle" size={22} color={textMuted} />
+          </View>
+        </GestureDetector>
+      </View>
+    </Animated.View>
+  );
+};
 
 const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
@@ -90,8 +268,6 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       name: string;
       sort_order: number;
       default_time: string | null;
-      is_visible: boolean;
-      show_in_quick_log: boolean;
     }) => createMealType(data),
     onSuccess: () => {
       invalidate();
@@ -135,12 +311,11 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     [deleteMutation],
   );
 
-  // Local override of the custom-type order while a reorder is being persisted;
-  // cleared whenever the server data changes (refetch after updates).
+  // Local override of the custom-type order while a reorder is being persisted.
+  // It is cleared explicitly: on success we write the new sort_orders into the
+  // query cache (setQueryData) and clear the override so the UI keeps showing
+  // the new order; on failure we clear it so the UI reconciles with server truth.
   const [customOrderOverride, setCustomOrderOverride] = useState<string[] | null>(null);
-  useEffect(() => {
-    setCustomOrderOverride(null);
-  }, [mealTypes]);
 
   const { systemTypes, customTypes } = useMemo(() => {
     const types = mealTypes ?? [];
@@ -160,37 +335,57 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   }, [customTypes, customOrderOverride]);
 
   /**
-   * Persists a custom-type reorder: assigns sequential sort_order values
-   * (100, 110, 120, … — web convention, always above the locked system
-   * 10/20/30/40 range) and only writes the types whose value actually changed.
+   * Persists a custom-type reorder with a DEDICATED path (direct updateMealType
+   * calls, NOT the generic updateMutation which invalidates + toasts per op).
+   *
+   * Success: optimistic order updates immediately (setCustomOrderOverride),
+   * deterministic sequential sort_orders are written ONLY for changed rows,
+   * sequentially for safety, with NO refetch/invalidate between rows and a
+   * single invalidate after all writes succeed.
+   *
+   * Failure: if update A succeeds and B fails the backend is partially
+   * changed; we show exactly ONE reorder-specific error, log once, invalidate
+   * once, and clear the optimistic override so the UI reconciles with server
+   * truth (no stale order kept indefinitely).
    */
   const persistCustomOrder = useCallback(
     async (orderedIds: string[]) => {
       const byId = new Map(customTypes.map((mt) => [mt.id, mt]));
-      const ops: { id: string; data: { sort_order: number } }[] = [];
+      const ops: { id: string; nextSort: number }[] = [];
       orderedIds.forEach((id, index) => {
         const mt = byId.get(id);
         if (!mt) return;
         const nextSort = CUSTOM_SORT_BASE + index * CUSTOM_SORT_STEP;
         if (mt.sort_order !== nextSort) {
-          ops.push({ id, data: { sort_order: nextSort } });
+          ops.push({ id, nextSort });
         }
       });
       if (ops.length === 0) return;
-      // Persist sequentially to avoid server-side ordering races, then
-      // invalidate ONCE so the refetched list reflects the new order without
-      // re-entering the order override reset per row.
       try {
         for (const op of ops) {
-          await updateMutation.mutateAsync(op);
+          // Direct API call: no global mutation callbacks run per row.
+          await updateMealType(op.id, { sort_order: op.nextSort });
         }
+        // Success: write the new sort_orders into the query cache immediately
+        // (no flicker back to the old order), clear the override, then issue
+        // exactly ONE invalidate to confirm against the server.
+        queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
+          (old ?? []).map((mt) => {
+            const op = ops.find((o) => o.id === mt.id);
+            return op ? { ...mt, sort_order: op.nextSort } : mt;
+          }),
+        );
+        setCustomOrderOverride(null);
         invalidate();
       } catch (err) {
         addLog(`Failed to persist meal type order: ${(err as Error).message}`, 'ERROR');
-        Toast.show({ type: 'error', text1: 'Failed to reorder' });
+        Toast.show({ type: 'error', text1: 'Failed to reorder meal types' });
+        // Reconcile with server truth: drop the optimistic order and refetch.
+        setCustomOrderOverride(null);
+        invalidate();
       }
     },
-    [customTypes, updateMutation, invalidate],
+    [customTypes, invalidate, queryClient],
   );
 
   const moveCustomType = useCallback(
@@ -246,15 +441,20 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   });
 
   const handleFormSave = useCallback(
-    (values: { name: string; defaultTime: string; isVisible: boolean; showInQuickLog: boolean }) => {
+    (values: {
+      name: string;
+      defaultTime: string;
+      showInQuickLog: boolean;
+    }) => {
       if (editingType) {
+        // Edit payload omits is_visible entirely so a normal edit never
+        // overwrites server-side visibility state (backend COALESCE keeps it).
         updateMutation.mutate(
           {
             id: editingType.id,
             data: {
               name: values.name,
               default_time: values.defaultTime || null,
-              is_visible: values.isVisible,
               show_in_quick_log: values.showInQuickLog,
             },
           },
@@ -269,7 +469,11 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         return;
       }
       // Create path: automatically assign the new type to the end of the
-      // custom list (no user-visible order number).
+      // custom list (no user-visible order number). The backend hardcodes
+      // is_visible = TRUE on create and does not read it from the body, so it
+      // is omitted (matching web). show_in_quick_log is not supported by the
+      // create INSERT (defaults true per user_meal_visibilities); if the user
+      // turned it off in the form we apply it with one follow-up update.
       const nextSort =
         customTypes.reduce(
           (max, mt) => Math.max(max, mt.sort_order ?? 0),
@@ -280,13 +484,14 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           name: values.name,
           sort_order: nextSort,
           default_time: values.defaultTime || null,
-          is_visible: values.isVisible,
-          show_in_quick_log: values.showInQuickLog,
         },
         {
-          onSuccess: () => {
+          onSuccess: (created) => {
             formSheetRef.current?.dismiss();
             invalidate();
+            if (!values.showInQuickLog && created?.id) {
+              updateMutation.mutate({ id: created.id, data: { show_in_quick_log: false } });
+            }
           },
         },
       );
@@ -308,23 +513,35 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     [updateMutation],
   );
 
-  const systemIcon = (name: string) => {
-    const lower = name.toLowerCase();
-    const key = lower === 'snack' ? 'snacks' : lower;
-    return MEAL_CONFIG[key]?.icon ?? 'meal-snack';
-  };
+  const toggleQuickLog = useCallback(
+    (mt: MealType) => {
+      updateMutation.mutate({
+        id: mt.id,
+        data: { show_in_quick_log: !mt.show_in_quick_log },
+      });
+    },
+    [updateMutation],
+  );
 
   const renderSystemRow = (mt: MealType) => (
     <View
       key={mt.id}
       className="flex-row items-center py-3 px-4 bg-surface border-b border-border/40"
     >
-      <Icon name={systemIcon(mt.name)} size={20} color={accentColor} />
+      <Icon name={getSystemMealTypeIcon(mt.name)} size={20} color={accentColor} />
       <View className="flex-1 ml-3 flex-shrink">
         <Text className="text-base text-text-primary font-medium" numberOfLines={1}>
           {mt.name}
         </Text>
         <Text className="text-xs text-text-muted mt-0.5">System</Text>
+      </View>
+      <View className="items-start mr-3">
+        <Text className="text-xs text-text-muted mb-0.5">Quick log</Text>
+        <Switch
+          value={mt.show_in_quick_log}
+          onValueChange={() => toggleQuickLog(mt)}
+          accessibilityLabel={`Quick log ${mt.name}`}
+        />
       </View>
       <MealTypeTimeCell
         mealType={mt}
@@ -333,166 +550,6 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       />
     </View>
   );
-
-  const CustomMealTypeRow: React.FC<{
-    mt: MealType;
-    index: number;
-    orderedCustomTypesLength: number;
-    onEdit: (mt: MealType) => void;
-    onDelete: (mt: MealType) => void;
-    onTime: (mt: MealType) => void;
-    onMove: (fromIndex: number, toIndex: number) => void;
-    accentColor: string;
-    iconDanger: string;
-    textMuted: string;
-    textSecondary: string;
-    activeDragIndex: SharedValue<number>;
-    panY: SharedValue<number>;
-    strides: number[];
-    offsets: number[];
-  }> = ({ mt, index, orderedCustomTypesLength, onEdit, onDelete, onTime, onMove, accentColor, iconDanger, textMuted, textSecondary, activeDragIndex, panY, strides, offsets }) => {
-    const dragGesture = Gesture.Pan()
-      .activateAfterLongPress(LONG_PRESS_MS)
-      .onStart(() => {
-        activeDragIndex.value = index;
-        panY.value = 0;
-      })
-      .onUpdate((event) => {
-        panY.value = event.translationY;
-      })
-      .onEnd(() => {
-        const from = activeDragIndex.value;
-        const to = computeReorderTargetIndex(strides, offsets, from, panY.value);
-        activeDragIndex.value = -1;
-        panY.value = 0;
-        if (from >= 0 && from !== to) {
-          // Worklet → JS boundary: onMove must run on the JS thread.
-          runOnJS(onMove)(from, to);
-        }
-      });
-
-    const animatedStyle = useAnimatedStyle(() => {
-      const active = activeDragIndex.value;
-      if (active === index) {
-        return {
-          transform: [{ translateY: panY.value }, { scale: 1.02 }],
-          zIndex: 10,
-          elevation: 8,
-          shadowOpacity: 0.16,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 4 },
-        };
-      }
-      // Other rows open a gap for the drag, matching the workout reorder list.
-      // The target is derived from the live translation so it tracks the
-      // finger (never equals `active` after a move).
-      const target =
-        active >= 0
-          ? computeReorderTargetIndex(strides, offsets, active, panY.value)
-          : -1;
-      let shift = 0;
-      if (active >= 0 && target >= 0) {
-        if (active < index && index <= target) shift = -(CUSTOM_ROW_HEIGHT + CUSTOM_ROW_GAP);
-        else if (target <= index && index < active) shift = CUSTOM_ROW_HEIGHT + CUSTOM_ROW_GAP;
-      }
-      return {
-        transform: [
-          { translateY: withSpring(shift, { damping: 44, stiffness: 960 }) },
-          { scale: 1 },
-        ],
-        zIndex: 0,
-        elevation: 0,
-        shadowOpacity: 0,
-      };
-    });
-
-    const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
-      if (event.nativeEvent.actionName === 'increment') {
-        onMove(index, Math.min(index + 1, orderedCustomTypesLength - 1));
-      } else if (event.nativeEvent.actionName === 'decrement') {
-        onMove(index, Math.max(index - 1, 0));
-      }
-    };
-
-    return (
-      <Animated.View
-        key={mt.id}
-        testID={`meal-type-custom-${mt.id}`}
-        className="bg-surface border-b border-border/40"
-        style={[animatedStyle]}
-      >
-        <View
-          className="flex-row items-center py-3 px-4"
-          style={{ minHeight: CUSTOM_ROW_HEIGHT }}
-        >
-          <TouchableOpacity
-            className="flex-1 flex-shrink"
-            onPress={() => onEdit(mt)}
-            activeOpacity={0.6}
-            accessibilityLabel={`Edit ${mt.name}`}
-            testID={`edit-custom-${mt.id}`}
-          >
-            <Text className="text-base text-text-primary font-medium" numberOfLines={1}>
-              {mt.name}
-            </Text>
-            <Text className="text-xs text-text-muted mt-0.5">Custom</Text>
-          </TouchableOpacity>
-          <MealTypeTimeCell
-            mealType={mt}
-            onPress={() => onTime(mt)}
-            textSecondary={textSecondary}
-          />
-          <TouchableOpacity
-            onPress={() => onDelete(mt)}
-            className="p-2 ml-1"
-            accessibilityLabel={`Delete ${mt.name}`}
-            testID={`delete-custom-${mt.id}`}
-          >
-            <Icon name="trash" size={18} color={iconDanger} />
-          </TouchableOpacity>
-        </View>
-        <View className="flex-row items-center justify-between px-4 pb-2">
-          <View className="flex-row items-center gap-3">
-            <View className="items-start">
-              <Text className="text-xs text-text-muted mb-0.5">Visible</Text>
-              <Switch
-                value={mt.is_visible}
-                onValueChange={(val) =>
-                  updateMutation.mutate({ id: mt.id, data: { is_visible: val } })
-                }
-                accessibilityLabel={`Visible ${mt.name}`}
-              />
-            </View>
-            <View className="items-start">
-              <Text className="text-xs text-text-muted mb-0.5">Quick log</Text>
-              <Switch
-                value={mt.show_in_quick_log}
-                onValueChange={(val) =>
-                  updateMutation.mutate({ id: mt.id, data: { show_in_quick_log: val } })
-                }
-                accessibilityLabel={`Quick log ${mt.name}`}
-              />
-            </View>
-          </View>
-          <GestureDetector gesture={dragGesture}>
-            <View
-              testID={`drag-handle-${mt.id}`}
-              className="px-3 py-2"
-              accessibilityRole="adjustable"
-              accessibilityLabel={`Reorder ${mt.name}`}
-              accessibilityActions={[
-                { name: 'decrement', label: 'Move up' },
-                { name: 'increment', label: 'Move down' },
-              ]}
-              onAccessibilityAction={handleAccessibilityAction}
-            >
-              <Icon name="reorder-handle" size={22} color={textMuted} />
-            </View>
-          </GestureDetector>
-        </View>
-      </Animated.View>
-    );
-  };
 
   return (
     <View
@@ -554,7 +611,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
                     onDelete={handleDelete}
                     onTime={openTimePicker}
                     onMove={moveCustomType}
-                    accentColor={accentColor}
+                    onToggleQuickLog={toggleQuickLog}
                     iconDanger={iconDanger}
                     textMuted={textMuted}
                     textSecondary={textSecondary}

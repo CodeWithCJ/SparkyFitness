@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import FoodSummary from '../../src/components/FoodSummary';
+import type { DailyGoals } from '../../src/types/goals';
 import type { FoodEntry } from '../../src/types/foodEntries';
 import type { MealType } from '../../src/types/mealTypes';
 
@@ -114,7 +115,7 @@ describe('FoodSummary', () => {
   });
 
   it('system breakfast receives the configured target calories', () => {
-    const goals = { breakfast_percentage: 25 } as any;
+    const goals = { breakfast_percentage: 25 } as DailyGoals;
     const { getByText } = render(
       <FoodSummary
         foodEntries={[entry('e1', 'sys-b', 'breakfast')]}
@@ -128,7 +129,7 @@ describe('FoodSummary', () => {
   });
 
   it('a CUSTOM type named breakfast never inherits the system target calories', () => {
-    const goals = { breakfast_percentage: 25 } as any;
+    const goals = { breakfast_percentage: 25 } as DailyGoals;
     const { queryByText } = render(
       <FoodSummary
         foodEntries={[entry('e2', 'custom-b', 'breakfast')]}
@@ -144,7 +145,7 @@ describe('FoodSummary', () => {
   });
 
   it('a historical (unresolved) group never inherits target calories', () => {
-    const goals = { breakfast_percentage: 25 } as any;
+    const goals = { breakfast_percentage: 25 } as DailyGoals;
     const { queryByText } = render(
       <FoodSummary
         // A deleted/unknown custom name with no id: falls into its own literal

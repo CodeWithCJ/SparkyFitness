@@ -124,7 +124,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({ navigation }) =
         {/* Meal Types */}
         <SettingsRowGroup>
           <SettingsRow
-            icon="meal-snack"
+            icon="meal"
             title="Meal Types"
             subtitle="Add, edit, reorder, or delete custom meal categories"
             onPress={() => navigation.navigate('MealTypeSettings')}
