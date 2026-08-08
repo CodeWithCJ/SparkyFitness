@@ -407,10 +407,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     void (async () => {
       const seen = await hasSeenFoodPhotoIntro();
       if (!seen) {
-        navigation.navigate('FoodPhotoIntro', { date });
+        navigation.navigate('FoodPhotoIntro', { date, mealTypeId: mealTypeId ?? undefined });
       }
     })();
-  }, [isCaptureBarcodeMode, scanMode, aiSettingQuery.isLoading, photoModeAvailable, navigation, date]);
+  }, [isCaptureBarcodeMode, scanMode, aiSettingQuery.isLoading, photoModeAvailable, navigation, date, mealTypeId]);
 
   const handlePhotoCapture = async () => {
     if (!cameraRef.current) return;
@@ -761,7 +761,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   ) : null}
                   {/* Centered between the capture button and the segmented control's right edge. */}
                   <TouchableOpacity
-                    onPress={() => navigation.navigate('FoodPhotoIntro', { date })}
+                    onPress={() => navigation.navigate('FoodPhotoIntro', { date, mealTypeId: mealTypeId ?? undefined })}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     accessibilityLabel="How photo estimation works"
                     accessibilityRole="button"

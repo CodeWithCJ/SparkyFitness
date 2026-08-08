@@ -187,7 +187,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     if (next.length === 0) {
       navigation
         .getParent<NativeStackNavigationProp<RootStackParamList>>()
-        ?.replace('FoodScan', { date, initialMode: 'photo' });
+        ?.replace('FoodScan', { date, initialMode: 'photo', mealTypeId: mealTypeId ?? undefined });
     }
   };
 
@@ -370,7 +370,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           if (!copy.stayOnForm) {
             const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
             if (error.code === 'IMAGE_TOO_LARGE' || error.code === 'UNSUPPORTED_MIME_TYPE') {
-              parent?.replace('FoodScan', { date, initialMode: 'photo' });
+              parent?.replace('FoodScan', { date, initialMode: 'photo', mealTypeId: mealTypeId ?? undefined });
             } else {
               parent?.popToTop();
             }

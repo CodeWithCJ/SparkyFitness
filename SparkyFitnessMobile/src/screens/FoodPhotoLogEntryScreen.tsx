@@ -105,10 +105,14 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     fat: goalPercent(displayValues.fat * servingsNumber, goals?.fat),
   };
 
-  // Preselect the originating meal type (MealTypeDetail → search → photo flow);
-  // otherwise default once the default arrives. Done during render (instead of
-  // in an effect); the `!selectedMealTypeId` guard makes it self-limiting.
-  if (!selectedMealTypeId && initialMealTypeId) {
+  // Preselect the originating meal type (MealTypeDetail → search → photo flow)
+  // ONLY when it still exists in the selectable list — a stale/hidden/deleted
+  // id must never be submitted for a new entry. Otherwise default once the
+  // default arrives. Done during render (instead of in an effect); the
+  // `!selectedMealTypeId` guard makes it self-limiting.
+  const originatingTypeExists =
+    initialMealTypeId != null && mealTypes.some((mt) => mt.id === initialMealTypeId);
+  if (!selectedMealTypeId && originatingTypeExists) {
     setSelectedMealTypeId(initialMealTypeId);
   } else if (!selectedMealTypeId && defaultMealTypeId) {
     setSelectedMealTypeId(defaultMealTypeId);

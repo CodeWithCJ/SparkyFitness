@@ -174,7 +174,9 @@ describe('MealTypeSettingsScreen', () => {
   });
 
   it('rejects creating without a name (button disabled)', async () => {
-    const { getByLabelText } = renderScreen();
+    const { findByText, getByLabelText } = renderScreen();
+    // Await the loaded list so no state update leaks after the test body.
+    await findByText('Pre-Workout');
     fireEvent.press(getByLabelText('Add meal type'));
     const createButton = getByLabelText('Create meal type');
     expect(createButton.props.accessibilityState?.disabled).toBe(true);

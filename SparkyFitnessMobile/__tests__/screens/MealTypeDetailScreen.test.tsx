@@ -40,12 +40,18 @@ jest.mock('../../src/hooks/useScreenHeader', () => {
   const ReactModule = require('react');
   const { Pressable } = require('react-native');
   return {
-    useScreenHeader: (config: any) => {
-      const items = Array.isArray(config.right) ? config.right : config.right ? [config.right] : [];
+    useScreenHeader: (config: {
+      right?: { accessibilityLabel?: string; onPress?: () => void } | { accessibilityLabel?: string; onPress?: () => void }[];
+    }) => {
+      const items = Array.isArray(config.right)
+        ? config.right
+        : config.right
+          ? [config.right]
+          : [];
       return ReactModule.createElement(
         ReactModule.Fragment,
         null,
-        items.map((item: any, i: number) =>
+        items.map((item, i) =>
           ReactModule.createElement(Pressable, {
             key: i,
             accessibilityLabel: item.accessibilityLabel,

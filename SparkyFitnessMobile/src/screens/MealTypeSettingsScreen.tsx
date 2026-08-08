@@ -21,6 +21,7 @@ import Toast from 'react-native-toast-message';
 import { toHourMinute } from '@workspace/shared';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -85,8 +86,13 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   }, [queryClient]);
 
   const createMutation = useMutation({
-    mutationFn: (data: { name: string; sort_order: number; default_time: string | null }) =>
-      createMealType(data),
+    mutationFn: (data: {
+      name: string;
+      sort_order: number;
+      default_time: string | null;
+      is_visible: boolean;
+      show_in_quick_log: boolean;
+    }) => createMealType(data),
     onSuccess: () => {
       invalidate();
       Toast.show({ type: 'success', text1: 'Meal type created' });
@@ -159,7 +165,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
    * 10/20/30/40 range) and only writes the types whose value actually changed.
    */
   const persistCustomOrder = useCallback(
-    (orderedIds: string[]) => {
+    async (orderedIds: string[]) => {
       const byId = new Map(customTypes.map((mt) => [mt.id, mt]));
       const ops: { id: string; data: { sort_order: number } }[] = [];
       orderedIds.forEach((id, index) => {
@@ -171,10 +177,17 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         }
       });
       if (ops.length === 0) return;
-      // Persist sequentially to avoid server-side ordering races; invalidate at
-      // the end so the refetched list reflects the new order.
-      for (const op of ops) {
-        updateMutation.mutate(op, { onSuccess: invalidate });
+      // Persist sequentially to avoid server-side ordering races, then
+      // invalidate ONCE so the refetched list reflects the new order without
+      // re-entering the order override reset per row.
+      try {
+        for (const op of ops) {
+          await updateMutation.mutateAsync(op);
+        }
+        invalidate();
+      } catch (err) {
+        addLog(`Failed to persist meal type order: ${(err as Error).message}`, 'ERROR');
+        Toast.show({ type: 'error', text1: 'Failed to reorder' });
       }
     },
     [customTypes, updateMutation, invalidate],
@@ -189,7 +202,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       const [moved] = current.splice(fromIndex, 1);
       current.splice(toIndex, 0, moved);
       setCustomOrderOverride(current);
-      persistCustomOrder(current);
+      void persistCustomOrder(current);
     },
     [orderedCustomTypes, persistCustomOrder],
   );
@@ -267,6 +280,8 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           name: values.name,
           sort_order: nextSort,
           default_time: values.defaultTime || null,
+          is_visible: values.isVisible,
+          show_in_quick_log: values.showInQuickLog,
         },
         {
           onSuccess: () => {
@@ -351,7 +366,8 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         activeDragIndex.value = -1;
         panY.value = 0;
         if (from >= 0 && from !== to) {
-          onMove(from, to);
+          // Worklet → JS boundary: onMove must run on the JS thread.
+          runOnJS(onMove)(from, to);
         }
       });
 
@@ -368,7 +384,12 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         };
       }
       // Other rows open a gap for the drag, matching the workout reorder list.
-      const target = activeDragIndex.value;
+      // The target is derived from the live translation so it tracks the
+      // finger (never equals `active` after a move).
+      const target =
+        active >= 0
+          ? computeReorderTargetIndex(strides, offsets, active, panY.value)
+          : -1;
       let shift = 0;
       if (active >= 0 && target >= 0) {
         if (active < index && index <= target) shift = -(CUSTOM_ROW_HEIGHT + CUSTOM_ROW_GAP);
