@@ -1,0 +1,40 @@
+{
+  "common": {
+    "save": "Zapisz",
+    "saving": "Zapisywanie…"
+  },
+  "settings": {
+    "app": "Ustawienia aplikacji",
+    "language": {
+      "title": "Język",
+      "system": "Systemowy",
+      "english": "Angielski",
+      "polish": "Polski"
+    }
+  },
+  "languageSettings": {
+    "subtitle": "Użyj języka urządzenia lub wybierz język dla SparkyFitness."
+  },
+  "navigation": {
+    "settings": "Ustawienia"
+  },
+  "notifications": {
+    "title": "Powiadomienia"
+  },
+  "activeWorkout": {
+    "liveActivity": {
+      "rest": "Odpoczynek",
+      "paused": "Wstrzymano",
+      "elapsed": "Czas",
+      "workoutComplete": "Trening ukończony",
+      "complete": "Ukończ",
+      "addFifteenSeconds": "Dodaj 15 sekund",
+      "addFifteenSecondsShort": "+15 s",
+      "skipRest": "Pomiń odpoczynek",
+      "workout": "Trening",
+      "exercise": "Ćwiczenie",
+      "set": "Seria",
+      "setOf": "z"
+    }
+  }
+}

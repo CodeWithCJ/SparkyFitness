@@ -10,7 +10,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="1,024 kcal left"
+        android:text="@string/widget_preview_macros_left"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="#FF1F1F1F"
@@ -42,7 +42,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Protein"
+            android:text="@string/widget_protein"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -50,7 +50,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="51 g"
+            android:text="@string/widget_preview_grams_protein"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -95,7 +95,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Carbs"
+            android:text="@string/widget_carbs"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -103,7 +103,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="136 g"
+            android:text="@string/widget_preview_grams_carbs"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -148,7 +148,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Fat"
+            android:text="@string/widget_fat"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -156,7 +156,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="32 g"
+            android:text="@string/widget_preview_grams_fat"
             android:textSize="14sp"
             android:textColor="#FF1F1F1F"
             android:maxLines="1" />
@@ -192,7 +192,7 @@
             android:layout_weight="1"
             android:src="@drawable/ic_widget_search"
             android:tint="#FF3B82F6"
-            android:contentDescription="Search food" />
+            android:contentDescription="@string/widget_search_food" />
 
         <TextView
             android:layout_width="1dp"
@@ -206,6 +206,6 @@
             android:layout_weight="1"
             android:src="@drawable/ic_widget_scan"
             android:tint="#FF3B82F6"
-            android:contentDescription="Scan barcode" />
+            android:contentDescription="@string/widget_scan_barcode" />
     </LinearLayout>
 </LinearLayout>
