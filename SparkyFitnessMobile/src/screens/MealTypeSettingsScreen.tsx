@@ -24,6 +24,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  type SharedValue,
 } from 'react-native-reanimated';
 
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -318,7 +319,23 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     </View>
   );
 
-  const renderCustomRow = (mt: MealType, index: number) => {
+  const CustomMealTypeRow: React.FC<{
+    mt: MealType;
+    index: number;
+    orderedCustomTypesLength: number;
+    onEdit: (mt: MealType) => void;
+    onDelete: (mt: MealType) => void;
+    onTime: (mt: MealType) => void;
+    onMove: (fromIndex: number, toIndex: number) => void;
+    accentColor: string;
+    iconDanger: string;
+    textMuted: string;
+    textSecondary: string;
+    activeDragIndex: SharedValue<number>;
+    panY: SharedValue<number>;
+    strides: number[];
+    offsets: number[];
+  }> = ({ mt, index, orderedCustomTypesLength, onEdit, onDelete, onTime, onMove, accentColor, iconDanger, textMuted, textSecondary, activeDragIndex, panY, strides, offsets }) => {
     const dragGesture = Gesture.Pan()
       .activateAfterLongPress(LONG_PRESS_MS)
       .onStart(() => {
@@ -334,7 +351,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         activeDragIndex.value = -1;
         panY.value = 0;
         if (from >= 0 && from !== to) {
-          moveCustomType(from, to);
+          onMove(from, to);
         }
       });
 
@@ -370,9 +387,9 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
 
     const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
       if (event.nativeEvent.actionName === 'increment') {
-        moveCustomType(index, Math.min(index + 1, orderedCustomTypes.length - 1));
+        onMove(index, Math.min(index + 1, orderedCustomTypesLength - 1));
       } else if (event.nativeEvent.actionName === 'decrement') {
-        moveCustomType(index, Math.max(index - 1, 0));
+        onMove(index, Math.max(index - 1, 0));
       }
     };
 
@@ -389,7 +406,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         >
           <TouchableOpacity
             className="flex-1 flex-shrink"
-            onPress={() => openEdit(mt)}
+            onPress={() => onEdit(mt)}
             activeOpacity={0.6}
             accessibilityLabel={`Edit ${mt.name}`}
             testID={`edit-custom-${mt.id}`}
@@ -401,11 +418,11 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           </TouchableOpacity>
           <MealTypeTimeCell
             mealType={mt}
-            onPress={() => openTimePicker(mt)}
+            onPress={() => onTime(mt)}
             textSecondary={textSecondary}
           />
           <TouchableOpacity
-            onPress={() => handleDelete(mt)}
+            onPress={() => onDelete(mt)}
             className="p-2 ml-1"
             accessibilityLabel={`Delete ${mt.name}`}
             testID={`delete-custom-${mt.id}`}
@@ -489,7 +506,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
                 System Types
               </Text>
               <Text className="text-xs text-text-muted px-4 pb-2">
-                System meal types can't be renamed or reordered.
+                System meal types can&apos;t be renamed or reordered.
               </Text>
               <View className="bg-surface rounded-xl mx-4 overflow-hidden shadow-sm">
                 {systemTypes.map(renderSystemRow)}
@@ -506,7 +523,26 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
                 Drag to reorder. Tap a row to edit.
               </Text>
               <View className="bg-surface rounded-xl mx-4 overflow-hidden shadow-sm">
-                {orderedCustomTypes.map((mt, index) => renderCustomRow(mt, index))}
+                {orderedCustomTypes.map((mt, index) => (
+                  <CustomMealTypeRow
+                    key={mt.id}
+                    mt={mt}
+                    index={index}
+                    orderedCustomTypesLength={orderedCustomTypes.length}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                    onTime={openTimePicker}
+                    onMove={moveCustomType}
+                    accentColor={accentColor}
+                    iconDanger={iconDanger}
+                    textMuted={textMuted}
+                    textSecondary={textSecondary}
+                    activeDragIndex={activeDragIndex}
+                    panY={panY}
+                    strides={strides}
+                    offsets={offsets}
+                  />
+                ))}
               </View>
             </View>
           )}

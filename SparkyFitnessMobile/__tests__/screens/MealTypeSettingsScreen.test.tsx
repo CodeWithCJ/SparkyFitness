@@ -1,11 +1,10 @@
 import React from 'react';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import MealTypeSettingsScreen from '../../src/screens/MealTypeSettingsScreen';
 import * as mealTypesApi from '../../src/services/api/mealTypesApi';
-import { mealTypesQueryKey } from '../../src/hooks/queryKeys';
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -143,7 +142,7 @@ describe('MealTypeSettingsScreen', () => {
   });
 
   it('does NOT expose a raw Order / sort_order input anywhere', async () => {
-    const { findByText, queryByText, queryAllByText, queryByPlaceholderText } = renderScreen();
+    const { findByText, queryAllByText, queryByPlaceholderText } = renderScreen();
     await findByText('Pre-Workout');
     expect(queryAllByText(/^Order[: ]/)).toHaveLength(0);
     expect(queryByPlaceholderText(/e\.g\. 11/)).toBeNull();
@@ -175,14 +174,14 @@ describe('MealTypeSettingsScreen', () => {
   });
 
   it('rejects creating without a name (button disabled)', async () => {
-    const { findByText, getByLabelText } = renderScreen();
+    const { getByLabelText } = renderScreen();
     fireEvent.press(getByLabelText('Add meal type'));
     const createButton = getByLabelText('Create meal type');
     expect(createButton.props.accessibilityState?.disabled).toBe(true);
   });
 
   it('opens edit with existing values and saves rename + time + toggles without sort_order', async () => {
-    const { findByText, getByText, getByLabelText } = renderScreen();
+    const { findByText, getByLabelText } = renderScreen();
     const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
 
     fireEvent.press(await findByText('Pre-Workout'));

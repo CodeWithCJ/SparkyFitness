@@ -1,10 +1,8 @@
 import {
-  getFoodEntryMealTypeKey,
   getFoodEntryMealTypeLabel,
   getHistoricalMealTypeLabel,
   getMealGroupLabel,
   getMealTypeDisplayLabel,
-  getMealTypeDisplayLabelForName,
   getMealPercentage,
   groupFoodEntriesByMealType,
   filterFoodEntriesByMealTypeId,
