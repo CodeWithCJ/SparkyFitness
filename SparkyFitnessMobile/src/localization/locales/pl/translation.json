@@ -20,5 +20,21 @@
   },
   "notifications": {
     "title": "Powiadomienia"
+  },
+  "activeWorkout": {
+    "liveActivity": {
+      "rest": "Odpoczynek",
+      "paused": "Wstrzymano",
+      "elapsed": "Czas",
+      "workoutComplete": "Trening ukończony",
+      "complete": "Ukończ",
+      "addFifteenSeconds": "Dodaj 15 sekund",
+      "addFifteenSecondsShort": "+15 s",
+      "skipRest": "Pomiń odpoczynek",
+      "workout": "Trening",
+      "exercise": "Ćwiczenie",
+      "set": "Seria",
+      "setOf": "z"
+    }
   }
 }

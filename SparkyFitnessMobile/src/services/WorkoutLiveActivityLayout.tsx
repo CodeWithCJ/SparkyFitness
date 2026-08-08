@@ -18,6 +18,10 @@ import {
   resizable,
 } from '@expo/ui/swift-ui/modifiers';
 import { createLiveActivity } from 'expo-widgets';
+import type {
+  WorkoutLiveActivityLabels,
+  WorkoutLiveActivityLocale,
+} from './workoutLiveActivityLabels';
 
 /**
  * Live Activity content for the active workout, rendered by the widget
@@ -29,9 +33,16 @@ import { createLiveActivity } from 'expo-widgets';
  * Timestamps are epoch-ms numbers, never `Date`s: props cross a JSON boundary
  * into the widget process, where the layout function reconstructs Dates. The
  * OS ticks the timer Texts itself, so no updates are needed while backgrounded.
+ *
+ * All user-facing text arrives through `labels` (a serializable object built in
+ * the main app). The layout never imports i18next or React Native.
  */
 export type WorkoutLiveActivityProps = {
   workoutName: string;
+  /** Effective locale the labels were built for. */
+  locale: WorkoutLiveActivityLocale;
+  /** Serialized user-facing labels for the current locale. */
+  labels: WorkoutLiveActivityLabels;
   /** Epoch ms when the workout started — drives the system count-up timer. */
   startedAt: number;
   phase: 'active' | 'resting' | 'paused' | 'complete';
@@ -41,7 +52,7 @@ export type WorkoutLiveActivityProps = {
   restEndsAt: number | null;
   /** Remaining rest as "M:SS", precomputed at pause time (no live tick while paused). */
   pausedRemainingLabel: string | null;
-  /** Upcoming set, e.g. "Bench Press · Set 2 of 4". */
+  /** Upcoming set, localized by the main app, e.g. "Bench Press · Set 2 of 4". */
   setLine: string | null;
   /** Static elapsed clock captured when the last set completed — freezes the timer. */
   elapsedLabel: string | null;
@@ -108,7 +119,7 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
       const restCap = (props.restEndsAt ?? 0) - (props.restStartedAt ?? 0) >= 600_000 ? 50 : 40;
       return (
         <HStack spacing={5} modifiers={[layoutPriority(1)]}>
-          <Text modifiers={labelStyle}>Rest</Text>
+          <Text modifiers={labelStyle}>{props.labels.rest}</Text>
           <Text
             timerInterval={restInterval}
             countsDown
@@ -125,7 +136,9 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
     if (props.phase === 'paused' || props.phase === 'complete') {
       return (
         <HStack spacing={5} modifiers={[layoutPriority(1)]}>
-          <Text modifiers={labelStyle}>{props.phase === 'paused' ? 'Paused' : 'Elapsed'}</Text>
+          <Text modifiers={labelStyle}>
+            {props.phase === 'paused' ? props.labels.paused : props.labels.elapsed}
+          </Text>
           <Text modifiers={valueFont}>
             {(props.phase === 'paused' ? props.pausedRemainingLabel : props.elapsedLabel) ?? ''}
           </Text>
@@ -138,7 +151,7 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
     // leaves a floating gap after the label.
     return (
       <VStack alignment="trailing" spacing={1} modifiers={[layoutPriority(1)]}>
-        <Text modifiers={[secondaryText(), font({ size: 12 })]}>Elapsed</Text>
+        <Text modifiers={[secondaryText(), font({ size: 12 })]}>{props.labels.elapsed}</Text>
         <Text
           date={new Date(props.startedAt)}
           dateStyle="timer"
@@ -171,7 +184,7 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
   // secondary style washes out against the Lock Screen material.
   const statusLine = () => {
     if (props.phase === 'complete') {
-      return <Text>Workout complete</Text>;
+      return <Text>{props.labels.workoutComplete}</Text>;
     }
     return props.setLine != null ? (
       <Text modifiers={[lineLimit(1)]}>{props.setLine}</Text>
@@ -234,10 +247,15 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
     if (restInterval) {
       return (
         <HStack spacing={8}>
-          <Button target="rest-add-15" modifiers={restButtonModifiers('Add 15 seconds')}>
-            <Text modifiers={[restButtonFont, monospacedDigit()]}>+15s</Text>
+          <Button
+            target="rest-add-15"
+            modifiers={restButtonModifiers(props.labels.addFifteenSeconds)}
+          >
+            <Text modifiers={[restButtonFont, monospacedDigit()]}>
+              {props.labels.addFifteenSecondsShort}
+            </Text>
           </Button>
-          <Button target="rest-skip" modifiers={restButtonModifiers('Skip rest')}>
+          <Button target="rest-skip" modifiers={restButtonModifiers(props.labels.skipRest)}>
             <Image systemName="forward.end.fill" modifiers={[restButtonFont]} />
           </Button>
         </HStack>
@@ -246,7 +264,7 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
     if (props.phase === 'active' && props.setLine != null) {
       return (
         <Button
-          label="Complete"
+          label={props.labels.complete}
           systemImage="checkmark"
           target="complete-set"
           modifiers={[buttonStyle('bordered'), buttonBorderShape('capsule'), controlSize('regular')]}

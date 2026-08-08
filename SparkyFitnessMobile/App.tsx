@@ -108,6 +108,7 @@ import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
+import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -134,11 +135,12 @@ function AppContent() {
   // the app returns to the foreground.
   useAppLanguageForegroundSync();
 
-  // Keep the native surfaces (Android Glance widgets) in sync with the
-  // effective app locale. This hook listens to i18n 'languageChanged' and
-  // reloads the Glance widgets without touching any React Native screen
-  // strings.
+  // Keep the native surfaces (Android Glance widgets, iOS WidgetKit, Workout
+  // Live Activity) in sync with the effective app locale. These hooks listen
+  // to i18n 'languageChanged' and reload/update the native surfaces without
+  // touching any React Native screen strings.
   useWidgetLanguageRefresh();
+  useIOSWidgetLanguageRefresh();
 
   const usesLiquidGlassNavigation = useNativeIOSTabsActive();
   const usesNativeIOSHeaders = useNativeIOSHeadersActive();
