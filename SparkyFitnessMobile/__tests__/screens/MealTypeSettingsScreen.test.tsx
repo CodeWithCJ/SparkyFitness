@@ -1574,6 +1574,13 @@ describe('Meal type time wheel — visible on-device picker (device bugfix)', ()
         expect.objectContaining({ name: 'Dessert', default_time: '20:15' }),
       );
     });
+    // Quick log default (off) → follow-up update disables it for the new type.
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith(
+        'custom-new',
+        expect.objectContaining({ show_in_quick_log: false }),
+      );
+    });
     await act(async () => {});
     await act(async () => {});
   });
