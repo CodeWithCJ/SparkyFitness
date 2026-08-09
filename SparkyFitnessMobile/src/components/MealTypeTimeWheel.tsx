@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type FC } from 'react';
 import { View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
@@ -23,7 +23,7 @@ export interface MealTypeTimeWheelProps {
  * Date handling is centralised here: `value` (HH:MM) is converted to a
  * memoized Date for the picker and every change is converted back to HH:MM.
  */
-const MealTypeTimeWheel: React.FC<MealTypeTimeWheelProps> = ({
+const MealTypeTimeWheel: FC<MealTypeTimeWheelProps> = ({
   value,
   onChange,
   testID,

@@ -165,10 +165,53 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     expect(queryByText('System Types')).toBeNull();
     expect(queryByText('Custom Types')).toBeNull();
     // All four anchors present.
-    expect(getByText('breakfast')).toBeTruthy();
-    expect(getByText('lunch')).toBeTruthy();
-    expect(getByText('dinner')).toBeTruthy();
-    expect(getByText('snacks')).toBeTruthy();
+    expect(getByText('Breakfast')).toBeTruthy();
+    expect(getByText('Lunch')).toBeTruthy();
+    expect(getByText('Dinner')).toBeTruthy();
+    expect(getByText('Snacks')).toBeTruthy();
+    // Raw lowercase backend identifiers are never exposed for system types.
+    expect(queryByText('breakfast')).toBeNull();
+    expect(queryByText('snacks')).toBeNull();
+  });
+
+  it('system display labels: canonical title-case labels + canonical accessibility', async () => {
+    // Backend names are lowercase (breakfast/snacks); UI shows canonical
+    // Breakfast/Snacks for system-owned rows, including accessibility.
+    const { findByText, getByLabelText, queryByText } = renderScreen();
+    await findByText('Breakfast');
+    expect(getByLabelText('Edit Breakfast')).toBeTruthy();
+    expect(getByLabelText('Visible Breakfast')).toBeTruthy();
+    expect(getByLabelText('Default time for Breakfast, 08:00')).toBeTruthy();
+    expect(getByLabelText('Edit Snacks')).toBeTruthy();
+    expect(getByLabelText('Visible Snacks')).toBeTruthy();
+    expect(queryByText('breakfast')).toBeNull();
+  });
+
+  it('custom type named "breakfast" stays literal (never canonicalized)', async () => {
+    const types = [
+      ...systemMealTypes,
+      {
+        id: 'custom-b',
+        name: 'breakfast',
+        sort_order: 11,
+        user_id: 'u',
+        created_at: '',
+        is_visible: true,
+        show_in_quick_log: true,
+        default_time: null,
+      },
+    ];
+    const { findByText, getAllByText, getByText, getByLabelText } = renderScreen({ mealTypes: types });
+    // The custom "breakfast" renders its literal lowercase name alongside the
+    // system Breakfast anchor (which keeps its canonical label). Accessibility
+    // for the custom row stays literal; the system row stays canonical.
+    expect(await findByText('breakfast')).toBeTruthy();
+    expect(getAllByText('breakfast').length).toBeGreaterThanOrEqual(1);
+    expect(getByText('Breakfast')).toBeTruthy(); // system anchor, canonical
+    expect(getByLabelText('Visible breakfast')).toBeTruthy(); // custom literal
+    expect(getByLabelText('Edit breakfast')).toBeTruthy(); // custom literal
+    expect(getByLabelText('Reorder breakfast')).toBeTruthy(); // custom handle
+    expect(getByLabelText('Visible Breakfast')).toBeTruthy(); // system canonical
   });
 
   it('places a custom in the Lunch gap between Lunch and Dinner (Lunch 2.0 example)', async () => {
@@ -198,7 +241,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
 
   it('system rows are not draggable (no drag handle)', async () => {
     const { findByText, queryByLabelText, getAllByLabelText } = renderScreen();
-    await findByText('breakfast');
+    await findByText('Breakfast');
     expect(queryByLabelText('Reorder breakfast')).toBeNull();
     expect(queryByLabelText('Reorder lunch')).toBeNull();
     // Custom rows keep their accessible reorder handle.
@@ -215,10 +258,10 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
   it('main list rows expose a themed Visibility Switch (system + custom)', async () => {
     const { findByText, getByLabelText } = renderScreen();
     await findByText('Pre-Workout');
-    expect(getByLabelText('Visible breakfast')).toBeTruthy();
-    expect(getByLabelText('Visible lunch')).toBeTruthy();
-    expect(getByLabelText('Visible dinner')).toBeTruthy();
-    expect(getByLabelText('Visible snacks')).toBeTruthy();
+    expect(getByLabelText('Visible Breakfast')).toBeTruthy();
+    expect(getByLabelText('Visible Lunch')).toBeTruthy();
+    expect(getByLabelText('Visible Dinner')).toBeTruthy();
+    expect(getByLabelText('Visible Snacks')).toBeTruthy();
     expect(getByLabelText('Visible Pre-Workout')).toBeTruthy();
   });
 
@@ -237,7 +280,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     await findByText('Pre-Workout');
 
     // 1. Initial state: Switch is ON.
-    const toggle = getByLabelText('Visible breakfast');
+    const toggle = getByLabelText('Visible Breakfast');
     expect(toggle.props.value).toBe(true);
 
     // 2. Toggle off.
@@ -252,7 +295,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
 
     // 4. After the mutation resolves the controlled Switch stays false.
     await waitFor(() => {
-      expect(getByLabelText('Visible breakfast').props.value).toBe(false);
+      expect(getByLabelText('Visible Breakfast').props.value).toBe(false);
     });
 
     // 5. Query cache contains is_visible false for sys-b (same client).
@@ -271,13 +314,13 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       .mockRejectedValueOnce(new Error('boom'));
     await findByText('Pre-Workout');
 
-    const toggle = getByLabelText('Visible breakfast');
+    const toggle = getByLabelText('Visible Breakfast');
     expect(toggle.props.value).toBe(true);
     fireEvent(toggle, 'valueChange', false);
 
     // Optimistic off → on error the Switch returns to true.
     await waitFor(() => {
-      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+      expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
     });
     // Exactly one user-facing update error.
     expect(Toast.show).toHaveBeenCalledWith(
@@ -346,7 +389,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     await findByText('Pre-Workout');
 
     // Custom-pw has 17:30; open the picker for a type WITHOUT a time (dinner).
-    fireEvent.press(getByLabelText('Default time for lunch, not set'));
+    fireEvent.press(getByLabelText('Default time for Lunch, not set'));
     // The wheel seeds pending with the current time; Save commits that HH:MM.
     fireEvent.press(getByLabelText('Save default time'));
     await waitFor(() => {
@@ -454,7 +497,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     ];
     const serverState: any[] = JSON.parse(JSON.stringify(types));
     const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
-    const { findByText, getByLabelText } = renderScreen({ fetchMock });
+    const { findByText, getByLabelText, getAllByLabelText } = renderScreen({ fetchMock });
 
     // Deferred promises: first persistence (A) stays pending while B arrives.
     let resolveA!: (v: any) => void;
@@ -489,14 +532,14 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
 
     // 3. B is visible as the optimistic order (B sits before Lunch).
     await waitFor(() => {
-      expect(getByLabelText(/Default time for B/)).toBeTruthy();
+      expect(getAllByLabelText(/^Default time for B(?:,| )/).length).toBeGreaterThan(0);
     });
 
     // 4. Resolve A's persistence (its snapshot also writes B's l_d slot).
     await act(async () => { resolveA({}); });
     // 5. A's completion must NOT clear B's newer optimistic override.
     await act(async () => {});
-    expect(getByLabelText(/Default time for B/)).toBeTruthy();
+    expect(getAllByLabelText(/^Default time for B(?:,| )/).length).toBeGreaterThan(0);
 
     // 6-7. Allow B's persistence; final list/cache = B (B in b_l, A in l_d).
     await act(async () => { resolveB({}); });
@@ -621,17 +664,17 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
 
   it('system edit: name display-only, no Delete, per-user quick log switch present', async () => {
     const { findByText, getByLabelText, queryByLabelText, getAllByText } = renderScreen();
-    await findByText('breakfast');
+    await findByText('Breakfast');
     // Visibility is on the MAIN LIST for system rows too.
-    expect(getByLabelText('Visible breakfast')).toBeTruthy();
-    await openEditSheet({ getByLabelText, queryByLabelText }, 'breakfast');
+    expect(getByLabelText('Visible Breakfast')).toBeTruthy();
+    await openEditSheet({ getByLabelText, queryByLabelText }, 'Breakfast');
     // Display-only name (no editable TextInput); the name appears on the row
     // AND in the read-only field.
-    expect(getAllByText('breakfast').length).toBeGreaterThanOrEqual(2);
+    expect(getAllByText('Breakfast').length).toBeGreaterThanOrEqual(2);
     expect(queryByLabelText('Meal type name')).toBeNull();
     expect(queryByLabelText('Delete Meal Type')).toBeNull();
     // Per-user quick log switch is present and labelled in the sheet.
-    expect(getByLabelText('Quick log breakfast')).toBeTruthy();
+    expect(getByLabelText('Quick log Breakfast')).toBeTruthy();
   });
 
   it('deletes a custom type from the edit sheet with confirmation', async () => {
@@ -745,11 +788,11 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       return updated;
     });
 
-    await findByText('breakfast');
+    await findByText('Breakfast');
     // A: Breakfast visible -> false (pending)
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false);
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', false);
     // B: Lunch visible -> false (pending)
-    fireEvent(getByLabelText('Visible lunch'), 'valueChange', false);
+    fireEvent(getByLabelText('Visible Lunch'), 'valueChange', false);
 
     // B succeeds FIRST, then A fails LATE.
     await act(async () => { resolveB({ ...systemMealTypes[1], is_visible: false }); });
@@ -762,8 +805,8 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       expect(b?.is_visible).toBe(true); // rolled back to previous
       expect(l?.is_visible).toBe(false); // B's success preserved
     });
-    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
-    expect(getByLabelText('Visible lunch').props.value).toBe(false);
+    expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
+    expect(getByLabelText('Visible Lunch').props.value).toBe(false);
     await act(async () => {});
   });
 
@@ -792,9 +835,9 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       return updated;
     });
 
-    await findByText('breakfast');
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B
+    await findByText('Breakfast');
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', false); // A
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', true); // B
 
     // B succeeds first, A resolves late — A must NOT overwrite B.
     await act(async () => { resolveB({ ...systemMealTypes[0], is_visible: true }); });
@@ -804,7 +847,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       const cached = queryClient.getQueryData<any[]>(['mealTypes']);
       expect(cached?.find((mt) => mt.id === 'sys-b')?.is_visible).toBe(true);
     });
-    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
     await act(async () => {});
   });
 
@@ -967,10 +1010,10 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       return { ...serverState.find((m: any) => m.id === id), ...(data as object) } as any;
     });
 
-    await findByText('breakfast');
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A pending
+    await findByText('Breakfast');
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', false); // A pending
     await waitFor(() => expect(visCalls).toBe(1));
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // B (same value) queued
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', false); // B (same value) queued
     await act(async () => {});
     expect(visCalls).toBe(1); // serialized: B's PUT waits for A
 
@@ -982,7 +1025,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     });
 
     await waitFor(() => {
-      expect(getByLabelText('Visible breakfast').props.value).toBe(false);
+      expect(getByLabelText('Visible Breakfast').props.value).toBe(false);
     });
     await act(async () => {});
   });
@@ -995,7 +1038,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     ];
     const serverState: any[] = JSON.parse(JSON.stringify(types));
     const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
-    const { findByText, getByLabelText } = renderScreen({ fetchMock });
+    const { findByText, getByLabelText, getAllByLabelText } = renderScreen({ fetchMock });
     let rejectA!: (e: Error) => void;
     let resolveB!: (v: any) => void;
     const pendingA = new Promise((_res, rej) => { rejectA = rej; });
@@ -1035,7 +1078,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     await act(async () => {});
     await act(async () => {});
     // B still visible (optimistic override preserved — stale A did not clear it).
-    expect(getByLabelText(/Default time for B/)).toBeTruthy();
+    expect(getAllByLabelText(/^Default time for B(?:,| )/).length).toBeGreaterThan(0);
     const reorderErrors = (Toast.show as jest.Mock).mock.calls.filter(
       (c) => (c[0] as any)?.text1 === 'Failed to reorder meal types',
     ).length;
@@ -1090,16 +1133,16 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       return { ...serverState[idx] };
     });
 
-    await findByText('breakfast');
-    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A
+    await findByText('Breakfast');
+    expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', false); // A
     await waitFor(() => expect(callLog.length).toBe(1));
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B (newer intent)
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', true); // B (newer intent)
     // Serialized: B's PUT has NOT started while A is pending.
     await waitFor(() => expect(callLog.length).toBe(1));
     // Optimistic UI already shows B's intent (true) even though A is pending.
     await waitFor(() => {
-      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+      expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
     });
 
     // Let A's server write commit (false), then B's (true).
@@ -1112,7 +1155,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       expect(serverState.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
       const cached = queryClient.getQueryData<any[]>(['mealTypes']);
       expect(cached?.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
-      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+      expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
     });
     expect(callLog).toEqual(['sys-b:false', 'sys-b:true']);
     await act(async () => {});
@@ -1210,10 +1253,10 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       throw new Error('boom B'); // B fails — no server write
     });
 
-    await findByText('breakfast');
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A
+    await findByText('Breakfast');
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', false); // A
     await waitFor(() => expect(callLog.length).toBe(1));
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', true); // B
     await act(async () => {});
     expect(callLog.length).toBe(1); // serialized
 
@@ -1225,7 +1268,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     await waitFor(() => {
       const cached = queryClient.getQueryData<any[]>(['mealTypes']);
       expect(cached?.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
-      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+      expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
     });
     // Server never received a write (both requests failed before applying).
     expect(serverState.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
@@ -1262,23 +1305,23 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       return { ...serverState[idx] };
     });
 
-    await findByText('breakfast');
-    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A
+    await findByText('Breakfast');
+    expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', false); // A
     await waitFor(() => expect(cancelCalls).toBe(1));
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', true); // B
     await waitFor(() => expect(cancelCalls).toBe(2));
 
     // B's optimistic true is visible even though A's cancel is still pending
     // and A's onMutate has not applied its optimistic value.
     await waitFor(() => {
-      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+      expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
     });
 
     // Release A's cancel: A's guarded onMutate must NOT overwrite B's true.
     await act(async () => { releaseCancelA(); });
     await act(async () => {});
-    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
 
     // PUT order is user-initiation order regardless of cancel completion.
     await waitFor(() => expect(callLog.length).toBe(2));
@@ -1289,7 +1332,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       expect(serverState.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
       const cached = queryClient.getQueryData<any[]>(['mealTypes']);
       expect(cached?.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
-      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+      expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
     });
     await act(async () => {});
   });
@@ -1382,16 +1425,16 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       return { ...serverState[idx] };
     });
 
-    await findByText('breakfast');
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A (will fail)
+    await findByText('Breakfast');
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', false); // A (will fail)
     await waitFor(() => expect(callLog.length).toBe(1));
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B reserved after A
+    fireEvent(getByLabelText('Visible Breakfast'), 'valueChange', true); // B reserved after A
 
     // B still executes after A failed — no deadlock.
     await waitFor(() => expect(callLog.length).toBe(2));
     expect(callLog).toEqual(['false', 'true']);
     await waitFor(() => {
-      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+      expect(getByLabelText('Visible Breakfast').props.value).toBe(true);
     });
     await act(async () => {});
   });

@@ -45,6 +45,7 @@ import MealTypeTimePickerSheet, {
   type MealTypeTimePickerSheetRef,
 } from '../components/MealTypeTimePickerSheet';
 import { MEAL_CONFIG } from '../constants/meals';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import { computeReorderTargetIndex } from '../components/WorkoutReorderList';
 import type { IconName } from '../components/Icon';
 import type { MealType } from '../types/mealTypes';
@@ -899,11 +900,11 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         className="flex-1 py-3 flex-shrink"
         onPress={() => openEdit(mt)}
         activeOpacity={0.6}
-        accessibilityLabel={`Edit ${mt.name}`}
+        accessibilityLabel={`Edit ${getMealTypeDisplayLabel(mt)}`}
         testID={`edit-system-${mt.id}`}
       >
         <Text className="text-base text-text-primary font-medium" numberOfLines={1}>
-          {mt.name}
+          {getMealTypeDisplayLabel(mt)}
         </Text>
       </TouchableOpacity>
       <MealTypeTimeCell mealType={mt} onPress={() => openTimePicker(mt)} textSecondary={textSecondary} />
@@ -911,7 +912,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         <Switch
           value={mt.is_visible}
           onValueChange={(val) => toggleVisibility(mt, val)}
-          accessibilityLabel={`Visible ${mt.name}`}
+          accessibilityLabel={`Visible ${getMealTypeDisplayLabel(mt)}`}
         />
       </View>
     </View>
@@ -1006,7 +1007,7 @@ const MealTypeTimeCell: React.FC<{
       onPress={onPress}
       className="px-3 py-3"
       accessibilityRole="button"
-      accessibilityLabel={`Default time for ${mealType.name}${time ? `, ${time}` : ', not set'}`}
+      accessibilityLabel={`Default time for ${getMealTypeDisplayLabel(mealType)}${time ? `, ${time}` : ', not set'}`}
       testID={`time-cell-${mealType.id}`}
     >
       <Text className="text-sm text-text-secondary" style={{ minWidth: 44, textAlign: 'right' }}>

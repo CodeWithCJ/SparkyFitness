@@ -9,6 +9,7 @@ import Switch from './ui/Switch';
 import Button from './ui/Button';
 import Icon from './Icon';
 import type { MealType } from '../types/mealTypes';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import type { MealTypeTimePickerSheetRef } from './MealTypeTimePickerSheet';
 
 export interface MealTypeFormSheetRef {
@@ -67,6 +68,9 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
       showInQuickLog: false,
     });
     const [mode, setMode] = useState<'create' | 'edit'>('create');
+    // Human-facing name for display/accessibility: canonical label for system
+    // types, literal name for custom types.
+    const [displayName, setDisplayName] = useState('');
 
     useImperativeHandle(ref, () => ({
       presentCreate: () => {
@@ -83,6 +87,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
           defaultTime: `${hh}:${mm}`,
           showInQuickLog: false,
         });
+        setDisplayName('');
         bottomSheetRef.current?.present();
       },
       presentEdit: (mealType) => {
@@ -92,6 +97,13 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
           defaultTime: toHourMinute(mealType.default_time) || '',
           showInQuickLog: mealType.show_in_quick_log,
         });
+        // System types display their canonical MEAL_CONFIG label (Breakfast,
+        // Lunch, Dinner, Snacks) even though the backend name is lowercase;
+        // custom types keep their literal name. values.name stays the raw
+        // backend name so persistence is never altered.
+        setDisplayName(
+          mealType.user_id == null ? getMealTypeDisplayLabel(mealType) : mealType.name,
+        );
         bottomSheetRef.current?.present();
       },
       dismiss: () => bottomSheetRef.current?.dismiss(),
@@ -136,7 +148,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
           <Text className="text-xs font-semibold uppercase text-text-muted mb-1">Name</Text>
           {isEditingSystem ? (
             <View className="bg-background border border-border rounded-lg px-3 py-2.5 mb-4">
-              <Text className="text-base text-text-primary">{values.name}</Text>
+              <Text className="text-base text-text-primary">{displayName || values.name}</Text>
             </View>
           ) : (
             <TextInput
@@ -161,7 +173,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
               onValueChange={(val) =>
                 setValues((prev) => ({ ...prev, showInQuickLog: val }))
               }
-              accessibilityLabel={`Quick log ${values.name || 'meal type'}`}
+              accessibilityLabel={`Quick log ${displayName || values.name || 'meal type'}`}
             />
           </View>
 
@@ -194,7 +206,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
               }}
               className="flex-row items-center justify-between rounded-lg border border-border-subtle bg-background px-3 py-3 mb-4"
               accessibilityRole="button"
-              accessibilityLabel={`Default time for ${values.name}${
+              accessibilityLabel={`Default time for ${displayName || values.name}${
                 hasDefaultTime ? `, ${values.defaultTime}` : ', not set'
               }`}
               testID="edit-default-time-row"
