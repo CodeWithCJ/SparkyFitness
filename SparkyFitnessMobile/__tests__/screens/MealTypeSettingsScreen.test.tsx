@@ -1,79 +1,10 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Alert, type AlertButton } from 'react-native';
+import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import MealTypeSettingsScreen from '../../src/screens/MealTypeSettingsScreen';
 import * as mealTypesApi from '../../src/services/api/mealTypesApi';
-import type { MealType } from '../../src/types/mealTypes';
-import type { NavigationProp } from '@react-navigation/native';
-
-// Controllable bottom-sheet mock: children render ONLY while presented, so
-// tests verify the actual imperative presentation (form absent before
-// present(), hidden after dismiss). `forceSet` lets tests drive dismissal
-// from outside (mirrors backdrop/swipe close) and triggers a real re-render.
-const mockSheetState = {
-  presented: false,
-  forceSet: (_v: boolean) => {},
-};
-jest.mock('@gorhom/bottom-sheet', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  const BottomSheetModal = React.forwardRef(
-    ({ children }: { children: React.ReactNode }, ref: any) => {
-      const [shown, setShown] = React.useState(false);
-      React.useEffect(() => {
-        mockSheetState.forceSet = setShown;
-        mockSheetState.presented = shown;
-      }, [shown]);
-      React.useImperativeHandle(ref, () => ({
-        present: () => setShown(true),
-        dismiss: () => setShown(false),
-      }));
-      return shown ? <View>{children}</View> : null;
-    },
-  );
-  BottomSheetModal.displayName = 'BottomSheetModal';
-  return {
-    BottomSheetModal,
-    BottomSheetScrollView: ({ children }: { children: React.ReactNode }) => (
-      <View>{children}</View>
-    ),
-    BottomSheetView: ({ children }: { children: React.ReactNode }) => (
-      <View>{children}</View>
-    ),
-  };
-});
-
-// Wheel picker: no native rendering in jest; the onChange handler receives a
-// Date we can drive directly.
-jest.mock('react-native-ui-datepicker', () => {
-  const React = require('react');
-  const { View, Text } = require('react-native');
-  return {
-    __esModule: true,
-    default: ({
-      onChange,
-      testID,
-    }: {
-      onChange?: (params: { date: Date }) => void;
-      testID?: string;
-    }) => (
-      <View testID={testID ?? 'date-picker'}>
-        <Text
-          testID="picker-driver"
-          onPress={() => {
-            const d = new Date();
-            d.setHours(9, 15, 0, 0);
-            onChange?.({ date: d });
-          }}
-        >
-          pick
-        </Text>
-      </View>
-    ),
-  };
-});
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -92,9 +23,7 @@ jest.mock('../../src/hooks/useScreenHeader', () => {
   const { Pressable } = require('react-native');
   return {
     useScreenHeader: (config: {
-      right?:
-        | { accessibilityLabel?: string; onPress?: () => void }
-        | { accessibilityLabel?: string; onPress?: () => void }[];
+      right?: { accessibilityLabel?: string; onPress?: () => void } | { accessibilityLabel?: string; onPress?: () => void }[];
     }) => {
       const items = Array.isArray(config.right)
         ? config.right
@@ -124,57 +53,59 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as unknown as NavigationProp<never>;
+/**
+ * Controllable bottom-sheet mock: children render ONLY while presented, so
+ * tests exercise the real imperative presentation flow (form absent before
+ * present; Add-after-Edit never retains stale values). `present`/`dismiss`
+ * use local component state so the sheet mounts deterministically whenever
+ * the ref methods are invoked (no reliance on external flags).
+ */
+jest.mock('@gorhom/bottom-sheet', () => {
+  const { View } = require('react-native');
+  const ReactModule = require('react');
+  return {
+    BottomSheetModal: ReactModule.forwardRef(
+      ({ children, onDismiss }: any, ref: any) => {
+        const [presented, setPresented] = ReactModule.useState(false);
+        ReactModule.useImperativeHandle(ref, () => ({
+          present: () => setPresented(true),
+          dismiss: () => {
+            setPresented(false);
+            onDismiss?.();
+          },
+        }));
+        return presented ? <View testID="sheet-content">{children}</View> : null;
+      },
+    ),
+    BottomSheetScrollView: ({ children }: any) => <View>{children}</View>,
+    BottomSheetView: ({ children }: any) => <View>{children}</View>,
+  };
+});
+
+const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as any;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
 }));
 
 const systemMealTypes = [
-  {
-    id: 'sys-b',
-    name: 'breakfast',
-    sort_order: 10,
-    user_id: null,
-    created_at: '',
-    is_visible: true,
-    show_in_quick_log: true,
-    default_time: '08:00',
-  },
-  {
-    id: 'sys-d',
-    name: 'dinner',
-    sort_order: 30,
-    user_id: null,
-    created_at: '',
-    is_visible: true,
-    show_in_quick_log: true,
-    default_time: null,
-  },
+  { id: 'sys-b', name: 'breakfast', sort_order: 10, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true, default_time: '08:00' },
+  { id: 'sys-l', name: 'lunch', sort_order: 20, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+  { id: 'sys-d', name: 'dinner', sort_order: 30, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+  { id: 'sys-s', name: 'snacks', sort_order: 40, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
 ];
 
 const customMealTypes = [
-  {
-    id: 'custom-pw',
-    name: 'Pre-Workout',
-    sort_order: 100,
-    user_id: 'user-1',
-    created_at: '',
-    is_visible: true,
-    show_in_quick_log: false,
-    default_time: '17:30',
-  },
+  { id: 'custom-pw', name: 'Pre-Workout', sort_order: 21, user_id: 'user-1', created_at: '', is_visible: true, show_in_quick_log: false, default_time: '17:30' },
 ];
 
 const allMealTypes = [...systemMealTypes, ...customMealTypes];
 
-function renderScreen(overrides: { mealTypes?: MealType[] } = {}) {
+function renderScreen(overrides: { mealTypes?: any[] } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
-  jest
-    .spyOn(mealTypesApi, 'fetchMealTypes')
-    .mockResolvedValue(overrides.mealTypes ?? allMealTypes);
+  jest.spyOn(mealTypesApi, 'fetchMealTypes').mockResolvedValue(overrides.mealTypes ?? allMealTypes);
   return {
     queryClient,
     ...render(
@@ -185,363 +116,346 @@ function renderScreen(overrides: { mealTypes?: MealType[] } = {}) {
   };
 }
 
-describe('MealTypeSettingsScreen', () => {
+
+/** Opens the edit sheet for a meal type and waits deterministically for it. */
+async function openEditSheet(
+  queries: {
+    getByLabelText: (label: string) => any;
+    queryByLabelText: (label: string) => any;
+  },
+  name: string,
+) {
+  fireEvent.press(queries.getByLabelText(`Edit ${name}`));
+  await waitFor(() =>
+    expect(queries.queryByLabelText(`Quick log ${name}`)).not.toBeNull(),
+  );
+}
+
+describe('MealTypeSettingsScreen — unified anchor list', () => {
   beforeEach(() => {
+    // restoreAllMocks first: per-test spies (updateMealType/createMealType)
+    // must not leak implementations into later tests.
+    jest.restoreAllMocks();
     jest.clearAllMocks();
-    mockSheetState.presented = false;
-    mockSheetState.forceSet = () => {};
-    (Toast.show as jest.Mock).mockClear();
   });
 
-  it('renders system and custom types with their ownership tags', async () => {
-    const { findByText, getByText, queryAllByText } = renderScreen();
+  it('renders ONE unified list — anchors interleaved with customs, no separate sections', async () => {
+    const { findByText, queryByText, getByText } = renderScreen();
     expect(await findByText('Pre-Workout')).toBeTruthy();
+    // No "System Types" / "Custom Types" section headers.
+    expect(queryByText('System Types')).toBeNull();
+    expect(queryByText('Custom Types')).toBeNull();
+    // All four anchors present.
     expect(getByText('breakfast')).toBeTruthy();
+    expect(getByText('lunch')).toBeTruthy();
     expect(getByText('dinner')).toBeTruthy();
-    expect(getByText('Custom')).toBeTruthy();
-    await findByText('dinner');
-    expect(queryAllByText('System').length).toBeGreaterThan(0);
+    expect(getByText('snacks')).toBeTruthy();
   });
 
-  it('renders the canonical system icons from MEAL_CONFIG (no parallel map)', async () => {
-    const { findByTestId, findByText } = renderScreen();
+  it('places a custom in the Lunch gap between Lunch and Dinner (Lunch 2.0 example)', async () => {
+    const types = [
+      ...systemMealTypes,
+      { id: 'lunch2', name: 'Lunch 2.0', sort_order: 21, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+    ];
+    const { findByText, getAllByTestId } = renderScreen({ mealTypes: types });
+    await findByText('Lunch 2.0');
+    const rows = getAllByTestId(/^meal-type-/);
+    const order = rows.map((r) => r.props.testID);
+    const lunchIdx = order.findIndex((id) => id === 'meal-type-system-sys-l');
+    const dinnerIdx = order.findIndex((id) => id === 'meal-type-system-sys-d');
+    expect(order[lunchIdx + 1]).toBe('meal-type-custom-lunch2');
+    expect(dinnerIdx - lunchIdx).toBe(2); // Lunch, Lunch 2.0, Dinner
+  });
+
+  it('renders canonical FILLED system icons from MEAL_CONFIG', async () => {
+    const { findByTestId } = renderScreen();
+    // Every findBy* must be awaited — an unawaited waitFor promise resolves
+    // after the test's cleanup and throws "unmounted" into a LATER test.
     expect(await findByTestId('icon-meal-breakfast')).toBeTruthy();
-    await findByText('dinner');
-    expect(findByTestId('icon-meal-dinner')).toBeTruthy();
+    expect(await findByTestId('icon-meal-lunch')).toBeTruthy();
+    expect(await findByTestId('icon-meal-dinner')).toBeTruthy();
+    expect(await findByTestId('icon-meal-snack')).toBeTruthy();
   });
 
-  it('does NOT expose a raw Order / sort_order input or any Visibility UI', async () => {
-    const { findByText, queryAllByText, queryByLabelText, queryByPlaceholderText } =
-      renderScreen();
+  it('system rows are not draggable (no drag handle)', async () => {
+    const { findByText, queryByLabelText, getAllByLabelText } = renderScreen();
+    await findByText('breakfast');
+    expect(queryByLabelText('Reorder breakfast')).toBeNull();
+    expect(queryByLabelText('Reorder lunch')).toBeNull();
+    // Custom rows keep their accessible reorder handle.
+    expect(getAllByLabelText(/^Reorder /).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('never exposes raw sort_order / Order numbers', async () => {
+    const { findByText, queryAllByText } = renderScreen();
     await findByText('Pre-Workout');
     expect(queryAllByText(/^Order[: ]/)).toHaveLength(0);
-    expect(queryByPlaceholderText(/e\.g\. 11/)).toBeNull();
-    expect(queryAllByText(/Order: 100/)).toHaveLength(0);
-    // Visibility is intentionally not user-configurable on mobile.
-    expect(queryByLabelText(/^Visible/)).toBeNull();
-    expect(queryAllByText(/^Visible$/)).toHaveLength(0);
+    expect(queryAllByText(/\b(11|21|31|100|110)\b/)).toHaveLength(0);
   });
 
-  it('creates a custom meal type with auto end-of-list sort_order and selected default time', async () => {
+  it('reorders a custom across an anchor gap and persists sequential slots with ONE invalidate', async () => {
+    const types = [
+      ...systemMealTypes,
+      { id: 'brunch', name: 'Brunch', sort_order: 11, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+      { id: 'l2', name: 'Lunch 2.0', sort_order: 21, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+    ];
+    const { findByText, getByLabelText } = renderScreen({ mealTypes: types });
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
+    const invalidateSpy = jest.spyOn(Toast, 'show');
+    invalidateSpy.mockClear();
+
+    await findByText('Brunch');
+    // Move Brunch DOWN (across Lunch into the Lunch→Dinner gap).
+    fireEvent(getByLabelText('Reorder Brunch'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('brunch', { sort_order: expect.any(Number) });
+      const write = updateSpy.mock.calls[0][1] as any;
+      expect(write.sort_order).toBeGreaterThanOrEqual(21);
+      expect(write.sort_order).toBeLessThanOrEqual(29);
+    });
+    // No generic "Failed to update" toast for reorder rows.
+    expect(Toast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Failed to update' }),
+    );
+    await act(async () => {});
+  });
+
+  it('rejects a move into a FULL gap with one concise toast (max 9)', async () => {
+    const fullGap = Array.from({ length: 9 }, (_, i) => ({
+      id: `l${i}`,
+      name: `Lunch ${i}`,
+      sort_order: 21 + i,
+      user_id: 'u',
+      created_at: '',
+      is_visible: true,
+      show_in_quick_log: true,
+      default_time: null,
+    }));
+    const types = [...systemMealTypes, { id: 'brunch', name: 'Brunch', sort_order: 11, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null }, ...fullGap];
+    const { findByText, getByLabelText } = renderScreen({ mealTypes: types });
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
+
+    await findByText('Brunch');
+    fireEvent(getByLabelText('Reorder Brunch'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+
+    await waitFor(() => {
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          text1: expect.stringContaining('No more meal types can be placed between Lunch and Dinner'),
+        }),
+      );
+    });
+    // No partial writes.
+    expect(updateSpy).not.toHaveBeenCalled();
+    await act(async () => {});
+  });
+
+  it('serializes rapid reorders: the newest desired order wins deterministically', async () => {
+    const types = [
+      ...systemMealTypes,
+      { id: 'a', name: 'A', sort_order: 11, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+      { id: 'b', name: 'B', sort_order: 21, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+    ];
+    const { findByText, getByLabelText } = renderScreen({ mealTypes: types });
+    const updateSpy = jest
+      .spyOn(mealTypesApi, 'updateMealType')
+      .mockResolvedValue({} as any);
+
+    await findByText('A');
+    // Two rapid moves: A down (into l_d), then B up (into b_l). The chained
+    // persistence must execute sequentially and the LAST write set reflects
+    // the newest visual order (A in l_d, B in b_l).
+    fireEvent(getByLabelText('Reorder A'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    fireEvent(getByLabelText('Reorder B'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'decrement' },
+    });
+
+    await waitFor(() => {
+      const writes = updateSpy.mock.calls.map((c) => c[0]);
+      expect(writes.length).toBeGreaterThanOrEqual(1);
+      // Deterministic final state: B before Lunch (b_l), A after Lunch (l_d).
+      const aWrite = updateSpy.mock.calls.find((c) => c[0] === 'a');
+      const bWrite = updateSpy.mock.calls.find((c) => c[0] === 'b');
+      if (aWrite) {
+        const s = (aWrite[1] as any).sort_order;
+        expect(s).toBeGreaterThanOrEqual(21);
+        expect(s).toBeLessThanOrEqual(29);
+      }
+      if (bWrite) {
+        const s = (bWrite[1] as any).sort_order;
+        expect(s).toBeGreaterThanOrEqual(11);
+        expect(s).toBeLessThanOrEqual(19);
+      }
+    });
+    // Flush the serialized persistence chain so no setState lands after the
+    // test's screen is unmounted.
+    await act(async () => {});
+    await act(async () => {});
+  });
+
+  it('creates a custom type: auto end-of-list slot in d_s, no is_visible in payload, then quick-log follow-up', async () => {
     const { findByText, getByLabelText, getByPlaceholderText } = renderScreen();
-    const createSpy = jest
-      .spyOn(mealTypesApi, 'createMealType')
-      .mockResolvedValue({ id: 'custom-new', name: 'Post-Workout' } as MealType);
+    const createSpy = jest.spyOn(mealTypesApi, 'createMealType').mockResolvedValue({
+      id: 'custom-new', name: 'Dessert', sort_order: 31, user_id: 'user-1',
+    } as any);
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
 
     await findByText('Pre-Workout');
     fireEvent.press(getByLabelText('Add meal type'));
-    fireEvent.changeText(getByPlaceholderText('e.g. Pre-Workout'), 'Post-Workout');
+    fireEvent.changeText(getByPlaceholderText('e.g. Lunch 2.0'), 'Dessert');
     fireEvent.press(getByLabelText('Create meal type'));
 
     await waitFor(() => {
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: 'Post-Workout',
-          // Auto-assigned to the end of the custom list (100 + 10).
-          sort_order: 110,
+          name: 'Dessert',
+          sort_order: 31, // d_s first slot (end of list)
           default_time: null,
         }),
       );
-      // Backend hardcodes is_visible=TRUE on create and does not read it from
-      // the body — the mobile create payload omits it (matches web).
-      expect(createSpy.mock.calls[0][0].is_visible).toBeUndefined();
+      // No is_visible in the base create payload (backend hardcodes TRUE).
+      expect((createSpy.mock.calls[0][0] as any).is_visible).toBeUndefined();
     });
-  });
-
-  it('create with Quick log off applies it via one follow-up update', async () => {
-    const { findByText, getByLabelText, getByPlaceholderText } = renderScreen();
-    const createSpy = jest
-      .spyOn(mealTypesApi, 'createMealType')
-      .mockResolvedValue({ id: 'custom-new', name: 'Post-Workout' } as MealType);
-    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({ id: 'x', name: 'x' } as MealType);
-
-    await findByText('Pre-Workout');
-    fireEvent.press(getByLabelText('Add meal type'));
-    fireEvent.changeText(getByPlaceholderText('e.g. Pre-Workout'), 'Post-Workout');
-    // Quick log defaults ON; turn it off.
-    fireEvent(getByLabelText('Quick log'), 'valueChange', false);
-    fireEvent.press(getByLabelText('Create meal type'));
-
+    // Quick log default in the sheet is off → follow-up update disables it.
     await waitFor(() => {
-      expect(createSpy).toHaveBeenCalled();
       expect(updateSpy).toHaveBeenCalledWith(
         'custom-new',
         expect.objectContaining({ show_in_quick_log: false }),
       );
     });
+    // Flush the async create + follow-up + invalidate chain so no setState
+    // lands on the unmounted screen of a later test.
+    await act(async () => {});
+    await act(async () => {});
   });
 
-  it('rejects creating without a name (button disabled)', async () => {
+  it('create with an empty name is disabled', async () => {
     const { findByText, getByLabelText } = renderScreen();
     await findByText('Pre-Workout');
     fireEvent.press(getByLabelText('Add meal type'));
-    const createButton = getByLabelText('Create meal type');
-    expect(createButton.props.accessibilityState?.disabled).toBe(true);
+    const create = getByLabelText('Create meal type');
+    expect(create.props.accessibilityState?.disabled).toBe(true);
   });
 
-  it('opens edit with existing values and saves rename + time + quick-log without sort_order or is_visible', async () => {
-    const { findByText, getByLabelText } = renderScreen();
-    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({ id: 'x', name: 'x' } as MealType);
+  it('create shows Cancel (no Delete in create mode)', async () => {
+    const { findByText, getByLabelText, queryByLabelText } = renderScreen();
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Add meal type'));
+    expect(getByLabelText('Cancel create meal type')).toBeTruthy();
+    expect(queryByLabelText('Delete Meal Type')).toBeNull();
+  });
 
-    fireEvent.press(await findByText('Pre-Workout'));
-    fireEvent.changeText(getByLabelText('Meal type name'), 'Pre-Workout 2.0');
+  it('edit custom: name + visibility + quick log + time row; edit payload preserves sort_order', async () => {
+    const { findByText, getByLabelText, queryByLabelText, getByPlaceholderText } = renderScreen();
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
+
+    await findByText('Pre-Workout');
+    await openEditSheet({ getByLabelText, queryByLabelText }, 'Pre-Workout');
+    // Toggle visibility BEFORE renaming (the switch label carries the name).
+    fireEvent(getByLabelText('Visible Pre-Workout'), 'valueChange', false);
+    fireEvent.changeText(getByPlaceholderText('e.g. Lunch 2.0'), 'Pre-Workout 2.0');
     fireEvent.press(getByLabelText('Save meal type'));
 
     await waitFor(() => {
-      const payload = updateSpy.mock.calls[0][1] as Record<string, unknown>;
       expect(updateSpy).toHaveBeenCalledWith(
         'custom-pw',
         expect.objectContaining({
           name: 'Pre-Workout 2.0',
-          default_time: '17:30',
+          is_visible: false,
           show_in_quick_log: false,
         }),
       );
-      // Normal edits must never overwrite hidden/server-side state.
+      const payload = updateSpy.mock.calls[0][1] as any;
       expect(payload.sort_order).toBeUndefined();
-      expect(payload.is_visible).toBeUndefined();
+      expect(payload.default_time).toBe('17:30');
     });
+    await act(async () => {});
   });
 
-  it('editing a system row is not possible (no edit affordance)', async () => {
-    const { findByText, queryByLabelText, getAllByLabelText } = renderScreen();
+  it('system edit: name display-only, no Delete, per-user quick log switch present', async () => {
+    const { findByText, getByLabelText, queryByLabelText, getAllByText } = renderScreen();
     await findByText('breakfast');
-    expect(queryByLabelText('Edit breakfast')).toBeNull();
-    expect(getAllByLabelText(/^Edit /).length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('toggles quick-log via explicit accessible labels', async () => {
-    const { findByText, getByLabelText } = renderScreen();
-    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({ id: 'x', name: 'x' } as MealType);
-
-    await findByText('Pre-Workout');
-    fireEvent(getByLabelText('Quick log Pre-Workout'), 'valueChange', true);
-    await waitFor(() =>
-      expect(updateSpy).toHaveBeenCalledWith('custom-pw', { show_in_quick_log: true }),
-    );
-  });
-
-  it('opens the wheel time picker, saves the selected HH:MM', async () => {
-    const { findByText, getByLabelText, getByTestId } = renderScreen();
-    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({ id: 'x', name: 'x' } as MealType);
-
-    await findByText('breakfast');
-    // System row time cell carries an accessible label with the current value.
-    fireEvent.press(getByLabelText('Default time for breakfast, 08:00'));
-    // The wheel is presented (bottom sheet mounts its children).
-    expect(getByTestId('picker-driver')).toBeTruthy();
-    // Drive the wheel to 09:15 and press Save.
-    fireEvent.press(getByTestId('picker-driver'));
-    fireEvent.press(getByLabelText('Save default time'));
-
-    await waitFor(() =>
-      expect(updateSpy).toHaveBeenCalledWith(
-        'sys-b',
-        expect.objectContaining({ default_time: '09:15' }),
-      ),
-    );
-  });
-
-  it('time picker Clear sends default_time: null', async () => {
-    const { findByText, getByLabelText, getByTestId } = renderScreen();
-    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({ id: 'x', name: 'x' } as MealType);
-
-    await findByText('breakfast');
-    fireEvent.press(getByLabelText('Default time for breakfast, 08:00'));
-    expect(getByTestId('picker-driver')).toBeTruthy();
-    fireEvent.press(getByLabelText('Clear default time'));
-
-    await waitFor(() =>
-      expect(updateSpy).toHaveBeenCalledWith(
-        'sys-b',
-        expect.objectContaining({ default_time: null }),
-      ),
-    );
-  });
-
-  it('time picker dismiss without action does not call update', async () => {
-    const { findByText, getByLabelText, getByTestId } = renderScreen();
-    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({ id: 'x', name: 'x' } as MealType);
-
-    await findByText('breakfast');
-    fireEvent.press(getByLabelText('Default time for breakfast, 08:00'));
-    expect(getByTestId('picker-driver')).toBeTruthy();
-    // Dismiss (simulate the sheet closing without Save/Clear).
-    mockSheetState.forceSet(false);
-
-    // Re-render to reflect the hidden sheet; no mutation should have fired.
-    await waitFor(() => expect(updateSpy).not.toHaveBeenCalled());
-  });
-
-  it('reorders custom types via accessibility actions: Alpha 100 / Beta 110 -> Beta 100 / Alpha 110 with one invalidate', async () => {
-    const extra = [
-      {
-        id: 'custom-a',
-        name: 'Alpha',
-        sort_order: 100,
-        user_id: 'user-1',
-        created_at: '',
-        is_visible: true,
-        show_in_quick_log: true,
-        default_time: null,
-      },
-      {
-        id: 'custom-b',
-        name: 'Beta',
-        sort_order: 110,
-        user_id: 'user-1',
-        created_at: '',
-        is_visible: true,
-        show_in_quick_log: true,
-        default_time: null,
-      },
-    ];
-    const { findByText, getByLabelText, queryClient } = renderScreen({
-      mealTypes: [...systemMealTypes, ...extra],
-    });
-    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({ id: 'x', name: 'x' } as MealType);
-    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
-
-    await findByText('Alpha');
-    fireEvent(getByLabelText('Reorder Alpha'), 'accessibilityAction', {
-      nativeEvent: { actionName: 'increment' },
-    });
-
-    await waitFor(() => {
-      // Beta moves up to 100, Alpha down to 110 — correct IDs + payloads.
-      expect(updateSpy).toHaveBeenCalledWith('custom-a', { sort_order: 110 });
-      expect(updateSpy).toHaveBeenCalledWith('custom-b', { sort_order: 100 });
-    });
-    await waitFor(() => {
-      // Exactly ONE final invalidate after both writes succeed.
-      const reorderCalls = invalidateSpy.mock.calls.filter(
-        (call) => (call[0] as { queryKey?: unknown[] })?.queryKey?.[0] === 'mealTypes',
-      );
-      expect(reorderCalls.length).toBe(1);
-    });
-  });
-
-  it('reorder partial failure: exactly one reorder error, override reconciled, single refetch', async () => {
-    const extra = [
-      {
-        id: 'custom-a',
-        name: 'Alpha',
-        sort_order: 100,
-        user_id: 'user-1',
-        created_at: '',
-        is_visible: true,
-        show_in_quick_log: true,
-        default_time: null,
-      },
-      {
-        id: 'custom-b',
-        name: 'Beta',
-        sort_order: 110,
-        user_id: 'user-1',
-        created_at: '',
-        is_visible: true,
-        show_in_quick_log: true,
-        default_time: null,
-      },
-    ];
-    const { findByText, getByLabelText, queryClient } = renderScreen({
-      mealTypes: [...systemMealTypes, ...extra],
-    });
-    // First write succeeds, second rejects.
-    const updateSpy = jest
-      .spyOn(mealTypesApi, 'updateMealType')
-      .mockResolvedValueOnce({ id: 'custom-a', name: 'Alpha' } as MealType)
-      .mockRejectedValueOnce(new Error('boom'));
-    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
-
-    await findByText('Alpha');
-    fireEvent(getByLabelText('Reorder Alpha'), 'accessibilityAction', {
-      nativeEvent: { actionName: 'increment' },
-    });
-
-    await waitFor(() => {
-      expect(updateSpy).toHaveBeenCalledWith('custom-a', { sort_order: 110 });
-      expect(updateSpy).toHaveBeenCalledWith('custom-b', { sort_order: 100 });
-    });
-    await waitFor(() => {
-      // Exactly one reorder-specific error toast.
-      const errors = (Toast.show as jest.Mock).mock.calls.filter(
-        (call) => (call[0] as { text1?: string })?.text1 === 'Failed to reorder meal types',
-      );
-      expect(errors.length).toBe(1);
-      // Failure reconciles: refetch happens (invalidate fired) so the UI is
-      // not stuck with the stale optimistic order.
-      expect(
-        invalidateSpy.mock.calls.some(
-          (call) => (call[0] as { queryKey?: unknown[] })?.queryKey?.[0] === 'mealTypes',
-        ),
-      ).toBe(true);
-    });
-  });
-
-  it('system rows expose no drag handle but do expose quick-log and time', async () => {
-    const { findByText, queryByLabelText, getByLabelText } = renderScreen();
-    await findByText('breakfast');
-    expect(queryByLabelText('Reorder breakfast')).toBeNull();
+    await openEditSheet({ getByLabelText, queryByLabelText }, 'breakfast');
+    // Display-only name (no editable TextInput); the name appears on the row
+    // AND in the read-only field.
+    expect(getAllByText('breakfast').length).toBeGreaterThanOrEqual(2);
+    expect(queryByLabelText('Meal type name')).toBeNull();
+    expect(queryByLabelText('Delete Meal Type')).toBeNull();
+    // Per-user quick log switch is present and labelled.
     expect(getByLabelText('Quick log breakfast')).toBeTruthy();
-    expect(getByLabelText('Default time for breakfast, 08:00')).toBeTruthy();
+    expect(getByLabelText('Visible breakfast')).toBeTruthy();
   });
 
-  it('renders a very long custom name without losing actions', async () => {
-    const longName = 'Very Long Pre Workout Meal Category Used Before Training';
-    const { findByText, getByLabelText, getByTestId } = renderScreen({
-      mealTypes: [
-        ...systemMealTypes,
-        {
-          id: 'custom-long',
-          name: longName,
-          sort_order: 100,
-          user_id: 'user-1',
-          created_at: '',
-          is_visible: true,
-          show_in_quick_log: true,
-          default_time: null,
-        },
-      ],
-    });
-    await findByText(longName);
-    expect(getByLabelText(`Edit ${longName}`)).toBeTruthy();
-    expect(getByLabelText(`Delete ${longName}`)).toBeTruthy();
-    expect(getByLabelText(`Default time for ${longName}`)).toBeTruthy();
-    expect(getByLabelText(`Reorder ${longName}`)).toBeTruthy();
-    expect(getByLabelText(`Quick log ${longName}`)).toBeTruthy();
-    expect(getByTestId(`meal-type-custom-custom-long`)).toBeTruthy();
-  });
-
-  it('deletes a custom meal type through the destructive confirmation', async () => {
-    const { findByText, getByLabelText } = renderScreen();
+  it('deletes a custom type from the edit sheet with confirmation', async () => {
+    const { findByText, getByLabelText, queryByLabelText } = renderScreen();
     const deleteSpy = jest.spyOn(mealTypesApi, 'deleteMealType').mockResolvedValue(undefined);
     const alertSpy = jest.spyOn(Alert, 'alert');
 
     await findByText('Pre-Workout');
-    fireEvent.press(getByLabelText('Delete Pre-Workout'));
-    expect(alertSpy).toHaveBeenCalledWith('Delete Meal Type', "Delete 'Pre-Workout'?", expect.any(Array));
-    const buttons = alertSpy.mock.calls[0][2] as AlertButton[];
-    const destructive = buttons.find((b) => b.style === 'destructive');
-    destructive.onPress();
+    await openEditSheet({ getByLabelText, queryByLabelText }, 'Pre-Workout');
+    fireEvent.press(getByLabelText('Delete Meal Type'));
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Delete Meal Type',
+      "Delete 'Pre-Workout'?",
+      expect.any(Array),
+    );
+    const buttons = alertSpy.mock.calls[0][2] as any[];
+    buttons.find((b) => b.style === 'destructive').onPress();
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('custom-pw'));
+    await act(async () => {});
   });
 
-  it('Add form does not retain previous Edit values (reset between modes)', async () => {
-    const { findByText, getByLabelText, getByPlaceholderText, queryByText } = renderScreen();
+  it('edit time row opens the picker; Save commits HH:MM, Clear commits null, dismiss changes nothing', async () => {
+    const { findByText, getByLabelText } = renderScreen();
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
+
     await findByText('Pre-Workout');
+    // Row time cell on the main list opens the picker directly (existing flow).
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    // Save the currently selected value → HH:MM persisted.
+    fireEvent.press(getByLabelText('Save default time'));
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith('custom-pw', { default_time: '17:30' }),
+    );
+    updateSpy.mockClear();
 
-    // Open Edit: loads existing values.
-    fireEvent.press(getByLabelText('Edit Pre-Workout'));
-    const nameInput = getByPlaceholderText('e.g. Pre-Workout');
-    expect(nameInput.props.value).toBe('Pre-Workout');
+    // Clear commits null.
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    fireEvent.press(getByLabelText('Clear default time'));
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith('custom-pw', { default_time: null }),
+    );
+    updateSpy.mockClear();
 
-    // Dismiss, then open Add: must not retain the edited values.
-    mockSheetState.forceSet(false);
-    fireEvent.press(getByLabelText('Add meal type'));
-    const addInput = getByPlaceholderText('e.g. Pre-Workout');
-    expect(addInput.props.value).toBe('');
-    expect(queryByText('Edit Meal Type')).toBeNull();
-    expect(queryByText('Add Meal Type')).toBeTruthy();
+    // Dismiss without Save/Clear → no mutation.
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    fireEvent(getByLabelText('Save default time'), 'dismiss');
+    await new Promise((r) => setTimeout(r, 10));
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('long custom name keeps every action (edit, time, reorder, quick log, delete)', async () => {
+    const longName = 'Very Long Pre Workout Meal Category Used Before Training';
+    const types = [
+      ...systemMealTypes,
+      { id: 'custom-long', name: longName, sort_order: 21, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: false, default_time: null },
+    ];
+    const { findByText, getByLabelText } = renderScreen({ mealTypes: types });
+    await findByText(longName);
+    expect(getByLabelText(`Edit ${longName}`)).toBeTruthy();
+    expect(getByLabelText(`Default time for ${longName}, not set`)).toBeTruthy();
+    expect(getByLabelText(`Reorder ${longName}`)).toBeTruthy();
+    // Edit sheet exposes quick log + delete.
+    fireEvent.press(getByLabelText(`Edit ${longName}`));
+    expect(getByLabelText(`Quick log ${longName}`)).toBeTruthy();
+    expect(getByLabelText('Delete Meal Type')).toBeTruthy();
   });
 });

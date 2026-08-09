@@ -1,11 +1,4 @@
-import {
-  forwardRef,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -21,88 +14,99 @@ export interface MealTypeTimePickerSheetRef {
 }
 
 /**
- * Wheel time picker for a meal type's default_time, reusing the same
- * `react-native-ui-datepicker` time-wheel pattern already used by
- * FastingEditSheet (existing app pattern — no new picker dependency).
- * Selecting a time returns `HH:MM`; "Clear" returns `null`. Dismissing
- * (backdrop/swipe) without Save/Clear never invokes the callback.
+ * Dedicated LARGE wheel time picker (maintainer: "the current wheel is wayyy
+ * too small"). The wheel is the dominant element of the sheet — wide, with a
+ * generous vertical area and readable rows. Reuses the existing
+ * `react-native-ui-datepicker` time-wheel mechanism (same library as
+ * FastingEditSheet — no new dependency).
+ *
+ * Behavior:
+ * - opening with "08:30" selects 08:30;
+ * - Save commits the canonical "HH:MM";
+ * - Clear commits null;
+ * - swiping/backdrop dismiss WITHOUT Save/Clear makes NO change (pending state
+ *   is cleared on dismiss and the callback is never invoked);
+ * - scrolling the wheel alone never mutates anything.
  */
-const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>(
-  (_props, ref) => {
-    const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
-      useCSSVariable([
-        '--color-surface',
-        '--color-text-muted',
-        '--color-accent-primary',
-        '--color-text-primary',
-        '--color-text-secondary',
-      ]) as [string, string, string, string, string];
+const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, ref) => {
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
+    useCSSVariable([
+      '--color-surface',
+      '--color-text-muted',
+      '--color-accent-primary',
+      '--color-text-primary',
+      '--color-text-secondary',
+    ]) as [string, string, string, string, string];
 
-    const [pendingValue, setPendingValue] = useState<string | null>(null);
-    const onSelectRef = useRef<((time: string | null) => void) | null>(null);
+  const [pendingValue, setPendingValue] = useState<string | null>(null);
+  const onSelectRef = useRef<((time: string | null) => void) | null>(null);
 
-    useImperativeHandle(ref, () => ({
-      present: (initialTime, onSelect) => {
-        onSelectRef.current = onSelect;
-        setPendingValue(initialTime);
-        bottomSheetRef.current?.present();
-      },
-      dismiss: () => bottomSheetRef.current?.dismiss(),
-    }));
+  useImperativeHandle(ref, () => ({
+    present: (initialTime, onSelect) => {
+      setPendingValue(initialTime);
+      onSelectRef.current = onSelect;
+      bottomSheetRef.current?.present();
+    },
+    dismiss: () => bottomSheetRef.current?.dismiss(),
+  }));
 
-    const renderBackdrop = useSheetBackdrop();
+  const renderBackdrop = useSheetBackdrop();
 
-    const handleChange = useCallback(({ date }: { date: DateType }) => {
-      if (!date) return;
-      let jsDate: Date;
-      if (date instanceof Date) {
-        jsDate = date;
-      } else if (typeof date === 'object' && 'toDate' in date) {
-        jsDate = date.toDate();
-      } else if (typeof date === 'string') {
-        jsDate = new Date(date);
-      } else {
-        jsDate = new Date(date);
-      }
-      const hh = String(jsDate.getHours()).padStart(2, '0');
-      const mm = String(jsDate.getMinutes()).padStart(2, '0');
-      setPendingValue(`${hh}:${mm}`);
-    }, []);
+  // Stable Date for the wheel: memoized so unrelated renders never reseed it.
+  const pickerDate = useMemo(() => {
+    if (!pendingValue) return new Date();
+    const d = new Date();
+    const [h, m] = pendingValue.split(':').map(Number);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }, [pendingValue]);
 
-    // Stable Date instance so unrelated renders do not reseed the wheel.
-    const initialDate = useMemo(() => {
-      if (!pendingValue) return new Date();
-      const d = new Date();
-      const [h, m] = pendingValue.split(':').map(Number);
-      d.setHours(h, m, 0, 0);
-      return d;
-    }, [pendingValue]);
+  const handleChange = useCallback(({ date }: { date: DateType }) => {
+    if (!date) return;
+    let jsDate: Date;
+    if (date instanceof Date) jsDate = date;
+    else if (typeof date === 'object' && 'toDate' in date) jsDate = date.toDate();
+    else if (typeof date === 'string') jsDate = new Date(date);
+    else jsDate = new Date(date);
+    const hh = String(jsDate.getHours()).padStart(2, '0');
+    const mm = String(jsDate.getMinutes()).padStart(2, '0');
+    setPendingValue(`${hh}:${mm}`);
+  }, []);
 
-    return (
-      <BottomSheetModal
-        ref={bottomSheetRef}
-        enableDynamicSizing
-        enableContentPanningGesture={Platform.OS !== 'android'}
-        backdropComponent={renderBackdrop}
-        containerComponent={sheetContainer}
-        backgroundStyle={{ backgroundColor: surfaceBg }}
-        handleIndicatorStyle={{ backgroundColor: textMuted }}
-        onDismiss={() => {
-          setPendingValue(null);
-          onSelectRef.current = null;
-        }}
-      >
-        <BottomSheetView className="px-5 pb-safe-or-8">
-          <Text className="text-text-primary text-lg font-semibold text-center mb-3">
-            Default time
-          </Text>
-          <Text className="text-xs font-semibold uppercase text-text-muted tracking-wide mb-1 px-1">
-            Time
-          </Text>
+  const commit = useCallback((time: string | null) => {
+    const cb = onSelectRef.current;
+    onSelectRef.current = null;
+    bottomSheetRef.current?.dismiss();
+    cb?.(time);
+  }, []);
+
+  return (
+    <BottomSheetModal
+      ref={bottomSheetRef}
+      enableDynamicSizing
+      enableContentPanningGesture={Platform.OS !== 'android'}
+      backdropComponent={renderBackdrop}
+      containerComponent={sheetContainer}
+      backgroundStyle={{ backgroundColor: surfaceBg }}
+      handleIndicatorStyle={{ backgroundColor: textMuted }}
+      onDismiss={() => {
+        // Dismiss without Save/Clear: never invoke the callback, never keep
+        // stale pending state for the next open.
+        onSelectRef.current = null;
+        setPendingValue(null);
+      }}
+    >
+      <BottomSheetView className="px-5 pb-safe-or-8">
+        <Text className="text-text-primary text-lg font-semibold text-center mb-3">
+          Default Time
+        </Text>
+
+        {/* Dominant wheel area: full width, generous height, centered */}
+        <View className="rounded-2xl border border-border-subtle overflow-hidden">
           <DateTimePicker
             mode="single"
-            date={initialDate}
+            date={pickerDate}
             timePicker
             initialView="time"
             hideHeader
@@ -125,49 +129,40 @@ const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>(
               time_label: { color: textPrimary },
             }}
           />
+        </View>
 
-          <View className="mt-2 mb-2 rounded-lg border border-border-subtle px-3 py-2 flex-row items-center justify-between">
-            <Text className="text-sm text-text-primary">Selected</Text>
-            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>
-              {toHourMinute(pendingValue ?? null) || '—'}
-            </Text>
-          </View>
+        <View className="mt-3 mb-4 rounded-lg border border-border-subtle px-4 py-3 flex-row items-center justify-between">
+          <Text className="text-sm text-text-primary">Selected</Text>
+          <Text className="text-lg font-semibold" style={{ color: accentPrimary }}>
+            {toHourMinute(pendingValue || null) || '—'}
+          </Text>
+        </View>
 
-          <View className="flex-row gap-3 mb-4">
-            <TouchableOpacity
-              onPress={() => {
-                const cb = onSelectRef.current;
-                bottomSheetRef.current?.dismiss();
-                cb?.(null);
-              }}
-              className="flex-1 items-center justify-center py-2.5 rounded-lg border border-border-subtle"
-              accessibilityRole="button"
-              accessibilityLabel="Clear default time"
-            >
-              <View className="flex-row items-center gap-1.5">
-                <Icon name="close" size={16} color={textPrimary} />
-                <Text className="text-sm font-medium text-text-primary">Clear</Text>
-              </View>
-            </TouchableOpacity>
-            <Button
-              variant="primary"
-              className="flex-1"
-              onPress={() => {
-                const cb = onSelectRef.current;
-                const value = pendingValue ?? null;
-                bottomSheetRef.current?.dismiss();
-                cb?.(value);
-              }}
-              accessibilityLabel="Save default time"
-            >
-              Save
-            </Button>
-          </View>
-        </BottomSheetView>
-      </BottomSheetModal>
-    );
-  }
-);
+        <View className="flex-row gap-3 mb-4">
+          <TouchableOpacity
+            onPress={() => commit(null)}
+            className="flex-1 items-center justify-center py-3 rounded-lg border border-border-subtle"
+            accessibilityRole="button"
+            accessibilityLabel="Clear default time"
+          >
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="close" size={16} color={textPrimary} />
+              <Text className="text-sm font-medium text-text-primary">Clear</Text>
+            </View>
+          </TouchableOpacity>
+          <Button
+            variant="primary"
+            className="flex-1"
+            onPress={() => commit(pendingValue)}
+            accessibilityLabel="Save default time"
+          >
+            Save
+          </Button>
+        </View>
+      </BottomSheetView>
+    </BottomSheetModal>
+  );
+});
 
 MealTypeTimePickerSheet.displayName = 'MealTypeTimePickerSheet';
 
