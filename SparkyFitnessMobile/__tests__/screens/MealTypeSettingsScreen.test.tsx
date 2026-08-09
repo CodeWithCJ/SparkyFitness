@@ -5,6 +5,7 @@ import { Alert, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import MealTypeSettingsScreen, {
+  resetMealTypeDragPreview,
   useMealTypeRowDragPreviewStyle,
 } from '../../src/screens/MealTypeSettingsScreen';
 import { TIME_WHEEL_CONTAINER_HEIGHT } from '../../src/components/MealTypeTimeWheel';
@@ -1612,6 +1613,11 @@ describe('Meal type time wheel — visible on-device picker (device bugfix)', ()
 });
 
 describe('Meal type drag preview — live sibling shift (device bugfix)', () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
   it('active row floats: translateY follows the finger with lift scale + shadow', () => {
     const { getByTestId } = render(
       <DragPreviewHarness
@@ -1777,6 +1783,96 @@ describe('Meal type drag preview — live sibling shift (device bugfix)', () => 
     // Custom rows keep the handle + Move up/down actions.
     expect(getByTestId('drag-handle-custom-pw')).toBeTruthy();
     expect(getByLabelText('Reorder Pre-Workout')).toBeTruthy();
+  });
+
+  it('full-gap drop rejection releases the frozen drag preview (CodeRabbit P1)', async () => {
+    const fullGap = Array.from({ length: 9 }, (_, i) => ({
+      id: `l${i}`,
+      name: `Lunch ${i}`,
+      sort_order: 21 + i,
+      user_id: 'u',
+      created_at: '',
+      is_visible: true,
+      show_in_quick_log: true,
+      default_time: null,
+    }));
+    const types = [
+      ...systemMealTypes,
+      {
+        id: 'brunch',
+        name: 'Brunch',
+        sort_order: 11,
+        user_id: 'u',
+        created_at: '',
+        is_visible: true,
+        show_in_quick_log: true,
+        default_time: null,
+      },
+      ...fullGap,
+    ];
+    const { findByText, getByLabelText } = renderScreen({ mealTypes: types });
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
+    await findByText('Brunch');
+
+    // Screen-level: the rejected drop shows one toast and writes nothing.
+    // (fireEvent FIRST — the harness renders below would unmount/disconnect
+    // the screen tree for further event dispatch.)
+    fireEvent(getByLabelText('Reorder Brunch'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    await waitFor(() => {
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          text1: expect.stringContaining('No more meal types can be placed between Lunch and Dinner'),
+        }),
+      );
+    });
+    expect(updateSpy).not.toHaveBeenCalled();
+
+    // The frozen-preview state the gesture leaves behind on a rejected drop:
+    const frozen = render(
+      <DragPreviewHarness
+        rowIndex={1}
+        active={1}
+        panY={0}
+        committing={129}
+        target={3}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    expect(frozen.getByTestId('preview-row').props.style.transform).toEqual([
+      { translateY: 129 },
+      { scale: 1.02 },
+    ]);
+    // resetMealTypeDragPreview is EXACTLY what the rejection path calls; after
+    // it, the row's preview style returns to idle (identity transform).
+    const activeDragIndex = { value: 1 };
+    const panY = { value: 0 };
+    const committingTranslate = { value: 129 };
+    resetMealTypeDragPreview(
+      activeDragIndex as any,
+      panY as any,
+      committingTranslate as any,
+    );
+    expect(committingTranslate.value).toBe(0);
+    expect(activeDragIndex.value).toBe(-1);
+    expect(panY.value).toBe(0);
+    const idle = render(
+      <DragPreviewHarness
+        rowIndex={1}
+        active={-1}
+        panY={0}
+        committing={0}
+        target={-1}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    expect(idle.getByTestId('preview-row').props.style.transform).toEqual([
+      { translateY: 0 },
+      { scale: 1 },
+    ]);
+    await act(async () => {});
   });
 
   it('accessibility Move up/down still uses the SAME reorder semantics as the gesture', async () => {

@@ -161,6 +161,24 @@ export function useMealTypeRowDragPreviewStyle(
   });
 }
 
+/**
+ * Releases a frozen drag preview (active row float + sibling shifts) back to
+ * idle. Called by the REJECTED-drop path (e.g. a full-gap drop): the gesture
+ * already froze the preview in onEnd, so a rejection must clear the shared
+ * values or the rows stay stuck translated. An ACCEPTED move resets through
+ * the post-render effect instead (pendingDragResetRef), so the preview hands
+ * off to the reordered render with no snap-back.
+ */
+export function resetMealTypeDragPreview(
+  activeDragIndex: SharedValue<number>,
+  panY: SharedValue<number>,
+  committingTranslate: SharedValue<number>,
+): void {
+  committingTranslate.value = 0;
+  activeDragIndex.value = -1;
+  panY.value = 0;
+}
+
 const CustomMealTypeRow: React.FC<{
   mt: MealType;
   index: number;
@@ -829,6 +847,8 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       const [moved] = currentUnified.splice(fromIndex, 1);
       currentUnified.splice(clampedTo, 0, moved);
       if (!currentUnified[0]?.isSystem || !currentUnified[currentUnified.length - 1]?.isSystem) {
+        // Defensive anchor-bound guard: also release a frozen preview.
+        resetMealTypeDragPreview(activeDragIndex, panY, committingTranslate);
         return; // defensive: anchors must bound the list
       }
       const nextGaps = deriveGapsFromUnified(currentUnified);
@@ -840,6 +860,11 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             type: 'error',
             text1: `No more meal types can be placed ${movingInto}.`,
           });
+          // Rejected drop: the gesture already froze the preview in onEnd;
+          // release it immediately so the dropped row and sibling shifts
+          // spring back to their pre-drag positions (CodeRabbit P1 — the
+          // post-render reset is only armed for ACCEPTED moves).
+          resetMealTypeDragPreview(activeDragIndex, panY, committingTranslate);
           return;
         }
       }
@@ -858,7 +883,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       pendingDragResetRef.current = true;
       enqueuePersist();
     },
-    [unifiedRows, enqueuePersist],
+    [unifiedRows, enqueuePersist, activeDragIndex, panY, committingTranslate],
   );
 
   // Post-render commit handoff: after the new unifiedRows render (gapOverride
@@ -868,9 +893,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   useEffect(() => {
     if (!pendingDragResetRef.current) return;
     pendingDragResetRef.current = false;
-    committingTranslate.value = 0;
-    activeDragIndex.value = -1;
-    panY.value = 0;
+    resetMealTypeDragPreview(activeDragIndex, panY, committingTranslate);
   }, [unifiedRows, committingTranslate, activeDragIndex, panY]);
 
   const onRefresh = useCallback(async () => {
