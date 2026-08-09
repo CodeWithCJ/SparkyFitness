@@ -248,17 +248,31 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   }, [queryClient]);
 
   /**
-   * Per-field mutation ownership (CodeRabbit P1).
+   * Per-field mutation ownership (CodeRabbit P1) + SERIALIZED network writes.
    *
-   * Instead of comparing cached values to decide rollback/merge (which cannot
-   * distinguish two overlapping mutations that write the SAME value), every
-   * generic update receives a unique token and records field ownership in
-   * `fieldOwnerRef: Map<'<id>:<field>', token>`. A mutation may roll back or
-   * merge a field ONLY while it still owns that field; a newer mutation that
-   * took over the field is never touched by an older completion.
+   * Two layers, deliberately distinct:
+   *
+   * 1. Optimistic ownership: every mutation gets a unique token (allocated
+   *    SYNCHRONOUSLY at the mutate boundary, before any async work) and records
+   *    field ownership in `fieldOwnerRef: Map<'<id>:<field>', token>`. A
+   *    mutation may roll back/merge a field ONLY while it still owns that
+   *    field — a newer user action that took the field over is never touched
+   *    by an older completion.
+   *
+   * 2. Network execution ordering: `updateRequestQueueRef` serializes the
+   *    actual PUT requests PER meal-type record in user-initiation order, so
+   *    the newest user intent is always the LAST server write. Different
+   *    record IDs may still run concurrently. Without this, an older request
+   *    could commit after a newer one on the server (the backend has no
+   *    sequence/version token) and a later refetch would surface the stale
+   *    value.
    */
   const mutationTokenRef = useRef(0);
   const fieldOwnerRef = useRef<Map<string, number>>(new Map());
+  const updateRequestQueueRef = useRef<Map<string, Promise<unknown>>>(new Map());
+  // Per-record count of in-flight generic updates, used to gate the
+  // authoritative invalidate until the queue for that record drains.
+  const pendingUpdatesRef = useRef<Map<string, number>>(new Map());
 
   const updateMutation = useMutation<
     MealType,
@@ -271,25 +285,39 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       optimisticFields: Record<string, unknown>;
     }
   >({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Omit<MealType, 'id'>> }) =>
-      updateMealType(id, data),
-    onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: mealTypesQueryKey });
+    mutationFn: ({ id, data }: { id: string; data: Partial<Omit<MealType, 'id'>> }) => {
+      // Serialize PUTs per record: this request waits for the previous one on
+      // the same id, so the server applies writes in user-initiation order.
+      const previous = updateRequestQueueRef.current.get(id) ?? Promise.resolve();
+      const run = previous.then(() => updateMealType(id, data));
+      // Keep the chain alive across failures so a later request still runs.
+      updateRequestQueueRef.current.set(id, run.catch(() => undefined));
+      return run;
+    },
+    onMutate: ({ id, data }) => {
+      // Token allocated BEFORE any await — user-intent order, not
+      // cancelQueries completion order.
       const token = ++mutationTokenRef.current;
-      const previousFields: Record<string, unknown> = {};
-      const optimisticFields: Record<string, unknown> = {};
-      queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
-        (old ?? []).map((mt) => {
-          if (mt.id !== id) return mt;
-          for (const [field, value] of Object.entries(data)) {
-            previousFields[field] = (mt as unknown as Record<string, unknown>)[field];
-            optimisticFields[field] = value;
-            fieldOwnerRef.current.set(`${id}:${field}`, token);
-          }
-          return { ...mt, ...data };
-        }),
+      pendingUpdatesRef.current.set(
+        id,
+        (pendingUpdatesRef.current.get(id) ?? 0) + 1,
       );
-      return { id, token, previousFields, optimisticFields };
+      return queryClient.cancelQueries({ queryKey: mealTypesQueryKey }).then(() => {
+        const previousFields: Record<string, unknown> = {};
+        const optimisticFields: Record<string, unknown> = {};
+        queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
+          (old ?? []).map((mt) => {
+            if (mt.id !== id) return mt;
+            for (const [field, value] of Object.entries(data)) {
+              previousFields[field] = (mt as unknown as Record<string, unknown>)[field];
+              optimisticFields[field] = value;
+              fieldOwnerRef.current.set(`${id}:${field}`, token);
+            }
+            return { ...mt, ...data };
+          }),
+        );
+        return { id, token, previousFields, optimisticFields };
+      });
     },
     onSuccess: (updated, _vars, ctx) => {
       const context = ctx as {
@@ -344,11 +372,20 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       addLog(`Failed to update meal type: ${err.message}`, 'ERROR');
       Toast.show({ type: 'error', text1: 'Failed to update' });
     },
-    onSettled: () => {
-      // Authoritative reconciliation once for every generic update. The
-      // reorder path uses DIRECT updateMealType() calls and never goes through
-      // this mutation, so it cannot trigger per-row invalidations.
-      queryClient.invalidateQueries({ queryKey: mealTypesQueryKey });
+    onSettled: (_data, _err, vars, context) => {
+      // Authoritative reconciliation ONLY after this record's update queue
+      // drains — never while a newer mutation for the same record is still
+      // pending (an intermediate refetch would overwrite its optimistic cache
+      // with older server state). The reorder path uses DIRECT updateMealType()
+      // calls and never goes through this mutation.
+      const id = context?.id ?? vars.id;
+      const pending = pendingUpdatesRef.current.get(id) ?? 0;
+      if (pending <= 1) {
+        pendingUpdatesRef.current.delete(id);
+        queryClient.invalidateQueries({ queryKey: mealTypesQueryKey });
+      } else {
+        pendingUpdatesRef.current.set(id, pending - 1);
+      }
     },
   });
 

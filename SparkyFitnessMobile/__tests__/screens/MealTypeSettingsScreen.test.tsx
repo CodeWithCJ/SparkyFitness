@@ -909,23 +909,27 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     // Rotate the wheel to 17:30 (the date-picker mock exposes onChange).
     const picker = getByTestId('date-picker');
     fireEvent(picker, 'change', { date: new Date(2024, 0, 1, 17, 30) });
-    fireEvent.press(getByLabelText('Save default time')); // A pending (17:30)
+    fireEvent.press(getByLabelText('Save default time')); // A (17:30) — network starts
     await waitFor(() => expect(updateCalls).toBe(1));
 
     // A's Save closed the sheet; reopen it for B (same value 17:30). The
     // wheel now seeds from the optimistic cache value (17:30), so B sends
-    // the same payload while A is still pending.
+    // the same payload. B's NETWORK request is queued behind A (serialized),
+    // so updateCalls stays 1 until A settles.
     fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
     await waitFor(() => {
       expect(queryAllByLabelText('Save default time').length).toBeGreaterThan(0);
     });
     const picker2 = getByTestId('date-picker');
     fireEvent(picker2, 'change', { date: new Date(2024, 0, 1, 17, 30) });
-    fireEvent.press(getByLabelText('Save default time')); // B pending (same 17:30)
-    await waitFor(() => expect(updateCalls).toBe(2));
+    fireEvent.press(getByLabelText('Save default time')); // B optimistic; queued
+    await act(async () => {});
+    expect(updateCalls).toBe(1); // serialized: B's PUT waits for A
 
-    await act(async () => { resolveB({ ...types[0], default_time: '17:30' }); });
+    // A fails late → no server write; B's queued request then executes.
     await act(async () => { rejectA(new Error('boom')); });
+    await waitFor(() => expect(updateCalls).toBe(2));
+    await act(async () => { resolveB({ ...types[0], default_time: '17:30' }); });
 
     await waitFor(() => {
       const cached = queryClient.getQueryData<any[]>(['mealTypes']);
@@ -966,13 +970,16 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     await findByText('breakfast');
     fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A pending
     await waitFor(() => expect(visCalls).toBe(1));
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // B pending (same value)
-    await waitFor(() => expect(visCalls).toBe(2));
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // B (same value) queued
+    await act(async () => {});
+    expect(visCalls).toBe(1); // serialized: B's PUT waits for A
 
+    // A fails late → no server write; B's queued request then executes.
+    await act(async () => { rejectA(new Error('boom')); });
+    await waitFor(() => expect(visCalls).toBe(2));
     await act(async () => {
       resolveB({ ...serverState.find((m: any) => m.id === 'sys-b') });
     });
-    await act(async () => { rejectA(new Error('boom')); });
 
     await waitFor(() => {
       expect(getByLabelText('Visible breakfast').props.value).toBe(false);
@@ -1051,6 +1058,177 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       expect(serverState.find((t) => t.id === 'b').sort_order).toBe(21);
       expect(serverState.find((t) => t.id === 'a').sort_order).toBe(22);
     });
+    await act(async () => {});
+  });
+
+  it('REAL server-write race: serialized PUTs make the newest visibility intent the final server value', async () => {
+    // Initial Visible = true. A→false (older), B→true (newer). The server has
+    // no version token, so only request ORDER protects newest-intent. Because
+    // PUTs for the same record are serialized, the server write sequence is
+    // exactly A(false) then B(true) — even if we try to resolve adversarially.
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, queryClient } = renderScreen({ fetchMock });
+
+    let resolveA!: (v: any) => void;
+    let resolveB!: (v: any) => void;
+    const gateA = new Promise((res) => { resolveA = res; });
+    const gateB = new Promise((res) => { resolveB = res; });
+    const callLog: string[] = [];
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      callLog.push(`${id}:${(data as any).is_visible}`);
+      const idx = serverState.findIndex((m) => m.id === id);
+      if (callLog.length === 1) {
+        // A executes first (serialized); apply its write only when it completes.
+        await gateA;
+        serverState[idx] = { ...serverState[idx], is_visible: (data as any).is_visible };
+        return { ...serverState[idx] };
+      }
+      // B's PUT only starts AFTER A settled; apply B's write.
+      await gateB;
+      serverState[idx] = { ...serverState[idx], is_visible: (data as any).is_visible };
+      return { ...serverState[idx] };
+    });
+
+    await findByText('breakfast');
+    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A
+    await waitFor(() => expect(callLog.length).toBe(1));
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B (newer intent)
+    // Serialized: B's PUT has NOT started while A is pending.
+    await waitFor(() => expect(callLog.length).toBe(1));
+    // Optimistic UI already shows B's intent (true) even though A is pending.
+    await waitFor(() => {
+      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    });
+
+    // Let A's server write commit (false), then B's (true).
+    await act(async () => { resolveA({}); });
+    await waitFor(() => expect(callLog.length).toBe(2));
+    await act(async () => { resolveB({}); });
+
+    // Final: newest user intent (true) is the server value, cache, and UI.
+    await waitFor(() => {
+      expect(serverState.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      expect(cached?.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
+      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    });
+    expect(callLog).toEqual(['sys-b:false', 'sys-b:true']);
+    await act(async () => {});
+  });
+
+  it('REAL time-write race: serialized PUTs make the newest time the final server value', async () => {
+    // Initial 16:00. A→17:30 (older), B→18:45 (newer). Final must be 18:45.
+    const types = [
+      ...systemMealTypes,
+      {
+        id: 'pw',
+        name: 'Pre-Workout',
+        sort_order: 21,
+        user_id: 'u',
+        created_at: '',
+        is_visible: true,
+        show_in_quick_log: true,
+        default_time: '16:00',
+      },
+    ];
+    const serverState: any[] = JSON.parse(JSON.stringify(types));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, getByTestId, queryAllByLabelText, queryClient } = renderScreen({ fetchMock });
+
+    let resolveA!: (v: any) => void;
+    let resolveB!: (v: any) => void;
+    const gateA = new Promise((res) => { resolveA = res; });
+    const gateB = new Promise((res) => { resolveB = res; });
+    const callLog: string[] = [];
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      callLog.push((data as any).default_time);
+      const idx = serverState.findIndex((t) => t.id === id);
+      if (callLog.length === 1) {
+        await gateA;
+        serverState[idx] = { ...serverState[idx], default_time: (data as any).default_time };
+        return { ...serverState[idx] };
+      }
+      await gateB;
+      serverState[idx] = { ...serverState[idx], default_time: (data as any).default_time };
+      return { ...serverState[idx] };
+    });
+
+    await findByText('Pre-Workout');
+    const saveTime = async (hhmm: string) => {
+      fireEvent.press(getByLabelText(/Default time for Pre-Workout/));
+      await waitFor(() => {
+        expect(queryAllByLabelText('Save default time').length).toBeGreaterThan(0);
+      });
+      const picker = getByTestId('date-picker');
+      const [h, m] = hhmm.split(':').map(Number);
+      fireEvent(picker, 'change', { date: new Date(2024, 0, 1, h, m) });
+      fireEvent.press(getByLabelText('Save default time'));
+    };
+
+    await saveTime('17:30'); // A
+    await waitFor(() => expect(callLog.length).toBe(1));
+    await saveTime('18:45'); // B (newer)
+    await act(async () => {});
+    expect(callLog.length).toBe(1); // serialized: B's PUT waits for A
+
+    await act(async () => { resolveA({}); });
+    await waitFor(() => expect(callLog.length).toBe(2));
+    await act(async () => { resolveB({}); });
+
+    await waitFor(() => {
+      expect(serverState.find((t: any) => t.id === 'pw').default_time).toBe('18:45');
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      expect(cached?.find((t: any) => t.id === 'pw').default_time).toBe('18:45');
+      expect(getByLabelText('Default time for Pre-Workout, 18:45')).toBeTruthy();
+    });
+    expect(callLog).toEqual(['17:30', '18:45']);
+    await act(async () => {});
+  });
+
+  it('two failures reconcile to the original server state (no stranded optimistic value)', async () => {
+    // Initial true. A→false (fails), B→true (fails). Both fail: ownership
+    // rolls back to the true optimistic B value, and the final drain refetch
+    // reconciles to the authoritative server state (true).
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, queryClient } = renderScreen({ fetchMock });
+
+    let rejectA!: (e: Error) => void;
+    let rejectB!: (e: Error) => void;
+    const gateA = new Promise((_res, rej) => { rejectA = rej; });
+    const gateB = new Promise((_res, rej) => { rejectB = rej; });
+    const callLog: string[] = [];
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      callLog.push(`${id}:${(data as any).is_visible}`);
+      if (callLog.length === 1) {
+        await gateA;
+        throw new Error('boom A'); // A fails — no server write
+      }
+      await gateB;
+      throw new Error('boom B'); // B fails — no server write
+    });
+
+    await findByText('breakfast');
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A
+    await waitFor(() => expect(callLog.length).toBe(1));
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B
+    await act(async () => {});
+    expect(callLog.length).toBe(1); // serialized
+
+    await act(async () => { rejectA(new Error('boom A')); });
+    await waitFor(() => expect(callLog.length).toBe(2));
+    await act(async () => { rejectB(new Error('boom B')); });
+
+    // Both failures → cache reconciles to the original server value (true).
+    await waitFor(() => {
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      expect(cached?.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
+      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    });
+    // Server never received a write (both requests failed before applying).
+    expect(serverState.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
     await act(async () => {});
   });
 
