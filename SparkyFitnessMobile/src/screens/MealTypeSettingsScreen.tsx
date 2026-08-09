@@ -39,6 +39,7 @@ import {
 } from '../services/api/mealTypesApi';
 import { addLog } from '../services/LogService';
 import Icon from '../components/Icon';
+import Switch from '../components/ui/Switch';
 import MealTypeFormSheet, { type MealTypeFormSheetRef } from '../components/MealTypeFormSheet';
 import MealTypeTimePickerSheet, {
   type MealTypeTimePickerSheetRef,
@@ -84,6 +85,7 @@ const CustomMealTypeRow: React.FC<{
   onEdit: (mt: MealType) => void;
   onTime: (mt: MealType) => void;
   onMove: (fromIndex: number, toIndex: number) => void;
+  onToggleVisibility: (mt: MealType, value: boolean) => void;
   textMuted: string;
   textSecondary: string;
   activeDragIndex: SharedValue<number>;
@@ -97,6 +99,7 @@ const CustomMealTypeRow: React.FC<{
   onEdit,
   onTime,
   onMove,
+  onToggleVisibility,
   textMuted,
   textSecondary,
   activeDragIndex,
@@ -202,6 +205,13 @@ const CustomMealTypeRow: React.FC<{
         </Text>
       </TouchableOpacity>
       <MealTypeTimeCell mealType={mt} onPress={() => onTime(mt)} textSecondary={textSecondary} />
+      <View className="pr-4 pl-1">
+        <Switch
+          value={mt.is_visible}
+          onValueChange={(val) => onToggleVisibility(mt, val)}
+          accessibilityLabel={`Visible ${mt.name}`}
+        />
+      </View>
     </Animated.View>
   );
 };
@@ -450,7 +460,6 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     async (values: {
       name: string;
       defaultTime: string;
-      isVisible: boolean;
       showInQuickLog: boolean;
     }) => {
       setIsCreating(true);
@@ -474,9 +483,8 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           default_time: values.defaultTime || null,
         });
         const followUps: { id: string; data: Partial<Omit<MealType, 'id'>> }[] = [];
-        if (!values.isVisible) {
-          followUps.push({ id: created.id, data: { is_visible: false } });
-        }
+        // Visibility is owned by the main-list Switch (backend defaults TRUE);
+        // only the Quick log choice needs a follow-up update.
         if (!values.showInQuickLog) {
           followUps.push({ id: created.id, data: { show_in_quick_log: false } });
         }
@@ -516,7 +524,6 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     (values: {
       name: string;
       defaultTime: string;
-      isVisible: boolean;
       showInQuickLog: boolean;
     }) => {
       if (!editingType) return;
@@ -526,7 +533,8 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           data: {
             name: editingType.user_id !== null ? values.name : editingType.name,
             default_time: values.defaultTime || null,
-            is_visible: values.isVisible,
+            // is_visible intentionally omitted: Visibility is owned by the
+            // main-list Switch, so a plain edit never overwrites server state.
             show_in_quick_log: values.showInQuickLog,
           },
         },
@@ -572,6 +580,14 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     [updateMutation],
   );
 
+  /** Row-level Visibility switch (mockup placement: main list owns it). */
+  const toggleVisibility = useCallback(
+    (mt: MealType, value: boolean) => {
+      updateMutation.mutate({ id: mt.id, data: { is_visible: value } });
+    },
+    [updateMutation],
+  );
+
   const renderSystemRow = (mt: MealType) => (
     <View
       key={mt.id}
@@ -594,6 +610,13 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         </Text>
       </TouchableOpacity>
       <MealTypeTimeCell mealType={mt} onPress={() => openTimePicker(mt)} textSecondary={textSecondary} />
+      <View className="pr-4 pl-1">
+        <Switch
+          value={mt.is_visible}
+          onValueChange={(val) => toggleVisibility(mt, val)}
+          accessibilityLabel={`Visible ${mt.name}`}
+        />
+      </View>
     </View>
   );
 
@@ -638,6 +661,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
                     onEdit={openEdit}
                     onTime={openTimePicker}
                     onMove={moveCustomType}
+                    onToggleVisibility={toggleVisibility}
                     textMuted={textMuted}
                     textSecondary={textSecondary}
                     activeDragIndex={activeDragIndex}
@@ -670,7 +694,9 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   );
 };
 
-/** Clearly tappable right-side time element (large target, not a tiny glyph). */
+/** Right-side Default time: plain settings-row text with a large invisible hit
+ * target (full row height via py-3). No nested card/pill, no timer icon, no
+ * chevron — the row stays one clean settings row (mockup). */
 const MealTypeTimeCell: React.FC<{
   mealType: MealType;
   onPress: () => void;
@@ -680,16 +706,14 @@ const MealTypeTimeCell: React.FC<{
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row items-center px-3 py-2.5 mr-2 rounded-lg bg-raised border border-border-subtle"
+      className="px-3 py-3"
       accessibilityRole="button"
       accessibilityLabel={`Default time for ${mealType.name}${time ? `, ${time}` : ', not set'}`}
       testID={`time-cell-${mealType.id}`}
     >
-      <Icon name="timer" size={16} color={textSecondary} />
-      <Text className="text-sm font-medium text-text-primary ml-1.5" style={{ minWidth: 40 }}>
+      <Text className="text-sm text-text-secondary" style={{ minWidth: 44, textAlign: 'right' }}>
         {time || 'Not set'}
       </Text>
-      <Icon name="chevron-forward" size={14} color={textSecondary} />
     </TouchableOpacity>
   );
 };

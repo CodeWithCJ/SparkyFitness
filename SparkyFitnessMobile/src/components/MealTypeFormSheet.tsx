@@ -27,7 +27,6 @@ export interface MealTypeFormSheetRef {
 export interface MealTypeFormValues {
   name: string;
   defaultTime: string;
-  isVisible: boolean;
   showInQuickLog: boolean;
 }
 
@@ -46,12 +45,15 @@ interface MealTypeFormSheetProps {
 /**
  * Shared Add / Edit sheet for meal types.
  *
- * CREATE: name + Visibility + Quick log + the actual large time wheel inline
- * (one creation experience; no Delete — it is an unsaved record).
+ * CREATE: name + Quick log + the actual large time wheel inline (one creation
+ * experience; no Delete — it is an unsaved record).
  *
- * EDIT: name (custom editable / system display-only), Visibility, Quick log, a
- * Default time ROW that opens the dedicated large time-picker sheet, and a
- * destructive Delete action for custom types only.
+ * EDIT: name (custom editable / system display-only), Quick log, a Default
+ * time ROW that opens the dedicated large time-picker sheet, and a destructive
+ * Delete action for custom types only.
+ *
+ * Visibility is owned by the row-level Switch on the main settings list, so it
+ * is intentionally absent here (mockup placement).
  *
  * Raw sort_order is never exposed; custom ordering happens on the settings
  * screen via drag-and-drop between the fixed system anchors.
@@ -72,7 +74,6 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
     const [values, setValues] = useState<MealTypeFormValues>({
       name: '',
       defaultTime: '',
-      isVisible: true,
       showInQuickLog: false,
     });
     const [mode, setMode] = useState<'create' | 'edit'>('create');
@@ -80,7 +81,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
     useImperativeHandle(ref, () => ({
       presentCreate: () => {
         setMode('create');
-        setValues({ name: '', defaultTime: '', isVisible: true, showInQuickLog: false });
+        setValues({ name: '', defaultTime: '', showInQuickLog: false });
         bottomSheetRef.current?.present();
       },
       presentEdit: (mealType) => {
@@ -88,7 +89,6 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
         setValues({
           name: mealType.name,
           defaultTime: toHourMinute(mealType.default_time) || '',
-          isVisible: mealType.is_visible,
           showInQuickLog: mealType.show_in_quick_log,
         });
         bottomSheetRef.current?.present();
@@ -129,7 +129,6 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
       const payload: MealTypeFormValues = {
         name: values.name.trim(),
         defaultTime: values.defaultTime,
-        isVisible: values.isVisible,
         showInQuickLog: values.showInQuickLog,
       };
       if (mode === 'create') onCreate(payload);
@@ -146,7 +145,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
         onDismiss={() => {
-          setValues({ name: '', defaultTime: '', isVisible: true, showInQuickLog: false });
+          setValues({ name: '', defaultTime: '', showInQuickLog: false });
         }}
       >
         <BottomSheetScrollView contentContainerClassName="px-5 pb-safe-or-8">
@@ -173,22 +172,6 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
             />
           )}
 
-          {/* Visibility */}
-          <View className="flex-row justify-between items-center py-3 border-t border-border-subtle">
-            <Text className="text-base font-medium text-text-primary flex-shrink">
-              Visibility
-            </Text>
-            <Switch
-              value={values.isVisible}
-              onValueChange={(val) => setValues((prev) => ({ ...prev, isVisible: val }))}
-              accessibilityLabel={`Visible ${values.name || 'meal type'}`}
-            />
-          </View>
-          <Text className="text-text-secondary text-sm mb-3">
-            Hidden meal types won&apos;t appear when adding new food, but past
-            entries remain visible in your Diary.
-          </Text>
-
           {/* Quick log */}
           <View className="flex-row justify-between items-center py-3 border-t border-border-subtle">
             <Text className="text-base font-medium text-text-primary flex-shrink">
@@ -209,52 +192,32 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
           </Text>
           {mode === 'create' ? (
             <>
-              <Text className="text-text-secondary text-sm mb-2">
-                Used to suggest this meal type at a given time of day.
-              </Text>
-              <View className="rounded-xl border border-border-subtle overflow-hidden">
-                <DateTimePicker
-                  mode="single"
-                  date={pickerDate}
-                  timePicker
-                  initialView="time"
-                  hideHeader
-                  onChange={handleDateChange}
-                  styles={{
-                    selected: { backgroundColor: accentPrimary },
-                    selected_label: { color: '#FFFFFF' },
-                    today: { borderColor: accentPrimary, borderWidth: 1 },
-                    day_label: { color: textPrimary },
-                    weekday_label: { color: textSecondary },
-                    month_selector_label: { color: textPrimary, fontWeight: '600' },
-                    year_selector_label: { color: textPrimary, fontWeight: '600' },
-                    disabled_label: { color: textMuted },
-                    month_label: { color: textPrimary },
-                    year_label: { color: textPrimary },
-                    selected_month: { backgroundColor: accentPrimary },
-                    selected_month_label: { color: '#FFFFFF' },
-                    selected_year: { backgroundColor: accentPrimary },
-                    selected_year_label: { color: '#FFFFFF' },
-                    time_label: { color: textPrimary },
-                  }}
-                />
+              {/* Large inline wheel (same enlargement as the dedicated sheet):
+                  the dominant element of the create flow. */}
+              <View
+                style={{
+                  height: 240,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                testID="create-time-wheel"
+              >
+                <View style={{ transform: [{ scale: 1.8 }] }}>
+                  <DateTimePicker
+                    mode="single"
+                    date={pickerDate}
+                    timePicker
+                    initialView="time"
+                    hideHeader
+                    onChange={handleDateChange}
+                    styles={{
+                      selected: { backgroundColor: accentPrimary },
+                      selected_label: { color: '#FFFFFF' },
+                      time_label: { fontSize: 28, color: textPrimary },
+                    }}
+                  />
+                </View>
               </View>
-              <View className="mt-2 mb-3 rounded-lg border border-border-subtle px-3 py-2 flex-row items-center justify-between">
-                <Text className="text-sm text-text-primary">Selected</Text>
-                <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>
-                  {toHourMinute(values.defaultTime || null) || '—'}
-                </Text>
-              </View>
-              {hasDefaultTime && (
-                <Button
-                  variant="secondary"
-                  onPress={() => setValues((prev) => ({ ...prev, defaultTime: '' }))}
-                  className="mb-3"
-                  accessibilityLabel="Clear default time"
-                >
-                  Clear time
-                </Button>
-              )}
             </>
           ) : (
             <TouchableOpacity

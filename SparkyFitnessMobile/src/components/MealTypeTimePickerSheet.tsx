@@ -3,7 +3,6 @@ import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
-import { toHourMinute } from '@workspace/shared';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import Icon from './Icon';
 import Button from './ui/Button';
@@ -27,17 +26,22 @@ export interface MealTypeTimePickerSheetRef {
  * - swiping/backdrop dismiss WITHOUT Save/Clear makes NO change (pending state
  *   is cleared on dismiss and the callback is never invoked);
  * - scrolling the wheel alone never mutates anything.
+ *
+ * The wheel is enlarged via a transform scale on the picker (the library's
+ * internal wheel container is a fixed 150x150 box) inside an explicit-height
+ * wrapper, so it occupies most of the sheet width with readable rows.
  */
+const WHEEL_SCALE = 1.8;
+const WHEEL_WRAPPER_HEIGHT = 280;
+
 const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, ref) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
-    useCSSVariable([
-      '--color-surface',
-      '--color-text-muted',
-      '--color-accent-primary',
-      '--color-text-primary',
-      '--color-text-secondary',
-    ]) as [string, string, string, string, string];
+  const [surfaceBg, textMuted, accentPrimary, textPrimary] = useCSSVariable([
+    '--color-surface',
+    '--color-text-muted',
+    '--color-accent-primary',
+    '--color-text-primary',
+  ]) as [string, string, string, string];
 
   const [pendingValue, setPendingValue] = useState<string | null>(null);
   const onSelectRef = useRef<((time: string | null) => void) | null>(null);
@@ -102,40 +106,32 @@ const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, 
           Default Time
         </Text>
 
-        {/* Dominant wheel area: full width, generous height, centered */}
-        <View className="rounded-2xl border border-border-subtle overflow-hidden">
-          <DateTimePicker
-            mode="single"
-            date={pickerDate}
-            timePicker
-            initialView="time"
-            hideHeader
-            onChange={handleChange}
-            styles={{
-              selected: { backgroundColor: accentPrimary },
-              selected_label: { color: '#FFFFFF' },
-              today: { borderColor: accentPrimary, borderWidth: 1 },
-              day_label: { color: textPrimary },
-              weekday_label: { color: textSecondary },
-              month_selector_label: { color: textPrimary, fontWeight: '600' },
-              year_selector_label: { color: textPrimary, fontWeight: '600' },
-              disabled_label: { color: textMuted },
-              month_label: { color: textPrimary },
-              year_label: { color: textPrimary },
-              selected_month: { backgroundColor: accentPrimary },
-              selected_month_label: { color: '#FFFFFF' },
-              selected_year: { backgroundColor: accentPrimary },
-              selected_year_label: { color: '#FFFFFF' },
-              time_label: { color: textPrimary },
-            }}
-          />
-        </View>
-
-        <View className="mt-3 mb-4 rounded-lg border border-border-subtle px-4 py-3 flex-row items-center justify-between">
-          <Text className="text-sm text-text-primary">Selected</Text>
-          <Text className="text-lg font-semibold" style={{ color: accentPrimary }}>
-            {toHourMinute(pendingValue || null) || '—'}
-          </Text>
+        {/* Dominant wheel area: explicit generous height, wheel scaled up so
+            it fills most of the sheet width with several readable rows above
+            and below the selection. No nested card, no summary box. */}
+        <View
+          style={{
+            height: WHEEL_WRAPPER_HEIGHT,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          testID="large-time-wheel"
+        >
+          <View style={{ transform: [{ scale: WHEEL_SCALE }] }}>
+            <DateTimePicker
+              mode="single"
+              date={pickerDate}
+              timePicker
+              initialView="time"
+              hideHeader
+              onChange={handleChange}
+              styles={{
+                selected: { backgroundColor: accentPrimary },
+                selected_label: { color: '#FFFFFF' },
+                time_label: { fontSize: 28, color: textPrimary },
+              }}
+            />
+          </View>
         </View>
 
         <View className="flex-row gap-3 mb-4">

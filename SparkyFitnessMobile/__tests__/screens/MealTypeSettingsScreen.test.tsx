@@ -204,6 +204,54 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     expect(queryAllByText(/\b(11|21|31|100|110)\b/)).toHaveLength(0);
   });
 
+  it('main list rows expose a themed Visibility Switch (system + custom)', async () => {
+    const { findByText, getByLabelText } = renderScreen();
+    await findByText('Pre-Workout');
+    expect(getByLabelText('Visible breakfast')).toBeTruthy();
+    expect(getByLabelText('Visible lunch')).toBeTruthy();
+    expect(getByLabelText('Visible dinner')).toBeTruthy();
+    expect(getByLabelText('Visible snacks')).toBeTruthy();
+    expect(getByLabelText('Visible Pre-Workout')).toBeTruthy();
+  });
+
+  it('toggling the row-level Visibility Switch persists is_visible', async () => {
+    const { findByText, getByLabelText } = renderScreen();
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
+    await findByText('Pre-Workout');
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false);
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith('sys-b', { is_visible: false }),
+    );
+    await act(async () => {});
+  });
+
+  it('rows stay clean settings rows: no timer pill icon on the main list', async () => {
+    const { findByText, queryByTestId } = renderScreen();
+    await findByText('Pre-Workout');
+    // The nested time pill (timer icon) was removed; the time is plain text.
+    expect(queryByTestId('icon-timer')).toBeNull();
+  });
+
+  it('time sheet has a large-wheel layout contract and no Selected summary card', async () => {
+    const { findByText, getByLabelText, getByTestId, queryByText } = renderScreen();
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    expect(getByTestId('large-time-wheel')).toBeTruthy();
+    expect(queryByText('Selected')).toBeNull();
+  });
+
+  it('create sheet has no Delete, no helper copy, no Selected box — name + large wheel in one flow', async () => {
+    const { findByText, getByLabelText, getByTestId, queryByText, queryByLabelText } =
+      renderScreen();
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Add meal type'));
+    expect(getByTestId('create-time-wheel')).toBeTruthy();
+    expect(queryByLabelText('Delete Meal Type')).toBeNull();
+    expect(queryByText(/Used to suggest this meal type/)).toBeNull();
+    expect(queryByText('Selected')).toBeNull();
+    expect(queryByLabelText('Clear default time')).toBeNull();
+  });
+
   it('reorders a custom across an anchor gap and persists sequential slots with ONE invalidate', async () => {
     const types = [
       ...systemMealTypes,
@@ -364,14 +412,19 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     expect(queryByLabelText('Delete Meal Type')).toBeNull();
   });
 
-  it('edit custom: name + visibility + quick log + time row; edit payload preserves sort_order', async () => {
+  it('edit custom: name + quick log + time; payload omits is_visible and sort_order', async () => {
     const { findByText, getByLabelText, queryByLabelText, getByPlaceholderText } = renderScreen();
     const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
 
     await findByText('Pre-Workout');
-    await openEditSheet({ getByLabelText, queryByLabelText }, 'Pre-Workout');
-    // Toggle visibility BEFORE renaming (the switch label carries the name).
+    // Visibility lives on the MAIN LIST (mockup placement), not in the sheet.
     fireEvent(getByLabelText('Visible Pre-Workout'), 'valueChange', false);
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith('custom-pw', { is_visible: false }),
+    );
+    updateSpy.mockClear();
+
+    await openEditSheet({ getByLabelText, queryByLabelText }, 'Pre-Workout');
     fireEvent.changeText(getByPlaceholderText('e.g. Lunch 2.0'), 'Pre-Workout 2.0');
     fireEvent.press(getByLabelText('Save meal type'));
 
@@ -380,13 +433,14 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
         'custom-pw',
         expect.objectContaining({
           name: 'Pre-Workout 2.0',
-          is_visible: false,
+          default_time: '17:30',
           show_in_quick_log: false,
         }),
       );
       const payload = updateSpy.mock.calls[0][1] as any;
       expect(payload.sort_order).toBeUndefined();
-      expect(payload.default_time).toBe('17:30');
+      // is_visible is NOT overwritten by a normal edit.
+      expect(payload.is_visible).toBeUndefined();
     });
     await act(async () => {});
   });
@@ -394,15 +448,16 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
   it('system edit: name display-only, no Delete, per-user quick log switch present', async () => {
     const { findByText, getByLabelText, queryByLabelText, getAllByText } = renderScreen();
     await findByText('breakfast');
+    // Visibility is on the MAIN LIST for system rows too.
+    expect(getByLabelText('Visible breakfast')).toBeTruthy();
     await openEditSheet({ getByLabelText, queryByLabelText }, 'breakfast');
     // Display-only name (no editable TextInput); the name appears on the row
     // AND in the read-only field.
     expect(getAllByText('breakfast').length).toBeGreaterThanOrEqual(2);
     expect(queryByLabelText('Meal type name')).toBeNull();
     expect(queryByLabelText('Delete Meal Type')).toBeNull();
-    // Per-user quick log switch is present and labelled.
+    // Per-user quick log switch is present and labelled in the sheet.
     expect(getByLabelText('Quick log breakfast')).toBeTruthy();
-    expect(getByLabelText('Visible breakfast')).toBeTruthy();
   });
 
   it('deletes a custom type from the edit sheet with confirmation', async () => {
