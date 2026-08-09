@@ -112,11 +112,19 @@ const customMealTypes = [
 
 const allMealTypes = [...systemMealTypes, ...customMealTypes];
 
-function renderScreen(overrides: { mealTypes?: any[] } = {}) {
+function renderScreen(
+  overrides: { mealTypes?: any[]; fetchMock?: () => Promise<any[]> } = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
-  jest.spyOn(mealTypesApi, 'fetchMealTypes').mockResolvedValue(overrides.mealTypes ?? allMealTypes);
+  if (overrides.fetchMock) {
+    jest.spyOn(mealTypesApi, 'fetchMealTypes').mockImplementation(overrides.fetchMock);
+  } else {
+    jest
+      .spyOn(mealTypesApi, 'fetchMealTypes')
+      .mockResolvedValue(overrides.mealTypes ?? allMealTypes);
+  }
   return {
     queryClient,
     ...render(
@@ -214,14 +222,137 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     expect(getByLabelText('Visible Pre-Workout')).toBeTruthy();
   });
 
-  it('toggling the row-level Visibility Switch persists is_visible', async () => {
-    const { findByText, getByLabelText } = renderScreen();
-    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
+  it('Visibility Switch reconciles the cache after a successful save', async () => {
+    // Mutable server state: after the update the server REALLY returns
+    // is_visible false, so the onSettled refetch reconciles to false too.
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    const fetchMock = async () => serverState;
+    const { findByText, getByLabelText, queryClient } = renderScreen({ fetchMock });
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      const idx = serverState.findIndex((mt) => mt.id === id);
+      const updated = { ...serverState[idx], ...data };
+      serverState[idx] = updated;
+      return updated;
+    });
     await findByText('Pre-Workout');
-    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false);
-    await waitFor(() =>
-      expect(updateSpy).toHaveBeenCalledWith('sys-b', { is_visible: false }),
+
+    // 1. Initial state: Switch is ON.
+    const toggle = getByLabelText('Visible breakfast');
+    expect(toggle.props.value).toBe(true);
+
+    // 2. Toggle off.
+    fireEvent(toggle, 'valueChange', false);
+
+    // 3. Request is the partial payload.
+    await waitFor(() => {
+      expect(mealTypesApi.updateMealType).toHaveBeenCalledWith('sys-b', {
+        is_visible: false,
+      });
+    });
+
+    // 4. After the mutation resolves the controlled Switch stays false.
+    await waitFor(() => {
+      expect(getByLabelText('Visible breakfast').props.value).toBe(false);
+    });
+
+    // 5. Query cache contains is_visible false for sys-b (same client).
+    await waitFor(() => {
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      const sysB = cached?.find((mt) => mt.id === 'sys-b');
+      expect(sysB?.is_visible).toBe(false);
+    });
+    await act(async () => {});
+  });
+
+  it('Visibility Switch rolls back on error and shows one update error', async () => {
+    const { findByText, getByLabelText } = renderScreen();
+    jest
+      .spyOn(mealTypesApi, 'updateMealType')
+      .mockRejectedValueOnce(new Error('boom'));
+    await findByText('Pre-Workout');
+
+    const toggle = getByLabelText('Visible breakfast');
+    expect(toggle.props.value).toBe(true);
+    fireEvent(toggle, 'valueChange', false);
+
+    // Optimistic off → on error the Switch returns to true.
+    await waitFor(() => {
+      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    });
+    // Exactly one user-facing update error.
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', text1: 'Failed to update' }),
     );
+    await act(async () => {});
+  });
+
+  it('row-level default time reflects a successful save in the main list', async () => {
+    // Mutable server state so the onSettled refetch keeps the new time.
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    // A real server returns a NEW array reference each fetch, which lets the
+    // onSettled refetch re-render observers.
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, queryAllByLabelText, queryClient } = renderScreen({ fetchMock });
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      const idx = serverState.findIndex((mt) => mt.id === id);
+      // The server returns the AUTHORITATIVE stored value (e.g. normalized
+      // to 18:45 after the picker committed 17:30), proving the row follows
+      // the server result, not the stale pre-save cache.
+      const updated = { ...serverState[idx], ...data, default_time: '18:45' };
+      serverState[idx] = updated;
+      return updated;
+    });
+    await findByText('Pre-Workout');
+
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    // Wait for the sheet to present, then press Save.
+    await waitFor(() => expect(getByLabelText('Save default time')).toBeTruthy());
+    fireEvent.press(getByLabelText('Save default time'));
+
+    // The request fires with the picker's pending HH:MM.
+    await waitFor(() => {
+      expect(mealTypesApi.updateMealType).toHaveBeenCalledWith('custom-pw', {
+        default_time: '17:30',
+      });
+    });
+    // The main-list time text updates to the server-authoritative value without
+    // pull-to-refresh.
+    await waitFor(
+      () => {
+        const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+        const pw = cached?.find((mt) => mt.id === 'custom-pw');
+        expect(pw?.default_time).toBe('18:45');
+      },
+      { timeout: 3000 },
+    );
+    // The cache holds 18:45; the rendered row must follow without a manual
+    // pull-to-refresh.
+    await waitFor(
+      () => {
+        expect(
+          queryAllByLabelText(/Default time for Pre-Workout, 18:45/).length,
+        ).toBe(1);
+      },
+      { timeout: 4000 },
+    );
+  });
+
+  it('null initial time: Save commits exactly the visible wheel value', async () => {
+    const { findByText, getByLabelText } = renderScreen();
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({
+      ...customMealTypes[0],
+      default_time: null,
+    } as any);
+    await findByText('Pre-Workout');
+
+    // Custom-pw has 17:30; open the picker for a type WITHOUT a time (dinner).
+    fireEvent.press(getByLabelText('Default time for lunch, not set'));
+    // The wheel seeds pending with the current time; Save commits that HH:MM.
+    fireEvent.press(getByLabelText('Save default time'));
+    await waitFor(() => {
+      const payload = updateSpy.mock.calls[0][1] as any;
+      expect(payload.default_time).toMatch(/^\d{2}:\d{2}$/);
+    });
     await act(async () => {});
   });
 
@@ -377,7 +508,9 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
         expect.objectContaining({
           name: 'Dessert',
           sort_order: 31, // d_s first slot (end of list)
-          default_time: null,
+          // The inline wheel shows a concrete time; untouched Create saves
+          // exactly the displayed HH:MM (visual state == payload state).
+          default_time: expect.stringMatching(/^\d{2}:\d{2}$/),
         }),
       );
       // No is_visible in the base create payload (backend hardcodes TRUE).
@@ -525,4 +658,23 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     expect(getByLabelText(`Quick log ${longName}`)).toBeTruthy();
     expect(getByLabelText('Delete Meal Type')).toBeTruthy();
   });
+
+  it('both the dedicated sheet and the inline Create flow use the shared time wheel', async () => {
+    const { findByText, getByLabelText, getByTestId, queryAllByTestId } = renderScreen();
+    await findByText('Pre-Workout');
+
+    // Dedicated sheet: open the picker from a row time cell.
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    expect(getByTestId('large-time-wheel')).toBeTruthy();
+    expect(queryAllByTestId('create-time-wheel')).toHaveLength(0);
+
+    // Close via backdrop, then open Create: the SAME wheel component renders
+    // inline (one shared implementation, one scale/wrapper height).
+    fireEvent.press(queryAllByTestId('sheet-backdrop')[0]);
+    await act(async () => {});
+    fireEvent.press(getByLabelText('Add meal type'));
+    expect(getByTestId('create-time-wheel')).toBeTruthy();
+    expect(queryAllByTestId('large-time-wheel')).toHaveLength(0);
+  });
+
 });

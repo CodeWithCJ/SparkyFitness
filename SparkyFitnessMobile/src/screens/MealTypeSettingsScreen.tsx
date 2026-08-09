@@ -23,7 +23,6 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   type SharedValue,
 } from 'react-native-reanimated';
 
@@ -63,8 +62,11 @@ import {
 type MealTypeSettingsScreenProps = RootStackScreenProps<'MealTypeSettings'>;
 
 /** Fixed row height for the drag geometry (all rows share the same density). */
+// The final settings mockup is a CONTINUOUS list of rows (border-b separators,
+// no margin between them), so the drag geometry uses the real rendered stride:
+// exactly ROW_HEIGHT. WorkoutReorderList's 8px gap does not apply here.
 const ROW_HEIGHT = 64;
-const ROW_GAP = 8;
+const ROW_GAP = 0;
 const LONG_PRESS_MS = 150;
 
 /** Canonical FILLED system icon for a system meal-type name (MEAL_CONFIG). */
@@ -130,6 +132,9 @@ const CustomMealTypeRow: React.FC<{
   const animatedStyle = useAnimatedStyle(() => {
     const active = activeDragIndex.value;
     if (active === index) {
+      // Only the active row floats during the drag (Option A). System anchors
+      // are fixed Views elsewhere and custom siblings stay put, so no custom
+      // row can ever preview-overlap an anchor's coordinate.
       return {
         transform: [{ translateY: panY.value }, { scale: 1.02 }],
         zIndex: 10,
@@ -139,24 +144,9 @@ const CustomMealTypeRow: React.FC<{
         shadowOffset: { width: 0, height: 4 },
       };
     }
-    // Other rows open a gap for the drag; the target derives from the live
-    // translation so it tracks the finger. System anchors never shift — the
-    // screen only renders CustomMealTypeRow for custom rows, so here all rows
-    // are draggable peers within the custom part of the unified list.
-    const target =
-      active >= 0
-        ? computeReorderTargetIndex(strides, offsets, active, panY.value)
-        : -1;
-    let shift = 0;
-    if (active >= 0 && target >= 0) {
-      if (active < index && index <= target) shift = -(ROW_HEIGHT + ROW_GAP);
-      else if (target <= index && index < active) shift = ROW_HEIGHT + ROW_GAP;
-    }
+    // Non-active rows and anchors remain stationary.
     return {
-      transform: [
-        { translateY: withSpring(shift, { damping: 44, stiffness: 960 }) },
-        { scale: 1 },
-      ],
+      transform: [{ translateY: 0 }, { scale: 1 }],
       zIndex: 0,
       elevation: 0,
       shadowOpacity: 0,
@@ -176,7 +166,7 @@ const CustomMealTypeRow: React.FC<{
       key={mt.id}
       testID={`meal-type-custom-${mt.id}`}
       className="flex-row items-center bg-surface border-b border-border/40"
-      style={[animatedStyle, { minHeight: ROW_HEIGHT }]}
+      style={[animatedStyle, { height: ROW_HEIGHT }]}
     >
       <GestureDetector gesture={dragGesture}>
         <View
@@ -244,9 +234,41 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Omit<MealType, 'id'>> }) =>
       updateMealType(id, data),
-    onError: (err: Error) => {
+    onMutate: async ({ id, data }) => {
+      // Optimistically merge the partial update into the cached record so the
+      // controlled Switch / time text react immediately.
+      await queryClient.cancelQueries({ queryKey: mealTypesQueryKey });
+      const previous = queryClient.getQueryData<MealType[]>(mealTypesQueryKey);
+      if (previous) {
+        queryClient.setQueryData<MealType[]>(
+          mealTypesQueryKey,
+          previous.map((mt) => (mt.id === id ? { ...mt, ...data } : mt)),
+        );
+      }
+      return { previous };
+    },
+    onSuccess: (updated, { id }) => {
+      // Replace the cached record with the authoritative server result.
+      queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
+        old
+          ? old.map((mt) =>
+              mt.id === id ? { ...mt, ...updated, id: mt.id } : mt,
+            )
+          : old,
+      );
+    },
+    onError: (err: Error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(mealTypesQueryKey, context.previous);
+      }
       addLog(`Failed to update meal type: ${err.message}`, 'ERROR');
       Toast.show({ type: 'error', text1: 'Failed to update' });
+    },
+    onSettled: () => {
+      // Authoritative reconciliation once for every generic update. The
+      // reorder path uses DIRECT updateMealType() calls and never goes through
+      // this mutation, so it cannot trigger per-row invalidations.
+      queryClient.invalidateQueries({ queryKey: mealTypesQueryKey });
     },
   });
 
@@ -543,12 +565,13 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             formSheetRef.current?.dismiss();
             setEditingType(null);
             setIsCreating(false);
-            invalidate();
+            // No explicit invalidate here — the generic updateMutation's
+            // onSettled already reconciles the query once.
           },
         },
       );
     },
-    [editingType, updateMutation, invalidate],
+    [editingType, updateMutation],
   );
 
   const handleDelete = useCallback(

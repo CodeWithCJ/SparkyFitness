@@ -1,9 +1,11 @@
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
-import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
+import MealTypeTimeWheel, {
+  TIME_WHEEL_WRAPPER_HEIGHT,
+} from './MealTypeTimeWheel';
 import Icon from './Icon';
 import Button from './ui/Button';
 
@@ -14,41 +16,45 @@ export interface MealTypeTimePickerSheetRef {
 
 /**
  * Dedicated LARGE wheel time picker (maintainer: "the current wheel is wayyy
- * too small"). The wheel is the dominant element of the sheet — wide, with a
- * generous vertical area and readable rows. Reuses the existing
- * `react-native-ui-datepicker` time-wheel mechanism (same library as
- * FastingEditSheet — no new dependency).
+ * too small"). The wheel is the dominant element — the shared MealTypeTimeWheel
+ * (scaled 1.8× in an explicit 280pt wrapper) renders in both this sheet and
+ * the inline Create flow, so both surfaces show the SAME large wheel.
  *
  * Behavior:
  * - opening with "08:30" selects 08:30;
+ * - opening with NO existing time seeds the pending value with the exact
+ *   HH:MM the wheel displays (current time), so Save without scrolling commits
+ *   what the user SEES — visible wheel and saved payload never disagree;
  * - Save commits the canonical "HH:MM";
  * - Clear commits null;
  * - swiping/backdrop dismiss WITHOUT Save/Clear makes NO change (pending state
  *   is cleared on dismiss and the callback is never invoked);
  * - scrolling the wheel alone never mutates anything.
- *
- * The wheel is enlarged via a transform scale on the picker (the library's
- * internal wheel container is a fixed 150x150 box) inside an explicit-height
- * wrapper, so it occupies most of the sheet width with readable rows.
  */
-const WHEEL_SCALE = 1.8;
-const WHEEL_WRAPPER_HEIGHT = 280;
-
 const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, ref) => {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const [surfaceBg, textMuted, accentPrimary, textPrimary] = useCSSVariable([
+  const [surfaceBg, textMuted, textPrimary] = useCSSVariable([
     '--color-surface',
     '--color-text-muted',
-    '--color-accent-primary',
     '--color-text-primary',
-  ]) as [string, string, string, string];
+  ]) as [string, string, string];
 
   const [pendingValue, setPendingValue] = useState<string | null>(null);
   const onSelectRef = useRef<((time: string | null) => void) | null>(null);
 
   useImperativeHandle(ref, () => ({
     present: (initialTime, onSelect) => {
-      setPendingValue(initialTime);
+      // When no time is set, the wheel shows the current time; seed the
+      // pending value with EXACTLY what the wheel displays so Save commits
+      // the visible value (never a misleading null while showing a time).
+      if (initialTime) {
+        setPendingValue(initialTime);
+      } else {
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        setPendingValue(`${hh}:${mm}`);
+      }
       onSelectRef.current = onSelect;
       bottomSheetRef.current?.present();
     },
@@ -57,25 +63,8 @@ const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, 
 
   const renderBackdrop = useSheetBackdrop();
 
-  // Stable Date for the wheel: memoized so unrelated renders never reseed it.
-  const pickerDate = useMemo(() => {
-    if (!pendingValue) return new Date();
-    const d = new Date();
-    const [h, m] = pendingValue.split(':').map(Number);
-    d.setHours(h, m, 0, 0);
-    return d;
-  }, [pendingValue]);
-
-  const handleChange = useCallback(({ date }: { date: DateType }) => {
-    if (!date) return;
-    let jsDate: Date;
-    if (date instanceof Date) jsDate = date;
-    else if (typeof date === 'object' && 'toDate' in date) jsDate = date.toDate();
-    else if (typeof date === 'string') jsDate = new Date(date);
-    else jsDate = new Date(date);
-    const hh = String(jsDate.getHours()).padStart(2, '0');
-    const mm = String(jsDate.getMinutes()).padStart(2, '0');
-    setPendingValue(`${hh}:${mm}`);
+  const handleWheelChange = useCallback((hhmm: string) => {
+    setPendingValue(hhmm);
   }, []);
 
   const commit = useCallback((time: string | null) => {
@@ -106,32 +95,14 @@ const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, 
           Default Time
         </Text>
 
-        {/* Dominant wheel area: explicit generous height, wheel scaled up so
-            it fills most of the sheet width with several readable rows above
-            and below the selection. No nested card, no summary box. */}
-        <View
-          style={{
-            height: WHEEL_WRAPPER_HEIGHT,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          testID="large-time-wheel"
-        >
-          <View style={{ transform: [{ scale: WHEEL_SCALE }] }}>
-            <DateTimePicker
-              mode="single"
-              date={pickerDate}
-              timePicker
-              initialView="time"
-              hideHeader
-              onChange={handleChange}
-              styles={{
-                selected: { backgroundColor: accentPrimary },
-                selected_label: { color: '#FFFFFF' },
-                time_label: { fontSize: 28, color: textPrimary },
-              }}
-            />
-          </View>
+        {/* Dominant wheel area (shared component, explicit generous height).
+            No nested card, no summary box. */}
+        <View style={{ height: TIME_WHEEL_WRAPPER_HEIGHT }}>
+          <MealTypeTimeWheel
+            value={pendingValue}
+            onChange={handleWheelChange}
+            testID="large-time-wheel"
+          />
         </View>
 
         <View className="flex-row gap-3 mb-4">

@@ -1,16 +1,9 @@
-import {
-  forwardRef,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
-import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { toHourMinute } from '@workspace/shared';
+import MealTypeTimeWheel from './MealTypeTimeWheel';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import Switch from './ui/Switch';
 import Button from './ui/Button';
@@ -61,15 +54,12 @@ interface MealTypeFormSheetProps {
 const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProps>(
   ({ isSystem = false, isSaving = false, onCreate, onEditSave, onDelete, timePickerRef }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary, iconDanger] =
-      useCSSVariable([
-        '--color-surface',
-        '--color-text-muted',
-        '--color-accent-primary',
-        '--color-text-primary',
-        '--color-text-secondary',
-        '--color-icon-danger',
-      ]) as [string, string, string, string, string, string];
+    const [surfaceBg, textMuted, textSecondary, iconDanger] = useCSSVariable([
+      '--color-surface',
+      '--color-text-muted',
+      '--color-text-secondary',
+      '--color-icon-danger',
+    ]) as [string, string, string, string];
 
     const [values, setValues] = useState<MealTypeFormValues>({
       name: '',
@@ -81,7 +71,18 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
     useImperativeHandle(ref, () => ({
       presentCreate: () => {
         setMode('create');
-        setValues({ name: '', defaultTime: '', showInQuickLog: false });
+        // The inline wheel always shows a concrete time (current time when no
+        // default is set); initialize the form to EXACTLY what the wheel
+        // displays so untouched Create saves the visible time — visual state
+        // and payload state never disagree.
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        setValues({
+          name: '',
+          defaultTime: `${hh}:${mm}`,
+          showInQuickLog: false,
+        });
         bottomSheetRef.current?.present();
       },
       presentEdit: (mealType) => {
@@ -97,28 +98,6 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
     }));
 
     const renderBackdrop = useSheetBackdrop();
-
-    // Stable Date for the picker: memoized so typing the name never reseeds
-    // the wheel with a fresh `new Date()`.
-    const pickerDate = useMemo(() => {
-      if (!values.defaultTime) return new Date();
-      const d = new Date();
-      const [h, m] = values.defaultTime.split(':').map(Number);
-      d.setHours(h, m, 0, 0);
-      return d;
-    }, [values.defaultTime]);
-
-    const handleDateChange = useCallback(({ date }: { date: DateType }) => {
-      if (!date) return;
-      let jsDate: Date;
-      if (date instanceof Date) jsDate = date;
-      else if (typeof date === 'object' && 'toDate' in date) jsDate = date.toDate();
-      else if (typeof date === 'string') jsDate = new Date(date);
-      else jsDate = new Date(date);
-      const hh = String(jsDate.getHours()).padStart(2, '0');
-      const mm = String(jsDate.getMinutes()).padStart(2, '0');
-      setValues((prev) => ({ ...prev, defaultTime: `${hh}:${mm}` }));
-    }, []);
 
     const isEditingSystem = mode === 'edit' && isSystem;
     const hasDefaultTime = values.defaultTime !== '';
@@ -192,32 +171,14 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
           </Text>
           {mode === 'create' ? (
             <>
-              {/* Large inline wheel (same enlargement as the dedicated sheet):
-                  the dominant element of the create flow. */}
-              <View
-                style={{
-                  height: 240,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+              {/* Shared large inline wheel — the SAME component and sizing as
+                  the dedicated time sheet (apedley: stack the two components).
+                  The dominant element of the create flow. */}
+              <MealTypeTimeWheel
+                value={values.defaultTime}
+                onChange={(hhmm) => setValues((prev) => ({ ...prev, defaultTime: hhmm }))}
                 testID="create-time-wheel"
-              >
-                <View style={{ transform: [{ scale: 1.8 }] }}>
-                  <DateTimePicker
-                    mode="single"
-                    date={pickerDate}
-                    timePicker
-                    initialView="time"
-                    hideHeader
-                    onChange={handleDateChange}
-                    styles={{
-                      selected: { backgroundColor: accentPrimary },
-                      selected_label: { color: '#FFFFFF' },
-                      time_label: { fontSize: 28, color: textPrimary },
-                    }}
-                  />
-                </View>
-              </View>
+              />
             </>
           ) : (
             <TouchableOpacity
