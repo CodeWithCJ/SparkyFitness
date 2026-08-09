@@ -1232,4 +1232,168 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     await act(async () => {});
   });
 
+  it('delayed cancelQueries: PUT order follows USER-INITIATION order (visibility false then true)', async () => {
+    // Initial Visible = true. A→false (older), B→true (newer). A's
+    // cancelQueries stays pending while B's resolves first. The queue slot
+    // must be reserved synchronously at the user-action boundary, so the
+    // server writes remain A(false) then B(true) — NOT B then A.
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, queryClient } = renderScreen({ fetchMock });
+
+    // Delay A's cancelQueries; let B's resolve immediately.
+    let releaseCancelA!: () => void;
+    const pendingCancelA = new Promise<void>((resolve) => {
+      releaseCancelA = resolve;
+    });
+    let cancelCalls = 0;
+    jest.spyOn(queryClient, 'cancelQueries').mockImplementation(() => {
+      cancelCalls += 1;
+      if (cancelCalls === 1) return pendingCancelA as never; // A delayed
+      return Promise.resolve() as never; // B resolves first
+    });
+
+    const callLog: string[] = [];
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      callLog.push(String((data as any).is_visible));
+      const idx = serverState.findIndex((m) => m.id === id);
+      // Apply the write only when the PUT actually executes (serialized).
+      serverState[idx] = { ...serverState[idx], is_visible: (data as any).is_visible };
+      return { ...serverState[idx] };
+    });
+
+    await findByText('breakfast');
+    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A
+    await waitFor(() => expect(cancelCalls).toBe(1));
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B
+    await waitFor(() => expect(cancelCalls).toBe(2));
+
+    // B's optimistic true is visible even though A's cancel is still pending
+    // and A's onMutate has not applied its optimistic value.
+    await waitFor(() => {
+      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    });
+
+    // Release A's cancel: A's guarded onMutate must NOT overwrite B's true.
+    await act(async () => { releaseCancelA(); });
+    await act(async () => {});
+    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+
+    // PUT order is user-initiation order regardless of cancel completion.
+    await waitFor(() => expect(callLog.length).toBe(2));
+    expect(callLog).toEqual(['false', 'true']);
+
+    // Final server/cache/UI = true (newest intent).
+    await waitFor(() => {
+      expect(serverState.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      expect(cached?.find((m: any) => m.id === 'sys-b').is_visible).toBe(true);
+      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    });
+    await act(async () => {});
+  });
+
+  it('delayed cancelQueries: PUT order follows USER-INITIATION order (time 17:30 then 18:45)', async () => {
+    const types = [
+      ...systemMealTypes,
+      {
+        id: 'pw',
+        name: 'Pre-Workout',
+        sort_order: 21,
+        user_id: 'u',
+        created_at: '',
+        is_visible: true,
+        show_in_quick_log: true,
+        default_time: '16:00',
+      },
+    ];
+    const serverState: any[] = JSON.parse(JSON.stringify(types));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, getByTestId, queryAllByLabelText, queryClient } = renderScreen({ fetchMock });
+
+    let releaseCancelA!: () => void;
+    const pendingCancelA = new Promise<void>((resolve) => {
+      releaseCancelA = resolve;
+    });
+    let cancelCalls = 0;
+    jest.spyOn(queryClient, 'cancelQueries').mockImplementation(() => {
+      cancelCalls += 1;
+      if (cancelCalls === 1) return pendingCancelA as never;
+      return Promise.resolve() as never;
+    });
+
+    const callLog: string[] = [];
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      callLog.push((data as any).default_time);
+      const idx = serverState.findIndex((t) => t.id === id);
+      serverState[idx] = { ...serverState[idx], default_time: (data as any).default_time };
+      return { ...serverState[idx] };
+    });
+
+    await findByText('Pre-Workout');
+    const saveTime = async (hhmm: string) => {
+      fireEvent.press(getByLabelText(/Default time for Pre-Workout/));
+      await waitFor(() => {
+        expect(queryAllByLabelText('Save default time').length).toBeGreaterThan(0);
+      });
+      const picker = getByTestId('date-picker');
+      const [h, m] = hhmm.split(':').map(Number);
+      fireEvent(picker, 'change', { date: new Date(2024, 0, 1, h, m) });
+      fireEvent.press(getByLabelText('Save default time'));
+    };
+
+    await saveTime('17:30'); // A — cancel delayed
+    await waitFor(() => expect(cancelCalls).toBe(1));
+    await saveTime('18:45'); // B — cancel resolves first
+    await waitFor(() => expect(cancelCalls).toBe(2));
+    await act(async () => {});
+
+    await act(async () => { releaseCancelA(); });
+    await act(async () => {});
+
+    await waitFor(() => expect(callLog.length).toBe(2));
+    expect(callLog).toEqual(['17:30', '18:45']);
+
+    await waitFor(() => {
+      expect(serverState.find((t: any) => t.id === 'pw').default_time).toBe('18:45');
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      expect(cached?.find((t: any) => t.id === 'pw').default_time).toBe('18:45');
+      expect(getByLabelText('Default time for Pre-Workout, 18:45')).toBeTruthy();
+    });
+    await act(async () => {});
+  });
+
+  it('queue failure: an earlier failed reservation does not block the next update', async () => {
+    // A PUT fails; B was reserved after A and must still execute.
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText } = renderScreen({ fetchMock });
+
+    const callLog: string[] = [];
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      const val = String((data as any).is_visible);
+      callLog.push(val);
+      const idx = serverState.findIndex((m) => m.id === id);
+      if (callLog.length === 1) {
+        throw new Error('boom A'); // A fails
+      }
+      serverState[idx] = { ...serverState[idx], is_visible: (data as any).is_visible };
+      return { ...serverState[idx] };
+    });
+
+    await findByText('breakfast');
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A (will fail)
+    await waitFor(() => expect(callLog.length).toBe(1));
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B reserved after A
+
+    // B still executes after A failed — no deadlock.
+    await waitFor(() => expect(callLog.length).toBe(2));
+    expect(callLog).toEqual(['false', 'true']);
+    await waitFor(() => {
+      expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    });
+    await act(async () => {});
+  });
+
 });

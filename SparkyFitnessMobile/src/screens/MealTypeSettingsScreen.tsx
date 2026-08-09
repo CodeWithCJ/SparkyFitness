@@ -248,28 +248,46 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   }, [queryClient]);
 
   /**
-   * Per-field mutation ownership (CodeRabbit P1) + SERIALIZED network writes.
+   * Per-field mutation ownership (CodeRabbit P1) + SERIALIZED network writes
+   * with SYNCHRONOUS per-record slot reservation (CodeRabbit P1 5231725071).
    *
-   * Two layers, deliberately distinct:
+   * Three layers, deliberately distinct:
    *
-   * 1. Optimistic ownership: every mutation gets a unique token (allocated
-   *    SYNCHRONOUSLY at the mutate boundary, before any async work) and records
-   *    field ownership in `fieldOwnerRef: Map<'<id>:<field>', token>`. A
-   *    mutation may roll back/merge a field ONLY while it still owns that
-   *    field — a newer user action that took the field over is never touched
-   *    by an older completion.
+   * 1. Optimistic ownership: every mutation gets a unique token allocated at
+   *    the SYNCHRONOUS user-action boundary (before any await), and field
+   *    ownership is recorded in `fieldOwnerRef: Map<'<id>:<field>', token>`
+   *    at that same boundary. A mutation may roll back/merge a field ONLY
+   *    while it still owns that field — a newer user action that took the
+   *    field over is never touched by an older completion. The optimistic
+   *    cache write after `cancelQueries` is ALSO ownership-guarded, so a
+   *    delayed older onMutate cannot overwrite a newer optimistic value.
    *
-   * 2. Network execution ordering: `updateRequestQueueRef` serializes the
-   *    actual PUT requests PER meal-type record in user-initiation order, so
-   *    the newest user intent is always the LAST server write. Different
-   *    record IDs may still run concurrently. Without this, an older request
-   *    could commit after a newer one on the server (the backend has no
-   *    sequence/version token) and a later refetch would surface the stale
-   *    value.
+   * 2. Network execution ordering: `updateRequestQueueRef` reserves a queue
+   *    SLOT per record SYNCHRONOUSLY at the user-action boundary (before
+   *    `cancelQueries`). The slot is a `done` promise; `mutationFn` waits for
+   *    the predecessor slot, performs the PUT, and resolves its own slot in
+   *    a `finally`. The newest user intent is therefore always the last
+   *    server write regardless of cancellation/network timing. Different
+   *    record IDs may still run concurrently.
    */
+  interface UpdateReservation {
+    predecessor: Promise<void>;
+    done: Promise<void>;
+    resolveDone: () => void;
+  }
+
+  interface GenericUpdateVars {
+    id: string;
+    data: Partial<Omit<MealType, 'id'>>;
+    token: number;
+    previousFields: Record<string, unknown>;
+    optimisticFields: Record<string, unknown>;
+    reservation: UpdateReservation;
+  }
+
   const mutationTokenRef = useRef(0);
   const fieldOwnerRef = useRef<Map<string, number>>(new Map());
-  const updateRequestQueueRef = useRef<Map<string, Promise<unknown>>>(new Map());
+  const updateRequestQueueRef = useRef<Map<string, Promise<void>>>(new Map());
   // Per-record count of in-flight generic updates, used to gate the
   // authoritative invalidate until the queue for that record drains.
   const pendingUpdatesRef = useRef<Map<string, number>>(new Map());
@@ -277,7 +295,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const updateMutation = useMutation<
     MealType,
     Error,
-    { id: string; data: Partial<Omit<MealType, 'id'>> },
+    GenericUpdateVars,
     {
       id: string;
       token: number;
@@ -285,35 +303,32 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       optimisticFields: Record<string, unknown>;
     }
   >({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Omit<MealType, 'id'>> }) => {
-      // Serialize PUTs per record: this request waits for the previous one on
-      // the same id, so the server applies writes in user-initiation order.
-      const previous = updateRequestQueueRef.current.get(id) ?? Promise.resolve();
-      const run = previous.then(() => updateMealType(id, data));
-      // Keep the chain alive across failures so a later request still runs.
-      updateRequestQueueRef.current.set(id, run.catch(() => undefined));
-      return run;
+    mutationFn: ({ id, data, reservation }: GenericUpdateVars) => {
+      // Wait for the reserved predecessor slot, then PUT. The slot is
+      // released in `finally` so a failed PUT never blocks the next one.
+      return reservation.predecessor
+        .then(async () => updateMealType(id, data))
+        .finally(() => {
+          reservation.resolveDone();
+        });
     },
-    onMutate: ({ id, data }) => {
-      // Token allocated BEFORE any await — user-intent order, not
-      // cancelQueries completion order.
-      const token = ++mutationTokenRef.current;
-      pendingUpdatesRef.current.set(
-        id,
-        (pendingUpdatesRef.current.get(id) ?? 0) + 1,
-      );
+    onMutate: ({ id, data, token, previousFields, optimisticFields }: GenericUpdateVars) => {
+      // The slot + ownership were already reserved synchronously by
+      // `mutateMealType`. Here we only cancel in-flight fetches and then apply
+      // the guarded optimistic cache write: a field is written ONLY if this
+      // mutation still owns it (a newer mutation may have taken it over while
+      // cancelQueries was pending).
       return queryClient.cancelQueries({ queryKey: mealTypesQueryKey }).then(() => {
-        const previousFields: Record<string, unknown> = {};
-        const optimisticFields: Record<string, unknown> = {};
         queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
           (old ?? []).map((mt) => {
             if (mt.id !== id) return mt;
+            const next = { ...mt };
             for (const [field, value] of Object.entries(data)) {
-              previousFields[field] = (mt as unknown as Record<string, unknown>)[field];
-              optimisticFields[field] = value;
-              fieldOwnerRef.current.set(`${id}:${field}`, token);
+              const key = `${id}:${field}`;
+              if (fieldOwnerRef.current.get(key) !== token) continue;
+              (next as unknown as Record<string, unknown>)[field] = value;
             }
-            return { ...mt, ...data };
+            return next;
           }),
         );
         return { id, token, previousFields, optimisticFields };
@@ -386,6 +401,10 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       } else {
         pendingUpdatesRef.current.set(id, pending - 1);
       }
+      // Release the reserved slot on EVERY settling path (including an
+      // onMutate failure where mutationFn never ran) so the per-record queue
+      // can never deadlock. Idempotent for the normal mutationFn path.
+      vars.reservation.resolveDone();
     },
   });
 
@@ -400,6 +419,67 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       Toast.show({ type: 'error', text1: 'Failed to delete' });
     },
   });
+
+  /**
+   * Single generic-update wrapper — the ONLY entry point for row Visibility,
+   * row default time, and Edit Save.
+   *
+   * At this SYNCHRONOUS user-action boundary (before any await) we:
+   *   1. allocate the mutation token (user-intent order);
+   *   2. reserve a per-record queue SLOT (B sees A's `done` immediately, so
+   *      PUT order equals user-initiation order regardless of cancelQueries /
+   *      network timing);
+   *   3. increment the per-record pending counter;
+   *   4. reserve field ownership for every modified field;
+   *   5. capture rollback metadata (previous values) from the CURRENT cache
+   *      at reservation time;
+   *   6. invoke the TanStack mutation carrying those internal values.
+   *
+   * The actual PUT does NOT start here — `mutationFn` waits for the reserved
+   * predecessor slot and performs the request. Internal metadata never reaches
+   * `updateMealType()`.
+   */
+  const mutateMealType = useCallback(
+    (
+      id: string,
+      data: Partial<Omit<MealType, 'id'>>,
+      options?: { onSuccess?: () => void },
+    ) => {
+      const token = ++mutationTokenRef.current;
+
+      // 2. Reserve the per-record queue slot synchronously.
+      const predecessor = updateRequestQueueRef.current.get(id) ?? Promise.resolve();
+      let resolveDone!: () => void;
+      const done = new Promise<void>((resolve) => {
+        resolveDone = resolve;
+      });
+      updateRequestQueueRef.current.set(id, done);
+      const reservation: UpdateReservation = { predecessor, done, resolveDone };
+
+      // 3. Pending counter for drain-gated invalidation.
+      pendingUpdatesRef.current.set(id, (pendingUpdatesRef.current.get(id) ?? 0) + 1);
+
+      // 4 + 5. Reserve ownership + capture rollback metadata from the CURRENT
+      // cache (synchronously, before any async work).
+      const previousFields: Record<string, unknown> = {};
+      const optimisticFields: Record<string, unknown> = {};
+      const current = queryClient.getQueryData<MealType[]>(mealTypesQueryKey);
+      for (const field of Object.keys(data)) {
+        fieldOwnerRef.current.set(`${id}:${field}`, token);
+        optimisticFields[field] = (data as unknown as Record<string, unknown>)[field];
+        const existing = current?.find((mt) => mt.id === id);
+        previousFields[field] = existing
+          ? (existing as unknown as Record<string, unknown>)[field]
+          : undefined;
+      }
+
+      updateMutation.mutate(
+        { id, data, token, previousFields, optimisticFields, reservation },
+        options,
+      );
+    },
+    [updateMutation, queryClient],
+  );
 
   const { systemTypes, customTypes } = useMemo(() => {
     const types = mealTypes ?? [];
@@ -745,16 +825,14 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       showInQuickLog: boolean;
     }) => {
       if (!editingType) return;
-      updateMutation.mutate(
+      mutateMealType(
+        editingType.id,
         {
-          id: editingType.id,
-          data: {
-            name: editingType.user_id !== null ? values.name : editingType.name,
-            default_time: values.defaultTime || null,
-            // is_visible intentionally omitted: Visibility is owned by the
-            // main-list Switch, so a plain edit never overwrites server state.
-            show_in_quick_log: values.showInQuickLog,
-          },
+          name: editingType.user_id !== null ? values.name : editingType.name,
+          default_time: values.defaultTime || null,
+          // is_visible intentionally omitted: Visibility is owned by the
+          // main-list Switch, so a plain edit never overwrites server state.
+          show_in_quick_log: values.showInQuickLog,
         },
         {
           onSuccess: () => {
@@ -767,7 +845,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         },
       );
     },
-    [editingType, updateMutation],
+    [editingType, mutateMealType],
   );
 
   const handleDelete = useCallback(
@@ -793,18 +871,18 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const openTimePicker = useCallback(
     (mt: MealType) => {
       timePickerRef.current?.present(toHourMinute(mt.default_time) || null, (time) => {
-        updateMutation.mutate({ id: mt.id, data: { default_time: time } });
+        mutateMealType(mt.id, { default_time: time });
       });
     },
-    [updateMutation],
+    [mutateMealType],
   );
 
   /** Row-level Visibility switch (mockup placement: main list owns it). */
   const toggleVisibility = useCallback(
     (mt: MealType, value: boolean) => {
-      updateMutation.mutate({ id: mt.id, data: { is_visible: value } });
+      mutateMealType(mt.id, { is_visible: value });
     },
-    [updateMutation],
+    [mutateMealType],
   );
 
   const renderSystemRow = (mt: MealType) => (
