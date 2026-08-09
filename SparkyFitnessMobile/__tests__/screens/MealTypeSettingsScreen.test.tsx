@@ -446,49 +446,90 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     await act(async () => {});
   });
 
-  it('serializes rapid reorders: the newest desired order wins deterministically', async () => {
+  it('rapid reorders (deferred): newest order B stays visible and is persisted exactly once', async () => {
     const types = [
       ...systemMealTypes,
       { id: 'a', name: 'A', sort_order: 11, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
       { id: 'b', name: 'B', sort_order: 21, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
     ];
-    const { findByText, getByLabelText } = renderScreen({ mealTypes: types });
+    const serverState: any[] = JSON.parse(JSON.stringify(types));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText } = renderScreen({ fetchMock });
+
+    // Deferred promises: first persistence (A) stays pending while B arrives.
+    let resolveA!: (v: any) => void;
+    let resolveB!: (v: any) => void;
+    const pendingA = new Promise((res) => { resolveA = res; });
+    const pendingB = new Promise((res) => { resolveB = res; });
     const updateSpy = jest
       .spyOn(mealTypesApi, 'updateMealType')
-      .mockResolvedValue({} as any);
+      .mockImplementation(async (id: string, data: any) => {
+        const idx = serverState.findIndex((t) => t.id === id);
+            if (id === 'a') {
+          await pendingA;
+          serverState[idx] = { ...serverState[idx], ...data };
+          return { ...serverState[idx] };
+        }
+        await pendingB;
+        serverState[idx] = { ...serverState[idx], ...data };
+        return { ...serverState[idx] };
+      });
 
     await findByText('A');
-    // Two rapid moves: A down (into l_d), then B up (into b_l). The chained
-    // persistence must execute sequentially and the LAST write set reflects
-    // the newest visual order (A in l_d, B in b_l).
+    // 1. Drag A down (into l_d) — first persistence request stays pending.
     fireEvent(getByLabelText('Reorder A'), 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' },
     });
+    await waitFor(() => expect(updateSpy.mock.calls.filter((c) => c[0] === 'a').length).toBe(1));
+
+    // 2. Drag B up (into b_l) while A is still pending.
     fireEvent(getByLabelText('Reorder B'), 'accessibilityAction', {
       nativeEvent: { actionName: 'decrement' },
     });
 
+    // 3. B is visible as the optimistic order (B sits before Lunch).
     await waitFor(() => {
-      const writes = updateSpy.mock.calls.map((c) => c[0]);
-      expect(writes.length).toBeGreaterThanOrEqual(1);
-      // Deterministic final state: B before Lunch (b_l), A after Lunch (l_d).
-      const aWrite = updateSpy.mock.calls.find((c) => c[0] === 'a');
-      const bWrite = updateSpy.mock.calls.find((c) => c[0] === 'b');
-      if (aWrite) {
-        const s = (aWrite[1] as any).sort_order;
-        expect(s).toBeGreaterThanOrEqual(21);
-        expect(s).toBeLessThanOrEqual(29);
-      }
-      if (bWrite) {
-        const s = (bWrite[1] as any).sort_order;
-        expect(s).toBeGreaterThanOrEqual(11);
-        expect(s).toBeLessThanOrEqual(19);
-      }
+      expect(getByLabelText(/Default time for B/)).toBeTruthy();
     });
-    // Flush the serialized persistence chain so no setState lands after the
-    // test's screen is unmounted.
+
+    // 4. Resolve A's persistence (its snapshot also writes B's l_d slot).
+    await act(async () => { resolveA({}); });
+    // 5. A's completion must NOT clear B's newer optimistic override.
+    await act(async () => {});
+    expect(getByLabelText(/Default time for B/)).toBeTruthy();
+
+    // 6-7. Allow B's persistence; final list/cache = B (B in b_l, A in l_d).
+    await act(async () => { resolveB({}); });
     await act(async () => {});
     await act(async () => {});
+    await waitFor(() => {
+      // Move A -> l_d=[A,B]; move B (one decrement) -> l_d=[B,A].
+      // Snapshot A writes a:21, b:22; snapshot B (newest) writes b:21, a:22.
+      // The FINAL order (B before A in l_d) is persisted exactly once by
+      // snapshot B — never repeated by a third worker sequence.
+      const bCalls = updateSpy.mock.calls.filter((c) => c[0] === 'b').length;
+      expect(bCalls).toBe(2);
+      const bLast = updateSpy.mock.calls.filter((c) => c[0] === 'b').pop();
+      const s = (bLast![1] as any).sort_order;
+      expect(s).toBeGreaterThanOrEqual(21);
+      expect(s).toBeLessThanOrEqual(29);
+    });
+    // 8. Unconditional write assertions for both records in BOTH snapshots.
+    const aWrites = updateSpy.mock.calls.filter((c) => c[0] === 'a');
+    const bWrites = updateSpy.mock.calls.filter((c) => c[0] === 'b');
+    expect(aWrites.length).toBe(2); // a:21 (snapshot A), a:22 (snapshot B)
+    expect(bWrites.length).toBe(2); // b:22 (snapshot A), b:21 (snapshot B)
+    expect((aWrites[0][1] as any).sort_order).toBe(21);
+    expect((bWrites[0][1] as any).sort_order).toBe(22);
+    expect((bWrites[1][1] as any).sort_order).toBe(21);
+    expect((aWrites[1][1] as any).sort_order).toBe(22);
+    // 9. No third redundant persistence sequence — the write set is stable.
+    await act(async () => {});
+    await act(async () => {});
+    expect(updateSpy.mock.calls.length).toBe(4);
+    // Final server state is B's newest order: B before A in l_d (21, 22).
+    expect(serverState.find((t) => t.id === 'b').sort_order).toBe(21);
+    expect(serverState.find((t) => t.id === 'a').sort_order).toBe(22);
   });
 
   it('creates a custom type: auto end-of-list slot in d_s, no is_visible in payload, then quick-log follow-up', async () => {
@@ -814,6 +855,201 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
       const pw = cached?.find((mt) => mt.id === 'custom-pw');
       expect(pw?.is_visible).toBe(false);
       expect(pw?.default_time).toBe('18:45'); // stale full-record merge must not clobber B
+    });
+    await act(async () => {});
+  });
+
+  it('concurrency: same record + same field + SAME value — newer success survives older failure', async () => {
+    // Initial default_time = 16:00; A and B BOTH write 17:30. B succeeds,
+    // A fails late. With value-based ownership A would see 17:30 in the cache
+    // and restore 16:00 — with token ownership A no longer owns the field.
+    const types = [
+      ...systemMealTypes,
+      {
+        id: 'pw',
+        name: 'Pre-Workout',
+        sort_order: 21,
+        user_id: 'u',
+        created_at: '',
+        is_visible: true,
+        show_in_quick_log: true,
+        default_time: '16:00',
+      },
+    ];
+    const serverState: any[] = JSON.parse(JSON.stringify(types));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, getByTestId, queryAllByLabelText, queryClient } = renderScreen({
+      fetchMock,
+    });
+    let rejectA!: (e: Error) => void;
+    let resolveB!: (v: any) => void;
+    const pendingA = new Promise((_res, rej) => { rejectA = rej; });
+    const pendingB = new Promise((res) => { resolveB = res; });
+    let updateCalls = 0;
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      const idx = serverState.findIndex((t) => t.id === id);
+      if (id === 'pw' && (data as any).default_time === '17:30') {
+        updateCalls += 1;
+        if (updateCalls === 1) {
+          await pendingA; // A pending
+          throw new Error('boom'); // A fails late (must NOT restore 16:00)
+        }
+        await pendingB; // B pending (same value)
+        serverState[idx] = { ...serverState[idx], default_time: '17:30' };
+        return { ...serverState[idx] };
+      }
+      return { ...serverState[idx], ...(data as object) } as any;
+    });
+
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 16:00'));
+    await waitFor(() => {
+      expect(queryAllByLabelText('Save default time').length).toBeGreaterThan(0);
+    });
+    // Rotate the wheel to 17:30 (the date-picker mock exposes onChange).
+    const picker = getByTestId('date-picker');
+    fireEvent(picker, 'change', { date: new Date(2024, 0, 1, 17, 30) });
+    fireEvent.press(getByLabelText('Save default time')); // A pending (17:30)
+    await waitFor(() => expect(updateCalls).toBe(1));
+
+    // A's Save closed the sheet; reopen it for B (same value 17:30). The
+    // wheel now seeds from the optimistic cache value (17:30), so B sends
+    // the same payload while A is still pending.
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    await waitFor(() => {
+      expect(queryAllByLabelText('Save default time').length).toBeGreaterThan(0);
+    });
+    const picker2 = getByTestId('date-picker');
+    fireEvent(picker2, 'change', { date: new Date(2024, 0, 1, 17, 30) });
+    fireEvent.press(getByLabelText('Save default time')); // B pending (same 17:30)
+    await waitFor(() => expect(updateCalls).toBe(2));
+
+    await act(async () => { resolveB({ ...types[0], default_time: '17:30' }); });
+    await act(async () => { rejectA(new Error('boom')); });
+
+    await waitFor(() => {
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      const pw = cached?.find((mt) => mt.id === 'pw');
+      expect(pw?.default_time).toBe('17:30'); // A must NOT restore 16:00
+    });
+    expect(getByLabelText('Default time for Pre-Workout, 17:30')).toBeTruthy();
+    // Exactly one error toast for the failed A.
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', text1: 'Failed to update' }),
+    );
+    await act(async () => {});
+  });
+
+  it('concurrency: same record + same field + SAME visibility value — newer success survives older failure', async () => {
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText } = renderScreen({ fetchMock });
+    let rejectA!: (e: Error) => void;
+    let resolveB!: (v: any) => void;
+    const pendingA = new Promise((_res, rej) => { rejectA = rej; });
+    const pendingB = new Promise((res) => { resolveB = res; });
+    let visCalls = 0;
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      if (id === 'sys-b' && (data as any).is_visible === false) {
+        visCalls += 1;
+        if (visCalls === 1) {
+          await pendingA;
+          throw new Error('boom'); // A (false) fails late
+        }
+        await pendingB;
+        serverState.find((m: any) => m.id === 'sys-b')!.is_visible = false;
+        return { ...serverState.find((m: any) => m.id === 'sys-b') };
+      }
+      return { ...serverState.find((m: any) => m.id === id), ...(data as object) } as any;
+    });
+
+    await findByText('breakfast');
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A pending
+    await waitFor(() => expect(visCalls).toBe(1));
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // B pending (same value)
+    await waitFor(() => expect(visCalls).toBe(2));
+
+    await act(async () => {
+      resolveB({ ...serverState.find((m: any) => m.id === 'sys-b') });
+    });
+    await act(async () => { rejectA(new Error('boom')); });
+
+    await waitFor(() => {
+      expect(getByLabelText('Visible breakfast').props.value).toBe(false);
+    });
+    await act(async () => {});
+  });
+
+  it('reorder failure with a NEWER desired order: B stays and is persisted after reconciliation', async () => {
+    const types = [
+      ...systemMealTypes,
+      { id: 'a', name: 'A', sort_order: 11, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+      { id: 'b', name: 'B', sort_order: 21, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+    ];
+    const serverState: any[] = JSON.parse(JSON.stringify(types));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText } = renderScreen({ fetchMock });
+    let rejectA!: (e: Error) => void;
+    let resolveB!: (v: any) => void;
+    const pendingA = new Promise((_res, rej) => { rejectA = rej; });
+    const pendingB = new Promise((res) => { resolveB = res; });
+    let aCalls = 0;
+    const updateSpy = jest
+      .spyOn(mealTypesApi, 'updateMealType')
+      .mockImplementation(async (id: string, data: any) => {
+        const idx = serverState.findIndex((t) => t.id === id);
+        if (id === 'a') {
+          aCalls += 1;
+          if (aCalls === 1) {
+            await pendingA;
+            throw new Error('boom'); // A persistence fails once
+          }
+          // A re-written by B's snapshot succeeds.
+          serverState[idx] = { ...serverState[idx], ...data };
+          return { ...serverState[idx] };
+        }
+        await pendingB;
+        serverState[idx] = { ...serverState[idx], ...data };
+        return { ...serverState[idx] };
+      });
+
+    await findByText('A');
+    fireEvent(getByLabelText('Reorder A'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    await waitFor(() => expect(aCalls).toBe(1));
+    // Newer desired order arrives while A is pending.
+    fireEvent(getByLabelText('Reorder B'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'decrement' },
+    });
+
+    // A fails: exactly one reorder error; B remains the desired order.
+    await act(async () => { rejectA(new Error('boom')); });
+    await act(async () => {});
+    await act(async () => {});
+    // B still visible (optimistic override preserved — stale A did not clear it).
+    expect(getByLabelText(/Default time for B/)).toBeTruthy();
+    const reorderErrors = (Toast.show as jest.Mock).mock.calls.filter(
+      (c) => (c[0] as any)?.text1 === 'Failed to reorder meal types',
+    ).length;
+    expect(reorderErrors).toBe(1);
+
+    // B gets persisted after reconciliation; final order B wins.
+    // A failed (l_d=[A,B] snapshot) — B's newer desired order is l_d=[B,A]
+    // (one decrement moves B up within l_d, before A). B is re-persisted with
+    // its canonical slot after reconciliation.
+    await act(async () => { resolveB({}); });
+    await act(async () => {});
+    await act(async () => {});
+    await waitFor(() => {
+      const bWrites = updateSpy.mock.calls.filter((c) => c[0] === 'b');
+      // A's snapshot failed before writing b (a failed first); B's own
+      // snapshot (the newest order) persists b once with its canonical slot.
+      expect(bWrites.length).toBe(1);
+      expect((bWrites[0][1] as any).sort_order).toBe(21);
+      // Final server state reflects B's newest order: B before A in l_d.
+      expect(serverState.find((t) => t.id === 'b').sort_order).toBe(21);
+      expect(serverState.find((t) => t.id === 'a').sort_order).toBe(22);
     });
     await act(async () => {});
   });
