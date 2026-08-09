@@ -35,6 +35,9 @@ describe('getCustomMeasurementsData - large dataset downsampling', () => {
     expect(sql).toMatch(/row_number\(\)\s+OVER/i);
     expect(sql).toMatch(/count\(\*\)\s+OVER\s*\(\)/i);
     expect(sql).toMatch(/GREATEST\(1,\s*CEIL\(total::float/i);
+    // First row is included via (rn - 1) % step = 0, not a separate OR clause,
+    // guaranteeing the result never exceeds maxPoints.
+    expect(sql).toMatch(/\(rn\s*-\s*1\)\s*%\s*GREATEST/i);
     // The cap is bound as the 5th query parameter and must stay bounded.
     expect(params).toHaveLength(5);
     expect(params[4]).toBeLessThanOrEqual(3000);

@@ -380,7 +380,7 @@ async function getCustomMeasurementsData(
          )
          SELECT category_id, entry_date, entry_hour, value, notes, entry_timestamp
          FROM ranked
-         WHERE total <= $5 OR rn = 1 OR rn % GREATEST(1, CEIL(total::float / $5)::bigint) = 0
+         WHERE total <= $5 OR (rn - 1) % GREATEST(1, CEIL(total::float / $5)::bigint) = 0
          ORDER BY entry_date, entry_timestamp`,
       [userId, categoryId, startDate, endDate, maxPoints]
     );
