@@ -74,7 +74,18 @@ jest.mock('@gorhom/bottom-sheet', () => {
             onDismiss?.();
           },
         }));
-        return presented ? <View testID="sheet-content">{children}</View> : null;
+        return presented ? (
+          <View testID="sheet-content">
+            <View
+              testID="sheet-backdrop"
+              onPress={() => {
+                setPresented(false);
+                onDismiss?.();
+              }}
+            />
+            {children}
+          </View>
+        ) : null;
       },
     ),
     BottomSheetScrollView: ({ children }: any) => <View>{children}</View>,
@@ -414,7 +425,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
   });
 
   it('edit time row opens the picker; Save commits HH:MM, Clear commits null, dismiss changes nothing', async () => {
-    const { findByText, getByLabelText } = renderScreen();
+    const { findByText, getByLabelText, getAllByTestId } = renderScreen();
     const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
 
     await findByText('Pre-Workout');
@@ -435,10 +446,11 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     );
     updateSpy.mockClear();
 
-    // Dismiss without Save/Clear → no mutation.
+    // Dismiss without Save/Clear → no mutation. Press the sheet backdrop
+    // (the mock's dismissal path) instead of firing a fake event.
     fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
-    fireEvent(getByLabelText('Save default time'), 'dismiss');
-    await new Promise((r) => setTimeout(r, 10));
+    fireEvent.press(getAllByTestId('sheet-backdrop')[0]);
+    await act(async () => {});
     expect(updateSpy).not.toHaveBeenCalled();
   });
 

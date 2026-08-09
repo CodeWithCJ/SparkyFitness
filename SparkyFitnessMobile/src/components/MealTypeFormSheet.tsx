@@ -76,18 +76,15 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
       showInQuickLog: false,
     });
     const [mode, setMode] = useState<'create' | 'edit'>('create');
-    const [editingMt, setEditingMt] = useState<MealType | null>(null);
 
     useImperativeHandle(ref, () => ({
       presentCreate: () => {
         setMode('create');
-        setEditingMt(null);
         setValues({ name: '', defaultTime: '', isVisible: true, showInQuickLog: false });
         bottomSheetRef.current?.present();
       },
       presentEdit: (mealType) => {
         setMode('edit');
-        setEditingMt(mealType);
         setValues({
           name: mealType.name,
           defaultTime: toHourMinute(mealType.default_time) || '',
@@ -149,7 +146,6 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
         onDismiss={() => {
-          setEditingMt(null);
           setValues({ name: '', defaultTime: '', isVisible: true, showInQuickLog: false });
         }}
       >
@@ -263,9 +259,11 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
           ) : (
             <TouchableOpacity
               onPress={() => {
-                if (timePickerRef?.current && editingMt) {
+                if (timePickerRef?.current) {
+                  // Seed from the CURRENT form value so an unsaved selection
+                  // survives reopen.
                   timePickerRef.current.present(
-                    toHourMinute(editingMt.default_time) || null,
+                    values.defaultTime || null,
                     (time) => setValues((prev) => ({ ...prev, defaultTime: time ?? '' })),
                   );
                 }

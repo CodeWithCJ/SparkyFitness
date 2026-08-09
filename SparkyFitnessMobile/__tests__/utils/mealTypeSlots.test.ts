@@ -5,7 +5,6 @@ import {
   deriveGapsFromUnified,
   gapKeyForSortOrder,
   moveCustomTypeBetweenGaps,
-  resolveCustomTargetGap,
   slotsForGap,
   DEFAULT_CREATE_GAP,
   MAX_CUSTOM_PER_GAP,
@@ -151,19 +150,7 @@ describe('mealTypeSlots — anchor model', () => {
     expect(writes.map((w) => w.id)).not.toContain('sys-l');
   });
 
-  it('resolveCustomTargetGap maps a custom-only target index to a gap', () => {
-    const customGapIndices = {
-      b_l: ['brunch'],
-      l_d: ['l2', 'l3'],
-      d_s: [],
-    };
-    // targetIndex 0 → brunch's gap (b_l), index 0.
-    expect(resolveCustomTargetGap(customGapIndices, 0)).toEqual({ gap: 'b_l', index: 0 });
-    // targetIndex 1 → l2 (l_d), index 0.
-    expect(resolveCustomTargetGap(customGapIndices, 1)).toEqual({ gap: 'l_d', index: 0 });
-    // targetIndex 3 (end) → last gap d_s index 0.
-    expect(resolveCustomTargetGap(customGapIndices, 3)).toEqual({ gap: 'l_d', index: 2 });
-  });
+
 
   it('default create gap is d_s (end of list) with a valid slot range', () => {
     expect(DEFAULT_CREATE_GAP).toBe('d_s');

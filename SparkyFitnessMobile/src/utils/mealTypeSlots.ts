@@ -232,21 +232,3 @@ export function deriveGapsFromUnified(
  * Returns `{ gap, index }` where `index` is the insertion index within that
  * gap, or null when the target is invalid.
  */
-export function resolveCustomTargetGap(
-  customGapIndices: Record<MealGapKey, string[]>,
-  targetIndex: number,
-): { gap: MealGapKey; index: number } | null {
-  const flat: { gap: MealGapKey }[] = [];
-  for (const key of ['b_l', 'l_d', 'd_s'] as MealGapKey[]) {
-    for (let i = 0; i < customGapIndices[key].length; i += 1) {
-      flat.push({ gap: key });
-    }
-  }
-  if (targetIndex < 0 || targetIndex > flat.length) return null;
-  if (flat.length === 0) return { gap: DEFAULT_CREATE_GAP, index: 0 };
-  if (targetIndex === flat.length) {
-    const last = flat[flat.length - 1];
-    return { gap: last.gap, index: customGapIndices[last.gap].length };
-  }
-  return { gap: flat[targetIndex].gap, index: 0 };
-}
