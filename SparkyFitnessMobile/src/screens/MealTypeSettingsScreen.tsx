@@ -23,7 +23,9 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
+  withSpring,
   type SharedValue,
 } from 'react-native-reanimated';
 
@@ -46,7 +48,7 @@ import MealTypeTimePickerSheet, {
 } from '../components/MealTypeTimePickerSheet';
 import { MEAL_CONFIG } from '../constants/meals';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
-import { computeReorderTargetIndex } from '../components/WorkoutReorderList';
+import { computeReorderTargetIndex, computeReorderPreviewShift } from '../components/WorkoutReorderList';
 import type { IconName } from '../components/Icon';
 import type { MealType } from '../types/mealTypes';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -81,73 +83,42 @@ function getSystemMealTypeIcon(name: string): IconName {
 
 /**
  * Module-scope CUSTOM meal-type row (stable component identity; gesture-driven).
- * System rows are plain static rows rendered by the screen.
+ * System rows are rendered by the module-scope SystemMealTypeRow below — both
+ * share useMealTypeRowDragPreviewStyle so the WHOLE unified list opens a real
+ * live gap preview during a drag (active row floats, every other row springs
+ * one stride toward the origin as the finger crosses it).
  */
-const CustomMealTypeRow: React.FC<{
-  mt: MealType;
-  index: number;
-  totalRows: number;
-  onEdit: (mt: MealType) => void;
-  onTime: (mt: MealType) => void;
-  onMove: (fromIndex: number, toIndex: number) => void;
-  onToggleVisibility: (mt: MealType, value: boolean) => void;
-  textMuted: string;
-  textSecondary: string;
-  activeDragIndex: SharedValue<number>;
-  panY: SharedValue<number>;
-  committingTranslate: SharedValue<number>;
-  strides: number[];
-  offsets: number[];
-}> = ({
-  mt,
-  index,
-  totalRows,
-  onEdit,
-  onTime,
-  onMove,
-  onToggleVisibility,
-  textMuted,
-  textSecondary,
-  activeDragIndex,
-  panY,
-  committingTranslate,
-  strides,
-  offsets,
-}) => {
-  const dragGesture = Gesture.Pan()
-    .activateAfterLongPress(LONG_PRESS_MS)
-    .onStart(() => {
-      activeDragIndex.value = index;
-      panY.value = 0;
-    })
-    .onUpdate((event) => {
-      panY.value = event.translationY;
-    })
-    .onEnd(() => {
-      const from = activeDragIndex.value;
-      const to = computeReorderTargetIndex(strides, offsets, from, panY.value);
-      if (from >= 0 && from !== to) {
-        // Commit handoff (WorkoutReorderList pattern): keep the active row's
-        // final translate while the JS reorder state commits — no snap-back to
-        // origin before React re-renders the row at its destination.
-        committingTranslate.value = panY.value;
-        // Worklet → JS boundary: onMove must run on the JS thread.
-        runOnJS(onMove)(from, to);
-      } else {
-        activeDragIndex.value = -1;
-        panY.value = 0;
-      }
-    });
 
-  const animatedStyle = useAnimatedStyle(() => {
+/**
+ * Shared drag-preview animated style for BOTH row kinds (system + custom):
+ * - the ACTIVE row floats (follows the finger, slight scale, lift shadow);
+ * - every OTHER row — custom siblings AND system anchors — springs exactly
+ *   one row stride toward the drag origin while it sits between the active
+ *   row and the LIVE target index, so the list closes the old gap and opens
+ *   the new one naturally (no stationary hole at the source position).
+ *
+ * System rows therefore PARTICIPATE in the transient visual preview as
+ * passive siblings, but stay non-draggable and their persisted anchors are
+ * never rewritten — only custom sort_order is ever persisted (see
+ * moveCustomType / doPersist). Spring values match WorkoutReorderList so the
+ * interaction feels like the app's existing reorder UI.
+ *
+ * During the commit handoff the active row keeps its FINAL translate
+ * (`committingTranslate`) so the drop preview hands off to the reordered
+ * render with no snap-back; the screen's post-render effect clears the shared
+ * values only after the new unified order has rendered.
+ */
+export function useMealTypeRowDragPreviewStyle(
+  rowIndex: number,
+  activeDragIndex: SharedValue<number>,
+  panY: SharedValue<number>,
+  committingTranslate: SharedValue<number>,
+  targetIndex: SharedValue<number>,
+  strides: number[],
+) {
+  return useAnimatedStyle(() => {
     const active = activeDragIndex.value;
-    if (active === index) {
-      // Only the active row floats during the drag (Option A). System anchors
-      // are fixed Views elsewhere and custom siblings stay put, so no custom
-      // row can ever preview-overlap an anchor's coordinate.
-      // During the commit handoff the row keeps its FINAL translate (no
-      // snap-back); moveCustomType zeroes the state once the new order has
-      // rendered, at which point resetting translate is a visual no-op.
+    if (active === rowIndex) {
       const ty =
         committingTranslate.value !== 0
           ? committingTranslate.value
@@ -161,14 +132,101 @@ const CustomMealTypeRow: React.FC<{
         shadowOffset: { width: 0, height: 4 },
       };
     }
-    // Non-active rows and anchors remain stationary.
+    // Reanimated applies animated styles as diffs — keys omitted from a later
+    // update keep their last value — so the lift shadow must be zeroed
+    // explicitly in every non-dragged branch.
+    if (active < 0) {
+      return {
+        transform: [{ translateY: 0 }, { scale: 1 }],
+        zIndex: 0,
+        elevation: 0,
+        shadowOpacity: 0,
+      };
+    }
+    const shift = computeReorderPreviewShift(
+      rowIndex,
+      active,
+      targetIndex.value,
+      strides[active],
+    );
     return {
-      transform: [{ translateY: 0 }, { scale: 1 }],
+      transform: [
+        { translateY: withSpring(shift, { damping: 44, stiffness: 960 }) },
+        { scale: 1 },
+      ],
       zIndex: 0,
       elevation: 0,
       shadowOpacity: 0,
     };
   });
+}
+
+const CustomMealTypeRow: React.FC<{
+  mt: MealType;
+  index: number;
+  totalRows: number;
+  onEdit: (mt: MealType) => void;
+  onTime: (mt: MealType) => void;
+  onMove: (fromIndex: number, toIndex: number) => void;
+  onToggleVisibility: (mt: MealType, value: boolean) => void;
+  textMuted: string;
+  textSecondary: string;
+  activeDragIndex: SharedValue<number>;
+  panY: SharedValue<number>;
+  committingTranslate: SharedValue<number>;
+  targetIndex: SharedValue<number>;
+  strides: number[];
+}> = ({
+  mt,
+  index,
+  totalRows,
+  onEdit,
+  onTime,
+  onMove,
+  onToggleVisibility,
+  textMuted,
+  textSecondary,
+  activeDragIndex,
+  panY,
+  committingTranslate,
+  targetIndex,
+  strides,
+}) => {
+  const dragGesture = Gesture.Pan()
+    .activateAfterLongPress(LONG_PRESS_MS)
+    .onStart(() => {
+      activeDragIndex.value = index;
+      panY.value = 0;
+    })
+    .onUpdate((event) => {
+      panY.value = event.translationY;
+    })
+    .onEnd(() => {
+      const from = activeDragIndex.value;
+      // Live UI-thread target (same calculation as the sibling preview uses),
+      // so the committed destination always matches the gap the user sees.
+      const to = targetIndex.value;
+      if (from >= 0 && from !== to) {
+        // Commit handoff (WorkoutReorderList pattern): keep the active row's
+        // final translate while the JS reorder state commits — no snap-back to
+        // origin before React re-renders the row at its destination.
+        committingTranslate.value = panY.value;
+        // Worklet → JS boundary: onMove must run on the JS thread.
+        runOnJS(onMove)(from, to);
+      } else {
+        activeDragIndex.value = -1;
+        panY.value = 0;
+      }
+    });
+
+  const previewStyle = useMealTypeRowDragPreviewStyle(
+    index,
+    activeDragIndex,
+    panY,
+    committingTranslate,
+    targetIndex,
+    strides,
+  );
 
   const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
     if (event.nativeEvent.actionName === 'increment') {
@@ -183,7 +241,7 @@ const CustomMealTypeRow: React.FC<{
       key={mt.id}
       testID={`meal-type-custom-${mt.id}`}
       className="flex-row items-center bg-surface border-b border-border/40"
-      style={[animatedStyle, { height: ROW_HEIGHT }]}
+      style={[previewStyle, { height: ROW_HEIGHT }]}
     >
       <GestureDetector gesture={dragGesture}>
         <View
@@ -217,6 +275,83 @@ const CustomMealTypeRow: React.FC<{
           value={mt.is_visible}
           onValueChange={(val) => onToggleVisibility(mt, val)}
           accessibilityLabel={`Visible ${mt.name}`}
+        />
+      </View>
+    </Animated.View>
+  );
+};
+
+/**
+ * Module-scope SYSTEM meal-type row: an ANIMATED shell (so it can visually
+ * shift as a passive sibling during a drag preview) but with NO drag gesture,
+ * NO drag handle and NO accessibility reorder actions — system anchors are
+ * fixed in data/reorder semantics and can never become active. The shared
+ * preview hook only ever yields 0 for it as the active row, and the shift
+ * range excludes the active index, so it can never be dragged.
+ */
+const SystemMealTypeRow: React.FC<{
+  mt: MealType;
+  index: number;
+  onEdit: (mt: MealType) => void;
+  onTime: (mt: MealType) => void;
+  onToggleVisibility: (mt: MealType, value: boolean) => void;
+  accentColor: string;
+  textSecondary: string;
+  activeDragIndex: SharedValue<number>;
+  panY: SharedValue<number>;
+  committingTranslate: SharedValue<number>;
+  targetIndex: SharedValue<number>;
+  strides: number[];
+}> = ({
+  mt,
+  index,
+  onEdit,
+  onTime,
+  onToggleVisibility,
+  accentColor,
+  textSecondary,
+  activeDragIndex,
+  panY,
+  committingTranslate,
+  targetIndex,
+  strides,
+}) => {
+  const previewStyle = useMealTypeRowDragPreviewStyle(
+    index,
+    activeDragIndex,
+    panY,
+    committingTranslate,
+    targetIndex,
+    strides,
+  );
+
+  return (
+    <Animated.View
+      key={mt.id}
+      className="flex-row items-center bg-surface border-b border-border/40"
+      style={[previewStyle, { height: ROW_HEIGHT }]}
+      testID={`meal-type-system-${mt.id}`}
+    >
+      <View className="px-4 py-3">
+        <Icon name={getSystemMealTypeIcon(mt.name)} size={22} color={accentColor} />
+      </View>
+      <TouchableOpacity
+        className="flex-1 py-3 flex-shrink"
+        onPress={() => onEdit(mt)}
+        activeOpacity={0.6}
+        accessibilityLabel={`Edit ${getMealTypeDisplayLabel(mt)}`}
+        testID={`edit-system-${mt.id}`}
+      >
+        <Text className="text-base text-text-primary font-medium" numberOfLines={1}>
+          {getMealTypeDisplayLabel(mt)}
+        </Text>
+      </TouchableOpacity>
+      <MealTypeTimeCell mealType={mt} onPress={() => onTime(mt)} textSecondary={textSecondary} />
+      <View className="pr-4 pl-1">
+        <Switch
+          value={mt.is_visible}
+          onValueChange={(val) => onToggleVisibility(mt, val)}
+          accessibilityLabel={`Visible ${getMealTypeDisplayLabel(mt)}`}
         />
       </View>
     </Animated.View>
@@ -523,8 +658,8 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     [systemTypes, currentGaps],
   );
 
-  // Drag geometry over the unified rows (anchors + customs all share the same
-  // row height; only custom rows animate, anchors render statically).
+  // Drag geometry over the unified rows. Anchors and customs share the same
+  // row height, so every row has the same stride (ROW_HEIGHT + ROW_GAP).
   const strides = unifiedRows.map(() => ROW_HEIGHT + ROW_GAP);
   const offsets = useMemo(() => {
     const out: number[] = [];
@@ -541,6 +676,17 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   // Commit handoff: holds the active row's final translate until the new
   // unified order has rendered (see CustomMealTypeRow onEnd).
   const committingTranslate = useSharedValue(0);
+
+  // LIVE UI-thread drop target (WorkoutReorderList pattern): recomputed on
+  // every pan frame from the shared values, never via JS state, so each row's
+  // preview-shift animation can follow the finger in real time. The same value
+  // is read by the gesture's onEnd so the committed destination always matches
+  // the gap the preview opened.
+  const targetIndex = useDerivedValue(() =>
+    activeDragIndex.value < 0
+      ? -1
+      : computeReorderTargetIndex(strides, offsets, activeDragIndex.value, panY.value),
+  );
 
   /** Generation of the currently displayed optimistic order (incremented on
    * every accepted move). A persisted snapshot carries the generation it was
@@ -886,38 +1032,6 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     [mutateMealType],
   );
 
-  const renderSystemRow = (mt: MealType) => (
-    <View
-      key={mt.id}
-      className="flex-row items-center bg-surface border-b border-border/40"
-      style={{ height: ROW_HEIGHT }}
-      testID={`meal-type-system-${mt.id}`}
-    >
-      <View className="px-4 py-3">
-        <Icon name={getSystemMealTypeIcon(mt.name)} size={22} color={accentColor} />
-      </View>
-      <TouchableOpacity
-        className="flex-1 py-3 flex-shrink"
-        onPress={() => openEdit(mt)}
-        activeOpacity={0.6}
-        accessibilityLabel={`Edit ${getMealTypeDisplayLabel(mt)}`}
-        testID={`edit-system-${mt.id}`}
-      >
-        <Text className="text-base text-text-primary font-medium" numberOfLines={1}>
-          {getMealTypeDisplayLabel(mt)}
-        </Text>
-      </TouchableOpacity>
-      <MealTypeTimeCell mealType={mt} onPress={() => openTimePicker(mt)} textSecondary={textSecondary} />
-      <View className="pr-4 pl-1">
-        <Switch
-          value={mt.is_visible}
-          onValueChange={(val) => toggleVisibility(mt, val)}
-          accessibilityLabel={`Visible ${getMealTypeDisplayLabel(mt)}`}
-        />
-      </View>
-    </View>
-  );
-
   return (
     <View
       className="flex-1 bg-background"
@@ -949,7 +1063,21 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             <View className="bg-surface rounded-xl mx-4 overflow-hidden shadow-sm">
               {unifiedRows.map((row, index) =>
                 row.isSystem ? (
-                  renderSystemRow(row.mt)
+                  <SystemMealTypeRow
+                    key={row.mt.id}
+                    mt={row.mt}
+                    index={index}
+                    onEdit={openEdit}
+                    onTime={openTimePicker}
+                    onToggleVisibility={toggleVisibility}
+                    accentColor={accentColor}
+                    textSecondary={textSecondary}
+                    activeDragIndex={activeDragIndex}
+                    panY={panY}
+                    committingTranslate={committingTranslate}
+                    targetIndex={targetIndex}
+                    strides={strides}
+                  />
                 ) : (
                   <CustomMealTypeRow
                     key={row.mt.id}
@@ -965,8 +1093,8 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
                     activeDragIndex={activeDragIndex}
                     panY={panY}
                     committingTranslate={committingTranslate}
+                    targetIndex={targetIndex}
                     strides={strides}
-                    offsets={offsets}
                   />
                 ),
               )}

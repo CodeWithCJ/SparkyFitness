@@ -1,9 +1,13 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Alert } from 'react-native';
+import { Alert, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
-import MealTypeSettingsScreen from '../../src/screens/MealTypeSettingsScreen';
+import MealTypeSettingsScreen, {
+  useMealTypeRowDragPreviewStyle,
+} from '../../src/screens/MealTypeSettingsScreen';
+import { TIME_WHEEL_CONTAINER_HEIGHT } from '../../src/components/MealTypeTimeWheel';
 import * as mealTypesApi from '../../src/services/api/mealTypesApi';
 
 jest.mock('../../src/components/Icon', () => {
@@ -98,6 +102,45 @@ jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
 }));
+
+/**
+ * Harness for the shared drag-preview animated-style hook: renders ONE row
+ * with controllable shared values, so tests can assert the exact animated
+ * style each row kind produces during a drag (active float, sibling shift,
+ * commit handoff, idle). The jest reanimated mock runs useAnimatedStyle
+ * synchronously and withSpring returns its target value.
+ */
+function DragPreviewHarness({
+  rowIndex,
+  active,
+  panY,
+  committing,
+  target,
+  strideList,
+}: {
+  rowIndex: number;
+  active: number;
+  panY: number;
+  committing: number;
+  target: number;
+  strideList: number[];
+}) {
+  const activeDragIndex = useSharedValue(active);
+  const panYValue = useSharedValue(panY);
+  const committingTranslate = useSharedValue(committing);
+  const targetIndex = useSharedValue(target);
+  const style = useMealTypeRowDragPreviewStyle(
+    rowIndex,
+    activeDragIndex,
+    panYValue,
+    committingTranslate,
+    targetIndex,
+    strideList,
+  );
+  return <View testID="preview-row" style={style} />;
+}
+
+const UNIFORM_STRIDES = [64, 64, 64, 64, 64, 64, 64];
 
 const systemMealTypes = [
   { id: 'sys-b', name: 'breakfast', sort_order: 10, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true, default_time: '08:00' },
@@ -1439,4 +1482,315 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     await act(async () => {});
   });
 
+});
+
+describe('Meal type time wheel — visible on-device picker (device bugfix)', () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+    jest.clearAllMocks();
+  });
+
+  it('dedicated sheet passes the supported picker sizing API to the wheel', async () => {
+    const { findByText, getByLabelText, getByTestId } = renderScreen();
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    const picker = getByTestId('date-picker');
+    expect(picker.props.timePicker).toBe(true);
+    expect(picker.props.initialView).toBe('time');
+    expect(picker.props.hideHeader).toBe(true);
+    expect(picker.props.use12Hours).toBe(true);
+    // Explicit supported container height — the fix for the blank wheel.
+    expect(picker.props.containerHeight).toBe(TIME_WHEEL_CONTAINER_HEIGHT);
+    // Existing 17:30 seeds the wheel correctly.
+    const d = picker.props.date as Date;
+    expect(d.getHours()).toBe(17);
+    expect(d.getMinutes()).toBe(30);
+  });
+
+  it('unset seeds the current visible time; Save without scrolling commits it', async () => {
+    const { findByText, getByLabelText, getByTestId } = renderScreen();
+    const updateSpy = jest
+      .spyOn(mealTypesApi, 'updateMealType')
+      .mockResolvedValue({} as any);
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Default time for Lunch, not set'));
+    const picker = getByTestId('date-picker');
+    const d = picker.props.date as Date;
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    expect(`${hh}:${mm}`).toMatch(/^\d{2}:\d{2}$/);
+    // Save WITHOUT scrolling commits exactly the visible HH:MM.
+    fireEvent.press(getByLabelText('Save default time'));
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('sys-l', { default_time: `${hh}:${mm}` });
+    });
+    await act(async () => {});
+  });
+
+  it('wheel change updates the pending value and Save commits the changed HH:MM', async () => {
+    const { findByText, getByLabelText, getByTestId } = renderScreen();
+    const updateSpy = jest
+      .spyOn(mealTypesApi, 'updateMealType')
+      .mockResolvedValue({} as any);
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    await waitFor(() => expect(getByLabelText('Save default time')).toBeTruthy());
+    // Scroll the wheel to 18:45 (drive the picker's onChange).
+    act(() => {
+      getByTestId('date-picker').props.onChange({
+        date: new Date(2026, 7, 9, 18, 45),
+      });
+    });
+    fireEvent.press(getByLabelText('Save default time'));
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('custom-pw', { default_time: '18:45' });
+    });
+    await act(async () => {});
+  });
+
+  it('Create inline wheel uses the same supported sizing; changing it updates submitted default_time', async () => {
+    const { findByText, getByLabelText, getByTestId, getByPlaceholderText } =
+      renderScreen();
+    const createSpy = jest.spyOn(mealTypesApi, 'createMealType').mockResolvedValue({
+      id: 'custom-new',
+      name: 'Dessert',
+      sort_order: 31,
+      user_id: 'user-1',
+    } as any);
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Add meal type'));
+    const picker = getByTestId('date-picker');
+    // Same visible wheel contract as the dedicated sheet.
+    expect(picker.props.containerHeight).toBe(TIME_WHEEL_CONTAINER_HEIGHT);
+    expect(picker.props.timePicker).toBe(true);
+    fireEvent.changeText(getByPlaceholderText('e.g. Lunch 2.0'), 'Dessert');
+    act(() => {
+      picker.props.onChange({ date: new Date(2026, 7, 9, 20, 15) });
+    });
+    fireEvent.press(getByLabelText('Create meal type'));
+    await waitFor(() => {
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Dessert', default_time: '20:15' }),
+      );
+    });
+    await act(async () => {});
+    await act(async () => {});
+  });
+
+  it('the sheet dismisses (backdrop) without committing — no stale callback', async () => {
+    const { findByText, getByLabelText, getAllByTestId } = renderScreen();
+    const updateSpy = jest
+      .spyOn(mealTypesApi, 'updateMealType')
+      .mockResolvedValue({} as any);
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    await waitFor(() => expect(getByLabelText('Save default time')).toBeTruthy());
+    act(() => {
+      getAllByTestId('date-picker')[0].props.onChange({
+        date: new Date(2026, 7, 9, 12, 0),
+      });
+    });
+    // Dismiss via the sheet backdrop — the pending wheel value must be
+    // discarded and no update fired.
+    fireEvent.press(getAllByTestId('sheet-backdrop')[0]);
+    await act(async () => {});
+    expect(updateSpy).not.toHaveBeenCalled();
+    // Reopening starts from a CLEAN pending value (no stale 12:00): the row
+    // still shows the original 17:30.
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    expect(getByLabelText('Save default time')).toBeTruthy();
+    await act(async () => {});
+  });
+});
+
+describe('Meal type drag preview — live sibling shift (device bugfix)', () => {
+  it('active row floats: translateY follows the finger with lift scale + shadow', () => {
+    const { getByTestId } = render(
+      <DragPreviewHarness
+        rowIndex={1}
+        active={1}
+        panY={129}
+        committing={0}
+        target={3}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    const style = getByTestId('preview-row').props.style;
+    expect(style.transform).toEqual([{ translateY: 129 }, { scale: 1.02 }]);
+    expect(style.zIndex).toBe(10);
+    expect(style.elevation).toBe(8);
+  });
+
+  it('downward drag: sibling rows between active and target shift UP one stride', () => {
+    // active=1, target=3: rows 2 and 3 shift -64; row 4 stays put.
+    const row2 = render(
+      <DragPreviewHarness
+        rowIndex={2}
+        active={1}
+        panY={129}
+        committing={0}
+        target={3}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    expect(row2.getByTestId('preview-row').props.style.transform).toEqual([
+      { translateY: -64 },
+      { scale: 1 },
+    ]);
+    const row3 = render(
+      <DragPreviewHarness
+        rowIndex={3}
+        active={1}
+        panY={129}
+        committing={0}
+        target={3}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    expect(row3.getByTestId('preview-row').props.style.transform).toEqual([
+      { translateY: -64 },
+      { scale: 1 },
+    ]);
+    const row4 = render(
+      <DragPreviewHarness
+        rowIndex={4}
+        active={1}
+        panY={129}
+        committing={0}
+        target={3}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    expect(row4.getByTestId('preview-row').props.style.transform).toEqual([
+      { translateY: 0 },
+      { scale: 1 },
+    ]);
+  });
+
+  it('upward drag: rows between target and active shift DOWN one stride', () => {
+    // active=3, target=1: rows 1 and 2 shift +64.
+    const row1 = render(
+      <DragPreviewHarness
+        rowIndex={1}
+        active={3}
+        panY={-129}
+        committing={0}
+        target={1}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    expect(row1.getByTestId('preview-row').props.style.transform).toEqual([
+      { translateY: 64 },
+      { scale: 1 },
+    ]);
+  });
+
+  it('crossing a system anchor: the anchor row VISUALLY shifts as a passive sibling', () => {
+    // Unified [Breakfast(0) A(1) Lunch(2) B(3) Dinner(4)]; A dragged past
+    // Lunch (target 3): Lunch (index 2) and B (index 3) shift up one stride.
+    // The anchor participates in the preview even though it can never be
+    // dragged or persisted.
+    const lunch = render(
+      <DragPreviewHarness
+        rowIndex={2}
+        active={1}
+        panY={129}
+        committing={0}
+        target={3}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    expect(lunch.getByTestId('preview-row').props.style.transform).toEqual([
+      { translateY: -64 },
+      { scale: 1 },
+    ]);
+    // A row OUTSIDE the crossed range (before the active index) stays put;
+    // the anchor is never the active row in the real list.
+    const dinner = render(
+      <DragPreviewHarness
+        rowIndex={0}
+        active={3}
+        panY={129}
+        committing={0}
+        target={4}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    expect(dinner.getByTestId('preview-row').props.style.transform).toEqual([
+      { translateY: 0 },
+      { scale: 1 },
+    ]);
+  });
+
+  it('commit handoff: active row keeps its FINAL translate after pan resets (no snap-back)', () => {
+    // During the handoff the JS reorder is in flight; panY is already 0 but
+    // committingTranslate holds the final drop offset, so the row stays put.
+    const { getByTestId } = render(
+      <DragPreviewHarness
+        rowIndex={1}
+        active={1}
+        panY={0}
+        committing={129}
+        target={3}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    const style = getByTestId('preview-row').props.style;
+    expect(style.transform).toEqual([{ translateY: 129 }, { scale: 1.02 }]);
+    // After the new order renders, the shared values reset (active=-1) and
+    // the transform returns to identity — the array order now holds the rows
+    // at their preview positions, so this is a visual no-op.
+    const idle = render(
+      <DragPreviewHarness
+        rowIndex={1}
+        active={-1}
+        panY={0}
+        committing={0}
+        target={-1}
+        strideList={UNIFORM_STRIDES}
+      />,
+    );
+    expect(idle.getByTestId('preview-row').props.style.transform).toEqual([
+      { translateY: 0 },
+      { scale: 1 },
+    ]);
+  });
+
+  it('system rows are animated shells with NO drag handle and NO reorder accessibility actions', async () => {
+    const { findByText, getByTestId, getByLabelText, queryByTestId, queryByLabelText } =
+      renderScreen();
+    await findByText('Pre-Workout');
+    // System row renders (animated shell) with its content.
+    expect(getByTestId('meal-type-system-sys-b')).toBeTruthy();
+    expect(getByLabelText('Edit Breakfast')).toBeTruthy();
+    // But: no drag handle, no adjustable/reorder semantics.
+    expect(queryByTestId('drag-handle-sys-b')).toBeNull();
+    expect(queryByLabelText('Reorder Breakfast')).toBeNull();
+    // Custom rows keep the handle + Move up/down actions.
+    expect(getByTestId('drag-handle-custom-pw')).toBeTruthy();
+    expect(getByLabelText('Reorder Pre-Workout')).toBeTruthy();
+  });
+
+  it('accessibility Move up/down still uses the SAME reorder semantics as the gesture', async () => {
+    const types = [
+      ...systemMealTypes,
+      { id: 'a', name: 'A', sort_order: 11, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+      { id: 'b', name: 'B', sort_order: 21, user_id: 'u', created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+    ];
+    const { findByText, getByLabelText } = renderScreen({ mealTypes: types });
+    const updateSpy = jest.spyOn(mealTypesApi, 'updateMealType').mockResolvedValue({} as any);
+    await findByText('A');
+    // Move A down (into the Lunch→Dinner gap) via the accessible action.
+    fireEvent(getByLabelText('Reorder A'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('a', { sort_order: expect.any(Number) });
+      const write = updateSpy.mock.calls[0][1] as any;
+      expect(write.sort_order).toBeGreaterThanOrEqual(21);
+      expect(write.sort_order).toBeLessThanOrEqual(29);
+    });
+    await act(async () => {});
+  });
 });

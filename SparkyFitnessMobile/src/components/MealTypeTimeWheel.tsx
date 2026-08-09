@@ -2,10 +2,29 @@ import { useMemo, type FC } from 'react';
 import { View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
+import { dateTypeToDate, timeStringToDate, dateToTimeString } from './TimeSheet';
 
-/** Shared scale + wrapper height so both surfaces render the SAME large wheel. */
-export const TIME_WHEEL_SCALE = 1.8;
-export const TIME_WHEEL_WRAPPER_HEIGHT = 280;
+/**
+ * Shared large time wheel used by BOTH the dedicated time sheet and the
+ * inline Create flow (apedley: "stack the two components").
+ *
+ * Sizing: the library renders its native time wheels at itemHeight 44 with
+ * visibleRest 2 — exactly five 44pt rows (5 × 44 = 220). `containerHeight` is
+ * the library's SUPPORTED sizing API: 220 removes the default 300pt
+ * container's dead space and shows the full five-row wheel, the same
+ * device-proven sizing the app's existing `TimeSheet` uses.
+ *
+ * Why NOT the previous transform-scale hack: the old implementation wrapped
+ * the picker in `<View style={{ transform: [{ scale: 1.8 }] }}>`. On a
+ * physical Android device the wheel rendered completely blank inside that
+ * scaled wrapper (the wheel is an `Animated.FlatList` driven by the native
+ * driver; a scaled ancestor breaks its rendering). The fix renders the picker
+ * directly with its own sizing prop — no transform, no manual wrapper math —
+ * so the wheel is visible, themeable and works inside the bottom sheet.
+ */
+export const TIME_WHEEL_CONTAINER_HEIGHT = 220;
+/** Height of the region the wheel occupies in the sheets (== container). */
+export const TIME_WHEEL_WRAPPER_HEIGHT = TIME_WHEEL_CONTAINER_HEIGHT;
 
 export interface MealTypeTimeWheelProps {
   /** Current HH:MM value; null/'' seeds the wheel with the current time. */
@@ -15,49 +34,40 @@ export interface MealTypeTimeWheelProps {
 }
 
 /**
- * The ONE large time-wheel used by both the dedicated time sheet and the
- * inline Create flow (apedley: "stack the two components"). The library's
- * wheel is a fixed 150×150 box, so it is scaled 1.8× inside an explicit
- * 280pt wrapper — dominant content, several readable rows above/below.
- *
- * Date handling is centralised here: `value` (HH:MM) is converted to a
- * memoized Date for the picker and every change is converted back to HH:MM.
+ * The ONE large time-wheel shared by the dedicated time sheet and the inline
+ * Create flow. Date handling is centralised here using the SAME conversion
+ * helpers as the app's device-proven `TimeSheet` (single implementation of
+ * DateType → Date → HH:MM; no second drifting copy).
  */
 const MealTypeTimeWheel: FC<MealTypeTimeWheelProps> = ({
   value,
   onChange,
   testID,
 }) => {
-  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const textPrimary = useCSSVariable('--color-text-primary') as string;
+  const borderSubtle = useCSSVariable('--color-border-subtle') as string;
 
-  const pickerDate = useMemo(() => {
-    const d = new Date();
-    if (value) {
-      const [h, m] = value.split(':').map(Number);
-      if (!Number.isNaN(h) && !Number.isNaN(m)) {
-        d.setHours(h, m, 0, 0);
-      }
-    }
-    return d;
-  }, [value]);
+  // Memoized so typing in the Create Name field never re-seeds the wheel:
+  // `value` (HH:MM) → a Date for the picker, ''/null → current time.
+  const pickerDate = useMemo(() => timeStringToDate(value ?? ''), [value]);
 
   const handleChange = ({ date }: { date: DateType }) => {
-    if (!date) return;
-    let jsDate: Date;
-    if (date instanceof Date) {
-      jsDate = date;
-    } else if (typeof date === 'object' && 'toDate' in date) {
-      jsDate = date.toDate();
-    } else if (typeof date === 'string') {
-      jsDate = new Date(date);
-    } else {
-      jsDate = new Date(date);
+    const js = dateTypeToDate(date);
+    if (js && !Number.isNaN(js.getTime())) {
+      onChange(dateToTimeString(js));
     }
-    const hh = String(jsDate.getHours()).padStart(2, '0');
-    const mm = String(jsDate.getMinutes()).padStart(2, '0');
-    onChange(`${hh}:${mm}`);
   };
+
+  // The picker-specific style keys (same contract as TimeSheet): time_label is
+  // 28pt so the wheel reads clearly larger than the rejected tiny original.
+  const pickerStyles = useMemo(
+    () => ({
+      time_selector_label: { color: textPrimary, fontWeight: '600' as const },
+      time_label: { color: textPrimary, fontSize: 28, fontWeight: '500' as const },
+      time_selected_indicator: { backgroundColor: borderSubtle, borderRadius: 10 },
+    }),
+    [textPrimary, borderSubtle],
+  );
 
   return (
     <View
@@ -68,21 +78,17 @@ const MealTypeTimeWheel: FC<MealTypeTimeWheelProps> = ({
       }}
       testID={testID}
     >
-      <View style={{ transform: [{ scale: TIME_WHEEL_SCALE }] }}>
-        <DateTimePicker
-          mode="single"
-          date={pickerDate}
-          timePicker
-          initialView="time"
-          hideHeader
-          onChange={handleChange}
-          styles={{
-            selected: { backgroundColor: accentPrimary },
-            selected_label: { color: '#FFFFFF' },
-            time_label: { fontSize: 28, color: textPrimary },
-          }}
-        />
-      </View>
+      <DateTimePicker
+        mode="single"
+        date={pickerDate}
+        timePicker
+        initialView="time"
+        hideHeader
+        use12Hours
+        containerHeight={TIME_WHEEL_CONTAINER_HEIGHT}
+        onChange={handleChange}
+        styles={pickerStyles}
+      />
     </View>
   );
 };
