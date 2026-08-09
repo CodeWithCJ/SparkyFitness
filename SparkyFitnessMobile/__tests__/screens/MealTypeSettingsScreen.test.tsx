@@ -8,7 +8,7 @@ import MealTypeSettingsScreen, {
   resetMealTypeDragPreview,
   useMealTypeRowDragPreviewStyle,
 } from '../../src/screens/MealTypeSettingsScreen';
-import { TIME_WHEEL_CONTAINER_HEIGHT } from '../../src/components/MealTypeTimeWheel';
+import { TIME_WHEEL_CONTAINER_HEIGHT, TIME_WHEEL_WRAPPER_HEIGHT } from '../../src/components/MealTypeTimeWheel';
 import * as mealTypesApi from '../../src/services/api/mealTypesApi';
 
 jest.mock('../../src/components/Icon', () => {
@@ -456,6 +456,24 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
     expect(getByTestId('large-time-wheel')).toBeTruthy();
     expect(queryByText('Selected')).toBeNull();
+  });
+
+  it('dedicated sheet renders the shared wheel with the full-width layout contract and no redundant height wrapper', async () => {
+    const { findByText, getByLabelText, getByTestId } = renderScreen();
+    await findByText('Pre-Workout');
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    const wheel = getByTestId('large-time-wheel');
+    // The shared wheel root owns a deterministic full width + its own height.
+    expect(wheel.props.style.width).toBe('100%');
+    expect(wheel.props.style.alignSelf).toBe('stretch');
+    expect(wheel.props.style.height).toBeGreaterThan(0);
+    // No alignItems:'center' shrink wrapper around the picker (would collapse
+    // the wheel columns' inherited width and blank them on device).
+    expect(wheel.props.style.alignItems).not.toBe('center');
+    // The shared wheel owns its own deterministic height (the single dimension
+    // owner); the dedicated sheet no longer adds a redundant fixed-height
+    // wrapper around it.
+    expect(wheel.props.style.height).toBe(TIME_WHEEL_WRAPPER_HEIGHT);
   });
 
   it('create sheet has no Delete, no helper copy, no Selected box — name + large wheel in one flow', async () => {
@@ -1499,10 +1517,15 @@ describe('Meal type time wheel — visible on-device picker (device bugfix)', ()
     expect(picker.props.timePicker).toBe(true);
     expect(picker.props.initialView).toBe('time');
     expect(picker.props.hideHeader).toBe(true);
-    expect(picker.props.use12Hours).toBe(true);
-    // Explicit supported container height — the fix for the blank wheel.
+    // 24-hour presentation (no AM/PM column) per the maintainer mockup.
+    expect(picker.props.use12Hours).toBeFalsy();
+    // Full-width stretch contract (the visible-on-Android fix) is on both the
+    // shared wheel root and the picker style.
+    expect(picker.props.style.width).toBe('100%');
+    expect(picker.props.style.alignSelf).toBe('stretch');
+    // Explicit supported container height.
     expect(picker.props.containerHeight).toBe(TIME_WHEEL_CONTAINER_HEIGHT);
-    // Existing 17:30 seeds the wheel correctly.
+    // Existing 17:30 seeds the wheel correctly (24h value).
     const d = picker.props.date as Date;
     expect(d.getHours()).toBe(17);
     expect(d.getMinutes()).toBe(30);
@@ -1562,7 +1585,11 @@ describe('Meal type time wheel — visible on-device picker (device bugfix)', ()
     await findByText('Pre-Workout');
     fireEvent.press(getByLabelText('Add meal type'));
     const picker = getByTestId('date-picker');
-    // Same visible wheel contract as the dedicated sheet.
+    // Same visible wheel contract as the dedicated sheet: full-width stretch,
+    // 24-hour, supported sizing.
+    expect(picker.props.style.width).toBe('100%');
+    expect(picker.props.style.alignSelf).toBe('stretch');
+    expect(picker.props.use12Hours).toBeFalsy();
     expect(picker.props.containerHeight).toBe(TIME_WHEEL_CONTAINER_HEIGHT);
     expect(picker.props.timePicker).toBe(true);
     fireEvent.changeText(getByPlaceholderText('e.g. Lunch 2.0'), 'Dessert');

@@ -3,9 +3,7 @@ import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
-import MealTypeTimeWheel, {
-  TIME_WHEEL_WRAPPER_HEIGHT,
-} from './MealTypeTimeWheel';
+import MealTypeTimeWheel from './MealTypeTimeWheel';
 import Icon from './Icon';
 import Button from './ui/Button';
 
@@ -15,10 +13,11 @@ export interface MealTypeTimePickerSheetRef {
 }
 
 /**
- * Dedicated LARGE wheel time picker (maintainer: "the current wheel is wayyy
- * too small"). The wheel is the dominant element — the shared MealTypeTimeWheel
- * (scaled 1.8× in an explicit 280pt wrapper) renders in both this sheet and
- * the inline Create flow, so both surfaces show the SAME large wheel.
+ * Dedicated large 24-hour wheel time picker (maintainer mockup: hours | minutes,
+ * several rows above/below a rounded selected row). The wheel is the dominant
+ * element — the shared MealTypeTimeWheel (own full-width layout, 24-hour) renders
+ * directly in this sheet and in the inline Create flow, so both surfaces show
+ * ONE implementation of the SAME visible wheel.
  *
  * Behavior:
  * - opening with "08:30" selects 08:30;
@@ -95,15 +94,15 @@ const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, 
           Default Time
         </Text>
 
-        {/* Dominant wheel area (shared component, explicit generous height).
-            No nested card, no summary box. */}
-        <View style={{ height: TIME_WHEEL_WRAPPER_HEIGHT }}>
-          <MealTypeTimeWheel
-            value={pendingValue}
-            onChange={handleWheelChange}
-            testID="large-time-wheel"
-          />
-        </View>
+        {/* Dominant wheel area (shared component, own full-width layout). The
+            sheet renders the shared wheel DIRECTLY under BottomSheetView — no
+            extra fixed-height wrapper here; MealTypeTimeWheel is the single
+            owner of its own dimensioning. */}
+        <MealTypeTimeWheel
+          value={pendingValue}
+          onChange={handleWheelChange}
+          testID="large-time-wheel"
+        />
 
         <View className="flex-row gap-3 mb-4">
           <TouchableOpacity
