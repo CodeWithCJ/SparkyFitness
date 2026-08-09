@@ -859,7 +859,7 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     );
   });
 
-  test('hides health-sync categories and Hourly/All/Unlimited from the manual Daily editor', () => {
+  test('health-sync Daily categories with no manual entry collapse under More; Hourly/All/Unlimited stay absent', () => {
     setCustomCategories([
       customCategory({ id: 'manual-1', name: 'My Daily', frequency: 'Daily' }),
       customCategory({ id: 'sync-1', name: 'HRV_SDNN_min', frequency: 'Daily' }),
@@ -873,12 +873,21 @@ describe('MeasurementsAddScreen — custom measurements', () => {
 
     // Manual Daily category is visible.
     expect(screen.getByTestId('custom-input-manual-1')).toBeTruthy();
-    // Health-sync categories are hidden (exact-name matching, canonical name).
+    // Health-sync categories without a manual entry are collapsed behind More:
+    // no input initially, but the one-tap toggle IS present (accessible).
     expect(screen.queryByTestId('custom-input-sync-1')).toBeNull();
     expect(screen.queryByTestId('custom-input-sync-2')).toBeNull();
-    // Garmin raw-JSON category is hidden too.
     expect(screen.queryByTestId('custom-input-sync-3')).toBeNull();
-    // Hourly / All / Unlimited are not exposed at all.
+    const moreButton = screen.getByLabelText('More categories');
+    expect(moreButton).toBeTruthy();
+    expect(moreButton.props.accessibilityState?.expanded).toBe(false);
+    // Expanding reveals them (same renderCustomCategory rows, accessible again).
+    fireEvent.press(moreButton);
+    expect(screen.getByTestId('custom-input-sync-1')).toBeTruthy();
+    expect(screen.getByTestId('custom-input-sync-2')).toBeTruthy();
+    expect(screen.getByTestId('custom-input-sync-3')).toBeTruthy();
+    expect(screen.getByLabelText('More categories').props.accessibilityState?.expanded).toBe(true);
+    // Hourly / All / Unlimited are not exposed anywhere — even after expanding.
     expect(screen.queryByTestId('custom-input-hourly-1')).toBeNull();
     expect(screen.queryByTestId('custom-input-all-1')).toBeNull();
     expect(screen.queryByTestId('custom-input-unl-1')).toBeNull();
@@ -1002,14 +1011,22 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     // Manual + renamed categories render as editable inputs.
     expect(screen.getByTestId('custom-input-manual-1')).toBeTruthy();
     expect(screen.getByTestId('custom-input-renamed-1')).toBeTruthy();
-    // None of the health categories render (no flood) — index-independent:
-    // no input whose testID matches the health-* pattern exists.
+    // Health categories are NOT flooded initially — they live behind More.
     const rendered = screen.UNSAFE_getAllByType(require('react-native').TextInput);
     const healthInputs = rendered.filter((el: { props?: { testID?: string } }) =>
       el.props?.testID?.startsWith('custom-input-health-'),
     );
     expect(healthInputs).toHaveLength(0);
-    // Hourly is hidden.
+    // The one-tap More categories control is present (not flooded, not gone).
+    const moreButton = screen.getByLabelText('More categories');
+    expect(moreButton).toBeTruthy();
+    expect(moreButton.props.accessibilityState?.expanded).toBe(false);
+    // Expanding reveals representative health inputs (lazy, one tap away).
+    fireEvent.press(moreButton);
+    expect(screen.getByTestId('custom-input-health-0')).toBeTruthy(); // steps
+    expect(screen.getByTestId('custom-input-health-3')).toBeTruthy(); // Active Calories
+    expect(screen.getByLabelText('More categories').props.accessibilityState?.expanded).toBe(true);
+    // Hourly is hidden even after expanding More.
     expect(screen.queryByTestId('custom-input-hourly-1')).toBeNull();
     // Standard built-ins remain present and usable.
     expect(screen.getAllByPlaceholderText('0').length).toBeGreaterThanOrEqual(7);
@@ -1019,6 +1036,132 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.changeText(getInput(screen, 'weight'), '80');
     await pressSave(screen);
     expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'manual-1', value: 42, source: 'manual' }));
+  });
+
+  test('A. matched no-manual category (weight) is collapsed initially and appears after expanding More', () => {
+    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomEntries([]);
+    const screen = renderScreen();
+
+    expect(screen.queryByTestId('custom-input-w1')).toBeNull();
+    const moreButton = screen.getByLabelText('More categories');
+    expect(moreButton.props.accessibilityState?.expanded).toBe(false);
+    fireEvent.press(moreButton);
+    expect(screen.getByTestId('custom-input-w1')).toBeTruthy();
+  });
+
+  test('B. known health name WITH manual entry is visible in primary and prefilled', () => {
+    setCustomCategories([customCategory({ id: 'bp1', name: 'Blood Pressure', frequency: 'Daily' })]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'bp1', value: '120', source: 'manual' })]);
+    const screen = renderScreen();
+
+    // Visible WITHOUT expanding More.
+    expect(screen.getByTestId('custom-input-bp1')).toBeTruthy();
+    expect(screen.queryByLabelText('More categories')).toBeNull();
+    // Manual value is prefilled.
+    expect(screen.getByTestId('custom-input-bp1').props.value).toBe('120');
+  });
+
+  test('C. synced-only entry stays behind More and is NOT prefilled', () => {
+    setCustomCategories([customCategory({ id: 'h1', name: 'HRV_SDNN_min', frequency: 'Daily' })]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'h1', value: '45', source: 'healthkit' })]);
+    const screen = renderScreen();
+
+    expect(screen.queryByTestId('custom-input-h1')).toBeNull();
+    fireEvent.press(screen.getByLabelText('More categories'));
+    // Input appears but the synced value is never prefilled.
+    expect(screen.getByTestId('custom-input-h1').props.value).toBe('');
+  });
+
+  test('D. null-source entry does NOT count as manual (stays behind More)', () => {
+    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'w1', value: '80', source: null })]);
+    const screen = renderScreen();
+
+    expect(screen.queryByTestId('custom-input-w1')).toBeNull();
+    fireEvent.press(screen.getByLabelText('More categories'));
+    expect(screen.getByTestId('custom-input-w1').props.value).toBe('');
+  });
+
+  test('E. saving from More uses source manual and never deletes synced entries', async () => {
+    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'w1', value: '80', source: 'healthkit' })]);
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByLabelText('More categories'));
+    fireEvent.changeText(screen.getByTestId('custom-input-w1'), '82');
+    await pressSave(screen);
+
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    expect(saveMock).toHaveBeenCalledWith(
+      expect.objectContaining({ category_id: 'w1', value: 82, source: 'manual' }),
+    );
+    // The synced entry is never deleted/overwritten by this manual save.
+    expect(mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  test('F. dirty value typed inside More survives collapse and re-expand', async () => {
+    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomEntries([]);
+    const screen = renderScreen();
+
+    const moreButton = screen.getByLabelText('More categories');
+    fireEvent.press(moreButton);
+    fireEvent.changeText(screen.getByTestId('custom-input-w1'), '82');
+    fireEvent.press(moreButton); // collapse
+    expect(screen.queryByTestId('custom-input-w1')).toBeNull();
+    fireEvent.press(moreButton); // re-expand
+    expect(screen.getByTestId('custom-input-w1').props.value).toBe('82');
+    // Save submits the retained value.
+    await pressSave(screen);
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    expect(saveMock).toHaveBeenCalledWith(
+      expect.objectContaining({ category_id: 'w1', value: 82, source: 'manual' }),
+    );
+  });
+
+  test('G. dirty value typed inside More survives a background refetch reconciliation', async () => {
+    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomEntries([]);
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByLabelText('More categories'));
+    fireEvent.changeText(screen.getByTestId('custom-input-w1'), '82');
+
+    // Simulate a background refetch: same categories, same (empty) entries —
+    // the reconciliation must preserve the typed value.
+    act(() => {
+      setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+      setCustomEntries([]);
+    });
+    expect(screen.getByTestId('custom-input-w1').props.value).toBe('82');
+  });
+
+  test('K. no More categories toggle when there are no hidden categories', () => {
+    setCustomCategories([
+      customCategory({ id: 'c1', name: 'My Daily', frequency: 'Daily' }),
+      customCategory({ id: 'bp1', name: 'Blood Pressure', frequency: 'Daily' }),
+    ]);
+    setCustomEntries([customEntry({ id: 'e1', category_id: 'bp1', value: '120', source: 'manual' })]);
+    const screen = renderScreen();
+
+    expect(screen.getByTestId('custom-input-c1')).toBeTruthy();
+    expect(screen.getByTestId('custom-input-bp1')).toBeTruthy();
+    expect(screen.queryByLabelText('More categories')).toBeNull();
+  });
+
+  test('L. More categories toggle exposes accessibility expanded state', () => {
+    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomEntries([]);
+    const screen = renderScreen();
+
+    const button = screen.getByLabelText('More categories');
+    expect(button.props.accessibilityRole).toBe('button');
+    expect(button.props.accessibilityState?.expanded).toBe(false);
+    fireEvent.press(button);
+    expect(screen.getByLabelText('More categories').props.accessibilityState?.expanded).toBe(true);
+    fireEvent.press(screen.getByLabelText('More categories'));
+    expect(screen.getByLabelText('More categories').props.accessibilityState?.expanded).toBe(false);
   });
 
 });

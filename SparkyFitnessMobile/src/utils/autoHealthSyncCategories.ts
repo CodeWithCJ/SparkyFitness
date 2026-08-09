@@ -15,9 +15,19 @@
  * Matching semantics mirror server ingestion exactly: the server resolves a
  * category with `category.name === categoryName` (exact, case-sensitive), so
  * this set is matched the same way. A user who renames a synced category away
- * from its canonical name makes it visible again — matching the maintainer's
- * stated expectation. A user who literally types one of these names gets a
- * category that already receives synced entries, so hiding it is correct.
+ * from its canonical name removes it from this heuristic and it behaves like a
+ * normal category.
+ *
+ * PRESENTATION HEURISTIC (maintainer apedley, 2026-08): this set is NOT an
+ * exclusion rule. In the Measurements Add screen, a matched Daily category
+ * with no manual entry for the selected date is collapsed under the one-tap
+ * "More categories" section so integration-heavy accounts stay compact, while
+ * legitimate user collisions (e.g. `weight`, `Blood Pressure`) remain
+ * accessible. A matched Daily category that ALREADY has a manual entry for the
+ * selected date stays in the main custom list. The form/save model always
+ * includes every Daily category, and every manual save uses `source: 'manual'`
+ * (synced-only values are never prefilled as editable manual state). A
+ * long-term server-side categorization flag remains future work.
  */
 export const AUTO_HEALTH_SYNC_CUSTOM_CATEGORY_NAMES: ReadonlySet<string> = new Set([
   // ── healthDataHandlers DEFAULT_UNITS_BY_HEALTH_TYPE keys ────────────────

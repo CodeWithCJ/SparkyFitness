@@ -35,6 +35,7 @@ import { parseDecimalInput } from '../utils/numericInput';
 import {
   syncCustomForm,
   buildCustomOps,
+  isManualSource,
   type CustomFormState,
   type CustomRow,
   type CustomOp,
@@ -125,18 +126,19 @@ const joinWithAnd = (items: string[]): string => {
 
 /**
  * Categories eligible for the manual Daily editor: only `Daily` frequency and
- * NOT one of the known auto-created health-sync categories (which are
- * exact-name matched, mirroring server ingestion). Hourly / All / Unlimited are
- * intentionally not exposed (scope cut; future feature PR). Synced categories
- * that the user renamed away from the canonical health name become visible
- * again, matching maintainer expectations.
+ * Hourly / All / Unlimited are intentionally not exposed (scope cut; future
+ * feature PR).
+ *
+ * Health-sync name matching is NOT applied here: the form/save model must
+ * include every Daily category (known health-sync names included) so a value
+ * typed inside the collapsed "More categories" section still saves with
+ * source 'manual'. Presentation (primary vs More) is partitioned separately
+ * from the form model.
  */
-function isEligibleManualDailyCategory(category: {
-  name: string;
+function isDailyCustomCategory(category: {
   frequency: string | null | undefined;
 }): boolean {
-  if (category.frequency !== 'Daily') return false;
-  return !isAutoHealthSyncCustomCategoryName(category.name);
+  return category.frequency === 'Daily';
 }
 
 const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -202,10 +204,58 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // Daily categories. Health-sync categories (and Hourly/All/Unlimited) never
   // reach the form state, so they cannot flood the screen. Memoized so the
   // reconciliation effect below has a stable identity across renders.
-  const eligibleCustomCategories = useMemo(
-    () => (customCategories ?? []).filter(isEligibleManualDailyCategory),
+  /** FORM MODEL: every Daily category (health-sync names included). Used by
+   * syncCustomForm / buildCustomOps / delete lookup / reconciliation / dirty
+   * preservation — never the presentation partition, so a value typed inside
+   * "More categories" is always part of the form regardless of expansion. */
+  const dailyCustomCategories = useMemo(
+    () => (customCategories ?? []).filter(isDailyCustomCategory),
     [customCategories],
   );
+
+  /** Server-backed manual entries for the CURRENT selected date only. Synced /
+   * null / undefined sources never count. This is the temporary mobile
+   * heuristic (selected-day entries); a long-term server-side
+   * has_manual_entries flag remains future work per maintainer. */
+  const manualCategoryIds = useMemo(
+    () =>
+      new Set(
+        (customMeasurements ?? [])
+          .filter((entry) => isManualSource(entry.source))
+          .map((entry) => entry.category_id),
+      ),
+    [customMeasurements],
+  );
+
+  /** Primary: not a known health-sync name, OR it already has a manual entry
+   * for the selected date. Always visible in the main custom list. */
+  const primaryCustomCategories = useMemo(
+    () =>
+      dailyCustomCategories.filter(
+        (cat) =>
+          !isAutoHealthSyncCustomCategoryName(cat.name) ||
+          manualCategoryIds.has(cat.id),
+      ),
+    [dailyCustomCategories, manualCategoryIds],
+  );
+
+  /** More: a known health-sync name with NO manual entry for the selected
+   * date — collapsed behind one tap so integration-heavy accounts stay
+   * compact while legitimate collisions (weight, Blood Pressure) remain
+   * accessible. */
+  const moreCustomCategories = useMemo(
+    () =>
+      dailyCustomCategories.filter(
+        (cat) =>
+          isAutoHealthSyncCustomCategoryName(cat.name) &&
+          !manualCategoryIds.has(cat.id),
+      ),
+    [dailyCustomCategories, manualCategoryIds],
+  );
+
+  // Lazy "More categories" expansion state (presentation only — never owns the
+  // form value; collapsing keeps typed values in customForm).
+  const [showMoreCategories, setShowMoreCategories] = useState(false);
 
   // Sync the form to the latest measurements snapshot. Re-runs on every
   // measurements change (including background refetches) so cached-then-fresh
@@ -296,13 +346,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     const dirtyKeys = new Set(dirtyCustomKeysRef.current);
     const synced = syncCustomForm({
-      categories: eligibleCustomCategories,
+      categories: dailyCustomCategories,
       serverEntries: customMeasurements ?? [],
       current: customFormRef.current,
       dirtyKeys,
     });
     setCustomForm(synced.form);
-  }, [selectedDate, eligibleCustomCategories, customMeasurements]);
+  }, [selectedDate, dailyCustomCategories, customMeasurements]);
 
   const updateField = useCallback((key: keyof FormState, value: string) => {
     dirtyFieldsRef.current.add(FORM_FIELD_KEYS[key]);
@@ -491,7 +541,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     // means a changed row failed validation, so handleSave stops before any
     // mutation runs; untouched rows are never parsed and cannot block saves.
     const customResult = buildCustomOps({
-      categories: eligibleCustomCategories,
+      categories: dailyCustomCategories,
       form: customForm,
       dirtyKeys: new Set(dirtyCustomKeysRef.current),
       onInvalid: (label) => {
@@ -595,7 +645,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const clearingLabels = [
       ...cleared.map((k) => FIELD_LABELS[k]),
       ...customDeleteOps.map((op) => {
-        const cat = eligibleCustomCategories.find((c) => c.id === op.categoryId);
+        const cat = dailyCustomCategories.find((c) => c.id === op.categoryId);
         return cat ? (cat.display_name ?? cat.name) : op.categoryId;
       }),
     ];
@@ -614,7 +664,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, eligibleCustomCategories, customForm, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, dailyCustomCategories, customForm, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
 
   const isCustomDataLoading = isCustomCategoriesLoading || isCustomMeasurementsLoading;
   const isCustomDataError = isCustomCategoriesError || isCustomMeasurementsError;
@@ -916,12 +966,32 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color={accentPrimary} />
               </View>
             ) : (
-              eligibleCustomCategories.length > 0 && (
+              dailyCustomCategories.length > 0 && (
                 <View className="mt-4 mb-2">
                   <Text className="text-text-primary text-base font-semibold mb-3">
                      Custom Measurements
                   </Text>
-                  {eligibleCustomCategories.map(renderCustomCategory)}
+                  {primaryCustomCategories.map(renderCustomCategory)}
+                  {moreCustomCategories.length > 0 && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        onPress={() => setShowMoreCategories((prev) => !prev)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        className="self-start py-0 px-0"
+                        textClassName="text-sm"
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded: showMoreCategories }}
+                        accessibilityLabel="More categories"
+                      >
+                        <Text style={{ color: accentPrimary }} className="text-sm font-medium">
+                          {showMoreCategories ? 'Hide categories ▴' : 'More categories ▾'}
+                        </Text>
+                      </Button>
+                      {showMoreCategories &&
+                        moreCustomCategories.map(renderCustomCategory)}
+                    </>
+                  )}
                 </View>
               )
             )}
