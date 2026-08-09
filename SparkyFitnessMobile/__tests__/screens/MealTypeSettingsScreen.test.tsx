@@ -677,4 +677,145 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     expect(queryAllByTestId('large-time-wheel')).toHaveLength(0);
   });
 
+  it('concurrency: an earlier FAILED visibility update never rolls back a later SUCCESS (different records)', async () => {
+    // Deferred promises so the two mutations truly overlap.
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, queryClient } = renderScreen({ fetchMock });
+
+    let rejectA!: (e: Error) => void;
+    let resolveB!: (v: any) => void;
+    const pendingA = new Promise((_res, rej) => { rejectA = rej; });
+    const pendingB = new Promise((res) => { resolveB = res; });
+
+    const callLog: string[] = [];
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      callLog.push(id);
+      const idx = serverState.findIndex((mt) => mt.id === id);
+      const updated = { ...serverState[idx], ...data };
+      if (id === 'sys-b') {
+        await pendingA;
+        serverState[idx] = updated;
+        return updated;
+      }
+      // sys-l
+      await pendingB;
+      serverState[idx] = updated;
+      return updated;
+    });
+
+    await findByText('breakfast');
+    // A: Breakfast visible -> false (pending)
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false);
+    // B: Lunch visible -> false (pending)
+    fireEvent(getByLabelText('Visible lunch'), 'valueChange', false);
+
+    // B succeeds FIRST, then A fails LATE.
+    await act(async () => { resolveB({ ...systemMealTypes[1], is_visible: false }); });
+    await act(async () => { rejectA(new Error('boom')); });
+
+    await waitFor(() => {
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      const b = cached?.find((mt) => mt.id === 'sys-b');
+      const l = cached?.find((mt) => mt.id === 'sys-l');
+      expect(b?.is_visible).toBe(true); // rolled back to previous
+      expect(l?.is_visible).toBe(false); // B's success preserved
+    });
+    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    expect(getByLabelText('Visible lunch').props.value).toBe(false);
+    await act(async () => {});
+  });
+
+  it('concurrency: same record + same field — a newer toggle wins over an older late completion', async () => {
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, queryClient } = renderScreen({ fetchMock });
+
+    let resolveA!: (v: any) => void;
+    let resolveB!: (v: any) => void;
+    const pendingA = new Promise((res) => { resolveA = res; });
+    const pendingB = new Promise((res) => { resolveB = res; });
+
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      const idx = serverState.findIndex((mt) => mt.id === id);
+      const updated = { ...serverState[idx], ...data };
+      if ((data as any).is_visible === false) {
+        await pendingA; // A: Breakfast -> false (pending)
+        // A was processed by the server BEFORE B, so its late response is a
+        // STALE snapshot — it must not overwrite the server state that B
+        // already advanced to true.
+        return updated;
+      }
+      await pendingB; // B: Breakfast -> true (pending)
+      serverState[idx] = updated;
+      return updated;
+    });
+
+    await findByText('breakfast');
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', false); // A
+    fireEvent(getByLabelText('Visible breakfast'), 'valueChange', true); // B
+
+    // B succeeds first, A resolves late — A must NOT overwrite B.
+    await act(async () => { resolveB({ ...systemMealTypes[0], is_visible: true }); });
+    await act(async () => { resolveA({ ...systemMealTypes[0], is_visible: false }); });
+
+    await waitFor(() => {
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      expect(cached?.find((mt) => mt.id === 'sys-b')?.is_visible).toBe(true);
+    });
+    expect(getByLabelText('Visible breakfast').props.value).toBe(true);
+    await act(async () => {});
+  });
+
+  it('concurrency: same record + different fields — both survive adversarial resolution', async () => {
+    const serverState: any[] = JSON.parse(JSON.stringify(allMealTypes));
+    const fetchMock = async () => JSON.parse(JSON.stringify(serverState));
+    const { findByText, getByLabelText, queryClient } = renderScreen({ fetchMock });
+
+    let resolveA!: (v: any) => void;
+    let resolveB!: (v: any) => void;
+    const pendingA = new Promise((res) => { resolveA = res; });
+    const pendingB = new Promise((res) => { resolveB = res; });
+
+    jest.spyOn(mealTypesApi, 'updateMealType').mockImplementation(async (id, data) => {
+      const idx = serverState.findIndex((mt) => mt.id === id);
+      if ('is_visible' in data) {
+        await pendingA;
+        // A (visibility) is a different field from B (time): the server only
+        // applies is_visible and returns the CURRENT record — it does not
+        // revert default_time (a real server would not undo B's field).
+        serverState[idx] = { ...serverState[idx], is_visible: (data as any).is_visible };
+        return { ...serverState[idx] };
+      }
+      await pendingB;
+      // The server stores the time and returns its AUTHORITATIVE normalized
+      // value (18:45) — the picker's pending HH:MM may differ in tests.
+      serverState[idx] = { ...serverState[idx], ...data, default_time: '18:45' };
+      return { ...serverState[idx], default_time: '18:45' };
+    });
+
+    await findByText('Pre-Workout');
+    // A: Pre-Workout visibility -> false; B: Pre-Workout default_time -> 18:45
+    fireEvent(getByLabelText('Visible Pre-Workout'), 'valueChange', false);
+    fireEvent.press(getByLabelText('Default time for Pre-Workout, 17:30'));
+    await waitFor(() => expect(getByLabelText('Save default time')).toBeTruthy());
+    fireEvent.press(getByLabelText('Save default time')); // pending B (server returns 18:45)
+
+    // Resolve in adversarial order: B (time) first, then A (visibility).
+    await act(async () => {
+      resolveB({ ...customMealTypes[0], default_time: '18:45' });
+    });
+    await act(async () => {
+      resolveA({ ...customMealTypes[0], is_visible: false, default_time: '17:30' });
+    });
+
+    await waitFor(() => {
+      const cached = queryClient.getQueryData<any[]>(['mealTypes']);
+      const pw = cached?.find((mt) => mt.id === 'custom-pw');
+      expect(pw?.is_visible).toBe(false);
+      expect(pw?.default_time).toBe('18:45'); // stale full-record merge must not clobber B
+    });
+    await act(async () => {});
+  });
+
 });

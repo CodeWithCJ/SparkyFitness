@@ -56,6 +56,7 @@ import {
   DEFAULT_CREATE_GAP,
   MAX_CUSTOM_PER_GAP,
   GAP_USER_LABEL,
+  GAP_SLOT_RANGE,
   type MealGapKey,
 } from '../utils/mealTypeSlots';
 
@@ -92,6 +93,7 @@ const CustomMealTypeRow: React.FC<{
   textSecondary: string;
   activeDragIndex: SharedValue<number>;
   panY: SharedValue<number>;
+  committingTranslate: SharedValue<number>;
   strides: number[];
   offsets: number[];
 }> = ({
@@ -106,6 +108,7 @@ const CustomMealTypeRow: React.FC<{
   textSecondary,
   activeDragIndex,
   panY,
+  committingTranslate,
   strides,
   offsets,
 }) => {
@@ -121,11 +124,16 @@ const CustomMealTypeRow: React.FC<{
     .onEnd(() => {
       const from = activeDragIndex.value;
       const to = computeReorderTargetIndex(strides, offsets, from, panY.value);
-      activeDragIndex.value = -1;
-      panY.value = 0;
       if (from >= 0 && from !== to) {
+        // Commit handoff (WorkoutReorderList pattern): keep the active row's
+        // final translate while the JS reorder state commits — no snap-back to
+        // origin before React re-renders the row at its destination.
+        committingTranslate.value = panY.value;
         // Worklet → JS boundary: onMove must run on the JS thread.
         runOnJS(onMove)(from, to);
+      } else {
+        activeDragIndex.value = -1;
+        panY.value = 0;
       }
     });
 
@@ -135,8 +143,15 @@ const CustomMealTypeRow: React.FC<{
       // Only the active row floats during the drag (Option A). System anchors
       // are fixed Views elsewhere and custom siblings stay put, so no custom
       // row can ever preview-overlap an anchor's coordinate.
+      // During the commit handoff the row keeps its FINAL translate (no
+      // snap-back); moveCustomType zeroes the state once the new order has
+      // rendered, at which point resetting translate is a visual no-op.
+      const ty =
+        committingTranslate.value !== 0
+          ? committingTranslate.value
+          : panY.value;
       return {
-        transform: [{ translateY: panY.value }, { scale: 1.02 }],
+        transform: [{ translateY: ty }, { scale: 1.02 }],
         zIndex: 10,
         elevation: 8,
         shadowOpacity: 0.16,
@@ -231,35 +246,89 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     queryClient.invalidateQueries({ queryKey: mealTypesQueryKey });
   }, [queryClient]);
 
-  const updateMutation = useMutation({
+  /**
+   * Field-scoped generic update.
+   *
+   * Concurrency-safe by design (CodeRabbit P1): instead of snapshotting and
+   * restoring the WHOLE mealTypes array, every mutation records only the
+   * fields it changed (previous + optimistic values per field). Rollback and
+   * server-result merge touch ONLY those fields, and only while the cache
+   * still contains THIS mutation's optimistic value — a newer mutation that
+   * already moved a field forward is never overwritten by an older one that
+   * fails or resolves late.
+   */
+  const updateMutation = useMutation<
+    MealType,
+    Error,
+    { id: string; data: Partial<Omit<MealType, 'id'>> },
+    {
+      id: string;
+      previousFields: Record<string, unknown>;
+      optimisticFields: Record<string, unknown>;
+    }
+  >({
     mutationFn: ({ id, data }: { id: string; data: Partial<Omit<MealType, 'id'>> }) =>
       updateMealType(id, data),
     onMutate: async ({ id, data }) => {
-      // Optimistically merge the partial update into the cached record so the
-      // controlled Switch / time text react immediately.
       await queryClient.cancelQueries({ queryKey: mealTypesQueryKey });
-      const previous = queryClient.getQueryData<MealType[]>(mealTypesQueryKey);
-      if (previous) {
-        queryClient.setQueryData<MealType[]>(
-          mealTypesQueryKey,
-          previous.map((mt) => (mt.id === id ? { ...mt, ...data } : mt)),
-        );
-      }
-      return { previous };
-    },
-    onSuccess: (updated, { id }) => {
-      // Replace the cached record with the authoritative server result.
+      const previousFields: Record<string, unknown> = {};
+      const optimisticFields: Record<string, unknown> = {};
       queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
-        old
-          ? old.map((mt) =>
-              mt.id === id ? { ...mt, ...updated, id: mt.id } : mt,
-            )
-          : old,
+        (old ?? []).map((mt) => {
+          if (mt.id !== id) return mt;
+          for (const [field, value] of Object.entries(data)) {
+            previousFields[field] = (mt as unknown as Record<string, unknown>)[field];
+            optimisticFields[field] = value;
+          }
+          return { ...mt, ...data };
+        }),
+      );
+      return { id, previousFields, optimisticFields };
+    },
+    onSuccess: (updated, vars, ctx) => {
+      const context = ctx as {
+        id: string;
+        optimisticFields: Record<string, unknown>;
+      };
+      // Apply the server result ONLY for the fields this mutation touched, and
+      // only if the cache still holds this mutation's optimistic value for that
+      // field (a newer mutation may have moved it forward since).
+      queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
+        (old ?? []).map((mt) => {
+          if (mt.id !== context.id) return mt;
+          const next = { ...mt };
+          for (const [field, optimistic] of Object.entries(
+            context.optimisticFields,
+          )) {
+            if ((mt as unknown as Record<string, unknown>)[field] === optimistic) {
+              (next as unknown as Record<string, unknown>)[field] = (
+                updated as unknown as Record<string, unknown>
+              )[field];
+            }
+          }
+          return next;
+        }),
       );
     },
     onError: (err: Error, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(mealTypesQueryKey, context.previous);
+      if (context) {
+        // Roll back ONLY the fields owned by this failed mutation, and only
+        // where the cache still holds this mutation's optimistic value.
+        queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
+          (old ?? []).map((mt) => {
+            if (mt.id !== context.id) return mt;
+            const next = { ...mt };
+            for (const [field, optimistic] of Object.entries(
+              context.optimisticFields,
+            )) {
+              if ((mt as unknown as Record<string, unknown>)[field] === optimistic) {
+                (next as Record<string, unknown>)[field] =
+                  context.previousFields[field];
+              }
+            }
+            return next;
+          }),
+        );
       }
       addLog(`Failed to update meal type: ${err.message}`, 'ERROR');
       Toast.show({ type: 'error', text1: 'Failed to update' });
@@ -334,28 +403,22 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   }, [unifiedRows.length]);
   const activeDragIndex = useSharedValue(-1);
   const panY = useSharedValue(0);
+  // Commit handoff: holds the active row's final translate until the new
+  // unified order has rendered (see CustomMealTypeRow onEnd).
+  const committingTranslate = useSharedValue(0);
 
-  /**
-   * Serialized reorder persistence. A promise chain guarantees exactly one
-   * persistence sequence at a time; while one runs, a newer drag coalesces as
-   * the "newest desired order" and is persisted next. The final server state
-   * deterministically equals the newest accepted visual order — an older
-   * sequence can never overwrite a newer one.
-   */
-  const persistChainRef = useRef<Promise<void>>(Promise.resolve());
-  const latestOrderRef = useRef<Record<MealGapKey, string[]> | null>(null);
-
+  /** Persists one concrete gap assignment (direct API calls, no generic
+   * mutation callbacks). Success writes the cache + one invalidate; failure
+   * logs once, shows one reorder error and reconciles. Never retried
+   * automatically — a newer user order supersedes it after reconciliation. */
   const doPersist = useCallback(
     async (gapsToPersist: Record<MealGapKey, MealType[]>) => {
       const writes = buildSortOrderWrites(gapsToPersist);
       if (writes.length === 0) return;
       try {
         for (const write of writes) {
-          // Direct API call: no global mutation callbacks run per row.
           await updateMealType(write.id, { sort_order: write.sort_order });
         }
-        // Success: write the new sort_orders into the query cache immediately,
-        // clear the override, then issue exactly ONE invalidate.
         queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) => {
           const byId = new Map(writes.map((w) => [w.id, w.sort_order]));
           return (old ?? []).map((mt) =>
@@ -374,17 +437,32 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     [invalidate, queryClient],
   );
 
-  const enqueuePersist = useCallback(() => {
-    const run = async () => {
-      let lastPersisted: string | null = null;
-      for (;;) {
+  /**
+   * ONE active persistence worker. A promise chain guarantees exactly one
+   * persistence sequence at a time; while one runs, a newer drag coalesces as
+   * the "newest desired order" and is persisted next. The final server state
+   * deterministically equals the newest accepted visual order — an older
+   * sequence can never overwrite a newer one.
+   */
+  // ONE active persistence worker. `latestDesiredOrderRef` holds the newest
+  // accepted visual order; `workerRunningRef` guarantees only a single worker
+  // is alive at a time. Moves while a worker is running simply update the
+  // desired order — the running worker drains it in a loop, so the newest
+  // order is persisted exactly once and an older sequence can never finish
+  // after a newer one.
+  const latestOrderRef = useRef<Record<MealGapKey, string[]> | null>(null);
+  const workerRunningRef = useRef(false);
+
+  const persistWorker = useCallback(async () => {
+    workerRunningRef.current = true;
+    try {
+      // Loop until the latest desired order is consumed. `doPersist` uses the
+      // CURRENT customTypes when constructing writes (no stale closures), and
+      // the loop re-reads the ref so a move arriving mid-persist is picked up
+      // by the SAME worker — never a second worker.
+      while (latestOrderRef.current) {
         const latest = latestOrderRef.current;
-        if (!latest) break;
-        const key = Object.values(latest)
-          .flat()
-          .join(',');
-        if (key === lastPersisted) break;
-        lastPersisted = key;
+        latestOrderRef.current = null; // consume the snapshot
         const byId = new Map(customTypes.map((mt) => [mt.id, mt]));
         const gaps: Record<MealGapKey, MealType[]> = {
           b_l: [],
@@ -398,9 +476,20 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         }
         await doPersist(gaps);
       }
-    };
-    persistChainRef.current = persistChainRef.current.then(run, run);
+    } finally {
+      workerRunningRef.current = false;
+      // A move that arrived exactly while we were finishing may have set the
+      // ref after the while-condition; drain it if so.
+      if (latestOrderRef.current) {
+        void persistWorker();
+      }
+    }
   }, [customTypes, doPersist]);
+
+  const enqueuePersist = useCallback(() => {
+    if (workerRunningRef.current) return; // worker already drains latest order
+    void persistWorker();
+  }, [persistWorker]);
 
   const moveCustomType = useCallback(
     (fromIndex: number, toIndex: number) => {
@@ -443,9 +532,14 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       };
       latestOrderRef.current = override;
       setGapOverride(override);
+      // Commit handoff release: the new order is now rendered, so resetting
+      // the floating transform is a visual no-op.
+      committingTranslate.value = 0;
+      activeDragIndex.value = -1;
+      panY.value = 0;
       enqueuePersist();
     },
-    [unifiedRows, enqueuePersist],
+    [unifiedRows, enqueuePersist, committingTranslate, activeDragIndex, panY],
   );
 
   const onRefresh = useCallback(async () => {
@@ -493,11 +587,9 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           type: 'error',
           text1: `No more meal types can be placed ${GAP_USER_LABEL[targetGap]}.`,
         });
-        setIsCreating(false);
         return;
       }
-      const gapFirst: Record<MealGapKey, number> = { b_l: 11, l_d: 21, d_s: 31 };
-      const nextSort = gapFirst[targetGap] + current[targetGap].length;
+      const nextSort = GAP_SLOT_RANGE[targetGap][0] + current[targetGap].length;
       try {
         const created = await createMealType({
           name: values.name,
@@ -615,7 +707,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     <View
       key={mt.id}
       className="flex-row items-center bg-surface border-b border-border/40"
-      style={{ minHeight: ROW_HEIGHT }}
+      style={{ height: ROW_HEIGHT }}
       testID={`meal-type-system-${mt.id}`}
     >
       <View className="px-4 py-3">
@@ -689,6 +781,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
                     textSecondary={textSecondary}
                     activeDragIndex={activeDragIndex}
                     panY={panY}
+                    committingTranslate={committingTranslate}
                     strides={strides}
                     offsets={offsets}
                   />

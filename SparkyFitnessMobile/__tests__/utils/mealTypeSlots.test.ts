@@ -52,6 +52,17 @@ describe('mealTypeSlots — anchor model', () => {
     expect(slotsForGap('d_s', 1)).toEqual([31]);
   });
 
+  it('clamps slotsForGap so count > 9 can never produce an anchor value', () => {
+    // A gap holds at most nine customs; count=12 must not spill into the next
+    // system anchor (20/30/40).
+    expect(slotsForGap('b_l', 12)).toEqual([11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    expect(slotsForGap('l_d', 99)).toEqual([21, 22, 23, 24, 25, 26, 27, 28, 29]);
+    expect(slotsForGap('d_s', 10)).toEqual([31, 32, 33, 34, 35, 36, 37, 38, 39]);
+    // Negative/zero never produce invalid slots either.
+    expect(slotsForGap('b_l', 0)).toEqual([]);
+    expect(slotsForGap('l_d', -1)).toEqual([]);
+  });
+
   it('assigns custom types into gaps and sorts by sort_order within a gap', () => {
     const types = [
       custom('a', 'A', 22),

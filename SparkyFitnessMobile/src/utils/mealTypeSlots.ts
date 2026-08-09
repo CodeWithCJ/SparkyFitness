@@ -100,10 +100,13 @@ export function assignCustomTypesToGaps(customTypes: MealType[]): Record<MealGap
   return gaps;
 }
 
-/** Sequential slot values for a gap: 11,12,13... / 21,22,23... / 31,32,33... */
+/** Sequential slot values for a gap: 11,12,13... / 21,22,23... / 31,32,33...
+ * Count is clamped to MAX_CUSTOM_PER_GAP so the sequence can never overflow
+ * into the next system anchor value (a gap holds at most nine customs). */
 export function slotsForGap(gap: MealGapKey, count: number): number[] {
   const [first] = GAP_SLOT_RANGE[gap];
-  return Array.from({ length: count }, (_, i) => first + i);
+  const safeCount = Math.min(Math.max(count, 0), MAX_CUSTOM_PER_GAP);
+  return Array.from({ length: safeCount }, (_, i) => first + i);
 }
 
 /**
@@ -124,26 +127,26 @@ export function moveCustomTypeBetweenGaps(
   toGap: MealGapKey,
   toIndex: number,
 ): Record<MealGapKey, MealType[]> | null {
-  const src = currentGaps[fromGap];
+  // Copy the input arrays first — this helper is PURE and must never mutate
+  // the caller's gap assignment.
+  const src = [...currentGaps[fromGap]];
   if (fromIndex < 0 || fromIndex >= src.length) return null;
   const [moved] = src.splice(fromIndex, 1);
 
-  let dst = currentGaps[toGap];
   if (toGap === fromGap) {
-    // Same gap: insertion index is relative to the list AFTER the removal.
-    const clamped = Math.min(Math.max(toIndex, 0), dst.length);
-    dst.splice(clamped, 0, moved);
-    return { ...currentGaps };
+    // Same gap: src is already the post-removal copy; insertion index is
+    // relative to the list AFTER the removal.
+    const clamped = Math.min(Math.max(toIndex, 0), src.length);
+    src.splice(clamped, 0, moved);
+    return { ...currentGaps, [fromGap]: src };
   }
+  const dst = [...currentGaps[toGap]];
   if (dst.length >= MAX_CUSTOM_PER_GAP) {
-    // Restore the removed element before returning null so the caller's
-    // optimistic state stays consistent if it decides to keep it.
-    src.splice(fromIndex, 0, moved);
     return null;
   }
   const clamped = Math.min(Math.max(toIndex, 0), dst.length);
   dst.splice(clamped, 0, moved);
-  return { ...currentGaps };
+  return { ...currentGaps, [fromGap]: src, [toGap]: dst };
 }
 
 /**
