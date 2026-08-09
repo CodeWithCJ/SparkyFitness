@@ -238,7 +238,7 @@ export function resolveCustomTargetGap(
 ): { gap: MealGapKey; index: number } | null {
   const flat: { gap: MealGapKey }[] = [];
   for (const key of ['b_l', 'l_d', 'd_s'] as MealGapKey[]) {
-    for (const _id of customGapIndices[key]) {
+    for (let i = 0; i < customGapIndices[key].length; i += 1) {
       flat.push({ gap: key });
     }
   }
