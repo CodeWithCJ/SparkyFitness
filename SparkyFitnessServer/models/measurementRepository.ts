@@ -1227,8 +1227,7 @@ async function bulkUpsertCustomMeasurements(
     const keyedWinnerIndexes = [...winnerByKey.values()];
     // One superset SELECT for all keyed rows, then exact per-key matching in
     // JS (mirrors the per-record existence SELECT semantics).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const existingByKey = new Map<string, any>();
+    const existingByKey = new Map<string, Record<string, unknown>>();
     if (keyedWinnerIndexes.length > 0) {
       const categoryIds = [
         ...new Set(keyedWinnerIndexes.map((i) => prepared[i].categoryId)),
@@ -1246,8 +1245,7 @@ async function bulkUpsertCustomMeasurements(
       );
       for (const index of keyedWinnerIndexes) {
         const row = prepared[index];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const match = existing.rows.find((dbRow: any) => {
+        const match = existing.rows.find((dbRow: Record<string, unknown>) => {
           if (dbRow.category_id !== row.categoryId) return false;
           // entry_date comes back as a YYYY-MM-DD string (poolManager DATE parser)
           if (String(dbRow.entry_date) !== String(row.entryDate)) return false;
@@ -1265,8 +1263,7 @@ async function bulkUpsertCustomMeasurements(
         }
       }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const writtenByInput: any[] = new Array(rows.length);
+    const writtenByInput: Record<string, unknown>[] = new Array(rows.length);
     const updateIndexes = keyedWinnerIndexes.filter((i) =>
       existingByKey.has(keyByIndex[i]!)
     );
@@ -1279,21 +1276,27 @@ async function bulkUpsertCustomMeasurements(
          RETURNING cm.*`,
         [
           actingUserId,
-          updateIndexes.map((i) => existingByKey.get(keyByIndex[i]!).id),
+          updateIndexes.map((i) => existingByKey.get(keyByIndex[i]!)!.id),
           updateIndexes.map((i) => prepared[i].value),
           updateIndexes.map((i) => prepared[i].entryTimestamp),
           updateIndexes.map((i) => prepared[i].notes ?? null),
           updateIndexes.map((i) => prepared[i].source),
         ]
       );
-      const updatedById = new Map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateResult.rows.map((row: any) => [row.id, row])
+      const updatedById = new Map<string, Record<string, unknown>>(
+        updateResult.rows.map((row: Record<string, unknown>) => [
+          row.id as string,
+          row,
+        ])
       );
       for (const index of updateIndexes) {
-        writtenByInput[index] = updatedById.get(
-          existingByKey.get(keyByIndex[index]!).id
-        );
+        const existingRow = existingByKey.get(keyByIndex[index]!);
+        if (existingRow && existingRow.id) {
+          const updatedRow = updatedById.get(String(existingRow.id));
+          if (updatedRow) {
+            writtenByInput[index] = updatedRow;
+          }
+        }
       }
     }
     const insertIndexes = [

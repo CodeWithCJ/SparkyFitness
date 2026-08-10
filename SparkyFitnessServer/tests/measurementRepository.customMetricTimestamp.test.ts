@@ -25,6 +25,7 @@ describe('measurementRepository custom metric entry_timestamp defaulting', () =>
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   it('defaults entry_timestamp for Unlimited frequency when omitted (logging for today in UTC)', async () => {
@@ -70,9 +71,14 @@ describe('measurementRepository custom metric entry_timestamp defaulting', () =>
     expect(new Date(entryTimestampVal).toString()).not.toBe('Invalid Date');
   });
 
-  it('handles positive timezone offsets (e.g. Asia/Tokyo) around UTC midnight', async () => {
+  it('handles positive timezone offsets (e.g. Asia/Tokyo) around UTC midnight deterministically', async () => {
+    vi.useFakeTimers();
+    // At 23:30 UTC on 2026-08-08, local date in Tokyo (UTC+9) is 2026-08-09
+    const frozenUtc = new Date('2026-08-08T23:30:00.000Z');
+    vi.setSystemTime(frozenUtc);
+
     mockClient.query.mockResolvedValue({ rows: [{ id: 'cm-tokyo' }] });
-    const tokyoToday = todayInZone('Asia/Tokyo');
+    const tokyoToday = '2026-08-09'; // Matches todayInZone('Asia/Tokyo') at 23:30 UTC
 
     await measurementRepository.upsertCustomMeasurement(
       'user-1',
@@ -94,14 +100,17 @@ describe('measurementRepository custom metric entry_timestamp defaulting', () =>
     );
     expect(insertCall).toBeDefined();
     const timestampVal = insertCall![1]![5] as string;
-    expect(timestampVal).toBeDefined();
-    // Since tokyoToday equals todayInZone('Asia/Tokyo'), timestamp defaults to current execution time
-    expect(new Date(timestampVal).toString()).not.toBe('Invalid Date');
+    expect(timestampVal).toBe(frozenUtc.toISOString());
   });
 
-  it('handles negative timezone offsets (e.g. America/Los_Angeles) around UTC midnight', async () => {
+  it('handles negative timezone offsets (e.g. America/Los_Angeles) around UTC midnight deterministically', async () => {
+    vi.useFakeTimers();
+    // At 00:30 UTC on 2026-08-08, local date in LA (UTC-7) is 2026-08-07
+    const frozenUtc = new Date('2026-08-08T00:30:00.000Z');
+    vi.setSystemTime(frozenUtc);
+
     mockClient.query.mockResolvedValue({ rows: [{ id: 'cm-la' }] });
-    const laToday = todayInZone('America/Los_Angeles');
+    const laToday = '2026-08-07'; // Matches todayInZone('America/Los_Angeles') at 00:30 UTC
 
     await measurementRepository.upsertCustomMeasurement(
       'user-1',
@@ -123,8 +132,7 @@ describe('measurementRepository custom metric entry_timestamp defaulting', () =>
     );
     expect(insertCall).toBeDefined();
     const timestampVal = insertCall![1]![5] as string;
-    expect(timestampVal).toBeDefined();
-    expect(new Date(timestampVal).toString()).not.toBe('Invalid Date');
+    expect(timestampVal).toBe(frozenUtc.toISOString());
   });
 
   it('defaults entry_timestamp for Hourly frequency when entry_hour is provided', async () => {
