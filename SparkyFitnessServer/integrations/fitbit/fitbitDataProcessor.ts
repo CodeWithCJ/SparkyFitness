@@ -466,7 +466,12 @@ async function processFitbitSleep(
   createdByUserId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any,
-  timezoneOffset = 0
+  timezoneOffset = 0,
+  // Offset-only zone stamp (Fitbit exposes no per-record IANA zone): the
+  // exact offset the parser applied, so display round-trips the wall clock
+  // Fitbit reported. null when the profile carried no offset — a missing
+  // profile must not become a false UTC claim.
+  recordUtcOffsetMinutes: number | null = null
 ) {
   if (!data || !data.sleep || data.sleep.length === 0) return;
   for (const entry of data.sleep) {
@@ -474,6 +479,7 @@ async function processFitbitSleep(
       entry_date: entry.dateOfSleep,
       bedtime: parseFitbitTime(entry.startTime, timezoneOffset),
       wake_time: parseFitbitTime(entry.endTime, timezoneOffset),
+      record_utc_offset_minutes: recordUtcOffsetMinutes,
       duration_in_seconds: Math.round(entry.duration / 1000),
       // Fitbit's minutesAsleep is often the most accurate representation of "Time Asleep"
       time_asleep_in_seconds: entry.minutesAsleep * 60,

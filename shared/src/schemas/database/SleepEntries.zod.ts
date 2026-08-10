@@ -39,6 +39,8 @@ export const sleepEntriesSchema = z.object({
   resting_heart_rate: z.number().nullable(),
   created_by_user_id: userIdSchema.nullable(),
   updated_by_user_id: userIdSchema.nullable(),
+  record_timezone: z.string().nullable(),
+  record_utc_offset_minutes: z.number().nullable(),
 });
 
 export const sleepEntriesInitializerSchema = z.object({
@@ -71,6 +73,8 @@ export const sleepEntriesInitializerSchema = z.object({
   resting_heart_rate: z.number().optional().nullable(),
   created_by_user_id: userIdSchema.optional().nullable(),
   updated_by_user_id: userIdSchema.optional().nullable(),
+  record_timezone: z.string().optional().nullable(),
+  record_utc_offset_minutes: z.number().optional().nullable(),
 });
 
 export const sleepEntriesMutatorSchema = z.object({
@@ -103,6 +107,8 @@ export const sleepEntriesMutatorSchema = z.object({
   resting_heart_rate: z.number().optional().nullable(),
   created_by_user_id: userIdSchema.optional().nullable(),
   updated_by_user_id: userIdSchema.optional().nullable(),
+  record_timezone: z.string().optional().nullable(),
+  record_utc_offset_minutes: z.number().optional().nullable(),
 });
 
 export type SleepEntries = z.infer<typeof sleepEntriesSchema>;

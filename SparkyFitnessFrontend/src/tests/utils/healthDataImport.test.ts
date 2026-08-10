@@ -268,6 +268,40 @@ describe('mapRowsToHealthItems', () => {
     expect(items).toEqual([]);
     expect(errors[0]!.error).toContain('stage_events');
   });
+
+  it('maps the optional recording-zone columns through (issue #2033)', () => {
+    const { items, errors } = mapRowsToHealthItems('sleep', [
+      row({
+        date: '2026-01-02',
+        bedtime: '2026-01-02T23:00:00',
+        wake_time: '2026-01-03T07:00:00',
+        duration_in_seconds: '28800',
+        record_timezone: 'America/New_York',
+        record_utc_offset_minutes: '-300',
+        source: '',
+      }),
+    ]);
+    expect(errors).toEqual([]);
+    expect(items[0]).toMatchObject({
+      type: 'SleepSession',
+      record_timezone: 'America/New_York',
+      record_utc_offset_minutes: -300,
+    });
+  });
+
+  it('omits absent recording-zone columns instead of sending empty values', () => {
+    const { items } = mapRowsToHealthItems('sleep', [
+      row({
+        date: '2026-01-02',
+        bedtime: '2026-01-02T23:00:00',
+        wake_time: '2026-01-03T07:00:00',
+        duration_in_seconds: '28800',
+        source: '',
+      }),
+    ]);
+    expect(items[0]!['record_timezone']).toBeUndefined();
+    expect(items[0]!['record_utc_offset_minutes']).toBeUndefined();
+  });
 });
 
 describe('parseHealthCSV', () => {

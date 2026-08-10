@@ -33,6 +33,8 @@ async function getSleepHistory(userId: any, days = 90, timezone = 'UTC') {
         se.time_asleep_in_seconds / 3600.0 AS "timeAsleepHours",
         EXTRACT(EPOCH FROM se.bedtime) * 1000 AS "sleepStartTimestampGMT",
         EXTRACT(EPOCH FROM se.wake_time) * 1000 AS "sleepEndTimestampGMT",
+        se.record_timezone,
+        se.record_utc_offset_minutes,
         se.sleep_score AS "sleepScore"
       FROM sleep_entries se
       WHERE se.user_id = $1

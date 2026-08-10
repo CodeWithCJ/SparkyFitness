@@ -958,6 +958,18 @@ const options = {
             duration_in_seconds: { type: 'integer' },
             source: { type: 'string' },
             sleep_score: { type: 'integer', nullable: true },
+            record_timezone: {
+              type: 'string',
+              nullable: true,
+              description:
+                'IANA timezone the entry was recorded in. NULL falls back to record_utc_offset_minutes, then the profile timezone.',
+            },
+            record_utc_offset_minutes: {
+              type: 'integer',
+              nullable: true,
+              description:
+                'UTC offset in minutes at recording time; used when record_timezone is absent.',
+            },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },
