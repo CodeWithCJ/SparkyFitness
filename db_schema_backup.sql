@@ -2989,8 +2989,24 @@ CREATE TABLE public.sleep_entries (
     body_battery_change numeric,
     resting_heart_rate numeric,
     created_by_user_id uuid,
-    updated_by_user_id uuid
+    updated_by_user_id uuid,
+    record_timezone text,
+    record_utc_offset_minutes integer
 );
+
+
+--
+-- Name: COLUMN sleep_entries.record_timezone; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.sleep_entries.record_timezone IS 'IANA timezone the entry was recorded in (e.g. America/New_York). NULL when the source provided no zone; read paths fall back to record_utc_offset_minutes, then the profile timezone.';
+
+
+--
+-- Name: COLUMN sleep_entries.record_utc_offset_minutes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.sleep_entries.record_utc_offset_minutes IS 'UTC offset in minutes at recording time (e.g. -300). Used when record_timezone is absent; NULL when the source provided no zone information.';
 
 
 --
