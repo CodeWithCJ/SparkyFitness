@@ -60,6 +60,28 @@ else
   echo "SKIP: ${FRONTEND_DIR}/dist/index.html not found -- run 'pnpm run build' in SparkyFitnessFrontend/ first to include this check"
 fi
 
+if [[ -f "${FRONTEND_DIR}/dist/index.html" ]]; then
+  if [[ "$(grep -c 'rel="manifest"' "${FRONTEND_DIR}/dist/index.html")" == "1" ]]; then
+    echo "PASS: dist/index.html has exactly one manifest link (VitePWA's generated one, not a stale static duplicate)"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: dist/index.html does not have exactly one <link rel=\"manifest\"> tag -- check for a reintroduced public/manifest.json"
+    fail=$((fail + 1))
+  fi
+fi
+
+if [[ -f "${FRONTEND_DIR}/dist/sw.js" ]]; then
+  if grep -qF 'createHandlerBoundToURL("./index.html")' "${FRONTEND_DIR}/dist/sw.js"; then
+    echo "PASS: built dist/sw.js resolves its offline navigation fallback relative to the service worker's own scope"
+    pass=$((pass + 1))
+  else
+    echo "FAIL: dist/sw.js does not contain createHandlerBoundToURL(\"./index.html\") -- navigateFallback in vite.config.ts may have regressed to an absolute path"
+    fail=$((fail + 1))
+  fi
+else
+  echo "SKIP: ${FRONTEND_DIR}/dist/sw.js not found -- run 'pnpm run build' in SparkyFitnessFrontend/ first to include this check"
+fi
+
 echo ""
 echo "${pass} passed, ${fail} failed"
 [[ "$fail" -eq 0 ]]
