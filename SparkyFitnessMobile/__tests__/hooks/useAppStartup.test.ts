@@ -1,7 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import * as SplashScreen from 'expo-splash-screen';
-import { useInitialRoute, useAppStartup } from '../../src/hooks/useAppStartup';
-import { getActiveServerConfig, loadBackgroundSyncEnabled } from '../../src/services/storage';
+import { useAppStartup } from '../../src/hooks/useAppStartup';
+import { loadBackgroundSyncEnabled } from '../../src/services/storage';
 import { startObservers, stopObservers } from '../../src/services/healthConnectService';
 import {
   configureBackgroundSync,
@@ -20,7 +19,6 @@ jest.mock('expo-splash-screen', () => ({
 }));
 
 jest.mock('../../src/services/storage', () => ({
-  getActiveServerConfig: jest.fn(),
   loadBackgroundSyncEnabled: jest.fn(),
 }));
 
@@ -68,7 +66,6 @@ jest.mock('../../src/services/LogService', () => ({
   initLogService: jest.fn().mockResolvedValue(undefined),
 }));
 
-const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<typeof getActiveServerConfig>;
 const mockLoadBackgroundSyncEnabled = loadBackgroundSyncEnabled as jest.MockedFunction<typeof loadBackgroundSyncEnabled>;
 const mockStartObservers = startObservers as jest.MockedFunction<typeof startObservers>;
 const mockStopObservers = stopObservers as jest.MockedFunction<typeof stopObservers>;
@@ -85,36 +82,6 @@ beforeEach(() => {
   mockLoadBackgroundSyncEnabled.mockResolvedValue(true);
   mockFlushPendingRefresh.mockResolvedValue(undefined);
   mockPerformBackgroundSync.mockResolvedValue(undefined as Awaited<ReturnType<typeof performBackgroundSync>>);
-});
-
-describe('useInitialRoute', () => {
-  it('routes to Tabs and enables linking when an active server config exists', async () => {
-    mockGetActiveServerConfig.mockResolvedValue({ id: 'cfg-1' } as Awaited<ReturnType<typeof getActiveServerConfig>>);
-
-    const { result } = renderHook(() => useInitialRoute());
-
-    await waitFor(() => expect(result.current.initialRoute).toBe('Tabs'));
-    expect(result.current.linkingEnabled).toBe(true);
-    expect(SplashScreen.hideAsync).toHaveBeenCalled();
-  });
-
-  it('routes to Onboarding with linking disabled when no config exists', async () => {
-    mockGetActiveServerConfig.mockResolvedValue(null);
-
-    const { result } = renderHook(() => useInitialRoute());
-
-    await waitFor(() => expect(result.current.initialRoute).toBe('Onboarding'));
-    expect(result.current.linkingEnabled).toBe(false);
-  });
-
-  it('falls back to Onboarding and still hides the splash when config loading throws', async () => {
-    mockGetActiveServerConfig.mockRejectedValue(new Error('storage unavailable'));
-
-    const { result } = renderHook(() => useInitialRoute());
-
-    await waitFor(() => expect(result.current.initialRoute).toBe('Onboarding'));
-    expect(SplashScreen.hideAsync).toHaveBeenCalled();
-  });
 });
 
 describe('useAppStartup', () => {
