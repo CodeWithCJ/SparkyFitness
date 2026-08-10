@@ -2,7 +2,47 @@ import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
-import { CALORIE_CALCULATION_CONSTANTS } from '@workspace/shared';
+import { CALORIE_CALCULATION_CONSTANTS, isDayString } from '@workspace/shared';
+
+/**
+ * Helper to derive a default UTC entry_timestamp ISO string when omitted or invalid.
+ * Avoids timezone jump issues by leveraging isDayString and Date.UTC date construction.
+ */
+function defaultEntryTimestamp(
+  entryTimestamp: string | null | undefined,
+  entryDate: string | null | undefined,
+  entryHour: number | null | undefined
+): string {
+  if (entryTimestamp && entryTimestamp.trim() !== '') {
+    return entryTimestamp;
+  }
+  if (entryDate && isDayString(entryDate)) {
+    const parts = entryDate.split('-');
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+
+    if (
+      entryHour !== null &&
+      entryHour !== undefined &&
+      !isNaN(Number(entryHour))
+    ) {
+      return new Date(
+        Date.UTC(year, month - 1, day, Number(entryHour), 0, 0, 0)
+      ).toISOString();
+    }
+
+    const now = new Date();
+    const nowUtcDay = now.toISOString().split('T')[0];
+    if (entryDate === nowUtcDay) {
+      return now.toISOString();
+    }
+
+    return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)).toISOString();
+  }
+
+  return new Date().toISOString();
+}
 // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
 const ALLOWED_CHECK_IN_COLUMNS = [
   'weight',
@@ -967,9 +1007,30 @@ async function upsertCustomMeasurement(
     if (frequency === 'Daily') {
       normalizedEntryHour = 0; // Set hour to 0 for daily measurements
       // Normalize timestamp to the beginning of the day
-      const dateObj = new Date(entryDate);
-      dateObj.setUTCHours(0, 0, 0, 0);
-      normalizedEntryTimestamp = dateObj.toISOString();
+      if (entryDate && isDayString(entryDate)) {
+        const parts = entryDate.split('-');
+        normalizedEntryTimestamp = new Date(
+          Date.UTC(
+            Number(parts[0]),
+            Number(parts[1]) - 1,
+            Number(parts[2]),
+            0,
+            0,
+            0,
+            0
+          )
+        ).toISOString();
+      } else {
+        const dateObj = new Date(entryDate);
+        dateObj.setUTCHours(0, 0, 0, 0);
+        normalizedEntryTimestamp = dateObj.toISOString();
+      }
+    } else {
+      normalizedEntryTimestamp = defaultEntryTimestamp(
+        normalizedEntryTimestamp,
+        entryDate,
+        normalizedEntryHour
+      );
     }
     // For 'Unlimited' and 'All' frequencies, always insert a new entry.
     // For 'Daily' and 'Hourly', check for existing entries to update.
@@ -1104,9 +1165,30 @@ async function bulkUpsertCustomMeasurements(
       if (row.frequency === 'Daily') {
         normalizedEntryHour = 0; // Set hour to 0 for daily measurements
         // Normalize timestamp to the beginning of the day
-        const dateObj = new Date(row.entryDate);
-        dateObj.setUTCHours(0, 0, 0, 0);
-        normalizedEntryTimestamp = dateObj.toISOString();
+        if (row.entryDate && isDayString(row.entryDate)) {
+          const parts = row.entryDate.split('-');
+          normalizedEntryTimestamp = new Date(
+            Date.UTC(
+              Number(parts[0]),
+              Number(parts[1]) - 1,
+              Number(parts[2]),
+              0,
+              0,
+              0,
+              0
+            )
+          ).toISOString();
+        } else {
+          const dateObj = new Date(row.entryDate);
+          dateObj.setUTCHours(0, 0, 0, 0);
+          normalizedEntryTimestamp = dateObj.toISOString();
+        }
+      } else {
+        normalizedEntryTimestamp = defaultEntryTimestamp(
+          normalizedEntryTimestamp,
+          row.entryDate,
+          normalizedEntryHour
+        );
       }
       return {
         ...row,
