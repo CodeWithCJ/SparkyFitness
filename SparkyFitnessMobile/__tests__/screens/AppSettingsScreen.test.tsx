@@ -86,7 +86,7 @@ function picker() {
   }
   return languagePicker.props as {
     accessibilityHint?: string;
-    onSelect?: (value: string | number) => void;
+    onSelect?: (value: string | number) => Promise<unknown> | void;
   };
 }
 
@@ -135,7 +135,7 @@ describe('AppSettingsScreen', () => {
     renderScreen();
 
     await act(async () => {
-      picker().onSelect?.('pl');
+      await picker().onSelect?.('pl');
     });
 
     expect(mockToastShow).toHaveBeenCalledWith(

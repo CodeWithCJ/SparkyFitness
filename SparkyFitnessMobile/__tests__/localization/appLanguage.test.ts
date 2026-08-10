@@ -46,7 +46,7 @@ describe('app language service', () => {
     await useAppPreferencesStore.persist.rehydrate();
     mockNative.isAvailable = true;
     mockNative.supportsNativePerAppLanguage = true;
-    mockNative.setApplicationLanguage.mockClear();
+    mockNative.setApplicationLanguage.mockReset();
     mockNative.getApplicationLanguage.mockReset();
     mockNative.getEffectiveLanguage.mockReset().mockResolvedValue('en');
     mockAddLog.mockClear();

@@ -5,6 +5,9 @@ const ts = require('typescript');
 const EXCLUDE_DIRS = new Set(['__tests__', '__mocks__', 'node_modules', 'coverage', 'android', 'ios', 'scripts', '.tooling']);
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
+/** Blocking rule name for a source file that could not be scanned (fail-closed). */
+const SOURCE_SCAN_ERROR_RULE = 'source-scan-error';
+
 const LOCALIZED_ATTRIBUTE_NAMES = new Set([
   'accessibilityHint',
   'accessibilityLabel',
@@ -515,7 +518,7 @@ function collectFindings(rootDir, sourceRoots) {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       scanErrors.push({
-        rule: 'source-scan-error',
+        rule: SOURCE_SCAN_ERROR_RULE,
         file: getFileRelativePath(filePath, rootDir),
         message: `Failed to scan source file: ${message}`,
       });
@@ -548,4 +551,5 @@ module.exports = {
   isLikelyRoute,
   isLikelyCss,
   isLikelyTechnical,
+  SOURCE_SCAN_ERROR_RULE,
 };

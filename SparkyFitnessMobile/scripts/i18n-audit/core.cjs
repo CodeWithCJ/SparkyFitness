@@ -1,6 +1,6 @@
 const path = require('node:path');
 const { LocaleValidator, PLURAL_SUFFIXES } = require('./localeValidator.cjs');
-const { collectFindings: scanFindings, getAllSuppressionIssues } = require('./sourceScanner.cjs');
+const { collectFindings: scanFindings, getAllSuppressionIssues, SOURCE_SCAN_ERROR_RULE } = require('./sourceScanner.cjs');
 
 const MOBILE_ROOT = path.resolve(__dirname, '..', '..');
 const EN_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', 'en', 'translation.json');
@@ -182,7 +182,7 @@ function buildSummary(report) {
     hardcodedUiFindings: report.hardcodedUiFindings.length,
     dynamicI18nFindings: report.dynamicI18nFindings.length,
     sourceScanErrors: report.localeStructuralErrors.filter(
-      (e) => e.rule === 'source-scan-error',
+      (e) => e.rule === SOURCE_SCAN_ERROR_RULE,
     ).length,
   };
 }

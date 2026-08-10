@@ -8,7 +8,13 @@ const require = createRequire(pathToFileURL(__filename));
 const localeMod = require('../../scripts/i18n-audit/localeValidator.cjs');
 const LocaleValidator: new (enPath: string, plPath: string) => LocaleValidatorInstance =
   localeMod.LocaleValidator;
-const groupPluralKeys = localeMod.groupPluralKeys;
+interface PluralGroup {
+  base: string;
+  isPlural: boolean;
+  keys: string[];
+}
+
+const groupPluralKeys = localeMod.groupPluralKeys as (keys: string[]) => PluralGroup[];
 
 const SourceScanner = require('../../scripts/i18n-audit/sourceScanner.cjs');
 const collectFindings = SourceScanner.collectFindings as (
