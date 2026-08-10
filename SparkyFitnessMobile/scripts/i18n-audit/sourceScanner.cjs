@@ -84,11 +84,16 @@ function isDynamicTranslationKey(node) {
 }
 
 /**
- * True when a static t(...) call carries an explicit English fallback: either
- * a second string argument `t('key', 'Fallback')` or a `defaultValue` option
- * `t('key', { defaultValue: 'Fallback' })`. The app's hard contract is that
- * every user-facing t() call must supply one, so a missing key can never leak
- * a raw translation key into the UI.
+ * True when a static t(...) call carries a statically readable explicit English
+ * fallback. Accepted forms:
+ *
+ *   t('key', 'Readable English')
+ *   t('key', { defaultValue: 'Readable English' })
+ *   t('key', { defaultValue: `Readable English` })
+ *
+ * A dynamic defaultValue (variable, expression, object shorthand) does NOT
+ * satisfy the contract — the fallback must be readable by the audit so a
+ * missing key can never leak a raw translation key into the UI.
  */
 function hasExplicitFallback(node) {
   const args = node.arguments;
@@ -99,10 +104,12 @@ function hasExplicitFallback(node) {
     return true;
   }
   if (ts.isObjectLiteralExpression(second)) {
-    return second.properties.some(
-      (prop) =>
-        ts.isPropertyAssignment(prop) && propertyNameText(prop.name) === 'defaultValue',
-    );
+    return second.properties.some((prop) => {
+      if (!ts.isPropertyAssignment(prop) || propertyNameText(prop.name) !== 'defaultValue') {
+        return false;
+      }
+      return literalText(prop.initializer) !== null;
+    });
   }
   return false;
 }
@@ -154,11 +161,6 @@ function isTextLikeElement(node) {
 
   return false;
 }
-
-const KNOWN_ICONS = new Set([
-  'chevron-back', 'close', 'star', 'settings', 'home', 'menu', 'arrow', 'check',
-  'xmark', 'search',
-]);
 
 function isLikelyRoute(value) {
   const routePattern = /^[a-z]+(?:\/[a-z0-9-]+)+$/;
@@ -342,8 +344,11 @@ function visitSourceFile(filePath, rootDir) {
       }
     }
 
-    if (ts.isJsxElement && isTextLikeElement(node)) {
-      const line = getLinePosition(node, sourceFile);
+    // Hardcoded <Text> children. `isTextLikeElement` already validates the
+    // element node; a JSX child that is an expression has the inner expression
+    // on `child.expression` (the child itself is the JsxExpression), so
+    // <Text>{'…'}</Text> and <Text>{`…`}</Text> are inventoried too.
+    if (isTextLikeElement(node)) {
       for (const child of node.children) {
         if (ts.isJsxText(child)) {
           const text = child.text;
@@ -352,12 +357,8 @@ function visitSourceFile(filePath, rootDir) {
             const childLine = getLinePosition(child, sourceFile);
             recordFinding(relPath, childLine, trimmed, 'hardcoded-ui-text', { element: 'Text', form: 'text' });
           }
-        } else if (
-          child.expression &&
-          ts.isJsxExpression(child.expression) &&
-          child.expression.expression
-        ) {
-          const value = literalText(child.expression.expression);
+        } else if (ts.isJsxExpression(child) && child.expression) {
+          const value = literalText(child.expression);
           if (value !== null && value !== undefined && !isLikelyFalsePositive(value)) {
             const childLine = getLinePosition(child, sourceFile);
             recordFinding(relPath, childLine, value, 'hardcoded-ui-text', { element: 'Text', form: 'expression' });
@@ -467,7 +468,7 @@ function visitSourceFile(filePath, rootDir) {
 }
 
 function walkFiles(directory, rootDir, sourceFilesSet) {
-  for (const entry of fs.readdirSync(directory, { withFileExtensions: true, withFileTypes: true })) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const absolutePath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
       if (EXCLUDE_DIRS.has(entry.name)) continue;
@@ -481,6 +482,13 @@ function walkFiles(directory, rootDir, sourceFilesSet) {
   }
 }
 
+/**
+ * Scans the source roots and returns:
+ *   findings: hardcoded/t() inventory findings (informational + t() contract)
+ *   errors:   blocking scan errors. A file that cannot be read/parsed is
+ *             recorded here so the audit FAILS CLOSED instead of silently
+ *             passing with incomplete coverage.
+ */
 function collectFindings(rootDir, sourceRoots) {
   findings.length = 0;
   suppressionIssues.clear();
@@ -500,37 +508,28 @@ function collectFindings(rootDir, sourceRoots) {
     }
   }
 
+  const scanErrors = [];
   for (const filePath of sourceFilesSet) {
     try {
       visitSourceFile(filePath, rootDir);
     } catch (err) {
-      console.warn(`Warning: failed to scan ${filePath}: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      scanErrors.push({
+        rule: 'source-scan-error',
+        file: getFileRelativePath(filePath, rootDir),
+        message: `Failed to scan source file: ${message}`,
+      });
     }
   }
 
-  return findings.map((f) => ({ ...f }));
-}
-
-function getSuppressionWithoutJustificationFindings() {
-  return [...suppressionIssues.values()].filter(
-    (issue) => issue.rule === 'suppression-without-justification',
-  );
+  return {
+    findings: findings.map((f) => ({ ...f })),
+    errors: scanErrors,
+  };
 }
 
 function getAllSuppressionIssues() {
   return [...suppressionIssues.values()];
-}
-
-function buildFingerprint(finding) {
-  if (finding.kind === 'static-t-key' || finding.kind === 'dynamic-t-key' || finding.kind === 'missing-fallback-key') {
-    return `${finding.kind}:${finding.file}:${finding.value}`;
-  }
-
-  return `hardcoded-ui-text:${finding.file}:${finding.line}:${finding.value}`;
-}
-
-function buildMigrationFingerprint(finding) {
-  return `${finding.kind}:${finding.file}:${finding.value}`;
 }
 
 module.exports = {
@@ -543,12 +542,9 @@ module.exports = {
   LOCALIZED_ATTRIBUTE_NAMES,
   EXCLUDE_DIRS,
   SOURCE_EXTENSIONS,
-  buildFingerprint,
-  buildMigrationFingerprint,
   getAllSuppressionIssues,
   resolveStaticTranslationKeyArg,
   hasExplicitFallback,
-  KNOWN_ICONS,
   isLikelyRoute,
   isLikelyCss,
   isLikelyTechnical,

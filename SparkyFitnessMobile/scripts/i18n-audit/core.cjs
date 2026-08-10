@@ -1,4 +1,3 @@
-const fs = require('node:fs');
 const path = require('node:path');
 const { LocaleValidator, PLURAL_SUFFIXES } = require('./localeValidator.cjs');
 const { collectFindings: scanFindings, getAllSuppressionIssues } = require('./sourceScanner.cjs');
@@ -6,36 +5,6 @@ const { collectFindings: scanFindings, getAllSuppressionIssues } = require('./so
 const MOBILE_ROOT = path.resolve(__dirname, '..', '..');
 const EN_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', 'en', 'translation.json');
 const PL_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', 'pl', 'translation.json');
-
-const FORBIDDEN_FILES = [
-  path.join(MOBILE_ROOT, 'src', 'localization', 'mobile.pl.json'),
-  path.join(MOBILE_ROOT, 'src', 'localization', 'mobile.pl.overrides.json'),
-  path.join(MOBILE_ROOT, 'scripts', 'populate-mobile-polish.mjs'),
-];
-
-const SOURCE_ROOTS = [path.join(MOBILE_ROOT, 'src')];
-
-function checkForbiddenFiles(rootDir, forbiddenFiles) {
-  const errors = [];
-  const files = forbiddenFiles && forbiddenFiles.length > 0
-    ? forbiddenFiles
-    : [
-    path.join(rootDir, 'src', 'localization', 'mobile.pl.json'),
-    path.join(rootDir, 'src', 'localization', 'mobile.pl.overrides.json'),
-    path.join(rootDir, 'scripts', 'populate-mobile-polish.mjs'),
-  ];
-  for (const filePath of files) {
-    if (fs.existsSync(filePath)) {
-      const relPath = path.relative(rootDir, filePath).replaceAll('\\', '/');
-      errors.push({
-        rule: 'forbidden-file',
-        file: relPath,
-        message: `Forbidden file exists: ${relPath}`,
-      });
-    }
-  }
-  return errors;
-}
 
 function localeHasKey(keySet, key) {
   if (keySet.has(key)) return true;
@@ -58,7 +27,8 @@ function localeHasKey(keySet, key) {
  *   - placeholder mismatch
  *   - plural mismatch / missing plural forms
  *   - duplicate/singular-plural collisions reported by the validator
- *   - forbidden legacy Polish files
+ *   - source scan errors (a file that cannot be read/parsed fails the audit
+ *     closed instead of silently reducing coverage)
  *   - invalid suppression directives
  *
  * Informational (reported in the summary, never blocking):
@@ -68,11 +38,11 @@ function runAudit(options = {}) {
   const rootDir = options.rootDir || MOBILE_ROOT;
   const enLocalePath = options.enLocalePath || EN_LOCALE_PATH;
   const plLocalePath = options.plLocalePath || PL_LOCALE_PATH;
-  const forbiddenFiles = options.forbiddenFiles;
-  const sourceRoots = options.sourceRoots || SOURCE_ROOTS;
+  // Default source roots derive from the ACTUAL rootDir so a custom-root run
+  // scans its own source tree; the production default remains mobile/src.
+  const sourceRoots = options.sourceRoots || [path.join(rootDir, 'src')];
 
   const report = {
-    forbidden: [],
     localeStructuralErrors: [],
     missingStaticKeys: [],
     placeholderErrors: [],
@@ -82,8 +52,6 @@ function runAudit(options = {}) {
     dynamicI18nFindings: [],
     summary: {},
   };
-
-  report.forbidden = checkForbiddenFiles(rootDir, forbiddenFiles);
 
   const validator = new LocaleValidator(enLocalePath, plLocalePath);
   let localeResult;
@@ -108,7 +76,13 @@ function runAudit(options = {}) {
     }
   }
 
-  const findings = collectFindingsForSource(rootDir, sourceRoots);
+  const scanResult = collectFindingsForSource(rootDir, sourceRoots);
+
+  // Scan errors are blocking: a source file that could not be scanned must
+  // fail the audit rather than pass with incomplete coverage.
+  for (const scanError of scanResult.errors) {
+    report.localeStructuralErrors.push(scanError);
+  }
 
   const suppressionIssues = getAllSuppressionIssues();
   for (const suppression of suppressionIssues) {
@@ -126,7 +100,7 @@ function runAudit(options = {}) {
 
   const seenStaticKeys = new Set();
 
-  for (const finding of findings) {
+  for (const finding of scanResult.findings) {
     if (finding.kind === 'static-t-key') {
       if (!seenStaticKeys.has(finding.value)) {
         seenStaticKeys.add(finding.value);
@@ -181,7 +155,6 @@ function runAudit(options = {}) {
   }
 
   const structuralErrorCount = [
-    report.forbidden.length,
     report.localeStructuralErrors.length,
     report.missingStaticKeys.length,
     report.placeholderErrors.length,
@@ -201,7 +174,6 @@ function collectFindingsForSource(rootDir, sourceRoots) {
 
 function buildSummary(report) {
   return {
-    forbidden: report.forbidden.length,
     localeStructuralErrors: report.localeStructuralErrors.length,
     missingStaticKeys: report.missingStaticKeys.length,
     placeholderErrors: report.placeholderErrors.length,
@@ -209,14 +181,15 @@ function buildSummary(report) {
     missingFallbackFindings: report.missingFallbackFindings.length,
     hardcodedUiFindings: report.hardcodedUiFindings.length,
     dynamicI18nFindings: report.dynamicI18nFindings.length,
+    sourceScanErrors: report.localeStructuralErrors.filter(
+      (e) => e.rule === 'source-scan-error',
+    ).length,
   };
 }
 
 module.exports = {
   runAudit,
-  checkForbiddenFiles,
   collectFindingsForSource,
-  FORBIDDEN_FILES,
   MOBILE_ROOT,
   EN_LOCALE_PATH,
   PL_LOCALE_PATH,
