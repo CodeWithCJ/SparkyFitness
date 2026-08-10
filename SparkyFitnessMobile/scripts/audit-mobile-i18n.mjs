@@ -8,18 +8,19 @@ const args = process.argv.slice(2);
 const outputFile = args.find((arg) => !arg.startsWith('--'));
 const showJson = args.includes('--json') || args.includes('--json-output');
 
+// An output path without --json is not silently ignored: it is a user error to
+// expect a file, so say so explicitly and continue with the human report.
+if (outputFile && !showJson) {
+  console.error(
+    `[audit] Output file "${outputFile}" requires --json (JSON report mode); writing only the human report to stdout.`,
+  );
+}
+
 const { report, hasErrors } = runAudit();
 
 const summary = report.summary;
 
 function printHumanReport() {
-  if (report.forbidden.length > 0) {
-    console.log('\nForbidden files:');
-    for (const f of report.forbidden) {
-      console.log(`  - ${f.file}: ${f.message}`);
-    }
-  }
-
   if (report.localeStructuralErrors.length > 0) {
     console.log('\nLocale structural errors:');
     for (const e of report.localeStructuralErrors) {
@@ -69,6 +70,7 @@ function printHumanReport() {
   console.log(`plural errors: ${summary.pluralErrors}`);
   console.log(`user-facing t() without English fallback: ${summary.missingFallbackFindings}`);
   console.log(`dynamic t() keys: ${summary.dynamicI18nFindings}`);
+  console.log(`source scan errors: ${summary.sourceScanErrors ?? 0}`);
   console.log(`hardcoded UI strings (informational, PR5 scope): ${summary.hardcodedUiFindings}`);
 }
 
@@ -85,6 +87,6 @@ if (showJson) {
   printHumanReport();
 }
 
-if (hasErrors || report.forbidden.length > 0) {
+if (hasErrors) {
   process.exit(1);
 }

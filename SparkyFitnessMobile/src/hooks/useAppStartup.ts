@@ -1,12 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Platform } from 'react-native';
-import * as SplashScreen from 'expo-splash-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initWorkoutNotificationActions } from '../stores/activeWorkoutStore';
-import {
-  loadBackgroundSyncEnabled,
-  getActiveServerConfig,
-} from '../services/storage';
+import { loadBackgroundSyncEnabled } from '../services/storage';
 import { startObservers, stopObservers } from '../services/healthConnectService';
 import {
   configureBackgroundSync,
@@ -20,38 +16,6 @@ import { initNotifications } from '../services/notifications';
 import { initMedicationNotificationActions } from '../services/medicationNotificationHandler';
 import { initWorkoutLiveActivity } from '../services/workoutLiveActivity';
 import { ensureTimezoneBootstrapped } from '../services/api/preferencesApi';
-
-export type InitialRoute = 'Tabs' | 'Onboarding';
-
-/**
- * Resolves the app's initial route from the active server config and hides the
- * splash screen once decided. Deep linking stays disabled until the user is on
- * Tabs so widget links cannot bypass first-run onboarding.
- */
-export function useInitialRoute() {
-  const [initialRoute, setInitialRoute] = useState<InitialRoute | null>(null);
-  const [linkingEnabled, setLinkingEnabled] = useState(false);
-
-  useEffect(() => {
-    const determine = async () => {
-      try {
-        const config = await getActiveServerConfig();
-        const route = config ? 'Tabs' : 'Onboarding';
-        setInitialRoute(route);
-        setLinkingEnabled(route === 'Tabs');
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(`[App] Failed to load active server config on startup: ${message}`, 'ERROR');
-        setInitialRoute('Onboarding');
-      } finally {
-        await SplashScreen.hideAsync();
-      }
-    };
-    determine();
-  }, []);
-
-  return { initialRoute, linkingEnabled, setLinkingEnabled };
-}
 
 interface AppStartupArgs {
   /**

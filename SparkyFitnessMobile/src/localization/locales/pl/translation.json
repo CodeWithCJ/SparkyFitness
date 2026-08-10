@@ -9,7 +9,9 @@
       "title": "Język",
       "system": "Systemowy",
       "english": "Angielski",
-      "polish": "Polski"
+      "polish": "Polski",
+      "pickerHint": "Otwiera menu wyboru języka",
+      "changeFailed": "Nie udało się zmienić języka"
     }
   },
   "languageSettings": {

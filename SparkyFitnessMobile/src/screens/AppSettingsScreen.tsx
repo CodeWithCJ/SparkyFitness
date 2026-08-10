@@ -2,6 +2,9 @@ import React, { useCallback } from 'react';
 import { View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import Toast from 'react-native-toast-message';
+
+import { addLog } from '../services/LogService';
 
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import SettingsRow from '../components/SettingsRow';
@@ -49,16 +52,28 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const handleLanguageSelect = useCallback(
-    (value: LanguagePreference) => {
-      void setAppLanguagePreference(value);
+    async (value: LanguagePreference) => {
+      try {
+        await setAppLanguagePreference(value);
+      } catch (error) {
+        // setAppLanguagePreference is transactional: on failure it restores
+        // the previous store/native/i18n state itself, so the screen only
+        // needs to surface the error. Do not mutate the preferences store here.
+        const message = error instanceof Error ? error.message : String(error);
+        void addLog(`[AppSettings] Failed to change app language: ${message}`, 'ERROR');
+        Toast.show({
+          type: 'error',
+          text1: t('settings.language.changeFailed', "Couldn't change the language"),
+        });
+      }
     },
-    [],
+    [t],
   );
 
   const languagePickerOptions = [
     { label: t('settings.language.system', 'System'), value: 'system' as LanguagePreference },
     { label: t('settings.language.english', 'English'), value: 'en' as LanguagePreference },
-    { label: t('settings.language.polish', 'Polish'), value: 'pl' as LanguagePreference },
+    { label: t('settings.language.polish', 'Polski'), value: 'pl' as LanguagePreference },
   ];
 
   const header = useScreenHeader({ title: t('settings.app', 'App Settings'), left: { kind: 'back' } });
@@ -96,6 +111,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
               options={languagePickerOptions}
               onSelect={handleLanguageSelect}
               title={t('settings.language.title', 'Language')}
+              accessibilityHint={t('settings.language.pickerHint', 'Opens language selection menu')}
               containerStyle={{ flex: 1, maxWidth: 200 }}
             />
           }

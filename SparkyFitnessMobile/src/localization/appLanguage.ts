@@ -2,20 +2,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AppLanguageNative } from '../services/appLanguageNative';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { addLog } from '../services/LogService';
 import i18n, {
   getDeviceLanguage,
   initializeI18n,
+  SUPPORTED_LANGUAGES,
   type LanguagePreference,
   type SupportedLanguage,
 } from './i18n';
 
-export type NativeLanguageValue = SupportedLanguage | null;
-
 /**
- * Stable, versioned marker that records whether the one-time migration that
- * establishes AppCompat as an authoritative native source of truth has
- * completed. Kept outside the persisted preferences model so it never resets
- * other user preferences and never depends on translated text.
+ * Stable, versioned marker that records whether the one-time Android 13+
+ * legacy-preference handoff has completed: the platform per-app language and
+ * the stored local preference have been reconciled exactly once. It applies
+ * only where native per-app language support exists (Android 13+); on Android
+ * <=12 and iOS there is no native handoff. Kept outside the persisted
+ * preferences model so it never resets other user preferences and never depends
+ * on translated text.
  */
 const MIGRATION_STORAGE_KEY = '@SparkyFitness/app-language-migration';
 const MIGRATION_VERSION = 1;
@@ -30,7 +33,7 @@ function normalizeNativeLanguage(value: string | null | undefined): SupportedLan
 }
 
 /**
- * Maps an AppCompat application-language tag to the store's preference model.
+ * Maps an Android application-language tag to the store's preference model.
  * An empty list (system) maps to `system`; `en`/`pl` map directly; anything
  * else is `unsupported` and must never be written to the store.
  */
@@ -70,9 +73,21 @@ function setStorePreference(preference: LanguagePreference): void {
   useAppPreferencesStore.getState().setLanguagePreference(preference);
 }
 
+/**
+ * Resolves the effective system language. On Android 13+ the native effective
+ * locale is preferred; a rejected native read (or an unsupported value) falls
+ * back to expo-localization's device locale and is logged. Never rejects.
+ */
 async function resolveSystemLanguage(): Promise<SupportedLanguage> {
-  if (!AppLanguageNative.isAvailable) return getDeviceLanguage();
-  return normalizeNativeLanguage(await AppLanguageNative.getEffectiveLanguage()) ?? getDeviceLanguage();
+  if (!AppLanguageNative.supportsNativePerAppLanguage) return getDeviceLanguage();
+  try {
+    const native = await AppLanguageNative.getEffectiveLanguage();
+    return normalizeNativeLanguage(native) ?? getDeviceLanguage();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(`[AppLanguage] Failed to read native effective language: ${message}`, 'WARNING');
+    return getDeviceLanguage();
+  }
 }
 
 let languageOperation: Promise<unknown> = Promise.resolve();
@@ -87,16 +102,30 @@ function serializeLanguageOperation<T>(operation: () => Promise<T>): Promise<T> 
 }
 
 /**
- * Ensures the Android application locales reflect `target`. Skips the native
- * write when AppCompat already reports the desired value, which avoids an
- * Activity recreation and a store/native ping-pong.
+ * Ensures the Android 13+ platform application locale reflects `target`.
+ * Skips the native write when the platform already reports the desired value,
+ * which avoids an Activity recreation and a store/native ping-pong. Rejects if
+ * the platform cannot be brought to `target`.
  */
 async function ensureNativeLanguage(target: LanguagePreference): Promise<void> {
-  if (!AppLanguageNative.isAvailable) return;
+  if (!AppLanguageNative.supportsNativePerAppLanguage) return;
   const current = mapNativeToPreference(await AppLanguageNative.getApplicationLanguage());
   const targetValue = target === 'system' ? null : target;
   if (current === target) return;
   await AppLanguageNative.setApplicationLanguage(targetValue);
+}
+
+/**
+ * Reads the current native application language. On Android 13+ with the
+ * module registered this returns the platform value; on any other platform it
+ * reports `system`. An unreadable or unsupported platform value maps to
+ * `'unsupported'` so callers never write an invalid value into the store.
+ * A rejected native read propagates; every caller must handle it and must not
+ * overwrite native state it could not read.
+ */
+async function readNativePreference(): Promise<MappedNative> {
+  if (!AppLanguageNative.supportsNativePerAppLanguage) return 'system';
+  return mapNativeToPreference(await AppLanguageNative.getApplicationLanguage());
 }
 
 async function readMigrationFinished(): Promise<boolean> {
@@ -115,15 +144,40 @@ async function writeMigrationFinished(): Promise<void> {
 }
 
 /**
- * Android native-authoritative path: AppCompat application locales are read and
- * adopted into the store and i18next without writing anything back to Android.
- * An unsupported value is repaired to system before being adopted.
+ * Android 13+ native-authoritative path: the platform application locale is
+ * read and adopted into the store and i18next without writing anything back to
+ * Android. A rejected native read must not fail app bootstrap — it falls back
+ * to the stored preference and is logged. An unsupported value is repaired to
+ * system before being adopted.
  */
 async function adoptNativeState(): Promise<SupportedLanguage> {
-  const native = mapNativeToPreference(await AppLanguageNative.getApplicationLanguage());
+  let native: MappedNative;
+  try {
+    native = await readNativePreference();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(
+      `[AppLanguage] Native application-language read failed; using stored preference: ${message}`,
+      'WARNING',
+    );
+    const preference = normalizePreference(storePreference());
+    return applyEffectiveLanguage(
+      preference === 'system' ? await resolveSystemLanguage() : preference,
+    );
+  }
 
   if (native === 'unsupported') {
-    await ensureNativeLanguage('system');
+    // An unsupported value must never be written into the store. Repair the
+    // platform to system (best-effort) and fall back to the device locale.
+    try {
+      await ensureNativeLanguage('system');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await addLog(
+        `[AppLanguage] Could not repair unsupported native locale to system: ${message}`,
+        'WARNING',
+      );
+    }
     setStorePreference('system');
     return applyEffectiveLanguage(await resolveSystemLanguage());
   }
@@ -133,8 +187,10 @@ async function adoptNativeState(): Promise<SupportedLanguage> {
 }
 
 /**
- * Initializes storage, migrates the legacy store preference into AppCompat on
- * Android exactly once, then resolves the effective locale before navigation.
+ * Initializes storage, then reconciles the Android 13+ platform app language
+ * with the stored preference exactly once, then resolves the effective locale
+ * before navigation. On Android <=12 and iOS the stored preference is
+ * authoritative and no native API is called.
  */
 export function initializeAppLanguage(): Promise<SupportedLanguage> {
   return serializeLanguageOperation(async () => {
@@ -142,7 +198,7 @@ export function initializeAppLanguage(): Promise<SupportedLanguage> {
     const preference = normalizePreference(storePreference());
     setStorePreference(preference);
 
-    if (!AppLanguageNative.isAvailable) {
+    if (!AppLanguageNative.supportsNativePerAppLanguage) {
       return applyEffectiveLanguage(
         preference === 'system' ? await resolveSystemLanguage() : preference,
       );
@@ -156,53 +212,243 @@ export function initializeAppLanguage(): Promise<SupportedLanguage> {
   });
 }
 
-async function runMigration(preference: LanguagePreference): Promise<SupportedLanguage> {
+/**
+ * One-time Android 13+ legacy-preference handoff. Reads the platform app
+ * language FIRST so a language the user already selected in Android Settings
+ * wins; the legacy stored preference only seeds the platform when Android is
+ * still following System. The marker is written only after a successful
+ * handoff so a failed migration retries next launch.
+ *
+ * Flow (single owner, serialized by the caller):
+ *   read native
+ *     ├─ explicit en/pl  → adopt native + mark migrated (no write)
+ *     ├─ system, stored explicit en/pl → seed native + confirm + mark
+ *     ├─ system, stored system → no write + mark
+ *     └─ read failed → local fallback for this startup, marker ABSENT (retry)
+ */
+async function runMigration(storedPreference: LanguagePreference): Promise<SupportedLanguage> {
+  let native: MappedNative;
   try {
-    // Before migration, the legacy store preference seeds AppCompat. The marker
-    // is written only after the native write succeeds, so a mid-run failure
-    // never records a false completion and the migration retries next launch.
-    await ensureNativeLanguage(preference);
-    const confirmed = mapNativeToPreference(await AppLanguageNative.getApplicationLanguage());
-    setStorePreference(confirmed === 'unsupported' ? 'system' : confirmed);
-    await writeMigrationFinished();
-  } catch {
-    // Keep startup resilient: fall back to the store preference and let the
-    // marker remain unset so the migration is retried on the next bootstrap.
+    native = await readNativePreference();
+  } catch (error) {
+    // We could not establish the native state, so we must NOT overwrite it.
+    // Use the stored preference locally for this startup; the marker stays
+    // absent and the migration retries next launch.
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(
+      `[AppLanguage] Migration could not read native language; using stored preference and retrying next launch: ${message}`,
+      'WARNING',
+    );
+    const preference = normalizePreference(storePreference());
+    return applyEffectiveLanguage(
+      preference === 'system' ? await resolveSystemLanguage() : preference,
+    );
   }
-  const effectivePreference = storePreference();
-  return applyEffectiveLanguage(
-    effectivePreference === 'system' ? await resolveSystemLanguage() : effectivePreference,
-  );
+
+  if (native === 'unsupported') {
+    // Do not write an unsupported value into the store. Repair the platform to
+    // system (best-effort), then keep the stored preference.
+    try {
+      await ensureNativeLanguage('system');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await addLog(
+        `[AppLanguage] Migration could not repair unsupported native locale: ${message}`,
+        'WARNING',
+      );
+    }
+    await writeMigrationFinished();
+    const preference = normalizePreference(storePreference());
+    return applyEffectiveLanguage(
+      preference === 'system' ? await resolveSystemLanguage() : preference,
+    );
+  }
+
+  if (native === 'system') {
+    // Platform follows System: a legacy explicit preference seeds it exactly
+    // once (cases C/D); system/system performs no needless write (case E).
+    if (storedPreference !== 'system') {
+      try {
+        await ensureNativeLanguage(storedPreference);
+        const confirmed = await readNativePreference();
+        const confirmedPreference =
+          confirmed === 'unsupported' ? 'system' : confirmed;
+        setStorePreference(confirmedPreference);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await addLog(
+          `[AppLanguage] Migration seed failed; will retry next launch: ${message}`,
+          'WARNING',
+        );
+        // Marker stays absent; local fallback preserved below.
+        const preference = normalizePreference(storePreference());
+        return applyEffectiveLanguage(
+          preference === 'system' ? await resolveSystemLanguage() : preference,
+        );
+      }
+    }
+    await writeMigrationFinished();
+    const preference = normalizePreference(storePreference());
+    return applyEffectiveLanguage(
+      preference === 'system' ? await resolveSystemLanguage() : preference,
+    );
+  }
+
+  // Native is explicit en/pl (cases A/B): the user's Android Settings choice
+  // wins over the legacy store value. No native write.
+  setStorePreference(native);
+  await writeMigrationFinished();
+  return applyEffectiveLanguage(native);
 }
 
-/** Applies the Settings selection, updating AppCompat before the store/i18n. */
+/**
+ * Applies the Settings selection transactionally: if any step fails, the
+ * previous store/native/i18n state is restored (best-effort) so the layers can
+ * never knowingly contradict each other.
+ *
+ * Android 13+: snapshot previous native → write requested native → apply i18n
+ * → commit store LAST. A failed i18n apply rolls the native value back.
+ * Android <=12 / iOS: apply i18n → commit store LAST (no native call).
+ */
 export function setAppLanguagePreference(
   preference: LanguagePreference,
 ): Promise<SupportedLanguage> {
   return serializeLanguageOperation(async () => {
     const normalized = normalizePreference(preference);
+    const previousStore = normalizePreference(storePreference());
+    const resolvedLanguage = i18n.resolvedLanguage;
+    const previousEffective: SupportedLanguage | undefined =
+      resolvedLanguage && (SUPPORTED_LANGUAGES as readonly string[]).includes(resolvedLanguage)
+        ? (resolvedLanguage as SupportedLanguage)
+        : undefined;
 
-    if (AppLanguageNative.isAvailable) {
-      await ensureNativeLanguage(normalized);
+    if (AppLanguageNative.supportsNativePerAppLanguage) {
+      let previousNative: MappedNative | undefined;
+      try {
+        previousNative = await readNativePreference();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await addLog(`[AppLanguage] Could not snapshot native language: ${message}`, 'WARNING');
+      }
+
+      try {
+        await ensureNativeLanguage(normalized);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await addLog(`[AppLanguage] Native application-language write failed: ${message}`, 'ERROR');
+        throw error;
+      }
+
+      try {
+        const effective = await applyEffectiveLanguage(
+          normalized === 'system' ? await resolveSystemLanguage() : normalized,
+        );
+        setStorePreference(normalized);
+        return effective;
+      } catch (error) {
+        // i18n apply failed after a successful native write: roll the native
+        // value back best-effort, then reconcile the store/i18n to reality.
+        const message = error instanceof Error ? error.message : String(error);
+        await addLog(`[AppLanguage] i18n apply failed; rolling back native: ${message}`, 'ERROR');
+        await rollbackNativeLanguage(previousNative, previousStore, previousEffective);
+        throw error;
+      }
     }
 
-    setStorePreference(normalized);
-    return applyEffectiveLanguage(
-      normalized === 'system' ? await resolveSystemLanguage() : normalized,
-    );
+    // Android <=12 / iOS: local-only. Commit the store only after i18n applies.
+    try {
+      const effective = await applyEffectiveLanguage(
+        normalized === 'system' ? await resolveSystemLanguage() : normalized,
+      );
+      setStorePreference(normalized);
+      return effective;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await addLog(`[AppLanguage] i18n apply failed; store unchanged: ${message}`, 'ERROR');
+      throw error;
+    }
   });
 }
 
 /**
- * Resynchronizes a language change made outside the app (Android App Languages)
- * on foreground. Native app locale is read and adopted into the store; valid
- * values are never written back to AppCompat during this read.
+ * Best-effort restoration after a failed language change on Android 13+.
+ * Restores the previous native value, then reconciles the store and the
+ * effective i18n language to the actual state so the layers never knowingly
+ * contradict each other. If the native rollback itself fails, the real native
+ * state is re-read and adopted.
+ */
+async function rollbackNativeLanguage(
+  previousNative: MappedNative | undefined,
+  previousStore: LanguagePreference,
+  previousEffective: SupportedLanguage | undefined,
+): Promise<void> {
+  try {
+    if (previousNative !== undefined && previousNative !== 'unsupported') {
+      await ensureNativeLanguage(previousNative);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(
+      `[AppLanguage] Native rollback failed (${message}); reconciling to actual state`,
+      'ERROR',
+    );
+  }
+
+  try {
+    const actual = await readNativePreference();
+    if (actual === 'unsupported') {
+      // Unsupported value: never write it into the store; repair to system.
+      try {
+        await ensureNativeLanguage('system');
+      } catch (repairError) {
+        const repairMessage =
+          repairError instanceof Error ? repairError.message : String(repairError);
+        await addLog(
+          `[AppLanguage] Could not repair native locale after rollback: ${repairMessage}`,
+          'ERROR',
+        );
+      }
+      setStorePreference('system');
+      await applyEffectiveLanguage(await resolveSystemLanguage());
+      return;
+    }
+
+    // Reconcile store + i18n to the ACTUAL native state (which may be the
+    // previous value or something the platform decided independently).
+    setStorePreference(actual);
+    await applyEffectiveLanguage(actual === 'system' ? await resolveSystemLanguage() : actual);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(
+      `[AppLanguage] Post-rollback reconciliation failed; restoring stored preference: ${message}`,
+      'ERROR',
+    );
+    setStorePreference(previousStore);
+    if (previousEffective) {
+      try {
+        await applyEffectiveLanguage(previousEffective);
+      } catch (applyError) {
+        const applyMessage =
+          applyError instanceof Error ? applyError.message : String(applyError);
+        await addLog(
+          `[AppLanguage] Could not restore effective language after rollback: ${applyMessage}`,
+          'ERROR',
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Resynchronizes a language change made outside the app (Android 13+ App
+ * Languages) on foreground. Native app locale is read and adopted into the
+ * store; valid values are never written back to the platform during this read.
  */
 export function syncAppLanguageFromSystem(): Promise<SupportedLanguage> {
   return serializeLanguageOperation(async () => {
     await hydratePreferences();
 
-    if (!AppLanguageNative.isAvailable) {
+    if (!AppLanguageNative.supportsNativePerAppLanguage) {
       const preference = normalizePreference(storePreference());
       return applyEffectiveLanguage(
         preference === 'system' ? await resolveSystemLanguage() : preference,
@@ -211,8 +457,4 @@ export function syncAppLanguageFromSystem(): Promise<SupportedLanguage> {
 
     return adoptNativeState();
   });
-}
-
-export async function getNativeApplicationLanguage(): Promise<NativeLanguageValue> {
-  return AppLanguageNative.getApplicationLanguage().then(normalizeNativeLanguage);
 }

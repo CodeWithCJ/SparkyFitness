@@ -7,12 +7,18 @@ import {
   __resetAppPreferencesStoreForTests,
   useAppPreferencesStore,
 } from '../../src/stores/appPreferencesStore';
+import { addLog } from '../../src/services/LogService';
 
 jest.mock('../../src/localization', () => ({
   syncAppLanguageFromSystem: jest.fn(() => Promise.resolve('en')),
 }));
 
+jest.mock('../../src/services/LogService', () => ({
+  addLog: jest.fn(() => Promise.resolve()),
+}));
+
 const mockSync = syncAppLanguageFromSystem as jest.MockedFunction<typeof syncAppLanguageFromSystem>;
+const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 describe('useAppLanguageForegroundSync', () => {
   let listeners: ((state: string) => void)[] = [];
@@ -64,6 +70,41 @@ describe('useAppLanguageForegroundSync', () => {
     listeners[0]('active');
     await waitFor(() => {
       expect(mockSync).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('catches and logs a resync rejection without an unhandled promise rejection', async () => {
+    useAppPreferencesStore.setState({ languagePreference: 'pl' });
+    mockSync.mockRejectedValueOnce(new Error('bridge failure'));
+
+    renderHook(() => useAppLanguageForegroundSync());
+    expect(listeners).toHaveLength(1);
+
+    // The rejection must be consumed by the hook, not left floating.
+    listeners[0]('active');
+
+    await waitFor(() => {
+      expect(mockAddLog).toHaveBeenCalledWith(
+        expect.stringContaining('Foreground resync failed'),
+        'ERROR',
+      );
+    });
+  });
+
+  it('keeps the listener usable after a resync rejection', async () => {
+    useAppPreferencesStore.setState({ languagePreference: 'pl' });
+    mockSync.mockRejectedValueOnce(new Error('bridge failure'));
+
+    renderHook(() => useAppLanguageForegroundSync());
+
+    listeners[0]('active');
+    await waitFor(() => {
+      expect(mockAddLog).toHaveBeenCalledTimes(1);
+    });
+
+    listeners[0]('active');
+    await waitFor(() => {
+      expect(mockSync).toHaveBeenCalledTimes(2);
     });
   });
 

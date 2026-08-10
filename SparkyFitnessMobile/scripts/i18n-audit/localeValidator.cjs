@@ -98,26 +98,11 @@ function firstAvailablePluralValue(enFormMap, plFormMap) {
 }
 
 /**
- * Returns an array of plural-form suffixes (e.g. '_one', '_other') used in a
- * locale for the given base key, when the key is a plural group.
- */
-function pluralFormsFor(keys, base) {
-  const forms = [];
-  for (const key of keys) {
-    const kBase = getPluralBase(key);
-    if (kBase === base) {
-      forms.push(key.slice(base.length));
-    }
-  }
-  return forms;
-}
-
-/**
  * Detects a plain (singular) key sharing its base with a plural group in the
  * same locale, e.g. both `item` and `item_one`/`item_other`. This is ambiguous
  * for i18next lookups and is a structural error that cannot be suppressed.
  */
-function detectSingularPluralCollision(data, groups, localeName) {
+function detectSingularPluralCollision(groups, localeName) {
   const errors = [];
   const pluralBases = new Set();
   const plainKeys = new Set();
@@ -192,8 +177,7 @@ class LocaleValidator {
     for (const localeName of ['en', 'pl']) {
       const isEn = localeName === 'en';
       const groups = isEn ? enGroups : plGroups;
-      const data = isEn ? enData : plData;
-      const collisionErrors = detectSingularPluralCollision(data, groups, localeName);
+      const collisionErrors = detectSingularPluralCollision(groups, localeName);
       for (const error of collisionErrors) {
         errors.push(error);
       }
@@ -366,8 +350,7 @@ class LocaleValidator {
                 } else {
                   const enPlaceholders = placeholderNames(enEl);
                   const plPlaceholders = placeholderNames(plEl);
-                  if (enPlaceholders.length !== plPlaceholders.length ||
-                      !enPlaceholders.every((p, i2) => p === plPlaceholders[i2])) {
+                  if (!samePlaceholderMultiset(enPlaceholders, plPlaceholders)) {
                     errors.push({
                       rule: 'placeholder-mismatch',
                       key: `${base}[${i}]`,
@@ -391,8 +374,7 @@ class LocaleValidator {
         } else if (typeof enVal === 'string' && typeof plVal === 'string') {
           const enPlaceholders = placeholderNames(enVal);
           const plPlaceholders = placeholderNames(plVal);
-          if (enPlaceholders.length !== plPlaceholders.length ||
-              !enPlaceholders.every((p, i) => p === plPlaceholders[i])) {
+          if (!samePlaceholderMultiset(enPlaceholders, plPlaceholders)) {
             errors.push({
               rule: 'placeholder-mismatch',
               key: base,

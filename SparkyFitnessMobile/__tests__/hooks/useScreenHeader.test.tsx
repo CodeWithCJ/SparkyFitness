@@ -25,13 +25,16 @@ let mockUsesNativeHeader = false;
 
 function TestScreen({
   right,
+  left,
   title = 'Test',
 }: {
   right?: Parameters<typeof useScreenHeader>[0]['right'];
+  left?: Parameters<typeof useScreenHeader>[0]['left'];
   title?: string;
 }) {
   const header = useScreenHeader({
     title,
+    left,
     right: right ?? [{ kind: 'primary', onPress: () => {} }],
   });
   return <>{header}</>;
@@ -142,6 +145,15 @@ describe('useScreenHeader accessibility label (native path)', () => {
     return items[0] as { label?: string; accessibilityLabel?: string } | undefined;
   }
 
+  function nativeLeftItem() {
+    const calls = (mockNavigation as unknown as { setOptions: jest.Mock }).setOptions.mock.calls;
+    const options = calls[calls.length - 1][0] as {
+      unstable_headerLeftItems?: () => unknown[];
+    };
+    const items = options.unstable_headerLeftItems?.() ?? [];
+    return items[0] as { label?: string; accessibilityLabel?: string } | undefined;
+  }
+
   it('English busy: native label is Saving… and accessibility mirrors it', async () => {
     render(<TestScreen right={primaryBusy} />);
 
@@ -176,5 +188,55 @@ describe('useScreenHeader accessibility label (native path)', () => {
     item?.onPress?.();
 
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('rebuilds a localized left primary item after a language change', async () => {
+    const onPress = jest.fn();
+    const { rerender } = render(<TestScreen right={[]} left={{ kind: 'primary', onPress }} />);
+
+    let item = nativeLeftItem();
+    expect(item?.label).toBe('Save');
+    expect(item?.accessibilityLabel).toBe('Save');
+
+    await i18n.changeLanguage('pl');
+    rerender(<TestScreen right={[]} left={{ kind: 'primary', onPress }} />);
+
+    item = nativeLeftItem();
+    expect(item?.label).toBe('Zapisz');
+    expect(item?.accessibilityLabel).toBe('Zapisz');
+  });
+
+  it('rebuilds the localized left busy label after a language change', async () => {
+    const onPress = jest.fn();
+    const { rerender } = render(<TestScreen right={[]} left={{ kind: 'primary', busy: true, onPress }} />);
+
+    let item = nativeLeftItem();
+    expect(item?.label).toBe('Saving…');
+    expect(item?.accessibilityLabel).toBe('Saving…');
+
+    await i18n.changeLanguage('pl');
+    rerender(<TestScreen right={[]} left={{ kind: 'primary', busy: true, onPress }} />);
+
+    item = nativeLeftItem();
+    expect(item?.label).toBe('Zapisywanie…');
+    expect(item?.accessibilityLabel).toBe('Zapisywanie…');
+  });
+
+  it('an explicit accessibilityLabel wins on the native left path too', async () => {
+    render(
+      <TestScreen
+        right={[]}
+        left={{
+          kind: 'primary',
+          label: 'Save',
+          accessibilityLabel: 'Save meal',
+          onPress: () => {},
+        }}
+      />,
+    );
+
+    const item = nativeLeftItem();
+    expect(item?.label).toBe('Save');
+    expect(item?.accessibilityLabel).toBe('Save meal');
   });
 });

@@ -6,23 +6,92 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(pathToFileURL(__filename));
 const localeMod = require('../../scripts/i18n-audit/localeValidator.cjs');
-const LocaleValidator: any = localeMod.LocaleValidator;
-const groupPluralKeys = localeMod.groupPluralKeys;
+const LocaleValidator: new (enPath: string, plPath: string) => LocaleValidatorInstance =
+  localeMod.LocaleValidator;
+interface PluralGroup {
+  base: string;
+  isPlural: boolean;
+  keys: string[];
+}
+
+const groupPluralKeys = localeMod.groupPluralKeys as (keys: string[]) => PluralGroup[];
 
 const SourceScanner = require('../../scripts/i18n-audit/sourceScanner.cjs');
-const collectFindings = SourceScanner.collectFindings;
+const collectFindings = SourceScanner.collectFindings as (
+  rootDir: string,
+  sourceRoots: string[],
+) => ScanResult;
 
 const coreMod = require('../../scripts/i18n-audit/core.cjs');
-const runAudit = coreMod.runAudit;
+const runAudit = coreMod.runAudit as (options?: AuditOptions) => AuditResult;
+
+interface AuditError {
+  rule: string;
+  locale?: string;
+  key?: string;
+  form?: string;
+  file?: string;
+  line?: number;
+  message?: string;
+  enPlaceholders?: string[];
+  plPlaceholders?: string[];
+  context?: Record<string, unknown>;
+}
+
+interface AuditFinding {
+  file: string;
+  line: number;
+  kind: string;
+  value: string;
+  context: Record<string, unknown>;
+}
+
+interface AuditReport {
+  localeStructuralErrors: AuditError[];
+  missingStaticKeys: AuditError[];
+  placeholderErrors: AuditError[];
+  pluralErrors: AuditError[];
+  missingFallbackFindings: AuditError[];
+  dynamicI18nFindings: AuditError[];
+  hardcodedUiFindings: AuditFinding[];
+  summary: Record<string, number>;
+}
+
+interface AuditResult {
+  hasErrors: boolean;
+  report: AuditReport;
+}
+
+interface AuditOptions {
+  rootDir?: string;
+  enLocalePath?: string;
+  plLocalePath?: string;
+  sourceRoots?: string[];
+}
+
+interface ScanResult {
+  findings: AuditFinding[];
+  errors: AuditError[];
+}
+
+interface ValidatorResult {
+  errors: AuditError[];
+  enKeys: string[];
+  plKeys: string[];
+}
+
+interface LocaleValidatorInstance {
+  validate(): ValidatorResult;
+}
 
 let enLocalePath = '';
 let plLocalePath = '';
 let fixtureRoot = '';
 
-async function createFixtureStructure(
+function createFixtureStructure(
   structure: Record<string, string>,
   sourceFiles: Record<string, string> = {},
-) {
+): string {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'i18n-audit-test-'));
   const srcDir = path.join(tmpDir, 'src');
   const scriptsDir = path.join(tmpDir, 'scripts');
@@ -54,30 +123,39 @@ async function createFixtureStructure(
   return tmpDir;
 }
 
-async function cleanupFixture() {
+function cleanupFixture(): void {
   if (fixtureRoot && fs.existsSync(fixtureRoot)) {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
 }
 
-afterEach(async () => {
-  await cleanupFixture();
+afterEach(() => {
+  cleanupFixture();
 });
 
-function auditRun(tmpDir: string, extra: any = {}) {
+function auditRun(tmpDir: string, extra: Partial<AuditOptions> = {}): AuditResult {
   return runAudit({
     rootDir: tmpDir,
     enLocalePath,
     plLocalePath,
     sourceRoots: [path.join(tmpDir, 'src')],
-    forbiddenFiles: [],
     ...extra,
   });
 }
 
+function scan(tmpDir: string): ScanResult {
+  return collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
+}
+
+function hardcodedValues(findings: AuditFinding[]): string[] {
+  return findings
+    .filter((f) => f.kind === 'hardcoded-ui-text')
+    .map((f) => f.value);
+}
+
 describe('LocaleValidator', () => {
-  it('1. passes for structurally matching EN/PL locales', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('1. passes for structurally matching EN/PL locales', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"common": {"save": "Save", "close": "Close"}}',
       pl: '{"common": {"save": "Zapisz", "close": "Zamknij"}}',
     });
@@ -91,8 +169,8 @@ describe('LocaleValidator', () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it('2. fails for missing plain key in PL', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('2. fails for missing plain key in PL', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"common": {"save": "Save", "close": "Close"}}',
       pl: '{"common": {"save": "Zapisz"}}',
     });
@@ -103,11 +181,11 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e: any) => e.rule === 'missing-key' && e.key === 'common.close')).toBe(true);
+    expect(result.errors.some((e) => e.rule === 'missing-key' && e.key === 'common.close')).toBe(true);
   });
 
-  it('3. fails for extra key in PL', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('3. fails for extra key in PL', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"common": {"save": "Save"}}',
       pl: '{"common": {"save": "Zapisz", "extra": "Dodatkowy"}}',
     });
@@ -118,11 +196,11 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e: any) => e.rule === 'missing-key' && e.locale === 'en' && e.key === 'common.extra')).toBe(true);
+    expect(result.errors.some((e) => e.rule === 'missing-key' && e.locale === 'en' && e.key === 'common.extra')).toBe(true);
   });
 
-  it('4. fails for malformed JSON', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('4. fails for malformed JSON', () => {
+    const tmpDir = createFixtureStructure({
       en: '{invalid json}',
       pl: '{"common": {"save": "Zapisz"}}',
     });
@@ -133,11 +211,11 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e: any) => e.rule === 'malformed-json')).toBe(true);
+    expect(result.errors.some((e) => e.rule === 'malformed-json')).toBe(true);
   });
 
-  it('5. fails for type mismatch (string vs non-string)', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('5. fails for type mismatch (string vs non-string)', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"common": {"save": "Save"}}',
       pl: '{"common": {"save": 5}}',
     });
@@ -148,11 +226,11 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e: any) => e.rule === 'type-mismatch')).toBe(true);
+    expect(result.errors.some((e) => e.rule === 'type-mismatch')).toBe(true);
   });
 
-  it('6. fails for different array length', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('6. fails for different array length', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"days": {"short": ["Sun", "Mon", "Tue"]}}',
       pl: '{"days": {"short": ["Nie", "Pon"]}}',
     });
@@ -163,11 +241,11 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e: any) => e.rule === 'array-length-mismatch')).toBe(true);
+    expect(result.errors.some((e) => e.rule === 'array-length-mismatch')).toBe(true);
   });
 
-  it('7. fails for mismatched placeholders', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('7. fails for mismatched placeholders', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"msg": "Delete {{name}}?"}',
       pl: '{"msg": "Usunąć {{count}}?"}',
     });
@@ -178,11 +256,11 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e: any) => e.rule === 'placeholder-mismatch')).toBe(true);
+    expect(result.errors.some((e) => e.rule === 'placeholder-mismatch')).toBe(true);
   });
 
-  it('8. passes for same placeholders in different order', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('8. passes for same placeholders in different order', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"msg": "Delete {{name}} and {{count}}?"}',
       pl: '{"msg": "Usunąć {{count}} i {{name}}?"}',
     });
@@ -196,8 +274,8 @@ describe('LocaleValidator', () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it('fails for duplicate locale keys (singular colliding with plural group)', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('fails for duplicate locale keys (singular colliding with plural group)', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"item": "Item", "item_one": "One item", "item_other": "Items"}',
       pl: '{"item": "Przedmiot", "item_one": "Jeden", "item_other": "Przedmioty"}',
     });
@@ -208,13 +286,13 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e: any) => e.rule === 'singular-plural-collision')).toBe(true);
+    expect(result.errors.some((e) => e.rule === 'singular-plural-collision')).toBe(true);
   });
 });
 
 describe('Pluralization', () => {
-  it('9. fails for missing _many in Polish', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('9. fails for missing _many in Polish', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"count": {"item_one": "item", "item_other": "items"}}',
       pl: '{"count": {"item_one": "przedmiot", "item_few": "przedmioty", "item_other": "przedmiotów"}}',
     });
@@ -225,11 +303,11 @@ describe('Pluralization', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e: any) => e.rule === 'missing-plural-form' && e.locale === 'pl' && e.form === '_many')).toBe(true);
+    expect(result.errors.some((e) => e.rule === 'missing-plural-form' && e.locale === 'pl' && e.form === '_many')).toBe(true);
   });
 
-  it('10. passes for EN _one/_other and PL _one/_few/_many/_other', async () => {
-    const tmpDir = await createFixtureStructure({
+  it('10. passes for EN _one/_other and PL _one/_few/_many/_other', () => {
+    const tmpDir = createFixtureStructure({
       en: '{"count": {"item_one": "item", "item_other": "items"}}',
       pl: '{"count": {"item_one": "przedmiot", "item_few": "przedmioty", "item_many": "przedmiotów", "item_other": "przedmiotów"}}',
     });
@@ -253,8 +331,8 @@ export function Test() {
 }
 `;
 
-  it('11. detects existing static key', async () => {
-    const tmpDir = await createFixtureStructure(
+  it('11. detects existing static key', () => {
+    const tmpDir = createFixtureStructure(
       {
         en: '{"common": {"save": "Save"}}',
         pl: '{"common": {"save": "Zapisz"}}',
@@ -262,12 +340,11 @@ export function Test() {
       { 'test.ts': sourceWithStaticKey },
     );
 
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const staticKeyFindings = findings.filter((f: any) => f.kind === 'static-t-key');
-    expect(staticKeyFindings.some((f: any) => f.value === 'common.save')).toBe(true);
+    const staticKeyFindings = scan(tmpDir).findings.filter((f) => f.kind === 'static-t-key');
+    expect(staticKeyFindings.some((f) => f.value === 'common.save')).toBe(true);
   });
 
-  it('12. fails for missing static key in locale', async () => {
+  it('12. fails for missing static key in locale', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
 export function Test() {
@@ -275,7 +352,7 @@ export function Test() {
   return t('nonexistent.key');
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{"common": {"save": "Save"}}', pl: '{"common": {"save": "Zapisz"}}' },
       { 'test.ts': source },
     );
@@ -283,12 +360,12 @@ export function Test() {
     const result = auditRun(tmpDir);
 
     expect(result.hasErrors).toBe(true);
-    expect(result.report.missingStaticKeys.some((e: any) => e.key === 'nonexistent.key')).toBe(true);
+    expect(result.report.missingStaticKeys.some((e) => e.key === 'nonexistent.key')).toBe(true);
   });
 });
 
 describe('English fallback detection', () => {
-  it('flags user-facing t() without an explicit English fallback', async () => {
+  it('flags user-facing t() without an explicit English fallback', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
 export function Test() {
@@ -296,7 +373,7 @@ export function Test() {
   return t('common.save');
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{"common": {"save": "Save"}}', pl: '{"common": {"save": "Zapisz"}}' },
       { 'test.ts': source },
     );
@@ -304,10 +381,10 @@ export function Test() {
     const result = auditRun(tmpDir);
 
     expect(result.hasErrors).toBe(true);
-    expect(result.report.missingFallbackFindings.some((e: any) => e.key === 'common.save')).toBe(true);
+    expect(result.report.missingFallbackFindings.some((e) => e.key === 'common.save')).toBe(true);
   });
 
-  it('accepts t() with a positional fallback string', async () => {
+  it('accepts t() with a positional fallback string', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
 export function Test() {
@@ -315,7 +392,7 @@ export function Test() {
   return t('common.save', 'Save');
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{"common": {"save": "Save"}}', pl: '{"common": {"save": "Zapisz"}}' },
       { 'test.ts': source },
     );
@@ -326,7 +403,7 @@ export function Test() {
     expect(result.report.missingFallbackFindings.length).toBe(0);
   });
 
-  it('accepts t() with a defaultValue option', async () => {
+  it('accepts t() with a static defaultValue string', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
 export function Test() {
@@ -334,7 +411,7 @@ export function Test() {
   return t('example.greeting', { name, defaultValue: 'Hello, {{name}}' });
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       {
         en: '{"example": {"greeting": "Hello, {{name}}"}}',
         pl: '{"example": {"greeting": "Cześć, {{name}}"}}',
@@ -348,7 +425,73 @@ export function Test() {
     expect(result.report.missingFallbackFindings.length).toBe(0);
   });
 
-  it('flags t() with options that lack defaultValue', async () => {
+  it('accepts t() with a static defaultValue template literal', () => {
+    const source = `
+import { useTranslation } from 'react-i18next';
+export function Test() {
+  const { t } = useTranslation();
+  return t('example.greeting', { defaultValue: \`Hello, {{name}}\` });
+}
+`;
+    const tmpDir = createFixtureStructure(
+      {
+        en: '{"example": {"greeting": "Hello, {{name}}"}}',
+        pl: '{"example": {"greeting": "Cześć, {{name}}"}}',
+      },
+      { 'test.ts': source },
+    );
+
+    const result = auditRun(tmpDir);
+
+    expect(result.hasErrors).toBe(false);
+    expect(result.report.missingFallbackFindings.length).toBe(0);
+  });
+
+  it('rejects a dynamic defaultValue variable', () => {
+    const source = `
+import { useTranslation } from 'react-i18next';
+export function Test() {
+  const { t } = useTranslation();
+  return t('example.greeting', { defaultValue: fallbackText });
+}
+`;
+    const tmpDir = createFixtureStructure(
+      {
+        en: '{"example": {"greeting": "Hello, {{name}}"}}',
+        pl: '{"example": {"greeting": "Cześć, {{name}}"}}',
+      },
+      { 'test.ts': source },
+    );
+
+    const result = auditRun(tmpDir);
+
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.missingFallbackFindings.some((e) => e.key === 'example.greeting')).toBe(true);
+  });
+
+  it('rejects a dynamic positional fallback variable', () => {
+    const source = `
+import { useTranslation } from 'react-i18next';
+export function Test() {
+  const { t } = useTranslation();
+  return t('example.greeting', fallbackText);
+}
+`;
+    const tmpDir = createFixtureStructure(
+      {
+        en: '{"example": {"greeting": "Hello, {{name}}"}}',
+        pl: '{"example": {"greeting": "Cześć, {{name}}"}}',
+      },
+      { 'test.ts': source },
+    );
+
+    const result = auditRun(tmpDir);
+
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.missingFallbackFindings.some((e) => e.key === 'example.greeting')).toBe(true);
+  });
+
+  it('flags t() with options that lack defaultValue', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
 export function Test({ count }) {
@@ -356,7 +499,7 @@ export function Test({ count }) {
   return t('items', { count });
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{}', pl: '{}' },
       { 'test.ts': source },
     );
@@ -364,10 +507,10 @@ export function Test({ count }) {
     const result = auditRun(tmpDir);
 
     expect(result.hasErrors).toBe(true);
-    expect(result.report.missingFallbackFindings.some((e: any) => e.key === 'items')).toBe(true);
+    expect(result.report.missingFallbackFindings.some((e) => e.key === 'items')).toBe(true);
   });
 
-  it('allows an explicit suppression with justification for technical lookups', async () => {
+  it('allows an explicit suppression with justification for technical lookups', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
 export function Test() {
@@ -376,7 +519,7 @@ export function Test() {
   return t('server.key');
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       {
         en: '{"server": {"key": "Server key"}}',
         pl: '{"server": {"key": "Klucz serwera"}}',
@@ -390,7 +533,7 @@ export function Test() {
     expect(result.report.missingFallbackFindings.length).toBe(0);
   });
 
-  it('rejects a missing-fallback suppression without justification', async () => {
+  it('rejects a missing-fallback suppression without justification', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
 export function Test() {
@@ -399,7 +542,7 @@ export function Test() {
   return t('common.save');
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{}', pl: '{}' },
       { 'test.ts': source },
     );
@@ -407,12 +550,12 @@ export function Test() {
     const result = auditRun(tmpDir);
 
     expect(result.hasErrors).toBe(true);
-    expect(result.report.localeStructuralErrors.some((e: any) => e.rule === 'suppression-without-justification')).toBe(true);
+    expect(result.report.localeStructuralErrors.some((e) => e.rule === 'suppression-without-justification')).toBe(true);
   });
 });
 
 describe('Dynamic t() key detection', () => {
-  it('13. fails for dynamic key from server value', async () => {
+  it('13. fails for dynamic key from server value', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
 export function Test({ category }) {
@@ -420,18 +563,17 @@ export function Test({ category }) {
   return t(category.name);
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{}', pl: '{}' },
       { 'test.ts': source },
     );
 
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const dynamicFindings = findings.filter((f: any) => f.kind === 'dynamic-t-key');
+    const dynamicFindings = scan(tmpDir).findings.filter((f) => f.kind === 'dynamic-t-key');
     expect(dynamicFindings.length).toBeGreaterThan(0);
     expect(dynamicFindings[0].value).toBe('category.name');
   });
 
-  it('fails the audit for unsafe template-literal translation keys', async () => {
+  it('fails the audit for unsafe template-literal translation keys', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
 export function Test({ name }) {
@@ -439,7 +581,7 @@ export function Test({ name }) {
   return t(\`common.\${name}\`);
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{}', pl: '{}' },
       { 'test.ts': source },
     );
@@ -452,7 +594,7 @@ export function Test({ name }) {
 });
 
 describe('Hardcoded UI text detection (informational)', () => {
-  it('14. reports new hardcoded text in <Text> without failing the audit', async () => {
+  it('14. reports new hardcoded text in <Text> without failing the audit', () => {
     const source = `
 import React from 'react';
 import { Text } from 'react-native';
@@ -460,21 +602,48 @@ export function Test() {
   return <Text>Hardcoded English</Text>;
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{}', pl: '{}' },
       { 'test.tsx': source },
     );
 
     const result = auditRun(tmpDir);
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const hardcoded = findings.filter((f: any) => f.kind === 'hardcoded-ui-text' && f.value === 'Hardcoded English');
+    const hardcoded = scan(tmpDir).findings.filter(
+      (f) => f.kind === 'hardcoded-ui-text' && f.value === 'Hardcoded English',
+    );
 
     expect(hardcoded.length).toBe(1);
     expect(result.hasErrors).toBe(false);
     expect(result.report.hardcodedUiFindings.length).toBeGreaterThan(0);
   });
 
-  it('15. detects hardcoded accessibilityLabel', async () => {
+  it('inventories JSX expression children (string, single-quote and template forms)', () => {
+    const source = `
+import React from 'react';
+import { Text } from 'react-native';
+export function Test() {
+  return (
+    <>
+      <Text>Hardcoded English</Text>
+      <Text>{'Hardcoded English'}</Text>
+      <Text>{\`Hardcoded English\`}</Text>
+    </>
+  );
+}
+`;
+    const tmpDir = createFixtureStructure(
+      { en: '{}', pl: '{}' },
+      { 'test.tsx': source },
+    );
+
+    const hardcoded = scan(tmpDir).findings.filter(
+      (f) => f.kind === 'hardcoded-ui-text' && f.value === 'Hardcoded English',
+    );
+
+    expect(hardcoded).toHaveLength(3);
+  });
+
+  it('15. detects hardcoded accessibilityLabel', () => {
     const source = `
 import React from 'react';
 import { View } from 'react-native';
@@ -482,60 +651,55 @@ export function Test() {
   return <View accessibilityLabel="Back" />;
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{}', pl: '{}' },
       { 'test.tsx': source },
     );
 
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const hardcoded = findings.filter((f: any) => f.kind === 'hardcoded-ui-text' && f.value === 'Back');
+    const hardcoded = scan(tmpDir).findings.filter(
+      (f) => f.kind === 'hardcoded-ui-text' && f.value === 'Back',
+    );
     expect(hardcoded.length).toBe(1);
   });
 
-  it('16. detects Alert.alert text', async () => {
+  it('16. detects Alert.alert text', () => {
     const source = `
 import { Alert } from 'react-native';
 export function Test() {
   Alert.alert('Are you sure?', 'This cannot be undone', [{ text: 'Delete', onPress: () => {} }]);
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{}', pl: '{}' },
       { 'test.ts': source },
     );
 
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const hardcodedValues = findings
-      .filter((f: any) => f.kind === 'hardcoded-ui-text')
-      .map((f: any) => f.value);
-    expect(hardcodedValues).toContain('Are you sure?');
-    expect(hardcodedValues).toContain('This cannot be undone');
-    expect(hardcodedValues).toContain('Delete');
+    const foundValues = hardcodedValues(scan(tmpDir).findings);
+    expect(foundValues).toContain('Are you sure?');
+    expect(foundValues).toContain('This cannot be undone');
+    expect(foundValues).toContain('Delete');
   });
 
-  it('17. detects Toast.show text1', async () => {
+  it('17. detects Toast.show text1', () => {
     const source = `
 import Toast from 'react-native-toast-message';
 export function Test() {
   Toast.show({ text1: 'Success', text2: 'Saved successfully' });
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{}', pl: '{}' },
       { 'test.ts': source },
     );
 
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const hardcodedValues = findings
-      .filter((f: any) => f.kind === 'hardcoded-ui-text')
-      .map((f: any) => f.value);
-    expect(hardcodedValues).toContain('Success');
-    expect(hardcodedValues).toContain('Saved successfully');
+    const foundValues = hardcodedValues(scan(tmpDir).findings);
+    expect(foundValues).toContain('Success');
+    expect(foundValues).toContain('Saved successfully');
   });
 });
 
 describe('False positive exclusion', () => {
-  it('18. does not flag route names, icon names, or testIDs', async () => {
+  it('18. does not flag route names, icon names, or testIDs', () => {
     const source = `
 import React from 'react';
 import { Text } from 'react-native';
@@ -548,24 +712,21 @@ export function Test() {
   );
 }
 `;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{}', pl: '{}' },
       { 'test.tsx': source },
     );
 
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const hardcoded = findings
-      .filter((f: any) => f.kind === 'hardcoded-ui-text')
-      .map((f: any) => f.value);
+    const hardcoded = hardcodedValues(scan(tmpDir).findings);
     expect(hardcoded).not.toContain('myButton');
     expect(hardcoded).not.toContain('SomeRouteName');
   });
 });
 
 describe('Static key resolution', () => {
-  it('exact plain key passes', async () => {
+  it('exact plain key passes', () => {
     const src = `export function F(t){ return t('common.save'); }`;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{"common":{"save":"Save"}}', pl: '{"common":{"save":"Zapisz"}}' },
       { 'x.ts': src },
     );
@@ -573,19 +734,19 @@ describe('Static key resolution', () => {
     expect(result.report.missingStaticKeys.length).toBe(0);
   });
 
-  it('common.save_as does not satisfy common.save', async () => {
+  it('common.save_as does not satisfy common.save', () => {
     const src = `export function F(t){ return t('common.save'); }`;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{"common":{"save_as":"Save as"}}', pl: '{"common":{"save_as":"Zapisz jako"}}' },
       { 'x.ts': src },
     );
     const result = auditRun(tmpDir);
-    expect(result.report.missingStaticKeys.some((e: any) => e.key === 'common.save')).toBe(true);
+    expect(result.report.missingStaticKeys.some((e) => e.key === 'common.save')).toBe(true);
   });
 
-  it('valid plural base passes', async () => {
+  it('valid plural base passes', () => {
     const src = `export function F(t){ return t('measurement', { count }); }`;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       {
         en: '{"measurement_one":"measurement","measurement_other":"measurements"}',
         pl: '{"measurement_one":"pomiar","measurement_few":"pomiary","measurement_many":"pomiarów","measurement_other":"pomiaru"}',
@@ -596,30 +757,29 @@ describe('Static key resolution', () => {
     expect(result.report.missingStaticKeys.length).toBe(0);
   });
 
-  it('static template literal `common.save` is static', async () => {
+  it('static template literal `common.save` is static', () => {
     const src = `export function F(t){ return t(\`common.save\`); }`;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{"common":{"save":"Save"}}', pl: '{"common":{"save":"Zapisz"}}' },
       { 'x.ts': src },
     );
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const staticF = findings.filter((f: any) => f.kind === 'static-t-key' && f.value === 'common.save');
-    const dynF = findings.filter((f: any) => f.kind === 'dynamic-t-key');
+    const result = scan(tmpDir);
+    const staticF = result.findings.filter((f) => f.kind === 'static-t-key' && f.value === 'common.save');
+    const dynF = result.findings.filter((f) => f.kind === 'dynamic-t-key');
     expect(staticF.length).toBe(1);
     expect(dynF.length).toBe(0);
   });
 
-  it('dynamic template literal is dynamic', async () => {
+  it('dynamic template literal is dynamic', () => {
     const src = `export function F(t){ return t(\`common.\${name}\`); }`;
-    const tmpDir = await createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const dynF = findings.filter((f: any) => f.kind === 'dynamic-t-key');
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
+    const dynF = scan(tmpDir).findings.filter((f) => f.kind === 'dynamic-t-key');
     expect(dynF.length).toBe(1);
   });
 
-  it('t(("common.save" as const)) is static', async () => {
+  it('t((\"common.save\" as const)) is static', () => {
     const src = `export function F(t){ return t(('common.save' as const)); }`;
-    const tmpDir = await createFixtureStructure(
+    const tmpDir = createFixtureStructure(
       { en: '{"common":{"save":"Save"}}', pl: '{"common":{"save":"Zapisz"}}' },
       { 'x.ts': src },
     );
@@ -630,123 +790,133 @@ describe('Static key resolution', () => {
 });
 
 describe('Per-rule suppression', () => {
-  it('hardcoded suppression works', async () => {
+  it('hardcoded suppression works', () => {
     const src = `// i18n-audit-ignore-next-line hardcoded-ui-text -- Protocol label
 return <Text>Protocol Value</Text>;`;
-    const tmpDir = await createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.tsx': src });
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    expect(findings.filter((f: any) => f.value === 'Protocol Value').length).toBe(0);
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.tsx': src });
+    const findings = scan(tmpDir).findings;
+    expect(findings.filter((f) => f.value === 'Protocol Value').length).toBe(0);
   });
 
-  it('dynamic suppression works', async () => {
+  it('dynamic suppression works', () => {
     const src = `// i18n-audit-ignore-next-line dynamic-i18n-key -- server key
 return t(variable);`;
-    const tmpDir = await createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
     const result = auditRun(tmpDir);
     expect(result.report.dynamicI18nFindings.length).toBe(0);
   });
 
-  it('wrong rule does not suppress finding', async () => {
+  it('wrong rule does not suppress finding', () => {
     // hardcoded suppression should not hide a dynamic t()
     const src = `// i18n-audit-ignore-next-line hardcoded-ui-text -- reason
 const a = t(variable);`;
-    const tmpDir = await createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
     const result = auditRun(tmpDir);
     expect(result.report.dynamicI18nFindings.length).toBe(1);
   });
 
-  it('missing justification is an error', async () => {
+  it('missing justification is an error', () => {
     const src = `// i18n-audit-ignore-next-line hardcoded-ui-text
 return <Text>No justification</Text>;`;
-    const tmpDir = await createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.tsx': src });
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.tsx': src });
     const result = auditRun(tmpDir);
-    expect(result.report.localeStructuralErrors.some((e: any) => e.rule === 'suppression-without-justification')).toBe(true);
+    expect(result.report.localeStructuralErrors.some((e) => e.rule === 'suppression-without-justification')).toBe(true);
   });
 
-  it('unknown rule is an error', async () => {
+  it('unknown rule is an error', () => {
     const src = `// i18n-audit-ignore-next-line bogus-rule -- reason
 const a = 1;`;
-    const tmpDir = await createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
     const result = auditRun(tmpDir);
-    expect(result.report.localeStructuralErrors.some((e: any) => e.rule === 'unknown-suppression-rule')).toBe(true);
+    expect(result.report.localeStructuralErrors.some((e) => e.rule === 'unknown-suppression-rule')).toBe(true);
   });
 
-  it('suppression does not hide a missing static key', async () => {
+  it('suppression does not hide a missing static key', () => {
     const src = `// i18n-audit-ignore-next-line hardcoded-ui-text -- reason
 return t('missing.key');`;
-    const tmpDir = await createFixtureStructure({ en: '{"common":{"save":"Save"}}', pl: '{"common":{"save":"Zapisz"}}' }, { 'x.ts': src });
+    const tmpDir = createFixtureStructure(
+      { en: '{"common":{"save":"Save"}}', pl: '{"common":{"save":"Zapisz"}}' },
+      { 'x.ts': src },
+    );
     const result = auditRun(tmpDir);
-    expect(result.report.missingStaticKeys.some((e: any) => e.key === 'missing.key')).toBe(true);
+    expect(result.report.missingStaticKeys.some((e) => e.key === 'missing.key')).toBe(true);
   });
 });
 
 describe('Alert and Toast dedup', () => {
-  it('Alert produces exactly title/message/button', async () => {
+  it('Alert produces exactly title/message/button', () => {
     const src = `import { Alert } from 'react-native';
 Alert.alert('Title', 'Message', [{ text: 'Delete', onPress() {} }]);`;
-    const tmpDir = await createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const alertF = findings.filter((f: any) => f.kind === 'hardcoded-ui-text');
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
+    const alertF = scan(tmpDir).findings.filter((f) => f.kind === 'hardcoded-ui-text');
     expect(alertF).toHaveLength(3);
-    const values = alertF.map((f: any) => f.value);
+    const values = alertF.map((f) => f.value);
     expect(values).toContain('Title');
     expect(values).toContain('Message');
     expect(values).toContain('Delete');
-    const deleteF = alertF.find((f: any) => f.value === 'Delete');
-    expect(deleteF.context.context).toBe('Alert.alert:button');
+    const deleteF = alertF.find((f) => f.value === 'Delete');
+    expect(deleteF?.context.context).toBe('Alert.alert:button');
   });
 
-  it('second Alert button is its own single finding', async () => {
+  it('second Alert button is its own single finding', () => {
     const src = `import { Alert } from 'react-native';
 Alert.alert('Title', 'Message', [{ text: 'Delete', onPress() {} }, { text: 'Cancel', onPress() {} }]);`;
-    const tmpDir = await createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const deleteF = findings.filter((f: any) => f.kind === 'hardcoded-ui-text' && f.value === 'Delete');
-    const cancelF = findings.filter((f: any) => f.kind === 'hardcoded-ui-text' && f.value === 'Cancel');
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
+    const findings = scan(tmpDir).findings;
+    const deleteF = findings.filter((f) => f.kind === 'hardcoded-ui-text' && f.value === 'Delete');
+    const cancelF = findings.filter((f) => f.kind === 'hardcoded-ui-text' && f.value === 'Cancel');
     expect(deleteF).toHaveLength(1);
     expect(cancelF).toHaveLength(1);
   });
 
-  it('Toast produces exactly text1/text2', async () => {
+  it('Toast produces exactly text1/text2', () => {
     const src = `import Toast from 'react-native-toast-message';
 Toast.show({ text1: 'Success', text2: 'Saved' });`;
-    const tmpDir = await createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
-    const findings = collectFindings(tmpDir, [path.join(tmpDir, 'src')]);
-    const toastF = findings.filter((f: any) => f.kind === 'hardcoded-ui-text');
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'x.ts': src });
+    const toastF = scan(tmpDir).findings.filter((f) => f.kind === 'hardcoded-ui-text');
     expect(toastF).toHaveLength(2);
-    const success = toastF.find((f: any) => f.value === 'Success');
-    expect(success.context.context).toBe('Toast.show');
-    expect(success.context.prop).toBe('text1');
+    const success = toastF.find((f) => f.value === 'Success');
+    expect(success?.context.context).toBe('Toast.show');
+    expect(success?.context.prop).toBe('text1');
   });
 });
 
-describe('Forbidden files', () => {
-  it('detects forbidden mobile.pl.json', async () => {
-    const tmpDir = await createFixtureStructure(
-      { en: '{}', pl: '{}' },
-      {},
-    );
+describe('Scan failure fail-closed behavior', () => {
+  it('records a blocking source-scan-error when a source file cannot be read', () => {
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'ok.ts': 'export const ok = 1;' });
 
-    fs.writeFileSync(path.join(tmpDir, 'src', 'localization', 'mobile.pl.json'), '{}');
+    // A broken symlink with a source extension: readFileSync throws, and the
+    // audit must fail closed instead of silently passing with partial coverage.
+    fs.symlinkSync(
+      path.join(tmpDir, 'does-not-exist-target'),
+      path.join(tmpDir, 'src', 'broken.ts'),
+    );
 
     const result = auditRun(tmpDir);
 
     expect(result.hasErrors).toBe(true);
-    expect(result.report.forbidden.some((f: any) => f.file.includes('mobile.pl.json'))).toBe(true);
+    const scanError = result.report.localeStructuralErrors.find((e) => e.rule === 'source-scan-error');
+    expect(scanError).toBeDefined();
+    expect(scanError?.file).toBe('src/broken.ts');
   });
+});
 
-  it('detects forbidden populate-mobile-polish.mjs', async () => {
-    const tmpDir = await createFixtureStructure(
-      { en: '{}', pl: '{}' },
-      {},
+describe('Custom root audit semantics', () => {
+  it('derives source roots from the actual rootDir when none are supplied', () => {
+    const src = `export function F(t){ return t('missing.in.custom.root'); }`;
+    const tmpDir = createFixtureStructure(
+      { en: '{"common":{"save":"Save"}}', pl: '{"common":{"save":"Zapisz"}}' },
+      { 'x.ts': src },
     );
-    fs.mkdirSync(path.join(tmpDir, 'scripts'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'scripts', 'populate-mobile-polish.mjs'), 'console.log("old script");');
 
-    const result = auditRun(tmpDir);
+    // No sourceRoots passed: the audit must scan <rootDir>/src on its own.
+    const result = runAudit({
+      rootDir: tmpDir,
+      enLocalePath,
+      plLocalePath,
+    });
 
-    expect(result.hasErrors).toBe(true);
-    expect(result.report.forbidden.some((f: any) => f.file.includes('populate-mobile-polish.mjs'))).toBe(true);
+    expect(result.report.missingStaticKeys.some((e) => e.key === 'missing.in.custom.root')).toBe(true);
   });
 });
 
