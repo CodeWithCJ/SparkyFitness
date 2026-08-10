@@ -33,6 +33,8 @@ const flushReload = async () => {
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
 };
 
 describe('useWidgetLanguageRefresh', () => {
@@ -42,6 +44,12 @@ describe('useWidgetLanguageRefresh', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset persistent module-factory implementations too, not only call
+    // history: a mockRejectedValue/mockImplementation from one test must never
+    // leak into a later test in this file.
+    mockSetWidgetLocale.mockReset().mockResolvedValue(undefined);
+    mockReload.mockReset().mockResolvedValue(undefined);
+    mockReloadMacro.mockReset().mockResolvedValue(undefined);
     __resetAppPreferencesStoreForTests();
     languageListeners = [];
     resolvedLanguage = 'en';
@@ -294,6 +302,32 @@ describe('useWidgetLanguageRefresh', () => {
     languageListeners[0]('pl');
     await flushReload();
 
+    expect(mockReload).toHaveBeenCalledTimes(2);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
+  });
+
+  it('serializes rapid signals so the newest preference wins', async () => {
+    setPreference('en');
+
+    const { rerender } = renderHook(() => useWidgetLanguageRefresh());
+    await flushReload();
+    expect(mockSetWidgetLocale).toHaveBeenLastCalledWith('en');
+
+    // Fire several signals without waiting between them: the queued runs re-read
+    // the store at execution time, so the intermediate pl write is collapsed and
+    // the sync converges on the newest state (system = remove) without a reload
+    // storm.
+    languageListeners[0]('en');
+    setPreference('pl');
+    rerender();
+    languageListeners[0]('pl');
+    setPreference('system');
+    rerender();
+    languageListeners[0]('en');
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenLastCalledWith(null);
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(2);
     expect(mockReload).toHaveBeenCalledTimes(2);
     expect(mockReloadMacro).toHaveBeenCalledTimes(2);
   });

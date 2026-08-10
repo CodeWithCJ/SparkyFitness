@@ -41,10 +41,8 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import {{APPLICATION_ID}}.R
-import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import org.json.JSONObject
 
 class CalorieWidget : GlanceAppWidget() {
@@ -246,13 +244,8 @@ class CalorieWidget : GlanceAppWidget() {
         }
     }
 
-    private fun currentLocale(context: Context): Locale {
-        val locales = context.resources.configuration.locales
-        return if (locales.isEmpty) Locale.getDefault() else locales[0]
-    }
-
     private fun formatInt(context: Context, value: Double): String {
-        return NumberFormat.getIntegerInstance(currentLocale(context)).format(value.toLong())
+        return formatWidgetInt(context, value)
     }
 
     companion object {

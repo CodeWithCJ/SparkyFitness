@@ -2,7 +2,9 @@ package com.sparkyapps.sparkyfitness.widget
 
 import android.content.Context
 import android.content.res.Configuration
+import java.text.NumberFormat
 import java.util.Locale
+import kotlin.math.roundToLong
 
 /**
  * Widget-only locale override, kept in a dedicated SharedPreferences namespace
@@ -75,4 +77,18 @@ object WidgetLocale {
     }
 
     private val SUPPORTED_LOCALES = setOf("en", "pl")
+}
+
+/**
+ * Locale-aware integer formatting shared by every widget surface. Both widgets
+ * render the same values (e.g. remaining calories), so one rounding rule keeps
+ * them consistent on the home screen.
+ */
+fun currentWidgetLocale(context: Context): Locale {
+    val locales = context.resources.configuration.locales
+    return if (locales.isEmpty) Locale.getDefault() else locales[0]
+}
+
+fun formatWidgetInt(context: Context, value: Double): String {
+    return NumberFormat.getIntegerInstance(currentWidgetLocale(context)).format(value.roundToLong())
 }

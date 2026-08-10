@@ -42,11 +42,18 @@ type WidgetSyncState = {
 export function useWidgetLanguageRefresh(): void {
   const languagePreference = useAppPreferencesStore((s) => s.languagePreference);
   const lastAppliedRef = useRef<WidgetSyncState | null>(null);
+  // Serializes sync runs so a later preference change can never lose to an
+  // in-flight write (two overlapping runs could otherwise leave the native
+  // override in the older language while the ref claims the newer one, with no
+  // retry path because the dedupe check would then short-circuit). Each queued
+  // run recomputes the desired state when it actually executes, so the last run
+  // always lands on the newest preference + effective language.
+  const inFlightRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
 
-    const syncWidgets = async (): Promise<void> => {
+    const runSync = async (): Promise<void> => {
       const preference = useAppPreferencesStore.getState().languagePreference;
       const effectiveLanguage: 'en' | 'pl' =
         i18n.resolvedLanguage === 'pl' ? 'pl' : 'en';
@@ -89,12 +96,16 @@ export function useWidgetLanguageRefresh(): void {
       lastAppliedRef.current = desired;
     };
 
+    const syncWidgets = (): void => {
+      inFlightRef.current = inFlightRef.current.then(runSync, runSync);
+    };
+
     // Cold start: apply the persisted preference to already-placed instances
     // that may have been rendered before the language state was set.
-    void syncWidgets();
+    syncWidgets();
 
     const onLanguageChanged = () => {
-      void syncWidgets();
+      syncWidgets();
     };
     i18n.on('languageChanged', onLanguageChanged);
 

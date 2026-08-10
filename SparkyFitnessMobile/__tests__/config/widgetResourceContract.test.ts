@@ -214,12 +214,33 @@ describe('Android widget localization contract', () => {
     });
 
     it('uses locale-aware number formatting without hardcoding English separators', () => {
+      const helper = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
+        'utf8',
+      );
+      expect(helper).toMatch(/NumberFormat\.getIntegerInstance/);
+      expect(helper).not.toContain('String.format(Locale.US');
+      expect(helper).not.toContain('%,d');
+
       for (const template of ['CalorieWidget.kt.tmpl', 'MacroWidget.kt.tmpl']) {
         const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
-        expect(src).toMatch(/NumberFormat\.getIntegerInstance/);
+        expect(src).toMatch(/formatWidgetInt\(/);
         expect(src).not.toContain('String.format(Locale.US');
         expect(src).not.toContain('%,d');
+        // No divergent per-widget rounding survives: the shared helper owns it.
+        expect(src).not.toMatch(/\.toLong\(\)/);
+        expect(src).not.toMatch(/\.roundToLong\(\)/);
       }
+    });
+
+    it('rounds the same value identically in every widget surface', () => {
+      const helper = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
+        'utf8',
+      );
+      expect(helper).toMatch(/formatWidgetInt/);
+      expect(helper).toMatch(/roundToLong\(\)/);
+      expect(helper).not.toMatch(/\.toLong\(\)/);
     });
 
     it('updates every GlanceId and continues past a failing instance', () => {

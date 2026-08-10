@@ -72,6 +72,13 @@ const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 type I18nEventListener = (lng?: string) => void;
 
+/** Flush the serialized sync queue (one microtask per enqueued run). */
+async function flushSync(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 describe('useIOSWidgetLanguageRefresh', () => {
   let languageListeners: I18nEventListener[] = [];
   let initializedListeners: I18nEventListener[] = [];
@@ -81,6 +88,12 @@ describe('useIOSWidgetLanguageRefresh', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset persistent module-factory implementations too, not only call
+    // history: a mockImplementation from one test must never leak into a later
+    // test in this file.
+    mockSet.mockReset();
+    mockRemove.mockReset();
+    mockReload.mockReset();
     __resetAppPreferencesStoreForTests();
     languageListeners = [];
     initializedListeners = [];
@@ -124,11 +137,12 @@ describe('useIOSWidgetLanguageRefresh', () => {
     useAppPreferencesStore.setState({ languagePreference: preference });
   }
 
-  it('writes the pl override and reloads both timelines on mount', () => {
+  it('writes the pl override and reloads both timelines on mount', async () => {
     setPreference('pl');
     resolvedLanguage = 'pl';
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledWith('widgetLocale', 'pl');
     expect(mockRemove).not.toHaveBeenCalled();
@@ -136,30 +150,33 @@ describe('useIOSWidgetLanguageRefresh', () => {
     expect(mockReload).toHaveBeenCalledWith('macroWidget');
   });
 
-  it('writes the en override for an explicit en preference', () => {
+  it('writes the en override for an explicit en preference', async () => {
     setPreference('en');
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledWith('widgetLocale', 'en');
     expect(mockRemove).not.toHaveBeenCalled();
     expect(mockReload).toHaveBeenCalledTimes(2);
   });
 
-  it('removes the override for the system preference', () => {
+  it('removes the override for the system preference', async () => {
     setPreference('system');
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockRemove).toHaveBeenCalledWith('widgetLocale');
     expect(mockSet).not.toHaveBeenCalled();
     expect(mockReload).toHaveBeenCalledTimes(2);
   });
 
-  it('removes the override when switching explicit en -> system while the effective language stays en', () => {
+  it('removes the override when switching explicit en -> system while the effective language stays en', async () => {
     setPreference('en');
 
     const { rerender } = renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockSet).toHaveBeenLastCalledWith('widgetLocale', 'en');
     expect(mockRemove).not.toHaveBeenCalled();
@@ -167,104 +184,117 @@ describe('useIOSWidgetLanguageRefresh', () => {
     // Device language stays en; only the preference changes to system.
     setPreference('system');
     rerender();
+    await flushSync();
 
     expect(mockRemove).toHaveBeenCalledWith('widgetLocale');
     expect(mockSet).toHaveBeenCalledTimes(1);
     expect(mockReload).toHaveBeenCalledTimes(4);
   });
 
-  it('removes the override when switching explicit pl -> system while the effective language stays pl', () => {
+  it('removes the override when switching explicit pl -> system while the effective language stays pl', async () => {
     setPreference('pl');
     resolvedLanguage = 'pl';
 
     const { rerender } = renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockSet).toHaveBeenLastCalledWith('widgetLocale', 'pl');
 
     setPreference('system');
     rerender();
+    await flushSync();
 
     expect(mockRemove).toHaveBeenCalledWith('widgetLocale');
     expect(mockReload).toHaveBeenCalledTimes(4);
   });
 
-  it('persists an override when switching system -> explicit with the same effective language', () => {
+  it('persists an override when switching system -> explicit with the same effective language', async () => {
     setPreference('system');
 
     const { rerender } = renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockRemove).toHaveBeenCalledTimes(1);
 
     setPreference('en');
     rerender();
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledWith('widgetLocale', 'en');
     expect(mockReload).toHaveBeenCalledTimes(4);
   });
 
-  it('re-syncs when the effective i18n language changes', () => {
+  it('re-syncs when the effective i18n language changes', async () => {
     setPreference('pl');
     resolvedLanguage = 'en';
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockSet).toHaveBeenLastCalledWith('widgetLocale', 'pl');
 
     // Effective language changes while the preference stays pl.
     resolvedLanguage = 'pl';
     languageListeners[0]('pl');
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledTimes(2);
     expect(mockReload).toHaveBeenCalledTimes(4);
   });
 
-  it('does not write or reload redundantly for an identical fully-applied state', () => {
+  it('does not write or reload redundantly for an identical fully-applied state', async () => {
     setPreference('en');
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledTimes(1);
     expect(mockReload).toHaveBeenCalledTimes(2);
 
     languageListeners[0]('en');
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledTimes(1);
     expect(mockReload).toHaveBeenCalledTimes(2);
   });
 
-  it('applies the preference after i18n initialization when mounted before init', () => {
+  it('applies the preference after i18n initialization when mounted before init', async () => {
     setPreference('pl');
     isInitialized = false;
     resolvedLanguage = 'pl';
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockSet).not.toHaveBeenCalled();
 
     initializedListeners[0]();
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledWith('widgetLocale', 'pl');
     expect(mockReload).toHaveBeenCalledTimes(2);
   });
 
-  it('does not touch the app group on Android', () => {
+  it('does not touch the app group on Android', async () => {
     osSpy = jest.replaceProperty(Platform, 'OS', 'android');
     setPreference('pl');
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockSet).not.toHaveBeenCalled();
     expect(mockRemove).not.toHaveBeenCalled();
     expect(mockReload).not.toHaveBeenCalled();
   });
 
-  it('logs and retries when the storage write throws', () => {
+  it('logs and retries when the storage write throws', async () => {
     setPreference('pl');
     mockSet.mockImplementationOnce(() => {
       throw new Error('app group unavailable');
     });
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockAddLog).toHaveBeenCalledWith(
       expect.stringContaining('[useIOSWidgetLanguageRefresh]'),
@@ -273,29 +303,32 @@ describe('useIOSWidgetLanguageRefresh', () => {
     expect(mockReload).not.toHaveBeenCalled();
 
     languageListeners[0]('pl');
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledTimes(2);
     expect(mockReload).toHaveBeenCalledTimes(2);
   });
 
-  it('logs and retries when the remove throws', () => {
+  it('logs and retries when the remove throws', async () => {
     setPreference('system');
     mockRemove.mockImplementationOnce(() => {
       throw new Error('app group unavailable');
     });
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockAddLog).toHaveBeenCalledTimes(1);
     expect(mockReload).not.toHaveBeenCalled();
 
     languageListeners[0]('en');
+    await flushSync();
 
     expect(mockRemove).toHaveBeenCalledTimes(2);
     expect(mockReload).toHaveBeenCalledTimes(2);
   });
 
-  it('attempts both reloads independently and retries when one fails', () => {
+  it('attempts both reloads independently and retries when one fails', async () => {
     setPreference('pl');
     let reloadFailure: string | null = 'widget';
     mockReload.mockImplementation((name?: string) => {
@@ -305,6 +338,7 @@ describe('useIOSWidgetLanguageRefresh', () => {
     });
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     // Both timelines are attempted even though the calorie one failed.
     expect(mockReload).toHaveBeenCalledWith('widget');
@@ -313,12 +347,13 @@ describe('useIOSWidgetLanguageRefresh', () => {
 
     reloadFailure = null;
     languageListeners[0]('pl');
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledTimes(2);
     expect(mockReload).toHaveBeenCalledTimes(4);
   });
 
-  it('retries the flow when the macro widget reload fails', () => {
+  it('retries the flow when the macro widget reload fails', async () => {
     setPreference('pl');
     let reloadFailure: string | null = 'macroWidget';
     mockReload.mockImplementation((name?: string) => {
@@ -328,6 +363,7 @@ describe('useIOSWidgetLanguageRefresh', () => {
     });
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockReload).toHaveBeenCalledWith('widget');
     expect(mockReload).toHaveBeenCalledWith('macroWidget');
@@ -335,28 +371,62 @@ describe('useIOSWidgetLanguageRefresh', () => {
 
     reloadFailure = null;
     languageListeners[0]('pl');
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledTimes(2);
     expect(mockReload).toHaveBeenCalledTimes(4);
   });
 
-  it('dedupes after a full success and re-syncs on a real state change', () => {
+  it('serializes rapid signals so the newest preference wins', async () => {
+    setPreference('en');
+
+    const { rerender } = renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
+    expect(mockSet).toHaveBeenLastCalledWith('widgetLocale', 'en');
+
+    // Fire several signals without waiting between them: the last enqueued run
+    // must win, and the shared state must end on the newest preference. The
+    // store read happens when each queued run executes, so en -> pl -> system
+    // lands on system (remove) with dedupe skipping the redundant signals.
+    languageListeners[0]('en');
+    setPreference('pl');
+    rerender();
+    languageListeners[0]('pl');
+    setPreference('system');
+    rerender();
+    languageListeners[0]('en');
+    await flushSync();
+
+    expect(mockRemove).toHaveBeenCalledWith('widgetLocale');
+    // The queued runs re-read the store at execution time, so the intermediate
+    // pl write is collapsed: the sync converges on the newest state (system)
+    // instead of writing en -> pl -> system. Only the mount (en) and the final
+    // system removal reload both timelines, avoiding a reload storm.
+    expect(mockSet).toHaveBeenCalledTimes(1);
+    expect(mockReload).toHaveBeenCalledTimes(4);
+  });
+
+  it('dedupes after a full success and re-syncs on a real state change', async () => {
     setPreference('en');
 
     renderHook(() => useIOSWidgetLanguageRefresh());
+    await flushSync();
 
     expect(mockSet).toHaveBeenLastCalledWith('widgetLocale', 'en');
 
     languageListeners[0]('en');
+    await flushSync();
     expect(mockSet).toHaveBeenCalledTimes(1);
 
     resolvedLanguage = 'pl';
     languageListeners[0]('pl');
+    await flushSync();
 
     expect(mockSet).toHaveBeenCalledTimes(2);
     expect(mockReload).toHaveBeenCalledTimes(4);
 
     languageListeners[0]('pl');
+    await flushSync();
     expect(mockSet).toHaveBeenCalledTimes(2);
     expect(mockReload).toHaveBeenCalledTimes(4);
   });
