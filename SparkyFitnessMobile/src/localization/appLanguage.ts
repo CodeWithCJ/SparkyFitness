@@ -6,6 +6,7 @@ import { addLog } from '../services/LogService';
 import i18n, {
   getDeviceLanguage,
   initializeI18n,
+  SUPPORTED_LANGUAGES,
   type LanguagePreference,
   type SupportedLanguage,
 } from './i18n';
@@ -117,8 +118,10 @@ async function ensureNativeLanguage(target: LanguagePreference): Promise<void> {
 /**
  * Reads the current native application language. On Android 13+ with the
  * module registered this returns the platform value; on any other platform it
- * reports `system`. A rejected native read returns `'unsupported'` so callers
- * can decide explicitly (never overwrite native state we could not read).
+ * reports `system`. An unreadable or unsupported platform value maps to
+ * `'unsupported'` so callers never write an invalid value into the store.
+ * A rejected native read propagates; every caller must handle it and must not
+ * overwrite native state it could not read.
  */
 async function readNativePreference(): Promise<MappedNative> {
   if (!AppLanguageNative.supportsNativePerAppLanguage) return 'system';
@@ -313,7 +316,11 @@ export function setAppLanguagePreference(
   return serializeLanguageOperation(async () => {
     const normalized = normalizePreference(preference);
     const previousStore = normalizePreference(storePreference());
-    const previousEffective = i18n.resolvedLanguage as SupportedLanguage | undefined;
+    const resolvedLanguage = i18n.resolvedLanguage;
+    const previousEffective: SupportedLanguage | undefined =
+      resolvedLanguage && (SUPPORTED_LANGUAGES as readonly string[]).includes(resolvedLanguage)
+        ? (resolvedLanguage as SupportedLanguage)
+        : undefined;
 
     if (AppLanguageNative.supportsNativePerAppLanguage) {
       let previousNative: MappedNative | undefined;
