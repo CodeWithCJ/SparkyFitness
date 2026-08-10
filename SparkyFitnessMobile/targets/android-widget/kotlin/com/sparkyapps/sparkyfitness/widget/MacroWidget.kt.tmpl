@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -16,6 +15,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.LinearProgressIndicator
@@ -53,9 +53,15 @@ class MacroWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
-    override val sizeMode: SizeMode = SizeMode.Responsive(
-        setOf(DpSize(200.dp, 200.dp)),
-    )
+    /**
+     * Exact size mode: the layout renders against the actual available size so
+     * extra width/height from resizing is genuinely used. A fixed responsive
+     * breakpoint set would still ignore width that falls between breakpoints —
+     * exact mode is preferred here because launchers expose different grid
+     * sizes across OEMs and the layout needs the real width for long localized
+     * labels such as Polish "Węglowodany".
+     */
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val fallbackSnapshot = loadSnapshot(context)
@@ -71,29 +77,41 @@ class MacroWidget : GlanceAppWidget() {
         val state = currentState<Preferences>()
         val snapshot = parseSnapshot(state[SNAPSHOT_STATE_KEY]) ?: fallbackSnapshot
 
+        // Widget-only locale override: localized string and number resolution
+        // stay local to widget rendering (see WidgetLocale).
+        val widgetContext = WidgetLocale.localizedContext(context)
+        val size = LocalSize.current
+        val wide = size.width >= 210.dp
+
         val openAppIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://"))
             .setPackage(context.packageName)
         val searchIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://search"))
             .setPackage(context.packageName)
         val scanIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://scan"))
             .setPackage(context.packageName)
-        val searchFoodLabel = context.getString(R.string.widget_search_food)
-        val scanBarcodeLabel = context.getString(R.string.widget_scan_barcode)
+        val searchFoodLabel = widgetContext.getString(R.string.widget_search_food)
+        val scanBarcodeLabel = widgetContext.getString(R.string.widget_scan_barcode)
 
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
                 .appWidgetBackgroundCornerRadius()
-                .padding(14.dp)
+                .padding(horizontal = if (wide) 14.dp else 12.dp, vertical = 12.dp)
                 .clickable(actionStartActivity(openAppIntent)),
             contentAlignment = Alignment.Center,
         ) {
             Column(modifier = GlanceModifier.fillMaxWidth()) {
-                CalorieHeader(context = context, snapshot = snapshot)
-                Spacer(modifier = GlanceModifier.height(10.dp))
-                MacroRows(context = context, snapshot = snapshot, spacing = 7)
-                Spacer(modifier = GlanceModifier.height(14.dp))
+                CalorieHeader(context = widgetContext, snapshot = snapshot, compact = !wide)
+                Spacer(modifier = GlanceModifier.height(if (wide) 10.dp else 8.dp))
+                MacroRows(
+                    context = widgetContext,
+                    snapshot = snapshot,
+                    spacing = if (wide) 7 else 6,
+                    stacked = !wide,
+                )
+                Spacer(modifier = GlanceModifier.defaultWeight())
+                Spacer(modifier = GlanceModifier.height(if (wide) 14.dp else 10.dp))
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -104,12 +122,12 @@ class MacroWidget : GlanceAppWidget() {
                         contentDescription = searchFoodLabel,
                         modifier = GlanceModifier
                             .defaultWeight()
-                            .height(40.dp),
+                            .height(if (wide) 40.dp else 36.dp),
                     )
                     Box(
                         modifier = GlanceModifier
                             .width(1.dp)
-                            .height(48.dp)
+                            .height(if (wide) 48.dp else 40.dp)
                             .background(GlanceTheme.colors.surfaceVariant),
                     ) {}
                     ActionButton(
@@ -118,7 +136,7 @@ class MacroWidget : GlanceAppWidget() {
                         contentDescription = scanBarcodeLabel,
                         modifier = GlanceModifier
                             .defaultWeight()
-                            .height(40.dp),
+                            .height(if (wide) 40.dp else 36.dp),
                     )
                 }
             }
@@ -126,8 +144,37 @@ class MacroWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun CalorieHeader(context: Context, snapshot: MacroSnapshot?, fontSize: Int = 20) {
+    private fun CalorieHeader(context: Context, snapshot: MacroSnapshot?, compact: Boolean) {
         val calories = snapshot?.displayCalories
+        if (compact && snapshot?.hasData == true && calories != null) {
+            // Compact contract: caption ("Pozostało") above the value so the
+            // full phrase never disappears behind an ellipsis.
+            Text(
+                text = context.getString(R.string.widget_kcal_left_caption),
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                maxLines = 1,
+                modifier = GlanceModifier.fillMaxWidth(),
+            )
+            Spacer(modifier = GlanceModifier.height(1.dp))
+            Text(
+                text = context.getString(
+                    R.string.widget_kcal_left_value,
+                    formatInt(context, calories),
+                ),
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurface,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                maxLines = 1,
+                modifier = GlanceModifier.fillMaxWidth(),
+            )
+            return
+        }
         val text = if (snapshot?.hasData == true && calories != null) {
             context.getString(R.string.widget_kcal_left, formatInt(context, calories))
         } else {
@@ -137,7 +184,7 @@ class MacroWidget : GlanceAppWidget() {
             text = text,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = fontSize.sp,
+                fontSize = if (compact) 15.sp else 20.sp,
                 fontWeight = FontWeight.Bold,
             ),
             maxLines = 1,
@@ -146,13 +193,14 @@ class MacroWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun MacroRows(context: Context, snapshot: MacroSnapshot?, spacing: Int) {
+    private fun MacroRows(context: Context, snapshot: MacroSnapshot?, spacing: Int, stacked: Boolean) {
         MacroRow(
             context = context,
             label = context.getString(R.string.widget_protein),
             grams = snapshot?.protein ?: 0.0,
             progress = snapshot.progressFor(MacroKind.PROTEIN),
             color = MacroPalette.protein,
+            stacked = stacked,
         )
         Spacer(modifier = GlanceModifier.height(spacing.dp))
         MacroRow(
@@ -161,6 +209,7 @@ class MacroWidget : GlanceAppWidget() {
             grams = snapshot?.carbs ?: 0.0,
             progress = snapshot.progressFor(MacroKind.CARBS),
             color = MacroPalette.carbs,
+            stacked = stacked,
         )
         Spacer(modifier = GlanceModifier.height(spacing.dp))
         MacroRow(
@@ -169,6 +218,7 @@ class MacroWidget : GlanceAppWidget() {
             grams = snapshot?.fat ?: 0.0,
             progress = snapshot.progressFor(MacroKind.FAT),
             color = MacroPalette.fat,
+            stacked = stacked,
         )
     }
 
@@ -179,42 +229,86 @@ class MacroWidget : GlanceAppWidget() {
         grams: Double,
         progress: Float,
         color: ColorProvider,
+        stacked: Boolean,
     ) {
         Column(modifier = GlanceModifier.fillMaxWidth()) {
-            Row(
-                modifier = GlanceModifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = GlanceModifier
-                        .size(12.dp)
-                        .cornerRadius(6.dp)
-                        .background(color),
-                ) {}
-                Spacer(modifier = GlanceModifier.width(8.dp))
-                Text(
-                    text = label,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = 14.sp,
-                    ),
-                    maxLines = 1,
-                )
-                Spacer(modifier = GlanceModifier.defaultWeight())
-                Text(
-                    text = context.getString(R.string.widget_grams, formatInt(context, grams)),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                    maxLines = 1,
-                )
+            if (stacked) {
+                // Narrow contract: the label gets its own line so
+                // "Węglowodany" is never truncated to fit beside the value.
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = GlanceModifier
+                            .size(10.dp)
+                            .cornerRadius(5.dp)
+                            .background(color),
+                    ) {}
+                    Spacer(modifier = GlanceModifier.width(6.dp))
+                    Text(
+                        text = label,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                        modifier = GlanceModifier.fillMaxWidth(),
+                    )
+                }
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Spacer(modifier = GlanceModifier.width(16.dp))
+                    Text(
+                        text = context.getString(R.string.widget_grams, formatInt(context, grams)),
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                    )
+                    Spacer(modifier = GlanceModifier.defaultWeight())
+                }
+            } else {
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = GlanceModifier
+                            .size(12.dp)
+                            .cornerRadius(6.dp)
+                            .background(color),
+                    ) {}
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Text(
+                        text = label,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 14.sp,
+                        ),
+                        maxLines = 1,
+                    )
+                    Spacer(modifier = GlanceModifier.defaultWeight())
+                    Text(
+                        text = context.getString(R.string.widget_grams, formatInt(context, grams)),
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                    )
+                }
             }
-            Spacer(modifier = GlanceModifier.height(2.dp))
+            Spacer(modifier = GlanceModifier.height(if (stacked) 3.dp else 2.dp))
             LinearProgressIndicator(
                 progress = progress,
-                modifier = GlanceModifier.fillMaxWidth().height(4.dp),
+                modifier = GlanceModifier.fillMaxWidth().height(if (stacked) 3.dp else 4.dp),
                 color = color,
                 backgroundColor = GlanceTheme.colors.surfaceVariant,
             )

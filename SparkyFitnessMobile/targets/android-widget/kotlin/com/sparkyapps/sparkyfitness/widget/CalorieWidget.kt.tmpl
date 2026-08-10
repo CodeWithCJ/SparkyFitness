@@ -15,8 +15,10 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.cornerRadius
@@ -49,6 +51,15 @@ class CalorieWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
+    /**
+     * Exact size mode: Glance re-renders against the real available widget size
+     * so the compact and wider layouts can adapt to the actual width instead of
+     * the fixed minimum. Longer localized labels (e.g. Polish
+     * "Pozostało 1 240 kcal") stay readable instead of being forced into the
+     * original fixed footprint.
+     */
+    override val sizeMode: SizeMode = SizeMode.Exact
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val fallbackSnapshot = loadSnapshot(context)
         provideContent {
@@ -63,16 +74,26 @@ class CalorieWidget : GlanceAppWidget() {
         val state = currentState<Preferences>()
         val snapshot = parseSnapshot(state[SNAPSHOT_STATE_KEY]) ?: fallbackSnapshot
 
+        // Widget-only locale override: localized string and number resolution
+        // stay local to widget rendering (see WidgetLocale).
+        val widgetContext = WidgetLocale.localizedContext(context)
+        val size = LocalSize.current
+        val compact = size.width < 200.dp
+
         val remainingText: String
+        val remainingValue: String
+        val remainingCaption: String
         val progress: Float
         if (snapshot == null) {
-            remainingText = context.getString(R.string.widget_kcal_left_empty)
+            remainingText = widgetContext.getString(R.string.widget_kcal_left_empty)
+            remainingValue = ""
+            remainingCaption = ""
             progress = 0f
         } else {
-            remainingText = context.getString(
-                R.string.widget_kcal_left,
-                formatInt(context, snapshot.remaining),
-            )
+            val formatted = formatInt(widgetContext, snapshot.remaining)
+            remainingText = widgetContext.getString(R.string.widget_kcal_left, formatted)
+            remainingValue = widgetContext.getString(R.string.widget_kcal_left_value, formatted)
+            remainingCaption = widgetContext.getString(R.string.widget_kcal_left_caption)
             progress = snapshot.progress.coerceIn(0.0, 1.0).toFloat()
         }
 
@@ -82,32 +103,58 @@ class CalorieWidget : GlanceAppWidget() {
             .setPackage(context.packageName)
         val scanIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://scan"))
             .setPackage(context.packageName)
-        val searchFoodLabel = context.getString(R.string.widget_search_food)
-        val scanBarcodeLabel = context.getString(R.string.widget_scan_barcode)
+        val searchFoodLabel = widgetContext.getString(R.string.widget_search_food)
+        val scanBarcodeLabel = widgetContext.getString(R.string.widget_scan_barcode)
 
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
                 .appWidgetBackgroundCornerRadius()
-                .padding(12.dp)
+                .padding(horizontal = if (compact) 10.dp else 12.dp, vertical = 10.dp)
                 .clickable(actionStartActivity(openAppIntent)),
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
-                Text(
-                    text = remainingText,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    maxLines = 1,
-                    modifier = GlanceModifier.fillMaxWidth(),
-                )
-                Spacer(modifier = GlanceModifier.height(8.dp))
+                if (compact && snapshot != null) {
+                    // Compact contract: "Pozostało" / "1 240 kcal" on two lines
+                    // instead of silently ellipsizing the full phrase.
+                    Text(
+                        text = remainingCaption,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        maxLines = 1,
+                        modifier = GlanceModifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = GlanceModifier.height(1.dp))
+                    Text(
+                        text = remainingValue,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        maxLines = 1,
+                        modifier = GlanceModifier.fillMaxWidth(),
+                    )
+                } else {
+                    Text(
+                        text = remainingText,
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurface,
+                            fontSize = if (compact) 16.sp else 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        maxLines = 1,
+                        modifier = GlanceModifier.fillMaxWidth(),
+                    )
+                }
+                Spacer(modifier = GlanceModifier.height(if (compact) 6.dp else 8.dp))
                 LinearProgressIndicator(
                     progress = progress,
-                    modifier = GlanceModifier.fillMaxWidth().height(8.dp),
+                    modifier = GlanceModifier.fillMaxWidth().height(if (compact) 6.dp else 8.dp),
                     color = GlanceTheme.colors.primary,
                     backgroundColor = GlanceTheme.colors.surfaceVariant,
                 )
@@ -119,7 +166,7 @@ class CalorieWidget : GlanceAppWidget() {
                     Box(
                         modifier = GlanceModifier
                             .defaultWeight()
-                            .height(32.dp)
+                            .height(if (compact) 30.dp else 32.dp)
                             .clickable(actionStartActivity(searchIntent)),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -133,13 +180,13 @@ class CalorieWidget : GlanceAppWidget() {
                     Box(
                         modifier = GlanceModifier
                             .width(1.dp)
-                            .height(24.dp)
+                            .height(if (compact) 22.dp else 24.dp)
                             .background(GlanceTheme.colors.surfaceVariant),
                     ) {}
                     Box(
                         modifier = GlanceModifier
                             .defaultWeight()
-                            .height(32.dp)
+                            .height(if (compact) 30.dp else 32.dp)
                             .clickable(actionStartActivity(scanIntent)),
                         contentAlignment = Alignment.Center,
                     ) {
