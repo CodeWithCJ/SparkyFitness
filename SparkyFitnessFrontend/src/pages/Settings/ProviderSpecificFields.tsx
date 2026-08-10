@@ -313,6 +313,14 @@ export const ProviderSpecificFields = ({
               autoComplete="off"
             />
           </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            YAZIO food searches automatically adjust to your active language
+            preference in SparkyFitness (supporting English, German, French,
+            Russian, Spanish, Italian, Dutch, Polish, Portuguese, Danish,
+            Finnish, Swedish, Czech, Hungarian, Greek, Norwegian, Turkish,
+            Chinese, Japanese, and Korean). Other languages default to standard
+            international database parameters.
+          </p>
         </>
       )}
       {provider.provider_type === 'garmin' && (

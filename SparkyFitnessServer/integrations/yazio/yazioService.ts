@@ -81,6 +81,77 @@ const YAZIO_LOCALES: Record<
     countries: ['RU'],
     locales: ['ru_RU'],
   },
+<<<<<<< HEAD
+=======
+  es: {
+    countries: ['ES', 'MX', 'AR'],
+    locales: ['es_ES'],
+  },
+  it: {
+    countries: ['IT', 'CH'],
+    locales: ['it_IT', 'it_CH'],
+  },
+  nl: {
+    countries: ['NL', 'BE'],
+    locales: ['nl_NL', 'nl_BE'],
+  },
+  pl: {
+    countries: ['PL'],
+    locales: ['pl_PL'],
+  },
+  pt: {
+    countries: ['PT', 'BR'],
+    locales: ['pt_PT', 'pt_BR'],
+  },
+  cs: {
+    countries: ['CZ'],
+    locales: ['cs_CZ'],
+  },
+  da: {
+    countries: ['DK'],
+    locales: ['da_DK'],
+  },
+  el: {
+    countries: ['GR'],
+    locales: ['el_GR'],
+  },
+  hu: {
+    countries: ['HU'],
+    locales: ['hu_HU'],
+  },
+  no: {
+    countries: ['NO'],
+    locales: ['nb_NO', 'no_NO'],
+  },
+  nb: {
+    countries: ['NO'],
+    locales: ['nb_NO'],
+  },
+  fi: {
+    countries: ['FI'],
+    locales: ['fi_FI'],
+  },
+  sv: {
+    countries: ['SE'],
+    locales: ['sv_SE'],
+  },
+  tr: {
+    countries: ['TR'],
+    locales: ['tr_TR'],
+  },
+  zh: {
+    countries: ['CN'],
+    locales: ['zh_CN'],
+  },
+  ja: {
+    countries: ['JP'],
+    locales: ['ja_JP'],
+  },
+  ko: {
+    countries: ['KR'],
+    locales: ['ko_KR'],
+  },
+>>>>>>> ca8a3c33 (feat(server): add Russian language and locale support to YAZIO food provider)
 };
 
 const SUPPORTED_LANGUAGES = Object.keys(YAZIO_LOCALES);
