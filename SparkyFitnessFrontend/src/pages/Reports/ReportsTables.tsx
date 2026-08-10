@@ -395,7 +395,10 @@ const ReportsTables = ({
             onSelectedTableChange(value as TableFilterValue)
           }
         >
-          <SelectTrigger className="w-full max-w-xs">
+          <SelectTrigger
+            className="w-full max-w-xs"
+            aria-label={t('reportsTables.showTable', 'Show table')}
+          >
             <SelectValue
               placeholder={t('reportsTables.showTable', 'Show table')}
             />
