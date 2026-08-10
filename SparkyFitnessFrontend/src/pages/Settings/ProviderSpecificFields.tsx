@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 
 interface ProviderSpecificFieldsProps {
@@ -227,27 +227,37 @@ export const ProviderSpecificFields = ({
           <div className="col-span-2">
             <div className="rounded-md border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-3 space-y-1.5">
               <p className="text-sm font-semibold text-red-800 dark:text-red-200">
-                ⚠️ Unofficial API — Use at your own risk
+                {t(
+                  'settings.foodExerciseDataProviders.yazio.unofficialApiTitle',
+                  '⚠️ Unofficial API — Use at your own risk'
+                )}
               </p>
               <p className="text-sm text-red-700 dark:text-red-300">
-                YAZIO integration uses an{' '}
-                <strong>unofficial, undocumented API</strong> that is not
-                provided or endorsed by YAZIO. Using it may{' '}
-                <strong>risk getting your YAZIO account banned</strong>. The API
-                could also <strong>stop working at any time</strong> without
-                notice if YAZIO changes their backend.
+                <Trans
+                  i18nKey="settings.foodExerciseDataProviders.yazio.unofficialApiWarning"
+                  defaults="YAZIO integration uses an <1>unofficial, undocumented API</1> that is not provided or endorsed by YAZIO. Using it may <3>risk getting your YAZIO account banned</3>. The API could also <5>stop working at any time</5> without notice if YAZIO changes their backend."
+                  components={{
+                    1: <strong />,
+                    3: <strong />,
+                    5: <strong />,
+                  }}
+                />
               </p>
               <p className="text-sm text-red-700 dark:text-red-300">
-                For more information & client credentials, see{' '}
-                <a
-                  href="https://github.com/saganos/yazio_public_api"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-red-800 dark:text-red-200 underline font-medium"
-                >
-                  saganos/yazio_public_api
-                </a>
-                .
+                <Trans
+                  i18nKey="settings.foodExerciseDataProviders.yazio.moreInfoLink"
+                  defaults="For more information & client credentials, see <1>saganos/yazio_public_api</1>."
+                  components={{
+                    1: (
+                      <a
+                        href="https://github.com/saganos/yazio_public_api"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-red-800 dark:text-red-200 underline font-medium"
+                      />
+                    ),
+                  }}
+                />
               </p>
             </div>
           </div>
