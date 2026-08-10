@@ -470,6 +470,55 @@ describe('yazioService', () => {
     });
   });
 
+  it('passes Russian locale parameters (countries=RU and locales=ru_RU) when language is ru', async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeFetchResponse({ access_token: 'token-ru', expires_in: 3600 })
+      )
+      .mockResolvedValueOnce(makeFetchResponse([]));
+
+    await searchYazioFoods('борщ', {
+      username: 'ru-user@example.com',
+      password: 'secret',
+      ...yazioClientCredentials,
+      language: 'ru',
+    });
+
+    const searchCall = vi
+      .mocked(global.fetch)
+      .mock.calls.find(([url]) => String(url).includes('/products/search?'));
+
+    expect(searchCall).toBeDefined();
+    const searchUrl = new URL(String(searchCall?.[0]));
+    expect(searchUrl.searchParams.get('countries')).toBe('RU');
+    expect(searchUrl.searchParams.get('locales')).toBe('ru_RU');
+    expect(searchUrl.searchParams.get('query')).toBe('борщ');
+  });
+
+  it('falls back to default locales when language is unsupported', async () => {
+    vi.mocked(global.fetch)
+      .mockResolvedValueOnce(
+        makeFetchResponse({ access_token: 'token-fallback', expires_in: 3600 })
+      )
+      .mockResolvedValueOnce(makeFetchResponse([]));
+
+    await searchYazioFoods('food', {
+      username: 'unsupported-lang@example.com',
+      password: 'secret',
+      ...yazioClientCredentials,
+      language: 'unsupported_lang',
+    });
+
+    const searchCall = vi
+      .mocked(global.fetch)
+      .mock.calls.find(([url]) => String(url).includes('/products/search?'));
+
+    expect(searchCall).toBeDefined();
+    const searchUrl = new URL(String(searchCall?.[0]));
+    expect(searchUrl.searchParams.get('countries')).toBe('DE,AT,CH,US,FR');
+    expect(searchUrl.searchParams.get('locales')).toBe('de_DE,en_US,fr_FR');
+  });
+
   it('deduplicates concurrent token requests for the same YAZIO account', async () => {
     const product = {
       product_id: 'concurrent-product',

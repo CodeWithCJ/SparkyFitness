@@ -61,8 +61,6 @@ interface YazioCredentials {
   language?: string;
 }
 
-const SUPPORTED_LANGUAGES = ['en', 'de', 'fr'];
-
 const YAZIO_LOCALES: Record<
   string,
   { countries: string[]; locales: string[] }
@@ -79,7 +77,13 @@ const YAZIO_LOCALES: Record<
     countries: ['US', 'GB', 'CA', 'AU'],
     locales: ['en_US', 'en_GB'],
   },
+  ru: {
+    countries: ['RU'],
+    locales: ['ru_RU'],
+  },
 };
+
+const SUPPORTED_LANGUAGES = Object.keys(YAZIO_LOCALES);
 
 function resolveLanguage(lang: string | null | undefined): string | null {
   if (typeof lang !== 'string') {
