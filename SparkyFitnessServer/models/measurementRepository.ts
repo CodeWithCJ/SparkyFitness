@@ -2,7 +2,56 @@ import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
-import { CALORIE_CALCULATION_CONSTANTS } from '@workspace/shared';
+import {
+  CALORIE_CALCULATION_CONSTANTS,
+  isDayString,
+  isValidTimeZone,
+  todayInZone,
+} from '@workspace/shared';
+
+/**
+ * Helper to derive a default UTC entry_timestamp ISO string when omitted or invalid.
+ * Avoids timezone jump issues by leveraging isDayString and Date.UTC date construction.
+ * Compares entryDate with todayInZone(userTimezone) to detect if logging for the user's current day.
+ */
+function defaultEntryTimestamp(
+  entryTimestamp: string | null | undefined,
+  entryDate: string | null | undefined,
+  entryHour: number | null | undefined,
+  userTimezone?: string | null
+): string {
+  if (entryTimestamp && entryTimestamp.trim() !== '') {
+    return entryTimestamp;
+  }
+  if (entryDate && isDayString(entryDate)) {
+    const parts = entryDate.split('-');
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+
+    if (
+      entryHour !== null &&
+      entryHour !== undefined &&
+      !isNaN(Number(entryHour))
+    ) {
+      return new Date(
+        Date.UTC(year, month - 1, day, Number(entryHour), 0, 0, 0)
+      ).toISOString();
+    }
+
+    const now = new Date();
+    const tz =
+      userTimezone && isValidTimeZone(userTimezone) ? userTimezone : 'UTC';
+    const currentDayInZone = todayInZone(tz);
+    if (entryDate === currentDayInZone) {
+      return now.toISOString();
+    }
+
+    return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)).toISOString();
+  }
+
+  return new Date().toISOString();
+}
 // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic keys
 const ALLOWED_CHECK_IN_COLUMNS = [
   'weight',
@@ -937,39 +986,53 @@ async function getCustomMeasurementsByDateRange(
   }
 }
 async function upsertCustomMeasurement(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  categoryId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  value: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryHour: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryTimestamp: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  notes: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  frequency: any,
-  source = 'manual'
+  userId: string,
+  actingUserId: string,
+  categoryId: string,
+  value: string | number | boolean,
+  entryDate: string,
+  entryHour?: number | null,
+  entryTimestamp?: string | null,
+  notes?: string | null,
+  frequency?: string | null,
+  source = 'manual',
+  userTimezone?: string | null
 ) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     let query;
     let values;
     // Normalize entry_hour and entry_timestamp for 'Daily' frequency to prevent duplicates
-    let normalizedEntryHour = entryHour;
-    let normalizedEntryTimestamp = entryTimestamp;
+    let normalizedEntryHour = entryHour ?? null;
+    let normalizedEntryTimestamp = entryTimestamp ?? null;
     if (frequency === 'Daily') {
       normalizedEntryHour = 0; // Set hour to 0 for daily measurements
       // Normalize timestamp to the beginning of the day
-      const dateObj = new Date(entryDate);
-      dateObj.setUTCHours(0, 0, 0, 0);
-      normalizedEntryTimestamp = dateObj.toISOString();
+      if (entryDate && isDayString(entryDate)) {
+        const parts = entryDate.split('-');
+        normalizedEntryTimestamp = new Date(
+          Date.UTC(
+            Number(parts[0]),
+            Number(parts[1]) - 1,
+            Number(parts[2]),
+            0,
+            0,
+            0,
+            0
+          )
+        ).toISOString();
+      } else {
+        const dateObj = new Date(entryDate);
+        dateObj.setUTCHours(0, 0, 0, 0);
+        normalizedEntryTimestamp = dateObj.toISOString();
+      }
+    } else {
+      normalizedEntryTimestamp = defaultEntryTimestamp(
+        normalizedEntryTimestamp,
+        entryDate,
+        normalizedEntryHour,
+        userTimezone
+      );
     }
     // For 'Unlimited' and 'All' frequencies, always insert a new entry.
     // For 'Daily' and 'Hourly', check for existing entries to update.
@@ -987,7 +1050,7 @@ async function upsertCustomMeasurement(
         entryDate,
         normalizedEntryHour,
         normalizedEntryTimestamp,
-        notes,
+        notes ?? null,
         actingUserId,
         source,
       ];
@@ -997,7 +1060,12 @@ async function upsertCustomMeasurement(
         SELECT id FROM custom_measurements
         WHERE user_id = $1 AND category_id = $2 AND entry_date = $3 AND source = $4
       `;
-      const existingEntryValues = [userId, categoryId, entryDate, source];
+      const existingEntryValues: unknown[] = [
+        userId,
+        categoryId,
+        entryDate,
+        source,
+      ];
       if (frequency === 'Hourly' && normalizedEntryHour !== null) {
         existingEntryQuery += ` AND entry_hour = $${existingEntryValues.length + 1}`;
         existingEntryValues.push(normalizedEntryHour);
@@ -1022,7 +1090,7 @@ async function upsertCustomMeasurement(
         values = [
           value,
           normalizedEntryTimestamp,
-          notes,
+          notes ?? null,
           actingUserId,
           source,
           id,
@@ -1041,7 +1109,7 @@ async function upsertCustomMeasurement(
           entryDate,
           normalizedEntryHour,
           normalizedEntryTimestamp,
-          notes,
+          notes ?? null,
           actingUserId,
           source,
         ];
@@ -1053,6 +1121,19 @@ async function upsertCustomMeasurement(
     client.release();
   }
 }
+
+export interface BulkCustomMeasurementInputRow {
+  categoryId: string;
+  value: string | number | boolean;
+  entryDate: string;
+  entryHour?: number | null;
+  entryTimestamp?: string | null;
+  notes?: string | null;
+  frequency: string;
+  source?: string | null;
+  userTimezone?: string | null;
+}
+
 /**
  * Batch counterpart of upsertCustomMeasurement for health-data ingestion: one
  * client + one transaction for the whole batch instead of one client per
@@ -1067,28 +1148,10 @@ async function upsertCustomMeasurement(
  * winner's row).
  */
 async function bulkUpsertCustomMeasurements(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  rows: Array<{
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    categoryId: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entryDate: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entryHour: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entryTimestamp: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    notes: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    frequency: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    source?: any;
-  }>
+  userId: string,
+  actingUserId: string,
+  rows: BulkCustomMeasurementInputRow[],
+  userTimezone?: string | null
 ) {
   if (!rows || rows.length === 0) {
     return [];
@@ -1104,9 +1167,31 @@ async function bulkUpsertCustomMeasurements(
       if (row.frequency === 'Daily') {
         normalizedEntryHour = 0; // Set hour to 0 for daily measurements
         // Normalize timestamp to the beginning of the day
-        const dateObj = new Date(row.entryDate);
-        dateObj.setUTCHours(0, 0, 0, 0);
-        normalizedEntryTimestamp = dateObj.toISOString();
+        if (row.entryDate && isDayString(row.entryDate)) {
+          const parts = row.entryDate.split('-');
+          normalizedEntryTimestamp = new Date(
+            Date.UTC(
+              Number(parts[0]),
+              Number(parts[1]) - 1,
+              Number(parts[2]),
+              0,
+              0,
+              0,
+              0
+            )
+          ).toISOString();
+        } else {
+          const dateObj = new Date(row.entryDate);
+          dateObj.setUTCHours(0, 0, 0, 0);
+          normalizedEntryTimestamp = dateObj.toISOString();
+        }
+      } else {
+        normalizedEntryTimestamp = defaultEntryTimestamp(
+          normalizedEntryTimestamp,
+          row.entryDate,
+          normalizedEntryHour,
+          row.userTimezone ?? userTimezone
+        );
       }
       return {
         ...row,
@@ -1142,8 +1227,7 @@ async function bulkUpsertCustomMeasurements(
     const keyedWinnerIndexes = [...winnerByKey.values()];
     // One superset SELECT for all keyed rows, then exact per-key matching in
     // JS (mirrors the per-record existence SELECT semantics).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const existingByKey = new Map<string, any>();
+    const existingByKey = new Map<string, Record<string, unknown>>();
     if (keyedWinnerIndexes.length > 0) {
       const categoryIds = [
         ...new Set(keyedWinnerIndexes.map((i) => prepared[i].categoryId)),
@@ -1161,8 +1245,7 @@ async function bulkUpsertCustomMeasurements(
       );
       for (const index of keyedWinnerIndexes) {
         const row = prepared[index];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const match = existing.rows.find((dbRow: any) => {
+        const match = existing.rows.find((dbRow: Record<string, unknown>) => {
           if (dbRow.category_id !== row.categoryId) return false;
           // entry_date comes back as a YYYY-MM-DD string (poolManager DATE parser)
           if (String(dbRow.entry_date) !== String(row.entryDate)) return false;
@@ -1180,8 +1263,7 @@ async function bulkUpsertCustomMeasurements(
         }
       }
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const writtenByInput: any[] = new Array(rows.length);
+    const writtenByInput: Record<string, unknown>[] = new Array(rows.length);
     const updateIndexes = keyedWinnerIndexes.filter((i) =>
       existingByKey.has(keyByIndex[i]!)
     );
@@ -1194,21 +1276,27 @@ async function bulkUpsertCustomMeasurements(
          RETURNING cm.*`,
         [
           actingUserId,
-          updateIndexes.map((i) => existingByKey.get(keyByIndex[i]!).id),
+          updateIndexes.map((i) => existingByKey.get(keyByIndex[i]!)!.id),
           updateIndexes.map((i) => prepared[i].value),
           updateIndexes.map((i) => prepared[i].entryTimestamp),
           updateIndexes.map((i) => prepared[i].notes ?? null),
           updateIndexes.map((i) => prepared[i].source),
         ]
       );
-      const updatedById = new Map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        updateResult.rows.map((row: any) => [row.id, row])
+      const updatedById = new Map<string, Record<string, unknown>>(
+        updateResult.rows.map((row: Record<string, unknown>) => [
+          row.id as string,
+          row,
+        ])
       );
       for (const index of updateIndexes) {
-        writtenByInput[index] = updatedById.get(
-          existingByKey.get(keyByIndex[index]!).id
-        );
+        const existingRow = existingByKey.get(keyByIndex[index]!);
+        if (existingRow && existingRow.id) {
+          const updatedRow = updatedById.get(String(existingRow.id));
+          if (updatedRow) {
+            writtenByInput[index] = updatedRow;
+          }
+        }
       }
     }
     const insertIndexes = [

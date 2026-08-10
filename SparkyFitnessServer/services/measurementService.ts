@@ -1622,13 +1622,21 @@ async function updateSleepEntry(
     throw error;
   }
 }
+interface UpsertCustomMeasurementPayload {
+  category_id: string;
+  value: string | number | boolean;
+  entry_date: string;
+  entry_hour?: number | null;
+  entry_timestamp?: string | null;
+  notes?: string | null;
+  source?: string;
+  timezone?: string | null;
+}
+
 async function upsertCustomMeasurementEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  payload: UpsertCustomMeasurementPayload
 ) {
   try {
     const {
@@ -1643,11 +1651,16 @@ async function upsertCustomMeasurementEntry(
     // Fetch category details to get the frequency
     const categories =
       await measurementRepository.getCustomCategories(authenticatedUserId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const category = categories.find((cat: any) => cat.id === category_id);
+    const category = categories.find(
+      (cat: { id: string; frequency: string }) => cat.id === category_id
+    );
     if (!category) {
       throw new Error(`Custom category with ID ${category_id} not found.`);
     }
+    const userTimezone =
+      payload.timezone && isValidTimeZone(payload.timezone)
+        ? payload.timezone
+        : await loadUserTimezone(authenticatedUserId);
     const result = await measurementRepository.upsertCustomMeasurement(
       authenticatedUserId,
       actingUserId,
@@ -1658,7 +1671,8 @@ async function upsertCustomMeasurementEntry(
       entry_timestamp,
       notes,
       category.frequency, // Pass the frequency to the repository
-      source // Pass the source to the repository
+      source, // Pass the source to the repository
+      userTimezone
     );
     return result;
   } catch (error) {
