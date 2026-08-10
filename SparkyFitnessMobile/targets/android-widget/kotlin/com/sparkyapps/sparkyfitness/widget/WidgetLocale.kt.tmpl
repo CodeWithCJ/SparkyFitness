@@ -1,0 +1,78 @@
+package com.sparkyapps.sparkyfitness.widget
+
+import android.content.Context
+import android.content.res.Configuration
+import java.util.Locale
+
+/**
+ * Widget-only locale override, kept in a dedicated SharedPreferences namespace
+ * on purpose — it never touches the RN app preference persistence format.
+ *
+ * Glance renders as a separate native surface: on Android 13+ the platform
+ * per-app language (LocaleManager) drives Android resources natively, but on
+ * Android 12 and below the explicit app language is local to the RN app
+ * (i18next/Zustand), so Android resources would NOT follow it automatically.
+ * This helper lets the widgets render in the app-selected language on every
+ * API level without reintroducing AppCompat.
+ *
+ * Semantics:
+ *   "en"    -> force English widget resources
+ *   "pl"    -> force Polish widget resources
+ *   absent  -> follow the system/native resource locale
+ */
+object WidgetLocale {
+
+    private const val PREFS_NAME = "SparkyWidgetLocale"
+    private const val KEY_LOCALE = "widgetLocale"
+
+    /** Current override ("en"/"pl") or null when the widget follows the system. */
+    fun override(context: Context): Locale? {
+        val code = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_LOCALE, null)
+        return when (code) {
+            "en" -> Locale.forLanguageTag("en")
+            "pl" -> Locale.forLanguageTag("pl")
+            else -> null
+        }
+    }
+
+    /**
+     * Persists ("en"/"pl") or removes (null) the widget override. Rejects any
+     * other value so the bridge can never persist an unknown locale.
+     */
+    fun setOverride(context: Context, locale: String?) {
+        val normalized = locale?.trim()?.lowercase(Locale.ROOT)?.ifEmpty { null }
+        if (normalized != null && normalized !in SUPPORTED_LOCALES) {
+            throw IllegalArgumentException("Only en, pl, or null are supported")
+        }
+        val committed = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .apply {
+                if (normalized == null) {
+                    remove(KEY_LOCALE)
+                } else {
+                    putString(KEY_LOCALE, normalized)
+                }
+            }
+            .commit()
+        if (!committed) {
+            throw IllegalStateException("Failed to persist widget locale override")
+        }
+    }
+
+    /**
+     * Returns a Context whose resources and number formatting resolve in the
+     * override locale, or the original context when no override is present.
+     * The override is strictly local to widget rendering: it never mutates the
+     * global locale, the system resources singleton, or the app process
+     * configuration.
+     */
+    fun localizedContext(context: Context): Context {
+        val locale = override(context) ?: return context
+        val config = Configuration(context.resources.configuration)
+        config.setLocale(locale)
+        return context.createConfigurationContext(config)
+    }
+
+    private val SUPPORTED_LOCALES = setOf("en", "pl")
+}

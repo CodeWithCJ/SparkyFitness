@@ -4,10 +4,15 @@ import { Platform } from 'react-native';
 import { useWidgetLanguageRefresh } from '../../src/hooks/useWidgetLanguageRefresh';
 import i18n from '../../src/localization/i18n';
 import { CalorieWidgetBridge } from '../../src/services/CalorieWidgetBridge';
+import {
+  __resetAppPreferencesStoreForTests,
+  useAppPreferencesStore,
+} from '../../src/stores/appPreferencesStore';
 import { addLog } from '../../src/services/LogService';
 
 jest.mock('../../src/services/CalorieWidgetBridge', () => ({
   CalorieWidgetBridge: {
+    setWidgetLocale: jest.fn(() => Promise.resolve()),
     reloadWidget: jest.fn(() => Promise.resolve()),
     reloadMacroWidget: jest.fn(() => Promise.resolve()),
   },
@@ -17,16 +22,12 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(() => Promise.resolve()),
 }));
 
+const mockSetWidgetLocale = CalorieWidgetBridge.setWidgetLocale as jest.Mock;
 const mockReload = CalorieWidgetBridge.reloadWidget as jest.Mock;
 const mockReloadMacro = CalorieWidgetBridge.reloadMacroWidget as jest.Mock;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
-function setPlatform(os: 'android' | 'ios'): void {
-  Object.defineProperty(Platform, 'OS', {
-    get: () => os,
-    configurable: true,
-  });
-}
+type I18nEventListener = (lng?: string) => void;
 
 const flushReload = async () => {
   await Promise.resolve();
@@ -35,83 +36,179 @@ const flushReload = async () => {
 };
 
 describe('useWidgetLanguageRefresh', () => {
-  let languageListeners: (() => void)[] = [];
+  let languageListeners: I18nEventListener[] = [];
+  let resolvedLanguage = 'en';
+  let osSpy: jest.SpyInstance | null = null;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
     languageListeners = [];
-    jest.spyOn(i18n, 'on').mockImplementation(((event: string, listener: () => void) => {
+    resolvedLanguage = 'en';
+    jest.spyOn(i18n, 'on').mockImplementation(((event: string, listener: I18nEventListener) => {
       if (event === 'languageChanged') {
         languageListeners.push(listener);
       }
       return i18n;
     }) as typeof i18n.on);
-    jest.spyOn(i18n, 'off').mockImplementation((((event: string) => {
+    jest.spyOn(i18n, 'off').mockImplementation(((event: string) => {
       if (event === 'languageChanged') {
         languageListeners = [];
       }
       return i18n;
-    }) as unknown) as typeof i18n.off);
+    }) as typeof i18n.off);
+    Object.defineProperty(i18n, 'resolvedLanguage', {
+      get: () => resolvedLanguage,
+      configurable: true,
+    });
+    osSpy = jest.replaceProperty(Platform, 'OS', 'android');
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
+    if (osSpy) osSpy.restore();
   });
 
-  it('reloads both widgets once on mount to apply the current locale', () => {
-    setPlatform('android');
+  function setPreference(preference: 'system' | 'en' | 'pl'): void {
+    useAppPreferencesStore.setState({ languagePreference: preference });
+  }
+
+  it('persists the pl override and reloads both widgets on mount', async () => {
+    setPreference('pl');
+    resolvedLanguage = 'pl';
 
     renderHook(() => useWidgetLanguageRefresh());
 
-    expect(mockReload).toHaveBeenCalledTimes(1);
-    expect(mockReloadMacro).toHaveBeenCalledTimes(1);
-  });
-
-  it('reloads all widget instances when the effective language changes', async () => {
-    setPlatform('android');
-
-    renderHook(() => useWidgetLanguageRefresh());
-
-    expect(languageListeners).toHaveLength(1);
-    languageListeners[0]();
     await flushReload();
 
-    expect(mockReload).toHaveBeenCalledTimes(2);
-    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
-  });
-
-  it('does not add an extra reload when language does not change', () => {
-    setPlatform('android');
-
-    renderHook(() => useWidgetLanguageRefresh());
-
+    expect(mockSetWidgetLocale).toHaveBeenCalledWith('pl');
     expect(mockReload).toHaveBeenCalledTimes(1);
     expect(mockReloadMacro).toHaveBeenCalledTimes(1);
   });
 
-  it('re-registers the listener on remount (restart behavior)', () => {
-    setPlatform('android');
+  it('persists the en override for an explicit en preference', async () => {
+    setPreference('en');
 
-    const { unmount } = renderHook(() => useWidgetLanguageRefresh());
-    unmount();
     renderHook(() => useWidgetLanguageRefresh());
 
-    expect(languageListeners).toHaveLength(1);
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledWith('en');
+    expect(mockReload).toHaveBeenCalledTimes(1);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes the override for the system preference', async () => {
+    setPreference('system');
+
+    renderHook(() => useWidgetLanguageRefresh());
+
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledWith(null);
+    expect(mockReload).toHaveBeenCalledTimes(1);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the override when switching explicit en -> system while the effective language stays en', async () => {
+    setPreference('en');
+
+    const { rerender } = renderHook(() => useWidgetLanguageRefresh());
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenLastCalledWith('en');
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(1);
+
+    // Device language stays en; only the persisted preference changes.
+    setPreference('system');
+    rerender();
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(2);
+    expect(mockSetWidgetLocale).toHaveBeenLastCalledWith(null);
     expect(mockReload).toHaveBeenCalledTimes(2);
     expect(mockReloadMacro).toHaveBeenCalledTimes(2);
   });
 
-  it('does not touch the widget bridge on iOS', () => {
-    setPlatform('ios');
+  it('persists an override when switching system -> explicit with the same effective language', async () => {
+    setPreference('system');
 
-    renderHook(() => useWidgetLanguageRefresh());
+    const { rerender } = renderHook(() => useWidgetLanguageRefresh());
+    await flushReload();
 
-    expect(mockReload).not.toHaveBeenCalled();
-    expect(mockReloadMacro).not.toHaveBeenCalled();
+    expect(mockSetWidgetLocale).toHaveBeenLastCalledWith(null);
+
+    setPreference('pl');
+    resolvedLanguage = 'pl';
+    rerender();
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(2);
+    expect(mockSetWidgetLocale).toHaveBeenLastCalledWith('pl');
+    expect(mockReload).toHaveBeenCalledTimes(2);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
   });
 
-  it('still calls reloadMacroWidget when reloadWidget rejects', async () => {
-    setPlatform('android');
+  it('re-syncs when the effective i18n language changes', async () => {
+    setPreference('pl');
+    resolvedLanguage = 'en';
+
+    renderHook(() => useWidgetLanguageRefresh());
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenLastCalledWith('pl');
+
+    resolvedLanguage = 'pl';
+    languageListeners[0]('pl');
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(2);
+    expect(mockReload).toHaveBeenCalledTimes(2);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not add an extra sync when the state is already fully applied', async () => {
+    setPreference('en');
+
+    renderHook(() => useWidgetLanguageRefresh());
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(1);
+
+    languageListeners[0]('en');
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(1);
+    expect(mockReload).toHaveBeenCalledTimes(1);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reload when the override write fails and retries on the next signal', async () => {
+    setPreference('pl');
+    mockSetWidgetLocale.mockRejectedValueOnce(new Error('persist failed'));
+
+    renderHook(() => useWidgetLanguageRefresh());
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(1);
+    expect(mockReload).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mockAddLog).toHaveBeenCalledWith(
+        '[useWidgetLanguageRefresh] Widget locale override write failed',
+        'ERROR',
+      ),
+    );
+
+    languageListeners[0]('pl');
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(2);
+    expect(mockReload).toHaveBeenCalledTimes(1);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(1);
+  });
+
+  it('still calls reloadMacroWidget when reloadWidget rejects and stays retryable', async () => {
+    setPreference('pl');
     mockReload.mockRejectedValueOnce(new Error('calorie down'));
 
     renderHook(() => useWidgetLanguageRefresh());
@@ -124,15 +221,18 @@ describe('useWidgetLanguageRefresh', () => {
         'ERROR',
       ),
     );
-    expect(
-      mockAddLog.mock.calls.some((call) =>
-        String(call[0]).includes('Macro widget reload failed'),
-      ),
-    ).toBe(false);
+
+    languageListeners[0]('pl');
+    await flushReload();
+
+    // The whole flow is retried because the state was never marked applied.
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(2);
+    expect(mockReload).toHaveBeenCalledTimes(2);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
   });
 
-  it('still calls reloadWidget when reloadMacroWidget rejects', async () => {
-    setPlatform('android');
+  it('still calls reloadWidget when reloadMacroWidget rejects and stays retryable', async () => {
+    setPreference('pl');
     mockReloadMacro.mockRejectedValueOnce(new Error('macro down'));
 
     renderHook(() => useWidgetLanguageRefresh());
@@ -145,15 +245,17 @@ describe('useWidgetLanguageRefresh', () => {
         'ERROR',
       ),
     );
-    expect(
-      mockAddLog.mock.calls.some((call) =>
-        String(call[0]).includes('Calorie widget reload failed'),
-      ),
-    ).toBe(false);
+
+    languageListeners[0]('pl');
+    await flushReload();
+
+    expect(mockSetWidgetLocale).toHaveBeenCalledTimes(2);
+    expect(mockReload).toHaveBeenCalledTimes(2);
+    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
   });
 
-  it('settles both rejections without an unhandled rejection', async () => {
-    setPlatform('android');
+  it('settles both reload rejections without an unhandled rejection', async () => {
+    setPreference('pl');
     mockReload.mockRejectedValue(new Error('calorie down'));
     mockReloadMacro.mockRejectedValue(new Error('macro down'));
 
@@ -180,7 +282,7 @@ describe('useWidgetLanguageRefresh', () => {
   });
 
   it('keeps the languageChanged subscription active after a cold-start failure', async () => {
-    setPlatform('android');
+    setPreference('pl');
     mockReload.mockRejectedValueOnce(new Error('calorie down'));
     mockReloadMacro.mockRejectedValueOnce(new Error('macro down'));
 
@@ -189,31 +291,26 @@ describe('useWidgetLanguageRefresh', () => {
     await flushReload();
 
     expect(languageListeners).toHaveLength(1);
-    languageListeners[0]();
+    languageListeners[0]('pl');
     await flushReload();
 
     expect(mockReload).toHaveBeenCalledTimes(2);
     expect(mockReloadMacro).toHaveBeenCalledTimes(2);
   });
 
-  it('retries the refresh on the next language change after an earlier failure', async () => {
-    setPlatform('android');
-    mockReload.mockRejectedValueOnce(new Error('calorie down'));
+  it('does not touch the widget bridge on iOS', () => {
+    osSpy = jest.replaceProperty(Platform, 'OS', 'ios');
+    setPreference('pl');
 
     renderHook(() => useWidgetLanguageRefresh());
 
-    await flushReload();
-
-    mockReload.mockResolvedValue(undefined);
-    languageListeners[0]();
-    await flushReload();
-
-    expect(mockReload).toHaveBeenCalledTimes(2);
-    expect(mockReloadMacro).toHaveBeenCalledTimes(2);
+    expect(mockSetWidgetLocale).not.toHaveBeenCalled();
+    expect(mockReload).not.toHaveBeenCalled();
+    expect(mockReloadMacro).not.toHaveBeenCalled();
   });
 
   it('does not log anything on iOS', () => {
-    setPlatform('ios');
+    osSpy = jest.replaceProperty(Platform, 'OS', 'ios');
 
     renderHook(() => useWidgetLanguageRefresh());
 

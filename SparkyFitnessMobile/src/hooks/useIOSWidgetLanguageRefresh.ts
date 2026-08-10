@@ -5,6 +5,8 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import i18n from '../localization/i18n';
+import type { LanguagePreference } from '../localization';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { addLog } from '../services/LogService';
 
 const WIDGET_KIND = 'widget';
@@ -16,52 +18,113 @@ const iosAppGroup = (
 )?.iosAppGroup;
 
 /**
- * Keeps the WidgetKit extension in sync with the effective app locale. The
- * extension resolves its own locale from the system / iOS per-app language,
- * which can differ from the in-app language selector, so the effective JS
- * locale is written into the shared app group and both widget timelines are
- * reloaded. Runs only on iOS; no-op on Android.
+ * The exact state the WidgetKit layer was last fully synced to. Dedupe only
+ * against a state whose override write/remove AND both timeline reloads
+ * succeeded — a failure leaves the previous value in place so the next signal
+ * retries the whole flow.
+ */
+type IOSWidgetSyncState = {
+  preference: LanguagePreference;
+  effectiveLanguage: 'en' | 'pl';
+};
+
+/**
+ * Keeps the WidgetKit extension in sync with the persisted app-language
+ * preference. The extension resolves its own locale from the system / iOS
+ * per-app language, which can differ from the in-app language selector, so the
+ * shared app group carries an explicit override:
  *
- * `lastWrittenLocaleRef` records only locales that were fully applied (write +
- * both reloads). On a failure it keeps the previous applied locale, so the next
- * language event retries the whole flow instead of being skipped. There is no
- * automatic retry timer.
+ *   preference "en"    -> write widgetLocale = "en", reload both timelines
+ *   preference "pl"    -> write widgetLocale = "pl", reload both timelines
+ *   preference "system" -> REMOVE widgetLocale (follow the extension's native
+ *                          locale), reload both timelines
+ *
+ * Both signals trigger a sync:
+ *   1. `languagePreference` changes (explicit -> system must remove the key
+ *      even when the effective i18n language stays the same);
+ *   2. effective i18n language changes (e.g. device language change with
+ *      `system` preference).
+ *
+ * The override write/remove happens first; a failure rejects and stays
+ * retryable. The two timeline reloads run independently: a failure in either
+ * keeps the state unapplied so the next signal retries. There is no automatic
+ * retry timer.
  */
 export function useIOSWidgetLanguageRefresh(): void {
-  const lastWrittenLocaleRef = useRef<string | null>(null);
+  const languagePreference = useAppPreferencesStore((s) => s.languagePreference);
+  const lastAppliedRef = useRef<IOSWidgetSyncState | null>(null);
 
   useEffect(() => {
     if (Platform.OS !== 'ios' || !iosAppGroup) return;
 
-    const applyLocale = () => {
-      const locale = i18n.resolvedLanguage === 'pl' ? 'pl' : 'en';
-      if (lastWrittenLocaleRef.current === locale) return;
+    const applySync = async (): Promise<void> => {
+      const preference = useAppPreferencesStore.getState().languagePreference;
+      const effectiveLanguage: 'en' | 'pl' =
+        i18n.resolvedLanguage === 'pl' ? 'pl' : 'en';
+      const desired: IOSWidgetSyncState = { preference, effectiveLanguage };
+
+      if (
+        lastAppliedRef.current !== null &&
+        lastAppliedRef.current.preference === desired.preference &&
+        lastAppliedRef.current.effectiveLanguage === desired.effectiveLanguage
+      ) {
+        return;
+      }
 
       try {
         const storage = new ExtensionStorage(iosAppGroup);
-        storage.set(WIDGET_LOCALE_KEY, locale);
-        ExtensionStorage.reloadWidget(WIDGET_KIND);
-        ExtensionStorage.reloadWidget(MACRO_WIDGET_KIND);
+        if (desired.preference === 'system') {
+          storage.remove(WIDGET_LOCALE_KEY);
+        } else {
+          storage.set(WIDGET_LOCALE_KEY, desired.preference);
+        }
       } catch (error) {
         addLog(
-          `[useIOSWidgetLanguageRefresh] Failed to refresh widget locale: ${error}`,
+          `[useIOSWidgetLanguageRefresh] Failed to update widget locale: ${error}`,
           'ERROR',
         );
         return;
       }
 
-      lastWrittenLocaleRef.current = locale;
+      let fullyApplied = true;
+      try {
+        ExtensionStorage.reloadWidget(WIDGET_KIND);
+      } catch (error) {
+        addLog(
+          `[useIOSWidgetLanguageRefresh] Calorie widget reload failed: ${error}`,
+          'ERROR',
+        );
+        fullyApplied = false;
+      }
+      try {
+        ExtensionStorage.reloadWidget(MACRO_WIDGET_KIND);
+      } catch (error) {
+        addLog(
+          `[useIOSWidgetLanguageRefresh] Macro widget reload failed: ${error}`,
+          'ERROR',
+        );
+        fullyApplied = false;
+      }
+      if (!fullyApplied) return;
+
+      lastAppliedRef.current = desired;
     };
 
     if (i18n.isInitialized) {
-      applyLocale();
+      void applySync();
     }
-    i18n.on('initialized', applyLocale);
-    i18n.on('languageChanged', applyLocale);
+    const onInitialized = () => {
+      void applySync();
+    };
+    const onLanguageChanged = () => {
+      void applySync();
+    };
+    i18n.on('initialized', onInitialized);
+    i18n.on('languageChanged', onLanguageChanged);
 
     return () => {
-      i18n.off('initialized', applyLocale);
-      i18n.off('languageChanged', applyLocale);
+      i18n.off('initialized', onInitialized);
+      i18n.off('languageChanged', onLanguageChanged);
     };
-  }, []);
+  }, [languagePreference]);
 }
