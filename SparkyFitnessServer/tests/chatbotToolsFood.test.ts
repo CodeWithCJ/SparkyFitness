@@ -6,6 +6,7 @@ import foodEntryService from '../services/foodEntryService.js';
 import mealService from '../services/mealService.js';
 import preferenceService from '../services/preferenceService.js';
 import { searchProviderFoods } from '../services/externalFoodSearchService.js';
+import { VALID_PROVIDER_TYPES } from '../constants/foodProviders.js';
 import foodRepository from '../models/foodRepository.js';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import mealTypeRepository from '../models/mealType.js';
@@ -112,15 +113,7 @@ const MEAL_ID = '44444444-4444-4444-8444-444444444444';
 const FOOD_ID_2 = '55555555-5555-4555-8555-555555555555';
 const MEAL_TYPE_ID = '66666666-6666-4666-8666-666666666666';
 
-const FOOD_PROVIDER_TYPES = [
-  'fatsecret',
-  'mealie',
-  'tandoor',
-  'yazio',
-  'norish',
-  'usda',
-  'openfoodfacts',
-];
+const FOOD_PROVIDER_TYPES = [...VALID_PROVIDER_TYPES];
 
 const eggsRow = {
   id: FOOD_ID,
@@ -735,6 +728,53 @@ describe('lookup_food_nutrition', () => {
 
     expect(result).toBe(DB_ERROR_TEXT);
     expect(searchProviderFoods).not.toHaveBeenCalled();
+  });
+
+  it('supports explicit provider_type: "swissfood" in lookup_food_nutrition', async () => {
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-swiss',
+        provider_type: 'swissfood',
+        provider_name: 'Swiss Food DB',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Appenzeller Cheese',
+          provider_external_id: 'swiss-101',
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 395,
+            protein: 25,
+            carbs: 0,
+            fat: 32,
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'lookup_food_nutrition',
+        food_name: 'Appenzeller',
+        provider_type: 'swissfood',
+      },
+      opts
+    );
+
+    expect(result).toContain('Found match in **swissfood**');
+    expect(result).toContain('Appenzeller Cheese');
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-1',
+      'swissfood',
+      'Appenzeller',
+      { providerId: 'prov-swiss' }
+    );
   });
 });
 
@@ -1385,6 +1425,70 @@ describe('log_external_food', () => {
         unit: 'g',
         meal_type_id: 'default-id',
       }
+    );
+  });
+
+  it('supports logging a food from swissfood provider', async () => {
+    const swissCheese = {
+      name: 'Appenzeller Cheese',
+      provider_external_id: 'swiss-101',
+      default_variant: {
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 395,
+        protein: 25,
+        carbs: 0,
+        fat: 32,
+      },
+    };
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-swiss',
+        provider_type: 'swissfood',
+        provider_name: 'Swiss Food DB',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [swissCheese],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Appenzeller Cheese',
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 395,
+      },
+    });
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Appenzeller Cheese',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_external_food',
+        food_name: 'Appenzeller Cheese',
+        provider_type: 'swissfood',
+        quantity: 1,
+        unit: 'g',
+        meal_type: 'snacks',
+        entry_date: '2026-08-10',
+      },
+      opts
+    );
+
+    expect(result).toContain('Saved "Appenzeller Cheese" from swissfood');
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        provider_type: 'swissfood',
+        provider_external_id: 'swiss-101',
+      })
     );
   });
 
