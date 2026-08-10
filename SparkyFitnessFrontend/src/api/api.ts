@@ -57,15 +57,16 @@ function isGatewayInterceptedResponse(response: Response): boolean {
   return contentType.includes('text/html');
 }
 
-function reloadOnceForGatewayInterception(): void {
+function reloadOnceForGatewayInterception(): boolean {
   const lastReload = Number(
     sessionStorage.getItem(GATEWAY_RELOAD_GUARD_KEY) || 0
   );
   if (Date.now() - lastReload < GATEWAY_RELOAD_GUARD_TTL_MS) {
-    return;
+    return false;
   }
   sessionStorage.setItem(GATEWAY_RELOAD_GUARD_KEY, String(Date.now()));
   gatewayReloadRuntime.reloadWindowLocation();
+  return true;
 }
 
 // A blob response is always a Blob, never the caller's generic T — the overload
@@ -165,9 +166,12 @@ export async function apiCall<T = any>(
         userLoggingLevel,
         `API Call: Response for ${url} looks like it was intercepted by an upstream auth gateway (e.g. Cloudflare Access) rather than answered by the backend. Reloading to re-authenticate.`
       );
-      reloadOnceForGatewayInterception();
-      // Reload is async; avoid processing this response as a real API result/error.
-      return new Promise(() => {});
+      const reloaded = reloadOnceForGatewayInterception();
+      if (reloaded) {
+        // Reload is async; avoid processing this response as a real API result/error.
+        return new Promise(() => {});
+      }
+      throw new HttpApiError('Response intercepted by gateway.');
     }
 
     if (!response.ok) {

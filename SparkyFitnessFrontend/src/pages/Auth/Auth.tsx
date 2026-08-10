@@ -354,6 +354,15 @@ const Auth = () => {
 
   const handlePasskeySignIn = async () => {
     info(loggingLevel, 'Auth: Attempting Passkey sign-in.');
+    if (typeof window !== 'undefined' && !window.isSecureContext) {
+      toast({
+        title: 'Passkey Error',
+        description:
+          'Passkey authentication requires a Secure Context (HTTPS or localhost). Please sign in using email/password.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
     try {
       const { error } = await authClient.signIn.passkey();
@@ -368,8 +377,9 @@ const Auth = () => {
       toast({
         title: 'Passkey Error',
         description:
-          message ||
-          'Failed to sign in with Passkey. Ensure your device supports it.',
+          message && message !== 'An unexpected error occurred.'
+            ? message
+            : 'Failed to sign in with Passkey. Ensure your device supports it.',
         variant: 'destructive',
       });
     } finally {
@@ -424,7 +434,7 @@ const Auth = () => {
                   <AlertDescription>{formError}</AlertDescription>
                 </Alert>
               )}
-              {loginSettings?.email.enabled ? (
+              {(loginSettings?.email?.enabled ?? true) ? (
                 <Tabs defaultValue="signin" className="w-full">
                   {!loginSettings?.signup_disabled && (
                     <TabsList className="h-10 grid w-full grid-cols-2">
