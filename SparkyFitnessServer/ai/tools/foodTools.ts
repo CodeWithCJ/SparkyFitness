@@ -11,6 +11,7 @@ import {
   searchProviderFoods,
   type ProviderType,
 } from '../../services/externalFoodSearchService.js';
+import { VALID_PROVIDER_TYPES } from '../../constants/foodProviders.js';
 import foodRepository from '../../models/foodRepository.js';
 import foodEntryMealRepository from '../../models/foodEntryMealRepository.js';
 import mealTypeRepository from '../../models/mealType.js';
@@ -65,16 +66,8 @@ const VALID_ACTIONS = [
 ];
 
 // Provider types the no-provider cascade may search (exercise/health
-// providers are excluded).
-const FOOD_PROVIDER_TYPES = [
-  'fatsecret',
-  'mealie',
-  'tandoor',
-  'yazio',
-  'norish',
-  'usda',
-  'openfoodfacts',
-];
+// providers are excluded). Derived from VALID_PROVIDER_TYPES.
+const FOOD_PROVIDER_TYPES = [...VALID_PROVIDER_TYPES];
 
 // Units where an omitted create_food quantity defaults to 1 instead of 100.
 const COUNT_BASED_UNITS = [
