@@ -81,8 +81,6 @@ const YAZIO_LOCALES: Record<
     countries: ['RU'],
     locales: ['ru_RU'],
   },
-<<<<<<< HEAD
-=======
   es: {
     countries: ['ES', 'MX', 'AR'],
     locales: ['es_ES'],
@@ -151,7 +149,6 @@ const YAZIO_LOCALES: Record<
     countries: ['KR'],
     locales: ['ko_KR'],
   },
->>>>>>> ca8a3c33 (feat(server): add Russian language and locale support to YAZIO food provider)
 };
 
 const SUPPORTED_LANGUAGES = Object.keys(YAZIO_LOCALES);

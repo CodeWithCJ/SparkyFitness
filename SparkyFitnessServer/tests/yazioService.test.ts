@@ -495,8 +495,6 @@ describe('yazioService', () => {
     expect(searchUrl.searchParams.get('query')).toBe('борщ');
   });
 
-<<<<<<< HEAD
-=======
   it('passes Spanish locale parameters when language is es', async () => {
     vi.mocked(global.fetch)
       .mockResolvedValueOnce(
@@ -520,8 +518,6 @@ describe('yazioService', () => {
     expect(searchUrl.searchParams.get('countries')).toBe('ES,MX,AR');
     expect(searchUrl.searchParams.get('locales')).toBe('es_ES');
   });
-
->>>>>>> ca8a3c33 (feat(server): add Russian language and locale support to YAZIO food provider)
   it('falls back to default locales when language is unsupported', async () => {
     vi.mocked(global.fetch)
       .mockResolvedValueOnce(
