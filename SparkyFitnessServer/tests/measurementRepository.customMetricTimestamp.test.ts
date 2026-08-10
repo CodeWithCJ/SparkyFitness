@@ -1,28 +1,33 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import measurementRepository from '../models/measurementRepository.js';
 import { getClient } from '../db/poolManager.js';
+import {
+  createMockDbClient,
+  type MockDbClient,
+} from './helpers/mockDbClient.js';
+import { todayInZone } from '@workspace/shared';
 
 vi.mock('../db/poolManager.js', () => ({
   getClient: vi.fn(),
 }));
 
+type QueryTuple = [string, unknown[] | undefined];
+
 describe('measurementRepository custom metric entry_timestamp defaulting', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockDbClient;
 
   beforeEach(() => {
-    mockClient = {
-      query: vi.fn(),
-      release: vi.fn(),
-    };
-    vi.mocked(getClient).mockResolvedValue(mockClient);
+    mockClient = createMockDbClient([]);
+    vi.mocked(getClient).mockResolvedValue(
+      mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+    );
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('defaults entry_timestamp for Unlimited frequency when omitted (logging for today)', async () => {
+  it('defaults entry_timestamp for Unlimited frequency when omitted (logging for today in UTC)', async () => {
     mockClient.query.mockResolvedValue({
       rows: [
         {
@@ -37,7 +42,7 @@ describe('measurementRepository custom metric entry_timestamp defaulting', () =>
       ],
     });
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = todayInZone('UTC');
 
     await measurementRepository.upsertCustomMeasurement(
       'user-1',
@@ -48,22 +53,81 @@ describe('measurementRepository custom metric entry_timestamp defaulting', () =>
       null,
       undefined, // entryTimestamp omitted!
       'blood pressure systolic',
-      'Unlimited'
+      'Unlimited',
+      'manual',
+      'UTC'
     );
 
     expect(mockClient.query).toHaveBeenCalledTimes(1);
-    const [query, values] = mockClient.query.mock.calls[0];
+    const calls = mockClient.query.mock.calls as unknown as QueryTuple[];
+    const [query, values] = calls[0]!;
     expect(query).toContain('INSERT INTO custom_measurements');
-    // Parameter $6 is entry_timestamp
-    const entryTimestampVal = values[5];
+    expect(values).toBeDefined();
+
+    const entryTimestampVal = values![5] as string;
     expect(entryTimestampVal).toBeDefined();
     expect(typeof entryTimestampVal).toBe('string');
     expect(new Date(entryTimestampVal).toString()).not.toBe('Invalid Date');
   });
 
+  it('handles positive timezone offsets (e.g. Asia/Tokyo) around UTC midnight', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ id: 'cm-tokyo' }] });
+    const tokyoToday = todayInZone('Asia/Tokyo');
+
+    await measurementRepository.upsertCustomMeasurement(
+      'user-1',
+      'user-1',
+      'cat-unlimited',
+      '125',
+      tokyoToday,
+      null,
+      undefined,
+      'notes',
+      'Unlimited',
+      'manual',
+      'Asia/Tokyo'
+    );
+
+    const calls = mockClient.query.mock.calls as unknown as QueryTuple[];
+    const insertCall = calls.find((c) =>
+      c[0].includes('INSERT INTO custom_measurements')
+    );
+    expect(insertCall).toBeDefined();
+    const timestampVal = insertCall![1]![5] as string;
+    expect(timestampVal).toBeDefined();
+    // Since tokyoToday equals todayInZone('Asia/Tokyo'), timestamp defaults to current execution time
+    expect(new Date(timestampVal).toString()).not.toBe('Invalid Date');
+  });
+
+  it('handles negative timezone offsets (e.g. America/Los_Angeles) around UTC midnight', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ id: 'cm-la' }] });
+    const laToday = todayInZone('America/Los_Angeles');
+
+    await measurementRepository.upsertCustomMeasurement(
+      'user-1',
+      'user-1',
+      'cat-unlimited',
+      '115',
+      laToday,
+      null,
+      undefined,
+      'notes',
+      'Unlimited',
+      'manual',
+      'America/Los_Angeles'
+    );
+
+    const calls = mockClient.query.mock.calls as unknown as QueryTuple[];
+    const insertCall = calls.find((c) =>
+      c[0].includes('INSERT INTO custom_measurements')
+    );
+    expect(insertCall).toBeDefined();
+    const timestampVal = insertCall![1]![5] as string;
+    expect(timestampVal).toBeDefined();
+    expect(new Date(timestampVal).toString()).not.toBe('Invalid Date');
+  });
+
   it('defaults entry_timestamp for Hourly frequency when entry_hour is provided', async () => {
-    // Secondary call for insert/update will carry the normalized timestamp
-    // If SELECT returns empty, INSERT query runs
     mockClient.query.mockResolvedValueOnce({ rows: [] });
     mockClient.query.mockResolvedValueOnce({ rows: [{ id: 'cm-2' }] });
 
@@ -76,19 +140,21 @@ describe('measurementRepository custom metric entry_timestamp defaulting', () =>
       14,
       undefined,
       'heart rate',
-      'Hourly'
+      'Hourly',
+      'manual',
+      'UTC'
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const insertCall = mockClient.query.mock.calls.find((call: any[]) =>
-      call[0].includes('INSERT INTO custom_measurements')
+    const calls = mockClient.query.mock.calls as unknown as QueryTuple[];
+    const insertCall = calls.find((c) =>
+      c[0].includes('INSERT INTO custom_measurements')
     );
     expect(insertCall).toBeDefined();
-    const entryTimestampVal = insertCall[1][5];
+    const entryTimestampVal = insertCall![1]![5] as string;
     expect(entryTimestampVal).toBe('2026-08-05T14:00:00.000Z');
   });
 
-  it('defaults entry_timestamp in bulkUpsertCustomMeasurements for non-Daily entries', async () => {
+  it('defaults entry_timestamp in bulkUpsertCustomMeasurements for non-Daily entries with userTimezone', async () => {
     mockClient.query.mockImplementation(async (text: string) => {
       if (text === 'BEGIN' || text === 'COMMIT') return { rows: [] };
       if (text.includes('SELECT id, category_id')) return { rows: [] };
@@ -107,21 +173,22 @@ describe('measurementRepository custom metric entry_timestamp defaulting', () =>
           value: '130',
           entryDate: '2026-08-01',
           entryHour: null,
-          entryTimestamp: undefined, // missing timestamp
+          entryTimestamp: undefined,
           notes: 'bp high',
           frequency: 'All',
+          userTimezone: 'Asia/Tokyo',
         },
-      ]
+      ],
+      'Asia/Tokyo'
     );
 
     expect(result).toHaveLength(1);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const insertCall = mockClient.query.mock.calls.find((call: any[]) =>
-      call[0].includes('INSERT INTO custom_measurements')
+    const calls = mockClient.query.mock.calls as unknown as QueryTuple[];
+    const insertCall = calls.find((c) =>
+      c[0].includes('INSERT INTO custom_measurements')
     );
     expect(insertCall).toBeDefined();
-    // In bulk insert query, pg-format formats values into the SQL text
-    const insertSql = insertCall[0];
+    const insertSql = insertCall![0];
     expect(insertSql).toContain("'2026-08-01T00:00:00.000Z'");
   });
 });

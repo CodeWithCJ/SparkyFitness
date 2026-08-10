@@ -1648,6 +1648,8 @@ async function upsertCustomMeasurementEntry(
     if (!category) {
       throw new Error(`Custom category with ID ${category_id} not found.`);
     }
+    const userTimezone =
+      payload.timezone || (await loadUserTimezone(authenticatedUserId));
     const result = await measurementRepository.upsertCustomMeasurement(
       authenticatedUserId,
       actingUserId,
@@ -1658,7 +1660,8 @@ async function upsertCustomMeasurementEntry(
       entry_timestamp,
       notes,
       category.frequency, // Pass the frequency to the repository
-      source // Pass the source to the repository
+      source, // Pass the source to the repository
+      userTimezone
     );
     return result;
   } catch (error) {

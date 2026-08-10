@@ -2,16 +2,23 @@ import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
-import { CALORIE_CALCULATION_CONSTANTS, isDayString } from '@workspace/shared';
+import {
+  CALORIE_CALCULATION_CONSTANTS,
+  isDayString,
+  isValidTimeZone,
+  todayInZone,
+} from '@workspace/shared';
 
 /**
  * Helper to derive a default UTC entry_timestamp ISO string when omitted or invalid.
  * Avoids timezone jump issues by leveraging isDayString and Date.UTC date construction.
+ * Compares entryDate with todayInZone(userTimezone) to detect if logging for the user's current day.
  */
 function defaultEntryTimestamp(
   entryTimestamp: string | null | undefined,
   entryDate: string | null | undefined,
-  entryHour: number | null | undefined
+  entryHour: number | null | undefined,
+  userTimezone?: string | null
 ): string {
   if (entryTimestamp && entryTimestamp.trim() !== '') {
     return entryTimestamp;
@@ -33,8 +40,10 @@ function defaultEntryTimestamp(
     }
 
     const now = new Date();
-    const nowUtcDay = now.toISOString().split('T')[0];
-    if (entryDate === nowUtcDay) {
+    const tz =
+      userTimezone && isValidTimeZone(userTimezone) ? userTimezone : 'UTC';
+    const currentDayInZone = todayInZone(tz);
+    if (entryDate === currentDayInZone) {
       return now.toISOString();
     }
 
@@ -977,33 +986,25 @@ async function getCustomMeasurementsByDateRange(
   }
 }
 async function upsertCustomMeasurement(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  categoryId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  value: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryHour: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryTimestamp: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  notes: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  frequency: any,
-  source = 'manual'
+  userId: string,
+  actingUserId: string,
+  categoryId: string,
+  value: string | number | boolean,
+  entryDate: string,
+  entryHour?: number | null,
+  entryTimestamp?: string | null,
+  notes?: string | null,
+  frequency?: string | null,
+  source = 'manual',
+  userTimezone?: string | null
 ) {
   const client = await getClient(actingUserId); // User-specific operation, using actingUserId for RLS context
   try {
     let query;
     let values;
     // Normalize entry_hour and entry_timestamp for 'Daily' frequency to prevent duplicates
-    let normalizedEntryHour = entryHour;
-    let normalizedEntryTimestamp = entryTimestamp;
+    let normalizedEntryHour = entryHour ?? null;
+    let normalizedEntryTimestamp = entryTimestamp ?? null;
     if (frequency === 'Daily') {
       normalizedEntryHour = 0; // Set hour to 0 for daily measurements
       // Normalize timestamp to the beginning of the day
@@ -1029,7 +1030,8 @@ async function upsertCustomMeasurement(
       normalizedEntryTimestamp = defaultEntryTimestamp(
         normalizedEntryTimestamp,
         entryDate,
-        normalizedEntryHour
+        normalizedEntryHour,
+        userTimezone
       );
     }
     // For 'Unlimited' and 'All' frequencies, always insert a new entry.
@@ -1048,7 +1050,7 @@ async function upsertCustomMeasurement(
         entryDate,
         normalizedEntryHour,
         normalizedEntryTimestamp,
-        notes,
+        notes ?? null,
         actingUserId,
         source,
       ];
@@ -1058,7 +1060,12 @@ async function upsertCustomMeasurement(
         SELECT id FROM custom_measurements
         WHERE user_id = $1 AND category_id = $2 AND entry_date = $3 AND source = $4
       `;
-      const existingEntryValues = [userId, categoryId, entryDate, source];
+      const existingEntryValues: unknown[] = [
+        userId,
+        categoryId,
+        entryDate,
+        source,
+      ];
       if (frequency === 'Hourly' && normalizedEntryHour !== null) {
         existingEntryQuery += ` AND entry_hour = $${existingEntryValues.length + 1}`;
         existingEntryValues.push(normalizedEntryHour);
@@ -1083,7 +1090,7 @@ async function upsertCustomMeasurement(
         values = [
           value,
           normalizedEntryTimestamp,
-          notes,
+          notes ?? null,
           actingUserId,
           source,
           id,
@@ -1102,7 +1109,7 @@ async function upsertCustomMeasurement(
           entryDate,
           normalizedEntryHour,
           normalizedEntryTimestamp,
-          notes,
+          notes ?? null,
           actingUserId,
           source,
         ];
@@ -1114,6 +1121,19 @@ async function upsertCustomMeasurement(
     client.release();
   }
 }
+
+export interface BulkCustomMeasurementInputRow {
+  categoryId: string;
+  value: string | number | boolean;
+  entryDate: string;
+  entryHour?: number | null;
+  entryTimestamp?: string | null;
+  notes?: string | null;
+  frequency: string;
+  source?: string | null;
+  userTimezone?: string | null;
+}
+
 /**
  * Batch counterpart of upsertCustomMeasurement for health-data ingestion: one
  * client + one transaction for the whole batch instead of one client per
@@ -1128,28 +1148,10 @@ async function upsertCustomMeasurement(
  * winner's row).
  */
 async function bulkUpsertCustomMeasurements(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  rows: Array<{
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    categoryId: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entryDate: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entryHour: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    entryTimestamp: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    notes: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    frequency: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    source?: any;
-  }>
+  userId: string,
+  actingUserId: string,
+  rows: BulkCustomMeasurementInputRow[],
+  userTimezone?: string | null
 ) {
   if (!rows || rows.length === 0) {
     return [];
@@ -1187,7 +1189,8 @@ async function bulkUpsertCustomMeasurements(
         normalizedEntryTimestamp = defaultEntryTimestamp(
           normalizedEntryTimestamp,
           row.entryDate,
-          normalizedEntryHour
+          normalizedEntryHour,
+          row.userTimezone ?? userTimezone
         );
       }
       return {
