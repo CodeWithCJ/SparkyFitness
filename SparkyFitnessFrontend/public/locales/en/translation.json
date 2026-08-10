@@ -1105,6 +1105,21 @@
       "openFoodFacts": {
         "baseUrlLabel": "Base URL (Optional)",
         "baseUrlHelp": "Leave blank to use the public Open Food Facts server, or point this at your own self-hosted instance."
+      },
+      "yazio": {
+        "unofficialApiTitle": "⚠️ Unofficial API — Use at your own risk",
+        "unofficialApiWarning": "YAZIO integration uses an unofficial, undocumented API that is not provided or endorsed by YAZIO. Using it may risk getting your YAZIO account banned. The API could also stop working at any time without notice if YAZIO changes their backend.",
+        "moreInfoLink": "For more information & client credentials, see",
+        "emailUsernameLabel": "YAZIO Email / Username",
+        "emailUsernamePlaceholder": "Enter YAZIO email or username",
+        "passwordLabel": "YAZIO Password",
+        "passwordPlaceholder": "Enter YAZIO password",
+        "clientIdLabel": "YAZIO Client ID",
+        "clientIdPlaceholder": "Enter YAZIO Client ID",
+        "clientSecretLabel": "YAZIO Client Secret",
+        "clientSecretPlaceholder": "Enter YAZIO Client Secret",
+        "allFieldsRequired": "All fields (Email/Username, Password, Client ID, and Client Secret) are required.",
+        "languageSupportHelp": "YAZIO food searches automatically adjust to your active language preference in SparkyFitness (supporting English, German, French, Russian, Spanish, Italian, Dutch, Polish, Portuguese, Danish, Finnish, Swedish, Czech, Hungarian, Greek, Norwegian, Turkish, Chinese, Japanese, and Korean). Other languages default to standard international database parameters."
       }
     },
     "aiService": {

@@ -61,8 +61,6 @@ interface YazioCredentials {
   language?: string;
 }
 
-const SUPPORTED_LANGUAGES = ['en', 'de', 'fr'];
-
 const YAZIO_LOCALES: Record<
   string,
   { countries: string[]; locales: string[] }
@@ -79,7 +77,81 @@ const YAZIO_LOCALES: Record<
     countries: ['US', 'GB', 'CA', 'AU'],
     locales: ['en_US', 'en_GB'],
   },
+  ru: {
+    countries: ['RU'],
+    locales: ['ru_RU'],
+  },
+  es: {
+    countries: ['ES', 'MX', 'AR'],
+    locales: ['es_ES'],
+  },
+  it: {
+    countries: ['IT', 'CH'],
+    locales: ['it_IT', 'it_CH'],
+  },
+  nl: {
+    countries: ['NL', 'BE'],
+    locales: ['nl_NL', 'nl_BE'],
+  },
+  pl: {
+    countries: ['PL'],
+    locales: ['pl_PL'],
+  },
+  pt: {
+    countries: ['PT', 'BR'],
+    locales: ['pt_PT', 'pt_BR'],
+  },
+  cs: {
+    countries: ['CZ'],
+    locales: ['cs_CZ'],
+  },
+  da: {
+    countries: ['DK'],
+    locales: ['da_DK'],
+  },
+  el: {
+    countries: ['GR'],
+    locales: ['el_GR'],
+  },
+  hu: {
+    countries: ['HU'],
+    locales: ['hu_HU'],
+  },
+  no: {
+    countries: ['NO'],
+    locales: ['nb_NO', 'no_NO'],
+  },
+  nb: {
+    countries: ['NO'],
+    locales: ['nb_NO'],
+  },
+  fi: {
+    countries: ['FI'],
+    locales: ['fi_FI'],
+  },
+  sv: {
+    countries: ['SE'],
+    locales: ['sv_SE'],
+  },
+  tr: {
+    countries: ['TR'],
+    locales: ['tr_TR'],
+  },
+  zh: {
+    countries: ['CN'],
+    locales: ['zh_CN'],
+  },
+  ja: {
+    countries: ['JP'],
+    locales: ['ja_JP'],
+  },
+  ko: {
+    countries: ['KR'],
+    locales: ['ko_KR'],
+  },
 };
+
+const SUPPORTED_LANGUAGES = Object.keys(YAZIO_LOCALES);
 
 function resolveLanguage(lang: string | null | undefined): string | null {
   if (typeof lang !== 'string') {
