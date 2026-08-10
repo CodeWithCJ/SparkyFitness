@@ -1,5 +1,7 @@
 export const getErrorMessage = (error: unknown): string => {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error && error.message.trim() !== '') {
+    return error.message;
+  }
 
   if (error !== null && typeof error === 'object') {
     const errObj = error as Record<string, unknown>;
@@ -35,8 +37,14 @@ export const getErrorMessage = (error: unknown): string => {
     }
   }
 
-  const str = String(error);
-  return str === '[object Object]' ? 'An unexpected error occurred.' : str;
+  try {
+    const str = String(error);
+    return str === '[object Object]' || str.trim() === ''
+      ? 'An unexpected error occurred.'
+      : str;
+  } catch {
+    return 'An unexpected error occurred.';
+  }
 };
 
 export const isObject = (val: unknown): val is Record<string, unknown> =>

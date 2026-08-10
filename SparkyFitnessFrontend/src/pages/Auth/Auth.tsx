@@ -356,9 +356,11 @@ const Auth = () => {
     info(loggingLevel, 'Auth: Attempting Passkey sign-in.');
     if (typeof window !== 'undefined' && !window.isSecureContext) {
       toast({
-        title: 'Passkey Error',
-        description:
-          'Passkey authentication requires a Secure Context (HTTPS or localhost). Please sign in using email/password.',
+        title: t('auth.passkeyErrorTitle', 'Passkey Error'),
+        description: t(
+          'auth.passkeySecureContextError',
+          'Passkey authentication requires a Secure Context (HTTPS or localhost). Please sign in using email/password.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -369,17 +371,23 @@ const Auth = () => {
       if (error) throw error;
 
       info(loggingLevel, 'Auth: Passkey sign-in successful.');
-      toast({ title: 'Success', description: 'Logged in with Passkey!' });
+      toast({
+        title: t('auth.successTitle', 'Success'),
+        description: t('auth.passkeySuccess', 'Logged in with Passkey!'),
+      });
       navigate('/');
     } catch (err: unknown) {
       const message = getErrorMessage(err);
       error(loggingLevel, 'Auth: Passkey sign-in failed:', err);
       toast({
-        title: 'Passkey Error',
+        title: t('auth.passkeyErrorTitle', 'Passkey Error'),
         description:
           message && message !== 'An unexpected error occurred.'
             ? message
-            : 'Failed to sign in with Passkey. Ensure your device supports it.',
+            : t(
+                'auth.passkeyGenericError',
+                'Failed to sign in with Passkey. Ensure your device supports it.'
+              ),
         variant: 'destructive',
       });
     } finally {
