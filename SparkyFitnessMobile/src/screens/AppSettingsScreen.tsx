@@ -56,9 +56,9 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
       try {
         await setAppLanguagePreference(value);
       } catch (error) {
-        // A failed native write (or i18n apply) must not change the stored or
-        // effective language: setAppLanguagePreference only commits the store
-        // after the native write succeeds. Surface a small error toast.
+        // setAppLanguagePreference is transactional: on failure it restores
+        // the previous store/native/i18n state itself, so the screen only
+        // needs to surface the error. Do not mutate the preferences store here.
         const message = error instanceof Error ? error.message : String(error);
         void addLog(`[AppSettings] Failed to change app language: ${message}`, 'ERROR');
         Toast.show({

@@ -144,6 +144,58 @@ describe('app language service', () => {
       expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
     });
 
+    it('gives an existing Android Settings language priority over a stored system preference (explicit native wins)', async () => {
+      useAppPreferencesStore.setState({ languagePreference: 'system' });
+      nativeApplication = 'pl';
+
+      await expect(initializeAppLanguage()).resolves.toBe('pl');
+
+      expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
+      expect(i18n.resolvedLanguage).toBe('pl');
+      expect(await AsyncStorage.getItem(MIGRATION_KEY)).toBeTruthy();
+    });
+
+    it('gives an existing Android Settings pl priority over a conflicting legacy en preference', async () => {
+      useAppPreferencesStore.setState({ languagePreference: 'en' });
+      nativeApplication = 'pl';
+
+      await initializeAppLanguage();
+
+      expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
+      expect(i18n.resolvedLanguage).toBe('pl');
+      expect(await AsyncStorage.getItem(MIGRATION_KEY)).toBeTruthy();
+    });
+
+    it('gives an existing Android Settings en priority over a conflicting legacy pl preference', async () => {
+      useAppPreferencesStore.setState({ languagePreference: 'pl' });
+      nativeApplication = 'en';
+
+      await initializeAppLanguage();
+
+      expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('en');
+      expect(i18n.resolvedLanguage).toBe('en');
+      expect(await AsyncStorage.getItem(MIGRATION_KEY)).toBeTruthy();
+    });
+
+    it('falls back locally and leaves the marker unset when the initial native read fails', async () => {
+      useAppPreferencesStore.setState({ languagePreference: 'pl' });
+      mockNative.getApplicationLanguage.mockRejectedValue(new Error('bridge down'));
+
+      await expect(initializeAppLanguage()).resolves.toBe('pl');
+
+      expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
+      expect(i18n.resolvedLanguage).toBe('pl');
+      expect(await AsyncStorage.getItem(MIGRATION_KEY)).toBeNull();
+      expect(mockAddLog).toHaveBeenCalledWith(
+        expect.stringContaining('Migration could not read native language'),
+        'WARNING',
+      );
+    });
+
     it('does not write the completion marker when the native write fails (retries next launch)', async () => {
       useAppPreferencesStore.setState({ languagePreference: 'pl' });
       mockNative.setApplicationLanguage.mockRejectedValueOnce(new Error('native unavailable'));
@@ -384,6 +436,79 @@ describe('app language service', () => {
         expect.stringContaining('Native application-language write failed'),
         'ERROR',
       );
+    });
+  });
+
+  describe('language change transaction', () => {
+    it('rolls the native value back when i18n application fails on Android 13+', async () => {
+      useAppPreferencesStore.setState({ languagePreference: 'pl' });
+      nativeApplication = 'pl';
+      await i18n.changeLanguage('pl');
+      mockAddLog.mockClear();
+
+      const changeLanguage = jest.spyOn(i18n, 'changeLanguage');
+      changeLanguage.mockRejectedValueOnce(new Error('i18n boom'));
+
+      await expect(setAppLanguagePreference('en')).rejects.toThrow('i18n boom');
+
+      // Requested native write happened first, then the rollback to pl.
+      const setCalls = mockNative.setApplicationLanguage.mock.calls.map((c) => c[0]);
+      expect(setCalls).toEqual(['en', 'pl']);
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
+      expect(i18n.resolvedLanguage).toBe('pl');
+      expect(nativeApplication).toBe('pl');
+      changeLanguage.mockRestore();
+    });
+
+    it('leaves the store unchanged when i18n application fails on Android <=12', async () => {
+      mockNative.supportsNativePerAppLanguage = false;
+      useAppPreferencesStore.setState({ languagePreference: 'en' });
+      mockAddLog.mockClear();
+
+      const changeLanguage = jest.spyOn(i18n, 'changeLanguage');
+      changeLanguage.mockRejectedValueOnce(new Error('i18n boom'));
+
+      await expect(setAppLanguagePreference('pl')).rejects.toThrow('i18n boom');
+
+      expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('en');
+      expect(i18n.resolvedLanguage).toBe('en');
+      expect(mockAddLog).toHaveBeenCalledWith(
+        expect.stringContaining('i18n apply failed; store unchanged'),
+        'ERROR',
+      );
+      changeLanguage.mockRestore();
+    });
+
+    it('reconciles to the actual native state when the native rollback also fails', async () => {
+      useAppPreferencesStore.setState({ languagePreference: 'pl' });
+      nativeApplication = 'pl';
+      await i18n.changeLanguage('pl');
+      mockAddLog.mockClear();
+
+      const changeLanguage = jest.spyOn(i18n, 'changeLanguage');
+      changeLanguage.mockRejectedValueOnce(new Error('i18n boom'));
+
+      // Request 'en' succeeds; the rollback set('pl') fails.
+      mockNative.setApplicationLanguage
+        .mockImplementationOnce(async (language: string | null) => {
+          nativeApplication = language;
+        })
+        .mockRejectedValueOnce(new Error('rollback failed'));
+
+      await expect(setAppLanguagePreference('en')).rejects.toThrow('i18n boom');
+
+      // Rollback failure is logged as ERROR.
+      expect(mockAddLog).toHaveBeenCalledWith(
+        expect.stringContaining('Native rollback failed'),
+        'ERROR',
+      );
+      // No silent inconsistent success: the store reconciles to the ACTUAL
+      // native state (the failed rollback left it at 'en').
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('en');
+      expect(nativeApplication).toBe('en');
+      expect(i18n.resolvedLanguage).toBe('en');
+      changeLanguage.mockRestore();
     });
   });
 
