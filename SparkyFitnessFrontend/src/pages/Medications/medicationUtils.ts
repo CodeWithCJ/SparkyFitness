@@ -1,6 +1,7 @@
 import i18n from '@/i18n';
 import {
   FOOD_VARIANT_NUTRIENT_FIELDS,
+  MACRO_PICKER_FIELDS,
   getMicronutrientById,
   normalizeNutrientName,
 } from '@workspace/shared';
@@ -62,6 +63,24 @@ export const SUPPLEMENT_FORMS = [
   'powder',
   'liquid',
 ] as const;
+
+/**
+ * Forms whose servings can be COUNTED, so "1 serving = 2 tablets" says something.
+ *
+ * Powder and liquid are deliberately absent. A serving of those is a scoop or a volume,
+ * not a number of items, and "1 serving = 1 liquid" is not a sentence. For them the panel
+ * heading alone is already unambiguous, since the serving is whatever the label says it is.
+ */
+export const COUNTABLE_SUPPLEMENT_FORMS: string[] = [
+  'tablet',
+  'capsule',
+  'softgel',
+  'gummy',
+  'pill',
+];
+
+export const isCountableForm = (typeId: string | null | undefined): boolean =>
+  !!typeId && COUNTABLE_SUPPLEMENT_FORMS.includes(typeId);
 
 export type MedSubtype = 'all' | 'meds' | 'supplements';
 
@@ -417,3 +436,76 @@ export function isNutrientOptionAlreadyAdded(
   }
   return names.some((name) => claimedNames.has(normalizeNutrientName(name)));
 }
+
+/**
+ * What one logged dose of a supplement will actually contribute, when the schedule's dose
+ * is not 1.
+ *
+ * A supplement's nutrition is entered per dose, and the entry snapshot multiplies it by the
+ * dose count, so a schedule set to 2 counts double. That is correct and intended, but it is
+ * invisible at the point where the mistake is made: a user reading a label whose serving is
+ * two capsules can enter the serving amounts here AND set the dose to 2, silently doubling
+ * their intake. Showing the multiplication makes that self-evident.
+ *
+ * Returns null when there is nothing to say: not a supplement, no nutrition entered, or a
+ * dose of exactly 1, where "1 x 15 = 15" is noise rather than information.
+ */
+export const supplementDoseScaling = (
+  med: {
+    is_supplement?: boolean | null;
+    nutrients?: MedicationNutrients | null;
+  },
+  doseInput: string,
+  fallbackDose?: number | null
+): { dose: number; calories: number | null } | null => {
+  if (!med.is_supplement) return null;
+
+  const nutrients = med.nutrients;
+  const hasNutrition =
+    !!nutrients &&
+    (FOOD_VARIANT_NUTRIENT_FIELDS.some(
+      (field) => typeof nutrients[field] === 'number'
+    ) ||
+      Object.keys(nutrients.custom_nutrients ?? {}).length > 0);
+  if (!hasNutrition) return null;
+
+  // An empty input inherits the medication's own dose, which is what the field's
+  // placeholder shows. So does an INVALID one: handleSave sends positiveDoseOrNull, so a 0,
+  // a negative or a typo saves as null and inherits too. Previewing 1 for those would
+  // promise something different from what gets logged whenever the inherited dose is not 1.
+  const parsed = doseInput.trim() === '' ? null : positiveDoseOrNull(doseInput);
+  const dose = parsed ?? fallbackDose ?? 1;
+  if (dose === 1) return null;
+
+  const calories =
+    typeof nutrients.calories === 'number' ? nutrients.calories : null;
+  return { dose, calories };
+};
+
+/**
+ * The five energy and macro fields, as a set.
+ *
+ * Kept together rather than offered individually in the nutrient picker: they are a closed
+ * set that co-occurs, since a Supplement Facts panel printing calories almost always prints
+ * carbohydrate and fat too. Searching a 33-entry catalog five times to transcribe one block
+ * of a label is the wrong shape, and putting them in that list pushed the vitamins (the
+ * common case) below the fold.
+ */
+export const MACRO_FIELD_KEYS: string[] = MACRO_PICKER_FIELDS.map(
+  (field) => field.fieldKey as string
+);
+
+export const isMacroField = (key: string): boolean =>
+  MACRO_FIELD_KEYS.includes(key);
+
+/**
+ * Whether a saved supplement already carries any energy or macro value, which is what
+ * decides if the editor opens with the macro block expanded.
+ */
+export const hasMacroValue = (
+  nutrients: MedicationNutrients | null | undefined
+): boolean =>
+  !!nutrients &&
+  MACRO_FIELD_KEYS.some(
+    (key) => typeof nutrients[key as keyof MedicationNutrients] === 'number'
+  );

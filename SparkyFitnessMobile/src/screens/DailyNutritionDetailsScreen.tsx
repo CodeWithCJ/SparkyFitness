@@ -113,7 +113,20 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
 
       const meta = NUTRIENT_META[key];
       if (meta) {
-        const consumed = calculateNutrientTotal(summary.foodEntries, key as keyof FoodEntry);
+        // Fields the summary already rolls up include logged supplement doses; recomputing
+        // one from foodEntries would print a different number from the macro card at the
+        // top of this same screen. Fiber is the one that reaches here today, since the
+        // other rolled-up fields are excluded above, but keying on the set rather than on
+        // fiber keeps that true if the exclusion list ever changes.
+        const rolledUp: Record<string, number> = {
+          protein: summary.protein.consumed,
+          carbs: summary.carbs.consumed,
+          fat: summary.fat.consumed,
+          dietary_fiber: summary.fiber.consumed,
+        };
+        const consumed =
+          rolledUp[key] ??
+          calculateNutrientTotal(summary.foodEntries, key as keyof FoodEntry);
         const goal = summary.goals[key as keyof typeof summary.goals] as number | undefined;
 
         standardItems.push({

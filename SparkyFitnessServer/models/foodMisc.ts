@@ -240,6 +240,43 @@ function supplementCustomUnion(userExpr: string, dateExpr: string): string {
                 WHERE me2.user_id = ${userExpr} AND me2.entry_date = ${dateExpr} AND me2.status IN ('taken', 'prn_taken') AND me2.nutrients_snapshot IS NOT NULL`;
 }
 
+/**
+ * The supplement arm of a day's intake, on its own.
+ *
+ * `getDailyNutritionSummary` already folds these into its food totals, but the Diary
+ * computes eaten calories and its macro totals separately (in JS, from food entries), so
+ * it needs the supplement contribution as a distinct number: once to add into the totals,
+ * and once to show as its own line, so what is displayed still reconciles against the
+ * food rows the user can see.
+ *
+ * Fields are exactly the set `supplementFixed` is applied to elsewhere. Returns zeros
+ * rather than nulls on a day with no supplements, so callers can add unconditionally.
+ */
+async function getDailySupplementTotals(userId: string, date: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT
+        ${supplementFixed('calories', '$1', '$2')} AS calories,
+        ${supplementFixed('protein', '$1', '$2')} AS protein,
+        ${supplementFixed('carbs', '$1', '$2')} AS carbs,
+        ${supplementFixed('fat', '$1', '$2')} AS fat,
+        ${supplementFixed('dietary_fiber', '$1', '$2')} AS dietary_fiber`,
+      [userId, date]
+    );
+    const row = result.rows[0] ?? {};
+    return {
+      calories: Number(row.calories) || 0,
+      protein: Number(row.protein) || 0,
+      carbs: Number(row.carbs) || 0,
+      fat: Number(row.fat) || 0,
+      dietary_fiber: Number(row.dietary_fiber) || 0,
+    };
+  } finally {
+    client.release();
+  }
+}
+
 async function getDailyNutritionSummary(userId: string, date: string) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -448,6 +485,7 @@ export { getRecentFoods };
 export { getTopFoods };
 export { getFavoriteFoods, addFoodFavorite, removeFoodFavorite };
 export { getDailyNutritionSummary, getDailyNutritionSummariesByDates };
+export { getDailySupplementTotals };
 export { getFoodsNeedingReview };
 export { updateFoodEntriesSnapshot };
 export { clearUserIgnoredUpdate };
@@ -459,6 +497,7 @@ export default {
   addFoodFavorite,
   removeFoodFavorite,
   getDailyNutritionSummary,
+  getDailySupplementTotals,
   getDailyNutritionSummariesByDates,
   getFoodsNeedingReview,
   updateFoodEntriesSnapshot,

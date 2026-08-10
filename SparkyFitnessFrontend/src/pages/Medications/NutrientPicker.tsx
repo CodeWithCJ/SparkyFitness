@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListPlus, Plus, Search } from 'lucide-react';
 import {
+  MACRO_PICKER_FIELDS,
   MICRONUTRIENT_CATALOG,
   MULTIVITAMIN_PANEL_IDS,
   normalizeNutrientName,
@@ -92,13 +93,21 @@ export function NutrientPicker({
       aliases: entry.aliases,
     }));
 
-    // The user's own free-text nutrients, minus anything the catalog already offers
-    // under the same normalized name (otherwise "Vitamin D" would appear twice).
-    const catalogNames = new Set(
-      MICRONUTRIENT_CATALOG.flatMap((entry) =>
+    // The user's own free-text nutrients, minus anything the catalog or the macro group
+    // already offers under the same normalized name (otherwise "Vitamin D" would appear
+    // twice). A custom nutrient named "Protein" is not supposed to exist, since seeding
+    // refuses to shadow a fixed food-variant column, but one entered by hand in Settings
+    // would otherwise sit next to the real Protein row and be counted separately.
+    const catalogNames = new Set([
+      ...MICRONUTRIENT_CATALOG.flatMap((entry) =>
         [entry.displayName, ...entry.aliases].map(normalizeNutrientName)
-      )
-    );
+      ),
+      ...MACRO_PICKER_FIELDS.flatMap((field) =>
+        [field.displayName, field.fieldKey, ...field.aliases].map(
+          normalizeNutrientName
+        )
+      ),
+    ]);
     const customOptions: NutrientOption[] = (customNutrients ?? [])
       .filter(
         (nutrient) => !catalogNames.has(normalizeNutrientName(nutrient.name))
@@ -115,6 +124,8 @@ export function NutrientPicker({
     // Numeric collation so "Vitamin B6" sorts before "Vitamin B12", not after.
     const byLabel = (a: NutrientOption, b: NutrientOption) =>
       a.label.localeCompare(b.label, undefined, { numeric: true });
+    // Macros keep their authoring order (calories, protein, carbs, fat, fiber), which is
+    // the order a Nutrition Facts panel prints them and therefore the order they are read.
     return [...catalogOptions.sort(byLabel), ...customOptions.sort(byLabel)];
   }, [customNutrients]);
 
@@ -342,9 +353,15 @@ export function NutrientPicker({
               lock only permits scrolling inside its own subtree, and Radix ScrollArea's JS
               wheel handling fights that lock, so the list wouldn't scroll. Only the nutrient
               list scrolls here; the search and the create-your-own row stay pinned.
-              min-h-0 + flex-auto lets it absorb the height shortfall and scroll; the popover's
-              overflow-hidden means a tight fit clips cleanly rather than spilling out. */}
-          <div className="min-h-0 flex-auto overflow-y-auto">
+
+              FIXED height rather than flex-auto. A list that shrinks as the query narrows
+              shrinks the popover with it, and Radix then re-anchors the whole thing, so
+              the panel jumped away under the cursor mid-keystroke. A constant height keeps
+              filtering inside the scroll area where it belongs. It is capped by the
+              popover's own max-height. It may still SHRINK below that when the viewport
+              is short: pinning it with shrink-0 pushed the create-your-own footer out of
+              the clipped popover instead of letting the list give up the space. */}
+          <div className="h-56 min-h-0 overflow-y-auto">
             <div className="p-1">
               {visible.length === 0 && (
                 <p className="px-2 py-6 text-center text-xs text-muted-foreground">

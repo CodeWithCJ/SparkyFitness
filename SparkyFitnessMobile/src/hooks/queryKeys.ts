@@ -3,6 +3,8 @@ export const serverConnectionQueryKey = ['serverConnection'] as const;
 export const serverConfigsQueryKey = ['serverConfigs'] as const;
 
 export const dailySummaryQueryKey = (date: string) => ['dailySummary', date] as const;
+/** Prefix for every date, so a mutation that moves a day's totals can invalidate without knowing which day. */
+export const dailySummaryRootQueryKey = ['dailySummary'] as const;
 
 export const measurementsQueryKey = (date: string) => ['measurements', date] as const;
 

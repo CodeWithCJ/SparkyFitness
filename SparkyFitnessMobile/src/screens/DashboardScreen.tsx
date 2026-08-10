@@ -3,6 +3,7 @@ import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
+import { hasSupplementNutrition } from '@workspace/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import {
@@ -267,7 +268,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor || '#3B82F6'} />
         }
       >
-        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || goal > 0) && (
+        {(summary.foodEntries.length > 0 ||
+          hasSupplementNutrition(summary.supplementTotals) ||
+          summary.exerciseEntries.length > 0 ||
+          goal > 0) && (
           <CalorieRingCard
             caloriesConsumed={eaten}
             caloriesBurned={burned}
@@ -296,7 +300,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             Only the 4 core macros (with goals) and user-defined custom nutrients are
             shown here. Other enabled nutrients (sodium, sugars, etc.) belong in a
             detail view, not the at-a-glance dashboard grid. */}
-        {summary.foodEntries.length > 0 && summaryNutrients.length > 0 ? (() => {
+        {/* Supplements count toward these figures, so a day with a logged supplement and no
+            meal still has macros to show. Gating on food rows alone hid the card while the
+            ring above it displayed the supplement's calories. */}
+        {(summary.foodEntries.length > 0 ||
+          hasSupplementNutrition(summary.supplementTotals)) &&
+        summaryNutrients.length > 0 ? (() => {
           const CORE_MACROS = new Set(['protein', 'carbs', 'fat', 'dietary_fiber']);
           const customNutrientNames = new Set(customNutrients.map((cn) => cn.name));
           const dashboardNutrients = summaryNutrients.filter(

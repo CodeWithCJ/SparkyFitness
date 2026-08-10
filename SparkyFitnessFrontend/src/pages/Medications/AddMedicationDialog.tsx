@@ -1,15 +1,24 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Star, Pill } from 'lucide-react';
+import { Plus, Star, Pill, HelpCircle } from 'lucide-react';
 import {
   FOOD_VARIANT_NUTRIENT_FIELDS,
+  MACRO_PICKER_FIELDS,
   GLP1_DRUG_PROFILES,
   normalizeNutrientName,
+  resolveMacroFieldKey,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
@@ -35,12 +44,17 @@ import type { GlycemicIndex } from '@/types/food';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { NutrientGrid } from '@/components/FoodSearch/NutrientFormGrid';
+import { NumericInput } from '@/components/NumericInput';
 import { createDefaultFormVariant } from '@/utils/foodForm';
 import {
   MED_TYPES,
   MED_TYPE_ICONS,
   MED_TYPE_COLORS,
   SUPPLEMENT_FORMS,
+  MACRO_FIELD_KEYS,
+  isCountableForm,
+  hasMacroValue,
+  isMacroField,
   positiveDoseOrNull,
   collectNutrientsToProvision,
   isStoredNutrientAmount,
@@ -112,12 +126,38 @@ export default function AddMedicationDialog({
     const saved = editMed?.nutrients;
     if (!saved) return [];
     return [
-      ...FOOD_VARIANT_NUTRIENT_FIELDS.filter(
-        (field) => typeof saved[field] === 'number'
-      ),
+      ...new Set([
+        ...FOOD_VARIANT_NUTRIENT_FIELDS.filter(
+          (field) => typeof saved[field] === 'number'
+        ),
+        // The macro block is all-or-nothing: it opens whenever ANY of the five was
+        // saved, and only selected keys are saved, so seeding just the saved ones
+        // leaves the other inputs visible, typeable and silently discarded. Selecting
+        // all five keeps the invariant toggleMacros already holds — block open means
+        // all five selected — and getNutrients() still stores nothing for the blanks.
+        ...(hasMacroValue(saved) ? MACRO_FIELD_KEYS : []),
+      ]),
       ...Object.keys(saved.custom_nutrients ?? {}),
     ];
   });
+  // How many capsules/tablets make up one serving, as the label defines it. Purely
+  // descriptive: nutrition is entered and stored per serving either way, so this changes
+  // no arithmetic. It exists because the ambiguity it removes was previously handled with
+  // a paragraph of prose, and a field the user fills in beats an explanation they have to
+  // read and apply. Lives in custom_fields alongside the GLP-1 metadata; no migration.
+  const [unitsPerServing, setUnitsPerServing] = useState(
+    editMed?.custom_fields?.['units_per_serving'] != null
+      ? String(editMed.custom_fields['units_per_serving'])
+      : ''
+  );
+
+  // Energy and macros are a block rather than picker rows. Opens expanded only when the
+  // saved supplement already carries one, so a vitamin-only supplement (the common case)
+  // never has to look at five empty fields.
+  const [includeMacros, setIncludeMacros] = useState(() =>
+    hasMacroValue(editMed?.nutrients)
+  );
+
   // Rows the user picked that have no `user_custom_nutrients` row yet. Held here, and
   // find-or-created only on save — picking used to create them immediately, so a
   // mis-click on "Multivitamin panel" followed by Cancel permanently left ~20 custom
@@ -221,14 +261,29 @@ export default function AddMedicationDialog({
     // otherwise the value lands in the fixed field while a junk custom row is also created.
     const normalizedPicks = picks.map((pick) => {
       if (!pick.isNew) return pick;
+      // Macro names first, and by alias as well as by column: the five are not offered
+      // as picker rows, so free text is the only way to name one, and "Energy" or
+      // "Total Carbohydrate" would otherwise become a custom nutrient that no rollup
+      // reads — a value accepted and then counted toward nothing.
+      const macro = resolveMacroFieldKey(pick.key);
+      if (macro) return { key: macro as string, unit: pick.unit };
       const fixed = FOOD_VARIANT_NUTRIENT_FIELDS.find(
         (field) =>
           normalizeNutrientName(field) === normalizeNutrientName(pick.key)
       );
       return fixed ? { key: fixed, unit: pick.unit } : pick;
     });
+    // Reaching a macro key has to open the block, or the row is selected and saved while
+    // the grid (which renders only the non-macro rows) never shows a field for it. Adding
+    // all five keeps the invariant the checkbox holds: block open means all five selected.
+    const addedMacro = normalizedPicks.some((pick) => isMacroField(pick.key));
+    if (addedMacro) setIncludeMacros(true);
     setSelectedNutrients((current) => [
-      ...new Set([...current, ...normalizedPicks.map((pick) => pick.key)]),
+      ...new Set([
+        ...current,
+        ...normalizedPicks.map((pick) => pick.key),
+        ...(addedMacro ? MACRO_FIELD_KEYS : []),
+      ]),
     ]);
     setPendingNutrients((current) => {
       const next = { ...current };
@@ -247,6 +302,34 @@ export default function AddMedicationDialog({
     });
   };
 
+  // Unchecking drops the macro keys rather than only hiding the fields. getNutrients()
+  // reads selected rows only, so this is what keeps a collapsed block from going on
+  // counting toward the diary: a stored value the form no longer shows would be exactly
+  // the "record says 15 kcal, totals say zero" split this feature exists to avoid.
+  // Names the countable thing, pluralised by the number entered. i18next resolves the
+  // _one/_other suffix from `count`, so this stays translatable rather than gluing an "s"
+  // on in code, which is wrong the moment the language is not English.
+  const servingUnitCount = Number(unitsPerServing) || 1;
+  const servingUnitLabel = t(
+    `medications.cabinet.servingUnit_${typeId}`,
+    servingUnitCount === 1 ? typeId : `${typeId}s`,
+    { count: servingUnitCount }
+  );
+
+  // The picker's grid shows only what the picker put there; macros render separately.
+  const micronutrientRows = selectedNutrients.filter(
+    (key) => !isMacroField(key)
+  );
+
+  const toggleMacros = (next: boolean) => {
+    setIncludeMacros(next);
+    setSelectedNutrients((current) =>
+      next
+        ? [...new Set([...current, ...MACRO_FIELD_KEYS])]
+        : current.filter((key) => !isMacroField(key))
+    );
+  };
+
   const removeNutrient = (key: string) => {
     setSelectedNutrients((current) => current.filter((item) => item !== key));
   };
@@ -257,6 +340,10 @@ export default function AddMedicationDialog({
   const clearNutrients = () => {
     setSelectedNutrients([]);
     setPendingNutrients({});
+    // Checking the macro box adds its five keys, which is what makes this button appear.
+    // Clearing the keys without unchecking left the block on screen, so the button looked
+    // broken on a supplement that carried nothing else.
+    setIncludeMacros(false);
   };
 
   const updateNutrient = (
@@ -466,7 +553,7 @@ export default function AddMedicationDialog({
         ? (editMed?.dose_amount ?? 1)
         : positiveDoseOrNull(displayedDoseAmount),
       dose_unit: isSupplement
-        ? (editMed?.dose_unit ?? 'dose')
+        ? (editMed?.dose_unit ?? 'serving')
         : displayedDoseUnit || null,
       prescriber: prescriber.trim() || null,
       pharmacy: pharmacy.trim() || null,
@@ -490,6 +577,16 @@ export default function AddMedicationDialog({
           : { glp1_drug: glp1Drug }
         : {},
     };
+    // Supplements never carry GLP-1 metadata, so the branch above leaves them an empty
+    // object to extend.
+    if (isSupplement) {
+      const units = Number(unitsPerServing);
+      body.custom_fields = {
+        ...body.custom_fields,
+        units_per_serving:
+          Number.isFinite(units) && units > 0 ? units : undefined,
+      };
+    }
     if (isEdit && editMed) {
       updateMutation.mutate(
         { id: editMed.id, body },
@@ -516,6 +613,13 @@ export default function AddMedicationDialog({
         setIsSupplement(defaultIsSupplement);
         setSelectedNutrients([]);
         setPendingNutrients({});
+        // These two belong with the nutrient state above. Left set, the next supplement
+        // opened from this dialog shows a ticked macro block whose values getNutrients()
+        // then drops, because the keys are no longer selected: fields that look live and
+        // save nothing. unitsPerServing would likewise carry over as another product's
+        // serving size.
+        setIncludeMacros(false);
+        setUnitsPerServing('');
         setNutrientVariant(
           createDefaultFormVariant(undefined, {
             serving_size: 1,
@@ -816,18 +920,75 @@ export default function AddMedicationDialog({
             <div className="space-y-3 rounded-md border p-3 bg-muted/20">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <Label className="text-sm font-medium">
-                    {t(
-                      'medications.cabinet.nutritionPerDose',
-                      'Nutrition per dose'
-                    )}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t(
-                      'medications.cabinet.nutritionPerDoseHint',
-                      'Add the nutrients on the label, then enter the amount supplied by one dose.'
-                    )}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-sm font-medium">
+                      {t(
+                        'medications.cabinet.nutritionPerDose',
+                        'Nutrition per serving'
+                      )}
+                    </Label>
+                    {/* Tooltip rather than a popover: on a desktop-first form a help
+                        glyph should answer on hover, not cost a click. Radix opens it on
+                        focus too, so keyboard and tap both reach it. */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label={t(
+                              'medications.cabinet.nutritionHelpLabel',
+                              'How to read your label'
+                            )}
+                          >
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        {/* Complements the line below rather than restating it: a worked
+                            example, then the one label convention that has no obvious
+                            answer. */}
+                        {/* The default tooltip surface is bg-primary, which is a light
+                            fill under a dark theme. Overridden to the popover tokens so it
+                            reads as a surface in both. */}
+                        <TooltipContent className="max-w-72 border bg-popover text-popover-foreground">
+                          <p>
+                            {t(
+                              'medications.cabinet.nutritionHelpSubGram',
+                              'A label reading "less than 1 g" does not state the amount. Enter 0.5 as a midpoint, or 0 to avoid overstating.'
+                            )}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  {isCountableForm(typeId) && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span>
+                        {t('medications.cabinet.servingEquals', '1 serving =')}
+                      </span>
+                      {/* Sized by the wrapper: Input carries w-full in its base classes,
+                          which otherwise wins and pushes the unit onto its own line. */}
+                      <div className="w-16">
+                        <NumericInput
+                          id="units-per-serving"
+                          className="h-7"
+                          min="0"
+                          step="1"
+                          decimals={0}
+                          value={
+                            unitsPerServing === ''
+                              ? undefined
+                              : Number(unitsPerServing)
+                          }
+                          placeholder="1"
+                          onValueChange={(next) =>
+                            setUnitsPerServing(next == null ? '' : String(next))
+                          }
+                        />
+                      </div>
+                      <span>{servingUnitLabel}</span>
+                    </div>
+                  )}
                 </div>
                 {canEditNutrients && selectedNutrients.length > 0 && (
                   <Button
@@ -850,11 +1011,11 @@ export default function AddMedicationDialog({
                 </p>
               ) : (
                 <>
-                  {selectedNutrients.length > 0 && (
+                  {micronutrientRows.length > 0 && (
                     <NutrientGrid
                       variantIndex={0}
                       variant={nutrientVariant}
-                      visibleNutrients={selectedNutrients}
+                      visibleNutrients={micronutrientRows}
                       energyUnit={energyUnit}
                       convertEnergy={convertEnergy}
                       customNutrients={gridCustomNutrients}
@@ -862,11 +1023,77 @@ export default function AddMedicationDialog({
                       onRemove={removeNutrient}
                     />
                   )}
-                  <NutrientPicker
-                    selected={selectedNutrients}
-                    customNutrients={gridCustomNutrients}
-                    onAdd={addNutrients}
-                  />
+                  {/* Its own block, in label order, rather than five rows interleaved
+                      with the vitamins. The set is fixed, so it has no remove handler:
+                      the checkbox is how you get rid of it. */}
+                  {includeMacros && (
+                    <div className="rounded-md border border-dashed p-3">
+                      {/* Hand laid out rather than NutrientGrid: that grid caps at four
+                          columns with full nutrient names, which wrapped these five onto
+                          two rows and two lines of label each. A fixed set gets a fixed
+                          row, with the unit carried by the placeholder. */}
+                      <div className="grid grid-cols-5 gap-2">
+                        {MACRO_PICKER_FIELDS.map((field) => {
+                          const key = field.fieldKey as string;
+                          const isCalories = key === 'calories';
+                          const raw =
+                            nutrientVariant[
+                              key as keyof typeof nutrientVariant
+                            ];
+                          const value =
+                            typeof raw === 'number'
+                              ? isCalories
+                                ? Math.round(
+                                    convertEnergy(raw, 'kcal', energyUnit)
+                                  )
+                                : raw
+                              : undefined;
+                          return (
+                            <div key={key} className="flex flex-col gap-1">
+                              <Label
+                                htmlFor={`macro-${key}`}
+                                className="text-xs"
+                              >
+                                {t(
+                                  `medications.cabinet.macroLabel_${key}`,
+                                  field.shortLabel
+                                )}
+                              </Label>
+                              <NumericInput
+                                id={`macro-${key}`}
+                                min="0"
+                                step={isCalories ? '1' : '0.1'}
+                                decimals={isCalories ? 0 : 1}
+                                value={value}
+                                placeholder={
+                                  isCalories ? energyUnit : field.unit
+                                }
+                                onValueChange={(next) =>
+                                  updateNutrient(0, key, next)
+                                }
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3">
+                    <NutrientPicker
+                      selected={selectedNutrients}
+                      customNutrients={gridCustomNutrients}
+                      onAdd={addNutrients}
+                    />
+                    <label className="flex shrink-0 items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={includeMacros}
+                        onCheckedChange={(checked) =>
+                          toggleMacros(checked === true)
+                        }
+                      />
+                      {t('medications.cabinet.includeMacros', 'Include macros')}
+                    </label>
+                  </div>
                 </>
               )}
             </div>

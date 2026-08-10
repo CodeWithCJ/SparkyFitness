@@ -5,6 +5,7 @@ import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handl
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { hasSupplementNutrition } from '@workspace/shared';
 import DateNavigator from '../components/DateNavigator';
 import FoodSummary from '../components/FoodSummary';
 import ExerciseSummary from '../components/ExerciseSummary';
@@ -290,7 +291,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
-        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
+        {(summary.foodEntries.length > 0 ||
+          hasSupplementNutrition(summary.supplementTotals) ||
+          summary.exerciseEntries.length > 0 ||
+          summary.calorieGoal > 0) && (
           <DiaryCalorieMacroSummary
             summary={summary}
             showNetCarbs={preferences?.show_net_carbs === true}
@@ -298,7 +302,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             customNutrients={customNutrients}
           />
         )}
-        {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 && !hasAnyMeasurement ? (
+        {/* A logged supplement is something the user recorded for this day, so the day is
+            not empty even with no food, exercise or measurement. */}
+        {summary.foodEntries.length === 0 &&
+        !hasSupplementNutrition(summary.supplementTotals) &&
+        summary.exerciseEntries.length === 0 &&
+        !hasAnyMeasurement ? (
           <>
             <EmptyDayIllustration />
             <Button

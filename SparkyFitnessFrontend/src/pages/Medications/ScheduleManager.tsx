@@ -29,6 +29,7 @@ import {
 import {
   formatScheduleDescription,
   positiveDoseOrNull,
+  supplementDoseScaling,
 } from './medicationUtils';
 import type { MedicationDetail, MedicationSchedule } from '@/types/medications';
 
@@ -115,6 +116,10 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
     );
   };
 
+  // Surfaces the multiplication the entry snapshot performs, at the point the dose is
+  // chosen. Null unless it would actually say something (see supplementDoseScaling).
+  const doseScaling = supplementDoseScaling(med, doseAmount, med.dose_amount);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
@@ -186,10 +191,15 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
               {/* Dose Amount */}
               <div className="space-y-2">
                 <Label>
-                  {t(
-                    'medications.schedule.doseAmount',
-                    'Dose Amount (override)'
-                  )}
+                  {med.is_supplement
+                    ? t(
+                        'medications.schedule.servingsPerLog',
+                        'Servings per log'
+                      )
+                    : t(
+                        'medications.schedule.doseAmount',
+                        'Dose Amount (override)'
+                      )}
                 </Label>
                 <div className="flex items-center gap-2">
                   <Input
@@ -203,9 +213,37 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                     onChange={(e) => setDoseAmount(e.target.value)}
                   />
                   <span className="text-sm text-muted-foreground capitalize">
-                    {med.dose_unit ?? med.type_id}
+                    {/* A supplement's stored dose_unit is a sentinel rather than a real
+                        unit, and supplements created before this read 'dose'. Labels
+                        state amounts per SERVING, so that is the word to echo back: it
+                        is the one printed on the bottle the user is holding. */}
+                    {med.is_supplement
+                      ? t('medications.schedule.servingUnit', 'serving')
+                      : (med.dose_unit ?? med.type_id)}
                   </span>
                 </div>
+                {doseScaling && (
+                  <p className="text-xs text-muted-foreground">
+                    {doseScaling.calories != null
+                      ? t(
+                          'medications.schedule.supplementDoseScalingCalories',
+                          'Each log counts {{dose}} doses: {{dose}} x {{perDose}} kcal = {{total}} kcal.',
+                          {
+                            dose: doseScaling.dose,
+                            perDose: doseScaling.calories,
+                            total:
+                              Math.round(
+                                doseScaling.calories * doseScaling.dose * 100
+                              ) / 100,
+                          }
+                        )
+                      : t(
+                          'medications.schedule.supplementDoseScaling',
+                          'Each log counts {{dose}} doses, so {{dose}} times the nutrition entered per dose.',
+                          { dose: doseScaling.dose }
+                        )}
+                  </p>
+                )}
               </div>
 
               {/* Food relation */}
