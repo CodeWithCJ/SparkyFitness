@@ -25,6 +25,7 @@ interface PickerTriggerProps {
   label: string;
   onPress: () => void;
   accessibilityLabel: string;
+  accessibilityHint?: string;
   containerStyle?: StyleProp<ViewStyle>;
 }
 
@@ -37,6 +38,7 @@ export function PickerTrigger({
   label,
   onPress,
   accessibilityLabel,
+  accessibilityHint = 'Opens selection menu',
   containerStyle,
 }: PickerTriggerProps) {
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
@@ -48,7 +50,7 @@ export function PickerTrigger({
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint="Opens selection menu"
+      accessibilityHint={accessibilityHint}
     >
       <Text className="text-base flex-1 text-text-primary">{label}</Text>
       <Icon name="chevron-down" size={16} color={textMuted} />
@@ -68,6 +70,7 @@ interface BottomSheetPickerProps<T extends string | number> {
   onSelect: (value: T) => void;
   placeholder?: string;
   title?: string;
+  accessibilityHint?: string;
   containerStyle?: StyleProp<ViewStyle>;
   renderTrigger?: (props: { onPress: () => void; selectedOption: PickerOption<T> | undefined }) => React.ReactNode;
 }
@@ -79,6 +82,7 @@ function BottomSheetPicker<T extends string | number>({
   onSelect,
   placeholder = 'Select an option',
   title,
+  accessibilityHint,
   containerStyle,
   renderTrigger,
 }: BottomSheetPickerProps<T>) {
@@ -190,6 +194,7 @@ function BottomSheetPicker<T extends string | number>({
           label={displayText}
           onPress={handleOpen}
           accessibilityLabel={title || placeholder}
+          accessibilityHint={accessibilityHint}
           containerStyle={containerStyle}
         />
       )}

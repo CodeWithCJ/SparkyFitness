@@ -604,6 +604,8 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       ? {
           id: leftId,
           kind: left.kind,
+          label: resolveItemLabel(left, t),
+          busyLabel: resolveItemBusyLabel(left, t),
           disabled: itemIsDisabled(left),
           busy: itemIsBusy(left),
           menu: menuSignature(left),
