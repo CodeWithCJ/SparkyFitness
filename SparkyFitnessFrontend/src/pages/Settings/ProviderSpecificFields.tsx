@@ -252,7 +252,12 @@ export const ProviderSpecificFields = ({
             </div>
           </div>
           <div>
-            <Label htmlFor="add-yazio-username">YAZIO Email / Username</Label>
+            <Label htmlFor="add-yazio-username">
+              {t(
+                'settings.foodExerciseDataProviders.yazio.emailUsernameLabel',
+                'YAZIO Email / Username'
+              )}
+            </Label>
             <Input
               id="add-yazio-username"
               type="text"
@@ -260,12 +265,20 @@ export const ProviderSpecificFields = ({
               onChange={(e) =>
                 setProvider((prev) => ({ ...prev, app_id: e.target.value }))
               }
-              placeholder="Enter YAZIO email or username"
+              placeholder={t(
+                'settings.foodExerciseDataProviders.yazio.emailUsernamePlaceholder',
+                'Enter YAZIO email or username'
+              )}
               autoComplete="username"
             />
           </div>
           <div>
-            <Label htmlFor="add-yazio-password">YAZIO Password</Label>
+            <Label htmlFor="add-yazio-password">
+              {t(
+                'settings.foodExerciseDataProviders.yazio.passwordLabel',
+                'YAZIO Password'
+              )}
+            </Label>
             <Input
               id="add-yazio-password"
               type="password"
@@ -273,16 +286,26 @@ export const ProviderSpecificFields = ({
               onChange={(e) =>
                 setProvider((prev) => ({ ...prev, app_key: e.target.value }))
               }
-              placeholder="Enter YAZIO password"
+              placeholder={t(
+                'settings.foodExerciseDataProviders.yazio.passwordPlaceholder',
+                'Enter YAZIO password'
+              )}
               autoComplete="current-password"
             />
           </div>
           <p className="text-sm text-muted-foreground col-span-2">
-            All fields (Email/Username, Password, Client ID, and Client Secret)
-            are required.
+            {t(
+              'settings.foodExerciseDataProviders.yazio.allFieldsRequired',
+              'All fields (Email/Username, Password, Client ID, and Client Secret) are required.'
+            )}
           </p>
           <div>
-            <Label htmlFor="add-yazio-client-id">YAZIO Client ID</Label>
+            <Label htmlFor="add-yazio-client-id">
+              {t(
+                'settings.foodExerciseDataProviders.yazio.clientIdLabel',
+                'YAZIO Client ID'
+              )}
+            </Label>
             <Input
               id="add-yazio-client-id"
               type="text"
@@ -293,12 +316,20 @@ export const ProviderSpecificFields = ({
                   yazio_client_id: e.target.value,
                 }))
               }
-              placeholder="Enter YAZIO Client ID"
+              placeholder={t(
+                'settings.foodExerciseDataProviders.yazio.clientIdPlaceholder',
+                'Enter YAZIO Client ID'
+              )}
               autoComplete="off"
             />
           </div>
           <div>
-            <Label htmlFor="add-yazio-client-secret">YAZIO Client Secret</Label>
+            <Label htmlFor="add-yazio-client-secret">
+              {t(
+                'settings.foodExerciseDataProviders.yazio.clientSecretLabel',
+                'YAZIO Client Secret'
+              )}
+            </Label>
             <Input
               id="add-yazio-client-secret"
               type="password"
@@ -309,17 +340,18 @@ export const ProviderSpecificFields = ({
                   yazio_client_secret: e.target.value,
                 }))
               }
-              placeholder="Enter YAZIO Client Secret"
+              placeholder={t(
+                'settings.foodExerciseDataProviders.yazio.clientSecretPlaceholder',
+                'Enter YAZIO Client Secret'
+              )}
               autoComplete="off"
             />
           </div>
           <p className="text-sm text-muted-foreground col-span-2">
-            YAZIO food searches automatically adjust to your active language
-            preference in SparkyFitness (supporting English, German, French,
-            Russian, Spanish, Italian, Dutch, Polish, Portuguese, Danish,
-            Finnish, Swedish, Czech, Hungarian, Greek, Norwegian, Turkish,
-            Chinese, Japanese, and Korean). Other languages default to standard
-            international database parameters.
+            {t(
+              'settings.foodExerciseDataProviders.yazio.languageSupportHelp',
+              'YAZIO food searches automatically adjust to your active language preference in SparkyFitness (supporting English, German, French, Russian, Spanish, Italian, Dutch, Polish, Portuguese, Danish, Finnish, Swedish, Czech, Hungarian, Greek, Norwegian, Turkish, Chinese, Japanese, and Korean). Other languages default to standard international database parameters.'
+            )}
           </p>
         </>
       )}
