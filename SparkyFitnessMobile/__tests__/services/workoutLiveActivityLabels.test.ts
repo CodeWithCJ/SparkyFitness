@@ -79,6 +79,31 @@ describe('workoutLiveActivityLabels', () => {
         expect(roundTripped).toEqual(labels);
       }
     });
+
+    it('never leaks raw i18next key paths into the label object', () => {
+      for (const locale of ['en', 'pl']) {
+        const labels = buildWorkoutLiveActivityLabels(locale as 'en' | 'pl');
+        for (const value of Object.values(labels)) {
+          expect(value).not.toContain('activeWorkout.liveActivity.');
+        }
+      }
+    });
+
+    it('returns the English fallback when a Polish key is missing', () => {
+      const keyPath = 'activeWorkout.liveActivity.skipRest';
+      const original = (i18n.getResource('pl', 'translation', keyPath) ??
+        'Pomiń odpoczynek') as string;
+      try {
+        // Simulate a missing/empty PL resource entry: i18next must not return
+        // the raw key path, and the English fallback must win.
+        i18n.addResource('pl', 'translation', keyPath, '');
+        const labels = buildWorkoutLiveActivityLabels('pl');
+        expect(labels.skipRest).toBe('Skip rest');
+        expect(labels.skipRest).not.toContain('activeWorkout.liveActivity.');
+      } finally {
+        i18n.addResource('pl', 'translation', keyPath, original);
+      }
+    });
   });
 
   describe('locale helpers', () => {
@@ -102,6 +127,10 @@ describe('workoutLiveActivityLabels', () => {
       expect(isWorkoutLiveActivityLocale('de')).toBe(false);
       expect(isWorkoutLiveActivityLocale(null)).toBe(false);
       expect(isWorkoutLiveActivityLocale(undefined)).toBe(false);
+    });
+
+    it('isWorkoutLiveActivityLocale returns false for the raw key path', () => {
+      expect(isWorkoutLiveActivityLocale('activeWorkout.liveActivity.rest')).toBe(false);
     });
   });
 });

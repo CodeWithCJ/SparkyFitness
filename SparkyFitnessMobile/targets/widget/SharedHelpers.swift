@@ -63,17 +63,55 @@ func widgetLocale() -> Locale {
 }
 
 /// Resolves a widget string key against the localized resources, honoring the
-/// JS-provided locale when present. Falls back to the bundle's native
-/// localization so a missing override never shows a raw key.
+/// JS-provided locale when present. Never intentionally displays a raw key:
+///
+///   1. the requested explicit widget-locale bundle (en/pl from the app group);
+///   2. the extension's native/current bundle;
+///   3. the English widget bundle;
+///   4. a stable readable fallback map for the known key set.
 func localizedWidgetString(_ key: String) -> String {
-    if
-        let code = widgetLocaleCode(),
-        let path = Bundle.main.path(forResource: code, ofType: "lproj"),
-        let bundle = Bundle(path: path)
-    {
-        return bundle.localizedString(forKey: key, value: nil, table: nil)
+    let requested = widgetLocaleCode()
+    let bundles: [Bundle?] = [
+        requested.flatMap { code in
+            Bundle.main.path(forResource: code, ofType: "lproj").flatMap { Bundle(path: $0) }
+        },
+        Bundle.main,
+        Bundle.main.path(forResource: "en", ofType: "lproj").flatMap { Bundle(path: $0) },
+    ]
+
+    for bundle in bundles {
+        guard let bundle else { continue }
+        let value = bundle.localizedString(forKey: key, value: nil, table: nil)
+        if !value.isEmpty && value != key {
+            return value
+        }
     }
-    return Bundle.main.localizedString(forKey: key, value: nil, table: nil)
+    return fallbackWidgetString(key)
+}
+
+/// Stable readable English fallback for the small known widget key set, used
+/// only when every localization bundle is missing the key.
+private func fallbackWidgetString(_ key: String) -> String {
+    switch key {
+    case "widget.calorie.name": return "Calories"
+    case "widget.calorie.description": return "Today's calorie intake at a glance."
+    case "widget.macro.name": return "Macros"
+    case "widget.macro.description": return "Today's protein, carbs, and fat at a glance."
+    case "widget.kcal_left": return "kcal left"
+    case "widget.kcal": return "kcal"
+    case "widget.food": return "Food"
+    case "widget.burned": return "Burned"
+    case "widget.goal": return "Goal"
+    case "widget.protein": return "Protein"
+    case "widget.carbs": return "Carbs"
+    case "widget.fat": return "Fat"
+    case "widget.grams": return "%@ g"
+    case "widget.a11y.kcal_left": return "%@ kcal left"
+    case "widget.a11y.kcal": return "%@ kcal"
+    case "widget.search_food": return "Search food"
+    case "widget.scan_barcode": return "Scan barcode"
+    default: return key
+    }
 }
 
 /// Locale-aware integer formatter that keeps existing business rounding and

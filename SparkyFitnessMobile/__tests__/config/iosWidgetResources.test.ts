@@ -33,6 +33,8 @@ const REQUIRED_KEYS = [
   'widget.grams',
   'widget.a11y.kcal_left',
   'widget.a11y.kcal',
+  'widget.search_food',
+  'widget.scan_barcode',
 ];
 
 describe('iOS WidgetKit localization resources', () => {
@@ -72,6 +74,8 @@ describe('iOS WidgetKit localization resources', () => {
       expect(pl.get('widget.food')).toBe('Jedzenie');
       expect(pl.get('widget.burned')).toBe('Spalone');
       expect(pl.get('widget.goal')).toBe('Cel');
+      expect(pl.get('widget.search_food')).toBe('Wyszukaj produkt');
+      expect(pl.get('widget.scan_barcode')).toBe('Skanuj kod kreskowy');
     });
 
     it('keeps the two widget names distinct', () => {

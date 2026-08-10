@@ -277,11 +277,13 @@ struct macroWidgetEntryView: View {
                 VStack(spacing: 16) {
                     ActionButton(
                         icon: "magnifyingglass",
-                        destination: URL(string: "sparkyfitnessmobile://search")!
+                        destination: URL(string: "sparkyfitnessmobile://search")!,
+                        accessibilityLabel: localizedWidgetString("widget.search_food")
                     )
                     ActionButton(
                         icon: "barcode.viewfinder",
-                        destination: URL(string: "sparkyfitnessmobile://scan")!
+                        destination: URL(string: "sparkyfitnessmobile://scan")!,
+                        accessibilityLabel: localizedWidgetString("widget.scan_barcode")
                     )
                 }
                 .frame(width: buttonColumnWidth)

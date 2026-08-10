@@ -86,7 +86,13 @@ export function buildWorkoutLiveActivityLabels(
   const fixedT = i18n.getFixedT(locale, 'translation');
   const labels = {} as WorkoutLiveActivityLabels;
   for (const key of LABEL_KEYS) {
-    const value = fixedT(`activeWorkout.liveActivity.${key}`);
+    // i18next can return the raw key path when the key is missing; an explicit
+    // English defaultValue per key guarantees the label object never contains
+    // "activeWorkout.liveActivity.*" text. The non-empty check is the last
+    // line of defense (e.g. an accidentally empty resource value).
+    const value = fixedT(`activeWorkout.liveActivity.${key}`, {
+      defaultValue: EN_FALLBACK[key],
+    });
     labels[key] = typeof value === 'string' && value.length > 0 ? value : EN_FALLBACK[key];
   }
   return labels;

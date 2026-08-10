@@ -127,8 +127,9 @@ function AppContent() {
   } = useAuth();
 
   // Language bootstrap + initial route. `useAppBootstrap` initializes the
-  // effective locale (i18next / AppCompat per-app locale) before the app
-  // renders, then resolves the first route from the active server config.
+  // effective locale (Android 13+ native LocaleManager, Android <=12 local
+  // i18next preference) before the app renders, then resolves the first route
+  // from the active server config.
   const { initialRoute, linkingEnabled, setLinkingEnabled } = useAppBootstrap();
 
   // Adopt language changes made outside the app (Android App Languages) when

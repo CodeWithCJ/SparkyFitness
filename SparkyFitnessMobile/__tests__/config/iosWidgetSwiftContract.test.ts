@@ -31,12 +31,18 @@ describe('iOS WidgetKit Swift contract', () => {
       '"Today\'s protein, carbs, and fat at a glance."',
     ];
 
-    it.each(SWIFT_FILES)('%s contains no forbidden English user-facing literals', (file) => {
-      const src = readSwift(file);
-      for (const literal of FORBIDDEN_LITERALS) {
-        expect(src).not.toContain(literal);
-      }
-    });
+    // SharedHelpers.swift intentionally hosts the stable readable English
+    // fallback map (fallbackWidgetString), so its literal strings are expected;
+    // the rendering files must never inline user-facing English.
+    it.each(SWIFT_FILES.filter((file) => file !== 'SharedHelpers.swift'))(
+      '%s contains no forbidden English user-facing literals',
+      (file) => {
+        const src = readSwift(file);
+        for (const literal of FORBIDDEN_LITERALS) {
+          expect(src).not.toContain(literal);
+        }
+      },
+    );
 
     it('resolves calorie labels through the localization helper', () => {
       const src = readSwift('widgets.swift');
@@ -131,6 +137,43 @@ describe('iOS WidgetKit Swift contract', () => {
     it('falls back to the current locale when no override is present', () => {
       const shared = readSwift('SharedHelpers.swift');
       expect(shared).toContain('return .current');
+    });
+  });
+
+  describe('icon-only action accessibility', () => {
+    it('exposes localized accessibility labels on both icon-only action buttons', () => {
+      for (const file of ['widgets.swift', 'macroWidget.swift']) {
+        const src = readSwift(file);
+        expect(src).toMatch(/accessibilityLabel: localizedWidgetString\("widget\.search_food"\)/);
+        expect(src).toMatch(/accessibilityLabel: localizedWidgetString\("widget\.scan_barcode"\)/);
+      }
+    });
+
+    it('does not rely on SF Symbol names for user-facing accessibility', () => {
+      for (const file of ['widgets.swift', 'macroWidget.swift']) {
+        const src = readSwift(file);
+        expect(src).not.toMatch(/accessibilityLabel: "magnifyingglass"/);
+        expect(src).not.toMatch(/accessibilityLabel: "barcode\.viewfinder"/);
+      }
+    });
+  });
+
+  describe('localization fallback hardening', () => {
+    it('falls back through explicit, native, and English bundles before a stable map', () => {
+      const shared = readSwift('SharedHelpers.swift');
+      expect(shared).toContain('forResource: "en", ofType: "lproj"');
+      expect(shared).toContain('fallbackWidgetString');
+    });
+
+    it('never returns the raw key from the localization helper', () => {
+      const shared = readSwift('SharedHelpers.swift');
+      expect(shared).toContain('!value.isEmpty && value != key');
+    });
+
+    it('covers the search/scan keys in the stable fallback map', () => {
+      const shared = readSwift('SharedHelpers.swift');
+      expect(shared).toContain('case "widget.search_food": return "Search food"');
+      expect(shared).toContain('case "widget.scan_barcode": return "Scan barcode"');
     });
   });
 

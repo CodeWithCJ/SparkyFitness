@@ -1,5 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { PresetSessionResponse } from '@workspace/shared';
+import type {
+  ExerciseSnapshotResponse,
+  PresetSessionResponse,
+} from '@workspace/shared';
 import { addUserInteractionListener } from 'expo-widgets';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import {
@@ -135,10 +138,10 @@ function makeSession(overrides?: Partial<PresetSessionResponse>): PresetSessionR
           category: 'Strength',
           images: [],
           calories_per_hour: 400,
-        } as any,
+        } as ExerciseSnapshotResponse,
         activity_details: [],
         sets: [makeSet(101, 1), makeSet(102, 2)],
-      } as any,
+      } satisfies PresetSessionResponse['exercises'][number],
     ],
     ...overrides,
   };
@@ -366,13 +369,13 @@ describe('workoutLiveActivity', () => {
 
     it('holds all operations until hydration, then adopts without a duplicate start', async () => {
       (useActiveWorkoutStore.persist.hasHydrated as jest.Mock).mockReturnValue(false);
-      let finishHydration: (() => void) | undefined;
+      let finishHydration: ((state?: unknown) => void) | undefined;
       jest
         .spyOn(useActiveWorkoutStore.persist, 'onFinishHydration')
-        .mockImplementation(((cb: () => void) => {
+        .mockImplementation((cb: (state?: unknown) => void) => {
           finishHydration = cb;
-          return () => {};
-        }) as any);
+          return () => undefined;
+        });
       const leftover = makeInstance();
       mockFactory.getInstances.mockReturnValue([leftover]);
 

@@ -13,3 +13,5 @@
 "widget.grams" = "%@ g";
 "widget.a11y.kcal_left" = "%@ kcal left";
 "widget.a11y.kcal" = "%@ kcal";
+"widget.search_food" = "Search food";
+"widget.scan_barcode" = "Scan barcode";

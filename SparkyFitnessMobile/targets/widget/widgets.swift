@@ -173,6 +173,7 @@ private struct StatBlock: View {
 struct ActionButton: View {
     let icon: String
     let destination: URL
+    let accessibilityLabel: String
 
     var body: some View {
         Link(destination: destination) {
@@ -182,6 +183,7 @@ struct ActionButton: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
         }
+        .accessibilityLabel(accessibilityLabel)
     }
 }
 
@@ -251,11 +253,13 @@ struct widgetEntryView: View {
                 VStack(spacing: 16) {
                     ActionButton(
                         icon: "magnifyingglass",
-                        destination: URL(string: "sparkyfitnessmobile://search")!
+                        destination: URL(string: "sparkyfitnessmobile://search")!,
+                        accessibilityLabel: localizedWidgetString("widget.search_food")
                     )
                     ActionButton(
                         icon: "barcode.viewfinder",
-                        destination: URL(string: "sparkyfitnessmobile://scan")!
+                        destination: URL(string: "sparkyfitnessmobile://scan")!,
+                        accessibilityLabel: localizedWidgetString("widget.scan_barcode")
                     )
                 }
                 .frame(width: buttonColumnWidth)
