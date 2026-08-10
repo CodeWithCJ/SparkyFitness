@@ -363,9 +363,26 @@ async function getCustomMeasurementsData(
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
+    // Cap the points returned per category so large datasets (e.g. years of
+    // intraday heart-rate samples) do not blow up the call stack or payload.
+    // When the range exceeds maxPoints rows, return an evenly-spaced sample
+    // (always including the first row) so charts keep the overall trend.
+    const maxPoints = 3000;
     const result = await client.query(
-      "SELECT category_id, TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, entry_hour, value, notes, entry_timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4 ORDER BY entry_date, entry_timestamp",
-      [userId, categoryId, startDate, endDate]
+      `WITH ranked AS (
+           SELECT category_id,
+                  TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date,
+                  entry_hour, value, notes, entry_timestamp,
+                  row_number() OVER (ORDER BY entry_date, entry_timestamp) AS rn,
+                  count(*) OVER () AS total
+           FROM custom_measurements
+           WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4
+         )
+         SELECT category_id, entry_date, entry_hour, value, notes, entry_timestamp
+         FROM ranked
+         WHERE total <= $5 OR (rn - 1) % GREATEST(1, CEIL(total::float / $5)::bigint) = 0
+         ORDER BY entry_date, entry_timestamp`,
+      [userId, categoryId, startDate, endDate, maxPoints]
     );
     return result.rows;
   } finally {

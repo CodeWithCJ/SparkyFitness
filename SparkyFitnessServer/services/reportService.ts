@@ -193,7 +193,9 @@ async function getReportsData(
           startDate,
           endDate
         );
-      customMeasurementsData.push(...customMeasurementResult);
+      for (let i = 0; i < customMeasurementResult.length; i++) {
+        customMeasurementsData.push(customMeasurementResult[i]);
+      }
     }
     const tabularData = tabularDataRaw.map((row: TabularFoodRow) => {
       // Custom nutrients are now already in the row, scaled and summed by the repository
