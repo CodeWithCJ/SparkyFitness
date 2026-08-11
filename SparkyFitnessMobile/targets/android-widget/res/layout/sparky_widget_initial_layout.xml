@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Calorie widget initial/preview layout. Mirrors the compact Glance layout:
-  the remaining-calories phrase is split into a caption line ("kcal left" /
-  "Pozostało") and a value line ("1,650 kcal" / "1 650 kcal") so the Polish
-  sample is never visibly clipped in the widget picker.
+  Calorie widget initial/preview layout. Mirrors the classic Glance layout:
+  one-line localized kcal heading, 8dp progress bar, and the search/scan
+  action row at the bottom (classic 2x1 footprint, 22415819).
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -15,25 +14,16 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/widget_kcal_left_caption"
-        android:textSize="12sp"
-        android:textStyle="bold"
-        android:textColor="#FF5F5F5F"
-        android:maxLines="1" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/widget_preview_calories_value"
-        android:textSize="17sp"
+        android:text="@string/widget_preview_calories_left"
+        android:textSize="14sp"
         android:textStyle="bold"
         android:textColor="#FF1F1F1F"
         android:maxLines="1" />
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="6dp"
-        android:layout_marginTop="6dp"
+        android:layout_height="8dp"
+        android:layout_marginTop="8dp"
         android:orientation="horizontal"
         android:background="#1F000000">
 
@@ -65,7 +55,7 @@
 
         <FrameLayout
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="32dp"
             android:layout_weight="1">
 
             <ImageView
@@ -78,13 +68,13 @@
 
         <TextView
             android:layout_width="1dp"
-            android:layout_height="22dp"
+            android:layout_height="24dp"
             android:text=""
             android:background="#1F000000" />
 
         <FrameLayout
             android:layout_width="0dp"
-            android:layout_height="30dp"
+            android:layout_height="32dp"
             android:layout_weight="1">
 
             <ImageView

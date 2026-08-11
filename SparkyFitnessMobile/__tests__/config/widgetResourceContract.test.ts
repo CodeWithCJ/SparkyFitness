@@ -187,11 +187,12 @@ describe('Android widget localization contract', () => {
         'utf8',
       );
       expect(calorieSrc).toMatch(/R\.string\.widget_kcal_left/);
-      expect(calorieSrc).toMatch(/R\.string\.widget_kcal_left_caption/);
-      expect(calorieSrc).toMatch(/R\.string\.widget_kcal_left_value/);
+      expect(calorieSrc).toMatch(/R\.string\.widget_kcal_left_empty/);
       expect(calorieSrc).toMatch(/R\.string\.widget_search_food/);
       expect(calorieSrc).toMatch(/R\.string\.widget_scan_barcode/);
-      expect(calorieSrc).toMatch(/R\.string\.widget_kcal_left_empty/);
+      // Classic one-line heading: no caption/value split in the calorie widget.
+      expect(calorieSrc).not.toMatch(/R\.string\.widget_kcal_left_caption/);
+      expect(calorieSrc).not.toMatch(/R\.string\.widget_kcal_left_value/);
 
       const macroSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
@@ -204,13 +205,14 @@ describe('Android widget localization contract', () => {
         'widget_search_food',
         'widget_scan_barcode',
         'widget_kcal_left',
-        'widget_kcal_left_caption',
-        'widget_kcal_left_value',
         'widget_kcal_left_empty',
         'widget_grams',
       ]) {
         expect(macroSrc).toMatch(new RegExp(`R\\.string\\.${ref}`));
       }
+      // Classic one-line header: no caption/value split in the macro widget.
+      expect(macroSrc).not.toMatch(/R\.string\.widget_kcal_left_caption/);
+      expect(macroSrc).not.toMatch(/R\.string\.widget_kcal_left_value/);
     });
 
     it('uses locale-aware number formatting without hardcoding English separators', () => {
@@ -275,6 +277,11 @@ describe('Android widget localization contract', () => {
   });
 
   describe('widget resize contract', () => {
+    // The pre-localization widgets (22415819) define the base visual language.
+    // Localization and resizing must not change the default footprint or
+    // composition: the classic 2x1 calorie card and 2x2 macro card stay the
+    // default, and resizing adapts the SAME design (more room, optional
+    // actions) instead of switching into unrelated compact compositions.
     it('enables horizontal and vertical resizing on both provider XMLs', () => {
       for (const infoXml of WIDGET_INFO_XMLS) {
         const src = fs.readFileSync(path.join(RES_ROOT, 'xml', infoXml), 'utf8');
@@ -289,7 +296,7 @@ describe('Android widget localization contract', () => {
       }
     });
 
-    it('keeps honest non-zero minimum resize dimensions on both providers', () => {
+    it('keeps the classic provider footprints (calorie 110x40 2x1, macro 110x110 2x2)', () => {
       const calorie = fs.readFileSync(
         path.join(RES_ROOT, 'xml', 'sparky_calorie_widget_info.xml'),
         'utf8',
@@ -299,39 +306,25 @@ describe('Android widget localization contract', () => {
         'utf8',
       );
 
-      // Calorie minimums match the SHORT layout (value + progress): 60dp of
-      // height fits caption(10sp) + value(15sp) + progress(3dp) + padding even
-      // at font scale 1.3.
-      const calorieWidth = calorie.match(/android:minResizeWidth="(\d+)dp"/);
-      const calorieHeight = calorie.match(/android:minResizeHeight="(\d+)dp"/);
-      expect(calorieWidth?.[1]).toBe('110');
-      expect(calorieHeight?.[1]).toBe('60');
+      // Calorie: classic 2x1 footprint with the pre-localization minimums plus
+      // resize minimums. Do NOT silently return to a larger default footprint.
+      expect(calorie).toMatch(/android:minWidth="110dp"/);
+      expect(calorie).toMatch(/android:minHeight="40dp"/);
+      expect(calorie).toMatch(/android:minResizeWidth="110dp"/);
+      expect(calorie).toMatch(/android:minResizeHeight="40dp"/);
+      expect(calorie).toMatch(/android:targetCellWidth="2"/);
+      expect(calorie).toMatch(/android:targetCellHeight="1"/);
+      expect(calorie).toMatch(/android:resizeMode="horizontal\|vertical"/);
 
-      // Macro minimums match the SHORT layout (compact kcal header + three
-      // inline rows + progress): 150dp of width fits the longest inline Polish
-      // row ("Węglowodany 136 g") at 11sp, and 140dp of height fits the
-      // compact header, all three rows and progress bars at font scales up to
-      // 1.3 without dropping the kcal context.
-      const macroWidth = macro.match(/android:minResizeWidth="(\d+)dp"/);
-      const macroHeight = macro.match(/android:minResizeHeight="(\d+)dp"/);
-      expect(macroWidth?.[1]).toBe('150');
-      expect(macroHeight?.[1]).toBe('140');
-
-      // minWidth/minHeight must agree with the resize minimums so pre-31
-      // devices render the same supported compact layout.
-      expect(calorie).toMatch(/android:minHeight="60dp"/);
-      expect(macro).toMatch(/android:minWidth="150dp"/);
-      expect(macro).toMatch(/android:minHeight="140dp"/);
-    });
-    it('keeps the macro column height-flexible so TALL spacing works', () => {
-      const macroSrc = fs.readFileSync(
-        path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
-        'utf8',
-      );
-      // The outer macro Column must fill the available height (not just width)
-      // so the defaultWeight() spacers distribute the TALL vertical space and
-      // the action row sits at the bottom instead of hugging the content.
-      expect(macroSrc).toMatch(/Column\(modifier = GlanceModifier\.fillMaxSize\(\)\)/);
+      // Macro: classic 2x2 footprint restored to 110x110. This is critical:
+      // do not allow future tests to silently re-expand Macro to 150dp/140dp.
+      expect(macro).toMatch(/android:minWidth="110dp"/);
+      expect(macro).toMatch(/android:minHeight="110dp"/);
+      expect(macro).toMatch(/android:minResizeWidth="110dp"/);
+      expect(macro).toMatch(/android:minResizeHeight="110dp"/);
+      expect(macro).toMatch(/android:targetCellWidth="2"/);
+      expect(macro).toMatch(/android:targetCellHeight="2"/);
+      expect(macro).toMatch(/android:resizeMode="horizontal\|vertical"/);
     });
 
     it('uses SizeMode.Exact with LocalSize.current in both Glance widgets', () => {
@@ -341,93 +334,59 @@ describe('Android widget localization contract', () => {
         expect(src).toMatch(/import androidx\.glance\.appwidget\.SizeMode/);
         expect(src).toMatch(/SizeMode\.Exact/);
         expect(src).toMatch(/LocalSize\.current/);
-        // The reported size must actually drive the layout, not sit unused:
-        // both dimensions feed the layout decision, because the provider
-        // allows independent horizontal and vertical resizing.
+        // The reported size drives small adjustments: width feeds typography.
         expect(src).toMatch(/size\.width/);
-        expect(src).toMatch(/size\.height/);
       }
+      const macroSrc = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
+        'utf8',
+      );
+      // Macro additionally uses height to gate the action-row expansion.
+      expect(macroSrc).toMatch(/size\.height/);
     });
 
-    it('branches the calorie layout on a height class and hides actions when short', () => {
+    it('keeps the classic calorie composition (one-line heading, progress, actions)', () => {
       const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'), 'utf8');
-      expect(src).toMatch(/enum class CalorieHeightClass \{ SHORT, NORMAL, TALL \}/);
-      expect(src).toMatch(/fun calorieHeightClass\(height: Dp\)/);
-      expect(src).toMatch(/heightClass != CalorieHeightClass\.SHORT/);
-      // The action row must be conditional on height, never unconditional.
-      expect(src).toMatch(/if \(heightClass != CalorieHeightClass\.SHORT\) \{/);
-      // SHORT keeps the primary calorie info: caption/value are rendered with
-      // a smaller vertical budget (no 30dp action row at minimum height).
-      expect(src).toMatch(/CalorieHeightClass\.SHORT && !wide/);
+      // No height-class compositions and no caption/value two-line split.
+      expect(src).not.toMatch(/CalorieHeightClass/);
+      expect(src).not.toMatch(/extraCompact/);
+      expect(src).not.toMatch(/widget_kcal_left_caption/);
+      expect(src).not.toMatch(/widget_kcal_left_value/);
+      // Classic structure: 12dp padding, one-line bold heading (18sp wide /
+      // 14sp narrow), 8dp gap + 8dp progress, flexible spacer, then the
+      // 32dp action row with 24dp icons and a 24dp divider.
+      expect(src).toMatch(/\.padding\(12\.dp\)/);
+      expect(src).toMatch(/val headingFontSize = if \(size\.width >= 150\.dp\) 18\.sp else 14\.sp/);
+      expect(src).toMatch(/\.height\(8\.dp\)/);
+      expect(src).toMatch(/GlanceModifier\.defaultWeight\(\)/);
+      expect(src).toMatch(/\.height\(32\.dp\)/);
+      expect(src).toMatch(/\.size\(24\.dp\)/);
+      expect(src).toMatch(/\.height\(24\.dp\)/);
+      // Actions are always part of the classic default; no height-based hiding.
+      expect(src).toMatch(/R\.drawable\.ic_widget_search/);
+      expect(src).toMatch(/R\.drawable\.ic_widget_scan/);
     });
 
-    it('never chooses the tall stacked macro layout for a short narrow widget', () => {
+    it('keeps the classic macro composition (centered content block, inline rows)', () => {
       const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
-      expect(src).toMatch(/enum class MacroHeightClass \{ SHORT, NORMAL, TALL \}/);
-      expect(src).toMatch(/fun macroHeightClass\(height: Dp\)/);
-      // Stacked rows (label above value) are only used on narrow + TALL.
-      expect(src).toMatch(/val stacked = !wide && heightClass == MacroHeightClass\.TALL/);
-      // SHORT omits only the action row; the kcal header and all macro rows
-      // (including "Węglowodany") stay visible at the honest minimum height.
-      expect(src).toMatch(/if \(!short\) \{/);
-      expect(src).toMatch(/val short = heightClass == MacroHeightClass\.SHORT/);
-    });
-
-    it('keeps the kcal header and all macro rows in SHORT (drops only actions)', () => {
-      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
-      // Physical Android validation showed that dropping the kcal header at
-      // compact height is undesirable. The compact contract was changed: SHORT
-      // now keeps the kcal header + macro rows and drops only the action row.
-      // The old test assumption was therefore replaced rather than
-      // strengthened (supersedes the earlier CodeRabbit nit on this test).
+      // No height classes, no compact variants, no stacked default layout.
+      expect(src).not.toMatch(/MacroHeightClass/);
+      expect(src).not.toMatch(/extraCompact/);
+      expect(src).not.toMatch(/stacked/);
+      expect(src).not.toMatch(/widget_kcal_left_caption/);
+      expect(src).not.toMatch(/widget_kcal_left_value/);
+      // Classic container strategy: Box centers a CONTENT-SIZED column.
+      expect(src).toMatch(/contentAlignment = Alignment\.Center/);
+      expect(src).toMatch(/Column\(modifier = GlanceModifier\.fillMaxWidth\(\)\)/);
+      expect(src).not.toMatch(/Column\(modifier = GlanceModifier\.fillMaxSize\(\)\)/);
+      // The kcal header and all macro rows are always rendered.
       expect(src).toMatch(/CalorieHeader\(/);
       expect(src).toMatch(/MacroRows\(/);
-      // The header is rendered for every height class; it must no longer be
-      // hidden behind an `if (!short)` guard.
-      expect(src).not.toMatch(/if \(!short\) \{\s*CalorieHeader\(/);
-      // Only the action row remains guarded by the SHORT check.
-      expect(src).toMatch(/if \(!short\) \{/);
-      expect(src).toMatch(/extraCompact = short/);
-    });
-
-    it('uses compact typography and spacing at macro SHORT', () => {
-      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
-      // SHORT header: 10sp caption + 14sp value; rows 11sp with 3dp spacing and
-      // a 4dp header gap, so the 140dp minimum fits at font scales up to 1.3.
-      expect(src).toMatch(/fontSize = 10\.sp/);
-      expect(src).toMatch(/fontSize = 14\.sp/);
-      expect(src).toMatch(/short -> 11/);
-      expect(src).toMatch(/short -> 3/);
-      expect(src).toMatch(/short -> 4\.dp/);
-    });
-
-    it('vertically balances the macro SHORT layout', () => {
-      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
-      // The compact block (kcal header + macro rows) sits between two flexible
-      // spacers instead of being pinned to the top with excess space below.
-      expect(src).toMatch(/MacroHeightClass\.TALL \|\| short/);
-      expect(src).toMatch(/GlanceModifier\.defaultWeight\(\)/);
-    });
-
-    it('keeps the calorie SHORT typography compact for the 60dp minimum', () => {
-      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'), 'utf8');
-      // SHORT uses 10sp caption / 15sp value / 3dp progress so the composition
-      // stays inside the honest 60dp minimum at font scales 1.0-1.3.
-      expect(src).toMatch(/CalorieHeightClass\.SHORT && !wide/);
-      expect(src).toMatch(/fontSize = 10\.sp/);
-      expect(src).toMatch(/fontSize = 15\.sp/);
-      expect(src).toMatch(/height\(if \(heightClass == CalorieHeightClass\.SHORT\) 3\.dp else 8\.dp\)/);
-    });
-
-    it('vertically balances the calorie SHORT layout with flex above and below', () => {
-      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'), 'utf8');
-      // The compact core (caption + value + progress) sits between two flexible
-      // spacers so it is centered rather than pinned to the top with the blank
-      // region below (top-heavy artifact observed on device).
-      expect(src).toMatch(
-        /heightClass == CalorieHeightClass\.SHORT \|\| heightClass == CalorieHeightClass\.TALL/,
-      );
-      expect(src).toMatch(/GlanceModifier\.defaultWeight\(\)/);
+      // Rows stay inline: colored dot + label + value on one line.
+      expect(src).toMatch(/R\.string\.widget_grams/);
+      // Actions are gated by ONE simple height threshold (expansion feature).
+      expect(src).toMatch(/val showActions = size\.height >= 170\.dp/);
+      expect(src).toMatch(/if \(showActions\) \{/);
     });
 
     it('does not lock the macro widget to a single fixed responsive breakpoint', () => {
@@ -435,7 +394,7 @@ describe('Android widget localization contract', () => {
         path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
         'utf8',
       );
-      expect(macroSrc).not.toMatch(/SizeMode\.Responsive\(\s*setOf\(DpSize\(200\.dp, 200\.dp\)\)/);
+      expect(macroSrc).not.toMatch(/SizeMode\.Responsive\(/);
     });
   });
 
@@ -575,32 +534,35 @@ describe('Android widget localization contract', () => {
       expect(macroLayout).toContain('@string/widget_preview_grams_protein');
     });
 
-    it('keeps the calorie preview from clipping the long Polish phrase', () => {
+    it('calorie preview mirrors the classic one-line heading', () => {
       const calorieLayout = fs.readFileSync(
         path.join(RES_ROOT, 'layout', 'sparky_widget_initial_layout.xml'),
         'utf8',
       );
-      // The compact two-line presentation: caption line + value line.
-      expect(calorieLayout).toContain('@string/widget_kcal_left_caption');
-      expect(calorieLayout).toContain('@string/widget_preview_calories_value');
-      // No single-line maxLines=1 full-phrase text remains.
-      expect(calorieLayout).not.toMatch(
-        /widget_preview_calories_left[\s\S]{0,200}maxLines="1"/,
-      );
+      // Classic one-line heading, not the two-line caption/value split.
+      expect(calorieLayout).toContain('@string/widget_preview_calories_left');
+      expect(calorieLayout).not.toContain('@string/widget_kcal_left_caption');
+      expect(calorieLayout).not.toContain('@string/widget_preview_calories_value');
+      // Progress + action row present like the classic default.
+      expect(calorieLayout).toContain('@string/widget_search_food');
+      expect(calorieLayout).toContain('@string/widget_scan_barcode');
     });
 
-    it('keeps the macro preview from clipping Węglowodany in the same row', () => {
+    it('macro preview mirrors the classic one-line header and inline rows', () => {
       const macroLayout = fs.readFileSync(
         path.join(RES_ROOT, 'layout', 'sparky_macro_widget_initial_layout.xml'),
         'utf8',
       );
-      // The carbs label is rendered on its own stacked line (label above value).
+      // One-line kcal header (no caption/value split).
+      expect(macroLayout).toContain('@string/widget_preview_macros_left');
+      expect(macroLayout).not.toContain('@string/widget_kcal_left_caption');
+      expect(macroLayout).not.toContain('@string/widget_preview_macros_value');
+      // Inline rows: label and gram value live in the SAME row.
       const carbsIndex = macroLayout.indexOf('@string/widget_carbs');
       const gramsCarbsIndex = macroLayout.indexOf('@string/widget_preview_grams_carbs');
       expect(carbsIndex).toBeGreaterThan(-1);
       expect(gramsCarbsIndex).toBeGreaterThan(carbsIndex);
       expect(gramsCarbsIndex - carbsIndex).toBeLessThan(900);
-      expect(macroLayout).toContain('@string/widget_preview_macros_value');
     });
   });
 });
