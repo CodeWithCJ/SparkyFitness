@@ -74,6 +74,7 @@ import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { formatServingLabel } from '@/utils/foodServing';
+import { primaryImageOf } from '@/utils/foodImages';
 
 const FoodDatabaseManager = () => {
   const { t } = useTranslation();
@@ -244,48 +245,64 @@ const FoodDatabaseManager = () => {
         enableSorting: true,
         cell: ({ row }) => {
           const food = row.original;
+          const imageSrc = primaryImageOf(food);
           return (
-            <div className="flex flex-col gap-1 min-w-[150px]">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-gray-900 dark:text-gray-100">
-                  {food.name}
+            <div className="flex items-start gap-2 min-w-[150px]">
+              {imageSrc && (
+                <img
+                  src={imageSrc}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  className="w-10 h-10 flex-shrink-0 object-cover rounded-md"
+                  onError={(e) => {
+                    // A dead provider link shouldn't leave a broken-image icon.
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-gray-900 dark:text-gray-100">
+                    {food.name}
+                  </span>
+                  {food.brand && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] h-5 px-1.5 font-black uppercase tracking-tight bg-blue-100/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50"
+                    >
+                      {food.brand}
+                    </Badge>
+                  )}
+                  {getFoodSourceBadge(food)}
+                  {food.shared_with_public && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-green-50 text-green-700 h-5 px-1.5 font-bold"
+                    >
+                      <Share2 className="h-2.5 w-2.5 mr-1" />
+                      {t('foodDatabaseManager.public', 'Public')}
+                    </Badge>
+                  )}
+                </div>
+                <span className="text-[10px] text-gray-500">
+                  {food.default_variant
+                    ? t('foodDatabaseManager.perServing', {
+                        servingSize: formatServingLabel(food.default_variant),
+                        servingUnit: '',
+                        defaultValue: `Per ${formatServingLabel(food.default_variant)}`,
+                      })
+                    : t('foodDatabaseManager.perServing', {
+                        servingSize: 0,
+                        servingUnit: '',
+                        defaultValue: 'Per 0',
+                      })}
                 </span>
-                {food.brand && (
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px] h-5 px-1.5 font-black uppercase tracking-tight bg-blue-100/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50"
-                  >
-                    {food.brand}
-                  </Badge>
-                )}
-                {getFoodSourceBadge(food)}
-                {food.shared_with_public && (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] bg-green-50 text-green-700 h-5 px-1.5 font-bold"
-                  >
-                    <Share2 className="h-2.5 w-2.5 mr-1" />
-                    {t('foodDatabaseManager.public', 'Public')}
-                  </Badge>
-                )}
+                <AllergenBadges
+                  allergens={food.default_variant?.allergens}
+                  traces={food.default_variant?.traces}
+                />
               </div>
-              <span className="text-[10px] text-gray-500">
-                {food.default_variant
-                  ? t('foodDatabaseManager.perServing', {
-                      servingSize: formatServingLabel(food.default_variant),
-                      servingUnit: '',
-                      defaultValue: `Per ${formatServingLabel(food.default_variant)}`,
-                    })
-                  : t('foodDatabaseManager.perServing', {
-                      servingSize: 0,
-                      servingUnit: '',
-                      defaultValue: 'Per 0',
-                    })}
-              </span>
-              <AllergenBadges
-                allergens={food.default_variant?.allergens}
-                traces={food.default_variant?.traces}
-              />
             </div>
           );
         },
