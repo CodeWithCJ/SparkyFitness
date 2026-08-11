@@ -151,9 +151,13 @@ async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
             fem.created_at,
             fem.updated_at,
             fem.created_by_user_id,
-            fem.updated_by_user_id
+            fem.updated_by_user_id,
+            -- The meal template's own images, so a logged meal can show a
+            -- thumbnail in the diary the same way a logged food does.
+            m.images AS meal_images
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
+            LEFT JOIN meals m ON fem.meal_template_id = m.id
             WHERE fem.id = $1`,
       [foodEntryMealId]
     );
@@ -194,9 +198,13 @@ async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
             fem.created_at,
             fem.updated_at,
             fem.created_by_user_id,
-            fem.updated_by_user_id
+            fem.updated_by_user_id,
+            -- The meal template's own images, so a logged meal can show a
+            -- thumbnail in the diary the same way a logged food does.
+            m.images AS meal_images
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
+            LEFT JOIN meals m ON fem.meal_template_id = m.id
             WHERE fem.user_id = $1 AND fem.entry_date = $2
             ORDER BY mt.sort_order ASC, fem.entry_time ASC NULLS LAST, fem.created_at ASC`,
       [userId, selectedDate]

@@ -60,7 +60,7 @@ import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import AllergenBadges from '@/components/AllergenBadges';
-import { diaryEntryImageSrc } from '@/utils/foodImages';
+import { diaryEntryImageSrc, usableFoodImages } from '@/utils/foodImages';
 
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
 
@@ -381,10 +381,12 @@ const MealCard = ({
                 const entryIsHighlighted =
                   'food_id' in item &&
                   (item as FoodEntry).food_id === highlightFoodId;
-                // Per-entry override photo, else the parent food's own image.
+                // Food entries: per-entry override, else the food's own image.
+                // Logged meals: the meal template's image.
                 const entryImageSrc = isFoodEntry
                   ? diaryEntryImageSrc(item as FoodEntry)
-                  : null;
+                  : (usableFoodImages((item as FoodEntryMeal).meal_images)[0] ??
+                    null);
 
                 // Determine glycemic index directly from the entryNutrition object
                 const giValue: GlycemicIndex | undefined | null =
