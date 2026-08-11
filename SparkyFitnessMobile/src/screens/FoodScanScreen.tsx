@@ -24,7 +24,9 @@ import type { FoodInfoItem } from '../types/foodInfo';
 import { useCSSVariable } from 'uniwind';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
+import { computeGuideCropRect } from '../utils/labelCrop';
 import { selectDisplayVariant } from '../utils/foodDetails';
 import { getApiErrorMessage } from '../services/api/errors';
 import { fireSuccessHaptic } from '../services/haptics';
@@ -50,6 +52,18 @@ const SCAN_SEGMENTS: Segment<ScanMode>[] = [
 const GUIDE_WIDTH = 280;
 const GUIDE_HEIGHT = 160;
 
+// Nutrition panels are tall; the label guide is portrait where the barcode
+// guide is landscape. The capture is cropped to this box (plus a small
+// tolerance margin), so unlike the barcode guide it is functional, not
+// decorative — vision models misread labels that occupy a small share of the
+// frame, because the encoder's downscale makes the digits illegible.
+const LABEL_GUIDE_WIDTH = 300;
+const LABEL_GUIDE_HEIGHT = 400;
+const GUIDE_BOTTOM_MARGIN = 120;
+// Longest edge sent for analysis. A label-filling crop reads correctly well
+// below this; capping bounds upload size without costing accuracy.
+const LABEL_MAX_DIMENSION = 1600;
+
 const CORNER_SIZE = 24;
 const CORNER_BORDER = 3;
 const CORNER_STYLE = {
@@ -69,6 +83,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [flashlight, setFlashlight] = useState(false);
   const scanLock = useRef(false);
   const pickerLock = useRef(false);
+  // Live layout of the camera view, for mapping the guide box to photo pixels.
+  const cameraLayout = useRef<{ width: number; height: number } | null>(null);
   const params = route.params;
   const captureParams = params?.mode === 'capture-barcode' ? params : undefined;
   const lookupParams = params?.mode === 'capture-barcode' ? undefined : params;
@@ -304,14 +320,77 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const handleLabelCapture = async () => {
     if (!cameraRef.current) return;
     try {
-      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.7, shutterSound: soundsEnabled });
-      if (!photo?.base64) {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 1, shutterSound: soundsEnabled });
+      if (!photo?.uri) {
         Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
         return;
       }
-      setCapturedPhoto({ base64: photo.base64, uri: photo.uri });
+      // Crop to the framing guide before anything is uploaded. The preview
+      // then shows exactly the region that will be analyzed, so a missed
+      // framing is visible at "Retake" time instead of surfacing later as
+      // silently wrong nutrition values.
+      const view = cameraLayout.current;
+      const crop =
+        view && photo.width && photo.height
+          ? computeGuideCropRect({
+              viewWidth: view.width,
+              viewHeight: view.height,
+              guideWidth: LABEL_GUIDE_WIDTH,
+              guideHeight: LABEL_GUIDE_HEIGHT,
+              guideCenterYOffset: -GUIDE_BOTTOM_MARGIN / 2,
+              photoWidth: photo.width,
+              photoHeight: photo.height,
+            })
+          : null;
+      const actions: ImageManipulator.Action[] = crop ? [{ crop }] : [];
+      const longEdge = crop ? Math.max(crop.width, crop.height) : Math.max(photo.width ?? 0, photo.height ?? 0);
+      if (longEdge > LABEL_MAX_DIMENSION) {
+        const scaleTo =
+          crop && crop.width >= crop.height
+            ? { width: LABEL_MAX_DIMENSION }
+            : { height: LABEL_MAX_DIMENSION };
+        actions.push({ resize: scaleTo });
+      }
+      const processed = await ImageManipulator.manipulateAsync(photo.uri, actions, {
+        compress: 0.85,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      });
+      if (!processed.base64) {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to process photo.' });
+        return;
+      }
+      setCapturedPhoto({ base64: processed.base64, uri: processed.uri });
     } catch {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+    }
+  };
+
+  const handleLabelPickFromLibrary = async () => {
+    if (pickerLock.current) return;
+    pickerLock.current = true;
+    try {
+      // allowsEditing hands the user the system crop UI, which doubles as the
+      // manual "select the label bounds" step for photos taken earlier.
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        quality: 0.85,
+        base64: true,
+        allowsMultipleSelection: false,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (!asset?.base64 || !asset.uri) {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'No photo returned by picker.' });
+        return;
+      }
+      setCapturedPhoto({ base64: asset.base64, uri: asset.uri });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load photo.';
+      Toast.show({ type: 'error', text1: 'Error', text2: msg });
+    } finally {
+      pickerLock.current = false;
     }
   };
 
@@ -505,7 +584,15 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   }
 
   return (
-    <View className="flex-1 flex-col justify-center">
+    <View
+      className="flex-1 flex-col justify-center"
+      onLayout={(e) => {
+        cameraLayout.current = {
+          width: e.nativeEvent.layout.width,
+          height: e.nativeEvent.layout.height,
+        };
+      }}
+    >
       <CameraView
         ref={cameraRef}
         onBarcodeScanned={scanMode === 'barcode' && !scanned ? handleBarcodeScanned : undefined}
@@ -518,11 +605,25 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
 
       {scanMode === 'barcode' && !notFoundBarcode && !lookupError && !loading && !manualEntryVisible ? (
         <View pointerEvents="none" style={StyleSheet.absoluteFill} className="justify-center items-center">
-          <View style={{ width: GUIDE_WIDTH, height: GUIDE_HEIGHT, marginBottom: 120 }}>
+          <View style={{ width: GUIDE_WIDTH, height: GUIDE_HEIGHT, marginBottom: GUIDE_BOTTOM_MARGIN }}>
             <View style={{ ...CORNER_STYLE, top: 0, left: 0, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderTopLeftRadius: 4 }} />
             <View style={{ ...CORNER_STYLE, top: 0, right: 0, borderTopWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderTopRightRadius: 4 }} />
             <View style={{ ...CORNER_STYLE, bottom: 0, left: 0, borderBottomWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderBottomLeftRadius: 4 }} />
             <View style={{ ...CORNER_STYLE, bottom: 0, right: 0, borderBottomWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderBottomRightRadius: 4 }} />
+          </View>
+        </View>
+      ) : null}
+
+      {scanMode === 'label' && !capturedPhoto && !labelProcessing && !manualEntryVisible ? (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill} className="justify-center items-center">
+          <View style={{ width: LABEL_GUIDE_WIDTH, height: LABEL_GUIDE_HEIGHT, marginBottom: GUIDE_BOTTOM_MARGIN }}>
+            <View style={{ ...CORNER_STYLE, top: 0, left: 0, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderTopLeftRadius: 4 }} />
+            <View style={{ ...CORNER_STYLE, top: 0, right: 0, borderTopWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderTopRightRadius: 4 }} />
+            <View style={{ ...CORNER_STYLE, bottom: 0, left: 0, borderBottomWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderBottomLeftRadius: 4 }} />
+            <View style={{ ...CORNER_STYLE, bottom: 0, right: 0, borderBottomWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderBottomRightRadius: 4 }} />
+            <Text className="text-white/90 text-xs text-center" style={{ position: 'absolute', bottom: -24, left: 0, right: 0 }}>
+              Fit the nutrition label inside the frame
+            </Text>
           </View>
         </View>
       ) : null}
@@ -707,15 +808,37 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               ) : null}
 
               {scanMode === 'label' ? (
-                <TouchableOpacity
-                  onPress={() => {
-                    void handleLabelCapture();
-                  }}
-                  className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
-                  activeOpacity={0.7}
-                >
-                  <View className="w-16 h-16 rounded-full bg-white" />
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    onPress={() => {
+                      void handleLabelCapture();
+                    }}
+                    className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+                    activeOpacity={0.7}
+                  >
+                    <View className="w-16 h-16 rounded-full bg-white" />
+                  </TouchableOpacity>
+                  {/* Same placement as photo mode's library button. */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      void handleLabelPickFromLibrary();
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityLabel="Choose label photo from library"
+                    accessibilityRole="button"
+                    className="bg-black/50 rounded-full items-center justify-center"
+                    style={{
+                      position: 'absolute',
+                      left: '25%',
+                      top: 18,
+                      width: 44,
+                      height: 44,
+                      transform: [{ translateX: -26 }],
+                    }}
+                  >
+                    <Icon name="photo-library" size={26} color="#fff" />
+                  </TouchableOpacity>
+                </>
               ) : null}
 
               {scanMode === 'photo' ? (
