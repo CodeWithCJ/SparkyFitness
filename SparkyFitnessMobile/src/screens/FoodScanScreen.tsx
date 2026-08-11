@@ -26,7 +26,6 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
-import { computeGuideCropRect } from '../utils/labelCrop';
 import { selectDisplayVariant } from '../utils/foodDetails';
 import { getApiErrorMessage } from '../services/api/errors';
 import { fireSuccessHaptic } from '../services/haptics';
@@ -52,13 +51,6 @@ const SCAN_SEGMENTS: Segment<ScanMode>[] = [
 const GUIDE_WIDTH = 280;
 const GUIDE_HEIGHT = 160;
 
-// Nutrition panels are tall; the label guide is portrait where the barcode
-// guide is landscape. The capture is cropped to this box (plus a small
-// tolerance margin), so unlike the barcode guide it is functional, not
-// decorative — vision models misread labels that occupy a small share of the
-// frame, because the encoder's downscale makes the digits illegible.
-const LABEL_GUIDE_WIDTH = 300;
-const LABEL_GUIDE_HEIGHT = 400;
 const GUIDE_BOTTOM_MARGIN = 120;
 // Longest edge sent for analysis. A label-filling crop reads correctly well
 // below this; capping bounds upload size without costing accuracy.
@@ -83,8 +75,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const [flashlight, setFlashlight] = useState(false);
   const scanLock = useRef(false);
   const pickerLock = useRef(false);
-  // Live layout of the camera view, for mapping the guide box to photo pixels.
-  const cameraLayout = useRef<{ width: number; height: number } | null>(null);
   const params = route.params;
   const captureParams = params?.mode === 'capture-barcode' ? params : undefined;
   const lookupParams = params?.mode === 'capture-barcode' ? undefined : params;
@@ -317,52 +307,59 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     await performBarcodeLookup(barcode);
   };
 
-  const handleLabelCapture = async () => {
-    if (!cameraRef.current) return;
-    try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 1, shutterSound: soundsEnabled });
-      if (!photo?.uri) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
-        return;
-      }
-      // Crop to the framing guide before anything is uploaded. The preview
-      // then shows exactly the region that will be analyzed, so a missed
-      // framing is visible at "Retake" time instead of surfacing later as
-      // silently wrong nutrition values.
-      const view = cameraLayout.current;
-      const crop =
-        view && photo.width && photo.height
-          ? computeGuideCropRect({
-              viewWidth: view.width,
-              viewHeight: view.height,
-              guideWidth: LABEL_GUIDE_WIDTH,
-              guideHeight: LABEL_GUIDE_HEIGHT,
-              guideCenterYOffset: -GUIDE_BOTTOM_MARGIN / 2,
-              photoWidth: photo.width,
-              photoHeight: photo.height,
-            })
-          : null;
-      const actions: ImageManipulator.Action[] = crop ? [{ crop }] : [];
-      const longEdge = crop ? Math.max(crop.width, crop.height) : Math.max(photo.width ?? 0, photo.height ?? 0);
-      if (longEdge > LABEL_MAX_DIMENSION) {
-        const scaleTo =
-          crop && crop.width >= crop.height
-            ? { width: LABEL_MAX_DIMENSION }
-            : { height: LABEL_MAX_DIMENSION };
-        actions.push({ resize: scaleTo });
-      }
-      const processed = await ImageManipulator.manipulateAsync(photo.uri, actions, {
+  // Both label paths share one shape: get an image (system camera or library),
+  // let the user crop it to the label with the system editor's adjustable
+  // handles, downscale, scan. Vision models misread labels that occupy a small
+  // share of the frame, so the crop step is what makes results reliable.
+  const prepareLabelPhoto = async (asset: { uri: string; base64?: string | null; width?: number; height?: number }) => {
+    const longEdge = Math.max(asset.width ?? 0, asset.height ?? 0);
+    if (longEdge > LABEL_MAX_DIMENSION && asset.width && asset.height) {
+      const scaleTo =
+        asset.width >= asset.height
+          ? { width: LABEL_MAX_DIMENSION }
+          : { height: LABEL_MAX_DIMENSION };
+      const processed = await ImageManipulator.manipulateAsync(asset.uri, [{ resize: scaleTo }], {
         compress: 0.85,
         format: ImageManipulator.SaveFormat.JPEG,
         base64: true,
       });
-      if (!processed.base64) {
+      if (processed.base64) return { base64: processed.base64, uri: processed.uri };
+    }
+    if (asset.base64) return { base64: asset.base64, uri: asset.uri };
+    const reencoded = await ImageManipulator.manipulateAsync(asset.uri, [], {
+      compress: 0.85,
+      format: ImageManipulator.SaveFormat.JPEG,
+      base64: true,
+    });
+    return reencoded.base64 ? { base64: reencoded.base64, uri: reencoded.uri } : null;
+  };
+
+  const handleLabelCapture = async () => {
+    if (pickerLock.current) return;
+    pickerLock.current = true;
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        quality: 1,
+        base64: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+        return;
+      }
+      const prepared = await prepareLabelPhoto(asset);
+      if (!prepared) {
         Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to process photo.' });
         return;
       }
-      setCapturedPhoto({ base64: processed.base64, uri: processed.uri });
+      setCapturedPhoto(prepared);
     } catch {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+    } finally {
+      pickerLock.current = false;
     }
   };
 
@@ -381,11 +378,16 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       });
       if (result.canceled) return;
       const asset = result.assets?.[0];
-      if (!asset?.base64 || !asset.uri) {
+      if (!asset?.uri) {
         Toast.show({ type: 'error', text1: 'Error', text2: 'No photo returned by picker.' });
         return;
       }
-      setCapturedPhoto({ base64: asset.base64, uri: asset.uri });
+      const prepared = await prepareLabelPhoto(asset);
+      if (!prepared) {
+        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to process photo.' });
+        return;
+      }
+      setCapturedPhoto(prepared);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load photo.';
       Toast.show({ type: 'error', text1: 'Error', text2: msg });
@@ -584,15 +586,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   }
 
   return (
-    <View
-      className="flex-1 flex-col justify-center"
-      onLayout={(e) => {
-        cameraLayout.current = {
-          width: e.nativeEvent.layout.width,
-          height: e.nativeEvent.layout.height,
-        };
-      }}
-    >
+    <View className="flex-1 flex-col justify-center">
       <CameraView
         ref={cameraRef}
         onBarcodeScanned={scanMode === 'barcode' && !scanned ? handleBarcodeScanned : undefined}
@@ -614,19 +608,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </View>
       ) : null}
 
-      {scanMode === 'label' && !capturedPhoto && !labelProcessing && !manualEntryVisible ? (
-        <View pointerEvents="none" style={StyleSheet.absoluteFill} className="justify-center items-center">
-          <View style={{ width: LABEL_GUIDE_WIDTH, height: LABEL_GUIDE_HEIGHT, marginBottom: GUIDE_BOTTOM_MARGIN }}>
-            <View style={{ ...CORNER_STYLE, top: 0, left: 0, borderTopWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderTopLeftRadius: 4 }} />
-            <View style={{ ...CORNER_STYLE, top: 0, right: 0, borderTopWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderTopRightRadius: 4 }} />
-            <View style={{ ...CORNER_STYLE, bottom: 0, left: 0, borderBottomWidth: CORNER_BORDER, borderLeftWidth: CORNER_BORDER, borderBottomLeftRadius: 4 }} />
-            <View style={{ ...CORNER_STYLE, bottom: 0, right: 0, borderBottomWidth: CORNER_BORDER, borderRightWidth: CORNER_BORDER, borderBottomRightRadius: 4 }} />
-            <Text className="text-white/90 text-xs text-center" style={{ position: 'absolute', bottom: -24, left: 0, right: 0 }}>
-              Fit the nutrition label inside the frame
-            </Text>
-          </View>
-        </View>
-      ) : null}
 
       <View
         className="absolute left-4 right-4 flex-row justify-between items-center"
@@ -662,8 +643,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       ) : null}
 
       {capturedPhoto && !labelProcessing ? (
-        <View className="absolute inset-0">
-          <Image source={{ uri: capturedPhoto.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <View className="absolute inset-0 bg-black">
+          <Image source={{ uri: capturedPhoto.uri }} style={StyleSheet.absoluteFill} resizeMode="contain" />
           <View className="absolute bottom-12 left-4 right-4 flex-row gap-3" style={{ paddingBottom: insets.bottom }}>
             <TouchableOpacity
               onPress={handleRetake}
