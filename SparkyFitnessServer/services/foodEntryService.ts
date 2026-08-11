@@ -14,6 +14,7 @@ import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 import Papa from 'papaparse';
 import { isDayString } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
+import { removeOrphanedImages } from '../middleware/imageUpload.js';
 import express from 'express';
 // Helper functions (already defined)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -824,6 +825,22 @@ async function updateFoodEntry(
     if (!updatedEntry) {
       throw new Error('Food entry not found or not authorized to update.');
     }
+
+    // Replacing or clearing the per-entry override photo leaves the previous
+    // upload orphaned. Best-effort: the row already reflects the new value.
+    if (
+      entryData.image_url !== undefined &&
+      existingEntry.image_url &&
+      existingEntry.image_url !== updatedEntry.image_url
+    ) {
+      await removeOrphanedImages(
+        [existingEntry.image_url],
+        updatedEntry.image_url ? [updatedEntry.image_url] : []
+      ).catch((unlinkError) =>
+        log('warn', 'Error removing replaced food entry image:', unlinkError)
+      );
+    }
+
     return updatedEntry;
   } catch (error) {
     log(

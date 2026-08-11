@@ -5,6 +5,12 @@ import foodEntryService from '../services/foodEntryService.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import { isEntryTimeString } from '@workspace/shared';
+import {
+  uploadSingleImage,
+  finalizeUploadedImages,
+  cleanupStagedImages,
+  stagedFilesFrom,
+} from '../middleware/imageUpload.js';
 const router = express.Router();
 router.use(express.json());
 // Apply diary permission check to all food entry routes
@@ -997,4 +1003,113 @@ router.get(
     }
   }
 );
+
+/**
+ * @swagger
+ * /food-entries/{id}/image:
+ *   post:
+ *     summary: Set the per-entry override photo for a diary entry
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Uploads a photo that applies only to this diary entry. It never changes
+ *       the underlying food's or meal's own images; entries without an override
+ *       fall back to those at display time.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: The updated food entry.
+ *       400:
+ *         description: No image supplied.
+ *       403:
+ *         description: User does not have permission to manage this diary.
+ */
+router.post(
+  '/:id/image',
+  authenticate,
+  uploadSingleImage,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: 'Food entry ID is required.' });
+    }
+    try {
+      const [uploadedPath] = await finalizeUploadedImages(
+        stagedFilesFrom(req),
+        'food_entries',
+        id
+      );
+      if (!uploadedPath) {
+        return res.status(400).json({ error: 'An image file is required.' });
+      }
+
+      // updateFoodEntry unlinks the image this one replaces.
+      const updatedEntry = await foodEntryService.updateFoodEntry(
+        req.userId,
+        req.originalUserId || req.userId,
+        id,
+        { image_url: uploadedPath }
+      );
+
+      res.status(200).json(updatedEntry);
+    } catch (error) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    } finally {
+      await cleanupStagedImages(req);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /food-entries/{id}/image:
+ *   delete:
+ *     summary: Clear a diary entry's override photo
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Removes the entry-specific photo so the entry falls back to the parent
+ *       food's or meal's own image. The parent is never modified.
+ *     responses:
+ *       200:
+ *         description: The updated food entry.
+ */
+router.delete('/:id/image', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Food entry ID is required.' });
+  }
+  try {
+    // An empty string clears the column; undefined would mean "leave as is".
+    // updateFoodEntry unlinks the file that was cleared.
+    const updatedEntry = await foodEntryService.updateFoodEntry(
+      req.userId,
+      req.originalUserId || req.userId,
+      id,
+      { image_url: '' }
+    );
+
+    res.status(200).json(updatedEntry);
+  } catch (error) {
+    // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error.message.startsWith('Forbidden')) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      return res.status(403).json({ error: error.message });
+    }
+    next(error);
+  }
+});
+
 export default router;

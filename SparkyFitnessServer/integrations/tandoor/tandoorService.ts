@@ -13,6 +13,11 @@ export interface TandoorPropertyType {
 export interface TandoorRecipe {
   id: number;
   name: string;
+  /**
+   * Recipe photo. Tandoor returns either an absolute URL or an instance-
+   * relative media path depending on its storage backend.
+   */
+  image?: string | null;
   source_url?: string | null;
   servings?: number | string | null;
   servings_text?: string[] | null;
@@ -87,6 +92,7 @@ export interface SparkyFoodMapping {
     provider_external_id: string;
     provider_type: string;
     is_quick_food: boolean;
+    image_url: string | null;
   };
   variant: {
     serving_size: number;
@@ -737,6 +743,13 @@ class TandoorService {
         provider_external_id: tandoorRecipe.id.toString(), // Use Tandoor's ID as external ID
         provider_type: 'tandoor',
         is_quick_food: false,
+        // Hotlinked in search results; localized on import. Relative media
+        // paths are resolved against the configured instance URL.
+        image_url: tandoorRecipe.image
+          ? tandoorRecipe.image.startsWith('http')
+            ? tandoorRecipe.image
+            : `${this.baseUrl}${tandoorRecipe.image.startsWith('/') ? '' : '/'}${tandoorRecipe.image}`
+          : null,
       },
       variant: {
         // Food variants represent one serving.

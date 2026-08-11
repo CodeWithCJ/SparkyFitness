@@ -234,10 +234,10 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
-         source, source_id, entry_time
+         source, source_id, entry_time, image_url
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -321,6 +321,7 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
         entryData.source ?? null,
         entryData.source_id ?? null,
         entryData.entry_time ?? null,
+        entryData.image_url ?? null,
       ]
     );
     await client.query('COMMIT');
@@ -468,7 +469,14 @@ async function updateFoodEntry(
         custom_nutrients = $29,
         allergens = $32,
         traces = $33,
-        entry_time = $34
+        entry_time = $34,
+        -- NULL means "key omitted": keep whatever override is already stored.
+        -- Clearing the override is done by sending an empty string.
+        image_url = CASE
+          WHEN $35::text IS NULL THEN image_url
+          WHEN $35::text = '' THEN NULL
+          ELSE $35::text
+        END
       WHERE id = $30
       RETURNING *`,
       [
@@ -506,6 +514,7 @@ async function updateFoodEntry(
         snapshotData.allergens ?? null,
         snapshotData.traces ?? null,
         entryData.entry_time ?? null,
+        entryData.image_url ?? null,
       ]
     );
     return result.rows[0];
@@ -557,7 +566,11 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
         fe.source,
         COALESCE(fe.allergens, fv.allergens) AS allergens,
         COALESCE(fe.traces, fv.traces) AS traces,
-        f.provider_verified
+        f.provider_verified,
+        -- Per-entry override photo, plus the parent food's own images so the
+        -- diary can fall back when the entry has no override of its own.
+        fe.image_url,
+        f.images AS food_images
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
@@ -619,7 +632,11 @@ async function getFoodEntriesByDateAndMealType(
         fe.iron,
         fe.glycemic_index,
         fe.custom_nutrients,
-        f.provider_verified
+        f.provider_verified,
+        -- Per-entry override photo, plus the parent food's own images so the
+        -- diary can fall back when the entry has no override of its own.
+        fe.image_url,
+        f.images AS food_images
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
@@ -685,7 +702,11 @@ async function getFoodEntriesByDateRange(
         fe.iron, 
         fe.glycemic_index, 
         fe.custom_nutrients,
-        f.provider_verified
+        f.provider_verified,
+        -- Per-entry override photo, plus the parent food's own images so the
+        -- diary can fall back when the entry has no override of its own.
+        fe.image_url,
+        f.images AS food_images
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id

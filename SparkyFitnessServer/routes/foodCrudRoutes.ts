@@ -9,7 +9,20 @@ import foodPhotoEstimationService from '../services/foodPhotoEstimationService.j
 import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
 import { backfillOffAllergens } from '../utils/backfillAllergens.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
+import {
+  uploadImages,
+  finalizeUploadedImages,
+  cleanupStagedImages,
+  stagedFilesFrom,
+  parseMultipartBody,
+} from '../middleware/imageUpload.js';
 const router = express.Router();
+
+/** Reads a food payload from either a JSON body or a multipart form. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseFoodBody(req: any): Record<string, any> {
+  return parseMultipartBody(req, ['images'], 'foodData');
+}
 router.use(express.json());
 
 function getErrorMessage(error: unknown): string | null {
@@ -196,11 +209,27 @@ router.get('/', authenticate, async (req, res, next) => {
  *       403:
  *         description: User does not have permission to create a food.
  */
-router.post('/', authenticate, async (req, res, next) => {
+router.post('/', authenticate, uploadImages, async (req, res, next) => {
   try {
-    const foodData = { ...req.body, user_id: req.userId }; // Ensure user_id is set for the food
+    const foodData = { ...parseFoodBody(req), user_id: req.userId }; // Ensure user_id is set for the food
 
     const newFood = await foodService.createFood(req.userId, foodData);
+
+    // Files were staged before the food had an id; move them in now and
+    // persist the resulting web paths alongside any images already set.
+    const uploadedPaths = await finalizeUploadedImages(
+      stagedFilesFrom(req),
+      'foods',
+      newFood.id
+    );
+    if (uploadedPaths.length > 0) {
+      const merged = [...(newFood.images ?? []), ...uploadedPaths];
+      const updated = await foodService.updateFood(req.userId, newFood.id, {
+        images: merged,
+      });
+      newFood.images = updated?.images ?? merged;
+    }
+
     res.status(201).json(newFood);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -209,6 +238,8 @@ router.post('/', authenticate, async (req, res, next) => {
       return res.status(403).json({ error: error.message });
     }
     next(error);
+  } finally {
+    await cleanupStagedImages(req);
   }
 });
 /**
@@ -954,13 +985,26 @@ router.get('/:foodId', authenticate, async (req, res, next) => {
  *       404:
  *         description: Food not found or not authorized to update.
  */
-router.put('/:id', authenticate, async (req, res, next) => {
+router.put('/:id', authenticate, uploadImages, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Food ID is required.' });
   }
   try {
-    const updatedFood = await foodService.updateFood(req.userId, id, req.body);
+    const foodData = parseFoodBody(req);
+
+    // Newly uploaded files are appended to whatever images the client kept.
+    // A client that sends `images` without any files is performing a removal.
+    const uploadedPaths = await finalizeUploadedImages(
+      stagedFilesFrom(req),
+      'foods',
+      id
+    );
+    if (uploadedPaths.length > 0) {
+      foodData.images = [...(foodData.images ?? []), ...uploadedPaths];
+    }
+
+    const updatedFood = await foodService.updateFood(req.userId, id, foodData);
     res.status(200).json(updatedFood);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -974,6 +1018,8 @@ router.put('/:id', authenticate, async (req, res, next) => {
       return res.status(404).json({ error: error.message });
     }
     next(error);
+  } finally {
+    await cleanupStagedImages(req);
   }
 });
 /**

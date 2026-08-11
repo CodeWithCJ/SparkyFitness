@@ -2,7 +2,22 @@ import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import mealService from '../services/mealService.js';
 import { log } from '../config/logging.js';
+import {
+  uploadImages,
+  finalizeUploadedImages,
+  cleanupStagedImages,
+  stagedFilesFrom,
+  parseMultipartBody,
+  removeOrphanedImages,
+} from '../middleware/imageUpload.js';
 const router = express.Router();
+
+/** Reads a meal payload from either a JSON body or a multipart form. */
+function parseMealBody(req: unknown) {
+  return parseMultipartBody(req, ['images', 'foods'], 'mealData') as ReturnType<
+    typeof parseMultipartBody
+  > & { name: string; images?: string[] };
+}
 router.use(express.json());
 
 function parseRecentMealsLimit(value: unknown) {
@@ -313,13 +328,34 @@ router.delete('/plan/:id', authenticate, async (req, res, next) => {
  *       403:
  *         description: User does not have permission to create a meal.
  */
-router.post('/', authenticate, async (req, res, next) => {
+router.post('/', authenticate, uploadImages, async (req, res, next) => {
   try {
-    const newMeal = await mealService.createMeal(req.userId, req.body);
+    const newMeal = await mealService.createMeal(
+      req.userId,
+      parseMealBody(req)
+    );
+
+    // Files were staged before the meal had an id; move them in now and
+    // persist the resulting web paths alongside any images already set.
+    const uploadedPaths = await finalizeUploadedImages(
+      stagedFilesFrom(req),
+      'meals',
+      newMeal.id
+    );
+    if (uploadedPaths.length > 0) {
+      const merged = [...(newMeal.images ?? []), ...uploadedPaths];
+      const updated = await mealService.updateMeal(req.userId, newMeal.id, {
+        images: merged,
+      });
+      newMeal.images = updated?.images ?? merged;
+    }
+
     res.status(201).json(newMeal);
   } catch (error) {
     log('error', 'Error creating meal:', error);
     next(error);
+  } finally {
+    await cleanupStagedImages(req);
   }
 });
 /**
@@ -591,10 +627,40 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *       404:
  *         description: Meal not found.
  */
-router.put('/:id', authenticate, async (req, res, next) => {
+router.put('/:id', authenticate, uploadImages, async (req, res, next) => {
   try {
+    const mealData = parseMealBody(req);
+
+    // Newly uploaded files are appended to whatever images the client kept.
+    // A client that sends `images` without any files is performing a removal.
+    const uploadedPaths = await finalizeUploadedImages(
+      stagedFilesFrom(req),
+      'meals',
+      req.params.id
+    );
+    if (uploadedPaths.length > 0) {
+      const kept = Array.isArray(mealData.images) ? mealData.images : [];
+      mealData.images = [...kept, ...uploadedPaths];
+    }
+
+    const previousImages =
+      mealData.images === undefined
+        ? null
+        : ((await mealService.getMealById(req.userId, req.params.id))?.images ??
+          []);
+
     const { confirmationMessage, ...updatedMeal } =
-      await mealService.updateMeal(req.userId, req.params.id, req.body);
+      await mealService.updateMeal(req.userId, req.params.id, mealData);
+
+    // Drop upload files the user removed. Best-effort: the database already
+    // reflects the new list, so a failed unlink must not fail the update.
+    if (previousImages) {
+      await removeOrphanedImages(previousImages, updatedMeal.images).catch(
+        (unlinkError) =>
+          log('warn', 'Error removing orphaned meal images:', unlinkError)
+      );
+    }
+
     res.status(200).json({ ...updatedMeal, confirmationMessage });
   } catch (error) {
     log('error', `Error updating meal ${req.params.id}:`, error);
@@ -609,6 +675,8 @@ router.put('/:id', authenticate, async (req, res, next) => {
       return res.status(403).json({ error: error.message });
     }
     next(error);
+  } finally {
+    await cleanupStagedImages(req);
   }
 });
 /**

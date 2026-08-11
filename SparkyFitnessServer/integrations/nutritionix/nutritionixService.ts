@@ -71,6 +71,8 @@ async function getNutritionixNutrients(query: any, providerId: any) {
         fat: food.nf_total_fat,
         serving_size: food.serving_qty,
         serving_unit: food.serving_unit,
+        // Hotlinked in search results; localized on import (models/food.ts).
+        image_url: food.photo?.highres || food.photo?.thumb || null,
         saturated_fat: food.nf_saturated_fat,
         polyunsaturated_fat: food.nf_polyunsaturated_fat, // Assuming this exists or needs to be mapped
         monounsaturated_fat: food.nf_monounsaturated_fat, // Assuming this exists or needs to be mapped
@@ -128,6 +130,8 @@ async function getNutritionixBrandedNutrients(nixItemId: any, providerId: any) {
         fat: getNutrientValue(204), // Total Fat
         serving_size: food.serving_qty,
         serving_unit: food.serving_unit,
+        // Hotlinked in search results; localized on import (models/food.ts).
+        image_url: food.photo?.highres || food.photo?.thumb || null,
         saturated_fat: getNutrientValue(606), // Saturated Fat
         polyunsaturated_fat: getNutrientValue(646), // Polyunsaturated Fat (Commonly 646, verify with Nutritionix API docs)
         monounsaturated_fat: getNutrientValue(645), // Monounsaturated Fat (Commonly 645, verify with Nutritionix API docs)

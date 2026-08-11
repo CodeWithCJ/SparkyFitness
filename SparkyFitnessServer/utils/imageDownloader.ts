@@ -19,7 +19,13 @@ const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
   ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
   : path.join(__dirname, '../uploads');
 
-const UPLOADS_DIR = path.join(baseUploadsDir, 'exercises');
+// Domains that may own a downloaded-image subdirectory under the uploads root.
+// Kept as a closed union so a caller can never steer writes outside the base dir.
+type ImageDomain = 'exercises' | 'foods' | 'meals' | 'food_entries';
+
+function domainUploadsDir(domain: ImageDomain): string {
+  return path.join(baseUploadsDir, domain);
+}
 
 // Image URLs are externally sourced; download through the public-host guard and
 // accept only raster image types/sizes before writing under the served uploads dir.
@@ -83,9 +89,9 @@ function resolveImageFileName(imageUrl: string, contentType: string): string {
 /**
  * Ensures the upload directory exists.
  */
-async function ensureUploadsDir() {
+async function ensureUploadsDir(domain: ImageDomain) {
   try {
-    await fsp.mkdir(UPLOADS_DIR, { recursive: true });
+    await fsp.mkdir(domainUploadsDir(domain), { recursive: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log(
@@ -99,14 +105,16 @@ async function ensureUploadsDir() {
 /**
  * Downloads an image from a URL and saves it locally.
  * @param imageUrl - The URL of the image to download.
- * @param exerciseId - The ID of the exercise, used for creating a subdirectory.
+ * @param entityId - The ID of the owning entity, used for creating a subdirectory.
+ * @param domain - Which uploads subdirectory the image belongs to.
  * @returns The web-accessible path to the downloaded image.
  */
 async function downloadImage(
   imageUrl: string,
-  exerciseId: string
+  entityId: string,
+  domain: ImageDomain = 'exercises'
 ): Promise<string> {
-  await ensureUploadsDir();
+  await ensureUploadsDir(domain);
 
   try {
     const response = await fetchImageResponse(imageUrl);
@@ -121,10 +129,10 @@ async function downloadImage(
       .trim()
       .toLowerCase();
     const imageFileName = resolveImageFileName(imageUrl, contentType);
-    const exerciseUploadDir = path.join(UPLOADS_DIR, exerciseId);
-    const localImagePath = path.join(exerciseUploadDir, imageFileName);
+    const entityUploadDir = path.join(domainUploadsDir(domain), entityId);
+    const localImagePath = path.join(entityUploadDir, imageFileName);
 
-    await fsp.mkdir(exerciseUploadDir, { recursive: true });
+    await fsp.mkdir(entityUploadDir, { recursive: true });
 
     const declaredLength = Number(response.headers.get('content-length'));
     if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_BYTES) {
@@ -165,7 +173,7 @@ async function downloadImage(
       throw streamError;
     }
 
-    return `/uploads/exercises/${exerciseId}/${imageFileName}`; // Return web-accessible path
+    return `/uploads/${domain}/${entityId}/${imageFileName}`; // Return web-accessible path
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log(
@@ -176,6 +184,7 @@ async function downloadImage(
   }
 }
 export { downloadImage };
+export type { ImageDomain };
 export default {
   downloadImage,
 };

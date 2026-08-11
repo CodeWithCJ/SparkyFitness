@@ -20,6 +20,10 @@ import {
 } from '../integrations/fatsecret/fatsecretService.js';
 import { searchYazioByBarcode } from '../integrations/yazio/yazioService.js';
 import type { BulkImportFoodData } from '../models/food.js';
+import {
+  removeOrphanedImages,
+  removeEntityImageDir,
+} from '../middleware/imageUpload.js';
 
 async function searchFoods(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -224,6 +228,13 @@ async function updateFood(
         'Forbidden: You do not have permission to update this food.'
       );
     }
+    // Capture the current images so any dropped ones can be unlinked below.
+    const previousImages =
+      foodData.images === undefined
+        ? null
+        : ((await foodRepository.getFoodById(foodId, foodOwnerId))?.images ??
+          []);
+
     // Update the food's main details
     const updatedFood = await foodRepository.updateFood(foodId, foodOwnerId, {
       ...foodData,
@@ -231,6 +242,19 @@ async function updateFood(
     });
     if (!updatedFood) {
       throw new Error('Food not found or not authorized to update.');
+    }
+
+    // Drop upload files the user removed. Best-effort: a failed unlink must not
+    // fail the update, since the database already reflects the new list.
+    if (previousImages) {
+      await removeOrphanedImages(previousImages, updatedFood.images).catch(
+        (error) =>
+          log(
+            'warn',
+            `Error removing orphaned images for food ${foodId}:`,
+            error
+          )
+      );
     }
     // The food_entries table now holds the snapshot of nutrient data.
     // Updating the food or its default variant directly will not affect existing food entries.
@@ -313,6 +337,8 @@ async function deleteFood(
       if (!success) {
         throw new Error('Food not found or not authorized to delete.');
       }
+      // The row is gone; drop its uploaded images too.
+      await removeEntityImageDir('foods', foodId);
       return { message: 'Food deleted permanently.', status: 'deleted' };
     }
     // Scenario 2: References only by the current user
@@ -329,6 +355,8 @@ async function deleteFood(
         if (!success) {
           throw new Error('Food not found or not authorized to delete.');
         }
+        // The row is gone; drop its uploaded images too.
+        await removeEntityImageDir('foods', foodId);
         return {
           message: 'Food and all its references deleted permanently.',
           status: 'force_deleted',

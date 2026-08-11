@@ -32,6 +32,7 @@ interface CreateMealData {
     [key: string]: unknown;
   }>;
   user_id?: string;
+  images?: string[];
   [key: string]: unknown;
 }
 
@@ -42,6 +43,7 @@ interface UpdateMealData {
   serving_size?: unknown;
   serving_unit?: string;
   total_servings?: unknown;
+  images?: string[];
   [key: string]: unknown;
 }
 

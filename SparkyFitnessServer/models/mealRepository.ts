@@ -6,6 +6,7 @@ import {
   buildSqlSearch,
   buildSqlExactMatchOrder,
 } from '../utils/dbSearchHelper.js';
+import { localizeImages, toImageArray } from '../utils/imageLocalizer.js';
 // --- Helpers ---
 // Shared column list + joins for reading a meal's ingredient rows (meal_foods).
 // A row is polymorphic (item_type 'food' | 'meal'): food rows carry the food
@@ -118,8 +119,8 @@ async function createMeal(mealData: any) {
   try {
     await client.query('BEGIN');
     const mealResult = await client.query(
-      `INSERT INTO meals (user_id, name, description, is_public, serving_size, serving_unit, total_servings, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now()) RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, created_at, updated_at`,
+      `INSERT INTO meals (user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now(), now()) RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, created_at, updated_at`,
       [
         mealData.user_id,
         mealData.name,
@@ -128,6 +129,7 @@ async function createMeal(mealData: any) {
         mealData.serving_size,
         mealData.serving_unit,
         mealData.total_servings,
+        JSON.stringify(toImageArray(mealData.images)),
       ]
     );
     const newMeal = mealResult.rows[0];
@@ -149,6 +151,27 @@ async function createMeal(mealData: any) {
       await client.query(mealFoodsQuery);
     }
     await client.query('COMMIT');
+
+    // Pull any externally-hosted images local once the meal has an id. Runs
+    // after COMMIT so network latency never holds the transaction open.
+    try {
+      const localizedImages = await localizeImages(
+        newMeal.images,
+        newMeal.id,
+        'meals'
+      );
+      if (localizedImages) {
+        await client.query(
+          'UPDATE meals SET images = $1::jsonb WHERE id = $2',
+          [JSON.stringify(localizedImages), newMeal.id]
+        );
+        newMeal.images = localizedImages;
+      }
+    } catch (imageError) {
+      // The meal is already committed; keep it and leave the remote URLs.
+      log('warn', 'Error localizing meal images:', imageError);
+    }
+
     return newMeal;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -163,7 +186,7 @@ async function getMeals(userId: any, filter = 'all') {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
-      SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, created_at, updated_at
+      SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, created_at, updated_at
       FROM meals
       WHERE 1=1`; // Start with a true condition to easily append AND clauses
     const queryParams = [];
@@ -210,7 +233,7 @@ async function searchMeals(
     }
 
     let query = `
-      SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings
+      SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images
       FROM meals
       ${whereSql}
       ORDER BY ${orderClause}`;
@@ -231,7 +254,7 @@ async function getMealById(mealId: any, userId: any) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const mealResult = await client.query(
-      `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, created_at, updated_at
+      `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, created_at, updated_at
        FROM meals WHERE id = $1`,
       [mealId]
     );
@@ -257,9 +280,10 @@ async function updateMeal(mealId: any, userId: any, updateData: any) {
         serving_size = COALESCE($4, serving_size),
         serving_unit = COALESCE($5, serving_unit),
         total_servings = COALESCE($6, total_servings),
+        images = COALESCE($7::jsonb, images),
         updated_at = now()
-       WHERE id = $7
-       RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, created_at, updated_at`,
+       WHERE id = $8
+       RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, created_at, updated_at`,
       [
         updateData.name,
         updateData.description,
@@ -267,6 +291,10 @@ async function updateMeal(mealId: any, userId: any, updateData: any) {
         updateData.serving_size,
         updateData.serving_unit,
         updateData.total_servings,
+        // undefined => key omitted => leave images untouched
+        updateData.images === undefined
+          ? null
+          : JSON.stringify(toImageArray(updateData.images)),
         mealId,
       ]
     );
@@ -598,6 +626,7 @@ async function getRecentMeals(userId: any, limit = 3) {
         m.serving_size,
         m.serving_unit,
         m.total_servings,
+        m.images,
         m.created_at,
         m.updated_at,
         lu.last_used_date
@@ -650,6 +679,7 @@ async function getTopMeals(userId: any, limit = 3) {
         m.serving_size,
         m.serving_unit,
         m.total_servings,
+        m.images,
         m.created_at,
         m.updated_at,
         COUNT(*) AS usage_count
@@ -910,7 +940,7 @@ async function getPublicMeals(userId: any) {
   const client = await getClient(userId); // User-specific operation for RLS
   try {
     const result =
-      await client.query(`SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, created_at, updated_at
+      await client.query(`SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, created_at, updated_at
        FROM meals
        WHERE is_public = TRUE
        ORDER BY name ASC`);
@@ -929,7 +959,7 @@ async function getFamilyMeals(userId: any) {
     // For now, let's assume it fetches meals shared with the user via family access.
     // This might need to be refined based on actual family sharing implementation.
     const result = await client.query(
-      `SELECT m.id, m.user_id, m.name, m.description, m.is_public, m.serving_size, m.serving_unit, m.total_servings, m.created_at, m.updated_at
+      `SELECT m.id, m.user_id, m.name, m.description, m.is_public, m.serving_size, m.serving_unit, m.total_servings, m.images, m.created_at, m.updated_at
        FROM meals m
        JOIN family_access fa ON m.user_id = fa.owner_user_id
        WHERE fa.family_user_id = $1 AND fa.is_active = TRUE
@@ -956,6 +986,7 @@ async function getFavoriteMeals(userId: any) {
         m.serving_size,
         m.serving_unit,
         m.total_servings,
+        m.images,
         m.created_at,
         m.updated_at,
         ff.created_at AS favorited_at

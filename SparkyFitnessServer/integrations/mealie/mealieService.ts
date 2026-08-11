@@ -20,6 +20,13 @@ interface MealieRecipe {
   name: string;
   orgURL?: string;
   slug: string;
+  /** Mealie's recipe UUID; needed to build the media image URL. */
+  id?: string;
+  /**
+   * Truthy when the recipe has an uploaded photo. Mealie stores the image
+   * under a predictable media path rather than returning a URL directly.
+   */
+  image?: string | null;
   recipeServings?: number;
   recipeYield?: string;
   nutrition?: MealieNutrition;
@@ -190,6 +197,12 @@ class MealieService {
         provider_external_id: mealieRecipe.slug, // Use Mealie's slug as external ID
         provider_type: 'mealie',
         is_quick_food: false,
+        // Mealie serves recipe photos from a fixed media path keyed by recipe
+        // UUID. Hotlinked in search results; localized on import.
+        image_url:
+          mealieRecipe.image && mealieRecipe.id
+            ? `${this.baseUrl}/api/media/recipes/${mealieRecipe.id}/images/original.webp`
+            : null,
       },
       variant: {
         serving_size: defaultServing,
