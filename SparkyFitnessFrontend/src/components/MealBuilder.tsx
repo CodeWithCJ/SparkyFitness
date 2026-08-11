@@ -41,6 +41,7 @@ import {
   useUpdateFoodEntryMealMutation,
 } from '@/hooks/Diary/useFoodEntries';
 import { Textarea } from '@/components/ui/textarea';
+import { FoodImagePicker } from './FoodSearch/FoodImagePicker';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface MealBuilderProps {
@@ -126,6 +127,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     [quickInfoPreferences]
   );
   const [mealName, setMealName] = useState('');
+  // Saved image paths the user is keeping, and files staged for this save.
+  const [mealImages, setMealImages] = useState<string[]>([]);
+  const [newMealImageFiles, setNewMealImageFiles] = useState<File[]>([]);
   const [mealDescription, setMealDescription] = useState('');
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(initialEntryTime) || ''
@@ -223,6 +227,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           );
           if (meal) {
             setMealName(isDuplicate ? `${meal.name} ${copySuffix}` : meal.name);
+            setMealImages(meal.images ?? []);
             setMealDescription(meal.description || '');
             // A duplicate is always a fresh private meal owned by the current
             // user, even when cloning a Public, Family, or System meal.
@@ -332,6 +337,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           const meal = await queryClient.fetchQuery(mealViewOptions(mealId));
           if (meal) {
             setMealName(meal.name);
+            setMealImages(meal.images ?? []);
             setMealDescription(meal.description || '');
             setIsPublic(false); // Logged meals are personal copies
             // Prefill Quantity Consumed with one serving's worth (meal.serving_size).
@@ -738,6 +744,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         serving_size: persistedServingSize,
         serving_unit: servingUnit,
         total_servings: persistedTotalServings,
+        images: mealImages,
         foods: mealFoods.map((mf) => ({
           item_type: mf.item_type || 'food',
           food_id: mf.food_id,
@@ -772,10 +779,19 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
       try {
         if (mealId) {
-          await updateMeal({ mealId, mealPayload: mealData });
+          await updateMeal({
+            mealId,
+            mealPayload: mealData,
+            imageFiles: newMealImageFiles,
+          });
         } else {
-          await createMeal({ mealPayload: mealData });
+          await createMeal({
+            mealPayload: mealData,
+            imageFiles: newMealImageFiles,
+          });
         }
+        // The save consumed the staged files.
+        setNewMealImageFiles([]);
         onSave?.();
       } catch (err) {
         error(loggingLevel, 'Error saving meal:', err);
@@ -923,6 +939,16 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           disabled={source === 'food-diary'} // Disable description editing for food diary entries
         />
       </div>
+      {source !== 'food-diary' && (
+        <FoodImagePicker
+          idPrefix="meal"
+          existingImages={mealImages}
+          onExistingImagesChange={setMealImages}
+          newFiles={newMealImageFiles}
+          onNewFilesChange={setNewMealImageFiles}
+          labelText={t('mealBuilder.mealImages', 'Images')}
+        />
+      )}
       <div className="flex items-center space-x-2">
         <Checkbox
           id="isPublic"

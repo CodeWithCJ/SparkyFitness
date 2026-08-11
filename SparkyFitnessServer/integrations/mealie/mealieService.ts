@@ -197,9 +197,20 @@ class MealieService {
         provider_external_id: mealieRecipe.slug, // Use Mealie's slug as external ID
         provider_type: 'mealie',
         is_quick_food: false,
-        // Mealie serves recipe photos from a fixed media path keyed by recipe
-        // UUID. Hotlinked in search results; localized on import.
+        // Mealie serves recipe photos from a fixed, unauthenticated media path
+        // keyed by recipe UUID (GET /api/media/recipes/{id}/images/{ImageType},
+        // where ImageType is original|min-original|tiny-original .webp).
+        //
+        // Search results hotlink the minified file to keep a results page
+        // cheap, but only `original.webp` is written on upload — the smaller
+        // sizes come from a separate minification pass that can be missing on
+        // older recipes. So the full-size URL rides along as the fallback the
+        // UI swaps to on error, and as the copy we archive on import.
         image_url:
+          mealieRecipe.image && mealieRecipe.id
+            ? `${this.baseUrl}/api/media/recipes/${mealieRecipe.id}/images/min-original.webp`
+            : null,
+        image_source_url:
           mealieRecipe.image && mealieRecipe.id
             ? `${this.baseUrl}/api/media/recipes/${mealieRecipe.id}/images/original.webp`
             : null,

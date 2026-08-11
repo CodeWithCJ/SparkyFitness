@@ -356,6 +356,10 @@ export function useCustomFoodForm({
   const [savedFoodResult, setSavedFoodResult] = useState<Food | null>(null);
   const [showBarcodeConflictConfirmation, setShowBarcodeConflictConfirmation] =
     useState(false);
+  // Saved image paths the user is keeping, and files staged for this save.
+  // Tracked separately so the server can tell "keep these" from "add those".
+  const [images, setImages] = useState<string[]>([]);
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [barcodeConflictFoodName, setBarcodeConflictFoodName] = useState('');
   const [formData, setFormData] = useState({
     name: '',
@@ -440,6 +444,8 @@ export function useCustomFoodForm({
 
   const resetForm = useCallback(() => {
     setFormData({ name: '', brand: '', is_quick_food: false, barcode: '' });
+    setImages([]);
+    setNewImageFiles([]);
     const defaultVariant = createDefaultFormVariant(customNutrients);
     const grouped = groupEquivalentVariants([defaultVariant]);
     initializeVariantState(grouped, {
@@ -528,6 +534,8 @@ export function useCustomFoodForm({
         is_quick_food: food.is_quick_food || false,
         barcode: food.barcode || '',
       });
+      setImages(food.images ?? []);
+      setNewImageFiles([]);
 
       if (food.variants && food.variants.length > 0) {
         const mapped = food.variants.map((v) =>
@@ -1135,6 +1143,7 @@ export function useCustomFoodForm({
         provider_external_id: food?.provider_external_id,
         provider_type: food?.provider_type,
         provider_verified: food?.provider_verified,
+        images,
       };
 
       const expandedVariants: FormFoodVariant[] = [];
@@ -1161,7 +1170,13 @@ export function useCustomFoodForm({
         variants: expandedVariants.map(formVariantToFoodVariant),
         userId: user.id,
         foodId: food?.id,
+        imageFiles: newImageFiles,
       });
+
+      // The save consumed the staged files; the server echoes back the final
+      // list including their new upload paths.
+      setNewImageFiles([]);
+      setImages(savedFood.images ?? []);
 
       if (food?.id && user?.id === food.user_id) {
         setSavedFoodResult(savedFood);
@@ -1175,7 +1190,17 @@ export function useCustomFoodForm({
     } finally {
       setLoading(false);
     }
-  }, [food, formData, onSave, resetForm, saveFood, user, variants]);
+  }, [
+    food,
+    formData,
+    images,
+    newImageFiles,
+    onSave,
+    resetForm,
+    saveFood,
+    user,
+    variants,
+  ]);
 
   const handleBarcodeConflictConfirm = async () => {
     setShowBarcodeConflictConfirmation(false);
@@ -1266,6 +1291,10 @@ export function useCustomFoodForm({
     applyAiEstimate,
     handleSubmit,
     handleSyncConfirmation,
+    images,
+    setImages,
+    newImageFiles,
+    setNewImageFiles,
     showBarcodeConflictConfirmation,
     setShowBarcodeConflictConfirmation,
     barcodeConflictFoodName,

@@ -1686,7 +1686,19 @@
       "calcium": "calcium"
     },
     "of": "of",
-    "over": "over"
+    "over": "over",
+    "entryPhoto": "Photo for this entry",
+    "entryPhotoAlt": "Diary entry photo",
+    "addEntryPhoto": "Add photo",
+    "replaceEntryPhoto": "Replace photo",
+    "removeEntryPhoto": "Remove photo",
+    "entryPhotoOverrideHint": "This photo applies to this entry only.",
+    "entryPhotoInheritedHint": "Showing the food's own image.",
+    "entryPhotoEmptyHint": "Add a photo of what you actually ate.",
+    "entryImageUploadFailedTitle": "Upload failed",
+    "entryImageUploadFailed": "Could not save the photo for this entry.",
+    "entryImageRemoveFailedTitle": "Remove failed",
+    "entryImageRemoveFailed": "Could not remove the photo for this entry."
   },
   "nutrientGoalDirection": {
     "min": "Min",
@@ -2073,7 +2085,8 @@
     "addFoodButton": "Add Food",
     "addFoodToMealDialogTitle": "Add Food to Meal",
     "addFoodToMealDialogDescription": "Search for a food to add to this meal.",
-    "saveMealButton": "Save Meal"
+    "saveMealButton": "Save Meal",
+    "mealImages": "Images"
   },
   "mealPlanCalendar": {
     "title": "Meal Plan",
@@ -3162,5 +3175,12 @@
     "none": "None",
     "confirmMapping": "Confirm",
     "cancel": "Cancel"
+  },
+  "food": {
+    "imagesLabel": "Images",
+    "imagesLimitReached": "Maximum of {{count}} images reached.",
+    "imagePreviewAlt": "Food image {{number}}",
+    "newImagePreviewAlt": "New image {{number}}",
+    "removeImage": "Remove image"
   }
 }

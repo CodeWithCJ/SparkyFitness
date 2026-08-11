@@ -278,3 +278,30 @@ export const copyFoodEntriesToUser = async (
   });
   return response;
 };
+
+/**
+ * Sets the per-entry override photo for a diary entry.
+ *
+ * This applies only to the given entry — it never modifies the underlying
+ * food's or meal's own images. Entries without an override fall back to those
+ * at display time.
+ */
+export const setFoodEntryImage = async (
+  entryId: string,
+  imageFile: File
+): Promise<FoodEntry> => {
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  return await apiCall(`/food-entries/${entryId}/image`, {
+    method: 'POST',
+    body: formData,
+    isFormData: true,
+  });
+};
+
+/** Clears a diary entry's override photo, restoring the food/meal fallback. */
+export const clearFoodEntryImage = async (
+  entryId: string
+): Promise<FoodEntry> => {
+  return await apiCall(`/food-entries/${entryId}/image`, { method: 'DELETE' });
+};

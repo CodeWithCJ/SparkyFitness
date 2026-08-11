@@ -60,6 +60,7 @@ import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import AllergenBadges from '@/components/AllergenBadges';
+import { diaryEntryImageSrc } from '@/utils/foodImages';
 
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
 
@@ -380,6 +381,10 @@ const MealCard = ({
                 const entryIsHighlighted =
                   'food_id' in item &&
                   (item as FoodEntry).food_id === highlightFoodId;
+                // Per-entry override photo, else the parent food's own image.
+                const entryImageSrc = isFoodEntry
+                  ? diaryEntryImageSrc(item as FoodEntry)
+                  : null;
 
                 // Determine glycemic index directly from the entryNutrition object
                 const giValue: GlycemicIndex | undefined | null =
@@ -604,6 +609,18 @@ const MealCard = ({
                       entryIsHighlighted && 'border-2 border-blue-500'
                     )}
                   >
+                    {entryImageSrc && (
+                      <img
+                        src={entryImageSrc}
+                        alt={entryName ?? ''}
+                        className="w-12 h-12 flex-shrink-0 object-cover rounded-md"
+                        loading="lazy"
+                        onError={(e) => {
+                          // A dead provider link shouldn't leave a broken icon.
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    )}
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                         <span className="font-medium">{entryName}</span>

@@ -7,8 +7,33 @@ import type {
   MealFilter,
 } from '@/types/meal';
 
-export const createMeal = async (mealData: MealPayload): Promise<Meal> => {
-  return await apiCall(`/meals`, { method: 'POST', body: mealData });
+/**
+ * Wraps a meal payload for transport. When the user attached image files the
+ * request has to be multipart, so the JSON payload rides along in a `mealData`
+ * field (the server's parseMealBody unwraps it) and each file is appended
+ * under `images`. Without files we keep sending plain JSON.
+ */
+const buildMealRequest = (
+  payload: Partial<MealPayload>,
+  imageFiles?: File[]
+) => {
+  if (!imageFiles || imageFiles.length === 0) {
+    return { body: payload };
+  }
+  const formData = new FormData();
+  formData.append('mealData', JSON.stringify(payload));
+  imageFiles.forEach((file) => formData.append('images', file));
+  return { body: formData, isFormData: true as const };
+};
+
+export const createMeal = async (
+  mealData: MealPayload,
+  imageFiles?: File[]
+): Promise<Meal> => {
+  return await apiCall(`/meals`, {
+    method: 'POST',
+    ...buildMealRequest(mealData, imageFiles),
+  });
 };
 
 interface MealParams {
@@ -53,9 +78,13 @@ export const getTopMeals = async (limit = 3): Promise<Meal[]> => {
 
 export const updateMeal = async (
   mealId: string,
-  mealData: Partial<MealPayload>
+  mealData: Partial<MealPayload>,
+  imageFiles?: File[]
 ): Promise<Meal> => {
-  return await apiCall(`/meals/${mealId}`, { method: 'PUT', body: mealData });
+  return await apiCall(`/meals/${mealId}`, {
+    method: 'PUT',
+    ...buildMealRequest(mealData, imageFiles),
+  });
 };
 
 export const deleteMeal = async (

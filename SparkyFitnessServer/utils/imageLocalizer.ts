@@ -19,21 +19,27 @@ function isRemoteImage(image: string): boolean {
 }
 
 /**
- * Resolves the images for a food/meal payload.
+ * Resolves the images to persist for a food/meal payload.
  *
  * Provider adapters surface a single `image_url`, while the stored column is an
- * array. An explicit `images` array always wins; `image_url` is the fallback so
- * every provider import lands its photo without each adapter reshaping it.
+ * array. An explicit `images` array always wins.
+ *
+ * Some providers serve more than one size of the same photo. Those set
+ * `image_url` to the small variant used for search-result thumbnails, and
+ * `image_source_url` to the full-size original. We archive the original, so
+ * `image_source_url` is preferred here even though the UI hotlinks the smaller
+ * one before import.
  */
 function resolveImageInput(payload: {
   images?: unknown;
   image_url?: unknown;
+  image_source_url?: unknown;
 }): string[] {
   const images = toImageArray(payload?.images);
   if (images.length > 0) {
     return images;
   }
-  const single = payload?.image_url;
+  const single = payload?.image_source_url ?? payload?.image_url;
   return typeof single === 'string' && single.length > 0 ? [single] : [];
 }
 

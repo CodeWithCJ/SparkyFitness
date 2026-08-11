@@ -236,7 +236,9 @@ describe('MealBuilder', () => {
 
     await waitFor(() => {
       expect(mockCreateMeal).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'My Meal' })
+        expect.objectContaining({ name: 'My Meal' }),
+        // No image files staged in this flow.
+        []
       );
     });
 
@@ -274,7 +276,9 @@ describe('MealBuilder', () => {
     await waitFor(() => {
       expect(mockUpdateMeal).toHaveBeenCalledWith(
         'meal1',
-        expect.objectContaining({ name: 'Updated' })
+        expect.objectContaining({ name: 'Updated' }),
+        // No image files staged in this flow.
+        []
       );
     });
 
@@ -403,7 +407,9 @@ describe('MealBuilder', () => {
           serving_unit: 'serving',
           serving_size: 1,
           total_servings: 8,
-        })
+        }),
+        // No image files staged in this flow.
+        []
       );
     });
   });

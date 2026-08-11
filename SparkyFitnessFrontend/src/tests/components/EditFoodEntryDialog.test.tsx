@@ -54,6 +54,15 @@ jest.mock('@/hooks/Diary/useFoodEntries', () => ({
   useUpdateFoodEntryMutation: () => ({
     mutateAsync: mockUpdateFoodEntry,
   }),
+  // Used by the per-entry photo override control.
+  useSetFoodEntryImageMutation: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
+  useClearFoodEntryImageMutation: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
 }));
 
 jest.mock('@/pages/Diary/NutrientsGrid', () => ({

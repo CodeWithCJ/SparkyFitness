@@ -22,6 +22,7 @@ import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import { UNIT_GROUPS } from '@/constants/foodForm';
 import { deriveSavedAiUnits } from '@/utils/foodAiUnits';
 import { getConversionFactor } from '@workspace/shared';
+import { FoodImagePicker } from './FoodImagePicker';
 
 interface CustomFoodFormProps {
   onSave: (foodData: Food) => void;
@@ -81,6 +82,10 @@ const CustomFoodForm = ({
     setShowBarcodeConflictConfirmation,
     barcodeConflictFoodName,
     handleBarcodeConflictConfirm,
+    images,
+    setImages,
+    newImageFiles,
+    setNewImageFiles,
   } = useCustomFoodForm({
     food,
     initialVariants,
@@ -218,6 +223,16 @@ const CustomFoodForm = ({
                   Standard barcodes are 8 to 14 digits.
                 </p>
               </div>
+            </div>
+
+            <div className="pt-2">
+              <FoodImagePicker
+                idPrefix="custom-food"
+                existingImages={images}
+                onExistingImagesChange={setImages}
+                newFiles={newImageFiles}
+                onNewFilesChange={setNewImageFiles}
+              />
             </div>
 
             <div className="flex items-center space-x-2 pt-2">

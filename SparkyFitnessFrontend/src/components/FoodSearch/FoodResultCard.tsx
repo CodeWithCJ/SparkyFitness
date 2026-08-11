@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { formatServingLabel } from '@/utils/foodServing';
+import { resolveFoodImageSrc, primaryImageOf } from '@/utils/foodImages';
 import {
   CONFIDENCE_TONES,
   OVERALL_CONFIDENCE_LABELS,
@@ -42,6 +43,10 @@ interface FoodResultCardProps {
   // When set, the provider badge is tinted with this colour (used by the All
   // Providers "Top Matches" section to tell sources apart at a glance).
   providerBadgeColor?: string;
+  /**
+   * Explicit image override. Provider search results pass the upstream URL
+   * here; local foods and meals fall back to their own stored `images`.
+   */
   imageUrl?: string;
   nutrientConfig: NutrientGridConfig;
   onCardClick?: () => void;
@@ -68,6 +73,16 @@ const FoodResultCard = ({
   const { activeUserId } = useActiveUser();
   const isFood = !isMeal;
   const foodItem = item as Food;
+  // Provider results carry a single upstream `image_url`; imported foods and
+  // meals carry an `images` array. resolveFoodImageSrc handles both absolute
+  // provider URLs and server-relative upload paths.
+  const resolvedImageSrc =
+    resolveFoodImageSrc(imageUrl) ??
+    primaryImageOf(item) ??
+    resolveFoodImageSrc(foodItem.image_url);
+  // Providers that serve a small and a full-size variant give us both; if the
+  // small one is missing upstream, swap to the full size before giving up.
+  const fallbackImageSrc = resolveFoodImageSrc(foodItem.image_source_url);
   const mealItem = item as Meal;
   // Hex opacity suffixes are only valid on a full #rrggbb value; other colour
   // formats (CSS vars, named colours, #rgb) are used as-is without a tint.
@@ -175,11 +190,25 @@ const FoodResultCard = ({
             {isMeal && mealItem.description && (
               <p className="text-sm text-gray-500">{mealItem.description}</p>
             )}
-            {imageUrl && (
+            {resolvedImageSrc && (
               <img
-                src={imageUrl}
+                src={resolvedImageSrc}
                 alt={item.name}
                 className="w-16 h-16 object-cover rounded-md mr-4"
+                loading="lazy"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  // One-shot flag rather than comparing src: the browser
+                  // resolves `img.src` to an absolute URL, so a relative
+                  // fallback would never compare equal and would retry forever.
+                  if (fallbackImageSrc && !img.dataset['triedFallback']) {
+                    img.dataset['triedFallback'] = 'true';
+                    img.src = fallbackImageSrc;
+                    return;
+                  }
+                  // A dead provider link shouldn't leave a broken-image icon.
+                  img.style.display = 'none';
+                }}
               />
             )}
             {isFood && foodItem.default_variant && (

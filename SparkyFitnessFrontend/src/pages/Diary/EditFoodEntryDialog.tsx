@@ -46,6 +46,7 @@ import {
   userHourMinute,
 } from '@workspace/shared';
 import { formatServingLabel } from '@/utils/foodServing';
+import FoodEntryImageOverride from './FoodEntryImageOverride';
 
 const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
   success: 'text-emerald-600 dark:text-emerald-400',
@@ -312,6 +313,8 @@ const EditFoodEntryDialog = ({
                   </p>
                 )}
               </div>
+
+              <FoodEntryImageOverride entry={entry} />
 
               <div className="grid grid-cols-4 gap-4">
                 <div>

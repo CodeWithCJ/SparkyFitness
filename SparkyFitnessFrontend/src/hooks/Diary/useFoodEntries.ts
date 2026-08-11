@@ -20,6 +20,8 @@ import {
   DownloadDiaryExportOptions,
   copyFoodEntriesFromUser,
   copyFoodEntriesToUser,
+  setFoodEntryImage,
+  clearFoodEntryImage,
   type CopyFoodEntriesFromUserPayload,
   type CopyFoodEntriesToUserPayload,
   importFoodDiaryEntriesFromCsv,
@@ -320,6 +322,47 @@ export const useCopyFoodEntriesToUserMutation = () => {
       errorMessage: t(
         'diary.copyFamilyToError',
         'Failed to copy entries to family.'
+      ),
+    },
+  });
+};
+
+/**
+ * Sets a diary entry's per-entry override photo.
+ *
+ * The photo applies to this entry only and never modifies the underlying food
+ * or meal; entries without one fall back to the food's own image.
+ */
+export const useSetFoodEntryImageMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ entryId, file }: { entryId: string; file: File }) =>
+      setFoodEntryImage(entryId, file),
+    onSuccess: () => invalidate(),
+    meta: {
+      errorMessage: t(
+        'diary.entryImageUploadFailed',
+        'Could not save the photo for this entry.'
+      ),
+    },
+  });
+};
+
+/** Clears a diary entry's override photo, restoring the food/meal fallback. */
+export const useClearFoodEntryImageMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ entryId }: { entryId: string }) =>
+      clearFoodEntryImage(entryId),
+    onSuccess: () => invalidate(),
+    meta: {
+      errorMessage: t(
+        'diary.entryImageRemoveFailed',
+        'Could not remove the photo for this entry.'
       ),
     },
   });
