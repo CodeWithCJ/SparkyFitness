@@ -385,7 +385,7 @@ describe('Android widget localization contract', () => {
       // Rows stay inline: colored dot + label + value on one line.
       expect(src).toMatch(/R\.string\.widget_grams/);
       // Actions are gated by ONE simple height threshold (expansion feature).
-      expect(src).toMatch(/val showActions = size\.height >= 170\.dp/);
+      expect(src).toMatch(/val showActions = size\.height >= 190\.dp/);
       expect(src).toMatch(/if \(showActions\) \{/);
     });
 

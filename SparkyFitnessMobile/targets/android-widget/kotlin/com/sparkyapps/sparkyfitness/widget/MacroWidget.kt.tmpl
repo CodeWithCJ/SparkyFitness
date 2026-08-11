@@ -87,8 +87,10 @@ class MacroWidget : GlanceAppWidget() {
         val size = LocalSize.current
         val wide = size.width >= 210.dp
         // Actions are an expansion feature: the classic default 2x2 footprint
-        // renders header + macros only. One threshold keeps this simple.
-        val showActions = size.height >= 170.dp
+        // renders header + macros only. One threshold keeps this simple. 190dp
+        // leaves ~162dp of content after the 14+14dp padding — enough for the
+        // kcal header, three inline macro rows and the 40dp action row.
+        val showActions = size.height >= 190.dp
         // Modest density adaptation only; the composition stays identical.
         val headerFontSize = if (wide) 20.sp else 14.sp
         val rowFontSize = if (wide) 14 else 12
