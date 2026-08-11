@@ -135,7 +135,7 @@ class MacroWidget : GlanceAppWidget() {
                 .clickable(actionStartActivity(openAppIntent)),
             contentAlignment = Alignment.Center,
         ) {
-            Column(modifier = GlanceModifier.fillMaxWidth()) {
+            Column(modifier = GlanceModifier.fillMaxSize()) {
                 if (heightClass == MacroHeightClass.TALL) {
                     Spacer(modifier = GlanceModifier.defaultWeight())
                 }

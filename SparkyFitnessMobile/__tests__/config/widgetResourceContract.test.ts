@@ -299,12 +299,13 @@ describe('Android widget localization contract', () => {
         'utf8',
       );
 
-      // Calorie minimums match the SHORT layout (value + progress): 56dp of
-      // height fits caption(11sp) + value(16sp) + progress(4dp) + padding.
+      // Calorie minimums match the SHORT layout (value + progress): 60dp of
+      // height fits caption(10sp) + value(15sp) + progress(3dp) + padding even
+      // at font scale 1.3.
       const calorieWidth = calorie.match(/android:minResizeWidth="(\d+)dp"/);
       const calorieHeight = calorie.match(/android:minResizeHeight="(\d+)dp"/);
       expect(calorieWidth?.[1]).toBe('110');
-      expect(calorieHeight?.[1]).toBe('56');
+      expect(calorieHeight?.[1]).toBe('60');
 
       // Macro minimums match the SHORT layout (inline rows only): 150dp of
       // width fits the longest inline Polish row ("Węglowodany 136 g") at
@@ -316,8 +317,18 @@ describe('Android widget localization contract', () => {
 
       // minWidth/minHeight must agree with the resize minimums so pre-31
       // devices render the same supported compact layout.
-      expect(calorie).toMatch(/android:minHeight="56dp"/);
+      expect(calorie).toMatch(/android:minHeight="60dp"/);
       expect(macro).toMatch(/android:minWidth="150dp"/);
+    });
+    it('keeps the macro column height-flexible so TALL spacing works', () => {
+      const macroSrc = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
+        'utf8',
+      );
+      // The outer macro Column must fill the available height (not just width)
+      // so the defaultWeight() spacers distribute the TALL vertical space and
+      // the action row sits at the bottom instead of hugging the content.
+      expect(macroSrc).toMatch(/Column\(modifier = GlanceModifier\.fillMaxSize\(\)\)/);
     });
 
     it('uses SizeMode.Exact with LocalSize.current in both Glance widgets', () => {
@@ -366,6 +377,16 @@ describe('Android widget localization contract', () => {
       // The kcal header is skipped when short (it would overflow 110dp).
       const headerCall = src.match(/CalorieHeader\(context = widgetContext/);
       expect(headerCall).not.toBeNull();
+    });
+
+    it('keeps the calorie SHORT typography compact for the 60dp minimum', () => {
+      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'), 'utf8');
+      // SHORT uses 10sp caption / 15sp value / 3dp progress so the composition
+      // stays inside the honest 60dp minimum at font scales 1.0-1.3.
+      expect(src).toMatch(/CalorieHeightClass\.SHORT && !wide/);
+      expect(src).toMatch(/fontSize = 10\.sp/);
+      expect(src).toMatch(/fontSize = 15\.sp/);
+      expect(src).toMatch(/height\(if \(heightClass == CalorieHeightClass\.SHORT\) 3\.dp else 8\.dp\)/);
     });
 
     it('does not lock the macro widget to a single fixed responsive breakpoint', () => {

@@ -52,7 +52,7 @@ import org.json.JSONObject
  *           (caption + value + progress + 30dp action row + vertical padding)
  *           needs ~100dp, so below that the shortcut buttons are omitted
  *           rather than clipping the primary calorie information. Fits the
- *           honest provider minimum (56dp).
+ *           honest provider minimum (60dp) at font scales 1.0-1.3.
  *   NORMAL (100..150dp): caption + value + progress + both actions.
  *   TALL   (>= 150dp): same content, vertically centered with breathing room.
  */
@@ -132,7 +132,7 @@ class CalorieWidget : GlanceAppWidget() {
                 .padding(
                     horizontal = if (wide) 12.dp else 10.dp,
                     vertical = when (heightClass) {
-                        CalorieHeightClass.SHORT -> 6.dp
+                        CalorieHeightClass.SHORT -> 5.dp
                         CalorieHeightClass.NORMAL -> 10.dp
                         CalorieHeightClass.TALL -> 12.dp
                     },
@@ -147,12 +147,14 @@ class CalorieWidget : GlanceAppWidget() {
                     // Short: value-first. The primary calorie information is
                     // never clipped to keep the shortcut buttons; actions are
                     // only rendered when the height can actually fit them.
+                    // Typography stays compact so the composition fits the
+                    // honest 60dp minimum even at font scale 1.3.
                     heightClass == CalorieHeightClass.SHORT && !wide && snapshot != null -> {
                         Text(
                             text = remainingCaption,
                             style = TextStyle(
                                 color = GlanceTheme.colors.onSurfaceVariant,
-                                fontSize = 11.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Medium,
                             ),
                             maxLines = 1,
@@ -163,7 +165,7 @@ class CalorieWidget : GlanceAppWidget() {
                             text = remainingValue,
                             style = TextStyle(
                                 color = GlanceTheme.colors.onSurface,
-                                fontSize = 16.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                             ),
                             maxLines = 1,
@@ -202,7 +204,7 @@ class CalorieWidget : GlanceAppWidget() {
                             text = remainingText,
                             style = TextStyle(
                                 color = GlanceTheme.colors.onSurface,
-                                fontSize = if (heightClass == CalorieHeightClass.SHORT) 15.sp else 18.sp,
+                                fontSize = if (heightClass == CalorieHeightClass.SHORT) 14.sp else 18.sp,
                                 fontWeight = FontWeight.Bold,
                             ),
                             maxLines = 1,
@@ -212,14 +214,14 @@ class CalorieWidget : GlanceAppWidget() {
                 }
                 Spacer(
                     modifier = GlanceModifier.height(
-                        if (heightClass == CalorieHeightClass.SHORT) 4.dp else 8.dp,
+                        if (heightClass == CalorieHeightClass.SHORT) 3.dp else 8.dp,
                     ),
                 )
                 LinearProgressIndicator(
                     progress = progress,
                     modifier = GlanceModifier
                         .fillMaxWidth()
-                        .height(if (heightClass == CalorieHeightClass.SHORT) 4.dp else 8.dp),
+                        .height(if (heightClass == CalorieHeightClass.SHORT) 3.dp else 8.dp),
                     color = GlanceTheme.colors.primary,
                     backgroundColor = GlanceTheme.colors.surfaceVariant,
                 )
