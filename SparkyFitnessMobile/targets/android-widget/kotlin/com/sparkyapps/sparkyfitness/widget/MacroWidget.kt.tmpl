@@ -49,10 +49,11 @@ import org.json.JSONObject
 
 /**
  * Height classes for the macro widget, derived from the actual layout budgets:
- *   SHORT  (< 170dp): macro rows only (inline label + value + progress). The
- *           kcal header, stacked rows and the action row need more height than
- *           the honest provider minimum (110dp), so at short heights the
- *           primary nutrition data wins and the secondary controls are omitted.
+ *   SHORT  (< 170dp): compact kcal header + all three macro rows with
+ *           progress, vertically balanced between flexible spacers. The
+ *           action row is omitted at compact heights; the provider minimum
+ *           (140dp) is sized to this block so the kcal context is never
+ *           dropped at compact sizes.
  *   NORMAL (170..250dp): header + inline/horizontal rows + both actions.
  *   TALL   (>= 250dp): header + stacked (narrow) or horizontal (wide) rows +
  *           actions with comfortable spacing.
@@ -108,11 +109,15 @@ class MacroWidget : GlanceAppWidget() {
         // or tall surfaces where there is room.
         val rowFontSize = when {
             stacked -> 13
-            short -> 12
+            short -> 11
             wide && heightClass == MacroHeightClass.NORMAL -> 13
             else -> 14
         }
-        val rowSpacing = if (heightClass == MacroHeightClass.TALL) 8 else 6
+        val rowSpacing = when {
+            heightClass == MacroHeightClass.TALL -> 8
+            short -> 3
+            else -> 6
+        }
 
         val openAppIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://"))
             .setPackage(context.packageName)
@@ -130,19 +135,33 @@ class MacroWidget : GlanceAppWidget() {
                 .appWidgetBackgroundCornerRadius()
                 .padding(
                     horizontal = if (wide) 14.dp else 12.dp,
-                    vertical = if (short) 10.dp else 12.dp,
+                    vertical = if (short) 6.dp else 12.dp,
                 )
                 .clickable(actionStartActivity(openAppIntent)),
             contentAlignment = Alignment.Center,
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
-                if (heightClass == MacroHeightClass.TALL) {
+                // SHORT and TALL are vertically balanced: the compact block
+                // (kcal header + macro rows) sits between two flexible spacers
+                // so compact content is centered, not pinned to the top.
+                if (heightClass == MacroHeightClass.TALL || short) {
                     Spacer(modifier = GlanceModifier.defaultWeight())
                 }
-                if (!short) {
-                    CalorieHeader(context = widgetContext, snapshot = snapshot, compact = !wide)
-                    Spacer(modifier = GlanceModifier.height(if (wide) 10.dp else 8.dp))
-                }
+                CalorieHeader(
+                    context = widgetContext,
+                    snapshot = snapshot,
+                    compact = !wide,
+                    extraCompact = short,
+                )
+                Spacer(
+                    modifier = GlanceModifier.height(
+                        when {
+                            short -> 4.dp
+                            wide -> 10.dp
+                            else -> 8.dp
+                        },
+                    ),
+                )
                 MacroRows(
                     context = widgetContext,
                     snapshot = snapshot,
@@ -186,8 +205,56 @@ class MacroWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun CalorieHeader(context: Context, snapshot: MacroSnapshot?, compact: Boolean) {
+    private fun CalorieHeader(
+        context: Context,
+        snapshot: MacroSnapshot?,
+        compact: Boolean,
+        extraCompact: Boolean = false,
+    ) {
         val calories = snapshot?.displayCalories
+        if (extraCompact) {
+            if (snapshot?.hasData == true && calories != null) {
+                // SHORT contract: caption ("Pozostało") above the value, both
+                // compact, so the kcal context survives the smallest supported
+                // height together with all three macro rows.
+                Text(
+                    text = context.getString(R.string.widget_kcal_left_caption),
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurfaceVariant,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    maxLines = 1,
+                    modifier = GlanceModifier.fillMaxWidth(),
+                )
+                Spacer(modifier = GlanceModifier.height(1.dp))
+                Text(
+                    text = context.getString(
+                        R.string.widget_kcal_left_value,
+                        formatInt(context, calories),
+                    ),
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                    modifier = GlanceModifier.fillMaxWidth(),
+                )
+            } else {
+                Text(
+                    text = context.getString(R.string.widget_kcal_left_empty),
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onSurface,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    maxLines = 1,
+                    modifier = GlanceModifier.fillMaxWidth(),
+                )
+            }
+            return
+        }
         if (compact && snapshot?.hasData == true && calories != null) {
             // Compact contract: caption ("Pozostało") above the value so the
             // full phrase never disappears behind an ellipsis.

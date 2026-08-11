@@ -307,18 +307,21 @@ describe('Android widget localization contract', () => {
       expect(calorieWidth?.[1]).toBe('110');
       expect(calorieHeight?.[1]).toBe('60');
 
-      // Macro minimums match the SHORT layout (inline rows only): 150dp of
-      // width fits the longest inline Polish row ("Węglowodany 136 g") at
-      // 12sp, and 110dp of height fits three inline rows + progress bars.
+      // Macro minimums match the SHORT layout (compact kcal header + three
+      // inline rows + progress): 150dp of width fits the longest inline Polish
+      // row ("Węglowodany 136 g") at 11sp, and 140dp of height fits the
+      // compact header, all three rows and progress bars at font scales up to
+      // 1.3 without dropping the kcal context.
       const macroWidth = macro.match(/android:minResizeWidth="(\d+)dp"/);
       const macroHeight = macro.match(/android:minResizeHeight="(\d+)dp"/);
       expect(macroWidth?.[1]).toBe('150');
-      expect(macroHeight?.[1]).toBe('110');
+      expect(macroHeight?.[1]).toBe('140');
 
       // minWidth/minHeight must agree with the resize minimums so pre-31
       // devices render the same supported compact layout.
       expect(calorie).toMatch(/android:minHeight="60dp"/);
       expect(macro).toMatch(/android:minWidth="150dp"/);
+      expect(macro).toMatch(/android:minHeight="140dp"/);
     });
     it('keeps the macro column height-flexible so TALL spacing works', () => {
       const macroSrc = fs.readFileSync(
@@ -364,19 +367,46 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/fun macroHeightClass\(height: Dp\)/);
       // Stacked rows (label above value) are only used on narrow + TALL.
       expect(src).toMatch(/val stacked = !wide && heightClass == MacroHeightClass\.TALL/);
-      // Header and actions are omitted at SHORT so the primary macro rows
-      // (including "Węglowodany") fit the honest minimum height.
+      // SHORT omits only the action row; the kcal header and all macro rows
+      // (including "Węglowodany") stay visible at the honest minimum height.
       expect(src).toMatch(/if \(!short\) \{/);
       expect(src).toMatch(/val short = heightClass == MacroHeightClass\.SHORT/);
     });
 
-    it('keeps the primary macro rows at minimum height (no header/action requirement)', () => {
+    it('keeps the kcal header and all macro rows in SHORT (drops only actions)', () => {
       const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
-      // The short layout must still render all three macro rows with progress.
+      // Physical Android validation showed that dropping the kcal header at
+      // compact height is undesirable. The compact contract was changed: SHORT
+      // now keeps the kcal header + macro rows and drops only the action row.
+      // The old test assumption was therefore replaced rather than
+      // strengthened (supersedes the earlier CodeRabbit nit on this test).
+      expect(src).toMatch(/CalorieHeader\(/);
       expect(src).toMatch(/MacroRows\(/);
-      // The kcal header is skipped when short (it would overflow 110dp).
-      const headerCall = src.match(/CalorieHeader\(context = widgetContext/);
-      expect(headerCall).not.toBeNull();
+      // The header is rendered for every height class; it must no longer be
+      // hidden behind an `if (!short)` guard.
+      expect(src).not.toMatch(/if \(!short\) \{\s*CalorieHeader\(/);
+      // Only the action row remains guarded by the SHORT check.
+      expect(src).toMatch(/if \(!short\) \{/);
+      expect(src).toMatch(/extraCompact = short/);
+    });
+
+    it('uses compact typography and spacing at macro SHORT', () => {
+      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
+      // SHORT header: 10sp caption + 14sp value; rows 11sp with 3dp spacing and
+      // a 4dp header gap, so the 140dp minimum fits at font scales up to 1.3.
+      expect(src).toMatch(/fontSize = 10\.sp/);
+      expect(src).toMatch(/fontSize = 14\.sp/);
+      expect(src).toMatch(/short -> 11/);
+      expect(src).toMatch(/short -> 3/);
+      expect(src).toMatch(/short -> 4\.dp/);
+    });
+
+    it('vertically balances the macro SHORT layout', () => {
+      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
+      // The compact block (kcal header + macro rows) sits between two flexible
+      // spacers instead of being pinned to the top with excess space below.
+      expect(src).toMatch(/MacroHeightClass\.TALL \|\| short/);
+      expect(src).toMatch(/GlanceModifier\.defaultWeight\(\)/);
     });
 
     it('keeps the calorie SHORT typography compact for the 60dp minimum', () => {
@@ -387,6 +417,17 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/fontSize = 10\.sp/);
       expect(src).toMatch(/fontSize = 15\.sp/);
       expect(src).toMatch(/height\(if \(heightClass == CalorieHeightClass\.SHORT\) 3\.dp else 8\.dp\)/);
+    });
+
+    it('vertically balances the calorie SHORT layout with flex above and below', () => {
+      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'), 'utf8');
+      // The compact core (caption + value + progress) sits between two flexible
+      // spacers so it is centered rather than pinned to the top with the blank
+      // region below (top-heavy artifact observed on device).
+      expect(src).toMatch(
+        /heightClass == CalorieHeightClass\.SHORT \|\| heightClass == CalorieHeightClass\.TALL/,
+      );
+      expect(src).toMatch(/GlanceModifier\.defaultWeight\(\)/);
     });
 
     it('does not lock the macro widget to a single fixed responsive breakpoint', () => {
