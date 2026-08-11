@@ -289,7 +289,7 @@ describe('Android widget localization contract', () => {
       }
     });
 
-    it('keeps sane non-zero minimum resize dimensions on both providers', () => {
+    it('keeps honest non-zero minimum resize dimensions on both providers', () => {
       const calorie = fs.readFileSync(
         path.join(RES_ROOT, 'xml', 'sparky_calorie_widget_info.xml'),
         'utf8',
@@ -299,14 +299,25 @@ describe('Android widget localization contract', () => {
         'utf8',
       );
 
-      for (const src of [calorie, macro]) {
-        const minResizeWidth = src.match(/android:minResizeWidth="(\d+)dp"/);
-        const minResizeHeight = src.match(/android:minResizeHeight="(\d+)dp"/);
-        expect(minResizeWidth).not.toBeNull();
-        expect(minResizeHeight).not.toBeNull();
-        expect(Number(minResizeWidth?.[1])).toBeGreaterThanOrEqual(110);
-        expect(Number(minResizeHeight?.[1])).toBeGreaterThanOrEqual(40);
-      }
+      // Calorie minimums match the SHORT layout (value + progress): 56dp of
+      // height fits caption(11sp) + value(16sp) + progress(4dp) + padding.
+      const calorieWidth = calorie.match(/android:minResizeWidth="(\d+)dp"/);
+      const calorieHeight = calorie.match(/android:minResizeHeight="(\d+)dp"/);
+      expect(calorieWidth?.[1]).toBe('110');
+      expect(calorieHeight?.[1]).toBe('56');
+
+      // Macro minimums match the SHORT layout (inline rows only): 150dp of
+      // width fits the longest inline Polish row ("Węglowodany 136 g") at
+      // 12sp, and 110dp of height fits three inline rows + progress bars.
+      const macroWidth = macro.match(/android:minResizeWidth="(\d+)dp"/);
+      const macroHeight = macro.match(/android:minResizeHeight="(\d+)dp"/);
+      expect(macroWidth?.[1]).toBe('150');
+      expect(macroHeight?.[1]).toBe('110');
+
+      // minWidth/minHeight must agree with the resize minimums so pre-31
+      // devices render the same supported compact layout.
+      expect(calorie).toMatch(/android:minHeight="56dp"/);
+      expect(macro).toMatch(/android:minWidth="150dp"/);
     });
 
     it('uses SizeMode.Exact with LocalSize.current in both Glance widgets', () => {
@@ -316,9 +327,45 @@ describe('Android widget localization contract', () => {
         expect(src).toMatch(/import androidx\.glance\.appwidget\.SizeMode/);
         expect(src).toMatch(/SizeMode\.Exact/);
         expect(src).toMatch(/LocalSize\.current/);
-        // The reported size must actually drive the layout, not sit unused.
+        // The reported size must actually drive the layout, not sit unused:
+        // both dimensions feed the layout decision, because the provider
+        // allows independent horizontal and vertical resizing.
         expect(src).toMatch(/size\.width/);
+        expect(src).toMatch(/size\.height/);
       }
+    });
+
+    it('branches the calorie layout on a height class and hides actions when short', () => {
+      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'), 'utf8');
+      expect(src).toMatch(/enum class CalorieHeightClass \{ SHORT, NORMAL, TALL \}/);
+      expect(src).toMatch(/fun calorieHeightClass\(height: Dp\)/);
+      expect(src).toMatch(/heightClass != CalorieHeightClass\.SHORT/);
+      // The action row must be conditional on height, never unconditional.
+      expect(src).toMatch(/if \(heightClass != CalorieHeightClass\.SHORT\) \{/);
+      // SHORT keeps the primary calorie info: caption/value are rendered with
+      // a smaller vertical budget (no 30dp action row at minimum height).
+      expect(src).toMatch(/CalorieHeightClass\.SHORT && !wide/);
+    });
+
+    it('never chooses the tall stacked macro layout for a short narrow widget', () => {
+      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
+      expect(src).toMatch(/enum class MacroHeightClass \{ SHORT, NORMAL, TALL \}/);
+      expect(src).toMatch(/fun macroHeightClass\(height: Dp\)/);
+      // Stacked rows (label above value) are only used on narrow + TALL.
+      expect(src).toMatch(/val stacked = !wide && heightClass == MacroHeightClass\.TALL/);
+      // Header and actions are omitted at SHORT so the primary macro rows
+      // (including "Węglowodany") fit the honest minimum height.
+      expect(src).toMatch(/if \(!short\) \{/);
+      expect(src).toMatch(/val short = heightClass == MacroHeightClass\.SHORT/);
+    });
+
+    it('keeps the primary macro rows at minimum height (no header/action requirement)', () => {
+      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
+      // The short layout must still render all three macro rows with progress.
+      expect(src).toMatch(/MacroRows\(/);
+      // The kcal header is skipped when short (it would overflow 110dp).
+      const headerCall = src.match(/CalorieHeader\(context = widgetContext/);
+      expect(headerCall).not.toBeNull();
     });
 
     it('does not lock the macro widget to a single fixed responsive breakpoint', () => {
@@ -359,6 +406,52 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/config\.setLocale\(locale\)/);
       expect(src).not.toContain('Locale.setDefault');
       expect(src).not.toContain('Resources.getSystem');
+    });
+
+    it('never applies the override on Android 13+ (native LocaleManager authoritative)', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
+        'utf8',
+      );
+      // localizedContext returns the ORIGINAL context on API 33+ before any
+      // override is consulted: the native app locale wins even with a stale
+      // stored "pl" (e.g. after an OS upgrade 12 -> 13 with LocaleManager en).
+      expect(src).toMatch(/TIRAMISU/);
+      expect(src).toMatch(/fun localizedContext\(context: Context\): Context \{\s*if \(isNativeAppLanguageSupported\(\)\) return context/);
+    });
+
+    it('clears any stale override on Android 13+ for every request (en/pl/system)', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
+        'utf8',
+      );
+      // setOverride on API 33+ removes the key for en, pl AND null — the
+      // actual locale is already controlled by LocaleManager.
+      expect(src).toMatch(/if \(isNativeAppLanguageSupported\(\) \|\| normalized == null\) \{\s*editor\.remove\(KEY_LOCALE\)/);
+    });
+
+    it('keeps the API <=32 override behavior for en/pl', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
+        'utf8',
+      );
+      // On API <=32 the override is read from the dedicated namespace and
+      // applied through a localized configuration context.
+      expect(src).toMatch(/getString\(KEY_LOCALE, null\)/);
+      expect(src).toMatch(/Locale\.forLanguageTag\("en"\)/);
+      expect(src).toMatch(/Locale\.forLanguageTag\("pl"\)/);
+      expect(src).toMatch(/putString\(KEY_LOCALE, normalized\)/);
+    });
+
+    it('ignores a stale <=12 preference on API 33+ (OS-upgrade safety)', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
+        'utf8',
+      );
+      // override() short-circuits to null before reading the stored value on
+      // API 33+, so a persisted "pl" from an Android 12 install is harmless
+      // when the device later runs Android 13 with a native English locale.
+      expect(src).toMatch(/fun override\(context: Context\): Locale\? \{\s*if \(isNativeAppLanguageSupported\(\)\) return null/);
     });
 
     it('exposes the override via the native bridge for the JS hook', () => {

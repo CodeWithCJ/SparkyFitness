@@ -21,12 +21,17 @@ type WidgetSyncState = {
 /**
  * Keeps the Android Glance widgets in sync with the app language model.
  *
- * Glance is a separate native surface: on Android 13+ the platform per-app
- * language (LocaleManager) drives widget resources natively, but on Android
- * <=12 the explicit app language is local to the RN app, so the widgets need
- * a widget-only locale override (see WidgetLocale.kt). `system` means NO
- * override — the key is removed and the widgets follow the native/device
- * locale.
+ * Glance is a separate native surface. The widget-only locale override
+ * (WidgetLocale.kt) is only relevant on Android 12 and below, where the
+ * explicit app language is local to the RN app (i18next/Zustand) and Android
+ * resources would not follow it automatically:
+ *
+ *   Android 13+: LocaleManager/native resource context is authoritative; the
+ *     bridge call only clears any stale widget-only override (e.g. one
+ *     persisted before an OS upgrade), it never persists one.
+ *   Android <=12: explicit en/pl uses the widget-only locale override so Glance
+ *     renders in the app-selected language without AppCompat.
+ *   system: no widget-only override anywhere.
  *
  * Both signals trigger a sync:
  *   1. `languagePreference` changes (explicit -> system must clear the

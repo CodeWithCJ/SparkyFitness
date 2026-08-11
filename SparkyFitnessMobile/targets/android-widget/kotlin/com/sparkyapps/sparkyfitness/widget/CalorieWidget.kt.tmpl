@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -45,14 +46,32 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import org.json.JSONObject
 
+/**
+ * Height classes for the calorie widget, derived from the actual layout budget:
+ *   SHORT  (< 100dp): value + progress only. The full compact composition
+ *           (caption + value + progress + 30dp action row + vertical padding)
+ *           needs ~100dp, so below that the shortcut buttons are omitted
+ *           rather than clipping the primary calorie information. Fits the
+ *           honest provider minimum (56dp).
+ *   NORMAL (100..150dp): caption + value + progress + both actions.
+ *   TALL   (>= 150dp): same content, vertically centered with breathing room.
+ */
+enum class CalorieHeightClass { SHORT, NORMAL, TALL }
+
+fun calorieHeightClass(height: Dp): CalorieHeightClass = when {
+    height < 100.dp -> CalorieHeightClass.SHORT
+    height < 150.dp -> CalorieHeightClass.NORMAL
+    else -> CalorieHeightClass.TALL
+}
+
 class CalorieWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
     /**
      * Exact size mode: Glance re-renders against the real available widget size
-     * so the compact and wider layouts can adapt to the actual width instead of
-     * the fixed minimum. Longer localized labels (e.g. Polish
+     * so the compact and wider layouts can adapt to the actual width AND height
+     * instead of the fixed minimum. Longer localized labels (e.g. Polish
      * "Pozostało 1 240 kcal") stay readable instead of being forced into the
      * original fixed footprint.
      */
@@ -76,7 +95,8 @@ class CalorieWidget : GlanceAppWidget() {
         // stay local to widget rendering (see WidgetLocale).
         val widgetContext = WidgetLocale.localizedContext(context)
         val size = LocalSize.current
-        val compact = size.width < 200.dp
+        val wide = size.width >= 200.dp
+        val heightClass = calorieHeightClass(size.height)
 
         val remainingText: String
         val remainingValue: String
@@ -109,91 +129,140 @@ class CalorieWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
                 .appWidgetBackgroundCornerRadius()
-                .padding(horizontal = if (compact) 10.dp else 12.dp, vertical = 10.dp)
+                .padding(
+                    horizontal = if (wide) 12.dp else 10.dp,
+                    vertical = when (heightClass) {
+                        CalorieHeightClass.SHORT -> 6.dp
+                        CalorieHeightClass.NORMAL -> 10.dp
+                        CalorieHeightClass.TALL -> 12.dp
+                    },
+                )
                 .clickable(actionStartActivity(openAppIntent)),
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
-                if (compact && snapshot != null) {
-                    // Compact contract: "Pozostało" / "1 240 kcal" on two lines
-                    // instead of silently ellipsizing the full phrase.
-                    Text(
-                        text = remainingCaption,
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                        ),
-                        maxLines = 1,
-                        modifier = GlanceModifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = GlanceModifier.height(1.dp))
-                    Text(
-                        text = remainingValue,
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurface,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        maxLines = 1,
-                        modifier = GlanceModifier.fillMaxWidth(),
-                    )
-                } else {
-                    Text(
-                        text = remainingText,
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurface,
-                            fontSize = if (compact) 16.sp else 18.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        maxLines = 1,
-                        modifier = GlanceModifier.fillMaxWidth(),
-                    )
+                if (heightClass == CalorieHeightClass.TALL) {
+                    Spacer(modifier = GlanceModifier.defaultWeight())
                 }
-                Spacer(modifier = GlanceModifier.height(if (compact) 6.dp else 8.dp))
+                when {
+                    // Short: value-first. The primary calorie information is
+                    // never clipped to keep the shortcut buttons; actions are
+                    // only rendered when the height can actually fit them.
+                    heightClass == CalorieHeightClass.SHORT && !wide && snapshot != null -> {
+                        Text(
+                            text = remainingCaption,
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurfaceVariant,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                            maxLines = 1,
+                            modifier = GlanceModifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = GlanceModifier.height(1.dp))
+                        Text(
+                            text = remainingValue,
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurface,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            maxLines = 1,
+                            modifier = GlanceModifier.fillMaxWidth(),
+                        )
+                    }
+                    !wide && snapshot != null -> {
+                        // Compact contract: "Pozostało" / "1 240 kcal" on two
+                        // lines instead of silently ellipsizing the phrase.
+                        Text(
+                            text = remainingCaption,
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                            maxLines = 1,
+                            modifier = GlanceModifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = GlanceModifier.height(1.dp))
+                        Text(
+                            text = remainingValue,
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurface,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            maxLines = 1,
+                            modifier = GlanceModifier.fillMaxWidth(),
+                        )
+                    }
+                    else -> {
+                        // Wide and/or empty: the full phrase fits on one line at
+                        // a normal readable size; no ellipsis on the value.
+                        Text(
+                            text = remainingText,
+                            style = TextStyle(
+                                color = GlanceTheme.colors.onSurface,
+                                fontSize = if (heightClass == CalorieHeightClass.SHORT) 15.sp else 18.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            maxLines = 1,
+                            modifier = GlanceModifier.fillMaxWidth(),
+                        )
+                    }
+                }
+                Spacer(
+                    modifier = GlanceModifier.height(
+                        if (heightClass == CalorieHeightClass.SHORT) 4.dp else 8.dp,
+                    ),
+                )
                 LinearProgressIndicator(
                     progress = progress,
-                    modifier = GlanceModifier.fillMaxWidth().height(if (compact) 6.dp else 8.dp),
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .height(if (heightClass == CalorieHeightClass.SHORT) 4.dp else 8.dp),
                     color = GlanceTheme.colors.primary,
                     backgroundColor = GlanceTheme.colors.surfaceVariant,
                 )
                 Spacer(modifier = GlanceModifier.defaultWeight())
-                Row(
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = GlanceModifier
-                            .defaultWeight()
-                            .height(if (compact) 30.dp else 32.dp)
-                            .clickable(actionStartActivity(searchIntent)),
-                        contentAlignment = Alignment.Center,
+                if (heightClass != CalorieHeightClass.SHORT) {
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Image(
-                            provider = ImageProvider(R.drawable.ic_widget_search),
-                            contentDescription = searchFoodLabel,
-                            colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
-                            modifier = GlanceModifier.size(24.dp),
-                        )
-                    }
-                    Box(
-                        modifier = GlanceModifier
-                            .width(1.dp)
-                            .height(if (compact) 22.dp else 24.dp)
-                            .background(GlanceTheme.colors.surfaceVariant),
-                    ) {}
-                    Box(
-                        modifier = GlanceModifier
-                            .defaultWeight()
-                            .height(if (compact) 30.dp else 32.dp)
-                            .clickable(actionStartActivity(scanIntent)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Image(
-                            provider = ImageProvider(R.drawable.ic_widget_scan),
-                            contentDescription = scanBarcodeLabel,
-                            colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
-                            modifier = GlanceModifier.size(24.dp),
-                        )
+                        Box(
+                            modifier = GlanceModifier
+                                .defaultWeight()
+                                .height(if (heightClass == CalorieHeightClass.NORMAL) 30.dp else 32.dp)
+                                .clickable(actionStartActivity(searchIntent)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.ic_widget_search),
+                                contentDescription = searchFoodLabel,
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                                modifier = GlanceModifier.size(24.dp),
+                            )
+                        }
+                        Box(
+                            modifier = GlanceModifier
+                                .width(1.dp)
+                                .height(if (heightClass == CalorieHeightClass.NORMAL) 22.dp else 24.dp)
+                                .background(GlanceTheme.colors.surfaceVariant),
+                        ) {}
+                        Box(
+                            modifier = GlanceModifier
+                                .defaultWeight()
+                                .height(if (heightClass == CalorieHeightClass.NORMAL) 30.dp else 32.dp)
+                                .clickable(actionStartActivity(scanIntent)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.ic_widget_scan),
+                                contentDescription = scanBarcodeLabel,
+                                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                                modifier = GlanceModifier.size(24.dp),
+                            )
+                        }
                     }
                 }
             }
