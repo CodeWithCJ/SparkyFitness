@@ -6,12 +6,12 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import DurationWheel from './DurationWheel';
 import Button from './ui/Button';
-import { formatRestLabel } from './RestPeriodChip';
+import { formatRestLabel, formatRestRangeLabel } from './RestPeriodChip';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import { getDefaultRestSec } from '../utils/workoutSession';
 
@@ -27,7 +27,7 @@ export interface ExerciseSetRestUpdate {
 }
 
 export interface ExerciseSetRestSheetRef {
-  present: (exerciseName: string, sets: ExerciseSetRestItem[]) => void;
+  present: (exerciseName: string, sets: ExerciseSetRestItem[], isSupersetRound?: boolean) => void;
   dismiss: () => void;
 }
 
@@ -57,9 +57,20 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
     const [selectedKey, setSelectedKey] = useState<string>(ALL_KEY);
     const [initialBySetId, setInitialBySetId] = useState<Record<string, number>>({});
     const [draftBySetId, setDraftBySetId] = useState<Record<string, number>>({});
+    const [isSupersetRound, setIsSupersetRound] = useState(false);
+    const [allOverwriteConfirmed, setAllOverwriteConfirmed] = useState(false);
+    const [wheelResetNonce, setWheelResetNonce] = useState(0);
+
+    // Detect if initial rest times are mixed (not all equal)
+    const initialTimesMixed = useMemo(() => {
+      const values = Object.values(initialBySetId);
+      if (values.length <= 1) return false;
+      const first = values[0];
+      return values.some((v) => v !== first);
+    }, [initialBySetId]);
 
     useImperativeHandle(ref, () => ({
-      present: (exerciseName, incomingSets) => {
+      present: (exerciseName, incomingSets, supersetRound = false) => {
         const normalizedSets = incomingSets.map((s) => ({
           ...s,
           restSec: clampRestSeconds(s.restSec ?? getDefaultRestSec()),
@@ -70,7 +81,10 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
         setSets(normalizedSets);
         setInitialBySetId(byId);
         setDraftBySetId(byId);
-        setSelectedKey(normalizedSets[0]?.setId ?? ALL_KEY);
+        setIsSupersetRound(supersetRound);
+        setSelectedKey(ALL_KEY);
+        setAllOverwriteConfirmed(false);
+        setWheelResetNonce(0);
         sheetRef.current?.present();
       },
       dismiss: () => sheetRef.current?.dismiss(),
@@ -85,29 +99,54 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
       return draftBySetId[selectedKey] ?? getDefaultRestSec();
     }, [draftBySetId, selectedKey, sets]);
 
-    const highestSetRest = useMemo(() => {
-      if (sets.length === 0) return getDefaultRestSec();
-      let max = 0;
-      for (const set of sets) {
-        const value = draftBySetId[set.setId] ?? getDefaultRestSec();
-        if (value > max) max = value;
-      }
-      return max;
+    const allSetRests = useMemo(() => {
+      return sets.map((set) => draftBySetId[set.setId] ?? getDefaultRestSec());
     }, [draftBySetId, sets]);
 
     const handleChangeSeconds = useCallback(
       (seconds: number) => {
         const next = clampRestSeconds(seconds);
-        setDraftBySetId((prev) => {
-          if (selectedKey === ALL_KEY) {
-            const out = { ...prev };
-            for (const set of sets) out[set.setId] = next;
-            return out;
-          }
-          return { ...prev, [selectedKey]: next };
-        });
+
+        const applyChange = () => {
+          setDraftBySetId((prev) => {
+            if (selectedKey === ALL_KEY) {
+              const out = { ...prev };
+              for (const set of sets) out[set.setId] = next;
+              return out;
+            }
+            return { ...prev, [selectedKey]: next };
+          });
+        };
+
+        // If changing all sets from mixed initial state, confirm once.
+        if (selectedKey === ALL_KEY && initialTimesMixed && !allOverwriteConfirmed) {
+          Alert.alert(
+            'Overwrite rest times?',
+            `These sets have different rest times. Set all to ${formatRestLabel(next)}?`,
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => {
+                  // Reset wheel position to the current selected value.
+                  setWheelResetNonce((n) => n + 1);
+                },
+              },
+              {
+                text: 'Overwrite',
+                onPress: () => {
+                  setAllOverwriteConfirmed(true);
+                  applyChange();
+                },
+              },
+            ],
+          );
+          return;
+        }
+
+        applyChange();
       },
-      [selectedKey, sets],
+      [selectedKey, sets, initialTimesMixed, allOverwriteConfirmed],
     );
 
     const handleDone = useCallback(() => {
@@ -135,7 +174,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
       >
         <BottomSheetView className="px-5 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-3">
-            Rest for {title}
+            {isSupersetRound ? 'Round Rest' : 'Rest'} — {title}
           </Text>
 
           <View className="flex-row flex-wrap" style={{ gap: 8 }}>
@@ -165,7 +204,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                 }
                 style={selectedKey === ALL_KEY ? { color: accentPrimary } : undefined}
               >
-                {formatRestLabel(highestSetRest)}
+                {formatRestRangeLabel(allSetRests, getDefaultRestSec())}
               </Text>
             </Pressable>
             {sets.map((set) => {
@@ -185,7 +224,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                       className={selected ? 'font-semibold text-text-primary' : 'text-text-secondary'}
                       style={selected ? { color: accentPrimary } : undefined}
                     >
-                      Set {set.setNumber}
+                      {isSupersetRound ? 'Round' : 'Set'} {set.setNumber}
                     </Text>
                     <Text
                       className={
@@ -203,10 +242,12 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
           </View>
 
           <View className="pt-3 pb-2">
-            <DurationWheel valueSec={selectedSeconds} onChangeSec={handleChangeSeconds} maxSec={MAX_REST_SEC} />
-            <Text className="text-center text-text-secondary mt-1">
-              {selectedKey === ALL_KEY ? 'Applying to all sets' : 'Selected'}: {formatRestLabel(selectedSeconds)}
-            </Text>
+            <DurationWheel
+              key={`${selectedKey}:${wheelResetNonce}`}
+              valueSec={selectedSeconds}
+              onChangeSec={handleChangeSeconds}
+              maxSec={MAX_REST_SEC}
+            />
           </View>
 
           <Button variant="primary" onPress={handleDone}>

@@ -410,6 +410,7 @@ const WorkoutFormExerciseList = forwardRef<
     const exercise = exercises.find((e) => e.clientId === entryId);
     if (!exercise) return;
     restSheetEntryIdRef.current = entryId;
+    const isSupersetMember = exercise.supersetGroup != null;
     restSheetRef.current?.present(
       exercise.exerciseName,
       exercise.sets.map((set, index) => ({
@@ -417,6 +418,7 @@ const WorkoutFormExerciseList = forwardRef<
         setNumber: index + 1,
         restSec: set.restTime,
       })),
+      isSupersetMember,
     );
   }, [exercises]);
   const handleRestApply = useCallback((updates: ExerciseSetRestUpdate[]) => {
@@ -425,6 +427,16 @@ const WorkoutFormExerciseList = forwardRef<
     const exercise = exercises.find((e) => e.clientId === owner);
     if (!exercise) return;
 
+    // Superset members: always use setExerciseRest to harmonize all members
+    if (exercise.supersetGroup != null) {
+      if (updates.length > 0) {
+        // All updates should have the same value for superset members
+        setExerciseRest(owner, updates[0].seconds);
+      }
+      return;
+    }
+
+    // Solo exercise: check if all sets have the same rest, then use setExerciseRest
     if (updates.length === exercise.sets.length && updates.length > 0) {
       const [first, ...rest] = updates;
       if (rest.every((u) => u.seconds === first.seconds)) {
@@ -433,6 +445,7 @@ const WorkoutFormExerciseList = forwardRef<
       }
     }
 
+    // Otherwise update individual sets
     for (const update of updates) {
       updateSetMeta(owner, update.setId, { restTime: update.seconds });
     }

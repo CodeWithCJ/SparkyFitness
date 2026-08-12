@@ -74,6 +74,7 @@ import {
   exerciseFromSnapshot,
   formatDuration,
   formatSetLoad,
+  getSupersetRuns,
   rendersCardioEffortForm,
   summarizeWorkoutSpan,
 } from '../utils/workoutSession';
@@ -484,10 +485,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // Exercise rest drawer (All / per-set rest editing, committed on Done).
   const setRestSheetRef = useRef<ExerciseSetRestSheetRef>(null);
   const handlePressRestChip = useCallback((entryId: string, _currentSec: number | null) => {
-    const exercise = useActiveWorkoutStore
-      .getState()
-      .session?.exercises.find((e) => e.id === entryId);
-    if (!exercise) return;
+    const store = useActiveWorkoutStore.getState();
+    const exercise = store.session?.exercises.find((e) => e.id === entryId);
+    if (!exercise || !store.session) return;
+    
+    // Check if this exercise is part of a superset
+    const run = getSupersetRuns(store.session.exercises).find((r) =>
+      r.entryIds.includes(entryId),
+    );
+    const isSupersetMember = run != null;
+    
     setRestSheetRef.current?.present(
       exercise.exercise_snapshot?.name ?? 'Exercise',
       exercise.sets.map((set) => ({
@@ -495,12 +502,38 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         setNumber: set.set_number,
         restSec: set.rest_time,
       })),
+      isSupersetMember,
     );
   }, []);
   const handleApplySetRests = useCallback((updates: ExerciseSetRestUpdate[]) => {
     const store = useActiveWorkoutStore.getState();
-    for (const update of updates) {
-      store.updateSetField(update.setId, { rest_time: update.seconds });
+    if (!store.session) return;
+    
+    // Find which exercise these updates belong to by matching the first set ID
+    const firstUpdate = updates[0];
+    if (!firstUpdate) return;
+    const exercise = store.session.exercises.find((e) =>
+      e.sets.some((s) => String(s.id) === firstUpdate.setId),
+    );
+    if (!exercise) return;
+    
+    // Check if this is a superset member
+    const run = getSupersetRuns(store.session.exercises).find((r) =>
+      r.entryIds.includes(exercise.id),
+    );
+    
+    if (run) {
+      // Superset: use setExerciseRest to harmonize all members
+      // All updates should have the same seconds value
+      if (updates.length > 0) {
+        const seconds = updates[0].seconds;
+        store.setExerciseRest(exercise.id, seconds);
+      }
+    } else {
+      // Solo exercise: update individual sets
+      for (const update of updates) {
+        store.updateSetField(update.setId, { rest_time: update.seconds });
+      }
     }
   }, []);
 
