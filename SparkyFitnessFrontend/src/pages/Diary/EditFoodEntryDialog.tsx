@@ -47,6 +47,7 @@ import {
 } from '@workspace/shared';
 import { formatServingLabel } from '@/utils/foodServing';
 import FoodEntryImageOverride from './FoodEntryImageOverride';
+import { useEntryImageDraft } from '@/hooks/Diary/useEntryImageDraft';
 
 const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
   success: 'text-emerald-600 dark:text-emerald-400',
@@ -94,6 +95,9 @@ const EditFoodEntryDialog = ({
     entry?.food_id || ''
   );
   const { mutateAsync: updateFoodEntry } = useUpdateFoodEntryMutation();
+  // Photos are staged here and applied by handleSubmit, so closing the dialog
+  // without saving discards them.
+  const imageDraft = useEntryImageDraft(entry?.id ?? '', entry?.images, 'food');
   const createFoodVariantMutation = useCreateFoodVariantMutation();
 
   const loading = isLoadingFood || isLoadingVariants;
@@ -265,6 +269,9 @@ const EditFoodEntryDialog = ({
       };
 
       await updateFoodEntry({ id: entry.id, data: updateData });
+      // Photos are staged rather than saved on pick, so they are applied here
+      // as part of the same submit. No-ops when nothing changed.
+      await imageDraft.save();
 
       info(loggingLevel, 'Food entry updated successfully:', entry.id);
       onOpenChange(false);
@@ -314,7 +321,12 @@ const EditFoodEntryDialog = ({
                 )}
               </div>
 
-              <FoodEntryImageOverride entry={entry} />
+              <FoodEntryImageOverride
+                entry={entry}
+                items={imageDraft.items}
+                onItemsChange={imageDraft.setItems}
+                isSaving={imageDraft.isSaving}
+              />
 
               <div className="grid grid-cols-4 gap-4">
                 <div>

@@ -8,6 +8,7 @@ import { isEntryTimeString } from '@workspace/shared';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import {
   uploadImages,
+  applyImageOrder,
   finalizeUploadedImages,
   cleanupStagedImages,
   stagedFilesFrom,
@@ -16,24 +17,21 @@ import {
 const router = express.Router();
 
 /**
- * Parses the `keepImages` multipart field: a JSON array of already-saved image
- * paths the client is retaining. Anything unparseable is treated as "keep
- * nothing", which is the same as a full replacement.
+ * Parses the `images` multipart field: the client's desired final order, where
+ * `__new__<n>` placeholders mark the position of the n-th uploaded file.
+ * Anything unparseable is treated as absent.
  */
-function parseKeepImages(value: unknown): string[] {
+function parseImageOrder(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.filter((v): v is string => typeof v === 'string');
+    return value;
   }
   if (typeof value !== 'string' || value.length === 0) {
-    return [];
+    return undefined;
   }
   try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed.filter((v): v is string => typeof v === 'string')
-      : [];
+    return JSON.parse(value);
   } catch {
-    return [];
+    return undefined;
   }
 }
 // Middleware to protect routes
@@ -440,17 +438,14 @@ router.post('/:id/image', uploadImages, async (req, res, next) => {
       id
     );
 
-    // `keepImages` lists the already-saved photos the client is retaining, so
-    // one request can add and remove in a single save.
-    const keptImages = parseKeepImages(req.body?.keepImages);
-    const nextImages = [...keptImages, ...uploadedPaths];
-    if (
-      nextImages.length === 0 &&
-      uploadedPaths.length === 0 &&
-      !req.body?.keepImages
-    ) {
+    // `images` is the client's desired final order, with __new__<n>
+    // placeholders marking where each uploaded file belongs, so one request
+    // can add, remove, and reorder together.
+    const requestedOrder = parseImageOrder(req.body?.images);
+    if (uploadedPaths.length === 0 && requestedOrder === undefined) {
       return res.status(400).json({ error: 'An image file is required.' });
     }
+    const nextImages = applyImageOrder(requestedOrder, uploadedPaths);
 
     const updated = await foodEntryMealRepository.setFoodEntryMealImages(
       id,

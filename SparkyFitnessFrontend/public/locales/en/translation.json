@@ -1692,15 +1692,14 @@
     "addEntryPhoto": "Add photo",
     "replaceEntryPhoto": "Replace photo",
     "removeEntryPhoto": "Remove photo",
-    "entryPhotoOverrideHint": "These photos apply to this entry only.",
+    "entryPhotoOverrideHint": "These photos apply to this entry only. Drag to reorder.",
     "entryPhotoInheritedHint": "Showing the food's own images. Add a photo to override them for this entry.",
-    "entryPhotoEmptyHint": "Add a photo of what you actually ate.",
     "entryImageUploadFailedTitle": "Upload failed",
     "entryImageUploadFailed": "Could not save the photo for this entry.",
     "entryImageRemoveFailedTitle": "Remove failed",
     "entryImageRemoveFailed": "Could not remove the photo for this entry.",
     "inheritedPhotoAlt": "Inherited image {{number}}",
-    "resetEntryPhotos": "Reset to the food's own images"
+    "savingPhotos": "Saving photos…"
   },
   "nutrientGoalDirection": {
     "min": "Min",
@@ -3189,6 +3188,10 @@
     "previousImage": "Previous image",
     "nextImage": "Next image",
     "playSlideshow": "Play slideshow",
-    "pauseSlideshow": "Pause slideshow"
+    "pauseSlideshow": "Pause slideshow",
+    "mainImage": "Main",
+    "moveImageEarlier": "Move image left",
+    "moveImageLater": "Move image right",
+    "imagesReorderHint": "Drag to reorder. The first image is used as the thumbnail."
   }
 }

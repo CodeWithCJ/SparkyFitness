@@ -193,6 +193,57 @@ async function finalizeUploadedImages(
   return webPaths;
 }
 
+/**
+ * Placeholder a client sends in the `images` array to reserve the position of a
+ * file it is uploading in the same request, e.g. `__new__0` for the first file.
+ * Without this, uploads could only ever be appended and the user's chosen order
+ * would be lost.
+ */
+const NEW_IMAGE_PLACEHOLDER = /^__new__(\d+)$/;
+
+/**
+ * Resolves a client-supplied image order against the files that were actually
+ * uploaded, substituting each `__new__<n>` placeholder with the n-th uploaded
+ * path.
+ *
+ * Placeholders with no matching upload are dropped rather than persisted, and
+ * uploads the order never referenced are appended, so a client that sends files
+ * without an explicit order still gets them all.
+ */
+function applyImageOrder(
+  orderedImages: unknown,
+  uploadedPaths: string[]
+): string[] {
+  const order = Array.isArray(orderedImages)
+    ? orderedImages.filter((v): v is string => typeof v === 'string')
+    : [];
+
+  const used = new Set<number>();
+  const resolved: string[] = [];
+
+  for (const entry of order) {
+    const match = NEW_IMAGE_PLACEHOLDER.exec(entry);
+    if (!match) {
+      resolved.push(entry);
+      continue;
+    }
+    const uploadIndex = Number(match[1]);
+    const uploaded = uploadedPaths[uploadIndex];
+    if (uploaded !== undefined) {
+      resolved.push(uploaded);
+      used.add(uploadIndex);
+    }
+  }
+
+  uploadedPaths.forEach((path, index) => {
+    if (!used.has(index)) {
+      resolved.push(path);
+    }
+  });
+
+  return resolved;
+}
+
 /** Removes a request's staging directory. Never throws. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function cleanupStagedImages(req: any): Promise<void> {
@@ -258,6 +309,7 @@ async function removeEntityImageDir(
 
 export {
   uploadImages,
+  applyImageOrder,
   stagedFilesFrom,
   parseMultipartBody,
   uploadSingleImage,

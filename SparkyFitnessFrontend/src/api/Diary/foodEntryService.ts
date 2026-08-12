@@ -288,12 +288,13 @@ export const copyFoodEntriesToUser = async (
  */
 export const setFoodEntryImages = async (
   entryId: string,
-  keepImages: string[],
+  images: string[],
   newFiles: File[]
 ): Promise<FoodEntry> => {
   const formData = new FormData();
-  // Already-saved paths the user kept; anything omitted is deleted server-side.
-  formData.append('keepImages', JSON.stringify(keepImages));
+  // The desired final order. `__new__<n>` placeholders mark where each uploaded
+  // file belongs; anything omitted is deleted server-side.
+  formData.append('images', JSON.stringify(images));
   newFiles.forEach((file) => formData.append('images', file));
   return await apiCall(`/food-entries/${entryId}/image`, {
     method: 'POST',
@@ -317,12 +318,13 @@ export const clearFoodEntryImage = async (
  */
 export const setFoodEntryMealImages = async (
   entryId: string,
-  keepImages: string[],
+  images: string[],
   newFiles: File[]
 ): Promise<FoodEntryMeal> => {
   const formData = new FormData();
-  // Already-saved paths the user kept; anything omitted is deleted server-side.
-  formData.append('keepImages', JSON.stringify(keepImages));
+  // The desired final order. `__new__<n>` placeholders mark where each uploaded
+  // file belongs; anything omitted is deleted server-side.
+  formData.append('images', JSON.stringify(images));
   newFiles.forEach((file) => formData.append('images', file));
   return await apiCall(`/food-entry-meals/${entryId}/image`, {
     method: 'POST',

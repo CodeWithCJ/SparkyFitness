@@ -11,6 +11,7 @@ import { backfillOffAllergens } from '../utils/backfillAllergens.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
 import {
   uploadImages,
+  applyImageOrder,
   finalizeUploadedImages,
   cleanupStagedImages,
   stagedFilesFrom,
@@ -223,7 +224,9 @@ router.post('/', authenticate, uploadImages, async (req, res, next) => {
       newFood.id
     );
     if (uploadedPaths.length > 0) {
-      const merged = [...(newFood.images ?? []), ...uploadedPaths];
+      // The client's `images` array carries __new__<n> placeholders marking
+      // where each upload belongs, so a reordered list keeps its order.
+      const merged = applyImageOrder(newFood.images, uploadedPaths);
       const updated = await foodService.updateFood(req.userId, newFood.id, {
         images: merged,
       });
@@ -993,15 +996,16 @@ router.put('/:id', authenticate, uploadImages, async (req, res, next) => {
   try {
     const foodData = parseFoodBody(req);
 
-    // Newly uploaded files are appended to whatever images the client kept.
-    // A client that sends `images` without any files is performing a removal.
+    // `images` is the client's desired order, with __new__<n> placeholders
+    // marking where each uploaded file belongs. A client that sends `images`
+    // without any files is performing a removal and/or a reorder.
     const uploadedPaths = await finalizeUploadedImages(
       stagedFilesFrom(req),
       'foods',
       id
     );
-    if (uploadedPaths.length > 0) {
-      foodData.images = [...(foodData.images ?? []), ...uploadedPaths];
+    if (foodData.images !== undefined || uploadedPaths.length > 0) {
+      foodData.images = applyImageOrder(foodData.images, uploadedPaths);
     }
 
     const updatedFood = await foodService.updateFood(req.userId, id, foodData);

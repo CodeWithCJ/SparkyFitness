@@ -4,6 +4,7 @@ import mealService from '../services/mealService.js';
 import { log } from '../config/logging.js';
 import {
   uploadImages,
+  applyImageOrder,
   finalizeUploadedImages,
   cleanupStagedImages,
   stagedFilesFrom,
@@ -343,7 +344,9 @@ router.post('/', authenticate, uploadImages, async (req, res, next) => {
       newMeal.id
     );
     if (uploadedPaths.length > 0) {
-      const merged = [...(newMeal.images ?? []), ...uploadedPaths];
+      // The client's `images` array carries __new__<n> placeholders marking
+      // where each upload belongs, so a reordered list keeps its order.
+      const merged = applyImageOrder(newMeal.images, uploadedPaths);
       const updated = await mealService.updateMeal(req.userId, newMeal.id, {
         images: merged,
       });
@@ -631,16 +634,16 @@ router.put('/:id', authenticate, uploadImages, async (req, res, next) => {
   try {
     const mealData = parseMealBody(req);
 
-    // Newly uploaded files are appended to whatever images the client kept.
-    // A client that sends `images` without any files is performing a removal.
+    // `images` is the client's desired order, with __new__<n> placeholders
+    // marking where each uploaded file belongs. A client that sends `images`
+    // without any files is performing a removal and/or a reorder.
     const uploadedPaths = await finalizeUploadedImages(
       stagedFilesFrom(req),
       'meals',
       req.params.id
     );
-    if (uploadedPaths.length > 0) {
-      const kept = Array.isArray(mealData.images) ? mealData.images : [];
-      mealData.images = [...kept, ...uploadedPaths];
+    if (mealData.images !== undefined || uploadedPaths.length > 0) {
+      mealData.images = applyImageOrder(mealData.images, uploadedPaths);
     }
 
     const previousImages =

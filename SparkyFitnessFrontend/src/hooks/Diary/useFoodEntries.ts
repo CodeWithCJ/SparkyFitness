@@ -342,13 +342,13 @@ export const useSetFoodEntryImagesMutation = () => {
   return useMutation({
     mutationFn: ({
       entryId,
-      keepImages,
+      images,
       newFiles,
     }: {
       entryId: string;
-      keepImages: string[];
+      images: string[];
       newFiles: File[];
-    }) => setFoodEntryImages(entryId, keepImages, newFiles),
+    }) => setFoodEntryImages(entryId, images, newFiles),
     onSuccess: () => invalidate(),
     meta: {
       errorMessage: t(
@@ -390,13 +390,13 @@ export const useSetFoodEntryMealImagesMutation = () => {
   return useMutation({
     mutationFn: ({
       entryId,
-      keepImages,
+      images,
       newFiles,
     }: {
       entryId: string;
-      keepImages: string[];
+      images: string[];
       newFiles: File[];
-    }) => setFoodEntryMealImages(entryId, keepImages, newFiles),
+    }) => setFoodEntryMealImages(entryId, images, newFiles),
     onSuccess: () => invalidate(),
     meta: {
       errorMessage: t(

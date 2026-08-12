@@ -82,10 +82,8 @@ const CustomFoodForm = ({
     setShowBarcodeConflictConfirmation,
     barcodeConflictFoodName,
     handleBarcodeConflictConfirm,
-    images,
-    setImages,
-    newImageFiles,
-    setNewImageFiles,
+    imageItems,
+    setImageItems,
   } = useCustomFoodForm({
     food,
     initialVariants,
@@ -228,10 +226,8 @@ const CustomFoodForm = ({
             <div className="pt-2">
               <FoodImagePicker
                 idPrefix="custom-food"
-                existingImages={images}
-                onExistingImagesChange={setImages}
-                newFiles={newImageFiles}
-                onNewFilesChange={setNewImageFiles}
+                items={imageItems}
+                onItemsChange={setImageItems}
               />
             </div>
 
