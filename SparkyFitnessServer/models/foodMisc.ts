@@ -90,6 +90,7 @@ async function getRecentFoods(userId: any, limit: any, mealType: any) {
         f.provider_external_id,
         f.provider_type,
         f.provider_verified,
+        f.images,
         rfe.last_used_date,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -138,6 +139,7 @@ async function getTopFoods(userId: any, limit: any, mealType: any) {
         f.provider_external_id,
         f.provider_type,
         f.provider_verified,
+        f.images,
         tfe.usage_count,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -168,6 +170,7 @@ async function getFavoriteFoods(userId: any) {
         f.provider_external_id,
         f.provider_type,
         f.provider_verified,
+        f.images,
         ff.created_at AS favorited_at,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM food_favorites ff

@@ -107,9 +107,44 @@ const FoodResultCard = ({
       onClick={onCardClick}
     >
       <CardContent className="p-4">
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-2">
+        <div className="flex justify-between items-start gap-3">
+          {/* Thumbnail rail, mirroring the diary rows: image on the left with
+              the name and nutrients stacked beside it, so a row with a photo
+              is no taller than one without. */}
+          {resolvedImageSrc && (
+            <button
+              type="button"
+              className="shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onClick={(e) => {
+                // The card itself is clickable; don't also select the food.
+                e.stopPropagation();
+                setLightboxOpen(true);
+              }}
+              aria-label={t('food.viewImages', 'View images')}
+            >
+              <img
+                src={resolvedImageSrc}
+                alt={item.name}
+                className="w-14 h-14 object-cover rounded-md cursor-zoom-in"
+                loading="lazy"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  // One-shot flag rather than comparing src: the browser
+                  // resolves `img.src` to an absolute URL, so a relative
+                  // fallback would never compare equal and would retry forever.
+                  if (fallbackImageSrc && !img.dataset['triedFallback']) {
+                    img.dataset['triedFallback'] = 'true';
+                    img.src = fallbackImageSrc;
+                    return;
+                  }
+                  // A dead provider link shouldn't leave a broken-image icon.
+                  img.style.display = 'none';
+                }}
+              />
+            </button>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-2">
               <h3 className="font-medium">{item.name}</h3>
               {isFood && foodItem.brand && (
                 <Badge variant="secondary" className="text-xs">
@@ -199,38 +234,6 @@ const FoodResultCard = ({
             </div>
             {isMeal && mealItem.description && (
               <p className="text-sm text-gray-500">{mealItem.description}</p>
-            )}
-            {resolvedImageSrc && (
-              <button
-                type="button"
-                className="mr-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onClick={(e) => {
-                  // The card itself is clickable; don't also select the food.
-                  e.stopPropagation();
-                  setLightboxOpen(true);
-                }}
-                aria-label={t('food.viewImages', 'View images')}
-              >
-                <img
-                  src={resolvedImageSrc}
-                  alt={item.name}
-                  className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
-                  loading="lazy"
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    // One-shot flag rather than comparing src: the browser
-                    // resolves `img.src` to an absolute URL, so a relative
-                    // fallback would never compare equal and would retry forever.
-                    if (fallbackImageSrc && !img.dataset['triedFallback']) {
-                      img.dataset['triedFallback'] = 'true';
-                      img.src = fallbackImageSrc;
-                      return;
-                    }
-                    // A dead provider link shouldn't leave a broken-image icon.
-                    img.style.display = 'none';
-                  }}
-                />
-              </button>
             )}
             {isFood && foodItem.default_variant && (
               <>
