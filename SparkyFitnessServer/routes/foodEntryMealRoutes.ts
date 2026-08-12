@@ -7,13 +7,35 @@ import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import { isEntryTimeString } from '@workspace/shared';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import {
-  uploadSingleImage,
+  uploadImages,
   finalizeUploadedImages,
   cleanupStagedImages,
   stagedFilesFrom,
   removeOrphanedImages,
 } from '../middleware/imageUpload.js';
 const router = express.Router();
+
+/**
+ * Parses the `keepImages` multipart field: a JSON array of already-saved image
+ * paths the client is retaining. Anything unparseable is treated as "keep
+ * nothing", which is the same as a full replacement.
+ */
+function parseKeepImages(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === 'string');
+  }
+  if (typeof value !== 'string' || value.length === 0) {
+    return [];
+  }
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((v): v is string => typeof v === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
 // Middleware to protect routes
 router.use(authenticate); // Use the authenticate middleware function
 /**
@@ -398,7 +420,7 @@ router.delete('/:id', async (req, res, next) => {
  *       404:
  *         description: FoodEntryMeal not found.
  */
-router.post('/:id/image', uploadSingleImage, async (req, res, next) => {
+router.post('/:id/image', uploadImages, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'FoodEntryMeal ID is required.' });
@@ -412,23 +434,32 @@ router.post('/:id/image', uploadSingleImage, async (req, res, next) => {
       return res.status(404).json({ error: 'FoodEntryMeal not found.' });
     }
 
-    const [uploadedPath] = await finalizeUploadedImages(
+    const uploadedPaths = await finalizeUploadedImages(
       stagedFilesFrom(req),
       'food_entry_meals',
       id
     );
-    if (!uploadedPath) {
+
+    // `keepImages` lists the already-saved photos the client is retaining, so
+    // one request can add and remove in a single save.
+    const keptImages = parseKeepImages(req.body?.keepImages);
+    const nextImages = [...keptImages, ...uploadedPaths];
+    if (
+      nextImages.length === 0 &&
+      uploadedPaths.length === 0 &&
+      !req.body?.keepImages
+    ) {
       return res.status(400).json({ error: 'An image file is required.' });
     }
 
-    const updated = await foodEntryMealRepository.setFoodEntryMealImage(
+    const updated = await foodEntryMealRepository.setFoodEntryMealImages(
       id,
       req.userId,
-      uploadedPath
+      nextImages
     );
 
-    // Drop the file this one replaced so overwrites don't accumulate on disk.
-    await removeOrphanedImages([existing.image_url], [uploadedPath]);
+    // Drop files the client dropped so replacements don't accumulate on disk.
+    await removeOrphanedImages(existing.images, nextImages);
 
     res.status(200).json({ ...existing, ...updated });
   } catch (err) {
@@ -467,12 +498,12 @@ router.delete('/:id/image', async (req, res, next) => {
       return res.status(404).json({ error: 'FoodEntryMeal not found.' });
     }
 
-    const updated = await foodEntryMealRepository.setFoodEntryMealImage(
+    const updated = await foodEntryMealRepository.setFoodEntryMealImages(
       id,
       req.userId,
-      null
+      []
     );
-    await removeOrphanedImages([existing.image_url], []);
+    await removeOrphanedImages(existing.images, []);
 
     res.status(200).json({ ...existing, ...updated });
   } catch (err) {

@@ -55,7 +55,7 @@ jest.mock('@/hooks/Diary/useFoodEntries', () => ({
     mutateAsync: mockUpdateFoodEntry,
   }),
   // Used by the per-entry photo override control.
-  useSetFoodEntryImageMutation: () => ({
+  useSetFoodEntryImagesMutation: () => ({
     mutateAsync: jest.fn(),
     isPending: false,
   }),
@@ -64,7 +64,7 @@ jest.mock('@/hooks/Diary/useFoodEntries', () => ({
     isPending: false,
   }),
   // The override control is shared with logged meals, so it calls both pairs.
-  useSetFoodEntryMealImageMutation: () => ({
+  useSetFoodEntryMealImagesMutation: () => ({
     mutateAsync: jest.fn(),
     isPending: false,
   }),

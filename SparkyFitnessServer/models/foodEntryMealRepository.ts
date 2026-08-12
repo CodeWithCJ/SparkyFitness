@@ -1,4 +1,5 @@
 import { getClient } from '../db/poolManager.js';
+import { toImageArray } from '../utils/imageLocalizer.js';
 import { log } from '../config/logging.js';
 
 async function createFoodEntryMeal(
@@ -154,7 +155,7 @@ async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
             fem.updated_by_user_id,
             -- Per-entry override photo, plus the meal template's own images so
             -- the diary can fall back when this entry has no override.
-            fem.image_url,
+            fem.images,
             m.images AS meal_images
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
@@ -202,7 +203,7 @@ async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
             fem.updated_by_user_id,
             -- Per-entry override photo, plus the meal template's own images so
             -- the diary can fall back when this entry has no override.
-            fem.image_url,
+            fem.images,
             m.images AS meal_images
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
@@ -328,25 +329,25 @@ async function moveFoodEntryMealToMealType(
   }
 }
 /**
- * Sets or clears a logged meal's per-entry override photo.
+ * Replaces a logged meal's per-entry override photos.
  *
  * Scoped by user_id so a caller cannot retarget another user's entry. Passing
- * null clears the override, restoring the meal template's image as the
- * fallback; the template itself is never modified.
+ * an empty array clears the override, restoring the meal template's images as
+ * the fallback; the template itself is never modified.
  */
-async function setFoodEntryMealImage(
+async function setFoodEntryMealImages(
   foodEntryMealId: string,
   userId: string,
-  imageUrl: string | null
+  images: string[]
 ) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
       `UPDATE food_entry_meals
-         SET image_url = $3, updated_at = now()
+         SET images = $3::jsonb, updated_at = now()
        WHERE id = $1 AND user_id = $2
-       RETURNING id, image_url`,
-      [foodEntryMealId, userId, imageUrl]
+       RETURNING id, images`,
+      [foodEntryMealId, userId, JSON.stringify(toImageArray(images))]
     );
     return result.rows[0] ?? null;
   } finally {
@@ -354,7 +355,7 @@ async function setFoodEntryMealImage(
   }
 }
 
-export { setFoodEntryMealImage };
+export { setFoodEntryMealImages };
 export { createFoodEntryMeal };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealById };
@@ -363,7 +364,7 @@ export { getFoodEntryMealsByDateRange };
 export { deleteFoodEntryMeal };
 export { moveFoodEntryMealToMealType };
 export default {
-  setFoodEntryMealImage,
+  setFoodEntryMealImages,
   createFoodEntryMeal,
   updateFoodEntryMeal,
   getFoodEntryMealById,

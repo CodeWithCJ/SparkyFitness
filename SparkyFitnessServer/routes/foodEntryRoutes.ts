@@ -6,12 +6,34 @@ import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import { isEntryTimeString } from '@workspace/shared';
 import {
-  uploadSingleImage,
+  uploadImages,
   finalizeUploadedImages,
   cleanupStagedImages,
   stagedFilesFrom,
 } from '../middleware/imageUpload.js';
 const router = express.Router();
+
+/**
+ * Parses the `keepImages` multipart field: a JSON array of already-saved image
+ * paths the client is retaining. Anything unparseable is treated as "keep
+ * nothing", which is the same as a full replacement.
+ */
+function parseKeepImages(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === 'string');
+  }
+  if (typeof value !== 'string' || value.length === 0) {
+    return [];
+  }
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((v): v is string => typeof v === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
 router.use(express.json());
 // Apply diary permission check to all food entry routes
 router.use(checkPermissionMiddleware('diary'));
@@ -1035,28 +1057,33 @@ router.get(
 router.post(
   '/:id/image',
   authenticate,
-  uploadSingleImage,
+  uploadImages,
   async (req, res, next) => {
     const { id } = req.params;
     if (!id) {
       return res.status(400).json({ error: 'Food entry ID is required.' });
     }
     try {
-      const [uploadedPath] = await finalizeUploadedImages(
+      const uploadedPaths = await finalizeUploadedImages(
         stagedFilesFrom(req),
         'food_entries',
         id
       );
-      if (!uploadedPath) {
+
+      // `keepImages` lists the already-saved photos the client is retaining,
+      // so one request can add and remove in a single save.
+      const keptImages = parseKeepImages(req.body?.keepImages);
+      const nextImages = [...keptImages, ...uploadedPaths];
+      if (uploadedPaths.length === 0 && !req.body?.keepImages) {
         return res.status(400).json({ error: 'An image file is required.' });
       }
 
-      // updateFoodEntry unlinks the image this one replaces.
+      // updateFoodEntry unlinks any images this replaces.
       const updatedEntry = await foodEntryService.updateFoodEntry(
         req.userId,
         req.originalUserId || req.userId,
         id,
-        { image_url: uploadedPath }
+        { images: nextImages }
       );
 
       res.status(200).json(updatedEntry);
@@ -1092,13 +1119,13 @@ router.delete('/:id/image', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Food entry ID is required.' });
   }
   try {
-    // An empty string clears the column; undefined would mean "leave as is".
-    // updateFoodEntry unlinks the file that was cleared.
+    // An empty array clears the column; undefined would mean "leave as is".
+    // updateFoodEntry unlinks the files that were cleared.
     const updatedEntry = await foodEntryService.updateFoodEntry(
       req.userId,
       req.originalUserId || req.userId,
       id,
-      { image_url: '' }
+      { images: [] }
     );
 
     res.status(200).json(updatedEntry);

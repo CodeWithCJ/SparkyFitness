@@ -286,12 +286,15 @@ export const copyFoodEntriesToUser = async (
  * food's or meal's own images. Entries without an override fall back to those
  * at display time.
  */
-export const setFoodEntryImage = async (
+export const setFoodEntryImages = async (
   entryId: string,
-  imageFile: File
+  keepImages: string[],
+  newFiles: File[]
 ): Promise<FoodEntry> => {
   const formData = new FormData();
-  formData.append('image', imageFile);
+  // Already-saved paths the user kept; anything omitted is deleted server-side.
+  formData.append('keepImages', JSON.stringify(keepImages));
+  newFiles.forEach((file) => formData.append('images', file));
   return await apiCall(`/food-entries/${entryId}/image`, {
     method: 'POST',
     body: formData,
@@ -312,12 +315,15 @@ export const clearFoodEntryImage = async (
  * Applies to this diary entry only — the meal template's own images are never
  * modified. Entries without an override fall back to those.
  */
-export const setFoodEntryMealImage = async (
+export const setFoodEntryMealImages = async (
   entryId: string,
-  imageFile: File
+  keepImages: string[],
+  newFiles: File[]
 ): Promise<FoodEntryMeal> => {
   const formData = new FormData();
-  formData.append('image', imageFile);
+  // Already-saved paths the user kept; anything omitted is deleted server-side.
+  formData.append('keepImages', JSON.stringify(keepImages));
+  newFiles.forEach((file) => formData.append('images', file));
   return await apiCall(`/food-entry-meals/${entryId}/image`, {
     method: 'POST',
     body: formData,

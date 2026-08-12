@@ -60,7 +60,7 @@ describe('primaryImageOf', () => {
 describe('diaryEntryImageSrc', () => {
   it('prefers the per-entry override over the food image', () => {
     const entry = {
-      image_url: '/uploads/food_entries/e1/override.png',
+      images: ['/uploads/food_entries/e1/override.png'],
       food_images: ['/uploads/foods/f1/default.png'],
     } as Partial<FoodEntry> as FoodEntry;
 
@@ -71,7 +71,7 @@ describe('diaryEntryImageSrc', () => {
 
   it("falls back to the parent food's image when there is no override", () => {
     const entry = {
-      image_url: null,
+      images: [],
       food_images: ['/uploads/foods/f1/default.png'],
     } as Partial<FoodEntry> as FoodEntry;
 
@@ -80,15 +80,15 @@ describe('diaryEntryImageSrc', () => {
 
   it('falls back to the nested food relation when food_images is absent', () => {
     const entry = {
-      image_url: null,
+      images: [],
       foods: { images: ['/uploads/foods/f1/nested.png'] },
-    } as Partial<FoodEntry> as FoodEntry;
+    } as unknown as FoodEntry;
 
     expect(diaryEntryImageSrc(entry)).toBe('/uploads/foods/f1/nested.png');
   });
 
   it('returns null when neither the entry nor the food has an image', () => {
-    const entry = { image_url: null } as Partial<FoodEntry> as FoodEntry;
+    const entry = { images: [] } as Partial<FoodEntry> as FoodEntry;
 
     expect(diaryEntryImageSrc(entry)).toBeNull();
     expect(diaryEntryImageSrc(null)).toBeNull();

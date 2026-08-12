@@ -131,10 +131,10 @@ export interface FoodEntry {
   entry_time?: string | null;
   meal_plan_template_id?: string;
   /**
-   * Per-entry override photo. Applies only to this diary entry and never
-   * changes the parent food/meal. Null means "fall back to `food_images`".
+   * Per-entry override photos. Apply only to this diary entry and never change
+   * the parent food/meal. Empty means "fall back to `food_images`".
    */
-  image_url?: string | null;
+  images?: string[] | null;
   /** The parent food's own images, used as the fallback when no override. */
   food_images?: string[] | null;
   // Add water_ml to FoodEntry if it's a water entry

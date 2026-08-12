@@ -3,6 +3,7 @@ import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
+import { toImageArray } from '../utils/imageLocalizer.js';
 /**
  * @swagger
  * components:
@@ -234,10 +235,10 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
-         source, source_id, entry_time, image_url
+         source, source_id, entry_time, images
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -321,7 +322,7 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
         entryData.source ?? null,
         entryData.source_id ?? null,
         entryData.entry_time ?? null,
-        entryData.image_url ?? null,
+        JSON.stringify(toImageArray(entryData.images)),
       ]
     );
     await client.query('COMMIT');
@@ -472,11 +473,8 @@ async function updateFoodEntry(
         entry_time = $34,
         -- NULL means "key omitted": keep whatever override is already stored.
         -- Clearing the override is done by sending an empty string.
-        image_url = CASE
-          WHEN $35::text IS NULL THEN image_url
-          WHEN $35::text = '' THEN NULL
-          ELSE $35::text
-        END
+        -- NULL means "key omitted": keep whatever override is already stored.
+        images = COALESCE($35::jsonb, images)
       WHERE id = $30
       RETURNING *`,
       [
@@ -514,7 +512,9 @@ async function updateFoodEntry(
         snapshotData.allergens ?? null,
         snapshotData.traces ?? null,
         entryData.entry_time ?? null,
-        entryData.image_url ?? null,
+        entryData.images === undefined
+          ? null
+          : JSON.stringify(toImageArray(entryData.images)),
       ]
     );
     return result.rows[0];
@@ -569,7 +569,7 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
         f.provider_verified,
         -- Per-entry override photo, plus the parent food's own images so the
         -- diary can fall back when the entry has no override of its own.
-        fe.image_url,
+        fe.images,
         f.images AS food_images
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
@@ -635,7 +635,7 @@ async function getFoodEntriesByDateAndMealType(
         f.provider_verified,
         -- Per-entry override photo, plus the parent food's own images so the
         -- diary can fall back when the entry has no override of its own.
-        fe.image_url,
+        fe.images,
         f.images AS food_images
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
@@ -705,7 +705,7 @@ async function getFoodEntriesByDateRange(
         f.provider_verified,
         -- Per-entry override photo, plus the parent food's own images so the
         -- diary can fall back when the entry has no override of its own.
-        fe.image_url,
+        fe.images,
         f.images AS food_images
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id

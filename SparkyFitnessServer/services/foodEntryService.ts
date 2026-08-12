@@ -829,13 +829,13 @@ async function updateFoodEntry(
     // Replacing or clearing the per-entry override photo leaves the previous
     // upload orphaned. Best-effort: the row already reflects the new value.
     if (
-      entryData.image_url !== undefined &&
-      existingEntry.image_url &&
-      existingEntry.image_url !== updatedEntry.image_url
+      entryData.images !== undefined &&
+      Array.isArray(existingEntry.images) &&
+      existingEntry.images.length > 0
     ) {
       await removeOrphanedImages(
-        [existingEntry.image_url],
-        updatedEntry.image_url ? [updatedEntry.image_url] : []
+        existingEntry.images,
+        updatedEntry.images ?? []
       ).catch((unlinkError) =>
         log('warn', 'Error removing replaced food entry image:', unlinkError)
       );

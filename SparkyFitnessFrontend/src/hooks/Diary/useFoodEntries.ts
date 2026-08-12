@@ -20,9 +20,9 @@ import {
   DownloadDiaryExportOptions,
   copyFoodEntriesFromUser,
   copyFoodEntriesToUser,
-  setFoodEntryImage,
+  setFoodEntryImages,
   clearFoodEntryImage,
-  setFoodEntryMealImage,
+  setFoodEntryMealImages,
   clearFoodEntryMealImage,
   type CopyFoodEntriesFromUserPayload,
   type CopyFoodEntriesToUserPayload,
@@ -335,13 +335,20 @@ export const useCopyFoodEntriesToUserMutation = () => {
  * The photo applies to this entry only and never modifies the underlying food
  * or meal; entries without one fall back to the food's own image.
  */
-export const useSetFoodEntryImageMutation = () => {
+export const useSetFoodEntryImagesMutation = () => {
   const { t } = useTranslation();
   const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
-    mutationFn: ({ entryId, file }: { entryId: string; file: File }) =>
-      setFoodEntryImage(entryId, file),
+    mutationFn: ({
+      entryId,
+      keepImages,
+      newFiles,
+    }: {
+      entryId: string;
+      keepImages: string[];
+      newFiles: File[];
+    }) => setFoodEntryImages(entryId, keepImages, newFiles),
     onSuccess: () => invalidate(),
     meta: {
       errorMessage: t(
@@ -376,13 +383,20 @@ export const useClearFoodEntryImageMutation = () => {
  * Applies to that entry only and never modifies the meal template; entries
  * without one fall back to the template's own image.
  */
-export const useSetFoodEntryMealImageMutation = () => {
+export const useSetFoodEntryMealImagesMutation = () => {
   const { t } = useTranslation();
   const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
-    mutationFn: ({ entryId, file }: { entryId: string; file: File }) =>
-      setFoodEntryMealImage(entryId, file),
+    mutationFn: ({
+      entryId,
+      keepImages,
+      newFiles,
+    }: {
+      entryId: string;
+      keepImages: string[];
+      newFiles: File[];
+    }) => setFoodEntryMealImages(entryId, keepImages, newFiles),
     onSuccess: () => invalidate(),
     meta: {
       errorMessage: t(

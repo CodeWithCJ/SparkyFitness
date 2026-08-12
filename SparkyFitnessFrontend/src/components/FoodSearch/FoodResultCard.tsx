@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { formatServingLabel } from '@/utils/foodServing';
-import { resolveFoodImageSrc, primaryImageOf } from '@/utils/foodImages';
+import { resolveFoodImageSrc, usableFoodImages } from '@/utils/foodImages';
+import ImageLightbox from './ImageLightbox';
 import {
   CONFIDENCE_TONES,
   OVERALL_CONFIDENCE_LABELS,
@@ -76,10 +78,18 @@ const FoodResultCard = ({
   // Provider results carry a single upstream `image_url`; imported foods and
   // meals carry an `images` array. resolveFoodImageSrc handles both absolute
   // provider URLs and server-relative upload paths.
-  const resolvedImageSrc =
-    resolveFoodImageSrc(imageUrl) ??
-    primaryImageOf(item) ??
-    resolveFoodImageSrc(foodItem.image_url);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  // All images for the viewer; provider results only ever have the one.
+  const galleryImages = (() => {
+    const own = usableFoodImages(item.images);
+    if (own.length > 0) {
+      return own;
+    }
+    const single =
+      resolveFoodImageSrc(imageUrl) ?? resolveFoodImageSrc(foodItem.image_url);
+    return single ? [single] : [];
+  })();
+  const resolvedImageSrc = galleryImages[0] ?? null;
   // Providers that serve a small and a full-size variant give us both; if the
   // small one is missing upstream, swap to the full size before giving up.
   const fallbackImageSrc = resolveFoodImageSrc(foodItem.image_source_url);
@@ -191,25 +201,36 @@ const FoodResultCard = ({
               <p className="text-sm text-gray-500">{mealItem.description}</p>
             )}
             {resolvedImageSrc && (
-              <img
-                src={resolvedImageSrc}
-                alt={item.name}
-                className="w-16 h-16 object-cover rounded-md mr-4"
-                loading="lazy"
-                onError={(e) => {
-                  const img = e.currentTarget;
-                  // One-shot flag rather than comparing src: the browser
-                  // resolves `img.src` to an absolute URL, so a relative
-                  // fallback would never compare equal and would retry forever.
-                  if (fallbackImageSrc && !img.dataset['triedFallback']) {
-                    img.dataset['triedFallback'] = 'true';
-                    img.src = fallbackImageSrc;
-                    return;
-                  }
-                  // A dead provider link shouldn't leave a broken-image icon.
-                  img.style.display = 'none';
+              <button
+                type="button"
+                className="mr-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onClick={(e) => {
+                  // The card itself is clickable; don't also select the food.
+                  e.stopPropagation();
+                  setLightboxOpen(true);
                 }}
-              />
+                aria-label={t('food.viewImages', 'View images')}
+              >
+                <img
+                  src={resolvedImageSrc}
+                  alt={item.name}
+                  className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
+                  loading="lazy"
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    // One-shot flag rather than comparing src: the browser
+                    // resolves `img.src` to an absolute URL, so a relative
+                    // fallback would never compare equal and would retry forever.
+                    if (fallbackImageSrc && !img.dataset['triedFallback']) {
+                      img.dataset['triedFallback'] = 'true';
+                      img.src = fallbackImageSrc;
+                      return;
+                    }
+                    // A dead provider link shouldn't leave a broken-image icon.
+                    img.style.display = 'none';
+                  }}
+                />
+              </button>
             )}
             {isFood && foodItem.default_variant && (
               <>
@@ -253,6 +274,12 @@ const FoodResultCard = ({
           </div>
         </div>
       </CardContent>
+      <ImageLightbox
+        images={galleryImages}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+        title={item.name}
+      />
     </Card>
   );
 };

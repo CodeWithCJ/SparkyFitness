@@ -1687,18 +1687,20 @@
     },
     "of": "of",
     "over": "over",
-    "entryPhoto": "Photo for this entry",
+    "entryPhoto": "Photos for this entry",
     "entryPhotoAlt": "Diary entry photo",
     "addEntryPhoto": "Add photo",
     "replaceEntryPhoto": "Replace photo",
     "removeEntryPhoto": "Remove photo",
-    "entryPhotoOverrideHint": "This photo applies to this entry only.",
-    "entryPhotoInheritedHint": "Showing the food's own image.",
+    "entryPhotoOverrideHint": "These photos apply to this entry only.",
+    "entryPhotoInheritedHint": "Showing the food's own images. Add a photo to override them for this entry.",
     "entryPhotoEmptyHint": "Add a photo of what you actually ate.",
     "entryImageUploadFailedTitle": "Upload failed",
     "entryImageUploadFailed": "Could not save the photo for this entry.",
     "entryImageRemoveFailedTitle": "Remove failed",
-    "entryImageRemoveFailed": "Could not remove the photo for this entry."
+    "entryImageRemoveFailed": "Could not remove the photo for this entry.",
+    "inheritedPhotoAlt": "Inherited image {{number}}",
+    "resetEntryPhotos": "Reset to the food's own images"
   },
   "nutrientGoalDirection": {
     "min": "Min",
@@ -3181,6 +3183,12 @@
     "imagesLimitReached": "Maximum of {{count}} images reached.",
     "imagePreviewAlt": "Food image {{number}}",
     "newImagePreviewAlt": "New image {{number}}",
-    "removeImage": "Remove image"
+    "removeImage": "Remove image",
+    "viewImages": "View images",
+    "imageViewer": "Image viewer",
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
+    "playSlideshow": "Play slideshow",
+    "pauseSlideshow": "Pause slideshow"
   }
 }

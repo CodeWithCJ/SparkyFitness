@@ -56,7 +56,7 @@ export const foodEntriesSchema = z.object({
   meal_type_id: mealTypesIdSchema,
   source: z.string().nullable(),
   source_id: z.string().nullable(),
-  image_url: z.string().nullable(),
+  images: z.array(z.string()),
 });
 
 export const foodEntriesInitializerSchema = z.object({
@@ -102,7 +102,7 @@ export const foodEntriesInitializerSchema = z.object({
   meal_type_id: mealTypesIdSchema,
   source: z.string().optional().nullable(),
   source_id: z.string().optional().nullable(),
-  image_url: z.string().optional().nullable(),
+  images: z.array(z.string()).optional(),
 });
 
 export const foodEntriesMutatorSchema = z.object({
@@ -148,7 +148,7 @@ export const foodEntriesMutatorSchema = z.object({
   meal_type_id: mealTypesIdSchema.optional(),
   source: z.string().optional().nullable(),
   source_id: z.string().optional().nullable(),
-  image_url: z.string().optional().nullable(),
+  images: z.array(z.string()).optional(),
 });
 
 export type FoodEntries = z.infer<typeof foodEntriesSchema>;

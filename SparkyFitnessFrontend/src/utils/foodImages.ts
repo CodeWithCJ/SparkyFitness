@@ -54,19 +54,25 @@ export function primaryImageOf(
  * first image. The override is never written back to the parent, so this
  * fallback is what makes an un-overridden entry still show a picture.
  */
-export function diaryEntryImageSrc(
-  entry:
-    | Pick<FoodEntry, 'image_url' | 'food_images' | 'foods'>
-    | null
-    | undefined
-): string | null {
+export function diaryEntryImages(
+  entry: Pick<FoodEntry, 'images' | 'food_images' | 'foods'> | null | undefined
+): string[] {
   if (!entry) {
-    return null;
+    return [];
   }
-  return (
-    resolveFoodImageSrc(entry.image_url) ??
-    usableFoodImages(entry.food_images)[0] ??
-    usableFoodImages(entry.foods?.images)[0] ??
-    null
-  );
+  const override = usableFoodImages(entry.images);
+  if (override.length > 0) {
+    return override;
+  }
+  const inherited = usableFoodImages(entry.food_images);
+  return inherited.length > 0
+    ? inherited
+    : usableFoodImages(entry.foods?.images);
+}
+
+/** First image to show for a diary entry, or null when it has none. */
+export function diaryEntryImageSrc(
+  entry: Pick<FoodEntry, 'images' | 'food_images' | 'foods'> | null | undefined
+): string | null {
+  return diaryEntryImages(entry)[0] ?? null;
 }
