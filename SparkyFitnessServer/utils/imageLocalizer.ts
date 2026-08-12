@@ -44,12 +44,24 @@ function resolveImageInput(payload: {
 }
 
 /**
+ * How many remote images a single entity may pull down, and how many of those
+ * downloads may be in flight at once.
+ *
+ * Uploads are already capped by multer, but a JSON payload can carry an
+ * arbitrary number of remote URLs, so the download path needs its own bound:
+ * without it one import could open hundreds of simultaneous connections.
+ */
+const MAX_REMOTE_DOWNLOADS = 10;
+const DOWNLOAD_CONCURRENCY = 4;
+
+/**
  * Replaces externally-hosted image URLs with locally downloaded copies so the
  * image survives the provider rotating or expiring its CDN link.
  *
  * Failures are non-fatal: a rejected download (SSRF guard, disallowed
  * content-type, size cap) leaves the original remote URL in place rather than
- * failing the surrounding create/update.
+ * failing the surrounding create/update. Remote URLs beyond the download cap
+ * are likewise left as-is rather than dropped.
  *
  * @returns the localized array, or null when nothing needed changing.
  */
@@ -64,26 +76,39 @@ async function localizeImages(
   }
 
   let changed = false;
-  const localized = await Promise.all(
-    source.map(async (image) => {
-      if (!isRemoteImage(image)) {
-        return image;
-      }
-      try {
-        const localPath = await downloadImage(image, entityId, domain);
-        changed = true;
-        return localPath;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        log(
-          'warn',
-          `[imageLocalizer] Keeping remote URL for ${domain}/${entityId}; download failed: ${message}`
-        );
-        return image;
-      }
-    })
-  );
+  const localized = [...source];
 
+  // Indexes needing a download, capped so one payload can't fan out forever.
+  const targets = source
+    .map((image, index) => ({ image, index }))
+    .filter(({ image }) => isRemoteImage(image))
+    .slice(0, MAX_REMOTE_DOWNLOADS);
+
+  if (targets.length < source.filter(isRemoteImage).length) {
+    log(
+      'warn',
+      `[imageLocalizer] ${domain}/${entityId} exceeded ${MAX_REMOTE_DOWNLOADS} remote images; the rest keep their original URLs`
+    );
+  }
+
+  for (let i = 0; i < targets.length; i += DOWNLOAD_CONCURRENCY) {
+    const batch = targets.slice(i, i + DOWNLOAD_CONCURRENCY);
+    await Promise.all(
+      batch.map(async ({ image, index }) => {
+        try {
+          localized[index] = await downloadImage(image, entityId, domain);
+          changed = true;
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          log(
+            'warn',
+            `[imageLocalizer] Keeping remote URL for ${domain}/${entityId}; download failed: ${message}`
+          );
+        }
+      })
+    );
+  }
   return changed ? localized : null;
 }
 

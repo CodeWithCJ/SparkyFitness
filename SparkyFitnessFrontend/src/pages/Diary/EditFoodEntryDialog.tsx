@@ -240,6 +240,9 @@ const EditFoodEntryDialog = ({
           id: entry.id,
           data,
         });
+        // This branch returns early, so it needs the same photo save as the
+        // normal path below; otherwise staged photos are silently dropped.
+        await imageDraft.save();
         info(
           loggingLevel,
           'Food entry updated with converted variant:',

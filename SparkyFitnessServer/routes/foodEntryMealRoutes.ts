@@ -407,9 +407,17 @@ router.delete('/:id', async (req, res, next) => {
  *           schema:
  *             type: object
  *             properties:
- *               image:
- *                 type: string
- *                 format: binary
+ *               images:
+ *                 description: >
+ *                   Repeated file parts for newly uploaded photos, plus a JSON
+ *                   string field of the same name holding the desired final
+ *                   order. Entries in that array are either existing image
+ *                   paths being kept, or `__new__<n>` placeholders marking
+ *                   where the n-th uploaded file belongs.
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
  *     responses:
  *       200:
  *         description: The updated logged meal.
@@ -443,15 +451,30 @@ router.post('/:id/image', uploadImages, async (req, res, next) => {
     // can add, remove, and reorder together.
     const requestedOrder = parseImageOrder(req.body?.images);
     if (uploadedPaths.length === 0 && requestedOrder === undefined) {
+      // Nothing to apply; drop the files we already moved out of staging.
+      await removeOrphanedImages(uploadedPaths, []);
       return res.status(400).json({ error: 'An image file is required.' });
     }
     const nextImages = applyImageOrder(requestedOrder, uploadedPaths);
 
-    const updated = await foodEntryMealRepository.setFoodEntryMealImages(
-      id,
-      req.userId,
-      nextImages
-    );
+    let updated;
+    try {
+      updated = await foodEntryMealRepository.setFoodEntryMealImages(
+        id,
+        req.userId,
+        nextImages
+      );
+    } catch (persistError) {
+      // The files are already out of staging, so cleanupStagedImages can no
+      // longer reach them; remove them here or they leak permanently.
+      await removeOrphanedImages(uploadedPaths, []);
+      throw persistError;
+    }
+    if (!updated) {
+      // Concurrent delete, or the row is no longer the caller's.
+      await removeOrphanedImages(uploadedPaths, []);
+      return res.status(404).json({ error: 'FoodEntryMeal not found.' });
+    }
 
     // Drop files the client dropped so replacements don't accumulate on disk.
     await removeOrphanedImages(existing.images, nextImages);

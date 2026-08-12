@@ -60,7 +60,9 @@ interface MealBuilderProps {
   foodEntryMealType?: string; // New prop for food diary editing
   initialServingSize?: number;
   initialServingUnit?: string;
-  onSave?: () => void;
+  // May be async: the diary edit dialog persists staged entry photos here, so
+  // callers must await it rather than floating the promise.
+  onSave?: () => void | Promise<void>;
   initialEntryTime?: string | null;
 }
 
@@ -800,7 +802,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             imageFiles: mealImageFiles,
           });
         }
-        onSave?.();
+        await onSave?.();
       } catch (err) {
         error(loggingLevel, 'Error saving meal:', err);
       }
@@ -847,7 +849,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         } else {
           await createFoodEntryMeal(foodEntryMealData);
         }
-        onSave?.();
+        await onSave?.();
       } catch (err) {
         error(loggingLevel, 'Error updating food diary meal entry:', err);
       }

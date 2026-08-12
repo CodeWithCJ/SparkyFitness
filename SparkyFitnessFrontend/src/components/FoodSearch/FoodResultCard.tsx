@@ -79,20 +79,26 @@ const FoodResultCard = ({
   // meals carry an `images` array. resolveFoodImageSrc handles both absolute
   // provider URLs and server-relative upload paths.
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  // Set when the thumbnail 404s and we swap to the full-size variant, so the
+  // viewer opens the image that actually loaded rather than the failed one.
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  // Providers that serve a small and a full-size variant give us both; if the
+  // small one is missing upstream, swap to the full size before giving up.
+  const fallbackImageSrc = resolveFoodImageSrc(foodItem.image_source_url);
   // All images for the viewer; provider results only ever have the one.
   const galleryImages = (() => {
     const own = usableFoodImages(item.images);
     if (own.length > 0) {
       return own;
     }
+    if (thumbnailFailed && fallbackImageSrc) {
+      return [fallbackImageSrc];
+    }
     const single =
       resolveFoodImageSrc(imageUrl) ?? resolveFoodImageSrc(foodItem.image_url);
     return single ? [single] : [];
   })();
   const resolvedImageSrc = galleryImages[0] ?? null;
-  // Providers that serve a small and a full-size variant give us both; if the
-  // small one is missing upstream, swap to the full size before giving up.
-  const fallbackImageSrc = resolveFoodImageSrc(foodItem.image_source_url);
   const mealItem = item as Meal;
   // Hex opacity suffixes are only valid on a full #rrggbb value; other colour
   // formats (CSS vars, named colours, #rgb) are used as-is without a tint.
@@ -135,6 +141,8 @@ const FoodResultCard = ({
                   if (fallbackImageSrc && !img.dataset['triedFallback']) {
                     img.dataset['triedFallback'] = 'true';
                     img.src = fallbackImageSrc;
+                    // Point the viewer at the same replacement.
+                    setThumbnailFailed(true);
                     return;
                   }
                   // A dead provider link shouldn't leave a broken-image icon.

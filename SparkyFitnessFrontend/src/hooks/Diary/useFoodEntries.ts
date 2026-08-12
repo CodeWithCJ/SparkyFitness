@@ -32,6 +32,8 @@ import type { FoodDiaryImportRow, FoodDiaryImportScope } from '@/types/diary';
 
 import { goalKeys } from '@/api/keys/goals';
 import { foodEntryKeys, foodEntryMealKeys } from '@/api/keys/diary';
+import type { FoodEntry } from '@/types/food';
+import type { FoodEntryMeal } from '@/types/meal';
 import i18n from '@/i18n';
 import { useFoodEntryInvalidation } from '../useInvalidateKeys';
 import { FoodEntryUpdateData } from '@/types/diary';
@@ -330,13 +332,20 @@ export const useCopyFoodEntriesToUserMutation = () => {
 };
 
 /**
- * Sets a diary entry's per-entry override photo.
+ * Builds a mutation that replaces a diary entry's override photos.
  *
- * The photo applies to this entry only and never modifies the underlying food
- * or meal; entries without one fall back to the food's own image.
+ * Food entries and logged meals store their photos on different tables and so
+ * hit different endpoints, but the lifecycle — invalidate the diary on success,
+ * surface the same localized error — is identical.
  */
-export const useSetFoodEntryImagesMutation = () => {
-  const { t } = useTranslation();
+const useSetEntryImagesMutation = (
+  request: (
+    entryId: string,
+    images: string[],
+    newFiles: File[]
+  ) => Promise<FoodEntry | FoodEntryMeal>,
+  errorMessage: string
+) => {
   const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
@@ -348,79 +357,80 @@ export const useSetFoodEntryImagesMutation = () => {
       entryId: string;
       images: string[];
       newFiles: File[];
-    }) => setFoodEntryImages(entryId, images, newFiles),
+    }) => request(entryId, images, newFiles),
     onSuccess: () => invalidate(),
-    meta: {
-      errorMessage: t(
-        'diary.entryImageUploadFailed',
-        'Could not save the photo for this entry.'
-      ),
-    },
+    meta: { errorMessage },
   });
 };
 
-/** Clears a diary entry's override photo, restoring the food/meal fallback. */
-export const useClearFoodEntryImageMutation = () => {
-  const { t } = useTranslation();
+/** Builds a mutation that clears a diary entry's override photos. */
+const useClearEntryImageMutation = (
+  request: (entryId: string) => Promise<FoodEntry | FoodEntryMeal>,
+  errorMessage: string
+) => {
   const invalidate = useFoodEntryInvalidation();
 
   return useMutation({
-    mutationFn: ({ entryId }: { entryId: string }) =>
-      clearFoodEntryImage(entryId),
+    mutationFn: ({ entryId }: { entryId: string }) => request(entryId),
     onSuccess: () => invalidate(),
-    meta: {
-      errorMessage: t(
-        'diary.entryImageRemoveFailed',
-        'Could not remove the photo for this entry.'
-      ),
-    },
+    meta: { errorMessage },
   });
 };
 
 /**
- * Sets a logged meal's per-entry override photo.
+ * Sets a food diary entry's override photos.
  *
- * Applies to that entry only and never modifies the meal template; entries
- * without one fall back to the template's own image.
+ * They apply to that entry only and never modify the parent food; entries
+ * without any fall back to the food's own images.
+ */
+export const useSetFoodEntryImagesMutation = () => {
+  const { t } = useTranslation();
+  return useSetEntryImagesMutation(
+    setFoodEntryImages,
+    t(
+      'diary.entryImageUploadFailed',
+      'Could not save the photo for this entry.'
+    )
+  );
+};
+
+/** Clears a food diary entry's override photos, restoring the food fallback. */
+export const useClearFoodEntryImageMutation = () => {
+  const { t } = useTranslation();
+  return useClearEntryImageMutation(
+    clearFoodEntryImage,
+    t(
+      'diary.entryImageRemoveFailed',
+      'Could not remove the photo for this entry.'
+    )
+  );
+};
+
+/**
+ * Sets a logged meal's override photos.
+ *
+ * They apply to that entry only and never modify the meal template; entries
+ * without any fall back to the template's own images.
  */
 export const useSetFoodEntryMealImagesMutation = () => {
   const { t } = useTranslation();
-  const invalidate = useFoodEntryInvalidation();
-
-  return useMutation({
-    mutationFn: ({
-      entryId,
-      images,
-      newFiles,
-    }: {
-      entryId: string;
-      images: string[];
-      newFiles: File[];
-    }) => setFoodEntryMealImages(entryId, images, newFiles),
-    onSuccess: () => invalidate(),
-    meta: {
-      errorMessage: t(
-        'diary.entryImageUploadFailed',
-        'Could not save the photo for this entry.'
-      ),
-    },
-  });
+  return useSetEntryImagesMutation(
+    setFoodEntryMealImages,
+    t(
+      'diary.entryImageUploadFailed',
+      'Could not save the photo for this entry.'
+    )
+  );
 };
 
-/** Clears a logged meal's override photo, restoring the template fallback. */
+/** Clears a logged meal's override photos, restoring the template fallback. */
 export const useClearFoodEntryMealImageMutation = () => {
   const { t } = useTranslation();
-  const invalidate = useFoodEntryInvalidation();
-
-  return useMutation({
-    mutationFn: ({ entryId }: { entryId: string }) =>
-      clearFoodEntryMealImage(entryId),
-    onSuccess: () => invalidate(),
-    meta: {
-      errorMessage: t(
-        'diary.entryImageRemoveFailed',
-        'Could not remove the photo for this entry.'
-      ),
-    },
-  });
+  return useClearEntryImageMutation(
+    clearFoodEntryMealImage,
+    t(
+      'diary.entryImageRemoveFailed',
+      'Could not remove the photo for this entry.'
+    )
+  );
 };

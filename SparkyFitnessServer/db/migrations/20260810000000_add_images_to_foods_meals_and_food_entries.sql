@@ -12,6 +12,8 @@
 -- parent food or meal: a diary entry with no override of its own falls back to
 -- displaying the parent's images.
 
+-- jsonb validates syntax but still accepts objects, scalars, and JSON null,
+-- so each column also asserts the array shape the application contract needs.
 ALTER TABLE foods
   ADD COLUMN IF NOT EXISTS images jsonb NOT NULL DEFAULT '[]'::jsonb;
 
@@ -23,3 +25,26 @@ ALTER TABLE food_entries
 
 ALTER TABLE food_entry_meals
   ADD COLUMN IF NOT EXISTS images jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'foods_images_is_array') THEN
+    ALTER TABLE foods
+      ADD CONSTRAINT foods_images_is_array CHECK (jsonb_typeof(images) = 'array');
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'meals_images_is_array') THEN
+    ALTER TABLE meals
+      ADD CONSTRAINT meals_images_is_array CHECK (jsonb_typeof(images) = 'array');
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'food_entries_images_is_array') THEN
+    ALTER TABLE food_entries
+      ADD CONSTRAINT food_entries_images_is_array CHECK (jsonb_typeof(images) = 'array');
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'food_entry_meals_images_is_array') THEN
+    ALTER TABLE food_entry_meals
+      ADD CONSTRAINT food_entry_meals_images_is_array CHECK (jsonb_typeof(images) = 'array');
+  END IF;
+END $$;

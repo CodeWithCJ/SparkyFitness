@@ -56,7 +56,7 @@ const EditMealFoodEntryDialog = ({
         />
         <MealBuilder
           initialFoods={initialMealFoods}
-          onSave={() => void handleSave()}
+          onSave={handleSave}
           onCancel={() => onOpenChange(false)}
           source="food-diary"
           foodEntryId={foodEntry.id}

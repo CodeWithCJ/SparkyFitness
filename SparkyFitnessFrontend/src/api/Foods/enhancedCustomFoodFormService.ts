@@ -1,4 +1,5 @@
 import { apiCall } from '../api';
+import { buildPayloadRequest } from '../imageRequest';
 
 import type { Food, FoodVariant } from '@/types/food';
 
@@ -47,24 +48,11 @@ export const createFoodVariant = async (
   });
 };
 
-/**
- * Wraps a food payload for transport. When the user attached image files the
- * request has to be multipart, so the JSON payload rides along in a `foodData`
- * field (the server's parseFoodBody unwraps it) and each file is appended
- * under `images`. Without files we keep sending plain JSON.
- */
+/** The server's parseFoodBody unwraps the payload from a `foodData` field. */
 const buildFoodRequest = (
   payload: Record<string, unknown>,
   imageFiles?: File[]
-) => {
-  if (!imageFiles || imageFiles.length === 0) {
-    return { body: payload };
-  }
-  const formData = new FormData();
-  formData.append('foodData', JSON.stringify(payload));
-  imageFiles.forEach((file) => formData.append('images', file));
-  return { body: formData, isFormData: true as const };
-};
+) => buildPayloadRequest(payload, 'foodData', imageFiles);
 
 export const saveFood = async (
   foodData: Food,

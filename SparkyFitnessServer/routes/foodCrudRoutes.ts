@@ -20,8 +20,7 @@ import {
 const router = express.Router();
 
 /** Reads a food payload from either a JSON body or a multipart form. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseFoodBody(req: any): Record<string, any> {
+function parseFoodBody(req: unknown): Record<string, unknown> {
   return parseMultipartBody(req, ['images'], 'foodData');
 }
 router.use(express.json());

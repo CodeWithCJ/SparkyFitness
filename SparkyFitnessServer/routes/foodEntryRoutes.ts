@@ -10,6 +10,7 @@ import {
   applyImageOrder,
   finalizeUploadedImages,
   cleanupStagedImages,
+  removeOrphanedImages,
   stagedFilesFrom,
 } from '../middleware/imageUpload.js';
 const router = express.Router();
@@ -1041,9 +1042,17 @@ router.get(
  *           schema:
  *             type: object
  *             properties:
- *               image:
- *                 type: string
- *                 format: binary
+ *               images:
+ *                 description: >
+ *                   Repeated file parts for newly uploaded photos, plus a JSON
+ *                   string field of the same name holding the desired final
+ *                   order. Entries in that array are either existing image
+ *                   paths being kept, or `__new__<n>` placeholders marking
+ *                   where the n-th uploaded file belongs.
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
  *     responses:
  *       200:
  *         description: The updated food entry.
@@ -1078,12 +1087,20 @@ router.post(
       const nextImages = applyImageOrder(requestedOrder, uploadedPaths);
 
       // updateFoodEntry unlinks any images this replaces.
-      const updatedEntry = await foodEntryService.updateFoodEntry(
-        req.userId,
-        req.originalUserId || req.userId,
-        id,
-        { images: nextImages }
-      );
+      let updatedEntry;
+      try {
+        updatedEntry = await foodEntryService.updateFoodEntry(
+          req.userId,
+          req.originalUserId || req.userId,
+          id,
+          { images: nextImages }
+        );
+      } catch (persistError) {
+        // The files are already out of staging, so cleanupStagedImages can no
+        // longer reach them; remove them here or they leak permanently.
+        await removeOrphanedImages(uploadedPaths, []);
+        throw persistError;
+      }
 
       res.status(200).json(updatedEntry);
     } catch (error) {

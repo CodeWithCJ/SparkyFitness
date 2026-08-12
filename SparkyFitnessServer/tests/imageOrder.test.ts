@@ -53,6 +53,17 @@ describe('applyImageOrder', () => {
     expect(applyImageOrder([], [])).toEqual([]);
   });
 
+  it('caps the persisted array so a client cannot grow it without bound', () => {
+    // Uploads are capped by multer, but the kept-paths half is client JSON.
+    const order = Array.from({ length: 25 }, (_, i) => `/kept-${i}.png`);
+
+    const result = applyImageOrder(order, []);
+
+    expect(result).toHaveLength(10);
+    expect(result[0]).toBe('/kept-0.png');
+    expect(result[9]).toBe('/kept-9.png');
+  });
+
   it('ignores non-string entries in the order', () => {
     expect(applyImageOrder(['/kept.png', 42, null], [])).toEqual(['/kept.png']);
   });

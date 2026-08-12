@@ -37,8 +37,25 @@ function entityDirFor(domain: ImageDomain, entityId: string): string {
   return path.join(baseUploadsDir, domain, entityId);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function imageFileFilter(_req: any, file: any, cb: any) {
+/** The fields multer hands to a fileFilter / diskStorage callback. */
+interface IncomingFile {
+  originalname: string;
+  mimetype: string;
+}
+
+/** multer's node-style callback, narrowed to how this module calls it. */
+type MulterCallback<T> = (error: Error | null, value?: T) => void;
+
+/** Carries the per-request staging directory key across multer callbacks. */
+interface UploadRequest {
+  imageUploadId?: string;
+}
+
+function imageFileFilter(
+  _req: UploadRequest,
+  file: IncomingFile,
+  cb: MulterCallback<boolean>
+) {
   if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
     cb(new Error(`Unsupported image type: ${file.mimetype}`));
     return;
@@ -47,8 +64,11 @@ function imageFileFilter(_req: any, file: any, cb: any) {
 }
 
 const storage = multer.diskStorage({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  destination: (req: any, _file: any, cb: any) => {
+  destination: (
+    req: UploadRequest,
+    _file: IncomingFile,
+    cb: MulterCallback<string>
+  ) => {
     if (!req.imageUploadId) {
       req.imageUploadId = randomUUID();
     }
@@ -56,11 +76,16 @@ const storage = multer.diskStorage({
     fs.mkdirSync(uploadPath, { recursive: true });
     cb(null, uploadPath);
   },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  filename: (_req: any, file: any, cb: any) => {
+  filename: (
+    _req: UploadRequest,
+    file: IncomingFile,
+    cb: MulterCallback<string>
+  ) => {
     // Strip any directory component a client may have smuggled in the name.
     const safeName = path.basename(file.originalname).replace(/[^\w.-]/g, '_');
-    cb(null, `${Date.now()}-${safeName}`);
+    // A random prefix rather than a timestamp: two files with the same name in
+    // one request can land in the same millisecond and overwrite each other.
+    cb(null, `${randomUUID()}-${safeName}`);
   },
 });
 
@@ -70,11 +95,48 @@ const imageUpload = multer({
   limits: { fileSize: MAX_IMAGE_BYTES, files: MAX_IMAGE_COUNT },
 });
 
-/** Accepts up to 10 images under the `images` field (foods, meals). */
-const uploadImages = imageUpload.array('images', MAX_IMAGE_COUNT);
+/**
+ * Wraps a multer middleware so the per-request staging directory is always
+ * removed, including when multer itself rejects the upload (size limit,
+ * disallowed type). In that case the route handler never runs, so its own
+ * cleanup would not fire; multer removes the partial files but leaves the
+ * directory behind.
+ *
+ * Cleanup is also scheduled on response finish, so a handler that forgets to
+ * call `cleanupStagedImages` still does not leak.
+ */
+function withStagingCleanup(
+  middleware: (
+    req: unknown,
+    res: unknown,
+    next: (err?: unknown) => void
+  ) => void
+) {
+  return (
+    req: unknown,
+    res: { on?: (event: string, cb: () => void) => void },
+    next: (err?: unknown) => void
+  ) => {
+    res.on?.('finish', () => {
+      void cleanupStagedImages(req);
+    });
+    middleware(req, res, (err?: unknown) => {
+      if (err) {
+        void cleanupStagedImages(req).finally(() => next(err));
+        return;
+      }
+      next();
+    });
+  };
+}
 
-/** Accepts a single image under the `image` field (diary entry override). */
-const uploadSingleImage = imageUpload.single('image');
+/** Accepts up to 10 images under the `images` field (foods, meals). */
+const uploadImages = withStagingCleanup(
+  imageUpload.array('images', MAX_IMAGE_COUNT)
+);
+
+/** Accepts a single image under the `image` field. */
+const uploadSingleImage = withStagingCleanup(imageUpload.single('image'));
 
 /** A multer disk-storage file, narrowed to the fields this module uses. */
 interface StagedFile {
@@ -241,17 +303,28 @@ function applyImageOrder(
     }
   });
 
+  // Multer caps how many files a request may upload, but the kept-paths half of
+  // the order is just client-supplied JSON. Without a cap here a caller could
+  // persist an unbounded array into the jsonb column.
+  if (resolved.length > MAX_IMAGE_COUNT) {
+    log(
+      'warn',
+      `[imageUpload] Truncating image order from ${resolved.length} to ${MAX_IMAGE_COUNT}`
+    );
+    return resolved.slice(0, MAX_IMAGE_COUNT);
+  }
+
   return resolved;
 }
 
 /** Removes a request's staging directory. Never throws. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function cleanupStagedImages(req: any): Promise<void> {
-  if (!req?.imageUploadId) {
+async function cleanupStagedImages(req: unknown): Promise<void> {
+  const uploadId = (req as UploadRequest | null | undefined)?.imageUploadId;
+  if (!uploadId) {
     return;
   }
   try {
-    await fsp.rm(stagingDirFor(req.imageUploadId), {
+    await fsp.rm(stagingDirFor(uploadId), {
       recursive: true,
       force: true,
     });

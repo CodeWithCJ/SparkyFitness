@@ -1,4 +1,5 @@
 import { apiCall } from '../api';
+import { buildPayloadRequest } from '../imageRequest';
 import type {
   Meal,
   MealPayload,
@@ -7,24 +8,13 @@ import type {
   MealFilter,
 } from '@/types/meal';
 
-/**
- * Wraps a meal payload for transport. When the user attached image files the
- * request has to be multipart, so the JSON payload rides along in a `mealData`
- * field (the server's parseMealBody unwraps it) and each file is appended
- * under `images`. Without files we keep sending plain JSON.
- */
-const buildMealRequest = (
-  payload: Partial<MealPayload>,
-  imageFiles?: File[]
-) => {
-  if (!imageFiles || imageFiles.length === 0) {
-    return { body: payload };
-  }
-  const formData = new FormData();
-  formData.append('mealData', JSON.stringify(payload));
-  imageFiles.forEach((file) => formData.append('images', file));
-  return { body: formData, isFormData: true as const };
-};
+/** The server's parseMealBody unwraps the payload from a `mealData` field. */
+const buildMealRequest = (payload: Partial<MealPayload>, imageFiles?: File[]) =>
+  buildPayloadRequest(
+    payload as Record<string, unknown>,
+    'mealData',
+    imageFiles
+  );
 
 export const createMeal = async (
   mealData: MealPayload,
