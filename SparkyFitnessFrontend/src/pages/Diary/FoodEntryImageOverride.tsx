@@ -6,14 +6,25 @@ import { Label } from '@/components/ui/label';
 import {
   useSetFoodEntryImageMutation,
   useClearFoodEntryImageMutation,
+  useSetFoodEntryMealImageMutation,
+  useClearFoodEntryMealImageMutation,
 } from '@/hooks/Diary/useFoodEntries';
 import { diaryEntryImageSrc, usableFoodImages } from '@/utils/foodImages';
 import type { FoodEntry } from '@/types/food';
+import type { FoodEntryMeal } from '@/types/meal';
+
+/** The subset both entry kinds share for image purposes. */
+type ImageableEntry = FoodEntry | FoodEntryMeal;
 
 interface FoodEntryImageOverrideProps {
-  entry: FoodEntry;
+  entry: ImageableEntry;
+  /**
+   * Which diary table the entry lives in. Food entries and logged meals store
+   * their override on different tables, so they hit different endpoints.
+   */
+  kind?: 'food' | 'meal';
   /** Called after the override changes so the parent can refresh its data. */
-  onChanged?: (updated: FoodEntry) => void;
+  onChanged?: (updated: ImageableEntry) => void;
 }
 
 /**
@@ -25,26 +36,39 @@ interface FoodEntryImageOverrideProps {
  */
 export function FoodEntryImageOverride({
   entry,
+  kind = 'food',
   onChanged,
 }: FoodEntryImageOverrideProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [current, setCurrent] = useState<FoodEntry>(entry);
+  const [current, setCurrent] = useState<ImageableEntry>(entry);
   // The mutations own error toasts via their React Query `meta`.
-  const { mutateAsync: setImage, isPending: setting } =
-    useSetFoodEntryImageMutation();
-  const { mutateAsync: clearImage, isPending: clearing } =
-    useClearFoodEntryImageMutation();
-  const busy = setting || clearing;
+  const foodSet = useSetFoodEntryImageMutation();
+  const foodClear = useClearFoodEntryImageMutation();
+  const mealSet = useSetFoodEntryMealImageMutation();
+  const mealClear = useClearFoodEntryMealImageMutation();
+
+  const setMutation = kind === 'meal' ? mealSet : foodSet;
+  const clearMutation = kind === 'meal' ? mealClear : foodClear;
+  const busy = setMutation.isPending || clearMutation.isPending;
 
   const hasOverride = Boolean(current.image_url);
-  const displaySrc = diaryEntryImageSrc(current);
-  const inheritedSrc = usableFoodImages(
-    current.food_images ?? current.foods?.images
-  )[0];
+  const displaySrc =
+    kind === 'meal'
+      ? (diaryEntryImageSrc({ image_url: current.image_url }) ??
+        usableFoodImages((current as FoodEntryMeal).meal_images)[0] ??
+        null)
+      : diaryEntryImageSrc(current as FoodEntry);
+  const inheritedSrc =
+    kind === 'meal'
+      ? usableFoodImages((current as FoodEntryMeal).meal_images)[0]
+      : usableFoodImages(
+          (current as FoodEntry).food_images ??
+            (current as FoodEntry).foods?.images
+        )[0];
 
   const applyUpdate = useCallback(
-    (updated: FoodEntry) => {
+    (updated: ImageableEntry) => {
       setCurrent(updated);
       onChanged?.(updated);
     },
@@ -60,21 +84,23 @@ export function FoodEntryImageOverride({
         return;
       }
       try {
-        applyUpdate(await setImage({ entryId: current.id, file }));
+        applyUpdate(
+          await setMutation.mutateAsync({ entryId: current.id, file })
+        );
       } catch {
         // The mutation's meta already surfaced a toast.
       }
     },
-    [applyUpdate, current.id, setImage]
+    [applyUpdate, current.id, setMutation]
   );
 
   const handleClear = useCallback(async () => {
     try {
-      applyUpdate(await clearImage({ entryId: current.id }));
+      applyUpdate(await clearMutation.mutateAsync({ entryId: current.id }));
     } catch {
       // The mutation's meta already surfaced a toast.
     }
-  }, [applyUpdate, clearImage, current.id]);
+  }, [applyUpdate, clearMutation, current.id]);
 
   return (
     <div className="space-y-2">

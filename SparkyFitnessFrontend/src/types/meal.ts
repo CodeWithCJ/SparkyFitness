@@ -144,6 +144,11 @@ export interface FoodEntryMeal {
   legacy_serving_unit_math?: boolean;
   /** Images from the meal template this entry was logged from. */
   meal_images?: string[] | null;
+  /**
+   * Per-entry override photo. Applies only to this diary entry and never
+   * changes the meal template. Null means "fall back to `meal_images`".
+   */
+  image_url?: string | null;
   foods: MealFood[]; // The component foods of this logged meal
   calories?: number; // Aggregated calories
   protein?: number; // Aggregated protein

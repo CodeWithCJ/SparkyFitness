@@ -6,6 +6,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import MealBuilder from '@/components/MealBuilder';
+import FoodEntryImageOverride from './FoodEntryImageOverride';
 import type { FoodEntryMeal, MealFood } from '@/types/meal';
 
 interface EditMealFoodEntryDialogProps {
@@ -38,6 +39,9 @@ const EditMealFoodEntryDialog = ({
             food diary, not the master meal template.
           </p>
         </DialogHeader>
+        {/* Per-entry photo. Saves immediately and only affects this entry —
+            the meal template's own images are untouched. */}
+        <FoodEntryImageOverride entry={foodEntry} kind="meal" />
         <MealBuilder
           initialFoods={initialMealFoods}
           onSave={handleSave}

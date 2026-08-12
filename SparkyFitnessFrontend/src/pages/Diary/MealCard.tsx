@@ -60,7 +60,11 @@ import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import AllergenBadges from '@/components/AllergenBadges';
-import { diaryEntryImageSrc, usableFoodImages } from '@/utils/foodImages';
+import {
+  diaryEntryImageSrc,
+  usableFoodImages,
+  resolveFoodImageSrc,
+} from '@/utils/foodImages';
 
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
 
@@ -385,7 +389,8 @@ const MealCard = ({
                 // Logged meals: the meal template's image.
                 const entryImageSrc = isFoodEntry
                   ? diaryEntryImageSrc(item as FoodEntry)
-                  : (usableFoodImages((item as FoodEntryMeal).meal_images)[0] ??
+                  : (resolveFoodImageSrc((item as FoodEntryMeal).image_url) ??
+                    usableFoodImages((item as FoodEntryMeal).meal_images)[0] ??
                     null);
 
                 // Determine glycemic index directly from the entryNutrition object

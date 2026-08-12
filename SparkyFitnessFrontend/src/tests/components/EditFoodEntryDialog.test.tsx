@@ -63,6 +63,15 @@ jest.mock('@/hooks/Diary/useFoodEntries', () => ({
     mutateAsync: jest.fn(),
     isPending: false,
   }),
+  // The override control is shared with logged meals, so it calls both pairs.
+  useSetFoodEntryMealImageMutation: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
+  useClearFoodEntryMealImageMutation: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
 }));
 
 jest.mock('@/pages/Diary/NutrientsGrid', () => ({

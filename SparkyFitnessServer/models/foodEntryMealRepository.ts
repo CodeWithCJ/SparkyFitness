@@ -152,8 +152,9 @@ async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
             fem.updated_at,
             fem.created_by_user_id,
             fem.updated_by_user_id,
-            -- The meal template's own images, so a logged meal can show a
-            -- thumbnail in the diary the same way a logged food does.
+            -- Per-entry override photo, plus the meal template's own images so
+            -- the diary can fall back when this entry has no override.
+            fem.image_url,
             m.images AS meal_images
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
@@ -199,8 +200,9 @@ async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
             fem.updated_at,
             fem.created_by_user_id,
             fem.updated_by_user_id,
-            -- The meal template's own images, so a logged meal can show a
-            -- thumbnail in the diary the same way a logged food does.
+            -- Per-entry override photo, plus the meal template's own images so
+            -- the diary can fall back when this entry has no override.
+            fem.image_url,
             m.images AS meal_images
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
@@ -325,6 +327,34 @@ async function moveFoodEntryMealToMealType(
     client.release();
   }
 }
+/**
+ * Sets or clears a logged meal's per-entry override photo.
+ *
+ * Scoped by user_id so a caller cannot retarget another user's entry. Passing
+ * null clears the override, restoring the meal template's image as the
+ * fallback; the template itself is never modified.
+ */
+async function setFoodEntryMealImage(
+  foodEntryMealId: string,
+  userId: string,
+  imageUrl: string | null
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE food_entry_meals
+         SET image_url = $3, updated_at = now()
+       WHERE id = $1 AND user_id = $2
+       RETURNING id, image_url`,
+      [foodEntryMealId, userId, imageUrl]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+
+export { setFoodEntryMealImage };
 export { createFoodEntryMeal };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealById };
@@ -333,6 +363,7 @@ export { getFoodEntryMealsByDateRange };
 export { deleteFoodEntryMeal };
 export { moveFoodEntryMealToMealType };
 export default {
+  setFoodEntryMealImage,
   createFoodEntryMeal,
   updateFoodEntryMeal,
   getFoodEntryMealById,

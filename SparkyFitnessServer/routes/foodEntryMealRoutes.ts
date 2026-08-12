@@ -5,6 +5,14 @@ import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import { isEntryTimeString } from '@workspace/shared';
+import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
+import {
+  uploadSingleImage,
+  finalizeUploadedImages,
+  cleanupStagedImages,
+  stagedFilesFrom,
+  removeOrphanedImages,
+} from '../middleware/imageUpload.js';
 const router = express.Router();
 // Middleware to protect routes
 router.use(authenticate); // Use the authenticate middleware function
@@ -364,4 +372,112 @@ router.delete('/:id', async (req, res, next) => {
     next(err);
   }
 });
+/**
+ * @swagger
+ * /food-entry-meals/{id}/image:
+ *   post:
+ *     summary: Set a logged meal's override photo
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Attaches a photo to this diary entry only. It never modifies the meal
+ *       template's own images; entries without an override fall back to those.
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: The updated logged meal.
+ *       400:
+ *         description: No image supplied.
+ *       404:
+ *         description: FoodEntryMeal not found.
+ */
+router.post('/:id/image', uploadSingleImage, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'FoodEntryMeal ID is required.' });
+  }
+  try {
+    const existing = await foodEntryMealRepository.getFoodEntryMealById(
+      id,
+      req.userId
+    );
+    if (!existing) {
+      return res.status(404).json({ error: 'FoodEntryMeal not found.' });
+    }
+
+    const [uploadedPath] = await finalizeUploadedImages(
+      stagedFilesFrom(req),
+      'food_entry_meals',
+      id
+    );
+    if (!uploadedPath) {
+      return res.status(400).json({ error: 'An image file is required.' });
+    }
+
+    const updated = await foodEntryMealRepository.setFoodEntryMealImage(
+      id,
+      req.userId,
+      uploadedPath
+    );
+
+    // Drop the file this one replaced so overwrites don't accumulate on disk.
+    await removeOrphanedImages([existing.image_url], [uploadedPath]);
+
+    res.status(200).json({ ...existing, ...updated });
+  } catch (err) {
+    next(err);
+  } finally {
+    await cleanupStagedImages(req);
+  }
+});
+
+/**
+ * @swagger
+ * /food-entry-meals/{id}/image:
+ *   delete:
+ *     summary: Clear a logged meal's override photo
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Removes the entry-specific photo so the entry falls back to the meal
+ *       template's own image. The template is never modified.
+ *     responses:
+ *       200:
+ *         description: The updated logged meal.
+ *       404:
+ *         description: FoodEntryMeal not found.
+ */
+router.delete('/:id/image', async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'FoodEntryMeal ID is required.' });
+  }
+  try {
+    const existing = await foodEntryMealRepository.getFoodEntryMealById(
+      id,
+      req.userId
+    );
+    if (!existing) {
+      return res.status(404).json({ error: 'FoodEntryMeal not found.' });
+    }
+
+    const updated = await foodEntryMealRepository.setFoodEntryMealImage(
+      id,
+      req.userId,
+      null
+    );
+    await removeOrphanedImages([existing.image_url], []);
+
+    res.status(200).json({ ...existing, ...updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
