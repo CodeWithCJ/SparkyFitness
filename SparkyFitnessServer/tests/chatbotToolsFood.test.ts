@@ -2175,6 +2175,12 @@ describe('list_diary', () => {
 });
 
 describe('delete_entry', () => {
+  it('advertises the food_name alternative in the tool description', () => {
+    const description = tools.sparky_manage_food.description ?? '';
+    expect(description).toMatch(/delete_entry\(entry_id\?\|food_name\?/);
+    expect(description).toMatch(/update_entry\(entry_id\?\|food_name\?/);
+  });
+
   it('deletes a food entry', async () => {
     vi.mocked(foodEntryService.deleteFoodEntry).mockResolvedValue(true);
 
@@ -2207,6 +2213,147 @@ describe('delete_entry', () => {
     expect(result).toBe(
       `Error [NOT_FOUND]: Entry with ID '${ENTRY_ID}' not found.\n\nSuggestion: Check the ID and try again.`
     );
+  });
+
+  it('resolves a unique food_name to its entry and deletes without an entry_id', async () => {
+    vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([
+      {
+        id: ENTRY_ID,
+        food_name: 'Oatmeal',
+        quantity: 50,
+        unit: 'g',
+        meal_type: 'breakfast',
+        meal_type_id: 'default-id',
+      },
+      {
+        id: FOOD_ID_2,
+        food_name: 'Banana',
+        quantity: 2,
+        unit: 'serving',
+        meal_type: 'snacks',
+        meal_type_id: 'snacks-id',
+      },
+    ]);
+    vi.mocked(foodEntryService.deleteFoodEntry).mockResolvedValue(true);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'delete_entry',
+        food_name: 'oatmeal',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry deleted.');
+    expect(foodEntryService.getFoodEntriesByDate).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      '2026-06-10'
+    );
+    expect(foodEntryService.deleteFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      ENTRY_ID
+    );
+  });
+
+  it('narrows same-named entries by meal_type when deleting by name', async () => {
+    vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([
+      {
+        id: ENTRY_ID,
+        food_name: 'Oatmeal',
+        quantity: 50,
+        unit: 'g',
+        meal_type: 'breakfast',
+        meal_type_id: 'default-id',
+      },
+      {
+        id: FOOD_ID_2,
+        food_name: 'Oatmeal',
+        quantity: 30,
+        unit: 'g',
+        meal_type: 'snacks',
+        meal_type_id: 'snacks-id',
+      },
+    ]);
+    vi.mocked(foodEntryService.deleteFoodEntry).mockResolvedValue(true);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'delete_entry',
+        food_name: 'Oatmeal',
+        meal_type: 'snacks',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry deleted.');
+    expect(foodEntryService.deleteFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      FOOD_ID_2
+    );
+  });
+
+  it('lists candidates instead of deleting when a name matches multiple entries', async () => {
+    vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([
+      {
+        id: ENTRY_ID,
+        food_name: 'Oatmeal',
+        quantity: 50,
+        unit: 'g',
+        meal_type: 'breakfast',
+        meal_type_id: 'default-id',
+      },
+      {
+        id: FOOD_ID_2,
+        food_name: 'Oatmeal',
+        quantity: 30,
+        unit: 'g',
+        meal_type: 'snacks',
+        meal_type_id: 'snacks-id',
+      },
+    ]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'delete_entry',
+        food_name: 'Oatmeal',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toContain('matches 2 entries');
+    expect(result).toContain(ENTRY_ID);
+    expect(result).toContain(FOOD_ID_2);
+    expect(foodEntryService.deleteFoodEntry).not.toHaveBeenCalled();
+  });
+
+  it('reports which names exist when the food_name matches nothing that day', async () => {
+    vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([
+      {
+        id: ENTRY_ID,
+        food_name: 'Oatmeal',
+        quantity: 50,
+        unit: 'g',
+        meal_type: 'breakfast',
+        meal_type_id: 'default-id',
+      },
+    ]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'delete_entry',
+        food_name: 'Pancakes',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toContain('No entry named "Pancakes"');
+    expect(result).toContain('Oatmeal');
+    expect(foodEntryService.deleteFoodEntry).not.toHaveBeenCalled();
   });
 });
 
@@ -2371,6 +2518,78 @@ describe('update_entry', () => {
       ENTRY_ID,
       { quantity: 3, unit: 'serving' }
     );
+  });
+
+  it('resolves a unique food_name and moves the entry to another meal without an entry_id', async () => {
+    vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([
+      {
+        id: ENTRY_ID,
+        food_name: 'Oatmeal',
+        quantity: 50,
+        unit: 'g',
+        meal_type: 'lunch',
+        meal_type_id: 'lunch-id',
+      },
+    ]);
+    vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        food_name: 'Oatmeal',
+        entry_date: '2026-06-10',
+        meal_type: 'dinner',
+      },
+      opts
+    );
+
+    expect(result).toBe('✅ Entry updated: meal type to Dinner.');
+    expect(foodEntryService.updateFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      {
+        quantity: undefined,
+        unit: undefined,
+        meal_type_id: 'dinner-id',
+      }
+    );
+  });
+
+  it('lists candidates instead of updating when a name matches multiple entries', async () => {
+    vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([
+      {
+        id: ENTRY_ID,
+        food_name: 'Oatmeal',
+        quantity: 50,
+        unit: 'g',
+        meal_type: 'breakfast',
+        meal_type_id: 'default-id',
+      },
+      {
+        id: FOOD_ID_2,
+        food_name: 'Oatmeal',
+        quantity: 30,
+        unit: 'g',
+        meal_type: 'snacks',
+        meal_type_id: 'snacks-id',
+      },
+    ]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        food_name: 'Oatmeal',
+        entry_date: '2026-06-10',
+        quantity: 3,
+      },
+      opts
+    );
+
+    expect(result).toContain('matches 2 entries');
+    expect(foodEntryService.updateFoodEntry).not.toHaveBeenCalled();
   });
 
   it('round-trips the template link and foods when updating a meal entry', async () => {

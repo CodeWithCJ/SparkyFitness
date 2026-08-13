@@ -56,6 +56,18 @@ describe('classifyByKeywords', () => {
   });
 });
 
+describe('getSystemPrompt diary-editing guidance', () => {
+  it.each(['core', 'full'] as const)(
+    'teaches name-based update_entry/delete_entry in the %s food prompt',
+    (profile) => {
+      const prompt = getSystemPrompt('UTC', 'None', profile, ['food']);
+      expect(prompt).toContain('delete_entry');
+      expect(prompt).toContain('update_entry');
+      expect(prompt).toMatch(/name is enough — pass food_name/i);
+    }
+  );
+});
+
 describe('getSystemPrompt dormant-domain listing', () => {
   it('omits the dormant-domains section when the full category set is active', () => {
     const prompt = getSystemPrompt('UTC', 'None', 'full', [
