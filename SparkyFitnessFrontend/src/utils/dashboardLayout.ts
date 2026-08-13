@@ -56,6 +56,48 @@ export function pxToRows(px: number): number {
 }
 
 /**
+ * Widths below this are treated as jitter rather than a real resize. Comfortably
+ * above any classic scrollbar (~15-17px) so a scrollbar toggle cannot move the
+ * grid, but small enough that a real drag-resize of the window still lands.
+ */
+export const GRID_WIDTH_JITTER_PX = 24;
+
+/**
+ * The breakpoint react-grid-layout selects for a container width: the largest
+ * breakpoint whose threshold the width reaches.
+ */
+export function breakpointForWidth(width: number): Breakpoint {
+  const ordered = (Object.keys(GRID_BREAKPOINTS) as Breakpoint[]).sort(
+    (a, b) => GRID_BREAKPOINTS[b] - GRID_BREAKPOINTS[a]
+  );
+  for (const bp of ordered) {
+    if (width >= GRID_BREAKPOINTS[bp]) return bp;
+  }
+  return ordered[ordered.length - 1] as Breakpoint;
+}
+
+/**
+ * Damp the container width fed to the grid.
+ *
+ * Tile heights are content-measured, so the grid's total height depends on its
+ * width -- and the page's width depends on whether that height summons a
+ * scrollbar. Near a breakpoint threshold the ~15px scrollbar delta alone can
+ * flip lg<->md, swapping in a different saved layout, changing the height, and
+ * oscillating forever (#2056). Ignoring sub-jitter changes that would also flip
+ * the breakpoint gives the loop the hysteresis it needs to settle.
+ *
+ * A change large enough to be a real resize, or one that stays inside the
+ * current breakpoint, is always accepted so normal resizing still tracks.
+ */
+export function stabilizeGridWidth(prev: number, next: number): number {
+  if (!Number.isFinite(next) || next <= 0) return prev;
+  if (!Number.isFinite(prev) || prev <= 0) return next;
+  const delta = Math.abs(next - prev);
+  if (delta >= GRID_WIDTH_JITTER_PX) return next;
+  return breakpointForWidth(next) === breakpointForWidth(prev) ? next : prev;
+}
+
+/**
  * Value-equality for two layout maps (ignores object identity). Used to avoid
  * the controlled react-grid-layout feedback loop: onLayoutChange -> setState ->
  * new prop identity -> onLayoutChange -> ... If the layout did not actually

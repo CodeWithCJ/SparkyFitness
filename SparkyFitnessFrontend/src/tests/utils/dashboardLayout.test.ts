@@ -1,9 +1,11 @@
 import {
   applyAutoHeights,
+  breakpointForWidth,
   buildWidgetKeys,
   generateDefaultLayouts,
   mealWidgetKey,
   reconcileLayouts,
+  stabilizeGridWidth,
   type DashboardLayouts,
   type WidgetLayout,
 } from '@/utils/dashboardLayout';
@@ -149,5 +151,50 @@ describe('applyAutoHeights', () => {
     const base = onlyLg([{ i: 'energy', x: 0, y: 0, w: 3, h: 5, minH: 6 }]);
     expect(applyAutoHeights(base, { energy: 2 }).lg[0]!.h).toBe(6); // minH floor
     expect(applyAutoHeights(base, {}).lg[0]!.h).toBe(5); // unmeasured -> base
+  });
+});
+
+describe('breakpointForWidth', () => {
+  it('selects the largest breakpoint the width reaches', () => {
+    expect(breakpointForWidth(1400)).toBe('lg');
+    expect(breakpointForWidth(1200)).toBe('lg');
+    expect(breakpointForWidth(1199)).toBe('md');
+    expect(breakpointForWidth(996)).toBe('md');
+    expect(breakpointForWidth(995)).toBe('sm');
+    expect(breakpointForWidth(768)).toBe('sm');
+    expect(breakpointForWidth(767)).toBe('xs');
+    expect(breakpointForWidth(0)).toBe('xs');
+  });
+});
+
+describe('stabilizeGridWidth', () => {
+  it('ignores a scrollbar-sized change that would flip the breakpoint', () => {
+    // The #2056 loop: a ~15px scrollbar toggle straddling the lg threshold.
+    expect(stabilizeGridWidth(1205, 1190)).toBe(1205);
+    expect(stabilizeGridWidth(1190, 1205)).toBe(1190);
+  });
+
+  it('accepts small changes that stay inside one breakpoint', () => {
+    expect(stabilizeGridWidth(1300, 1285)).toBe(1285);
+    expect(stabilizeGridWidth(900, 890)).toBe(890);
+  });
+
+  it('accepts a real resize even when it crosses a breakpoint', () => {
+    expect(stabilizeGridWidth(1205, 1100)).toBe(1100);
+    expect(stabilizeGridWidth(1100, 1205)).toBe(1205);
+  });
+
+  it('always takes the first real measurement and ignores bogus widths', () => {
+    expect(stabilizeGridWidth(0, 1190)).toBe(1190);
+    expect(stabilizeGridWidth(1205, 0)).toBe(1205);
+    expect(stabilizeGridWidth(1205, Number.NaN)).toBe(1205);
+  });
+
+  it('settles: alternating jitter never oscillates the fed width', () => {
+    let width = 1205;
+    for (const next of [1190, 1205, 1190, 1205, 1190]) {
+      width = stabilizeGridWidth(width, next);
+    }
+    expect(width).toBe(1205);
   });
 });

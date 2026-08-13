@@ -184,6 +184,16 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* The customizable widget grid measures its container width and picks a
+     react-grid-layout breakpoint from it, while tile heights are measured from
+     their content. Without a reserved gutter, a scrollbar appearing/disappearing
+     as tiles auto-grow changes that width by ~15px, which can flip the
+     breakpoint, which changes the height again -> endless relayout (#2056).
+     Reserving the gutter breaks that loop at the source. */
+  html {
+    scrollbar-gutter: stable;
+  }
 }
 
 /* Handling apple safe areas at the bottom bar */

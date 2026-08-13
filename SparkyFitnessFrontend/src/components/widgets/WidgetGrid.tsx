@@ -25,9 +25,11 @@ import {
   GRID_ROW_HEIGHT,
   applyAutoHeights,
   areLayoutsEqual,
+  breakpointForWidth,
   mergePositions,
   pxToRows,
   reconcileLayouts,
+  stabilizeGridWidth,
   type DashboardLayouts,
 } from '@/utils/dashboardLayout';
 
@@ -79,6 +81,13 @@ class GridErrorBoundary extends Component<
 // widgets are hidden (a fresh `[]` each render would invalidate them).
 const EMPTY_HIDDEN: string[] = [];
 
+// Ceiling on how many times a single widget's measured height may change before
+// we stop believing it. A settled grid measures each widget a handful of times
+// (mount, data load, font load); anything past this is a feedback loop, and
+// freezing the last height degrades to a slightly-off tile instead of pinning
+// the CPU until React throws "Maximum update depth exceeded".
+const MAX_MEASURE_CHANGES = 20;
+
 const WidgetGridInner = ({
   pageKey,
   widgets,
@@ -88,7 +97,16 @@ const WidgetGridInner = ({
   const { t } = useTranslation();
   const { isActingOnBehalf } = useActiveUser();
   const { saved, save, reset, isLoading } = useDashboardLayout(pageKey);
-  const { width, containerRef, mounted } = useContainerWidth();
+  const { width: rawWidth, containerRef, mounted } = useContainerWidth();
+
+  // Content-measured tile heights make the grid's height a function of its
+  // width, and the page's width a function of its height (scrollbar). Feeding
+  // the raw measurement straight to the grid lets a ~15px scrollbar toggle flip
+  // the breakpoint near a threshold and oscillate forever (#2056), so damp it.
+  const [width, setWidth] = useState(rawWidth);
+  useEffect(() => {
+    setWidth((prev) => stabilizeGridWidth(prev, rawWidth));
+  }, [rawWidth]);
 
   // Layout editing is a personal action; when viewing someone else's profile
   // the layout is shown read-only (the server also rejects writes).
@@ -133,8 +151,31 @@ const WidgetGridInner = ({
   // content-driven so tiles grow to fit and never show an inner scrollbar.
   const [measuredRows, setMeasuredRows] = useState<Record<string, number>>({});
 
+  // How many times each widget's measured height has actually changed. Reset
+  // whenever the widget set or the grid breakpoint changes -- those legitimately
+  // re-measure everything -- so the cap only ever catches a runaway loop.
+  const measureChangesRef = useRef<Record<string, number>>({});
+  // Mirrors the accepted heights so the counting below can stay outside the
+  // state updater (updaters may run twice under StrictMode and would double-count).
+  const acceptedRowsRef = useRef<Record<string, number>>({});
+
+  const measureEpoch = `${widgetKeys.join(',')}|${breakpointForWidth(width)}`;
+  useEffect(() => {
+    measureChangesRef.current = {};
+    acceptedRowsRef.current = {};
+  }, [measureEpoch]);
+
   const handleMeasure = useCallback((key: string, px: number) => {
     const rows = pxToRows(px);
+    if (acceptedRowsRef.current[key] === rows) return;
+
+    const seen = (measureChangesRef.current[key] ?? 0) + 1;
+    measureChangesRef.current[key] = seen;
+    // Past the cap we keep the last accepted height rather than chase a
+    // measure -> layout -> measure oscillation into a render-depth crash.
+    if (seen > MAX_MEASURE_CHANGES) return;
+
+    acceptedRowsRef.current[key] = rows;
     setMeasuredRows((prev) =>
       prev[key] === rows ? prev : { ...prev, [key]: rows }
     );
