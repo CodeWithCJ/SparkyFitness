@@ -10,6 +10,48 @@ import {
   toImageArray,
   resolveImageInput,
 } from '../utils/imageLocalizer.js';
+import type {
+  NutrientValue,
+  NutrientFields,
+  FoodVariantInput,
+} from '../types/nutrition.js';
+
+/** A value bound into a parameterised query. */
+type SqlParam = string | number | boolean | null | undefined;
+
+/** Booleans arrive from CSV/provider payloads as strings or 0/1 too. */
+type BooleanLike = boolean | string | number | null | undefined;
+
+/**
+ * The food fields this repository reads when creating or updating a row.
+ *
+ * Values arrive from user input, CSV import, and provider adapters, so numeric
+ * and boolean fields are accepted in their raw form and passed through the
+ * `sanitize*` helpers below.
+ */
+export interface FoodInput extends NutrientFields {
+  // Optional because the same shape serves create and partial-update paths.
+  id?: string;
+  name?: string;
+  user_id?: string;
+  brand?: string | null;
+  barcode?: string | null;
+  provider_external_id?: string | null;
+  provider_type?: string | null;
+  is_custom?: boolean | string | null;
+  shared_with_public?: boolean | string | null;
+  provider_verified?: boolean | string | null;
+  is_quick_food?: boolean | string | null;
+  images?: string[] | null;
+  image_url?: string | null;
+  image_source_url?: string | null;
+  serving_size?: NutrientValue;
+  serving_unit?: string | null;
+  source?: string | null;
+  ai_confidence?: string | null;
+  allergens?: string[] | null;
+  traces?: string[] | null;
+}
 
 const DEFAULT_VARIANT_JSON_SQL = `
   json_build_object(
@@ -56,8 +98,7 @@ const PREFERRED_DEFAULT_VARIANT_JOIN_SQL = `
     LIMIT 1
   ) fv ON TRUE
 `;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeGlycemicIndex(gi: any) {
+function sanitizeGlycemicIndex(gi: string | null | undefined) {
   const allowedGICategories = [
     'None',
     'Very Low',
@@ -78,8 +119,7 @@ function sanitizeGlycemicIndex(gi: any) {
   }
   return gi;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeNumeric(value: any) {
+function sanitizeNumeric(value: NutrientValue) {
   if (
     value === null ||
     value === undefined ||
@@ -93,11 +133,10 @@ function sanitizeNumeric(value: any) {
   if (typeof value === 'string') {
     sanitizedValue = value.replace(/^["']|["']$/g, '');
   }
-  const num = parseFloat(sanitizedValue);
+  const num = parseFloat(String(sanitizedValue));
   return isNaN(num) ? null : num;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeBoolean(value: any) {
+function sanitizeBoolean(value: BooleanLike) {
   if (
     value === true ||
     value === 'TRUE' ||
@@ -135,7 +174,7 @@ async function searchFoods(
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
       WHERE f.is_quick_food = FALSE`;
-    const queryParams: any[] = [];
+    const queryParams: SqlParam[] = [];
     let paramIndex = 1;
     let orderByClause = '';
     if (exactMatch) {
@@ -174,8 +213,7 @@ async function searchFoods(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createFood(foodData: any) {
+async function createFood(foodData: FoodInput) {
   const client = await getClient(foodData.user_id); // User-specific operation
   try {
     await client.query('BEGIN'); // Start transaction
@@ -308,8 +346,7 @@ async function createFood(foodData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function findFoodByBarcode(barcode: any, userId: any) {
+async function findFoodByBarcode(barcode: string, userId: string) {
   barcode = normalizeBarcode(barcode);
   const client = await getClient(userId);
   try {
@@ -328,8 +365,7 @@ async function findFoodByBarcode(barcode: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodById(foodId: any, userId: any) {
+async function getFoodById(foodId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
@@ -346,8 +382,7 @@ async function getFoodById(foodId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodOwnerId(foodId: any, userId: any) {
+async function getFoodOwnerId(foodId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const foodResult = await client.query(
@@ -361,8 +396,11 @@ async function getFoodOwnerId(foodId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateFood(id: any, userId: any, foodData: any) {
+async function updateFood(
+  id: string,
+  userId: string,
+  foodData: Partial<FoodInput>
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     // Distinguish "barcode key omitted" (leave unchanged) from "barcode set
@@ -414,8 +452,7 @@ async function updateFood(id: any, userId: any, foodData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFood(id: any, userId: any) {
+async function deleteFood(id: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -444,7 +481,7 @@ async function getFoodsWithPagination(
       nextParamIndex,
     } = buildSqlSearch("CONCAT(f.brand, ' ', f.name)", searchTerm, 1);
     whereClauses.push(...searchClauses);
-    const queryParams: any[] = [...searchParams];
+    const queryParams: SqlParam[] = [...searchParams];
     let paramIndex = nextParamIndex;
 
     // Handle ownership/source filtering
@@ -523,7 +560,7 @@ async function countFoods(
     const { whereClauses: searchClauses, queryParams: searchParams } =
       buildSqlSearch("CONCAT(brand, ' ', name)", searchTerm, 1);
     whereClauses.push(...searchClauses);
-    const countQueryParams: any[] = [...searchParams];
+    const countQueryParams: SqlParam[] = [...searchParams];
     let paramIndex = countQueryParams.length + 1;
 
     // Handle ownership/source filtering
@@ -594,8 +631,7 @@ async function getFoodDeletionImpact(
     );
 
     const currentUserFoodEntries = currentUserEntriesResult.rows.map(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (row: any) => ({
+      (row: { id: string; entry_date: string; meal_type_id: string }) => ({
         id: row.id,
         entry_date: row.entry_date,
         meal_type_id: row.meal_type_id,
@@ -677,8 +713,7 @@ async function getFoodDeletionImpact(
         [authenticatedUserId]
       );
       familySharedUsers = familyAccessResult.rows.map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (row: any) => row.family_user_id
+        (row: { family_user_id: string }) => row.family_user_id
       );
     }
 
@@ -699,8 +734,7 @@ async function getFoodDeletionImpact(
     systemClient.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFoodAndDependencies(foodId: any, userId: any) {
+async function deleteFoodAndDependencies(foodId: string, userId: string) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
@@ -1142,8 +1176,7 @@ async function createFoodsInBulk(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodsNeedingReview(userId: any) {
+async function getFoodsNeedingReview(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -1175,8 +1208,7 @@ async function getFoodsNeedingReview(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function clearUserIgnoredUpdate(userId: any, variantId: any) {
+async function clearUserIgnoredUpdate(userId: string, variantId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
@@ -1232,7 +1264,6 @@ async function findVisibleFoodByName(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function findFoodByProviderExternalId(
   userId: string,
   providerExternalId: string,
@@ -1258,11 +1289,10 @@ async function findFoodByProviderExternalId(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateFoodVariantNutrition(
   variantId: string,
   userId: string,
-  nutritionData: any
+  nutritionData: FoodVariantInput
 ) {
   const client = await getClient(userId);
   try {

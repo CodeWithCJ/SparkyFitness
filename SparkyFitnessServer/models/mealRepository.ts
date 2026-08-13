@@ -1,4 +1,26 @@
 import { getClient } from '../db/poolManager.js';
+import type { PoolClient } from 'pg';
+import type {
+  MealInput,
+  MealFoodInput,
+  MealPlanInput,
+  FoodEntryInput,
+  FoodEntrySnapshot,
+} from '../types/nutrition.js';
+
+/** A value bound into a parameterised query. */
+type SqlParam = string | number | boolean | null | undefined;
+
+/**
+ * A meal row as read back from a query. Columns vary by call site, so the
+ * index signature keeps arbitrary selected columns reachable without `any`.
+ */
+interface MealRow {
+  id: string;
+  foods?: unknown[];
+  [column: string]: unknown;
+}
+
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
@@ -49,11 +71,9 @@ const MEAL_FOODS_SELECT = `
 
 // Attach the ordered ingredient list (foods and linked meals) to each meal in
 // a single round-trip. Used by every meal read path.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function attachFoodsToMeals(client: any, meals: any) {
+async function attachFoodsToMeals(client: PoolClient, meals: MealRow[]) {
   if (meals.length === 0) return meals;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mealIds = meals.map((m: any) => m.id);
+  const mealIds = meals.map((m: MealRow) => m.id);
   const mealFoodsResult = await client.query(
     `${MEAL_FOODS_SELECT} WHERE mf.meal_id = ANY($1::uuid[])`,
     [mealIds]
@@ -76,8 +96,7 @@ async function attachFoodsToMeals(client: any, meals: any) {
 // present; meal rows null out food_id/variant_id but may still carry an
 // aggregated nutrition snapshot for the linked meal.
 function buildMealFoodValues(mealId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (item: any) => {
+  return (item: MealFoodInput) => {
     const isChildMeal =
       item.item_type === 'meal' || (!!item.child_meal_id && !item.food_id);
     return [
@@ -113,8 +132,7 @@ function buildMealFoodValues(mealId: string) {
   };
 }
 // --- Meal Template CRUD Operations ---
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createMeal(mealData: any) {
+async function createMeal(mealData: MealInput) {
   const client = await getClient(mealData.user_id); // User-specific operation
   try {
     await client.query('BEGIN');
@@ -181,8 +199,7 @@ async function createMeal(mealData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMeals(userId: any, filter = 'all') {
+async function getMeals(userId: string, filter = 'all') {
   const client = await getClient(userId); // User-specific operation
   try {
     let query = `
@@ -216,7 +233,7 @@ async function searchMeals(
       nextParamIndex,
     } = buildSqlSearch('name', searchTerm, 1);
     const whereClauses: string[] = [...searchClauses];
-    const queryParams: any[] = [...searchParams];
+    const queryParams: SqlParam[] = [...searchParams];
     const paramIndex = nextParamIndex;
 
     const whereSql =
@@ -249,8 +266,7 @@ async function searchMeals(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealById(mealId: any, userId: any) {
+async function getMealById(mealId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const mealResult = await client.query(
@@ -267,8 +283,11 @@ async function getMealById(mealId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateMeal(mealId: any, userId: any, updateData: any) {
+async function updateMeal(
+  mealId: string,
+  userId: string,
+  updateData: MealInput
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
@@ -331,8 +350,7 @@ async function updateMeal(mealId: any, userId: any, updateData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteMeal(mealId: any, userId: any) {
+async function deleteMeal(mealId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
@@ -352,8 +370,7 @@ async function deleteMeal(mealId: any, userId: any) {
   }
 }
 // --- Meal Plan CRUD Operations ---
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createMealPlanEntry(planData: any) {
+async function createMealPlanEntry(planData: MealPlanInput) {
   const client = await getClient(planData.user_id); // User-specific operation
   try {
     let mealTypeId = planData.meal_type_id;
@@ -391,8 +408,11 @@ async function createMealPlanEntry(planData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealPlanEntries(userId: any, startDate: any, endDate: any) {
+async function getMealPlanEntries(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -434,8 +454,11 @@ async function getMealPlanEntries(userId: any, startDate: any, endDate: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateMealPlanEntry(planId: any, userId: any, updateData: any) {
+async function updateMealPlanEntry(
+  planId: string,
+  userId: string,
+  updateData: MealPlanInput
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     let mealTypeId = updateData.meal_type_id;
@@ -485,8 +508,7 @@ async function updateMealPlanEntry(planId: any, userId: any, updateData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteMealPlanEntry(planId: any, userId: any) {
+async function deleteMealPlanEntry(planId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -501,8 +523,7 @@ async function deleteMealPlanEntry(planId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealPlanEntryById(planId: any, userId: any) {
+async function getMealPlanEntryById(planId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -532,8 +553,7 @@ async function getMealPlanEntryById(planId: any, userId: any) {
   }
 }
 // --- Helper for logging meal plan to food entries ---
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createFoodEntryFromMealPlan(entryData: any) {
+async function createFoodEntryFromMealPlan(entryData: FoodEntryInput) {
   const client = await getClient(entryData.user_id); // User-specific operation
   try {
     let mealTypeId = entryData.meal_type_id;
@@ -567,8 +587,10 @@ async function createFoodEntryFromMealPlan(entryData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteMealPlanEntriesByTemplateId(templateId: any, userId: any) {
+async function deleteMealPlanEntriesByTemplateId(
+  templateId: string,
+  userId: string
+) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -587,8 +609,7 @@ async function deleteMealPlanEntriesByTemplateId(templateId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getRecentMeals(userId: any, limit = 3) {
+async function getRecentMeals(userId: string, limit = 3) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -644,8 +665,7 @@ async function getRecentMeals(userId: any, limit = 3) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getTopMeals(userId: any, limit = 3) {
+async function getTopMeals(userId: string, limit = 3) {
   const client = await getClient(userId); // User-specific operation
   try {
     // "Top meals" = the meals this user logs most often, ranked by how many
@@ -698,8 +718,7 @@ async function getTopMeals(userId: any, limit = 3) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealOwnerId(mealId: any, userId: any) {
+async function getMealOwnerId(mealId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
@@ -711,8 +730,7 @@ async function getMealOwnerId(mealId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealsNeedingReview(userId: any) {
+async function getMealsNeedingReview(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -742,12 +760,9 @@ async function getMealsNeedingReview(userId: any) {
 }
 
 async function updateMealEntriesSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  newSnapshotData: any
+  userId: string,
+  mealId: string,
+  newSnapshotData: FoodEntrySnapshot
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -764,8 +779,7 @@ async function updateMealEntriesSnapshot(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function clearUserIgnoredUpdate(userId: any, variantId: any) {
+async function clearUserIgnoredUpdate(userId: string, variantId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
@@ -857,8 +871,7 @@ async function getMealAncestryHeight(mealId: string, userId: string) {
 }
 // Returns the parent meals that reference `mealId` as a linked sub-meal, so
 // callers can warn about (or block) deleting a meal still used as a component.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealComponentUsage(mealId: any, userId: any) {
+async function getMealComponentUsage(mealId: string, userId: string) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -873,8 +886,7 @@ async function getMealComponentUsage(mealId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealDeletionImpact(mealId: any, userId: any) {
+async function getMealDeletionImpact(mealId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
@@ -905,8 +917,7 @@ async function getMealDeletionImpact(mealId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteMealPlanEntriesByMealId(mealId: any, userId: any) {
+async function deleteMealPlanEntriesByMealId(mealId: string, userId: string) {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -922,8 +933,7 @@ async function deleteMealPlanEntriesByMealId(mealId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMealPlanOwnerId(mealPlanId: any) {
+async function getMealPlanOwnerId(mealPlanId: string) {
   const client = await getClient(mealPlanId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
@@ -935,8 +945,7 @@ async function getMealPlanOwnerId(mealPlanId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getPublicMeals(userId: any) {
+async function getPublicMeals(userId: string) {
   const client = await getClient(userId); // User-specific operation for RLS
   try {
     const result =
@@ -950,8 +959,7 @@ async function getPublicMeals(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFamilyMeals(userId: any) {
+async function getFamilyMeals(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     // This query assumes a mechanism for defining "family" meals,
@@ -972,8 +980,7 @@ async function getFamilyMeals(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFavoriteMeals(userId: any) {
+async function getFavoriteMeals(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -1002,8 +1009,7 @@ async function getFavoriteMeals(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function addMealFavorite(userId: any, mealId: any) {
+async function addMealFavorite(userId: string, mealId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
@@ -1016,8 +1022,7 @@ async function addMealFavorite(userId: any, mealId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function removeMealFavorite(userId: any, mealId: any) {
+async function removeMealFavorite(userId: string, mealId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(

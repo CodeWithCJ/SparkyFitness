@@ -800,7 +800,7 @@ router.get(
     }
     // Determine target user
 
-    const targetUserId = userId || req.userId;
+    const targetUserId = userId ? String(userId) : req.userId;
     try {
       // Permission check if explicit userId is provided that differs from req.userId
 
@@ -816,7 +816,7 @@ router.get(
       const entries = await foodEntryService.getFoodEntriesByDate(
         req.userId,
         targetUserId,
-        selectedDate
+        String(selectedDate)
       );
       res.status(200).json(entries);
     } catch (error) {
@@ -870,7 +870,7 @@ router.get(
     }
     // Determine target user
 
-    const targetUserId = userId || req.userId;
+    const targetUserId = userId ? String(userId) : req.userId;
     try {
       // Permission check if accessing another user's data
 
@@ -1006,7 +1006,7 @@ router.get(
     try {
       const summary = await foodEntryService.getDailyNutritionSummary(
         req.userId,
-        date
+        String(date)
       );
       res.status(200).json(summary);
     } catch (error) {

@@ -160,7 +160,7 @@ router.get('/by-date/:date', async (req, res, next) => {
     const { userId } = req.query; // Check query param
     // Determine target user
 
-    const targetUserId = userId || req.userId;
+    const targetUserId = userId ? String(userId) : req.userId;
     // We rely on getFoodEntryMealsByDate to potentially filter or just fetch.
     // Ideally we check permission here too.
 
@@ -176,7 +176,7 @@ router.get('/by-date/:date', async (req, res, next) => {
     const foodEntryMeals = await foodEntryService.getFoodEntryMealsByDate(
       req.userId,
       targetUserId,
-      date
+      String(date)
     ); // Corrected arguments
     res.status(200).json(foodEntryMeals);
   } catch (err) {

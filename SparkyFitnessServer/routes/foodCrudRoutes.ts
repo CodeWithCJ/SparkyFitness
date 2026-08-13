@@ -81,7 +81,7 @@ router.get('/search', authenticate, async (req, res, next) => {
   try {
     const foods = await foodService.searchFoods(
       req.userId,
-      name,
+      String(name),
 
       req.userId,
       exactMatch === 'true',
@@ -160,16 +160,14 @@ router.get('/', authenticate, async (req, res, next) => {
   try {
     const result = await foodService.searchFoods(
       req.userId,
-      name,
+      name === undefined ? undefined : String(name),
 
       req.userId,
       exactMatch === 'true',
       broadMatch === 'true',
       checkCustom === 'true',
-      // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
-      parseInt(limit, 10),
-      // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
-      mealType
+      parseInt(String(limit), 10),
+      mealType === undefined ? undefined : String(mealType)
     );
     res.status(200).json(result);
   } catch (error) {
@@ -298,11 +296,11 @@ router.get('/foods-paginated', authenticate, async (req, res, next) => {
   try {
     const { foods, totalCount } = await foodService.getFoodsWithPagination(
       req.userId,
-      searchTerm,
-      foodFilter,
-      currentPage,
-      itemsPerPage,
-      sortBy
+      String(searchTerm ?? ''),
+      String(foodFilter ?? ''),
+      String(currentPage ?? ''),
+      String(itemsPerPage ?? ''),
+      String(sortBy ?? '')
     );
     res.status(200).json({ foods, totalCount });
   } catch (error) {
@@ -390,7 +388,7 @@ router.get('/food-variants', authenticate, async (req, res, next) => {
   try {
     const variants = await foodService.getFoodVariantsByFoodId(
       req.userId,
-      food_id
+      String(food_id)
     );
     res.status(200).json(variants);
   } catch (error) {
@@ -669,7 +667,11 @@ router.get('/barcode/:barcode', authenticate, async (req, res, next) => {
       barcode,
 
       req.userId,
-      req.query.providerId,
+      // Absent means "use the user's default provider", so preserve undefined
+      // rather than coercing it to the string "undefined".
+      req.query.providerId === undefined
+        ? undefined
+        : String(req.query.providerId),
       req.authenticatedUserId
     );
     res.status(200).json(result);

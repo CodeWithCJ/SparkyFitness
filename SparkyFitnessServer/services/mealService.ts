@@ -695,8 +695,8 @@ async function getMealPlanEntries(
   try {
     const mealPlanEntries = await mealRepository.getMealPlanEntries(
       userId,
-      startDate,
-      endDate
+      String(startDate),
+      String(endDate)
     );
     return mealPlanEntries;
   } catch (error) {

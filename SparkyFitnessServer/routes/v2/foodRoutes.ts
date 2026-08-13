@@ -165,7 +165,8 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
       barcode,
 
       req.userId,
-      providerId,
+      // Absent means "use the user's default provider", so preserve undefined.
+      providerId === undefined ? undefined : String(providerId),
       req.authenticatedUserId
     );
 

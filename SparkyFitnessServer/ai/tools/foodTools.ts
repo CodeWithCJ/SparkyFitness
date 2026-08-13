@@ -1664,7 +1664,9 @@ Actions:
                   );
                 }
                 mealId = match.id;
-                mealName = match.name;
+                // Meal rows carry arbitrary selected columns, so narrow the
+                // name before assigning it to a string.
+                mealName = typeof match.name === 'string' ? match.name : '';
               } else if (mealId) {
                 try {
                   const meal = await mealService.getMealById(userId, mealId);
@@ -1878,7 +1880,11 @@ Actions:
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               let result: any;
               try {
-                result = await foodCoreService.deleteFood(userId, foodId, true);
+                result = await foodCoreService.deleteFood(
+                  userId,
+                  String(foodId),
+                  true
+                );
               } catch (error) {
                 if (
                   error instanceof Error &&
@@ -2046,6 +2052,11 @@ Actions:
               }
               let variantId = args.variant_id;
               if (!variantId) {
+                // The guard above ensures one of the two is set, but narrow
+                // explicitly so the repository keeps its non-null contract.
+                if (!args.food_id) {
+                  return ERRORS.DB_ERROR();
+                }
                 const food = await foodRepository.getFoodById(
                   args.food_id,
                   userId
@@ -2122,8 +2133,8 @@ Actions:
               if (args.update_existing_entries) {
                 await foodCoreService.updateFoodEntriesSnapshot(
                   userId,
-                  variant.food_id,
-                  variantId
+                  String(variant.food_id),
+                  String(variantId)
                 );
               }
               return formatConfirmation(

@@ -2,11 +2,32 @@ import { getClient } from '../db/poolManager.js';
 import { toImageArray } from '../utils/imageLocalizer.js';
 import { log } from '../config/logging.js';
 
+/**
+ * Fields accepted when creating or updating a logged meal.
+ *
+ * `meal_type` is the human name (e.g. "Breakfast") and is resolved to a
+ * `meal_type_id` when the id is not supplied directly.
+ */
+interface FoodEntryMealInput {
+  user_id: string;
+  meal_template_id?: string | null;
+  meal_type_id?: string | null;
+  meal_type?: string | null;
+  entry_date: string;
+  entry_time?: string | null;
+  name: string;
+  description?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  legacy_serving_unit_math?: boolean;
+}
+
+/** The subset of fields an update may change. */
+type FoodEntryMealUpdate = Partial<FoodEntryMealInput>;
+
 async function createFoodEntryMeal(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any
+  foodEntryMealData: FoodEntryMealInput,
+  createdByUserId: string
 ) {
   log(
     'info',
@@ -57,12 +78,9 @@ async function createFoodEntryMeal(
   }
 }
 async function updateFoodEntryMeal(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updatedByUserId: any
+  foodEntryMealId: string,
+  foodEntryMealData: FoodEntryMealUpdate,
+  updatedByUserId: string
 ) {
   log(
     'info',
@@ -127,8 +145,7 @@ async function updateFoodEntryMeal(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
+async function getFoodEntryMealById(foodEntryMealId: string, userId: string) {
   log(
     'info',
     `getFoodEntryMealById in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`
@@ -175,8 +192,7 @@ async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
+async function getFoodEntryMealsByDate(userId: string, selectedDate: string) {
   log(
     'debug',
     `getFoodEntryMealsByDate in foodEntryMealRepository: userId: ${userId}, selectedDate: ${selectedDate}`
@@ -246,8 +262,7 @@ async function getFoodEntryMealsByDateRange(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFoodEntryMeal(foodEntryMealId: any, userId: any) {
+async function deleteFoodEntryMeal(foodEntryMealId: string, userId: string) {
   log(
     'info',
     `deleteFoodEntryMeal in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`

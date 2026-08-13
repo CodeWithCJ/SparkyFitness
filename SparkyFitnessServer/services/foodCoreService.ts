@@ -19,27 +19,36 @@ import {
   mapFatSecretFood,
 } from '../integrations/fatsecret/fatsecretService.js';
 import { searchYazioByBarcode } from '../integrations/yazio/yazioService.js';
-import type { BulkImportFoodData } from '../models/food.js';
+import type { BulkImportFoodData, FoodInput } from '../models/food.js';
+import type { FoodVariantInput } from '../types/nutrition.js';
 import {
   removeOrphanedImages,
   removeEntityImageDir,
 } from '../middleware/imageUpload.js';
 
+/** A food row as returned by the repository. */
+interface FoodRow {
+  id: string;
+  provider_type?: string | null;
+  provider_external_id?: string | null;
+  provider_verified?: boolean | null;
+  [column: string]: unknown;
+}
+
+/** An error from a provider call that carries an HTTP status worth surfacing. */
+interface ProviderError extends Error {
+  status?: number;
+}
+
 async function searchFoods(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  name: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exactMatch: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  broadMatch: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  checkCustom: any,
+  authenticatedUserId: string,
+  name: string | null | undefined,
+  targetUserId: string | null | undefined,
+  exactMatch: boolean,
+  broadMatch: boolean,
+  checkCustom: boolean,
   limitFromRequest = 10, // Renamed to avoid conflict with preference-based limit
-  mealType = undefined
+  mealType: string | undefined = undefined
 ) {
   try {
     if (targetUserId && targetUserId !== authenticatedUserId) {
@@ -92,13 +101,10 @@ async function searchFoods(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function refreshExistingExternalFoodMetadata(
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  existingFood: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodData: any
+  authenticatedUserId: string,
+  existingFood: FoodRow,
+  foodData: FoodInput
 ) {
   const metadata: Record<string, unknown> = {};
   const sameProviderIdentity =
@@ -128,8 +134,7 @@ async function refreshExistingExternalFoodMetadata(
   return { ...existingFood, ...metadata };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createFood(authenticatedUserId: any, foodData: any) {
+async function createFood(authenticatedUserId: string, foodData: FoodInput) {
   try {
     if (foodData.barcode) {
       const existingFood = await foodRepository.findFoodByBarcode(
@@ -175,8 +180,7 @@ async function createFood(authenticatedUserId: any, foodData: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodById(authenticatedUserId: any, foodId: any) {
+async function getFoodById(authenticatedUserId: string, foodId: string) {
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(
       foodId,
@@ -208,12 +212,9 @@ async function getFoodById(authenticatedUserId: any, foodId: any) {
 }
 
 async function updateFood(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodData: any
+  authenticatedUserId: string,
+  foodId: string,
+  foodData: FoodInput
 ) {
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(
@@ -273,10 +274,8 @@ async function updateFood(
 }
 
 async function deleteFood(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodId: any,
+  authenticatedUserId: string,
+  foodId: string,
   forceDelete = false
 ) {
   log(
@@ -414,22 +413,16 @@ async function deleteFood(
   }
 }
 async function getFoodsWithPagination(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  searchTerm: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodFilter: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  currentPage: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  itemsPerPage: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sortBy: any
+  authenticatedUserId: string,
+  searchTerm: string,
+  foodFilter: string,
+  currentPage: string | number,
+  itemsPerPage: string | number,
+  sortBy: string
 ) {
   try {
-    const limit = parseInt(itemsPerPage, 10) || 10;
-    const offset = ((parseInt(currentPage, 10) || 1) - 1) * limit;
+    const limit = parseInt(String(itemsPerPage), 10) || 10;
+    const offset = ((parseInt(String(currentPage), 10) || 1) - 1) * limit;
     const [foods, totalCount] = await Promise.all([
       foodRepository.getFoodsWithPagination(
         searchTerm,
@@ -451,11 +444,13 @@ async function getFoodsWithPagination(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createFoodVariant(authenticatedUserId: any, variantData: any) {
+async function createFoodVariant(
+  authenticatedUserId: string,
+  variantData: FoodVariantInput
+) {
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(
-      variantData.food_id,
+      String(variantData.food_id),
       authenticatedUserId
     );
     if (!foodOwnerId) {
@@ -484,8 +479,10 @@ async function createFoodVariant(authenticatedUserId: any, variantData: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodVariantById(authenticatedUserId: any, variantId: any) {
+async function getFoodVariantById(
+  authenticatedUserId: string,
+  variantId: string
+) {
   try {
     const variant = await foodRepository.getFoodVariantById(
       variantId,
@@ -513,12 +510,9 @@ async function getFoodVariantById(authenticatedUserId: any, variantId: any) {
 }
 
 async function updateFoodVariant(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variantId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variantData: any
+  authenticatedUserId: string,
+  variantId: string,
+  variantData: FoodVariantInput
 ) {
   try {
     const variant = await foodRepository.getFoodVariantById(
@@ -563,8 +557,10 @@ async function updateFoodVariant(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFoodVariant(authenticatedUserId: any, variantId: any) {
+async function deleteFoodVariant(
+  authenticatedUserId: string,
+  variantId: string
+) {
   try {
     const variant = await foodRepository.getFoodVariantById(
       variantId,
@@ -602,8 +598,10 @@ async function deleteFoodVariant(authenticatedUserId: any, variantId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodVariantsByFoodId(authenticatedUserId: any, foodId: any) {
+async function getFoodVariantsByFoodId(
+  authenticatedUserId: string,
+  foodId: string
+) {
   log(
     'info',
     `getFoodVariantsByFoodId: Fetching variants for foodId: ${foodId}, authenticatedUserId: ${authenticatedUserId}`
@@ -648,17 +646,14 @@ async function getFoodVariantsByFoodId(authenticatedUserId: any, foodId: any) {
 }
 
 async function bulkCreateFoodVariants(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variantsData: any
+  authenticatedUserId: string,
+  variantsData: FoodVariantInput[]
 ) {
   try {
     const variantsToCreate = await Promise.all(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      variantsData.map(async (variant: any) => {
+      variantsData.map(async (variant: FoodVariantInput) => {
         const foodOwnerId = await foodRepository.getFoodOwnerId(
-          variant.food_id,
+          String(variant.food_id),
           authenticatedUserId
         );
         if (!foodOwnerId || foodOwnerId !== authenticatedUserId) {
@@ -687,8 +682,10 @@ async function bulkCreateFoodVariants(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodDeletionImpact(authenticatedUserId: any, foodId: any) {
+async function getFoodDeletionImpact(
+  authenticatedUserId: string,
+  foodId: string
+) {
   log(
     'info',
     `getFoodDeletionImpact: Checking deletion impact for food ${foodId} by user ${authenticatedUserId}`
@@ -747,8 +744,7 @@ async function importFoodsInBulk(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodsNeedingReview(authenticatedUserId: any) {
+async function getFoodsNeedingReview(authenticatedUserId: string) {
   try {
     const foodsNeedingReview =
       await foodRepository.getFoodsNeedingReview(authenticatedUserId);
@@ -764,12 +760,9 @@ async function getFoodsNeedingReview(authenticatedUserId: any) {
 }
 
 async function updateSnapshotForVariant(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  food: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variant: any
+  authenticatedUserId: string,
+  food: FoodInput,
+  variant: FoodVariantInput
 ) {
   const newSnapshotData = {
     food_name: food.name,
@@ -798,19 +791,19 @@ async function updateSnapshotForVariant(
   };
   await foodRepository.updateFoodEntriesSnapshot(
     authenticatedUserId,
-    food.id,
-    variant.id,
+    String(food.id),
+    String(variant.id),
     newSnapshotData
   );
-  await foodRepository.clearUserIgnoredUpdate(authenticatedUserId, variant.id);
+  await foodRepository.clearUserIgnoredUpdate(
+    authenticatedUserId,
+    String(variant.id)
+  );
 }
 async function updateFoodEntriesSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variantId: any
+  authenticatedUserId: string,
+  foodId: string,
+  variantId: string
 ) {
   try {
     const food = await foodRepository.getFoodById(foodId, authenticatedUserId);
@@ -851,27 +844,23 @@ async function updateFoodEntriesSnapshot(
 // local food library and load preferences. `credentialUserId` is the real
 // authenticated actor whose stored provider secrets and OpenFoodFacts session
 // are used, so a delegate can't decrypt a family member's provider keys.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function lookupBarcode(
-  barcode: any,
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any,
+  barcode: string,
+  userId: string,
+  providerId: string | undefined,
   // Defaults to the data-context user for non-delegated callers; routes pass
   // the real authenticated actor so a delegate can't use a family member's keys.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  credentialUserId: any = userId
+  credentialUserId: string = userId
 ) {
   // Providers are tried in turn, each failure caught so the next can run.
   // Capture the first failure carrying an HTTP status (a surfaceable
   // misconfiguration, e.g. FatSecret's IP error) to report instead of a
   // misleading "not found" if every provider fails.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let surfaceableError: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const captureSurfaceable = (err: any) => {
-    if (!surfaceableError && err?.status) {
-      surfaceableError = err;
+  let surfaceableError: ProviderError | null = null;
+  const captureSurfaceable = (err: unknown) => {
+    const candidate = err as ProviderError | null;
+    if (!surfaceableError && candidate?.status) {
+      surfaceableError = candidate;
     }
   };
   try {
@@ -955,8 +944,7 @@ async function lookupBarcode(
             provider.app_key
           );
           match = (usdaData?.foods || []).find(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (f: any) =>
+            (f: { gtinUpc?: string; description?: string }) =>
               normalizeBarcode(f.gtinUpc) === normalizedBarcode && f.description
           );
           if (match) break;
@@ -1097,24 +1085,14 @@ async function lookupBarcode(
     throw error;
   }
 }
-async function addFoodFavorite(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodId: any
-) {
+async function addFoodFavorite(authenticatedUserId: string, foodId: string) {
   // Ensure the food exists and is accessible to this user before starring it.
   // getFoodById throws 'Food not found.' for inaccessible/invalid ids.
   await getFoodById(authenticatedUserId, foodId);
   await foodRepository.addFoodFavorite(authenticatedUserId, foodId);
   return { food_id: foodId, is_favorite: true };
 }
-async function removeFoodFavorite(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodId: any
-) {
+async function removeFoodFavorite(authenticatedUserId: string, foodId: string) {
   await foodRepository.removeFoodFavorite(authenticatedUserId, foodId);
   return { food_id: foodId, is_favorite: false };
 }
