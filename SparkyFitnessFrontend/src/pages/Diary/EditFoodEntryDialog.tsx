@@ -48,6 +48,7 @@ import {
 import { formatServingLabel } from '@/utils/foodServing';
 import FoodEntryImageOverride from './FoodEntryImageOverride';
 import { useEntryImageDraft } from '@/hooks/Diary/useEntryImageDraft';
+import { useTranslation } from 'react-i18next';
 
 const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
   success: 'text-emerald-600 dark:text-emerald-400',
@@ -68,6 +69,17 @@ const EditFoodEntryDialog = ({
   onOpenChange,
   availableMealTypes,
 }: EditFoodEntryDialogProps) => {
+  const { t } = useTranslation();
+  const confidenceLabel = (confidence: AiConfidence) =>
+    t(
+      `editFoodEntry.confidence.${confidence}`,
+      OVERALL_CONFIDENCE_LABELS[confidence]
+    );
+  const aiEstimateLabel = (confidence: AiConfidence) =>
+    t('editFoodEntry.aiEstimateConfidence', {
+      defaultValue: 'AI estimate ({{confidence}} confidence)',
+      confidence: confidenceLabel(confidence),
+    });
   const {
     loggingLevel,
     energyUnit,
@@ -298,18 +310,25 @@ const EditFoodEntryDialog = ({
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <DialogHeader>
-          <DialogTitle>Edit Food Entry</DialogTitle>
+          <DialogTitle>
+            {t('editFoodEntry.title', 'Edit Food Entry')}
+          </DialogTitle>
           <DialogDescription>
-            Edit the quantity and serving unit for your food entry.
+            {t(
+              'editFoodEntry.description',
+              'Edit the quantity and serving unit for your food entry.'
+            )}
           </DialogDescription>
           <p className="text-sm text-red-500 mt-2">
-            Note: Updating this entry will use the latest available variant
-            details for the food, not the original snapshot.
+            {t(
+              'editFoodEntry.latestVariantNote',
+              'Note: Updating this entry will use the latest available variant details for the food, not the original snapshot.'
+            )}
           </p>
         </DialogHeader>
 
         {loading ? (
-          <div>Loading...</div>
+          <div>{t('dataTable.loading', 'Loading...')}</div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
@@ -333,7 +352,9 @@ const EditFoodEntryDialog = ({
 
               <div className="grid grid-cols-4 gap-4">
                 <div>
-                  <Label htmlFor="quantity">Quantity</Label>
+                  <Label htmlFor="quantity">
+                    {t('editFoodEntry.quantity', 'Quantity')}
+                  </Label>
                   <Input
                     id="quantity"
                     type="number"
@@ -346,7 +367,9 @@ const EditFoodEntryDialog = ({
                 </div>
 
                 <div>
-                  <Label htmlFor="unit">Unit</Label>
+                  <Label htmlFor="unit">
+                    {t('editFoodEntry.unit', 'Unit')}
+                  </Label>
                   <div className="flex items-center gap-2">
                     <Select
                       value={dropdownValue}
@@ -366,7 +389,9 @@ const EditFoodEntryDialog = ({
                                     variant.ai_confidence && (
                                       <Sparkles
                                         className={`h-3 w-3 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}
-                                        aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[variant.ai_confidence as AiConfidence]} confidence)`}
+                                        aria-label={aiEstimateLabel(
+                                          variant.ai_confidence as AiConfidence
+                                        )}
                                       />
                                     )}
                                 </span>
@@ -397,7 +422,7 @@ const EditFoodEntryDialog = ({
                         )}
                         <SelectSeparator />
                         <SelectItem value="__custom__">
-                          Custom unit...
+                          {t('editFoodEntry.customUnit', 'Custom unit...')}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -405,13 +430,17 @@ const EditFoodEntryDialog = ({
                       selectedVariant.ai_confidence && (
                         <Sparkles
                           className={`h-4 w-4 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[selectedVariant.ai_confidence as AiConfidence]]}`}
-                          aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[selectedVariant.ai_confidence as AiConfidence]} confidence)`}
+                          aria-label={aiEstimateLabel(
+                            selectedVariant.ai_confidence as AiConfidence
+                          )}
                         />
                       )}
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="meal">Meal</Label>
+                  <Label htmlFor="meal">
+                    {t('editFoodEntry.meal', 'Meal')}
+                  </Label>
                   <Select value={mealId} onValueChange={setMealId}>
                     <SelectTrigger>
                       <SelectValue />
@@ -428,17 +457,19 @@ const EditFoodEntryDialog = ({
 
                 <div className="col-span-4 space-y-1 max-w-[280px]">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="entryTime">Time (optional)</Label>
+                    <Label htmlFor="entryTime">
+                      {t('editFoodEntry.timeOptional', 'Time (optional)')}
+                    </Label>
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => setEntryTime('')}
                         disabled={!entryTime}
                         className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                        title="Clear time"
+                        title={t('editFoodEntry.clearTime', 'Clear time')}
                       >
                         <X className="h-4 w-4" />
-                        Clear
+                        {t('editFoodEntry.clear', 'Clear')}
                       </button>
                       <button
                         type="button"
@@ -449,10 +480,13 @@ const EditFoodEntryDialog = ({
                           );
                         }}
                         className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                        title="Set to current local time"
+                        title={t(
+                          'editFoodEntry.setCurrentTime',
+                          'Set to current local time'
+                        )}
                       >
                         <Clock className="h-4 w-4" />
-                        Now
+                        {t('editFoodEntry.now', 'Now')}
                       </button>
                       {(() => {
                         const selectedMeal = availableMealTypes.find(
@@ -466,10 +500,13 @@ const EditFoodEntryDialog = ({
                               setEntryTime(toHourMinute(defaultTime) || '')
                             }
                             className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                            title={`Set to meal default (${toHourMinute(defaultTime)})`}
+                            title={t('editFoodEntry.setMealDefault', {
+                              time: toHourMinute(defaultTime),
+                              defaultValue: `Set to meal default (${toHourMinute(defaultTime)})`,
+                            })}
                           >
                             <CalendarDays className="h-4 w-4" />
-                            Default
+                            {t('editFoodEntry.default', 'Default')}
                           </button>
                         ) : null;
                       })()}
@@ -488,11 +525,16 @@ const EditFoodEntryDialog = ({
               {pendingUnitIsCustom && (
                 <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
                   <div>
-                    <Label htmlFor="customUnitName">Unit name</Label>
+                    <Label htmlFor="customUnitName">
+                      {t('editFoodEntry.unitName', 'Unit name')}
+                    </Label>
                     <Input
                       id="customUnitName"
                       type="text"
-                      placeholder="e.g. slice, bar, scoop"
+                      placeholder={t(
+                        'editFoodEntry.unitNamePlaceholder',
+                        'e.g. slice, bar, scoop'
+                      )}
                       value={pendingUnit}
                       onChange={(e) => {
                         setPendingUnit(e.target.value);
@@ -511,7 +553,10 @@ const EditFoodEntryDialog = ({
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 1"
+                        placeholder={t(
+                          'editFoodEntry.numberPlaceholder',
+                          'e.g. 1'
+                        )}
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -532,7 +577,7 @@ const EditFoodEntryDialog = ({
                     size="sm"
                     onClick={cancelConversion}
                   >
-                    Cancel
+                    {t('common.cancel', 'Cancel')}
                   </Button>
                 </div>
               )}
@@ -543,10 +588,11 @@ const EditFoodEntryDialog = ({
                 autoConversionFactor === null && (
                   <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
                     <p className="text-sm text-muted-foreground">
-                      These units can&apos;t be converted automatically — enter
-                      how many{' '}
-                      <strong>{conversionBaseVariant?.serving_unit}</strong> are
-                      in 1 <strong>{pendingUnit}</strong>.
+                      {t('editFoodEntry.manualConversion', {
+                        baseUnit: conversionBaseVariant?.serving_unit,
+                        unit: pendingUnit,
+                        defaultValue: `These units can't be converted automatically — enter how many ${conversionBaseVariant?.serving_unit} are in 1 ${pendingUnit}.`,
+                      })}
                     </p>
                     <div>
                       <Label htmlFor="conversionFactor">
@@ -558,7 +604,10 @@ const EditFoodEntryDialog = ({
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 1"
+                        placeholder={t(
+                          'editFoodEntry.numberPlaceholder',
+                          'e.g. 1'
+                        )}
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -578,7 +627,7 @@ const EditFoodEntryDialog = ({
                       size="sm"
                       onClick={cancelConversion}
                     >
-                      Cancel
+                      {t('common.cancel', 'Cancel')}
                     </Button>
                   </div>
                 )}
@@ -602,7 +651,7 @@ const EditFoodEntryDialog = ({
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -615,8 +664,8 @@ const EditFoodEntryDialog = ({
                   }
                 >
                   {createFoodVariantMutation.isPending
-                    ? 'Saving...'
-                    : 'Save Changes'}
+                    ? t('common.saving', 'Saving...')
+                    : t('common.saveChanges', 'Save Changes')}
                 </Button>
               </div>
             </div>

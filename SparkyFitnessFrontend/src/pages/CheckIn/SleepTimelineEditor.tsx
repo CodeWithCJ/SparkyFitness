@@ -547,7 +547,29 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
                 width: `${width}%`,
                 backgroundColor: SLEEP_STAGE_COLORS[event.stage_type],
               }}
-              title={`${event.stage_type}: ${formatTimeWithPreference(parseISO(event.start_time), timeFormat)} - ${formatTimeWithPreference(parseISO(event.end_time), timeFormat)}`}
+              title={t('sleepTimelineEditor.stageTimeRange', {
+                defaultValue: '{{stage}}: {{start}}–{{end}}',
+                stage: t(
+                  `sleepEntrySection.${
+                    event.stage_type === 'deep'
+                      ? 'deepSleep'
+                      : event.stage_type === 'light'
+                        ? 'lightSleep'
+                        : event.stage_type === 'rem'
+                          ? 'remSleep'
+                          : 'awake'
+                  }`,
+                  event.stage_type
+                ),
+                start: formatTimeWithPreference(
+                  parseISO(event.start_time),
+                  timeFormat
+                ),
+                end: formatTimeWithPreference(
+                  parseISO(event.end_time),
+                  timeFormat
+                ),
+              })}
             />
           );
         })}

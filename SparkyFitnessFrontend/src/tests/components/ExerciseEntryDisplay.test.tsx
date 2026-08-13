@@ -3,11 +3,42 @@ import '@testing-library/jest-dom';
 import ExerciseEntryDisplay from '@/pages/Diary/ExerciseEntryDisplay';
 import type { ExerciseEntry } from '@/types/exercises';
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (
+      key: string,
+      defaultValueOrOptions?: string | Record<string, unknown>,
+      values?: Record<string, unknown>
+    ) => {
+      const options =
+        typeof defaultValueOrOptions === 'string'
+          ? values
+          : defaultValueOrOptions;
+      const defaultValue =
+        typeof defaultValueOrOptions === 'string'
+          ? defaultValueOrOptions
+          : options?.['defaultValue'];
+      const pluralDefault = options?.['defaultValue_other'];
+      const count = options?.['count'];
+      const template =
+        count !== undefined && count !== 1 && typeof pluralDefault === 'string'
+          ? pluralDefault
+          : defaultValue;
+
+      if (typeof template !== 'string') return key;
+      return template.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+        String(options?.[name] ?? `{{${name}}}`)
+      );
+    },
+  }),
+}));
+
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     weightUnit: 'kg',
     distanceUnit: 'km',
     convertDistance: (value: number) => value,
+    timeFormat: '24h',
   }),
 }));
 

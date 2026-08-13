@@ -39,8 +39,10 @@ import {
 } from '@/hooks/Settings/useFamilyAccess';
 import { useQueryClient } from '@tanstack/react-query';
 import { FamilyAccess } from '@/types/settings';
+import { useTranslation } from 'react-i18next';
 
 const FamilyAccessManager = () => {
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccess, setEditingAccess] = useState<FamilyAccess | null>(null);
@@ -129,8 +131,11 @@ const FamilyAccessManager = () => {
       !formData.share_external_providers
     ) {
       toast({
-        title: 'Error',
-        description: 'Please select at least one permission',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.familyAccess.selectPermissionError',
+          'Please select at least one permission'
+        ),
         variant: 'destructive',
       });
       return;
@@ -139,8 +144,11 @@ const FamilyAccessManager = () => {
     // Prevent adding yourself
     if (formData.family_email.toLowerCase() === user.email?.toLowerCase()) {
       toast({
-        title: 'Error',
-        description: 'You cannot grant access to yourself',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.familyAccess.selfAccessError',
+          'You cannot grant access to yourself'
+        ),
         variant: 'destructive',
       });
       return;
@@ -158,8 +166,11 @@ const FamilyAccessManager = () => {
         );
         if (existingAccess) {
           toast({
-            title: 'Error',
-            description: 'Access already granted to this family member',
+            title: t('common.error', 'Error'),
+            description: t(
+              'settings.familyAccess.alreadyGrantedError',
+              'Access already granted to this family member'
+            ),
             variant: 'destructive',
           });
           return;
@@ -226,7 +237,7 @@ const FamilyAccessManager = () => {
     if (!isActive) {
       return (
         <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
-          Inactive
+          {t('settings.familyAccess.statusInactive', 'Inactive')}
         </span>
       );
     }
@@ -235,22 +246,44 @@ const FamilyAccessManager = () => {
       case 'active':
         return (
           <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-            Active
+            {t('settings.familyAccess.statusActive', 'Active')}
           </span>
         );
       case 'pending':
         return (
           <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
-            Pending
+            {t('settings.familyAccess.statusPending', 'Pending')}
           </span>
         );
       default:
         return (
           <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded">
-            Unknown
+            {t('settings.familyAccess.statusUnknown', 'Unknown')}
           </span>
         );
     }
+  };
+
+  const permissionLabels = {
+    managesDiary: t('settings.familyAccess.managesDiary', 'Manages Diary'),
+    foodLibrary: t('settings.familyAccess.foodLibrary', 'Food Library'),
+    exerciseLibrary: t(
+      'settings.familyAccess.exerciseLibrary',
+      'Exercise Library'
+    ),
+    managesCheckin: t(
+      'settings.familyAccess.managesCheckin',
+      'Manages Check-in'
+    ),
+    managesMedications: t(
+      'settings.familyAccess.managesMedications',
+      'Manages Medications'
+    ),
+    viewsReports: t('settings.familyAccess.viewsReports', 'Views Reports'),
+    sharesExternalProviders: t(
+      'settings.familyAccess.sharesExternalProviders',
+      'Shares External Providers'
+    ),
   };
 
   return (
@@ -260,18 +293,31 @@ const FamilyAccessManager = () => {
           <DialogTrigger asChild>
             <Button onClick={openAddDialog}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Family Member
+              {t('settings.familyAccess.addFamilyMember', 'Add Family Member')}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {editingAccess ? 'Edit' : 'Add'} Family Access
+                {editingAccess
+                  ? t(
+                      'settings.familyAccess.editDialogTitle',
+                      'Edit Family Access'
+                    )
+                  : t(
+                      'settings.familyAccess.addDialogTitle',
+                      'Add Family Access'
+                    )}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="family_email">Family Member Email</Label>
+                <Label htmlFor="family_email">
+                  {t(
+                    'settings.familyAccess.familyMemberEmail',
+                    'Family Member Email'
+                  )}
+                </Label>
                 <Input
                   id="family_email"
                   type="email"
@@ -282,12 +328,17 @@ const FamilyAccessManager = () => {
                       family_email: e.target.value,
                     }))
                   }
-                  placeholder="Enter family member's email"
+                  placeholder={t(
+                    'settings.familyAccess.emailPlaceholder',
+                    "Enter family member's email"
+                  )}
                   disabled={!!editingAccess}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  They'll get access once they create a SparkyFitness account
-                  (if they don't have one already)
+                  {t(
+                    'settings.familyAccess.accountHint',
+                    "They'll get access once they create a SparkyFitness account (if they don't have one already)"
+                  )}
                 </p>
               </div>
 
@@ -295,7 +346,10 @@ const FamilyAccessManager = () => {
 
               <div>
                 <Label className="text-base font-medium">
-                  Access Permissions
+                  {t(
+                    'settings.familyAccess.accessPermissions',
+                    'Access Permissions'
+                  )}
                 </Label>
                 <div className="space-y-3 mt-3">
                   <div className="flex items-center justify-between">
@@ -314,7 +368,10 @@ const FamilyAccessManager = () => {
                         htmlFor="can_manage_diary"
                         className="cursor-pointer"
                       >
-                        Can Manage Diary
+                        {t(
+                          'settings.familyAccess.canManageDiary',
+                          'Can Manage Diary'
+                        )}
                       </Label>
                     </div>
                     <Tooltip>
@@ -323,9 +380,10 @@ const FamilyAccessManager = () => {
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[280px]">
                         <p className="text-xs">
-                          Allows delegate to log meals, workouts, water, and
-                          goals on your behalf. Wellness logs (sleep, mood,
-                          fasting) are blocked. Gives read-only profile access.
+                          {t(
+                            'settings.familyAccess.canManageDiaryHelp',
+                            'Allows delegate to log meals, workouts, water, and goals on your behalf. Wellness logs (sleep, mood, fasting) are blocked. Gives read-only profile access.'
+                          )}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -347,7 +405,10 @@ const FamilyAccessManager = () => {
                         htmlFor="can_view_food_library"
                         className="cursor-pointer"
                       >
-                        Can Use My Food & Meal Library
+                        {t(
+                          'settings.familyAccess.canUseFoodLibrary',
+                          'Can Use My Food & Meal Library'
+                        )}
                       </Label>
                     </div>
                     <Tooltip>
@@ -356,9 +417,10 @@ const FamilyAccessManager = () => {
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[280px]">
                         <p className="text-xs">
-                          Allows delegate to search and select from your custom
-                          foods, meals, and recipes when context-switched. Does
-                          not grant access to diary logs or profile settings.
+                          {t(
+                            'settings.familyAccess.canUseFoodLibraryHelp',
+                            'Allows delegate to search and select from your custom foods, meals, and recipes when context-switched. Does not grant access to diary logs or profile settings.'
+                          )}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -380,7 +442,10 @@ const FamilyAccessManager = () => {
                         htmlFor="can_view_exercise_library"
                         className="cursor-pointer"
                       >
-                        Can Use My Exercise & Workout Library
+                        {t(
+                          'settings.familyAccess.canUseExerciseLibrary',
+                          'Can Use My Exercise & Workout Library'
+                        )}
                       </Label>
                     </div>
                     <Tooltip>
@@ -389,9 +454,10 @@ const FamilyAccessManager = () => {
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[280px]">
                         <p className="text-xs">
-                          Allows delegate to view and use your custom exercises
-                          and workout presets when context-switched. Does not
-                          grant access to diary logs or profile settings.
+                          {t(
+                            'settings.familyAccess.canUseExerciseLibraryHelp',
+                            'Allows delegate to view and use your custom exercises and workout presets when context-switched. Does not grant access to diary logs or profile settings.'
+                          )}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -413,7 +479,10 @@ const FamilyAccessManager = () => {
                         htmlFor="can_manage_checkin"
                         className="cursor-pointer"
                       >
-                        Can Manage Check-in Data
+                        {t(
+                          'settings.familyAccess.canManageCheckin',
+                          'Can Manage Check-in Data'
+                        )}
                       </Label>
                     </div>
                     <Tooltip>
@@ -422,10 +491,10 @@ const FamilyAccessManager = () => {
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[280px]">
                         <p className="text-xs">
-                          Allows delegate to log weight, body measurements,
-                          progress photos, sleep logs, mood logs, and fasting
-                          status on your behalf. Diary logs are blocked. Gives
-                          read-only profile access.
+                          {t(
+                            'settings.familyAccess.canManageCheckinHelp',
+                            'Allows delegate to log weight, body measurements, progress photos, sleep logs, mood logs, and fasting status on your behalf. Diary logs are blocked. Gives read-only profile access.'
+                          )}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -447,7 +516,10 @@ const FamilyAccessManager = () => {
                         htmlFor="can_manage_medications"
                         className="cursor-pointer"
                       >
-                        Can Manage Medications
+                        {t(
+                          'settings.familyAccess.canManageMedications',
+                          'Can Manage Medications'
+                        )}
                       </Label>
                     </div>
                     <Tooltip>
@@ -456,10 +528,10 @@ const FamilyAccessManager = () => {
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[280px]">
                         <p className="text-xs">
-                          Allows delegate to log medications, doses, titration
-                          plans, symptoms, and injection sites on your behalf.
-                          Diary logs are blocked. Gives read-only profile
-                          access.
+                          {t(
+                            'settings.familyAccess.canManageMedicationsHelp',
+                            'Allows delegate to log medications, doses, titration plans, symptoms, and injection sites on your behalf. Diary logs are blocked. Gives read-only profile access.'
+                          )}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -481,7 +553,10 @@ const FamilyAccessManager = () => {
                         htmlFor="can_view_reports"
                         className="cursor-pointer"
                       >
-                        Can View Reports
+                        {t(
+                          'settings.familyAccess.canViewReports',
+                          'Can View Reports'
+                        )}
                       </Label>
                     </div>
                     <Tooltip>
@@ -490,9 +565,10 @@ const FamilyAccessManager = () => {
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[280px]">
                         <p className="text-xs">
-                          Allows delegate to view charts, statistics, and
-                          historical logs on your dashboard. No write privileges
-                          are granted. Gives read-only profile access.
+                          {t(
+                            'settings.familyAccess.canViewReportsHelp',
+                            'Allows delegate to view charts, statistics, and historical logs on your dashboard. No write privileges are granted. Gives read-only profile access.'
+                          )}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -514,7 +590,10 @@ const FamilyAccessManager = () => {
                         htmlFor="share_external_providers"
                         className="cursor-pointer"
                       >
-                        Share External Data Providers
+                        {t(
+                          'settings.familyAccess.shareExternalProviders',
+                          'Share External Data Providers'
+                        )}
                       </Label>
                     </div>
                     <Tooltip>
@@ -523,10 +602,10 @@ const FamilyAccessManager = () => {
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[280px]">
                         <p className="text-xs">
-                          Allows delegate to search for foods/exercises using
-                          your configured API providers (e.g. FatSecret, USDA).
-                          Health integrations (Garmin, Fitbit, etc.) are
-                          strictly private and never shared.
+                          {t(
+                            'settings.familyAccess.shareExternalProvidersHelp',
+                            'Allows delegate to search for foods/exercises using your configured API providers (e.g. FatSecret, USDA). Health integrations (Garmin, Fitbit, etc.) are strictly private and never shared.'
+                          )}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -536,7 +615,10 @@ const FamilyAccessManager = () => {
 
               <div>
                 <Label htmlFor="access_end_date">
-                  Access End Date (Optional)
+                  {t(
+                    'settings.familyAccess.accessEndDate',
+                    'Access End Date (Optional)'
+                  )}
                 </Label>
                 <Input
                   id="access_end_date"
@@ -550,19 +632,24 @@ const FamilyAccessManager = () => {
                   }
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Leave empty for indefinite access
+                  {t(
+                    'settings.familyAccess.accessEndDateHint',
+                    'Leave empty for indefinite access'
+                  )}
                 </p>
               </div>
 
               <div className="flex gap-2 pt-4">
                 <Button onClick={handleSubmit} className="flex-1">
-                  {editingAccess ? 'Update' : 'Grant'} Access
+                  {editingAccess
+                    ? t('settings.familyAccess.updateAccess', 'Update Access')
+                    : t('settings.familyAccess.grantAccess', 'Grant Access')}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => setIsDialogOpen(false)}
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </Button>
               </div>
             </div>
@@ -573,17 +660,27 @@ const FamilyAccessManager = () => {
       {rulesICreated.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Rules I Created</CardTitle>
+            <CardTitle>
+              {t('settings.familyAccess.rulesCreated', 'Rules I Created')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Family Member</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>End Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>
+                    {t('settings.familyAccess.familyMember', 'Family Member')}
+                  </TableHead>
+                  <TableHead>
+                    {t('settings.familyAccess.permissions', 'Permissions')}
+                  </TableHead>
+                  <TableHead>
+                    {t('settings.familyAccess.endDate', 'End Date')}
+                  </TableHead>
+                  <TableHead>
+                    {t('settings.familyAccess.status', 'Status')}
+                  </TableHead>
+                  <TableHead>{t('common.actions', 'Actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -594,46 +691,48 @@ const FamilyAccessManager = () => {
                       <div className="flex gap-1 flex-wrap">
                         {access.access_permissions.can_manage_diary && (
                           <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                            Manages Diary
+                            {permissionLabels.managesDiary}
                           </span>
                         )}
                         {access.access_permissions.can_view_food_library && (
                           <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                            Food Library
+                            {permissionLabels.foodLibrary}
                           </span>
                         )}
                         {access.access_permissions
                           .can_view_exercise_library && (
                           <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded">
-                            Exercise Library
+                            {permissionLabels.exerciseLibrary}
                           </span>
                         )}
                         {access.access_permissions.can_manage_checkin && (
                           <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                            Manages Check-in
+                            {permissionLabels.managesCheckin}
                           </span>
                         )}
                         {access.access_permissions.can_manage_medications && (
                           <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded">
-                            Manages Medications
+                            {permissionLabels.managesMedications}
                           </span>
                         )}
                         {access.access_permissions.can_view_reports && (
                           <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
-                            Views Reports
+                            {permissionLabels.viewsReports}
                           </span>
                         )}
                         {access.access_permissions.share_external_providers && (
                           <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
-                            Shares External Providers
+                            {permissionLabels.sharesExternalProviders}
                           </span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       {access.access_end_date
-                        ? new Date(access.access_end_date).toLocaleDateString()
-                        : 'No end date'}
+                        ? new Date(access.access_end_date).toLocaleDateString(
+                            i18n.resolvedLanguage || i18n.language
+                          )
+                        : t('settings.familyAccess.noEndDate', 'No end date')}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -650,6 +749,10 @@ const FamilyAccessManager = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => openEditDialog(access)}
+                          aria-label={t(
+                            'settings.familyAccess.editRule',
+                            'Edit access rule'
+                          )}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -657,6 +760,10 @@ const FamilyAccessManager = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDelete(access.id)}
+                          aria-label={t(
+                            'settings.familyAccess.deleteRule',
+                            'Delete access rule'
+                          )}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -673,67 +780,81 @@ const FamilyAccessManager = () => {
       {rulesGivenToMe.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Rules Given to Me</CardTitle>
+            <CardTitle>
+              {t('settings.familyAccess.rulesReceived', 'Rules Given to Me')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Granted By</TableHead>
-                  <TableHead>Permissions</TableHead>
-                  <TableHead>End Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>
+                    {t('settings.familyAccess.grantedBy', 'Granted By')}
+                  </TableHead>
+                  <TableHead>
+                    {t('settings.familyAccess.permissions', 'Permissions')}
+                  </TableHead>
+                  <TableHead>
+                    {t('settings.familyAccess.endDate', 'End Date')}
+                  </TableHead>
+                  <TableHead>
+                    {t('settings.familyAccess.status', 'Status')}
+                  </TableHead>
+                  <TableHead>{t('common.actions', 'Actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rulesGivenToMe.map((access) => (
                   <TableRow key={access.id}>
-                    <TableCell>{access.owner_email || 'N/A'}</TableCell>
+                    <TableCell>
+                      {access.owner_email || t('common.notApplicable', 'N/A')}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
                         {access.access_permissions.can_manage_diary && (
                           <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                            Manages Diary
+                            {permissionLabels.managesDiary}
                           </span>
                         )}
                         {access.access_permissions.can_view_food_library && (
                           <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                            Food Library
+                            {permissionLabels.foodLibrary}
                           </span>
                         )}
                         {access.access_permissions
                           .can_view_exercise_library && (
                           <span className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded">
-                            Exercise Library
+                            {permissionLabels.exerciseLibrary}
                           </span>
                         )}
                         {access.access_permissions.can_manage_checkin && (
                           <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
-                            Manages Check-in
+                            {permissionLabels.managesCheckin}
                           </span>
                         )}
                         {access.access_permissions.can_manage_medications && (
                           <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded">
-                            Manages Medications
+                            {permissionLabels.managesMedications}
                           </span>
                         )}
                         {access.access_permissions.can_view_reports && (
                           <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">
-                            Views Reports
+                            {permissionLabels.viewsReports}
                           </span>
                         )}
                         {access.access_permissions.share_external_providers && (
                           <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
-                            Shares External Providers
+                            {permissionLabels.sharesExternalProviders}
                           </span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       {access.access_end_date
-                        ? new Date(access.access_end_date).toLocaleDateString()
-                        : 'No end date'}
+                        ? new Date(access.access_end_date).toLocaleDateString(
+                            i18n.resolvedLanguage || i18n.language
+                          )
+                        : t('settings.familyAccess.noEndDate', 'No end date')}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -776,9 +897,17 @@ const FamilyAccessManager = () => {
       {familyAccess.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>No family access granted yet</p>
+          <p>
+            {t(
+              'settings.familyAccess.noAccess',
+              'No family access granted yet'
+            )}
+          </p>
           <p className="text-sm">
-            Add family members to let them help manage your fitness data
+            {t(
+              'settings.familyAccess.noAccessDescription',
+              'Add family members to let them help manage your fitness data'
+            )}
           </p>
         </div>
       )}

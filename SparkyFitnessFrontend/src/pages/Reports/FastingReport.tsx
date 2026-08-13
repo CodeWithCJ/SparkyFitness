@@ -130,8 +130,11 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
         zones.Ketosis = (zones.Ketosis ?? 0) + 1;
       }
     });
-    return Object.entries(zones).map(([name, value]) => ({ name, value }));
-  }, [fastingData]);
+    return Object.entries(zones).map(([name, value]) => ({
+      name: t(`reports.fasting.zones.${name}`, name),
+      value,
+    }));
+  }, [fastingData, t]);
 
   // Heatmap Data (Last 90 Days)
   const heatmapData = useMemo(() => {
@@ -390,7 +393,7 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                           parseISO(f.end_time),
                           'MMM dd, yyyy h:mm a'
                         )
-                      : 'Ongoing';
+                      : t('reports.fasting.ongoing', 'Ongoing');
                     const duration = formatHoursToReadable(
                       (f.duration_minutes ?? 0) / 60
                     );
@@ -399,7 +402,10 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
                         <TableCell>{startStr}</TableCell>
                         <TableCell>{endStr}</TableCell>
                         <TableCell>{duration}</TableCell>
-                        <TableCell>{f.fasting_type || 'Custom'}</TableCell>
+                        <TableCell>
+                          {f.fasting_type ||
+                            t('reports.fasting.custom', 'Custom')}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -444,7 +450,7 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
             })}
           </div>
           <div className="flex gap-2 items-center mt-4 text-xs text-muted-foreground">
-            <span>Less</span>
+            <span>{t('reports.fasting.less', 'Less')}</span>
             <div className="flex gap-[3px]">
               <div className="w-4 h-4 rounded-sm bg-muted" />
               <div className="w-4 h-4 rounded-sm bg-green-300 dark:bg-green-800" />
@@ -452,7 +458,7 @@ export const FastingReport = ({ fastingData }: FastingReportProps) => {
               <div className="w-4 h-4 rounded-sm bg-green-500 dark:bg-green-600" />
               <div className="w-4 h-4 rounded-sm bg-green-600 dark:bg-green-500" />
             </div>
-            <span>More</span>
+            <span>{t('reports.fasting.more', 'More')}</span>
           </div>
         </CardContent>
       </Card>

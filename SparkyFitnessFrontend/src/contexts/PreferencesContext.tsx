@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
 import { format, parseISO, startOfDay } from 'date-fns';
+import { getDateLocale } from '@/utils/languageUtils';
 import { normalizeTimeFormat } from '@/utils/timeFormatters';
 import {
   FatBreakdownAlgorithm,
@@ -540,9 +541,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const formatString = formatStr || 'yyyy-MM-dd';
-      return format(dateToFormat, formatString);
+      return format(dateToFormat, formatString, {
+        locale: getDateLocale(language),
+      });
     },
-    [loggingLevel, toUserTimezone]
+    [language, loggingLevel, toUserTimezone]
   );
 
   const formatDate = useCallback(

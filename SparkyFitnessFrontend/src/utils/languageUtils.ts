@@ -1,3 +1,73 @@
+import type { Locale } from 'date-fns';
+import {
+  ar,
+  cs,
+  da,
+  de,
+  enUS,
+  es,
+  fi,
+  fr,
+  hr,
+  hu,
+  id,
+  it,
+  ja,
+  kk,
+  ko,
+  lv,
+  nl,
+  pl,
+  ptBR,
+  ro,
+  ru,
+  sk,
+  sl,
+  sv,
+  ta,
+  uk,
+  zhCN,
+} from 'date-fns/locale';
+
+const dateLocales: Record<string, Locale> = {
+  ar,
+  cs,
+  da,
+  de,
+  en: enUS,
+  es,
+  fi,
+  fr,
+  hr,
+  hu,
+  id,
+  it,
+  ja,
+  kk,
+  ko,
+  lv,
+  nl,
+  pl,
+  'pt-BR': ptBR,
+  ro,
+  ru,
+  sk,
+  sl,
+  sv,
+  ta,
+  uk,
+  'zh-Hans': zhCN,
+};
+
+export const getDateLocale = (language: string): Locale => {
+  const baseLanguage = language.split('-')[0];
+  return (
+    dateLocales[language] ??
+    (baseLanguage ? dateLocales[baseLanguage] : undefined) ??
+    enUS
+  );
+};
+
 // In a real-world scenario, this list would be fetched dynamically from a server-side endpoint
 // that reads the contents of the public/locales directory.
 // For this task, we are hardcoding the languages found in the public/locales directory.

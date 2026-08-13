@@ -62,6 +62,7 @@ const AI_ESTIMATE_BADGE_TONE_CLASSES: Record<ConfidenceTone, string> = {
 };
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 import FavoriteStarButton from '@/components/FavoriteStarButton';
+import { useTranslation } from 'react-i18next';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -105,6 +106,17 @@ const FoodUnitSelector = ({
   showMealTypeSelect,
   availableMealTypes,
 }: FoodUnitSelectorProps) => {
+  const { t } = useTranslation();
+  const confidenceLabel = (confidence: AiConfidence) =>
+    t(
+      `foodUnitSelector.confidence.${confidence}`,
+      OVERALL_CONFIDENCE_LABELS[confidence]
+    );
+  const aiEstimateLabel = (confidence: AiConfidence) =>
+    t('foodUnitSelector.aiEstimateConfidence', {
+      defaultValue: 'AI estimate ({{confidence}} confidence)',
+      confidence: confidenceLabel(confidence),
+    });
   const {
     loggingLevel,
     energyUnit,
@@ -520,8 +532,14 @@ const FoodUnitSelector = ({
           <DialogTitle className="flex items-center gap-2">
             <span>
               {initialQuantity
-                ? `Edit ${food?.name}`
-                : `Add ${food?.name} to Meal`}
+                ? t('foodUnitSelector.editTitle', {
+                    name: food?.name,
+                    defaultValue: `Edit ${food?.name}`,
+                  })
+                : t('foodUnitSelector.addTitle', {
+                    name: food?.name,
+                    defaultValue: `Add ${food?.name} to Meal`,
+                  })}
             </span>
             {/* Only persisted local/saved foods can be favorited (external
                 provider search results are not saved yet, so they have no
@@ -532,19 +550,27 @@ const FoodUnitSelector = ({
           </DialogTitle>
           <DialogDescription>
             {initialQuantity
-              ? `Edit the quantity and unit for ${food?.name}.`
-              : `Select the quantity and unit for your food entry.`}
+              ? t('foodUnitSelector.editDescription', {
+                  name: food?.name,
+                  defaultValue: `Edit the quantity and unit for ${food?.name}.`,
+                })
+              : t(
+                  'foodUnitSelector.addDescription',
+                  'Select the quantity and unit for your food entry.'
+                )}
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
-          <div>Loading units...</div>
+          <div>{t('foodUnitSelector.loadingUnits', 'Loading units...')}</div>
         ) : (
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="quantity">Quantity</Label>
+                  <Label htmlFor="quantity">
+                    {t('foodUnitSelector.quantity', 'Quantity')}
+                  </Label>
                   <Input
                     ref={quantityInputRef}
                     id="quantity"
@@ -560,7 +586,9 @@ const FoodUnitSelector = ({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="unit">Unit</Label>
+                  <Label htmlFor="unit">
+                    {t('foodUnitSelector.unit', 'Unit')}
+                  </Label>
                   <div className="flex items-center gap-2">
                     <Select
                       value={dropdownValue}
@@ -580,7 +608,9 @@ const FoodUnitSelector = ({
                                     variant.ai_confidence && (
                                       <Sparkles
                                         className={`h-3 w-3 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}
-                                        aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[variant.ai_confidence as AiConfidence]} confidence)`}
+                                        aria-label={aiEstimateLabel(
+                                          variant.ai_confidence as AiConfidence
+                                        )}
                                       />
                                     )}
                                 </span>
@@ -611,7 +641,7 @@ const FoodUnitSelector = ({
                         )}
                         <SelectSeparator />
                         <SelectItem value="__custom__">
-                          Custom unit...
+                          {t('foodUnitSelector.customUnit', 'Custom unit...')}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -619,7 +649,9 @@ const FoodUnitSelector = ({
                       selectedVariant.ai_confidence && (
                         <Sparkles
                           className={`h-4 w-4 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[selectedVariant.ai_confidence as AiConfidence]]}`}
-                          aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[selectedVariant.ai_confidence as AiConfidence]} confidence)`}
+                          aria-label={aiEstimateLabel(
+                            selectedVariant.ai_confidence as AiConfidence
+                          )}
                         />
                       )}
                   </div>
@@ -630,10 +662,17 @@ const FoodUnitSelector = ({
                 availableMealTypes &&
                 availableMealTypes.length > 0 && (
                   <div className="space-y-1">
-                    <Label htmlFor="mealType">Meal</Label>
+                    <Label htmlFor="mealType">
+                      {t('foodUnitSelector.meal', 'Meal')}
+                    </Label>
                     <Select value={mealType} onValueChange={setMealType}>
                       <SelectTrigger id="mealType" className="w-full text-sm">
-                        <SelectValue placeholder="Select meal" />
+                        <SelectValue
+                          placeholder={t(
+                            'foodUnitSelector.selectMeal',
+                            'Select meal'
+                          )}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {availableMealTypes.map((t) => (
@@ -649,36 +688,44 @@ const FoodUnitSelector = ({
               {showTimeInput && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="entryTime">Time (optional)</Label>
+                    <Label htmlFor="entryTime">
+                      {t('foodUnitSelector.timeOptional', 'Time (optional)')}
+                    </Label>
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => setEntryTime('')}
                         disabled={!entryTime}
                         className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                        title="Clear time"
+                        title={t('foodUnitSelector.clearTime', 'Clear time')}
                       >
                         <X className="h-4 w-4" />
-                        Clear
+                        {t('foodUnitSelector.clear', 'Clear')}
                       </button>
                       <button
                         type="button"
                         onClick={handleSetCurrentTime}
                         className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                        title="Set to current local time"
+                        title={t(
+                          'foodUnitSelector.setCurrentTime',
+                          'Set to current local time'
+                        )}
                       >
                         <Clock className="h-4 w-4" />
-                        Now
+                        {t('foodUnitSelector.now', 'Now')}
                       </button>
                       {resolvedDefaultMealTime && (
                         <button
                           type="button"
                           onClick={handleSetDefaultTime}
                           className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                          title={`Set to meal default (${toHourMinute(resolvedDefaultMealTime)})`}
+                          title={t('foodUnitSelector.setMealDefault', {
+                            time: toHourMinute(resolvedDefaultMealTime),
+                            defaultValue: `Set to meal default (${toHourMinute(resolvedDefaultMealTime)})`,
+                          })}
                         >
                           <CalendarDays className="h-4 w-4" />
-                          Default
+                          {t('foodUnitSelector.default', 'Default')}
                         </button>
                       )}
                     </div>
@@ -696,11 +743,16 @@ const FoodUnitSelector = ({
               {pendingUnitIsCustom && (
                 <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
                   <div>
-                    <Label htmlFor="customUnitName">Unit name</Label>
+                    <Label htmlFor="customUnitName">
+                      {t('foodUnitSelector.unitName', 'Unit name')}
+                    </Label>
                     <Input
                       id="customUnitName"
                       type="text"
-                      placeholder="e.g. slice, bar, scoop"
+                      placeholder={t(
+                        'foodUnitSelector.unitNamePlaceholder',
+                        'e.g. slice, bar, scoop'
+                      )}
                       value={pendingUnit}
                       onChange={(e) => {
                         setPendingUnit(e.target.value);
@@ -719,7 +771,10 @@ const FoodUnitSelector = ({
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 1"
+                        placeholder={t(
+                          'foodUnitSelector.numberPlaceholder',
+                          'e.g. 1'
+                        )}
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -740,7 +795,7 @@ const FoodUnitSelector = ({
                     size="sm"
                     onClick={cancelConversion}
                   >
-                    Cancel
+                    {t('common.cancel', 'Cancel')}
                   </Button>
                 </div>
               )}
@@ -751,10 +806,12 @@ const FoodUnitSelector = ({
                 autoConversionFactor === null && (
                   <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
                     <p className="text-sm text-muted-foreground">
-                      These units can&apos;t be converted automatically — enter
-                      how many{' '}
-                      <strong>{conversionBaseVariant?.serving_unit}</strong> are
-                      in 1 <strong>{pendingUnit}</strong>.
+                      {t('foodUnitSelector.manualConversion', {
+                        defaultValue:
+                          "These units can't be converted automatically — enter how many {{baseUnit}} are in 1 {{unit}}.",
+                        baseUnit: conversionBaseVariant?.serving_unit,
+                        unit: pendingUnit,
+                      })}
                     </p>
 
                     {/* AI estimate path: shown only when both units are
@@ -800,14 +857,16 @@ const FoodUnitSelector = ({
                         {aiEstimateData !== null && (
                           <span
                             className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${AI_ESTIMATE_BADGE_TONE_CLASSES[CONFIDENCE_TONES[aiEstimateData.confidence]]}`}
-                            aria-label={`AI estimate (${OVERALL_CONFIDENCE_LABELS[aiEstimateData.confidence]} confidence)`}
+                            aria-label={aiEstimateLabel(
+                              aiEstimateData.confidence
+                            )}
                           >
-                            {
-                              OVERALL_CONFIDENCE_LABELS[
+                            {t('foodUnitSelector.confidenceEstimate', {
+                              defaultValue: '{{confidence}} estimate',
+                              confidence: confidenceLabel(
                                 aiEstimateData.confidence
-                              ]
-                            }{' '}
-                            estimate
+                              ),
+                            })}
                           </span>
                         )}
                       </Label>
@@ -816,7 +875,10 @@ const FoodUnitSelector = ({
                         type="number"
                         step="0.01"
                         min="0.01"
-                        placeholder="e.g. 1"
+                        placeholder={t(
+                          'foodUnitSelector.numberPlaceholder',
+                          'e.g. 1'
+                        )}
                         value={conversionFactor}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -841,7 +903,7 @@ const FoodUnitSelector = ({
                       size="sm"
                       onClick={cancelConversion}
                     >
-                      Cancel
+                      {t('common.cancel', 'Cancel')}
                     </Button>
                   </div>
                 )}
@@ -849,7 +911,10 @@ const FoodUnitSelector = ({
               {nutrition && (
                 <div className="bg-muted p-3 rounded-lg">
                   <h4 className="font-medium mb-2">
-                    Nutrition for {displayServing}:
+                    {t('foodUnitSelector.nutritionFor', {
+                      defaultValue: 'Nutrition for {{serving}}:',
+                      serving: displayServing,
+                    })}
                   </h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
@@ -858,9 +923,24 @@ const FoodUnitSelector = ({
                       )}{' '}
                       {getEnergyUnitString(energyUnit)}
                     </div>
-                    <div>{nutrition.protein.toFixed(1)}g protein</div>
-                    <div>{nutrition.carbs.toFixed(1)}g carbs</div>
-                    <div>{nutrition.fat.toFixed(1)}g fat</div>
+                    <div>
+                      {t('foodUnitSelector.proteinAmount', {
+                        defaultValue: '{{amount}}g protein',
+                        amount: nutrition.protein.toFixed(1),
+                      })}
+                    </div>
+                    <div>
+                      {t('foodUnitSelector.carbsAmount', {
+                        defaultValue: '{{amount}}g carbs',
+                        amount: nutrition.carbs.toFixed(1),
+                      })}
+                    </div>
+                    <div>
+                      {t('foodUnitSelector.fatAmount', {
+                        defaultValue: '{{amount}}g fat',
+                        amount: nutrition.fat.toFixed(1),
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -871,7 +951,7 @@ const FoodUnitSelector = ({
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -885,10 +965,10 @@ const FoodUnitSelector = ({
                   }
                 >
                   {createFoodVariantMutation.isPending
-                    ? 'Saving...'
+                    ? t('common.saving', 'Saving...')
                     : initialQuantity
-                      ? 'Update Food'
-                      : 'Add to Meal'}
+                      ? t('foodUnitSelector.updateFood', 'Update Food')
+                      : t('foodUnitSelector.addToMeal', 'Add to Meal')}
                 </Button>
               </div>
             </div>

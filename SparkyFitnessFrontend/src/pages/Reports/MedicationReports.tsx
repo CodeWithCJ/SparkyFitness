@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   Card,
   CardContent,
@@ -503,18 +503,69 @@ const MedicationReports = ({
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { id: 'nausea_vs_dose_chart', label: 'Nausea vs. Dose Chart' },
-              { id: 'weight_vs_goal_chart', label: 'Weight vs. Goal Chart' },
-              { id: 'adherence_chart', label: 'Adherence Trend Chart' },
-              { id: 'medication_log_table', label: 'Medication Log Table' },
-              { id: 'glp1_checkin_chart', label: 'GLP-1 Daily Check-In Chart' },
+              {
+                id: 'nausea_vs_dose_chart',
+                label: t(
+                  'medications.reports.configNauseaDose',
+                  'Nausea vs. Dose Chart'
+                ),
+              },
+              {
+                id: 'weight_vs_goal_chart',
+                label: t(
+                  'medications.reports.configWeightGoal',
+                  'Weight vs. Goal Chart'
+                ),
+              },
+              {
+                id: 'adherence_chart',
+                label: t(
+                  'medications.reports.configAdherence',
+                  'Adherence Trend Chart'
+                ),
+              },
+              {
+                id: 'medication_log_table',
+                label: t(
+                  'medications.reports.configMedicationLog',
+                  'Medication Log Table'
+                ),
+              },
+              {
+                id: 'glp1_checkin_chart',
+                label: t(
+                  'medications.reports.configGlp1Checkin',
+                  'GLP-1 Daily Check-In Chart'
+                ),
+              },
               {
                 id: 'hydration_constipation_card',
-                label: 'Hydration vs. Constipation Card',
+                label: t(
+                  'medications.reports.configHydrationConstipation',
+                  'Hydration vs. Constipation Card'
+                ),
               },
-              { id: 'protein_nausea_card', label: 'Protein vs. Nausea Card' },
-              { id: 'sleep_fatigue_card', label: 'Sleep vs. Fatigue Card' },
-              { id: 'dose_nausea_card', label: 'Dose size vs. Nausea Card' },
+              {
+                id: 'protein_nausea_card',
+                label: t(
+                  'medications.reports.configProteinNausea',
+                  'Protein vs. Nausea Card'
+                ),
+              },
+              {
+                id: 'sleep_fatigue_card',
+                label: t(
+                  'medications.reports.configSleepFatigue',
+                  'Sleep vs. Fatigue Card'
+                ),
+              },
+              {
+                id: 'dose_nausea_card',
+                label: t(
+                  'medications.reports.configDoseNausea',
+                  'Dose size vs. Nausea Card'
+                ),
+              },
             ].map((item) => (
               <div key={item.id} className="flex items-center space-x-2">
                 <Switch
@@ -629,7 +680,10 @@ const MedicationReports = ({
                     domain={[0, 10]}
                     fontSize={10}
                     label={{
-                      value: 'Nausea Severity',
+                      value: t(
+                        'medications.reports.chartNauseaSeverity',
+                        'Nausea Severity'
+                      ),
                       angle: -90,
                       position: 'insideLeft',
                       style: { textAnchor: 'middle', fontSize: 10 },
@@ -641,7 +695,7 @@ const MedicationReports = ({
                     stroke="#0ea5e9"
                     fontSize={10}
                     label={{
-                      value: 'Dose (mg)',
+                      value: t('medications.reports.chartDoseMg', 'Dose (mg)'),
                       angle: 90,
                       position: 'insideRight',
                       style: { textAnchor: 'middle', fontSize: 10 },
@@ -652,7 +706,10 @@ const MedicationReports = ({
                   <Bar
                     yAxisId="left"
                     dataKey="nauseaSeverity"
-                    name="Nausea Severity"
+                    name={t(
+                      'medications.reports.chartNauseaSeverity',
+                      'Nausea Severity'
+                    )}
                     fill="#ec4899"
                     barSize={16}
                   />
@@ -660,7 +717,10 @@ const MedicationReports = ({
                     yAxisId="right"
                     type="monotone"
                     dataKey="glp1Dose"
-                    name="Medication Dose (mg)"
+                    name={t(
+                      'medications.reports.chartMedicationDose',
+                      'Medication Dose (mg)'
+                    )}
                     stroke="#0ea5e9"
                     strokeWidth={2}
                     dot={{ r: 4 }}
@@ -677,10 +737,10 @@ const MedicationReports = ({
             <CardHeader>
               <CardTitle className="flex items-center text-md">
                 <Scale className="w-4 h-4 mr-2 text-emerald-500" />
-                {t(
-                  'medications.reports.weightVsGoal',
-                  `Weight Trend vs. Target Weight (${weightUnit})`
-                )}
+                {t('medications.reports.weightVsGoal', {
+                  defaultValue: 'Weight Trend vs. Target Weight ({{unit}})',
+                  unit: weightUnit,
+                })}
               </CardTitle>
               <CardDescription>
                 {t(
@@ -703,7 +763,7 @@ const MedicationReports = ({
                   <Line
                     type="monotone"
                     dataKey="weight"
-                    name={`Weight (${weightUnit})`}
+                    name={`${t('medications.reports.chartWeight', 'Weight')} (${weightUnit})`}
                     stroke="#10b981"
                     strokeWidth={2.5}
                     dot={{ r: 4 }}
@@ -712,7 +772,7 @@ const MedicationReports = ({
                     <Line
                       type="monotone"
                       dataKey={() => targetWeightConverted}
-                      name={`Target Weight (${weightUnit})`}
+                      name={`${t('medications.reports.chartTargetWeight', 'Target Weight')} (${weightUnit})`}
                       stroke="#94a3b8"
                       strokeDasharray="5 5"
                       strokeWidth={1.5}
@@ -770,7 +830,10 @@ const MedicationReports = ({
                   <Legend />
                   <Bar
                     dataKey="adherencePercent"
-                    name="Adherence Rate"
+                    name={t(
+                      'medications.reports.chartAdherenceRate',
+                      'Adherence Rate'
+                    )}
                     fill="#6366f1"
                     radius={[4, 4, 0, 0]}
                     barSize={20}
@@ -812,7 +875,10 @@ const MedicationReports = ({
                     domain={[0, 10]}
                     fontSize={10}
                     label={{
-                      value: 'Check-In Score (0-10)',
+                      value: t(
+                        'medications.reports.chartCheckInScore',
+                        'Check-In Score (0-10)'
+                      ),
                       angle: -90,
                       position: 'insideLeft',
                       style: { textAnchor: 'middle', fontSize: 10 },
@@ -824,7 +890,7 @@ const MedicationReports = ({
                     stroke="#0ea5e9"
                     fontSize={10}
                     label={{
-                      value: 'Dose (mg)',
+                      value: t('medications.reports.chartDoseMg', 'Dose (mg)'),
                       angle: 90,
                       position: 'insideRight',
                       style: { textAnchor: 'middle', fontSize: 10 },
@@ -836,7 +902,7 @@ const MedicationReports = ({
                     yAxisId="left"
                     type="monotone"
                     dataKey="glpHunger"
-                    name="Hunger"
+                    name={t('medications.reports.chartHunger', 'Hunger')}
                     stroke="#f97316"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -846,7 +912,7 @@ const MedicationReports = ({
                     yAxisId="left"
                     type="monotone"
                     dataKey="glpFoodNoise"
-                    name="Food Noise"
+                    name={t('medications.reports.chartFoodNoise', 'Food Noise')}
                     stroke="#8b5cf6"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -856,7 +922,7 @@ const MedicationReports = ({
                     yAxisId="left"
                     type="monotone"
                     dataKey="glpFullness"
-                    name="Fullness"
+                    name={t('medications.reports.chartFullness', 'Fullness')}
                     stroke="#10b981"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -866,7 +932,7 @@ const MedicationReports = ({
                     yAxisId="left"
                     type="monotone"
                     dataKey="glpEnergy"
-                    name="Energy"
+                    name={t('medications.reports.chartEnergy', 'Energy')}
                     stroke="#f59e0b"
                     strokeWidth={2}
                     dot={{ r: 3 }}
@@ -876,7 +942,7 @@ const MedicationReports = ({
                     yAxisId="right"
                     type="stepAfter"
                     dataKey="glp1Dose"
-                    name="Dose (mg)"
+                    name={t('medications.reports.chartDoseMg', 'Dose (mg)')}
                     stroke="#0ea5e9"
                     strokeDasharray="4 4"
                     strokeWidth={1.5}
@@ -925,7 +991,13 @@ const MedicationReports = ({
                           : 'secondary'
                       }
                     >
-                      {hydrationConstipation.strength} correlation
+                      {t('medications.reports.correlationStrength', {
+                        defaultValue: '{{strength}} correlation',
+                        strength: t(
+                          `medications.reports.strength.${hydrationConstipation.strength}`,
+                          hydrationConstipation.strength
+                        ),
+                      })}
                     </Badge>
                   )}
                 </div>
@@ -933,7 +1005,10 @@ const MedicationReports = ({
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">
-                    Confidence Score:
+                    {t(
+                      'medications.reports.confidenceScore',
+                      'Confidence Score:'
+                    )}
                   </span>
                   <span className="text-sm font-bold">
                     {hydrationConstipation.confidence}%
@@ -944,26 +1019,32 @@ const MedicationReports = ({
                     <>
                       <Smile className="w-5 h-5 text-emerald-500 shrink-0" />
                       <p>
-                        <strong>Strong Hydration Benefit:</strong> Higher water
-                        intake correlates with lower constipation severity. Stay
-                        hydrated to reduce bowel side effects.
+                        <Trans
+                          i18nKey="medications.reports.hydrationBenefit"
+                          defaults="<strong>Strong Hydration Benefit:</strong> Higher water intake correlates with lower constipation severity. Stay hydrated to reduce bowel side effects."
+                          components={{ strong: <strong /> }}
+                        />
                       </p>
                     </>
                   ) : hydrationConstipation.r > 0 ? (
                     <>
                       <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
                       <p>
-                        <strong>Unexpected positive association:</strong>{' '}
-                        Increase fluid intake actively to aid high fiber or
-                        medication responses.
+                        <Trans
+                          i18nKey="medications.reports.hydrationUnexpected"
+                          defaults="<strong>Unexpected positive association:</strong> Increase fluid intake actively to aid high fiber or medication responses."
+                          components={{ strong: <strong /> }}
+                        />
                       </p>
                     </>
                   ) : (
                     <>
                       <Meh className="w-5 h-5 text-slate-400 shrink-0" />
                       <p>
-                        Insufficient data points to map relationship. Keep
-                        tracking water and symptoms.
+                        {t(
+                          'medications.reports.hydrationInsufficient',
+                          'Insufficient data points to map relationship. Keep tracking water and symptoms.'
+                        )}
                       </p>
                     </>
                   )}
@@ -991,7 +1072,13 @@ const MedicationReports = ({
                           : 'secondary'
                       }
                     >
-                      {proteinNausea.strength} correlation
+                      {t('medications.reports.correlationStrength', {
+                        defaultValue: '{{strength}} correlation',
+                        strength: t(
+                          `medications.reports.strength.${proteinNausea.strength}`,
+                          proteinNausea.strength
+                        ),
+                      })}
                     </Badge>
                   )}
                 </div>
@@ -999,7 +1086,10 @@ const MedicationReports = ({
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">
-                    Confidence Score:
+                    {t(
+                      'medications.reports.confidenceScore',
+                      'Confidence Score:'
+                    )}
                   </span>
                   <span className="text-sm font-bold">
                     {proteinNausea.confidence}%
@@ -1010,26 +1100,32 @@ const MedicationReports = ({
                     <>
                       <Smile className="w-5 h-5 text-emerald-500 shrink-0" />
                       <p>
-                        <strong>Protein Tolerance:</strong> Higher daily protein
-                        intake is associated with lower nausea levels. Keep
-                        eating protein-rich lean meals.
+                        <Trans
+                          i18nKey="medications.reports.proteinTolerance"
+                          defaults="<strong>Protein Tolerance:</strong> Higher daily protein intake is associated with lower nausea levels. Keep eating protein-rich lean meals."
+                          components={{ strong: <strong /> }}
+                        />
                       </p>
                     </>
                   ) : proteinNausea.r > 0 ? (
                     <>
                       <Frown className="w-5 h-5 text-rose-500 shrink-0" />
                       <p>
-                        <strong>Reduced Intake:</strong> Nausea spikes
-                        correspond to days with lower protein logs, likely due
-                        to suppressed appetite.
+                        <Trans
+                          i18nKey="medications.reports.reducedIntake"
+                          defaults="<strong>Reduced Intake:</strong> Nausea spikes correspond to days with lower protein logs, likely due to suppressed appetite."
+                          components={{ strong: <strong /> }}
+                        />
                       </p>
                     </>
                   ) : (
                     <>
                       <Meh className="w-5 h-5 text-slate-400 shrink-0" />
                       <p>
-                        Insufficient data. Log daily food items and nausea
-                        side-effects to map correlations.
+                        {t(
+                          'medications.reports.proteinInsufficient',
+                          'Insufficient data. Log daily food items and nausea side-effects to map correlations.'
+                        )}
                       </p>
                     </>
                   )}
@@ -1057,7 +1153,13 @@ const MedicationReports = ({
                           : 'secondary'
                       }
                     >
-                      {sleepFatigue.strength} correlation
+                      {t('medications.reports.correlationStrength', {
+                        defaultValue: '{{strength}} correlation',
+                        strength: t(
+                          `medications.reports.strength.${sleepFatigue.strength}`,
+                          sleepFatigue.strength
+                        ),
+                      })}
                     </Badge>
                   )}
                 </div>
@@ -1065,7 +1167,10 @@ const MedicationReports = ({
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">
-                    Confidence Score:
+                    {t(
+                      'medications.reports.confidenceScore',
+                      'Confidence Score:'
+                    )}
                   </span>
                   <span className="text-sm font-bold">
                     {sleepFatigue.confidence}%
@@ -1076,26 +1181,32 @@ const MedicationReports = ({
                     <>
                       <Smile className="w-5 h-5 text-emerald-500 shrink-0" />
                       <p>
-                        <strong>Rest Benefit:</strong> Increased sleep duration
-                        correlates with lower fatigue severity. Ensure
-                        consistent bedtime habits.
+                        <Trans
+                          i18nKey="medications.reports.restBenefit"
+                          defaults="<strong>Rest Benefit:</strong> Increased sleep duration correlates with lower fatigue severity. Ensure consistent bedtime habits."
+                          components={{ strong: <strong /> }}
+                        />
                       </p>
                     </>
                   ) : sleepFatigue.r > 0 ? (
                     <>
                       <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
                       <p>
-                        <strong>Hypersomnia association:</strong> Higher fatigue
-                        might be triggering longer sleep requirements or
-                        bed-rest periods.
+                        <Trans
+                          i18nKey="medications.reports.hypersomnia"
+                          defaults="<strong>Hypersomnia association:</strong> Higher fatigue might be triggering longer sleep requirements or bed-rest periods."
+                          components={{ strong: <strong /> }}
+                        />
                       </p>
                     </>
                   ) : (
                     <>
                       <Meh className="w-5 h-5 text-slate-400 shrink-0" />
                       <p>
-                        Insufficient sleep or fatigue logs to compute
-                        correlation in this range.
+                        {t(
+                          'medications.reports.sleepInsufficient',
+                          'Insufficient sleep or fatigue logs to compute correlation in this range.'
+                        )}
                       </p>
                     </>
                   )}
@@ -1123,7 +1234,13 @@ const MedicationReports = ({
                           : 'secondary'
                       }
                     >
-                      {doseNausea.strength} correlation
+                      {t('medications.reports.correlationStrength', {
+                        defaultValue: '{{strength}} correlation',
+                        strength: t(
+                          `medications.reports.strength.${doseNausea.strength}`,
+                          doseNausea.strength
+                        ),
+                      })}
                     </Badge>
                   )}
                 </div>
@@ -1131,7 +1248,10 @@ const MedicationReports = ({
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">
-                    Confidence Score:
+                    {t(
+                      'medications.reports.confidenceScore',
+                      'Confidence Score:'
+                    )}
                   </span>
                   <span className="text-sm font-bold">
                     {doseNausea.confidence}%
@@ -1142,27 +1262,32 @@ const MedicationReports = ({
                     <>
                       <Frown className="w-5 h-5 text-rose-500 shrink-0" />
                       <p>
-                        <strong>Dose-Dependent Nausea:</strong> Higher
-                        medication doses correlate with increased nausea
-                        severity. Consider discussing titration steps or split
-                        schedules.
+                        <Trans
+                          i18nKey="medications.reports.doseDependentNausea"
+                          defaults="<strong>Dose-Dependent Nausea:</strong> Higher medication doses correlate with increased nausea severity. Consider discussing titration steps or split schedules."
+                          components={{ strong: <strong /> }}
+                        />
                       </p>
                     </>
                   ) : doseNausea.r < 0 ? (
                     <>
                       <Smile className="w-5 h-5 text-emerald-500 shrink-0" />
                       <p>
-                        <strong>Adaptation Benefit:</strong> No positive
-                        correlation. The body has adapted well to the dose
-                        levels without side effects.
+                        <Trans
+                          i18nKey="medications.reports.adaptationBenefit"
+                          defaults="<strong>Adaptation Benefit:</strong> No positive correlation. The body has adapted well to the dose levels without side effects."
+                          components={{ strong: <strong /> }}
+                        />
                       </p>
                     </>
                   ) : (
                     <>
                       <Meh className="w-5 h-5 text-slate-400 shrink-0" />
                       <p>
-                        Requires active GLP-1 dose records and logged nausea
-                        logs in this date range.
+                        {t(
+                          'medications.reports.doseInsufficient',
+                          'Requires active GLP-1 dose records and logged nausea logs in this date range.'
+                        )}
                       </p>
                     </>
                   )}
@@ -1209,8 +1334,8 @@ const MedicationReports = ({
             {t('medications.print.header', 'Prescriber Medication Report')}
           </h1>
           <p className="text-sm text-slate-500">
-            {t('medications.print.dates', 'Reporting Period:')} {startDate} to{' '}
-            {endDate}
+            {t('medications.print.dates', 'Reporting Period:')} {startDate}{' '}
+            {t('medications.print.dateRangeSeparator', 'to')} {endDate}
           </p>
         </div>
 
@@ -1218,22 +1343,29 @@ const MedicationReports = ({
         <div className="grid grid-cols-2 gap-4 text-xs">
           <div>
             <p>
-              <strong>Name:</strong> {profile?.full_name || 'Patient'}
+              <strong>{t('medications.print.name', 'Name:')}</strong>{' '}
+              {profile?.full_name || t('medications.print.patient', 'Patient')}
             </p>
             <p>
-              <strong>Target Weight:</strong>{' '}
+              <strong>
+                {t('medications.print.targetWeight', 'Target Weight:')}
+              </strong>{' '}
               {targetWeightConverted
                 ? `${targetWeightConverted.toFixed(1)} ${weightUnit}`
-                : 'Not set'}
+                : t('medications.print.notSet', 'Not set')}
             </p>
           </div>
           <div>
             <p>
-              <strong>Adherence Rate:</strong>{' '}
+              <strong>
+                {t('medications.print.adherenceRate', 'Adherence Rate:')}
+              </strong>{' '}
               {stats.adherenceRate !== null ? `${stats.adherenceRate}%` : 'N/A'}
             </p>
             <p>
-              <strong>Report Date:</strong>{' '}
+              <strong>
+                {t('medications.print.reportDate', 'Report Date:')}
+              </strong>{' '}
               {formatDateInUserTimezone(new Date(), dateFormat)}
             </p>
           </div>
@@ -1242,16 +1374,24 @@ const MedicationReports = ({
         {/* Medications list */}
         <div>
           <h2 className="text-sm font-bold border-b border-slate-200 pb-1 mb-2">
-            Active Medications
+            {t('medications.print.activeMedications', 'Active Medications')}
           </h2>
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="py-1">Medication</th>
-                <th className="py-1">Type</th>
-                <th className="py-1">Strength</th>
-                <th className="py-1">Frequency</th>
-                <th className="py-1">Prescriber</th>
+                <th className="py-1">
+                  {t('medications.print.medication', 'Medication')}
+                </th>
+                <th className="py-1">{t('medications.print.type', 'Type')}</th>
+                <th className="py-1">
+                  {t('medications.print.strength', 'Strength')}
+                </th>
+                <th className="py-1">
+                  {t('medications.print.frequency', 'Frequency')}
+                </th>
+                <th className="py-1">
+                  {t('medications.print.prescriber', 'Prescriber')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1260,14 +1400,29 @@ const MedicationReports = ({
                   <td className="py-1 font-semibold">
                     {m.display_name || m.name}
                   </td>
-                  <td className="py-1">{m.type_id}</td>
+                  <td className="py-1">
+                    {m.type_id
+                      ? t(`medications.types.${m.type_id}`, m.type_id)
+                      : '-'}
+                  </td>
                   <td className="py-1">
                     {m.strength_value} {m.strength_unit}
                   </td>
                   <td className="py-1">
                     {m.schedules && m.schedules.length > 0
-                      ? m.schedules.map((s) => s.schedule_type_id).join(', ')
-                      : 'PRN'}
+                      ? m.schedules
+                          .map((s) =>
+                            t(
+                              `medications.schedule.${
+                                s.schedule_type_id === 'every_n_days'
+                                  ? 'everyNDays'
+                                  : s.schedule_type_id
+                              }`,
+                              s.schedule_type_id
+                            )
+                          )
+                          .join(', ')
+                      : t('medications.schedule.prn', 'As needed (PRN)')}
                   </td>
                   <td className="py-1">{m.prescriber || 'N/A'}</td>
                 </tr>
@@ -1280,16 +1435,26 @@ const MedicationReports = ({
         {titrationSteps.length > 0 && (
           <div>
             <h2 className="text-sm font-bold border-b border-slate-200 pb-1 mb-2">
-              Titration & Taper Steps
+              {t('medications.print.titrationSteps', 'Titration & Taper Steps')}
             </h2>
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="py-1">Dose</th>
-                  <th className="py-1">Start Date</th>
-                  <th className="py-1">Weeks</th>
-                  <th className="py-1">Status</th>
-                  <th className="py-1">Note</th>
+                  <th className="py-1">
+                    {t('medications.print.dose', 'Dose')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.startDate', 'Start Date')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.weeks', 'Weeks')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.status', 'Status')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.note', 'Note')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1305,7 +1470,16 @@ const MedicationReports = ({
                         variant="outline"
                         className="capitalize text-[10px]"
                       >
-                        {step.status}
+                        {t(
+                          `medications.glp1.status${
+                            step.status === 'active'
+                              ? 'Active'
+                              : step.status === 'done'
+                                ? 'Done'
+                                : 'Planned'
+                          }`,
+                          step.status
+                        )}
                       </Badge>
                     </td>
                     <td className="py-1 text-slate-500">{step.note || '-'}</td>
@@ -1320,16 +1494,29 @@ const MedicationReports = ({
         {injections.length > 0 && (
           <div>
             <h2 className="text-sm font-bold border-b border-slate-200 pb-1 mb-2">
-              Recent Injection History
+              {t(
+                'medications.print.recentInjections',
+                'Recent Injection History'
+              )}
             </h2>
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="py-1">Date</th>
-                  <th className="py-1">Medication</th>
-                  <th className="py-1">Dose (mg)</th>
-                  <th className="py-1">Injection Site</th>
-                  <th className="py-1">Notes</th>
+                  <th className="py-1">
+                    {t('medications.print.date', 'Date')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.medication', 'Medication')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.doseMg', 'Dose (mg)')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.injectionSite', 'Injection Site')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.notes', 'Notes')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1344,7 +1531,12 @@ const MedicationReports = ({
                     </td>
                     <td className="py-1">{inj.dose_mg} mg</td>
                     <td className="py-1 capitalize">
-                      {inj.site?.replace('_', ' ') || '-'}
+                      {inj.site
+                        ? t(
+                            `medications.sites.label.${inj.site}`,
+                            inj.site.replaceAll('_', ' ')
+                          )
+                        : '-'}
                     </td>
                     <td className="py-1 text-slate-500">{inj.notes || '-'}</td>
                   </tr>
@@ -1358,16 +1550,26 @@ const MedicationReports = ({
         {symptomEntries.length > 0 && (
           <div>
             <h2 className="text-sm font-bold border-b border-slate-200 pb-1 mb-2">
-              Recent Symptom Logs
+              {t('medications.print.recentSymptoms', 'Recent Symptom Logs')}
             </h2>
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="py-1">Date</th>
-                  <th className="py-1">Symptom</th>
-                  <th className="py-1">Severity</th>
-                  <th className="py-1">Location</th>
-                  <th className="py-1">Notes / Context</th>
+                  <th className="py-1">
+                    {t('medications.print.date', 'Date')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.symptom', 'Symptom')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.severity', 'Severity')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.location', 'Location')}
+                  </th>
+                  <th className="py-1">
+                    {t('medications.print.notesContext', 'Notes / Context')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1377,11 +1579,19 @@ const MedicationReports = ({
                       {formatDateInUserTimezone(s.entry_date, dateFormat)}
                     </td>
                     <td className="py-1 font-semibold capitalize">
-                      {s.symptom_name_snapshot.replace('_', ' ')}
+                      {t(
+                        `medications.symptomNames.${s.symptom_name_snapshot}`,
+                        s.symptom_name_snapshot.replaceAll('_', ' ')
+                      )}
                     </td>
                     <td className="py-1">{s.severity}/10</td>
                     <td className="py-1 capitalize">
-                      {s.body_location || '-'}
+                      {s.body_location
+                        ? t(
+                            `medications.locations.${s.body_location}`,
+                            s.body_location.replaceAll('_', ' ')
+                          )
+                        : '-'}
                     </td>
                     <td className="py-1 text-slate-500">
                       {s.context_text || '-'}

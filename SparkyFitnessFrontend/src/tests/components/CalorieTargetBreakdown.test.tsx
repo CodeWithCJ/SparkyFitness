@@ -4,14 +4,26 @@ import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    // Interpolates `{{var}}` the way i18next does, so assertions can match the rendered
-    // text rather than the raw template.
-    t: (_key: string, defaultValue?: string, opts?: Record<string, unknown>) =>
-      opts
-        ? (defaultValue ?? '').replace(/\{\{(\w+)\}\}/g, (_m, name) =>
-            String(opts[name] ?? '')
-          )
-        : defaultValue,
+    // Supports both t(key, fallback, values) and t(key, { defaultValue, ...values }).
+    t: (
+      key: string,
+      defaultValueOrOptions?: string | Record<string, unknown>,
+      values?: Record<string, unknown>
+    ) => {
+      const defaultValue =
+        typeof defaultValueOrOptions === 'string'
+          ? defaultValueOrOptions
+          : defaultValueOrOptions?.['defaultValue'];
+      const interpolationValues =
+        typeof defaultValueOrOptions === 'string'
+          ? values
+          : defaultValueOrOptions;
+
+      if (typeof defaultValue !== 'string') return key;
+      return defaultValue.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+        String(interpolationValues?.[name] ?? `{{${name}}}`)
+      );
+    },
   }),
   initReactI18next: {
     type: '3rdParty',
