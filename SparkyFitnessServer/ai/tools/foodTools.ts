@@ -498,58 +498,64 @@ async function resolveMealType(
 // (see #2101 — they invent placeholder ids or fabricate success instead).
 // Ambiguity is returned as data, not guessed at: the model gets the
 // candidates with their ids and can retry with entry_id.
+// The diary projection fields the resolver reads (see getFoodEntriesByDate's
+// SELECT in models/foodEntry.ts — food_name is the entry's snapshot column).
+interface DiaryEntryNameRow {
+  id: string;
+  food_name?: string | null;
+  meal_type?: string | null;
+  meal_type_id?: string | null;
+  quantity?: number | string | null;
+  unit?: string | null;
+}
+
+interface ResolveEntryByNameArgs {
+  foodName: string;
+  entryDate?: string;
+  mealType?: string;
+  mealTypeId?: string;
+}
+
 async function resolveFoodEntryByName(
   userId: string,
   tz: string,
-  args: {
-    food_name: string;
-    entry_date?: string;
-    meal_type?: string;
-    meal_type_id?: string;
-  },
+  { foodName, entryDate, mealType, mealTypeId }: ResolveEntryByNameArgs,
   narrowByMealType: boolean
 ): Promise<{ ok: true; entryId: string } | { ok: false; message: string }> {
-  const date = args.entry_date || todayInZone(tz);
-  const rows = await foodEntryService.getFoodEntriesByDate(
+  const date = entryDate || todayInZone(tz);
+  const rows: DiaryEntryNameRow[] = await foodEntryService.getFoodEntriesByDate(
     userId,
     userId,
     date
   );
-  const wanted = args.food_name.trim().toLowerCase();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let matches = (rows as any[]).filter(
-    (row) =>
-      String(row.food_name ?? '')
-        .trim()
-        .toLowerCase() === wanted
+  const wanted = foodName.trim().toLowerCase();
+  let matches = rows.filter(
+    (row) => (row.food_name ?? '').trim().toLowerCase() === wanted
   );
-  if (narrowByMealType && (args.meal_type_id || args.meal_type)) {
-    const mealType = await resolveMealType(
+  if (narrowByMealType && (mealTypeId || mealType)) {
+    const resolvedMealType = await resolveMealType(
       userId,
-      args.meal_type_id,
-      args.meal_type
+      mealTypeId,
+      mealType
     );
-    if (!mealType) {
+    if (!resolvedMealType) {
       return {
         ok: false,
-        message: `Meal type "${args.meal_type_id ?? args.meal_type}" was not found or is not available to this user.`,
+        message: `Meal type "${mealTypeId ?? mealType}" was not found or is not available to this user.`,
       };
     }
-    matches = matches.filter((row) => row.meal_type_id === mealType.id);
+    matches = matches.filter((row) => row.meal_type_id === resolvedMealType.id);
   }
   if (matches.length === 1) {
     return { ok: true, entryId: matches[0].id };
   }
   if (matches.length === 0) {
-    const names = [
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...new Set((rows as any[]).map((row) => String(row.food_name ?? ''))),
-    ]
+    const names = [...new Set(rows.map((row) => row.food_name ?? ''))]
       .filter(Boolean)
       .join(', ');
     return {
       ok: false,
-      message: `No entry named "${args.food_name}" in the diary for ${date}.${names ? ` That day has: ${names}.` : ''} Use list_diary to inspect the day, then retry.`,
+      message: `No entry named "${foodName}" in the diary for ${date}.${names ? ` That day has: ${names}.` : ''} Use list_diary to inspect the day, then retry.`,
     };
   }
   const candidates = matches
@@ -560,7 +566,7 @@ async function resolveFoodEntryByName(
     .join('\n');
   return {
     ok: false,
-    message: `"${args.food_name}" matches ${matches.length} entries on ${date}:\n${candidates}\nRetry with the entry_id of the one you mean.`,
+    message: `"${foodName}" matches ${matches.length} entries on ${date}:\n${candidates}\nRetry with the entry_id of the one you mean.`,
   };
 }
 // Full food_entries dumps (`SELECT fe.*`, used by recent-entries and food-usage)
@@ -1899,11 +1905,18 @@ Actions:
               let entryId = args.entry_id;
               let entryType = args.entry_type;
               if (!entryId) {
+                if (!args.food_name) {
+                  return ERRORS.MISSING_PARAMS(['entry_id or food_name']);
+                }
                 const resolved = await resolveFoodEntryByName(
                   userId,
                   tz,
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  args as any,
+                  {
+                    foodName: args.food_name,
+                    entryDate: args.entry_date,
+                    mealType: args.meal_type,
+                    mealTypeId: args.meal_type_id,
+                  },
                   true
                 );
                 if (!resolved.ok) {
@@ -1997,11 +2010,13 @@ Actions:
               let entryId = args.entry_id;
               let entryType = args.entry_type ?? 'food_entry';
               if (!entryId) {
+                if (!args.food_name) {
+                  return ERRORS.MISSING_PARAMS(['entry_id or food_name']);
+                }
                 const resolved = await resolveFoodEntryByName(
                   userId,
                   tz,
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  args as any,
+                  { foodName: args.food_name, entryDate: args.entry_date },
                   false
                 );
                 if (!resolved.ok) {

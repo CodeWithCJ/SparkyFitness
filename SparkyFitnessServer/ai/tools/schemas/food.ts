@@ -354,7 +354,14 @@ const deleteEntrySchema = z
   .strict()
   .refine((v) => v.entry_id || v.food_name, {
     message: 'Provide entry_id or food_name',
-  });
+  })
+  .refine(
+    (v) => !(!v.entry_id && v.food_name && v.entry_type === 'food_entry_meal'),
+    {
+      message:
+        'food_name resolves food entries only — pass entry_id for a food_entry_meal',
+    }
+  );
 
 const updateEntrySchema = z
   .object({
@@ -393,7 +400,14 @@ const updateEntrySchema = z
   .strict()
   .refine((v) => v.entry_id || v.food_name, {
     message: 'Provide entry_id or food_name',
-  });
+  })
+  .refine(
+    (v) => !(!v.entry_id && v.food_name && v.entry_type === 'food_entry_meal'),
+    {
+      message:
+        'food_name resolves food entries only — pass entry_id for a food_entry_meal',
+    }
+  );
 
 const updateFoodVariantSchema = z
   .object({
