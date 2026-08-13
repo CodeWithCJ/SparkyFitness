@@ -199,6 +199,7 @@ const Reports = () => {
                 nutritionData={nutritionData}
                 customNutrients={customNutrients}
                 goals={goalData}
+                exerciseEntries={exerciseEntries}
               />
             </ChartErrorBoundary>
             <ChartErrorBoundary>
