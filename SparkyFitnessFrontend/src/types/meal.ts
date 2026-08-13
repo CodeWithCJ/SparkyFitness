@@ -9,6 +9,8 @@ export interface Meal {
   serving_size?: number;
   serving_unit?: string;
   total_servings?: number;
+  /** Image paths for this meal, same convention as `Food.images`. */
+  images?: string[];
   foods?: MealFood[];
   // ISO timestamp of when the current user starred this meal. Present only on
   // items returned by the favorites endpoint; used to order the Favorites list.
@@ -63,6 +65,7 @@ export interface MealPayload {
   serving_size?: number;
   serving_unit?: string;
   total_servings?: number;
+  images?: string[];
   foods: MealFoodPayload[];
 }
 
@@ -139,6 +142,13 @@ export interface FoodEntryMeal {
   quantity?: number;
   unit?: string;
   legacy_serving_unit_math?: boolean;
+  /** Images from the meal template this entry was logged from. */
+  meal_images?: string[] | null;
+  /**
+   * Per-entry override photos. Apply only to this diary entry and never change
+   * the meal template. Empty means "fall back to `meal_images`".
+   */
+  images?: string[] | null;
   foods: MealFood[]; // The component foods of this logged meal
   calories?: number; // Aggregated calories
   protein?: number; // Aggregated protein

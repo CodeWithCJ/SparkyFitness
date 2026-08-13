@@ -73,6 +73,28 @@ describe('imageDownloader - downloadImage', () => {
     expect(written.toString()).toBe('fake-png-bytes');
   });
 
+  it('writes under the requested domain subdirectory', async () => {
+    const bytes = Buffer.from('fake-food-bytes');
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      imageResponse(bytes, {
+        'content-type': 'image/png',
+        'content-length': String(bytes.length),
+      })
+    );
+
+    const result = await downloadImage(
+      'https://cdn.example.com/product.png',
+      'food-1',
+      'foods'
+    );
+
+    expect(result).toBe('/uploads/foods/food-1/product.png');
+    const written = await fsp.readFile(
+      path.join(TMP_UPLOADS, 'foods', 'food-1', 'product.png')
+    );
+    expect(written.toString()).toBe('fake-food-bytes');
+  });
+
   it('rejects a private/link-local host before making a request (SSRF)', async () => {
     const fetchSpy = vi.fn();
     globalThis.fetch = fetchSpy;

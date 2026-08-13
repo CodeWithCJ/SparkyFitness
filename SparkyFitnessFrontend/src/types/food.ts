@@ -52,6 +52,23 @@ export interface Food {
   id: string;
   name: string;
   brand?: string | null;
+  /**
+   * Image paths for this food. Locally uploaded images are server-relative
+   * (`/uploads/foods/<id>/...`); provider images that failed to download stay
+   * as absolute URLs.
+   */
+  images?: string[];
+  /**
+   * Single upstream image on a provider search result that has not been
+   * imported yet. Once imported the downloaded copy lives in `images`.
+   */
+  image_url?: string | null;
+  /**
+   * Full-size counterpart of `image_url`, when a provider serves more than one
+   * size. The UI shows the smaller `image_url` and falls back to this if that
+   * file is missing; imports always archive this one.
+   */
+  image_source_url?: string | null;
   is_custom: boolean;
   user_id?: string;
   shared_with_public?: boolean;
@@ -113,6 +130,13 @@ export interface FoodEntry {
   entry_date: string;
   entry_time?: string | null;
   meal_plan_template_id?: string;
+  /**
+   * Per-entry override photos. Apply only to this diary entry and never change
+   * the parent food/meal. Empty means "fall back to `food_images`".
+   */
+  images?: string[] | null;
+  /** The parent food's own images, used as the fallback when no override. */
+  food_images?: string[] | null;
   // Add water_ml to FoodEntry if it's a water entry
   water_ml?: number;
 

@@ -9,7 +9,20 @@ import foodPhotoEstimationService from '../services/foodPhotoEstimationService.j
 import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
 import { backfillOffAllergens } from '../utils/backfillAllergens.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
+import {
+  uploadImages,
+  applyImageOrder,
+  finalizeUploadedImages,
+  cleanupStagedImages,
+  stagedFilesFrom,
+  parseMultipartBody,
+} from '../middleware/imageUpload.js';
 const router = express.Router();
+
+/** Reads a food payload from either a JSON body or a multipart form. */
+function parseFoodBody(req: unknown): Record<string, unknown> {
+  return parseMultipartBody(req, ['images'], 'foodData');
+}
 router.use(express.json());
 
 function getErrorMessage(error: unknown): string | null {
@@ -68,7 +81,7 @@ router.get('/search', authenticate, async (req, res, next) => {
   try {
     const foods = await foodService.searchFoods(
       req.userId,
-      name,
+      String(name),
 
       req.userId,
       exactMatch === 'true',
@@ -147,16 +160,14 @@ router.get('/', authenticate, async (req, res, next) => {
   try {
     const result = await foodService.searchFoods(
       req.userId,
-      name,
+      name === undefined ? undefined : String(name),
 
       req.userId,
       exactMatch === 'true',
       broadMatch === 'true',
       checkCustom === 'true',
-      // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
-      parseInt(limit, 10),
-      // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
-      mealType
+      parseInt(String(limit), 10),
+      mealType === undefined ? undefined : String(mealType)
     );
     res.status(200).json(result);
   } catch (error) {
@@ -196,11 +207,39 @@ router.get('/', authenticate, async (req, res, next) => {
  *       403:
  *         description: User does not have permission to create a food.
  */
-router.post('/', authenticate, async (req, res, next) => {
+router.post('/', authenticate, uploadImages, async (req, res, next) => {
   try {
-    const foodData = { ...req.body, user_id: req.userId }; // Ensure user_id is set for the food
+    const body = parseFoodBody(req);
+    // A name is required by the foods table; reject here so the caller gets a
+    // 400 rather than a constraint violation from the insert.
+    if (typeof body.name !== 'string' || body.name.trim() === '') {
+      return res.status(400).json({ error: 'Food name is required.' });
+    }
+    const foodData = {
+      ...body,
+      name: body.name,
+      user_id: req.userId, // Ensure user_id is set for the food
+    };
 
     const newFood = await foodService.createFood(req.userId, foodData);
+
+    // Files were staged before the food had an id; move them in now and
+    // persist the resulting web paths alongside any images already set.
+    const uploadedPaths = await finalizeUploadedImages(
+      stagedFilesFrom(req),
+      'foods',
+      newFood.id
+    );
+    if (uploadedPaths.length > 0) {
+      // The client's `images` array carries __new__<n> placeholders marking
+      // where each upload belongs, so a reordered list keeps its order.
+      const merged = applyImageOrder(newFood.images, uploadedPaths);
+      const updated = await foodService.updateFood(req.userId, newFood.id, {
+        images: merged,
+      });
+      newFood.images = updated?.images ?? merged;
+    }
+
     res.status(201).json(newFood);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -209,6 +248,8 @@ router.post('/', authenticate, async (req, res, next) => {
       return res.status(403).json({ error: error.message });
     }
     next(error);
+  } finally {
+    await cleanupStagedImages(req);
   }
 });
 /**
@@ -265,11 +306,11 @@ router.get('/foods-paginated', authenticate, async (req, res, next) => {
   try {
     const { foods, totalCount } = await foodService.getFoodsWithPagination(
       req.userId,
-      searchTerm,
-      foodFilter,
-      currentPage,
-      itemsPerPage,
-      sortBy
+      String(searchTerm ?? ''),
+      String(foodFilter ?? ''),
+      String(currentPage ?? ''),
+      String(itemsPerPage ?? ''),
+      String(sortBy ?? '')
     );
     res.status(200).json({ foods, totalCount });
   } catch (error) {
@@ -357,7 +398,7 @@ router.get('/food-variants', authenticate, async (req, res, next) => {
   try {
     const variants = await foodService.getFoodVariantsByFoodId(
       req.userId,
-      food_id
+      String(food_id)
     );
     res.status(200).json(variants);
   } catch (error) {
@@ -636,7 +677,11 @@ router.get('/barcode/:barcode', authenticate, async (req, res, next) => {
       barcode,
 
       req.userId,
-      req.query.providerId,
+      // Absent means "use the user's default provider", so preserve undefined
+      // rather than coercing it to the string "undefined".
+      req.query.providerId === undefined
+        ? undefined
+        : String(req.query.providerId),
       req.authenticatedUserId
     );
     res.status(200).json(result);
@@ -954,13 +999,27 @@ router.get('/:foodId', authenticate, async (req, res, next) => {
  *       404:
  *         description: Food not found or not authorized to update.
  */
-router.put('/:id', authenticate, async (req, res, next) => {
+router.put('/:id', authenticate, uploadImages, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Food ID is required.' });
   }
   try {
-    const updatedFood = await foodService.updateFood(req.userId, id, req.body);
+    const foodData = parseFoodBody(req);
+
+    // `images` is the client's desired order, with __new__<n> placeholders
+    // marking where each uploaded file belongs. A client that sends `images`
+    // without any files is performing a removal and/or a reorder.
+    const uploadedPaths = await finalizeUploadedImages(
+      stagedFilesFrom(req),
+      'foods',
+      id
+    );
+    if (foodData.images !== undefined || uploadedPaths.length > 0) {
+      foodData.images = applyImageOrder(foodData.images, uploadedPaths);
+    }
+
+    const updatedFood = await foodService.updateFood(req.userId, id, foodData);
     res.status(200).json(updatedFood);
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -974,6 +1033,8 @@ router.put('/:id', authenticate, async (req, res, next) => {
       return res.status(404).json({ error: error.message });
     }
     next(error);
+  } finally {
+    await cleanupStagedImages(req);
   }
 });
 /**

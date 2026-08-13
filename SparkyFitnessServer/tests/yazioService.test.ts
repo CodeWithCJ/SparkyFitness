@@ -97,6 +97,8 @@ describe('yazioService', () => {
       provider_type: 'yazio',
       provider_verified: false,
       is_custom: false,
+      // YAZIO's fixture carries no image field; mapping is defensive.
+      image_url: null,
       default_variant: {
         serving_size: 100,
         serving_unit: 'g',

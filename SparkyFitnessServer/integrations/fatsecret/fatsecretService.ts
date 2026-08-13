@@ -30,14 +30,35 @@ interface FatSecretServing {
   [key: string]: string | number | undefined;
 }
 
+/** One image entry from FatSecret's `food_images` block. */
+interface FatSecretFoodImage {
+  image_url?: string;
+}
+
 interface FatSecretFood {
   food_name: string;
   brand_name?: string | null;
   barcode?: string;
   food_id: string | number;
+  food_images?: {
+    food_image?: FatSecretFoodImage | FatSecretFoodImage[];
+  };
   servings?: {
     serving?: FatSecretServing | FatSecretServing[];
   };
+}
+
+/**
+ * FatSecret returns `food_image` as either a single object or an array
+ * depending on how many images the food has. Normalize to the first URL.
+ */
+function firstFatSecretImageUrl(food: FatSecretFood): string | null {
+  const image = food.food_images?.food_image;
+  if (!image) {
+    return null;
+  }
+  const first = Array.isArray(image) ? image[0] : image;
+  return first?.image_url || null;
 }
 
 interface FatSecretFoodResponse {
@@ -480,6 +501,8 @@ function mapFatSecretFood(data: FatSecretFoodResponse) {
     provider_external_id: String(food.food_id),
     provider_type: 'fatsecret',
     is_custom: false,
+    // Hotlinked in search results; localized on import (see models/food.ts).
+    image_url: firstFatSecretImageUrl(food),
     default_variant: defaultVariant,
     variants: mappedVariants,
   };

@@ -5,6 +5,12 @@ import foodEntryMealRepository, {
 import mealRepository from '../models/mealRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
+import type {
+  NutrientValue,
+  FoodEntryInput,
+  FoodVariantInput,
+  MealFoodInput,
+} from '../types/nutrition.js';
 import mealTypeRepository from '../models/mealType.js';
 import goalRepository from '../models/goalRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
@@ -14,10 +20,93 @@ import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 import Papa from 'papaparse';
 import { isDayString } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
+import { removeOrphanedImages } from '../middleware/imageUpload.js';
 import express from 'express';
 // Helper functions (already defined)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getGlycemicIndexValue(category: any) {
+/**
+ * A parsed row from a food-diary CSV import.
+ *
+ * Column values arrive as strings from the parser, but callers also pass
+ * already-coerced numbers, so values stay `unknown` and are narrowed at use.
+ */
+interface FoodDiaryImportRow {
+  date?: string;
+  food_name?: string;
+  meal_name?: string;
+  meal_type?: string;
+  quantity?: unknown;
+  unit?: string;
+  custom_nutrients?: unknown;
+  [column: string]: unknown;
+}
+
+/** A diary row belonging to a logged meal, as read back for display. */
+interface LoggedComponentEntry {
+  id?: string;
+  food_id?: string | null;
+  variant_id?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  serving_size?: number | null;
+  serving_unit?: string | null;
+  // Nutrients come back as numeric columns and are summed directly.
+  calories?: number | null;
+  protein?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
+  saturated_fat?: number | null;
+  polyunsaturated_fat?: number | null;
+  monounsaturated_fat?: number | null;
+  trans_fat?: number | null;
+  cholesterol?: number | null;
+  sodium?: number | null;
+  potassium?: number | null;
+  dietary_fiber?: number | null;
+  sugars?: number | null;
+  vitamin_a?: number | null;
+  vitamin_c?: number | null;
+  calcium?: number | null;
+  iron?: number | null;
+  glycemic_index?: string | null;
+  custom_nutrients?: Record<string, unknown> | null;
+  [column: string]: unknown;
+}
+
+/** A logged-meal payload as it arrives from the diary UI. */
+interface LoggedMealInput {
+  user_id?: string;
+  meal_template_id?: string | null;
+  meal_type?: string | null;
+  meal_type_id?: string | null;
+  entry_date?: string;
+  entry_time?: string | null;
+  name?: string;
+  description?: string | null;
+  quantity?: unknown;
+  unit?: string | null;
+  legacy_serving_unit_math?: boolean;
+  foods?: MealFoodInput[];
+  // Set by newer clients so the server can tell which nutrition model to use.
+  _clientMealModelVersion?: number;
+}
+
+/**
+ * One row's outcome from a bulk import. Shapes vary by call site (some carry
+ * the created entry, some just the row index), so extra keys are permitted.
+ */
+interface ImportRowResult {
+  index?: number;
+  [key: string]: unknown;
+}
+
+/** A row that failed to import, with the reason. */
+interface ImportRowError {
+  index?: number;
+  error: string;
+  [key: string]: unknown;
+}
+
+function getGlycemicIndexValue(category: string | null | undefined) {
   switch (category) {
     case 'Very Low':
       return 10;
@@ -33,9 +122,8 @@ function getGlycemicIndexValue(category: any) {
       return null;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getGlycemicIndexCategory(value: any) {
-  if (value === null) return 'None';
+function getGlycemicIndexCategory(value: number | null | undefined) {
+  if (value === null || value === undefined) return 'None';
   if (value <= 20) return 'Very Low';
   if (value <= 50) return 'Low';
   if (value <= 70) return 'Medium';
@@ -149,16 +237,14 @@ const isBlankCell = (value: unknown): boolean =>
   value === null ||
   (typeof value === 'string' && value.trim() === '');
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const rowHasNutrients = (row: any): boolean =>
+const rowHasNutrients = (row: FoodDiaryImportRow): boolean =>
   DIARY_IMPORT_NUTRIENT_FIELDS.some((field) => !isBlankCell(row[field]));
 
 // Only includes columns the row actually filled in, so blanks fall back to
 // whatever the resolved food/variant already has (matched-food nutrients, or
 // the DB column default) rather than overwriting them with null. Coerced to
 // numbers; non-numeric cells are dropped rather than stored as NaN.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function pickFilledNutrients(row: any): Record<string, number> {
+function pickFilledNutrients(row: FoodDiaryImportRow): Record<string, number> {
   const picked: Record<string, number> = {};
   for (const field of DIARY_IMPORT_NUTRIENT_FIELDS) {
     if (isBlankCell(row[field])) continue;
@@ -171,17 +257,17 @@ function pickFilledNutrients(row: any): Record<string, number> {
 // Custom nutrients arrive as a { name: value } object assembled client-side
 // from the CSV's extra (non-standard) columns. Returns a sanitized object or
 // undefined when none are present.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowCustomNutrients(row: any): Record<string, unknown> | undefined {
+function rowCustomNutrients(
+  row: FoodDiaryImportRow
+): Record<string, unknown> | undefined {
   const cn = row.custom_nutrients;
   if (cn && typeof cn === 'object' && Object.keys(cn).length > 0) {
-    return sanitizeCustomNutrients(cn);
+    return sanitizeCustomNutrients(cn as Record<string, unknown>);
   }
   return undefined;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowHasAnyNutrients(row: any): boolean {
+function rowHasAnyNutrients(row: FoodDiaryImportRow): boolean {
   return rowHasNutrients(row) || rowCustomNutrients(row) !== undefined;
 }
 
@@ -192,8 +278,9 @@ function rowHasAnyNutrients(row: any): boolean {
 // serving_size) and show the wrong numbers for a matched food whose serving
 // differs from the row. With no nutrients supplied we override nothing and let
 // the matched/selected variant drive the (correctly scaled) snapshot.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildEntrySnapshotOverride(row: any): Record<string, unknown> {
+function buildEntrySnapshotOverride(
+  row: FoodDiaryImportRow
+): Record<string, unknown> {
   const filled = pickFilledNutrients(row);
   const customNutrients = rowCustomNutrients(row);
   if (Object.keys(filled).length === 0 && !customNutrients) return {};
@@ -208,8 +295,10 @@ function buildEntrySnapshotOverride(row: any): Record<string, unknown> {
 // Deterministic per-row idempotency key. Reordering/inserting rows between
 // re-imports shifts `index` and breaks the match for the shifted rows — an
 // accepted limitation documented in the diary-csv-import plan.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function buildFoodDiaryImportSourceId(row: any, index: number): string {
+function buildFoodDiaryImportSourceId(
+  row: FoodDiaryImportRow,
+  index: number
+): string {
   const parts = [
     row.date,
     row.meal_type,
@@ -226,8 +315,7 @@ function buildFoodDiaryImportSourceId(row: any, index: number): string {
 // updated), else the food's default variant. Auto-created foods have a
 // single variant and never reach the ambiguous branches.
 function selectFoodDiaryVariantId(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variants: any[],
+  variants: FoodVariantInput[],
   unit: string | undefined,
   defaultVariantId: string | undefined
 ): string | undefined {
@@ -242,7 +330,8 @@ function selectFoodDiaryVariantId(
     if (defaultMatch) return defaultMatch.id;
     const newest = [...unitMatches].sort(
       (a, b) =>
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        new Date(b.updated_at ?? 0).getTime() -
+        new Date(a.updated_at ?? 0).getTime()
     )[0];
     return newest.id;
   }
@@ -259,10 +348,8 @@ interface FoodDiaryImportScope {
 // Returns { error } instead of throwing so the caller can attribute the
 // failure to this one row without aborting the rest of the batch.
 async function resolveFoodDiaryImportFood(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  row: any,
+  userId: string,
+  row: FoodDiaryImportRow,
   scope: FoodDiaryImportScope,
   overrideNutrition: boolean
 ): Promise<{ foodId?: string; variantId?: string; error?: string }> {
@@ -300,7 +387,7 @@ async function resolveFoodDiaryImportFood(
     // pinned to the row's portion, matching the imported totals.
     if (overrideNutrition && hasNutrients && visible.user_id === userId) {
       await foodRepository.updateFoodVariantNutrition(variantId, userId, {
-        serving_size: row.quantity,
+        serving_size: row.quantity as NutrientValue,
         serving_unit: row.unit,
         ...pickFilledNutrients(row),
         custom_nutrients: customNutrients,
@@ -319,7 +406,7 @@ async function resolveFoodDiaryImportFood(
     const variantId = prior.default_variant_id || prior.default_variant?.id;
     if (hasNutrients && variantId) {
       await foodRepository.updateFoodVariantNutrition(variantId, userId, {
-        serving_size: row.quantity,
+        serving_size: row.quantity as NutrientValue,
         serving_unit: row.unit,
         ...pickFilledNutrients(row),
         custom_nutrients: customNutrients,
@@ -336,7 +423,7 @@ async function resolveFoodDiaryImportFood(
   }
   const created = await foodRepository.createFood({
     name: foodName,
-    brand: row.brand || null,
+    brand: (row.brand as string) || null,
     user_id: userId,
     is_custom: true,
     is_quick_food: true,
@@ -344,7 +431,7 @@ async function resolveFoodDiaryImportFood(
     provider_type: 'csv_import',
     provider_external_id: foodName,
     provider_verified: false,
-    serving_size: row.quantity,
+    serving_size: row.quantity as NutrientValue,
     serving_unit: row.unit,
     source: 'imported',
     ...pickFilledNutrients(row),
@@ -355,16 +442,12 @@ async function resolveFoodDiaryImportFood(
 
 // Imports a single-food row (no meal grouping) as one food_entries row.
 async function importSingleFoodDiaryRow(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  row: any,
+  authenticatedUserId: string,
+  actingUserId: string,
+  row: FoodDiaryImportRow,
   scope: FoodDiaryImportScope,
   overrideNutrition: boolean,
   index: number
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const quantity = Number(row.quantity);
   if (!row.quantity || isNaN(quantity) || quantity <= 0) {
@@ -412,25 +495,19 @@ async function importSingleFoodDiaryRow(
 // Creates one food_entry_meals parent plus one leaf food_entries row per row
 // in the group, each food resolved via resolveFoodDiaryImportFood.
 async function importAdHocFoodDiaryMealGroup(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
+  authenticatedUserId: string,
+  actingUserId: string,
   group: {
     mealName: string;
     date: string;
     mealType: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rows: { row: any; index: number }[];
+    rows: { row: FoodDiaryImportRow; index: number }[];
   },
   scope: FoodDiaryImportScope,
   overrideNutrition: boolean
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<{ processed: any[]; errors: any[] }> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const processed: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const errors: any[] = [];
+): Promise<{ processed: ImportRowResult[]; errors: ImportRowError[] }> {
+  const processed: ImportRowResult[] = [];
+  const errors: ImportRowError[] = [];
   let parent;
   try {
     parent = await foodEntryMealRepository.createFoodEntryMeal(
@@ -504,33 +581,26 @@ async function importAdHocFoodDiaryMealGroup(
 // is a single food_entries row. Row failures are collected, not thrown, so
 // one bad row never aborts the rest of the batch.
 async function importFoodDiaryEntriesInBulk(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rows: any[],
+  authenticatedUserId: string,
+  actingUserId: string,
+  rows: FoodDiaryImportRow[],
   scope: FoodDiaryImportScope = {},
   overrideNutrition = false
 ) {
   // Overriding stored food nutrition is only ever allowed against the user's
   // own foods, so ignore any family/public scope flags when it is on.
   const effectiveScope: FoodDiaryImportScope = overrideNutrition ? {} : scope;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const processed: any[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const errors: any[] = [];
+  const processed: ImportRowResult[] = [];
+  const errors: ImportRowError[] = [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const singleRows: { row: any; index: number }[] = [];
+  const singleRows: { row: FoodDiaryImportRow; index: number }[] = [];
   const mealGroups = new Map<
     string,
     {
       mealName: string;
       date: string;
       mealType: string;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      rows: { row: any; index: number }[];
+      rows: { row: FoodDiaryImportRow; index: number }[];
     }
   >();
 
@@ -547,8 +617,8 @@ async function importFoodDiaryEntriesInBulk(
     } else {
       mealGroups.set(key, {
         mealName,
-        date: row.date,
-        mealType: row.meal_type,
+        date: row.date ?? '',
+        mealType: row.meal_type ?? '',
         rows: [{ row, index }],
       });
     }
@@ -575,8 +645,8 @@ async function importFoodDiaryEntriesInBulk(
         5
       );
       const savedMeal = savedMeals.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (m: any) => m.name.toLowerCase() === group.mealName.toLowerCase()
+        (m) =>
+          String(m.name ?? '').toLowerCase() === group.mealName.toLowerCase()
       );
       const noRowHasFoodName = group.rows.every(
         ({ row }) => !row.food_name || !row.food_name.trim()
@@ -628,12 +698,9 @@ async function importFoodDiaryEntriesInBulk(
 }
 
 async function createFoodEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryData: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  entryData: FoodEntryInput
 ) {
   try {
     const entryWithUser = {
@@ -665,14 +732,10 @@ async function createFoodEntry(
   }
 }
 async function updateFoodEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryData: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  entryId: string,
+  entryData: FoodEntryInput
 ) {
   try {
     const entryOwnerId = await foodRepository.getFoodEntryOwnerId(
@@ -794,10 +857,9 @@ async function updateFoodEntry(
       'iron',
       'glycemic_index',
     ];
-    for (const field of nutritionOverrideFields) {
+    for (const field of nutritionOverrideFields as (keyof FoodEntryInput)[]) {
       if (entryData[field] !== undefined) {
-        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-        newSnapshotData[field] = entryData[field];
+        (newSnapshotData as Record<string, unknown>)[field] = entryData[field];
       }
     }
     if (entryData.custom_nutrients !== undefined) {
@@ -824,6 +886,22 @@ async function updateFoodEntry(
     if (!updatedEntry) {
       throw new Error('Food entry not found or not authorized to update.');
     }
+
+    // Replacing or clearing the per-entry override photo leaves the previous
+    // upload orphaned. Best-effort: the row already reflects the new value.
+    if (
+      entryData.images !== undefined &&
+      Array.isArray(existingEntry.images) &&
+      existingEntry.images.length > 0
+    ) {
+      await removeOrphanedImages(
+        existingEntry.images,
+        updatedEntry.images ?? []
+      ).catch((unlinkError) =>
+        log('warn', 'Error removing replaced food entry image:', unlinkError)
+      );
+    }
+
     return updatedEntry;
   } catch (error) {
     log(
@@ -834,8 +912,7 @@ async function updateFoodEntry(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFoodEntry(authenticatedUserId: any, entryId: any) {
+async function deleteFoodEntry(authenticatedUserId: string, entryId: string) {
   try {
     const entryOwnerId = await foodRepository.getFoodEntryOwnerId(
       entryId,
@@ -871,12 +948,9 @@ async function deleteFoodEntry(authenticatedUserId: any, entryId: any) {
   }
 }
 async function getFoodEntriesByDate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  selectedDate: any
+  authenticatedUserId: string,
+  targetUserId: string,
+  selectedDate: string
 ) {
   try {
     if (!targetUserId) {
@@ -901,14 +975,10 @@ async function getFoodEntriesByDate(
   }
 }
 async function getFoodEntriesByDateRange(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any
+  authenticatedUserId: string,
+  targetUserId: string,
+  startDate: string,
+  endDate: string
 ) {
   try {
     const entries = await foodRepository.getFoodEntriesByDateRange(
@@ -927,18 +997,12 @@ async function getFoodEntriesByDateRange(
   }
 }
 async function copyFoodEntries(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sourceDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sourceMealType: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetMealType: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  sourceDate: string,
+  sourceMealType: string,
+  targetDate: string,
+  targetMealType: string
 ) {
   try {
     log(
@@ -1037,7 +1101,7 @@ async function copyFoodEntries(
           food_id: entry.food_id,
           meal_type_id: targetMealTypeId,
           food_entry_meal_id: newFoodEntryMealId, // Link the food to the new container
-          quantity: entry.quantity,
+          quantity: Number(entry.quantity ?? 0),
           unit: entry.unit,
           entry_date: targetDate,
           entry_time: entry.entry_time ?? null,
@@ -1045,7 +1109,7 @@ async function copyFoodEntries(
           meal_plan_template_id: null,
           food_name: entry.food_name,
           brand_name: entry.brand_name,
-          serving_size: entry.serving_size,
+          serving_size: Number(entry.serving_size ?? 0),
           serving_unit: entry.serving_unit,
           calories: entry.calories,
           protein: entry.protein,
@@ -1100,20 +1164,13 @@ async function copyFoodEntries(
   }
 }
 async function copyFoodEntriesFromUser(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sourceUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sourceDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sourceMealType: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetMealType: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  sourceUserId: string,
+  sourceDate: string,
+  sourceMealType: string,
+  targetDate: string,
+  targetMealType: string
 ) {
   try {
     log(
@@ -1207,7 +1264,7 @@ async function copyFoodEntriesFromUser(
           food_id: entry.food_id,
           meal_type_id: targetMealTypeId,
           food_entry_meal_id: newFoodEntryMealId,
-          quantity: entry.quantity,
+          quantity: Number(entry.quantity ?? 0),
           unit: entry.unit,
           entry_date: targetDate,
           entry_time: entry.entry_time ?? null,
@@ -1215,7 +1272,7 @@ async function copyFoodEntriesFromUser(
           meal_plan_template_id: null,
           food_name: entry.food_name,
           brand_name: entry.brand_name,
-          serving_size: entry.serving_size,
+          serving_size: Number(entry.serving_size ?? 0),
           serving_unit: entry.serving_unit,
           calories: entry.calories,
           protein: entry.protein,
@@ -1257,20 +1314,13 @@ async function copyFoodEntriesFromUser(
   }
 }
 async function copyFoodEntriesToUser(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sourceDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sourceMealType: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetMealType: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  targetUserId: string,
+  sourceDate: string,
+  sourceMealType: string,
+  targetDate: string,
+  targetMealType: string
 ) {
   try {
     log(
@@ -1362,7 +1412,7 @@ async function copyFoodEntriesToUser(
           food_id: entry.food_id,
           meal_type_id: targetMealTypeId,
           food_entry_meal_id: newFoodEntryMealId,
-          quantity: entry.quantity,
+          quantity: Number(entry.quantity ?? 0),
           unit: entry.unit,
           entry_date: targetDate,
           entry_time: entry.entry_time ?? null,
@@ -1370,7 +1420,7 @@ async function copyFoodEntriesToUser(
           meal_plan_template_id: null,
           food_name: entry.food_name,
           brand_name: entry.brand_name,
-          serving_size: entry.serving_size,
+          serving_size: Number(entry.serving_size ?? 0),
           serving_unit: entry.serving_unit,
           calories: entry.calories,
           protein: entry.protein,
@@ -1412,14 +1462,10 @@ async function copyFoodEntriesToUser(
   }
 }
 async function copyFoodEntriesFromYesterday(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealType: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetDate: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  mealType: string,
+  targetDate: string
 ) {
   try {
     const [yearStr, monthStr, dayStr] = targetDate.split('-');
@@ -1455,14 +1501,10 @@ async function copyFoodEntriesFromYesterday(
   }
 }
 async function copyAllFoodEntries(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sourceDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetDate: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  sourceDate: string,
+  targetDate: string
 ) {
   try {
     log(
@@ -1485,11 +1527,13 @@ async function copyAllFoodEntries(
     // the canonical id when present so two types that share a name (a custom
     // type colliding with a system default) stay separate; the name is only a
     // fallback for legacy rows without an id.
-    const usedMealTypeSelectors = [
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ...new Set(
-        allSourceEntries.map((e: any) => e.meal_type_id ?? e.meal_type)
-      ),
+    // The repository returns loosely-typed rows; name the two columns we read.
+    const sourceEntryRows = allSourceEntries as {
+      meal_type_id?: string;
+      meal_type?: string;
+    }[];
+    const usedMealTypeSelectors: (string | undefined)[] = [
+      ...new Set(sourceEntryRows.map((e) => e.meal_type_id ?? e.meal_type)),
     ];
     log(
       'debug',
@@ -1500,6 +1544,10 @@ async function copyAllFoodEntries(
     // a canonical id (normal rows) or a legacy name; copyFoodEntries resolves
     // both to the exact id.
     for (const mealTypeSelector of usedMealTypeSelectors) {
+      // Skip rows carrying neither an id nor a name: coercing undefined here
+      // would produce the string "undefined", which is truthy and would slip
+      // past the resolver's empty-selector guard.
+      if (!mealTypeSelector) continue;
       const copiedEntries = await copyFoodEntries(
         authenticatedUserId,
         actingUserId,
@@ -1525,12 +1573,9 @@ async function copyAllFoodEntries(
   }
 }
 async function copyAllFoodEntriesFromYesterday(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetDate: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  targetDate: string
 ) {
   try {
     const [yearStr, monthStr, dayStr] = targetDate.split('-');
@@ -1558,8 +1603,7 @@ async function copyAllFoodEntriesFromYesterday(
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getDailyNutritionSummary(userId: any, date: any) {
+async function getDailyNutritionSummary(userId: string, date: string) {
   try {
     const summary = await foodRepository.getDailyNutritionSummary(userId, date);
     if (!summary) {
@@ -1593,8 +1637,7 @@ interface FlattenContext {
   actingUserId: string;
   targetUserId: string;
   mealTypeId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryDate: any;
+  entryDate: string;
   entryTime?: string | null;
   foodEntryMealId: string;
 }
@@ -1604,14 +1647,12 @@ interface FlattenContext {
 // linked meal scales by its own serving yield. Sub-meals never produce their
 // own diary rows — only leaf foods do, which keeps diary/reporting unchanged.
 async function buildLeafFoodEntries(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  components: any,
+  components: MealFoodInput[] | null | undefined,
   multiplier: number,
   ctx: FlattenContext,
   depth = 0
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const entries: any[] = [];
+  const entries: FoodEntryInput[] = [];
   if (depth > MAX_MEAL_FLATTEN_DEPTH) {
     log(
       'warn',
@@ -1624,8 +1665,14 @@ async function buildLeafFoodEntries(
     if (isMeal) {
       const childMealId = component.child_meal_id;
       if (childMealId) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let child: any;
+        let child:
+          | {
+              foods?: MealFoodInput[];
+              serving_size?: number | null;
+              serving_unit?: string | null;
+              total_servings?: number | null;
+            }
+          | undefined;
         try {
           child = await mealRepository.getMealById(
             childMealId,
@@ -1691,7 +1738,7 @@ async function buildLeafFoodEntries(
       continue;
     }
     const food = await foodRepository.getFoodById(
-      component.food_id,
+      String(component.food_id),
       ctx.authenticatedUserId
     );
     if (!food) {
@@ -1762,12 +1809,9 @@ async function buildLeafFoodEntries(
   return entries;
 }
 async function createFoodEntryMeal(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealData: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  mealData: LoggedMealInput
 ) {
   log(
     'info',
@@ -1841,11 +1885,11 @@ async function createFoodEntryMeal(
         meal_template_id: mealData.meal_template_id || null,
         meal_type_id: mealData.meal_type_id || null,
         meal_type: mealData.meal_type,
-        entry_date: mealData.entry_date,
+        entry_date: mealData.entry_date ?? '',
         entry_time: mealData.entry_time ?? null,
-        name: name,
+        name: name ?? '',
         description: description,
-        quantity: mealData.quantity || 1.0, // Default to 1.0
+        quantity: Number(mealData.quantity) || 1.0, // Default to 1.0
         unit: mealData.unit || 'serving', // Default to 'serving'
         legacy_serving_unit_math: useLegacyServingMath,
       },
@@ -1858,7 +1902,7 @@ async function createFoodEntryMeal(
     //   - Legacy model (old clients, unit='serving'): multiplier = consumed_quantity.
     // Full recipe nutrition is stored in component foods scaled by mf.quantity / mf.serving_size,
     // so this multiplier scales the WHOLE recipe down to the consumed portion.
-    const consumedQuantity = mealData.quantity || 1.0;
+    const consumedQuantity = Number(mealData.quantity) || 1.0;
     let multiplier = 1.0;
     if (mealData.meal_template_id) {
       if (useLegacyServingMath) {
@@ -1883,7 +1927,7 @@ async function createFoodEntryMeal(
         actingUserId,
         targetUserId: newFoodEntryMeal.user_id, // target user from the created meal
         mealTypeId: resolvedMealTypeId,
-        entryDate: mealData.entry_date,
+        entryDate: mealData.entry_date ?? '',
         entryTime: newFoodEntryMeal.entry_time ?? null,
         foodEntryMealId: newFoodEntryMeal.id,
       }
@@ -1967,14 +2011,10 @@ async function moveFoodEntryMealToMealType(
   }
 }
 async function updateFoodEntryMeal(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updatedMealData: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  foodEntryMealId: string,
+  updatedMealData: LoggedMealInput
 ) {
   log(
     'info',
@@ -1993,7 +2033,7 @@ async function updateFoodEntryMeal(
           entry_date: updatedMealData.entry_date, // And entry date
           entry_time: updatedMealData.entry_time, // undefined preserves, null clears
           meal_template_id: updatedMealData.meal_template_id, // Pass meal_template_id
-          quantity: updatedMealData.quantity, // Update quantity
+          quantity: updatedMealData.quantity as number | null | undefined, // Update quantity
           unit: updatedMealData.unit, // Update unit
         },
         authenticatedUserId
@@ -2019,7 +2059,7 @@ async function updateFoodEntryMeal(
     // nutrition (those entries were stored under the old
     // "unit === 'serving' → multiplier = quantity" special case).
     let multiplier = 1.0;
-    const newQuantity = updatedMealData.quantity || 1.0;
+    const newQuantity = Number(updatedMealData.quantity) || 1.0;
     const legacyMath = updatedFoodEntryMeal.legacy_serving_unit_math === true;
     if (updatedMealData.meal_template_id) {
       const mealTemplate = await mealRepository.getMealById(
@@ -2027,8 +2067,9 @@ async function updateFoodEntryMeal(
         authenticatedUserId
       );
       if (mealTemplate && mealTemplate.serving_size) {
-        const referenceServingSize = mealTemplate.serving_size || 1.0;
-        const referenceTotalServings = mealTemplate.total_servings || 1.0;
+        const referenceServingSize = Number(mealTemplate.serving_size) || 1.0;
+        const referenceTotalServings =
+          Number(mealTemplate.total_servings) || 1.0;
         if (legacyMath && updatedMealData.unit === 'serving') {
           multiplier = newQuantity;
         } else {
@@ -2049,9 +2090,9 @@ async function updateFoodEntryMeal(
     }
     // 3. Create new component food_entries records
     const entriesToCreate = [];
-    for (const foodItem of updatedMealData.foods) {
+    for (const foodItem of updatedMealData.foods ?? []) {
       const food = await foodRepository.getFoodById(
-        foodItem.food_id,
+        String(foodItem.food_id),
         authenticatedUserId
       );
       if (!food) {
@@ -2106,7 +2147,7 @@ async function updateFoodEntryMeal(
         custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
       // Scale the food quantity
-      const scaledQuantity = foodItem.quantity * multiplier;
+      const scaledQuantity = Number(foodItem.quantity ?? 0) * multiplier;
       entriesToCreate.push({
         user_id: authenticatedUserId,
         created_by_user_id: actingUserId,
@@ -2142,10 +2183,8 @@ async function updateFoodEntryMeal(
   }
 }
 async function getFoodEntryMealWithComponents(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealId: any
+  authenticatedUserId: string,
+  foodEntryMealId: string
 ) {
   log(
     'info',
@@ -2220,13 +2259,13 @@ async function getFoodEntryMealWithComponents(
     let totalVitaminC = 0;
     let totalCalcium = 0;
     let totalIron = 0;
-    const totalCustomNutrients = {};
+    // Custom nutrient totals, keyed by the user's nutrient name.
+    const totalCustomNutrients: Record<string, number> = {};
     let totalCarbsForGI = 0;
     let weightedGIAccumulator = 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    componentFoodEntries.forEach((entry: any) => {
-      const servingSize = entry.serving_size || 1;
-      const ratio = entry.quantity / servingSize;
+    componentFoodEntries.forEach((entry: LoggedComponentEntry) => {
+      const servingSize = Number(entry.serving_size) || 1;
+      const ratio = Number(entry.quantity ?? 0) / servingSize;
       totalCalories += (entry.calories || 0) * ratio;
       totalProtein += (entry.protein || 0) * ratio;
       totalCarbs += (entry.carbs || 0) * ratio;
@@ -2259,9 +2298,7 @@ async function getFoodEntryMealWithComponents(
           }
           const numValue = Number(value);
           if (!isNaN(numValue)) {
-            // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
             totalCustomNutrients[name] =
-              // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
               (totalCustomNutrients[name] || 0) + numValue * ratio;
           }
         });
@@ -2270,8 +2307,12 @@ async function getFoodEntryMealWithComponents(
         const giValue = getGlycemicIndexValue(entry.glycemic_index);
         if (giValue !== null) {
           weightedGIAccumulator +=
-            giValue * ((entry.carbs * entry.quantity) / servingSize);
-          totalCarbsForGI += (entry.carbs * entry.quantity) / servingSize;
+            giValue *
+            ((Number(entry.carbs ?? 0) * Number(entry.quantity ?? 0)) /
+              servingSize);
+          totalCarbsForGI +=
+            (Number(entry.carbs ?? 0) * Number(entry.quantity ?? 0)) /
+            servingSize;
         }
       }
     });
@@ -2279,11 +2320,10 @@ async function getFoodEntryMealWithComponents(
       totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
     return {
       ...foodEntryMeal,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      foods: componentFoodEntries.map((entry: any) => {
+      foods: componentFoodEntries.map((entry: LoggedComponentEntry) => {
         const quantityToReturn = foodEntryMeal.meal_template_id
-          ? entry.quantity / storedMultiplier
-          : entry.quantity;
+          ? Number(entry.quantity ?? 0) / storedMultiplier
+          : Number(entry.quantity ?? 0);
         return {
           food_id: entry.food_id,
           food_name: entry.food_name,
@@ -2309,7 +2349,7 @@ async function getFoodEntryMealWithComponents(
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: entry.custom_nutrients,
-          serving_size: entry.serving_size,
+          serving_size: Number(entry.serving_size ?? 0),
           serving_unit: entry.serving_unit,
         };
       }),
@@ -2344,12 +2384,9 @@ async function getFoodEntryMealWithComponents(
   }
 }
 async function getFoodEntryMealsByDate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  selectedDate: any
+  authenticatedUserId: string,
+  targetUserId: string,
+  selectedDate: string
 ) {
   log(
     'debug',
@@ -2382,15 +2419,15 @@ async function getFoodEntryMealsByDate(
       let totalVitaminC = 0;
       let totalCalcium = 0;
       let totalIron = 0;
-      const totalCustomNutrients = {};
+      // Custom nutrient totals, keyed by the user's nutrient name.
+      const totalCustomNutrients: Record<string, number> = {};
       let totalProtein = 0;
       let totalCarbs = 0;
       let totalFat = 0;
       let totalCarbsForGI = 0;
       let weightedGIAccumulator = 0;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      componentFoodEntries.forEach((entry: any) => {
-        const ratio = entry.quantity / (entry.serving_size || 1);
+      componentFoodEntries.forEach((entry: LoggedComponentEntry) => {
+        const ratio = Number(entry.quantity ?? 0) / (entry.serving_size || 1);
         totalCalories += (entry.calories || 0) * ratio;
         totalProtein += (entry.protein || 0) * ratio;
         totalCarbs += (entry.carbs || 0) * ratio;
@@ -2423,9 +2460,7 @@ async function getFoodEntryMealsByDate(
             }
             const numValue = Number(value);
             if (!isNaN(numValue)) {
-              // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
               totalCustomNutrients[name] =
-                // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
                 (totalCustomNutrients[name] || 0) + numValue * ratio;
             }
           });
@@ -2434,9 +2469,12 @@ async function getFoodEntryMealsByDate(
           const giValue = getGlycemicIndexValue(entry.glycemic_index);
           if (giValue !== null) {
             weightedGIAccumulator +=
-              giValue * ((entry.carbs * entry.quantity) / entry.serving_size);
+              giValue *
+              ((Number(entry.carbs ?? 0) * Number(entry.quantity ?? 0)) /
+                Number(entry.serving_size ?? 0));
             totalCarbsForGI +=
-              (entry.carbs * entry.quantity) / entry.serving_size;
+              (Number(entry.carbs ?? 0) * Number(entry.quantity ?? 0)) /
+              Number(entry.serving_size ?? 0);
           }
         }
       });
@@ -2444,46 +2482,76 @@ async function getFoodEntryMealsByDate(
         totalCarbsForGI > 0 ? weightedGIAccumulator / totalCarbsForGI : null;
       mealsWithComponents.push({
         ...meal,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        foods: componentFoodEntries.map((entry: any) => ({
+        foods: componentFoodEntries.map((entry: LoggedComponentEntry) => ({
           food_id: entry.food_id,
           food_name: entry.food_name,
           variant_id: entry.variant_id,
-          quantity: entry.quantity,
+          quantity: Number(entry.quantity ?? 0),
           unit: entry.unit,
-          calories: (entry.calories * entry.quantity) / entry.serving_size,
-          protein: (entry.protein * entry.quantity) / entry.serving_size,
-          carbs: (entry.carbs * entry.quantity) / entry.serving_size,
-          fat: (entry.fat * entry.quantity) / entry.serving_size,
+          calories:
+            (Number(entry.calories ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          protein:
+            (Number(entry.protein ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          carbs:
+            (Number(entry.carbs ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          fat:
+            (Number(entry.fat ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
 
           saturated_fat:
-            (entry.saturated_fat * entry.quantity) / entry.serving_size,
+            (Number(entry.saturated_fat ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
 
           polyunsaturated_fat:
-            (entry.polyunsaturated_fat * entry.quantity) / entry.serving_size,
+            (Number(entry.polyunsaturated_fat ?? 0) *
+              Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
 
           monounsaturated_fat:
-            (entry.monounsaturated_fat * entry.quantity) / entry.serving_size,
+            (Number(entry.monounsaturated_fat ?? 0) *
+              Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
 
-          trans_fat: (entry.trans_fat * entry.quantity) / entry.serving_size,
+          trans_fat:
+            (Number(entry.trans_fat ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
 
           cholesterol:
-            (entry.cholesterol * entry.quantity) / entry.serving_size,
+            (Number(entry.cholesterol ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
 
-          sodium: (entry.sodium * entry.quantity) / entry.serving_size,
-          potassium: (entry.potassium * entry.quantity) / entry.serving_size,
+          sodium:
+            (Number(entry.sodium ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          potassium:
+            (Number(entry.potassium ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
 
           dietary_fiber:
-            (entry.dietary_fiber * entry.quantity) / entry.serving_size,
+            (Number(entry.dietary_fiber ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
 
-          sugars: (entry.sugars * entry.quantity) / entry.serving_size,
-          vitamin_a: (entry.vitamin_a * entry.quantity) / entry.serving_size,
-          vitamin_c: (entry.vitamin_c * entry.quantity) / entry.serving_size,
-          calcium: (entry.calcium * entry.quantity) / entry.serving_size,
-          iron: (entry.iron * entry.quantity) / entry.serving_size,
+          sugars:
+            (Number(entry.sugars ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          vitamin_a:
+            (Number(entry.vitamin_a ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          vitamin_c:
+            (Number(entry.vitamin_c ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          calcium:
+            (Number(entry.calcium ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          iron:
+            (Number(entry.iron ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
           glycemic_index: entry.glycemic_index,
           custom_nutrients: entry.custom_nutrients,
-          serving_size: entry.serving_size,
+          serving_size: Number(entry.serving_size ?? 0),
           serving_unit: entry.serving_unit,
         })),
         calories: totalCalories,
@@ -2519,10 +2587,8 @@ async function getFoodEntryMealsByDate(
 }
 
 async function deleteFoodEntryMeal(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealId: any
+  authenticatedUserId: string,
+  foodEntryMealId: string
 ) {
   log(
     'info',
@@ -2578,8 +2644,7 @@ const formatLocalizedNumber = (num: number | string, locale: string) => {
   return isFr ? String(num).replace('.', ',') : String(num);
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const formatDateLocalized = (dateInput: any, locale: string) => {
+const formatDateLocalized = (dateInput: string | Date, locale: string) => {
   try {
     const isFr = locale.startsWith('fr');
     const dateStr = getDayString(dateInput); // robust parsing
@@ -3019,8 +3084,8 @@ async function exportAllDiaryEntriesToCSVStream(
         currentDateProcessed = dateStr;
 
         const scale =
-          entry.serving_size && entry.serving_size > 0
-            ? entry.quantity / entry.serving_size
+          Number(entry.serving_size ?? 0) && Number(entry.serving_size ?? 0) > 0
+            ? Number(entry.quantity ?? 0) / Number(entry.serving_size ?? 0)
             : 1;
 
         // Regular food entry
@@ -3029,7 +3094,10 @@ async function exportAllDiaryEntriesToCSVStream(
           [baseHeaders[1]]: translateMealType(entry.meal_type || '', locale),
           [baseHeaders[2]]: entry.food_name || '',
           [baseHeaders[3]]: entry.brand_name || '',
-          [baseHeaders[4]]: formatLocalizedNumber(entry.quantity, locale),
+          [baseHeaders[4]]: formatLocalizedNumber(
+            Number(entry.quantity ?? 0),
+            locale
+          ),
           [baseHeaders[5]]: entry.unit || '',
           [baseHeaders[6]]: entry.calories
             ? formatLocalizedNumber((entry.calories * scale).toFixed(1), locale)

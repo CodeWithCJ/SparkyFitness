@@ -135,10 +135,13 @@ export const useUpdateMealMutation = () => {
     mutationFn: ({
       mealId,
       mealPayload,
+      imageFiles,
     }: {
       mealId: string;
       mealPayload: MealPayload;
-    }) => updateMeal(mealId, mealPayload),
+      /** Newly attached image files; sent as multipart when present. */
+      imageFiles?: File[];
+    }) => updateMeal(mealId, mealPayload, imageFiles),
     onSuccess: () => {
       // A favorited meal's cached name/nutrition would otherwise go stale.
       queryClient.invalidateQueries({ queryKey: foodKeys.favorites() });
@@ -162,8 +165,14 @@ export const useCreateMealMutation = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   return useMutation({
-    mutationFn: ({ mealPayload }: { mealPayload: MealPayload }) =>
-      createMeal(mealPayload),
+    mutationFn: ({
+      mealPayload,
+      imageFiles,
+    }: {
+      mealPayload: MealPayload;
+      /** Newly attached image files; sent as multipart when present. */
+      imageFiles?: File[];
+    }) => createMeal(mealPayload, imageFiles),
     onSuccess: () => {
       return queryClient.invalidateQueries({
         queryKey: mealKeys.all,

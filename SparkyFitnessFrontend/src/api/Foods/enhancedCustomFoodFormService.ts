@@ -1,4 +1,5 @@
 import { apiCall } from '../api';
+import { buildPayloadRequest } from '../imageRequest';
 
 import type { Food, FoodVariant } from '@/types/food';
 
@@ -47,11 +48,18 @@ export const createFoodVariant = async (
   });
 };
 
+/** The server's parseFoodBody unwraps the payload from a `foodData` field. */
+const buildFoodRequest = (
+  payload: Record<string, unknown>,
+  imageFiles?: File[]
+) => buildPayloadRequest(payload, 'foodData', imageFiles);
+
 export const saveFood = async (
   foodData: Food,
   variants: FoodVariant[],
   userId: string,
-  foodId?: string
+  foodId?: string,
+  imageFiles?: File[]
 ): Promise<Food> => {
   let savedFood: Food;
 
@@ -59,13 +67,18 @@ export const saveFood = async (
     // Update existing food
     savedFood = await apiCall(`/foods/${foodId}`, {
       method: 'PUT',
-      body: {
-        ...foodData,
-        barcode: foodData.barcode,
-        provider_external_id: foodData.provider_external_id,
-        provider_type: foodData.provider_type,
-        provider_verified: foodData.provider_verified,
-      },
+      ...buildFoodRequest(
+        {
+          ...foodData,
+          barcode: foodData.barcode,
+          provider_external_id: foodData.provider_external_id,
+          provider_type: foodData.provider_type,
+          provider_verified: foodData.provider_verified,
+          // Images the user kept; newly attached files are appended server-side.
+          images: foodData.images ?? [],
+        },
+        imageFiles
+      ),
     });
 
     // Fetch existing variants to determine what to update/delete/insert
@@ -200,7 +213,7 @@ export const saveFood = async (
 
     savedFood = await apiCall('/foods', {
       method: 'POST',
-      body: foodToCreate,
+      ...buildFoodRequest(foodToCreate, imageFiles),
     });
 
     // Insert additional variants (starting from the second variant)

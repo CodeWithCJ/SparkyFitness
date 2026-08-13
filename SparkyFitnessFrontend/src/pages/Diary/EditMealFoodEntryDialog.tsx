@@ -6,6 +6,8 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import MealBuilder from '@/components/MealBuilder';
+import FoodEntryImageOverride from './FoodEntryImageOverride';
+import { useEntryImageDraft } from '@/hooks/Diary/useEntryImageDraft';
 import type { FoodEntryMeal, MealFood } from '@/types/meal';
 
 interface EditMealFoodEntryDialogProps {
@@ -21,7 +23,12 @@ const EditMealFoodEntryDialog = ({
 }: EditMealFoodEntryDialogProps) => {
   const initialMealFoods: MealFood[] = foodEntry.foods ?? [];
 
-  const handleSave = () => {
+  // Photos are staged here and applied when MealBuilder reports a successful
+  // save, so closing the dialog without saving discards them.
+  const imageDraft = useEntryImageDraft(foodEntry.id, foodEntry.images, 'meal');
+
+  const handleSave = async () => {
+    await imageDraft.save();
     onOpenChange(false);
   };
 
@@ -38,6 +45,15 @@ const EditMealFoodEntryDialog = ({
             food diary, not the master meal template.
           </p>
         </DialogHeader>
+        {/* Per-entry photo. Edits are staged and persisted on save, and only
+            affect this entry — the meal template's own images are untouched. */}
+        <FoodEntryImageOverride
+          entry={foodEntry}
+          kind="meal"
+          items={imageDraft.items}
+          onItemsChange={imageDraft.setItems}
+          isSaving={imageDraft.isSaving}
+        />
         <MealBuilder
           initialFoods={initialMealFoods}
           onSave={handleSave}
