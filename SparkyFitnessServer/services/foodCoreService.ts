@@ -19,7 +19,11 @@ import {
   mapFatSecretFood,
 } from '../integrations/fatsecret/fatsecretService.js';
 import { searchYazioByBarcode } from '../integrations/yazio/yazioService.js';
-import type { BulkImportFoodData, FoodInput } from '../models/food.js';
+import type {
+  BulkImportFoodData,
+  FoodInput,
+  FoodUpdate,
+} from '../models/food.js';
 import type { FoodVariantInput } from '../types/nutrition.js';
 import {
   removeOrphanedImages,
@@ -214,7 +218,7 @@ async function getFoodById(authenticatedUserId: string, foodId: string) {
 async function updateFood(
   authenticatedUserId: string,
   foodId: string,
-  foodData: FoodInput
+  foodData: FoodUpdate
 ) {
   try {
     const foodOwnerId = await foodRepository.getFoodOwnerId(

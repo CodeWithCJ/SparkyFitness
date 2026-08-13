@@ -1527,13 +1527,13 @@ async function copyAllFoodEntries(
     // the canonical id when present so two types that share a name (a custom
     // type colliding with a system default) stay separate; the name is only a
     // fallback for legacy rows without an id.
-    const usedMealTypeSelectors = [
-      ...new Set(
-        allSourceEntries.map(
-          (e: { meal_type_id?: string; meal_type?: string }) =>
-            e.meal_type_id ?? e.meal_type
-        )
-      ),
+    // The repository returns loosely-typed rows; name the two columns we read.
+    const sourceEntryRows = allSourceEntries as {
+      meal_type_id?: string;
+      meal_type?: string;
+    }[];
+    const usedMealTypeSelectors: (string | undefined)[] = [
+      ...new Set(sourceEntryRows.map((e) => e.meal_type_id ?? e.meal_type)),
     ];
     log(
       'debug',
@@ -1544,13 +1544,17 @@ async function copyAllFoodEntries(
     // a canonical id (normal rows) or a legacy name; copyFoodEntries resolves
     // both to the exact id.
     for (const mealTypeSelector of usedMealTypeSelectors) {
+      // Skip rows carrying neither an id nor a name: coercing undefined here
+      // would produce the string "undefined", which is truthy and would slip
+      // past the resolver's empty-selector guard.
+      if (!mealTypeSelector) continue;
       const copiedEntries = await copyFoodEntries(
         authenticatedUserId,
         actingUserId,
         sourceDate,
-        String(mealTypeSelector),
+        mealTypeSelector,
         targetDate,
-        String(mealTypeSelector)
+        mealTypeSelector
       );
       allCopiedEntries.push(...copiedEntries);
     }
@@ -2255,7 +2259,8 @@ async function getFoodEntryMealWithComponents(
     let totalVitaminC = 0;
     let totalCalcium = 0;
     let totalIron = 0;
-    const totalCustomNutrients = {};
+    // Custom nutrient totals, keyed by the user's nutrient name.
+    const totalCustomNutrients: Record<string, number> = {};
     let totalCarbsForGI = 0;
     let weightedGIAccumulator = 0;
     componentFoodEntries.forEach((entry: LoggedComponentEntry) => {
@@ -2293,9 +2298,7 @@ async function getFoodEntryMealWithComponents(
           }
           const numValue = Number(value);
           if (!isNaN(numValue)) {
-            // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
             totalCustomNutrients[name] =
-              // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
               (totalCustomNutrients[name] || 0) + numValue * ratio;
           }
         });
@@ -2416,7 +2419,8 @@ async function getFoodEntryMealsByDate(
       let totalVitaminC = 0;
       let totalCalcium = 0;
       let totalIron = 0;
-      const totalCustomNutrients = {};
+      // Custom nutrient totals, keyed by the user's nutrient name.
+      const totalCustomNutrients: Record<string, number> = {};
       let totalProtein = 0;
       let totalCarbs = 0;
       let totalFat = 0;
@@ -2456,9 +2460,7 @@ async function getFoodEntryMealsByDate(
             }
             const numValue = Number(value);
             if (!isNaN(numValue)) {
-              // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
               totalCustomNutrients[name] =
-                // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
                 (totalCustomNutrients[name] || 0) + numValue * ratio;
             }
           });

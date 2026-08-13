@@ -209,7 +209,17 @@ router.get('/', authenticate, async (req, res, next) => {
  */
 router.post('/', authenticate, uploadImages, async (req, res, next) => {
   try {
-    const foodData = { ...parseFoodBody(req), user_id: req.userId }; // Ensure user_id is set for the food
+    const body = parseFoodBody(req);
+    // A name is required by the foods table; reject here so the caller gets a
+    // 400 rather than a constraint violation from the insert.
+    if (typeof body.name !== 'string' || body.name.trim() === '') {
+      return res.status(400).json({ error: 'Food name is required.' });
+    }
+    const foodData = {
+      ...body,
+      name: body.name,
+      user_id: req.userId, // Ensure user_id is set for the food
+    };
 
     const newFood = await foodService.createFood(req.userId, foodData);
 

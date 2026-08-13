@@ -19,6 +19,9 @@ import type {
 /** A value bound into a parameterised query. */
 type SqlParam = string | number | boolean | null | undefined;
 
+/** An update may change any subset of a food's fields. */
+export type FoodUpdate = Partial<FoodInput>;
+
 /** Booleans arrive from CSV/provider payloads as strings or 0/1 too. */
 type BooleanLike = boolean | string | number | null | undefined;
 
@@ -30,10 +33,9 @@ type BooleanLike = boolean | string | number | null | undefined;
  * `sanitize*` helpers below.
  */
 export interface FoodInput extends NutrientFields {
-  // Optional because the same shape serves create and partial-update paths.
   id?: string;
-  name?: string;
-  user_id?: string;
+  name: string;
+  user_id: string;
   brand?: string | null;
   barcode?: string | null;
   provider_external_id?: string | null;
@@ -396,11 +398,7 @@ async function getFoodOwnerId(foodId: string, userId: string) {
     client.release();
   }
 }
-async function updateFood(
-  id: string,
-  userId: string,
-  foodData: Partial<FoodInput>
-) {
+async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
   const client = await getClient(userId); // User-specific operation
   try {
     // Distinguish "barcode key omitted" (leave unchanged) from "barcode set

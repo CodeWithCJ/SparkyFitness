@@ -11,6 +11,13 @@ import type {
 /** A value bound into a parameterised query. */
 type SqlParam = string | number | boolean | null | undefined;
 
+/** An ingredient row read back from `meal_foods`, joined to its meal. */
+interface MealFoodRow {
+  id: string;
+  meal_id: string;
+  [column: string]: unknown;
+}
+
 /**
  * A meal row as read back from a query. Columns vary by call site, so the
  * index signature keeps arbitrary selected columns reachable without `any`.
@@ -78,16 +85,14 @@ async function attachFoodsToMeals(client: PoolClient, meals: MealRow[]) {
     `${MEAL_FOODS_SELECT} WHERE mf.meal_id = ANY($1::uuid[])`,
     [mealIds]
   );
-  const foodsByMealId = {};
-  for (const food of mealFoodsResult.rows) {
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-    if (!foodsByMealId[food.meal_id]) foodsByMealId[food.meal_id] = [];
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-    foodsByMealId[food.meal_id].push(food);
+  // Group the ingredient rows by their meal so each meal gets its own list.
+  const foodsByMealId: Record<string, MealFoodRow[]> = {};
+  for (const food of mealFoodsResult.rows as MealFoodRow[]) {
+    const bucket = (foodsByMealId[food.meal_id] ??= []);
+    bucket.push(food);
   }
   for (const meal of meals) {
-    // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-    meal.foods = foodsByMealId[meal.id] || [];
+    meal.foods = foodsByMealId[meal.id] ?? [];
   }
   return meals;
 }
