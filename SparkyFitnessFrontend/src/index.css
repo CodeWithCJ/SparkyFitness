@@ -190,3 +190,32 @@
 .apple-safe-area {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* Mobile viewport fit. Desktop is intentionally untouched. */
+@media (max-width: 767px) {
+  html,
+  body {
+    max-width: 100%;
+    /* `clip`, not `hidden`: `hidden` turns html/body into a scroll container and
+       breaks `position: sticky` and scroll-into-view. */
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+  }
+
+  /* Caps every dialog regardless of its own `max-w-*` utility. Plain CSS declared
+     after `@import 'tailwindcss'`, so it wins on equal specificity without
+     `!important`, and tailwind-merge cannot strip it (it is not a Tailwind class). */
+  .dialog-viewport-fit {
+    width: calc(100vw - 2rem);
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+  }
+
+  /* DialogContent is a grid, and grid/flex children default to `min-width: auto`,
+     so a wide child (a search result row, a nutrient grid) can still push past the
+     capped dialog. Allowing them to shrink keeps content inside the box. */
+  .dialog-viewport-fit > * {
+    min-width: 0;
+  }
+}
