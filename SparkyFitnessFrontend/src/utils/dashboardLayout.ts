@@ -97,6 +97,54 @@ export function stabilizeGridWidth(prev: number, next: number): number {
   return breakpointForWidth(next) === breakpointForWidth(prev) ? next : prev;
 }
 
+/** Rolling window used to tell a measurement feedback loop from real changes. */
+export const MEASURE_WINDOW_MS = 1000;
+
+/**
+ * Height changes allowed per widget per window before we treat it as a loop. A
+ * settled widget changes height a handful of times (mount, data load, font
+ * load) and legitimate later changes are seconds apart, so only a runaway
+ * measure -> layout -> measure cycle can reach this in one second.
+ */
+export const MAX_MEASURE_CHANGES_PER_WINDOW = 12;
+
+export interface MeasureGuard {
+  windowStart: number;
+  changes: number;
+  /** Tallest height seen in this window; what we settle on when thrashing. */
+  maxRows: number;
+}
+
+/**
+ * Decide whether to accept a freshly measured height for one widget.
+ *
+ * Returns the height to apply (`null` to ignore) plus the guard state to carry
+ * forward. Under a loop we settle on the tallest height seen in the window --
+ * never clipping content -- and then stop applying anything, which starves the
+ * cycle of the re-render that keeps it going. The window expires on its own, so
+ * a genuine content change later is picked up normally: this is a rate limit,
+ * not a permanent cap.
+ */
+export function evaluateMeasurement(
+  guard: MeasureGuard | undefined,
+  rows: number,
+  now: number
+): { guard: MeasureGuard; apply: number | null } {
+  const expired = !guard || now - guard.windowStart > MEASURE_WINDOW_MS;
+  const next: MeasureGuard = expired
+    ? { windowStart: now, changes: 1, maxRows: rows }
+    : {
+        windowStart: guard.windowStart,
+        changes: guard.changes + 1,
+        maxRows: Math.max(guard.maxRows, rows),
+      };
+
+  if (next.changes > MAX_MEASURE_CHANGES_PER_WINDOW) {
+    return { guard: next, apply: next.maxRows };
+  }
+  return { guard: next, apply: rows };
+}
+
 /**
  * Value-equality for two layout maps (ignores object identity). Used to avoid
  * the controlled react-grid-layout feedback loop: onLayoutChange -> setState ->

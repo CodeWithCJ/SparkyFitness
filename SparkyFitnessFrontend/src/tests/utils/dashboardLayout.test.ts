@@ -2,11 +2,15 @@ import {
   applyAutoHeights,
   breakpointForWidth,
   buildWidgetKeys,
+  evaluateMeasurement,
   generateDefaultLayouts,
+  MAX_MEASURE_CHANGES_PER_WINDOW,
   mealWidgetKey,
+  MEASURE_WINDOW_MS,
   reconcileLayouts,
   stabilizeGridWidth,
   type DashboardLayouts,
+  type MeasureGuard,
   type WidgetLayout,
 } from '@/utils/dashboardLayout';
 
@@ -196,5 +200,55 @@ describe('stabilizeGridWidth', () => {
       width = stabilizeGridWidth(width, next);
     }
     expect(width).toBe(1205);
+  });
+});
+
+describe('evaluateMeasurement', () => {
+  const run = (
+    values: number[],
+    stepMs = 0,
+    start = 1000
+  ): (number | null)[] => {
+    let guard: MeasureGuard | undefined;
+    return values.map((rows, i) => {
+      const out = evaluateMeasurement(guard, rows, start + i * stepMs);
+      guard = out.guard;
+      return out.apply;
+    });
+  };
+
+  it('applies normal measurements', () => {
+    expect(run([8, 9, 10], 200)).toEqual([8, 9, 10]);
+  });
+
+  it('settles on the tallest height once a burst looks like a loop', () => {
+    // 20 alternating changes inside one window: a measure -> layout -> measure cycle.
+    const alternating = Array.from({ length: 20 }, (_, i) => (i % 2 ? 12 : 9));
+    const applied = run(alternating);
+    expect(applied.slice(0, MAX_MEASURE_CHANGES_PER_WINDOW)).toEqual(
+      alternating.slice(0, MAX_MEASURE_CHANGES_PER_WINDOW)
+    );
+    // Everything past the cap settles on the tallest seen, so content is never clipped.
+    for (const value of applied.slice(MAX_MEASURE_CHANGES_PER_WINDOW)) {
+      expect(value).toBe(12);
+    }
+  });
+
+  it('is a rate limit, not a permanent cap: later real changes still apply', () => {
+    // Exhaust the window...
+    const burst = Array.from({ length: 20 }, (_, i) => (i % 2 ? 12 : 9));
+    let guard: MeasureGuard | undefined;
+    for (const rows of burst) {
+      guard = evaluateMeasurement(guard, rows, 1000).guard;
+    }
+    // ...then a genuine change well after the window expires.
+    const later = evaluateMeasurement(guard, 7, 1000 + MEASURE_WINDOW_MS + 1);
+    expect(later.apply).toBe(7);
+    expect(later.guard.changes).toBe(1);
+  });
+
+  it('does not trip when changes are spread across windows', () => {
+    const spread = Array.from({ length: 30 }, (_, i) => i + 1);
+    expect(run(spread, MEASURE_WINDOW_MS + 1)).toEqual(spread);
   });
 });

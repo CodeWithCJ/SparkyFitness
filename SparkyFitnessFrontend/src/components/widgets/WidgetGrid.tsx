@@ -25,12 +25,13 @@ import {
   GRID_ROW_HEIGHT,
   applyAutoHeights,
   areLayoutsEqual,
-  breakpointForWidth,
+  evaluateMeasurement,
   mergePositions,
   pxToRows,
   reconcileLayouts,
   stabilizeGridWidth,
   type DashboardLayouts,
+  type MeasureGuard,
 } from '@/utils/dashboardLayout';
 
 export interface Widget {
@@ -80,13 +81,6 @@ class GridErrorBoundary extends Component<
 // Stable reference so `hidden`/`handleLayoutChange` deps don't churn when no
 // widgets are hidden (a fresh `[]` each render would invalidate them).
 const EMPTY_HIDDEN: string[] = [];
-
-// Ceiling on how many times a single widget's measured height may change before
-// we stop believing it. A settled grid measures each widget a handful of times
-// (mount, data load, font load); anything past this is a feedback loop, and
-// freezing the last height degrades to a slightly-off tile instead of pinning
-// the CPU until React throws "Maximum update depth exceeded".
-const MAX_MEASURE_CHANGES = 20;
 
 const WidgetGridInner = ({
   pageKey,
@@ -151,33 +145,28 @@ const WidgetGridInner = ({
   // content-driven so tiles grow to fit and never show an inner scrollbar.
   const [measuredRows, setMeasuredRows] = useState<Record<string, number>>({});
 
-  // How many times each widget's measured height has actually changed. Reset
-  // whenever the widget set or the grid breakpoint changes -- those legitimately
-  // re-measure everything -- so the cap only ever catches a runaway loop.
-  const measureChangesRef = useRef<Record<string, number>>({});
-  // Mirrors the accepted heights so the counting below can stay outside the
-  // state updater (updaters may run twice under StrictMode and would double-count).
+  // Per-widget rate limiter that keeps a measurement feedback loop from
+  // re-rendering the grid until React throws. Kept in refs (and evaluated
+  // outside the state updater, which may run twice under StrictMode) so a
+  // double-invoked updater cannot double-count.
+  const measureGuardsRef = useRef<Record<string, MeasureGuard>>({});
   const acceptedRowsRef = useRef<Record<string, number>>({});
-
-  const measureEpoch = `${widgetKeys.join(',')}|${breakpointForWidth(width)}`;
-  useEffect(() => {
-    measureChangesRef.current = {};
-    acceptedRowsRef.current = {};
-  }, [measureEpoch]);
 
   const handleMeasure = useCallback((key: string, px: number) => {
     const rows = pxToRows(px);
     if (acceptedRowsRef.current[key] === rows) return;
 
-    const seen = (measureChangesRef.current[key] ?? 0) + 1;
-    measureChangesRef.current[key] = seen;
-    // Past the cap we keep the last accepted height rather than chase a
-    // measure -> layout -> measure oscillation into a render-depth crash.
-    if (seen > MAX_MEASURE_CHANGES) return;
+    const { guard, apply } = evaluateMeasurement(
+      measureGuardsRef.current[key],
+      rows,
+      performance.now()
+    );
+    measureGuardsRef.current[key] = guard;
+    if (apply === null || acceptedRowsRef.current[key] === apply) return;
 
-    acceptedRowsRef.current[key] = rows;
+    acceptedRowsRef.current[key] = apply;
     setMeasuredRows((prev) =>
-      prev[key] === rows ? prev : { ...prev, [key]: rows }
+      prev[key] === apply ? prev : { ...prev, [key]: apply }
     );
   }, []);
 
