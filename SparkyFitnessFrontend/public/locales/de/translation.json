@@ -2632,5 +2632,34 @@
       "notes": "Notizen",
       "notesPlaceholder": "Gibt es noch etwas zu beachten…"
     }
+  },
+  "chat": {
+    "toolCategories": {
+      "title": "Chatbot Werkzeuge",
+      "presetFull": "Voll",
+      "food": "Essen & Wasser",
+      "exercise": "Übung",
+      "goals": "Ziele",
+      "profile": "Profil & Gewohnheiten",
+      "medications": "Medikamente",
+      "tooltip": "Chatbot Werkzeuge"
+    }
+  },
+  "foodCsvImport": {
+    "uploadCsv": "CSV Hochladen",
+    "downloadTemplate": "Template Herunterladen",
+    "pastePlaceholder": "Oder hier CSV Inhalt kopieren...",
+    "actions": "Aktionen",
+    "booleanTrue": "Wahr",
+    "booleanFalse": "Falsch",
+    "deleteRow": "Lösche Reihe",
+    "overrideLabel": "Vorhandene Lebensmitteldetails überschreiben",
+    "importing": "Importieren...",
+    "importData": "Daten importieren",
+    "importRecords_one": "Import {{count}} Datensatz",
+    "importRecords_other": "Import {{count}} Datensätze",
+    "importErrorTitle": "Importierungsfehler",
+    "pasteFirst": "Bitte füge zuerst CSV Inhalt ein.",
+    "invalidFormatTitle": "Ungültiges CSV Format"
   }
 }
