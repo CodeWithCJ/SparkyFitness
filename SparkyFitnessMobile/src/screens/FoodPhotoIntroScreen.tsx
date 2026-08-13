@@ -45,6 +45,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-cat-orange',
   ]) as [string, string, string, string];
   const date = route.params?.date;
+  const mealTypeId = route.params?.mealTypeId;
 
   const handleContinue = async () => {
     await markFoodPhotoIntroSeen();
@@ -53,7 +54,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleLogManually = async () => {
     await markFoodPhotoIntroSeen();
-    navigation.replace('FoodSearch', { date });
+    navigation.replace('FoodSearch', { date, mealTypeId: mealTypeId ?? undefined });
   };
 
   return (

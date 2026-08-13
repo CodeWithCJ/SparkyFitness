@@ -81,6 +81,34 @@ export function computeReorderTargetIndex(
   return target;
 }
 
+/**
+ * Sibling preview shift for a drag reorder (UI-thread worklet): how far a
+ * NON-active row must translate so the list opens a live insertion gap while
+ * dragging. Rows strictly between the drag origin and the current target move
+ * exactly one stride toward the origin; the active row and rows outside the
+ * crossed range stay put. Shared by WorkoutReorderList and the Meal Types
+ * unified list so both surfaces use the SAME reorder interaction language.
+ * Returns `-stride`, `+stride` or `0`.
+ */
+export function computeReorderPreviewShift(
+  rowIndex: number,
+  activeIndex: number,
+  targetIndex: number,
+  stride: number,
+): number {
+  'worklet';
+  if (rowIndex === activeIndex || activeIndex < 0 || targetIndex < 0) {
+    return 0;
+  }
+  if (activeIndex < rowIndex && rowIndex <= targetIndex) {
+    return -stride;
+  }
+  if (targetIndex <= rowIndex && rowIndex < activeIndex) {
+    return stride;
+  }
+  return 0;
+}
+
 interface ReorderItemRowProps {
   item: ExerciseReorderItem;
   index: number;
@@ -148,14 +176,19 @@ function ReorderItemRow({
       };
     }
     // Others open a gap for the drag by springing exactly one dragged-stride:
-    // items between the origin and the current target shift toward the origin.
-    const t = targetIndex.value;
-    const stride = strides[active];
-    let shift = 0;
-    if (active < index && index <= t) shift = -stride;
-    else if (t <= index && index < active) shift = stride;
+    // items between the origin and the current target shift toward the origin
+    // (shared helper — Meal Types uses the identical calculation).
+    const shift = computeReorderPreviewShift(
+      index,
+      active,
+      targetIndex.value,
+      strides[active],
+    );
     return {
-      transform: [{ translateY: withSpring(shift, { damping: 44, stiffness: 960 }) }, { scale: 1 }],
+      transform: [
+        { translateY: withSpring(shift, { damping: 44, stiffness: 960 }) },
+        { scale: 1 },
+      ],
       zIndex: 0,
       elevation: 0,
       shadowOpacity: 0,

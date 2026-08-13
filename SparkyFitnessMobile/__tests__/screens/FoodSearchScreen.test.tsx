@@ -444,6 +444,32 @@ describe('FoodSearchScreen', () => {
     expect(screen.getByText('1 whole')).toBeTruthy();
   });
 
+  it('forwards an optional mealTypeId param through to FoodEntryAdd', () => {
+    mockUseMealSearch.mockReturnValue({
+      searchResults: [buildMeal()],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+      refetch: jest.fn(),
+    });
+
+    const withMealTypeRoute = {
+      key: 'FoodSearch-key',
+      name: 'FoodSearch' as const,
+      params: { date: '2026-01-01', mealTypeId: 'custom-pw' },
+    };
+    const screen = renderSearching(withMealTypeRoute);
+
+    fireEvent.press(screen.getByText('Lunch Bowl'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.objectContaining({
+        mealTypeId: 'custom-pw',
+      }),
+    );
+  });
+
   it('opens FoodEntryAdd when a saved-meal result is tapped', () => {
     mockUseMealSearch.mockReturnValue({
       searchResults: [buildMeal()],
@@ -725,4 +751,28 @@ describe('FoodSearchScreen', () => {
     expect(refetchRecentMeals).toHaveBeenCalled();
     expect(refetchTopMeals).toHaveBeenCalled();
   });
+
+  it('forwards mealTypeId through to the barcode scanner (FoodScan)', () => {
+    const withMealTypeRoute = {
+      key: 'FoodSearch-key',
+      name: 'FoodSearch' as const,
+      params: { date: '2026-01-01', mealTypeId: 'custom-pw' },
+    };
+    // Landing render (empty query) shows the Scan Food button.
+    const screen = render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodSearchScreen navigation={navigation} route={withMealTypeRoute} />
+      </SafeAreaProvider>,
+    );
+    const scanButton = screen.getByLabelText('Scan Food');
+    fireEvent.press(scanButton);
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodScan',
+      expect.objectContaining({
+        date: '2026-01-01',
+        mealTypeId: 'custom-pw',
+      }),
+    );
+  });
+
 });

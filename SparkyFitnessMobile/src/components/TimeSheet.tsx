@@ -15,8 +15,10 @@ export function dateTypeToDate(date: DateType): Date | null {
   return new Date(date);
 }
 
-/** Builds a `Date` seeded with today's date and the given 'HH:MM' (or now if empty/invalid). */
-function timeStringToDate(value: string): Date {
+/** Builds a `Date` seeded with today's date and the given 'HH:MM' (or now if empty/invalid).
+ * Exported so the shared MealTypeTimeWheel uses the same conversion (single
+ * implementation of HH:MM → Date across the app). */
+export function timeStringToDate(value: string): Date {
   const now = new Date();
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return now;
   const [hours, minutes] = value.split(':').map(Number);
@@ -25,7 +27,8 @@ function timeStringToDate(value: string): Date {
   return date;
 }
 
-function dateToTimeString(date: Date): string {
+/** Formats a `Date` as canonical 'HH:MM'. Exported for the shared time wheel. */
+export function dateToTimeString(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 

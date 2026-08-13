@@ -16,7 +16,7 @@ import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
+import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences, useMealTypes } from '../hooks';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
 import { isManualSource } from '../utils/customMeasurementsForm';
@@ -29,7 +29,8 @@ import {
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import type { MealTypeKey } from '../utils/mealNutrition';
+import { getHistoricalMealTypeLabel, getMealTypeDisplayLabel } from '../utils/mealNutrition';
+import type { FoodEntry } from '../types/foodEntries';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -119,9 +120,24 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   ), [goToPreviousDay, goToNextDay]);
 
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), [setSelectedDate]);
-  const openMealTypeDetail = useCallback((mealType: MealTypeKey) => {
-    navigation.navigate('MealTypeDetail', { date: selectedDate, mealType });
-  }, [navigation, selectedDate]);
+  const { mealTypes } = useMealTypes();
+  const openMealTypeDetail = useCallback(
+    (mealTypeId: string | null, mealTypeName: string, entries: FoodEntry[]) => {
+      // Resolve the label from the canonical definition (ownership-aware); for
+      // a deleted/hidden type fall back to the literal historical name.
+      const definition = mealTypes.find((mt) => mt.id === mealTypeId) ?? null;
+      const mealLabel = definition
+        ? getMealTypeDisplayLabel(definition)
+        : getHistoricalMealTypeLabel(mealTypeName);
+      navigation.navigate('MealTypeDetail', {
+        date: selectedDate,
+        mealTypeId: mealTypeId ?? undefined,
+        mealType: mealTypeName,
+        mealLabel,
+      });
+    },
+    [navigation, selectedDate, mealTypes],
+  );
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit as 'kg' | 'lbs') ?? 'kg';
@@ -297,6 +313,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <>
             <FoodSummary
               foodEntries={summary.foodEntries}
+              mealTypes={mealTypes}
               goals={summary.goals}
               calorieGoal={summary.calorieGoal}
               onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })}

@@ -96,6 +96,7 @@ const LANDING_ITEM_LIMIT = 10;
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
+  const mealTypeId = route.params?.mealTypeId;
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const insets = useSafeAreaInsets();
   const [accentColor, textMuted, textSecondary, favoriteGold] = useCSSVariable([
@@ -316,9 +317,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         date,
         pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
         returnDepth: isMealBuilderMode ? 2 : undefined,
+        mealTypeId,
       });
     },
-    [navigation, date, isMealBuilderMode],
+    [navigation, date, isMealBuilderMode, mealTypeId],
   );
 
   const openCreateFood = useCallback(() => {
@@ -339,6 +341,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       date,
       pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
       returnDepth: isMealBuilderMode ? 2 : undefined,
+      // Preserve the originating meal type (MealTypeDetail → FoodSearch → scan).
+      mealTypeId: mealTypeId ?? undefined,
       // Never forward the All Providers sentinel as a real provider; the scanner
       // should fall back to its default provider in that mode.
       providerId:
@@ -346,7 +350,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           ? undefined
           : (selectedProvider ?? undefined),
     });
-  }, [navigation, date, isMealBuilderMode, selectedProvider]);
+  }, [navigation, date, isMealBuilderMode, selectedProvider, mealTypeId]);
 
   // Only the custom-header path opens the JS menu; on the native path the
   // system presents a UIMenu from the header item directly.
