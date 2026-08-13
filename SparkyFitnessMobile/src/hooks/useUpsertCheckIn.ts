@@ -17,7 +17,7 @@ interface UpsertCheckInVars {
   bodyFatPercentage?: number | null;
 }
 
-export function useUpsertCheckIn() {
+export function useUpsertCheckIn(options?: { showErrorToast?: boolean }) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (vars: UpsertCheckInVars) => upsertCheckIn(vars),
@@ -30,11 +30,16 @@ export function useUpsertCheckIn() {
     },
     onError: (error) => {
       addLog(`Failed to upsert check-in: ${error}`, 'ERROR');
-      Toast.show({
-        type: 'error',
-        text1: 'Save failed',
-        text2: 'Could not save measurements. Please try again.',
-      });
+      // Standalone callers rely on this toast. Multi-mutation flows pass
+      // showErrorToast:false so the orchestrating screen owns the single
+      // user-facing error message.
+      if (options?.showErrorToast !== false) {
+        Toast.show({
+          type: 'error',
+          text1: 'Save failed',
+          text2: 'Could not save measurements. Please try again.',
+        });
+      }
     },
   });
 }

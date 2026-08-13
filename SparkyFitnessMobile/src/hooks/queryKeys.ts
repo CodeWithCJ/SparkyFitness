@@ -59,6 +59,9 @@ export const foodVariantsQueryKey = (foodId: string) => ['foodVariants', foodId]
 export const measurementsRangeQueryKey = (startDate: string, endDate: string) =>
   ['measurementsRange', startDate, endDate] as const;
 
+export const customCategoriesQueryKey = ['customCategories'] as const;
+export const customMeasurementsByDateQueryKey = (date: string) => ['customMeasurements', date] as const;
+
 export const exerciseHistoryQueryKey = ['exerciseHistory'] as const;
 
 /** Per-exercise filtered history; extends the root so prefix invalidation covers it. */

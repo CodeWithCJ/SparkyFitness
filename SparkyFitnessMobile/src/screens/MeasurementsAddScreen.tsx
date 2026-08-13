@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,9 @@ import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import YesNoClearControl from '../components/YesNoClearControl';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useMeasurements } from '../hooks/useMeasurements';
@@ -30,10 +32,25 @@ import {
   stonesLbsToKg,
 } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
+import {
+  syncCustomForm,
+  buildCustomOps,
+  isManualSource,
+  type CustomFormState,
+  type CustomRow,
+  type CustomOp,
+} from '../utils/customMeasurementsForm';
+import { isAutoHealthSyncCustomCategoryName } from '../utils/autoHealthSyncCategories';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
+import {
+  useCustomCategories,
+  useCustomMeasurementsByDate,
+  useSaveCustomMeasurement,
+  useDeleteCustomMeasurement,
+} from '../hooks/useCustomMeasurements';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -107,6 +124,23 @@ const joinWithAnd = (items: string[]): string => {
   return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
 };
 
+/**
+ * Categories eligible for the manual Daily editor: only `Daily` frequency and
+ * Hourly / All / Unlimited are intentionally not exposed (scope cut; future
+ * feature PR).
+ *
+ * Health-sync name matching is NOT applied here: the form/save model must
+ * include every Daily category (known health-sync names included) so a value
+ * typed inside the collapsed "More categories" section still saves with
+ * source 'manual'. Presentation (primary vs More) is partitioned separately
+ * from the form model.
+ */
+function isDailyCustomCategory(category: {
+  frequency: string | null | undefined;
+}): boolean {
+  return category.frequency === 'Daily';
+}
+
 const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -126,7 +160,19 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const dirtyFieldsRef = useRef<Set<FieldKey>>(new Set());
   const lastDateRef = useRef<string | null>(null);
 
-  const { measurements, isLoading } = useMeasurements({ date: selectedDate });
+  const [customForm, setCustomForm] = useState<CustomFormState>({});
+  const customFormRef = useRef<CustomFormState>({});
+  // Keep the ref in sync outside the render body so the reconciliation effect
+  // below can read the latest form without re-running on every keystroke.
+  useEffect(() => {
+    customFormRef.current = customForm;
+  }, [customForm]);
+  // Per-row dirty tracking: a refetch preserves dirty rows (local values) and
+  // drops untouched rows that no longer exist on the server.
+  const dirtyCustomKeysRef = useRef<Set<string>>(new Set());
+  const lastCustomDateRef = useRef<string | null>(null);
+
+  const { measurements, isLoading, refetch: refetchMeasurements } = useMeasurements({ date: selectedDate });
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   // Weight supports a third "stones + lbs" mode that renders as two inputs.
   const weightMode: 'kg' | 'lbs' | 'st_lbs' = preferences?.default_weight_unit ?? 'kg';
@@ -138,7 +184,78 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const heightMode: 'cm' | 'inches' | 'ft_in' =
     preferences?.default_measurement_unit ?? 'cm';
 
-  const upsertMutation = useUpsertCheckIn();
+  const upsertMutation = useUpsertCheckIn({ showErrorToast: false });
+  const saveCustomMutation = useSaveCustomMeasurement();
+  const deleteCustomMutation = useDeleteCustomMeasurement();
+  const {
+    data: customCategories,
+    isLoading: isCustomCategoriesLoading,
+    isError: isCustomCategoriesError,
+    refetch: refetchCustomCategories,
+  } = useCustomCategories();
+  const {
+    data: customMeasurements,
+    isLoading: isCustomMeasurementsLoading,
+    isError: isCustomMeasurementsError,
+    refetch: refetchCustomEntries,
+  } = useCustomMeasurementsByDate(selectedDate);
+
+  // Filter BEFORE presentation: the manual Daily editor only exposes eligible
+  // Daily categories. Health-sync categories (and Hourly/All/Unlimited) never
+  // reach the form state, so they cannot flood the screen. Memoized so the
+  // reconciliation effect below has a stable identity across renders.
+  /** FORM MODEL: every Daily category (health-sync names included). Used by
+   * syncCustomForm / buildCustomOps / delete lookup / reconciliation / dirty
+   * preservation — never the presentation partition, so a value typed inside
+   * "More categories" is always part of the form regardless of expansion. */
+  const dailyCustomCategories = useMemo(
+    () => (customCategories ?? []).filter(isDailyCustomCategory),
+    [customCategories],
+  );
+
+  /** Server-backed manual entries for the CURRENT selected date only. Synced /
+   * null / undefined sources never count. This is the temporary mobile
+   * heuristic (selected-day entries); a long-term server-side
+   * has_manual_entries flag remains future work per maintainer. */
+  const manualCategoryIds = useMemo(
+    () =>
+      new Set(
+        (customMeasurements ?? [])
+          .filter((entry) => isManualSource(entry.source))
+          .map((entry) => entry.category_id),
+      ),
+    [customMeasurements],
+  );
+
+  /** Primary: not a known health-sync name, OR it already has a manual entry
+   * for the selected date. Always visible in the main custom list. */
+  const primaryCustomCategories = useMemo(
+    () =>
+      dailyCustomCategories.filter(
+        (cat) =>
+          !isAutoHealthSyncCustomCategoryName(cat.name) ||
+          manualCategoryIds.has(cat.id),
+      ),
+    [dailyCustomCategories, manualCategoryIds],
+  );
+
+  /** More: a known health-sync name with NO manual entry for the selected
+   * date — collapsed behind one tap so integration-heavy accounts stay
+   * compact while legitimate collisions (weight, Blood Pressure) remain
+   * accessible. */
+  const moreCustomCategories = useMemo(
+    () =>
+      dailyCustomCategories.filter(
+        (cat) =>
+          isAutoHealthSyncCustomCategoryName(cat.name) &&
+          !manualCategoryIds.has(cat.id),
+      ),
+    [dailyCustomCategories, manualCategoryIds],
+  );
+
+  // Lazy "More categories" expansion state (presentation only — never owns the
+  // form value; collapsing keeps typed values in customForm).
+  const [showMoreCategories, setShowMoreCategories] = useState(false);
 
   // Sync the form to the latest measurements snapshot. Re-runs on every
   // measurements change (including background refetches) so cached-then-fresh
@@ -218,6 +335,25 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     setPrefilledKeys(prefilled);
   }, [selectedDate, isLoading, isPreferencesLoading, measurements, weightMode, bodyUnit, heightMode]);
 
+  // Reconcile the custom form with the latest server entries. A date change
+  // resets the dirty set so the previous day's input is never carried over.
+  // Only eligible Daily categories participate; synced (non-manual) entries are
+  // excluded by syncCustomForm so they never become editable manual state.
+  useEffect(() => {
+    if (lastCustomDateRef.current !== selectedDate) {
+      lastCustomDateRef.current = selectedDate;
+      dirtyCustomKeysRef.current = new Set();
+    }
+    const dirtyKeys = new Set(dirtyCustomKeysRef.current);
+    const synced = syncCustomForm({
+      categories: dailyCustomCategories,
+      serverEntries: customMeasurements ?? [],
+      current: customFormRef.current,
+      dirtyKeys,
+    });
+    setCustomForm(synced.form);
+  }, [selectedDate, dailyCustomCategories, customMeasurements]);
+
   const updateField = useCallback((key: keyof FormState, value: string) => {
     dirtyFieldsRef.current.add(FORM_FIELD_KEYS[key]);
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -231,6 +367,43 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleClose = useCallback(() => {
     navigation.goBack();
   }, [navigation]);
+
+  const setSingleCustomValue = useCallback((categoryId: string, value: string) => {
+    const existing = customFormRef.current[categoryId]?.rows[0] ?? null;
+    const key = existing?.key ?? `single-${categoryId}`;
+    dirtyCustomKeysRef.current.add(key);
+    setCustomForm((prev) => {
+      const catForm = prev[categoryId];
+      const row = catForm?.rows[0] ?? null;
+      const nextRow: CustomRow = row
+        ? { ...row, value }
+        : { key, entryId: null, source: 'manual', value };
+      return { ...prev, [categoryId]: { rows: [nextRow], deleted: catForm?.deleted ?? [] } };
+    });
+  }, []);
+
+  const deleteCustomRow = useCallback((categoryId: string, row: CustomRow) => {
+    setCustomForm((prev) => {
+      const catForm = prev[categoryId];
+      if (!catForm) return prev;
+      if (row.entryId != null) {
+        return {
+          ...prev,
+          [categoryId]: {
+            rows: catForm.rows.filter((r) => r.key !== row.key),
+            deleted: [...catForm.deleted, { entryId: row.entryId }],
+          },
+        };
+      }
+      return { ...prev, [categoryId]: { ...catForm, rows: catForm.rows.filter((r) => r.key !== row.key) } };
+    });
+  }, []);
+
+  const handleRetryCustomData = useCallback(() => {
+    refetchCustomCategories();
+    refetchCustomEntries();
+    refetchMeasurements();
+  }, [refetchCustomCategories, refetchCustomEntries, refetchMeasurements]);
 
   const handleSave = useCallback(() => {
     type FieldResult =
@@ -363,26 +536,125 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       'bodyFatPercentage',
     ];
     const hasAnyField = fieldKeys.some((k) => payload[k] !== undefined);
-    if (!hasAnyField) {
-      Toast.show({ type: 'info', text1: 'Nothing to save', text2: 'Enter or clear at least one value.' });
+
+    // Build operation descriptors for CHANGED custom rows only. `ok: false`
+    // means a changed row failed validation, so handleSave stops before any
+    // mutation runs; untouched rows are never parsed and cannot block saves.
+    const customResult = buildCustomOps({
+      categories: dailyCustomCategories,
+      form: customForm,
+      dirtyKeys: new Set(dirtyCustomKeysRef.current),
+      onInvalid: (label) => {
+        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: 'Enter a number.' });
+      },
+    });
+    if (!customResult.ok) return;
+    const customOps = customResult.operations;
+
+    if (!hasAnyField && customOps.length === 0) {
+       Toast.show({ type: 'info', text1: 'Nothing to save', text2: 'Enter or clear at least one value.' });
       return;
     }
 
-    const doSave = () => {
-      upsertMutation.mutate(payload, {
-        onSuccess: () => {
+    const doSave = async () => {
+      // Rows whose custom operation already succeeded are removed from the
+      // pending set; failed and not-yet-attempted rows stay dirty so the
+      // refetch keeps their typed values and a retry sends only the rest.
+      const remainingDirtyCustom = new Set(dirtyCustomKeysRef.current);
+      let customSucceeded = true;
+
+      try {
+        for (const op of customOps) {
+          try {
+            if (op.kind === 'delete') {
+              await deleteCustomMutation.mutateAsync({ id: op.entryId, entryDate: selectedDate });
+              // A confirmed delete must never be retried: drop its tombstone so
+              // a retry after a later partial failure cannot re-send the delete
+              // for an already-removed entry id.
+              setCustomForm((prev) => {
+                const catForm = prev[op.categoryId];
+                if (!catForm) return prev;
+                return {
+                  ...prev,
+                  [op.categoryId]: {
+                    ...catForm,
+                    deleted: catForm.deleted.filter((d) => d.entryId !== op.entryId),
+                  },
+                };
+              });
+            } else {
+              // Daily upsert semantics on the backend match by
+              // (category, date, source). Every save from this screen sends
+              // source 'manual' (never a preserved synced source), so a manual
+              // value stays separate from health-synced entries.
+              await saveCustomMutation.mutateAsync({
+                category_id: op.categoryId,
+                value: op.value,
+                entry_date: selectedDate,
+                source: op.source,
+              });
+            }
+            // This operation reached the server successfully; it must not be
+            // retried by a later partial-failure retry.
+            if (op.rowKey) remainingDirtyCustom.delete(op.rowKey);
+          } catch {
+            // Stop at the first failure; later operations remain pending.
+            customSucceeded = false;
+            break;
+          }
+        }
+
+        if (customSucceeded && hasAnyField) {
+          try {
+            await upsertMutation.mutateAsync(payload);
+          } catch {
+            customSucceeded = false;
+          }
+        }
+
+        if (customSucceeded) {
           Toast.show({ type: 'success', text1: 'Saved' });
           navigation.goBack();
-        },
-      });
+          return;
+        }
+      } catch {
+        // Unreachable in practice (every mutation above is individually
+        // caught), but keep the screen open rather than crashing.
+        customSucceeded = false;
+      }
+
+      // Partial failure: do NOT clear the forms. The custom rows that failed
+      // (or never ran) keep their values via the pending dirty set, and the
+      // standard fields keep their dirty markers because the upsert did not
+      // persist (or was never attempted). Only the rows that succeeded are
+      // dropped from the pending set.
+      dirtyCustomKeysRef.current = remainingDirtyCustom;
+      await Promise.allSettled([
+        refetchMeasurements(),
+        refetchCustomCategories(),
+        refetchCustomEntries(),
+      ]);
+      Toast.show({ type: 'error', text1: 'Some changes may not have been saved.' });
     };
 
-    if (cleared.length > 0) {
-      const labels = cleared.map((k) => FIELD_LABELS[k]);
-      const noun = cleared.length === 1 ? 'measurement' : 'measurements';
+    // Custom deletes (clearing a prefilled entry or pressing the row delete
+    // button) require confirmation and the message lists affected categories.
+    const customDeleteOps = customOps.filter(
+      (op): op is Extract<CustomOp, { kind: 'delete' }> => op.kind === 'delete',
+    );
+    const clearingLabels = [
+      ...cleared.map((k) => FIELD_LABELS[k]),
+      ...customDeleteOps.map((op) => {
+        const cat = dailyCustomCategories.find((c) => c.id === op.categoryId);
+        return cat ? (cat.display_name ?? cat.name) : op.categoryId;
+      }),
+    ];
+
+    if (clearingLabels.length > 0) {
+      const noun = clearingLabels.length === 1 ? 'measurement' : 'measurements';
       Alert.alert(
-        `Clear ${cleared.length} ${noun}?`,
-        `${joinWithAnd(labels)} will be cleared.`,
+        `Clear ${clearingLabels.length} ${noun}?`,
+        `${joinWithAnd(clearingLabels)} will be cleared.`,
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Save', style: 'destructive', onPress: doSave },
@@ -392,9 +664,25 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, navigation]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, dailyCustomCategories, customForm, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
 
-  const isSaveDisabled = isLoading || isPreferencesLoading || upsertMutation.isPending;
+  const isCustomDataLoading = isCustomCategoriesLoading || isCustomMeasurementsLoading;
+  const isCustomDataError = isCustomCategoriesError || isCustomMeasurementsError;
+  // One coherent mutation-pending state: both the native header and the footer
+  // Save reflect every mutation that can actually be in flight.
+  const isMutationPending =
+    upsertMutation.isPending ||
+    saveCustomMutation.isPending ||
+    deleteCustomMutation.isPending;
+  const isSaveDisabled =
+    isLoading ||
+    isPreferencesLoading ||
+    isCustomDataLoading ||
+    isMutationPending;
+  // Closing stays available during a fetch error so the user is never trapped;
+  // only an in-flight mutation blocks dismissal.
+  const isDismissDisabled = isMutationPending;
+  const isSaving = isMutationPending;
 
   const weightLabel =
     weightMode === 'st_lbs' ? 'Weight (st, lb)' : `Weight (${weightMode})`;
@@ -426,18 +714,79 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const header = useScreenHeader({
     title: 'Measurements',
-    left: { kind: 'dismiss', onPress: handleClose, disabled: isSaveDisabled },
+    left: { kind: 'dismiss', onPress: handleClose, disabled: isDismissDisabled },
     right: {
       kind: 'primary',
       label: SAVE_LABEL,
       busyLabel: SAVING_LABEL,
-      busy: upsertMutation.isPending,
+      busy: isSaving,
       disabled: isSaveDisabled,
       placement: 'native-only',
       onPress: handleSave,
       identifier: 'measurements-save',
     },
   });
+
+  const booleanLabels = {
+    yes: 'Yes',
+    no: 'No',
+    clear: 'Clear',
+  };
+
+  // Daily manual editor: exactly one editable row per category. Health-sync
+  // categories and Hourly/All/Unlimited never reach this renderer.
+  const renderCustomCategory = (cat: NonNullable<typeof customCategories>[number]) => {
+    const label = cat.display_name ?? cat.name;
+    const suffix = cat.measurement_type ? ` (${cat.measurement_type})` : '';
+    const isBoolean = cat.data_type === 'boolean';
+    const isNumeric = cat.data_type === 'numeric' || cat.data_type == null;
+    const catForm = customForm[cat.id] ?? { rows: [], deleted: [] };
+    const row = catForm.rows[0] ?? null;
+
+    return (
+      <View key={cat.id} className="mb-4">
+        <Text className="text-text-secondary text-sm mb-1">
+          {label}{suffix}
+        </Text>
+        <View className="flex-row items-center gap-2">
+          <View className="flex-1">
+            {isBoolean ? (
+              <YesNoClearControl
+                value={row?.value ?? ''}
+                onChange={(v) => setSingleCustomValue(cat.id, v)}
+                labels={booleanLabels}
+              />
+            ) : (
+              <FormInput
+                value={row?.value ?? ''}
+                onChangeText={(v) => setSingleCustomValue(cat.id, v)}
+                keyboardType={isNumeric ? 'decimal-pad' : 'default'}
+                placeholder={isNumeric ? '0' : ''}
+                returnKeyType="done"
+                testID={`custom-input-${cat.id}`}
+              />
+            )}
+          </View>
+          {row != null && (
+            <TouchableOpacity
+              onPress={() => deleteCustomRow(cat.id, row)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${label} entry`}
+              testID={`delete-custom-${row.key}`}
+            >
+              <Icon name="trash" size={18} color={textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        {row?.entryId != null && row.value.trim() === '' ? (
+          <Text className="text-xs italic mt-1" style={{ color: textSecondary }}>
+            Will be cleared
+          </Text>
+        ) : null}
+      </View>
+    );
+  };
 
   return (
     <View
@@ -600,6 +949,52 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
               />
               {renderClearHint('steps')}
             </View>
+
+            {isCustomDataError ? (
+              <View className="mt-4 mb-2 py-6 items-center">
+                <Text className="text-text-secondary text-sm text-center mb-3">
+                  {"Couldn't load custom measurements."}
+                </Text>
+                <Button variant="secondary" onPress={handleRetryCustomData} className="px-6">
+                  <Text className="text-text-primary text-sm font-semibold">
+                    Try again
+                  </Text>
+                </Button>
+              </View>
+            ) : isCustomDataLoading ? (
+              <View className="mt-4 mb-2 py-6 items-center">
+                <ActivityIndicator size="small" color={accentPrimary} />
+              </View>
+            ) : (
+              dailyCustomCategories.length > 0 && (
+                <View className="mt-4 mb-2">
+                  <Text className="text-text-primary text-base font-semibold mb-3">
+                     Custom Measurements
+                  </Text>
+                  {primaryCustomCategories.map(renderCustomCategory)}
+                  {moreCustomCategories.length > 0 && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        onPress={() => setShowMoreCategories((prev) => !prev)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        className="self-start py-0 px-0"
+                        textClassName="text-sm"
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded: showMoreCategories }}
+                        accessibilityLabel="More categories"
+                      >
+                        <Text style={{ color: accentPrimary }} className="text-sm font-medium">
+                          {showMoreCategories ? 'Hide categories ▴' : 'More categories ▾'}
+                        </Text>
+                      </Button>
+                      {showMoreCategories &&
+                        moreCustomCategories.map(renderCustomCategory)}
+                    </>
+                  )}
+                </View>
+              )
+            )}
           </>
         )}
 
@@ -611,7 +1006,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         <FooterSaveBar
           onPress={handleSave}
           disabled={isSaveDisabled}
-          busy={upsertMutation.isPending}
+          busy={isMutationPending}
         />
       )}
 
