@@ -1130,5 +1130,14 @@
     "editTitle": "Muokkaa harjoituspohjaa",
     "createDescription": "Luo uusi harjoituspohja antamalla sille nimi, kuvaus ja harjoitteet.",
     "editDescription": "Muokkaa harjoituspohjasi tietoja."
+  },
+  "chat": {
+    "toolCategories": {
+      "title": "Chatbot työkalut",
+      "description": "Pienempi määrä työkaluja auttaa pienempiä malleja vastaamaan luotettavammin.",
+      "presetFull": "Täysi",
+      "presetCore": "Ydin",
+      "clearAll": "Tyhjennä kaikki"
+    }
   }
 }
