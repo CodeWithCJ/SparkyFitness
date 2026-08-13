@@ -264,6 +264,25 @@ async function finalizeUploadedImages(
 const NEW_IMAGE_PLACEHOLDER = /^__new__(\d+)$/;
 
 /**
+ * Parses the `images` multipart field: the client's desired final order, where
+ * `__new__<n>` placeholders mark the position of the n-th uploaded file.
+ * Anything unparseable is treated as absent.
+ */
+function parseImageOrder(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (typeof value !== 'string' || value.length === 0) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Resolves a client-supplied image order against the files that were actually
  * uploaded, substituting each `__new__<n>` placeholder with the n-th uploaded
  * path.
@@ -383,6 +402,7 @@ async function removeEntityImageDir(
 export {
   uploadImages,
   applyImageOrder,
+  parseImageOrder,
   stagedFilesFrom,
   parseMultipartBody,
   uploadSingleImage,

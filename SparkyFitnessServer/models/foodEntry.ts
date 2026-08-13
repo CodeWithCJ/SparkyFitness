@@ -467,8 +467,7 @@ async function updateFoodEntry(
         traces = $33,
         entry_time = $34,
         -- NULL means "key omitted": keep whatever override is already stored.
-        -- Clearing the override is done by sending an empty string.
-        -- NULL means "key omitted": keep whatever override is already stored.
+        -- Clearing the override is done by sending an empty array.
         images = COALESCE($35::jsonb, images)
       WHERE id = $30
       RETURNING *`,

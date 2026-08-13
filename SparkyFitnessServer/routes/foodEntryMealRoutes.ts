@@ -9,6 +9,7 @@ import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import {
   uploadImages,
   applyImageOrder,
+  parseImageOrder,
   finalizeUploadedImages,
   cleanupStagedImages,
   stagedFilesFrom,
@@ -16,24 +17,6 @@ import {
 } from '../middleware/imageUpload.js';
 const router = express.Router();
 
-/**
- * Parses the `images` multipart field: the client's desired final order, where
- * `__new__<n>` placeholders mark the position of the n-th uploaded file.
- * Anything unparseable is treated as absent.
- */
-function parseImageOrder(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value;
-  }
-  if (typeof value !== 'string' || value.length === 0) {
-    return undefined;
-  }
-  try {
-    return JSON.parse(value);
-  } catch {
-    return undefined;
-  }
-}
 // Middleware to protect routes
 router.use(authenticate); // Use the authenticate middleware function
 /**

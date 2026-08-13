@@ -45,8 +45,8 @@ const EditMealFoodEntryDialog = ({
             food diary, not the master meal template.
           </p>
         </DialogHeader>
-        {/* Per-entry photo. Saves immediately and only affects this entry —
-            the meal template's own images are untouched. */}
+        {/* Per-entry photo. Edits are staged and persisted on save, and only
+            affect this entry — the meal template's own images are untouched. */}
         <FoodEntryImageOverride
           entry={foodEntry}
           kind="meal"
