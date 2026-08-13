@@ -485,8 +485,11 @@ const Diary = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b">
         <div />
-        <div className="flex items-center gap-2 sm:ml-auto">
-          <div ref={setToolbarContainer} className="flex items-center gap-2" />
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:ml-auto">
+          <div
+            ref={setToolbarContainer}
+            className="flex min-w-0 flex-wrap items-center gap-2"
+          />
           <DayNavigator
             selectedDate={selectedDate}
             onDateChange={(dateString) => {
