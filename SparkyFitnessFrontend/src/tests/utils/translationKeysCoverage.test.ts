@@ -154,9 +154,16 @@ describe('i18n: English translation coverage', () => {
       // i18next pluralization: t('foo.bar', { count }) resolves to
       // foo.bar_one / foo.bar_other (and other CLDR plural forms) rather than
       // a literal "foo.bar" leaf, so check those before flagging as missing.
-      const hasPluralForm = [...flatTranslations.keys()].some(
-        (k) =>
-          k.startsWith(`${key}_`) && flatTranslations.get(k)?.type === 'string'
+      const PLURAL_SUFFIXES = [
+        '_zero',
+        '_one',
+        '_two',
+        '_few',
+        '_many',
+        '_other',
+      ];
+      const hasPluralForm = PLURAL_SUFFIXES.some(
+        (suffix) => flatTranslations.get(`${key}${suffix}`)?.type === 'string'
       );
       if (hasPluralForm) continue;
 
