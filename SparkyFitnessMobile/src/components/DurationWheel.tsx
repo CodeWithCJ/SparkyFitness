@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 import WheelPicker, { type PickerOption as WheelPickerOption } from './ui/wheel-picker';
 import { useCSSVariable } from 'uniwind';
@@ -59,14 +59,14 @@ function DurationWheel({ valueSec, onChangeSec, maxSec = 900 }: DurationWheelPro
   // this index below when valueSec changes for a reason other than our own
   // handleSecondChange call.
   const [secondsIndex, setSecondsIndex] = useState(() => SEC_MID_OFFSET + currentSec);
-  const lastEmittedSecRef = useRef(currentSec);
+  const [lastEmittedSec, setLastEmittedSec] = useState(currentSec);
 
-  useEffect(() => {
-    if (currentSec !== lastEmittedSecRef.current) {
-      lastEmittedSecRef.current = currentSec;
-      setSecondsIndex(SEC_MID_OFFSET + currentSec);
-    }
-  }, [currentSec]);
+  // valueSec changes are reflected in the same commit rather than triggering an extra render.
+  // The "last known" value is plain state rather than a ref.
+  if (currentSec !== lastEmittedSec) {
+    setLastEmittedSec(currentSec);
+    setSecondsIndex(SEC_MID_OFFSET + currentSec);
+  }
 
   const secondsWheelValue = secondsIndex;
 
@@ -92,7 +92,7 @@ function DurationWheel({ valueSec, onChangeSec, maxSec = 900 }: DurationWheelPro
     const index = Number(v);
     // Strip the loop offset; the canonical value is always 0–59.
     const s = index % 60;
-    lastEmittedSecRef.current = s;
+    setLastEmittedSec(s);
     setSecondsIndex(index);
     const total = Math.max(0, Math.min(maxSec, currentMin * 60 + s));
     onChangeSec(total);
