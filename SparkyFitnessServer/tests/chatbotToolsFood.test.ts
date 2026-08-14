@@ -1350,6 +1350,97 @@ describe('log_external_food', () => {
     });
   }
 
+  // Regression: the cascade ordered providers purely by the repository's
+  // sort_order/created_at, ignoring default_food_data_provider_id. With
+  // sort_order NULL (the common case) the newest provider won every lookup and
+  // the user's chosen default provider had no effect on chat/MCP results.
+  it('queries the user default food provider before the others', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([]);
+    vi.mocked(foodRepository.countFoods).mockResolvedValue(0);
+    vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
+      energy_unit: 'kcal',
+      water_display_unit: 'ml',
+      default_food_data_provider_id: 'prov-off',
+    });
+    // Repository order puts fatsecret first, as an unset sort_order would.
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      { id: 'prov-fs', provider_type: 'fatsecret', provider_name: 'FatSecret' },
+      {
+        id: 'prov-off',
+        provider_type: 'openfoodfacts',
+        provider_name: 'OpenFoodFacts',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [usdaApple],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+
+    await tools.sparky_manage_food.execute!(
+      { action: 'lookup_food_nutrition', food_name: 'Apple' },
+      opts
+    );
+
+    // The default provider is consulted first; the cascade stops on its hit,
+    // so fatsecret is never queried at all.
+    expect(searchProviderFoods).toHaveBeenCalledTimes(1);
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-1',
+      'openfoodfacts',
+      'Apple',
+      { providerId: 'prov-off' }
+    );
+  });
+
+  // Regression: the createFood payload here is hand-enumerated, so the
+  // provider photo was dropped and foods logged through the assistant/MCP
+  // arrived without the image the same food gets when added from the web UI.
+  it('carries the provider image through to createFood', async () => {
+    mockUsdaLookup([
+      {
+        ...usdaApple,
+        image_url: 'https://images.example.com/apple-400.jpg',
+        image_source_url: 'https://images.example.com/apple-full.jpg',
+      },
+    ]);
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Apple',
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 52,
+      },
+    });
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Apple',
+    });
+
+    await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_external_food',
+        food_name: 'Apple',
+        external_id: '171688',
+        quantity: 1,
+        meal_type: 'breakfast',
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        image_url: 'https://images.example.com/apple-400.jpg',
+        image_source_url: 'https://images.example.com/apple-full.jpg',
+      })
+    );
+  });
+
   it('re-fetches the provider match, saves it with full nutrition, and logs it', async () => {
     mockUsdaLookup([usdaApple]);
     vi.mocked(foodCoreService.createFood).mockResolvedValue({
@@ -1412,6 +1503,8 @@ describe('log_external_food', () => {
       source: 'imported',
       provider_type: 'usda',
       provider_external_id: '171688',
+      image_url: null,
+      image_source_url: null,
     });
     expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
       'user-1',
