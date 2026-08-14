@@ -17,7 +17,11 @@
       "vision": "Vision",
       "profile": "Profile & Habits",
       "medications": "Medications"
-    }
+    },
+    "errorClearingHistory": "Failed to clear chat history.",
+    "errorLoadingHistory": "Failed to load chat history.",
+    "errorLoadingPreferences": "Failed to load chat preferences.",
+    "successClearingHistory": "Chat history cleared successfully."
   },
   "workoutLaps": {
     "title": "Workout Split Intervals & Laps",
@@ -129,14 +133,16 @@
       "sat": "Sat",
       "loggedCount_one": "{{count}} logged symptom",
       "loggedCount_other": "{{count}} logged symptoms",
-      "maxSeverity": "Max severity: {{n}}"
+      "maxSeverity": "Max severity: {{n}}",
+      "skipped": "Skipped"
     },
     "common": {
       "logging": "Logging…",
       "saving": "Saving…",
       "save": "Save",
       "reset": "Reset",
-      "custom": "Custom"
+      "custom": "Custom",
+      "clear": "Clear"
     },
     "today": {
       "medicationsTitle": "Today's medications",
@@ -168,7 +174,10 @@
       "snooze": "Snooze",
       "snoozed": "Snoozed",
       "skip": "Skip",
-      "take": "Take"
+      "take": "Take",
+      "adherenceTitle": "Adherence overview",
+      "editLogged": "Edit logged dose",
+      "takenAt": "Taken at"
     },
     "insights": {
       "title": "Side-Effect Insights & Hints",
@@ -183,7 +192,37 @@
       "dosesTaken": "Doses taken",
       "times": "Times",
       "symptomsColumn": "Symptoms",
-      "injectionAbbrev": "inj"
+      "injectionAbbrev": "inj",
+      "adherenceTrend": "Daily Adherence Trend (%)",
+      "adherenceTrendDesc": "Plots daily adherence percentage (percentage of scheduled doses taken).",
+      "configDesc": "Toggle the visibility of specific charts and correlation widgets.",
+      "configTitle": "Enable/Disable Visualizations",
+      "corrDose": "GLP-1 Dose vs. Nausea Severity",
+      "corrHydration": "Hydration vs. Constipation",
+      "corrProtein": "Protein Intake vs. Nausea",
+      "corrSleep": "Sleep Duration vs. Fatigue",
+      "correlationsDisclaimer": "Note: Correlations are purely descriptive calculations over the chosen date range and do not imply clinical causality.",
+      "correlationsTitle": "Informational Symptom & Side-Effect Correlations",
+      "customize": "Customize Charts",
+      "downloadCSV": "Download CSV Data",
+      "exportDesc": "Download a coherent report including medication details, logs, schedules, symptoms, and weight data for your doctor.",
+      "exportTitle": "Prescriber-Ready Data Export",
+      "failedToLoadPrefs": "Failed to load medication display preferences.",
+      "glp1CheckinTrends": "GLP-1 Daily Check-In Trends",
+      "glp1CheckinTrendsDesc": "Tracks subjective hunger, food noise, fullness, and energy levels (0-10) alongside GLP-1 doses.",
+      "kpiAdherence": "Average Adherence",
+      "kpiAdherenceDetail": "Percentage of scheduled doses successfully logged taken.",
+      "kpiGlp1": "GLP-1 Injections",
+      "kpiGlp1Detail": "Total active GLP-1 injection doses recorded in this period.",
+      "kpiSymptomCount": "Reported Side-Effects",
+      "kpiSymptomCountDetail": "Number of unique built-in or custom symptoms logged.",
+      "nauseaVsDose": "Nausea Severity vs. GLP-1 Medication Dose",
+      "nauseaVsDoseDesc": "Tracks max nausea severity (bars) relative to injection dose timings (line).",
+      "printPDF": "Print / Save PDF Report",
+      "subtitle": "Analyze dose correlations, side effects, and adherence trends.",
+      "title": "Medications Report",
+      "weightVsGoalDesc": "Visualizes daily weight measurements compared to your overall target weight.",
+      "weightVsGoal": "Weight Trend vs. Target Weight ({{weightUnit}})"
     },
     "locations": {
       "general": "General",
@@ -269,7 +308,9 @@
         "food_noise": "Food noise",
         "fullness": "Fullness",
         "energy": "Energy"
-      }
+      },
+      "noAccessBody": "Ask {{name}} to share Check-in access to track hunger, food noise, fullness and energy here.",
+      "noAccessTitle": "GLP-1 daily check-in needs check-in access"
     },
     "sites": {
       "customize": "Customize sites",
@@ -322,7 +363,14 @@
       "statusDone": "Done",
       "noTitration": "No titration steps yet — tap “Add step” to plan your dose escalation.",
       "recentInjections": "Recent injections",
-      "noInjections": "No injections logged yet."
+      "noInjections": "No injections logged yet.",
+      "addInventory": "Add Inventory",
+      "editInjection": "Edit injection",
+      "notes": "Notes",
+      "notesPlaceholder": "e.g. Mild stinging, felt fine",
+      "quickLogHint": "{{name}} — the dose is deducted from your active pen automatically. Green = suggested rotation site.",
+      "quickLogTitle": "Where did you inject?",
+      "skipSite": "Skip site"
     },
     "types": {
       "pill": "pill",
@@ -388,7 +436,19 @@
       "totalMeds": "Total meds",
       "empty": "No medications yet. Add your first one to get started.",
       "emptyMeds": "No medications yet. Add your first one to get started.",
-      "emptySupplements": "No supplements yet. Add your first one to get started."
+      "emptySupplements": "No supplements yet. Add your first one to get started.",
+      "customCadence": "Cadence",
+      "customGlp1": "Custom GLP-1 / Other...",
+      "customGlpName": "Custom Drug Name (optional)",
+      "customHalfLife": "Half-Life (days)",
+      "customIsOral": "Oral administration",
+      "customTMax": "Time to Peak (days)",
+      "effectiveness": "Effectiveness Rating",
+      "hideAdvanced": "Hide Advanced Options",
+      "notes": "Notes",
+      "notesPlaceholder": "Take with water before breakfast. Avoid alcohol.",
+      "photoPath": "Pill / Label Photo URL (optional)",
+      "showAdvanced": "Show Advanced Options"
     },
     "subtype": {
       "all": "All",
@@ -431,7 +491,47 @@
       "withMealOpt": "With meal",
       "afterMeal": "After meal",
       "startDate": "Start Date (Optional)",
-      "endDate": "End Date (Optional)"
+      "endDate": "End Date (Optional)",
+      "cycleOff": "Days Off",
+      "cycleOn": "Days On",
+      "doseAmount": "Dose Amount (override)",
+      "startDateRequired": "Start Date (Required)",
+      "time": "Time of Day",
+      "weekdays": "Select Days"
+    },
+    "beta": {
+      "description": "Please expect some rough edges. If you spot any bugs or issues, raise them on GitHub to help us improve!",
+      "title": "Initial Beta Release"
+    },
+    "disclaimer": {
+      "accept": "Agree & Continue",
+      "acknowledge": "I understand that this tracker is not a medical device and does not provide medical advice. I will consult my healthcare provider for all medication-related decisions.",
+      "badge": "Medication Tracker",
+      "healthTitle": "Important Health Disclaimer",
+      "reminderTitle": "Reminders Are Not Medical Alerts",
+      "subtitle": "Please read and acknowledge the following before using the medication tracker.",
+      "text1": "This medication tracking feature is intended for personal record-keeping and informational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment.",
+      "text2": "Always consult your physician, pharmacist, or other qualified healthcare provider before starting, stopping, or changing any medication. Never disregard professional medical advice or delay seeking it because of information provided by this tracker.",
+      "text3": "Schedule reminders and adherence tracking are convenience features. They may not account for drug interactions, contraindications, or dosage adjustments required by your care team. You are solely responsible for taking medications as prescribed.",
+      "title": "Before You Begin"
+    },
+    "mealRelation": {
+      "after": "After meal",
+      "before": "Before meal",
+      "none": "No specific food relation",
+      "with": "With meal"
+    },
+    "print": {
+      "dates": "Reporting Period:",
+      "header": "Prescriber Medication Report"
+    },
+    "scheduleTypes": {
+      "cyclic": "Cyclic (On/Off)",
+      "daily": "Every day",
+      "everyNDays": "Every N days",
+      "monthly": "Monthly",
+      "prn": "As needed (PRN)",
+      "weekly": "Specific days of week"
     }
   },
   "nav": {
@@ -444,7 +544,9 @@
     "admin": "Admin",
     "cycle": "Cycle",
     "pregnancy": "Pregnancy",
-    "medications": "Medications"
+    "medications": "Medications",
+    "foodLog": "Food Log",
+    "wellness": "Wellness"
   },
   "nutrition": {
     "calories": "Calories",
@@ -477,7 +579,28 @@
   },
   "calculationSettings": {
     "showNetCarbs": "Show net carbs (carbs minus fiber)",
-    "showNetCarbsHint": "When enabled, carbohydrate summaries display total carbs minus dietary fiber."
+    "showNetCarbsHint": "When enabled, carbohydrate summaries display total carbs minus dietary fiber.",
+    "bmrAlgorithm": "BMR Algorithm",
+    "bmrAlgorithmHint": "Select the formula used to calculate your Basal Metabolic Rate.",
+    "bodyFatAlgorithm": "Body Fat Algorithm",
+    "bodyFatAlgorithmHint": "Select the formula used to estimate body fat percentage from measurements.",
+    "calories": "Calories",
+    "energyUnitHint": "Choose your preferred unit for displaying energy values (e.g., calories, kilojoules).",
+    "energyUnitLabel": "Energy Unit",
+    "energyUnitSaveError": "Error",
+    "energyUnitSaveErrorDesc": "Failed to update energy unit.",
+    "energyUnitSaveSuccess": "Success",
+    "energyUnitSaveSuccessDesc": "Energy unit updated successfully.",
+    "includeBmrInNetCalories": "Include BMR in Net Calories",
+    "includeBmrInNetCaloriesHint": "When enabled, your BMR will be subtracted from your daily net calorie total.",
+    "joules": "Joules",
+    "saveError": "Error",
+    "saveErrorDesc": "Failed to save calculation settings.",
+    "saveSuccess": "Success",
+    "saveSuccessDesc": "Calculation settings saved successfully!",
+    "selectBmrAlgorithm": "Select BMR Algorithm",
+    "selectBodyFatAlgorithm": "Select Body Fat Algorithm",
+    "selectEnergyUnitPlaceholder": "Select energy unit"
   },
   "aboutDialog": {
     "title": "About SparkyFitness",
@@ -497,7 +620,9 @@
     "fatsecretApi": "FatSecret API",
     "openFoodFactsApi": "Open Food Facts API",
     "gotIt": "Got it",
-    "close": "Close"
+    "close": "Close",
+    "swissFoodApi": "Swiss Food Composition Database API",
+    "usdaApi": "USDA Food Database API"
   },
   "exercise": {
     "title": "Exercises",
@@ -577,7 +702,8 @@
         "mine": "My Presets",
         "family": "Family",
         "public": "Public"
-      }
+      },
+      "searching": "Searching..."
     },
     "dailyProgress": {
       "dailyCalorieGoal": "Daily Calorie Goal",
@@ -596,7 +722,29 @@
       "caloriesBurnedBreakdownTitle": "Calories Burned Breakdown",
       "netCalories": "Net Calories: {{netCalories}}",
       "netCaloriesBreakdown": "{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned",
-      "dailyProgress": "Daily Progress"
+      "dailyProgress": "Daily Progress",
+      "adaptiveTdee": "Adaptive TDEE",
+      "adjustment": "Adjustment",
+      "burnedEnergyBreakdown": "Burned Energy Breakdown:",
+      "dailyBurn": "Daily Burn",
+      "dailyEnergyGoal": "Daily Energy Goal",
+      "dataPoints": "Data Points",
+      "days": "days",
+      "energyBurnedBreakdownTitle": "Energy Burned Breakdown",
+      "enterMeasurements": "Enter Measurements",
+      "expenditure": "Expenditure",
+      "fallbackReason": "Using estimation: {{reason}}",
+      "katchCunninghamMissingDesc": "Weight and Body Fat Percentage are missing. Calorie goals may be inaccurate.",
+      "netEnergy": "Net Energy: {{netCalories}}",
+      "netEnergyBreakdown": "{{dailyIntakeCalories}} eaten - {{finalTotalCaloriesBurned}} burned",
+      "profileIncompleteDesc": "Weight, Height, and Age are missing. Calorie goals may be inaccurate.",
+      "profileIncompleteTitle": "Profile Incomplete",
+      "projectedBurn": "Projected (Full Day)",
+      "sparkyfitnessBurned": "SparkyFitness Burned",
+      "summaryUnavailableDesc": "Could not load your daily energy summary. Try refreshing the page.",
+      "summaryUnavailableTitle": "Daily summary unavailable",
+      "updateProfile": "Update Profile",
+      "weightTrend": "Weight Trend"
     },
     "editExerciseEntryDialog": {
       "setLabel": "Set",
@@ -624,7 +772,9 @@
       "notesPlaceholder": "Add any notes about this exercise...",
       "imageLabel": "Image",
       "updateSuccess": "Exercise entry updated successfully.",
-      "updateError": "Failed to update exercise entry."
+      "updateError": "Failed to update exercise entry.",
+      "syncedProviderBackup": "Synced Provider Backup (Protected)",
+      "telemetryHeader": "Telemetry & Activity Metrics"
     },
     "activityDetailsEditor": {
       "fieldNameLabel": "Field Name",
@@ -697,7 +847,14 @@
       "forceDeleteConfirmLabel": "Force Delete",
       "syncConfirmationTitle": "Sync Past Entries?",
       "syncConfirmationDescription": "Do you want to update all your past diary entries for this exercise with the new information?",
-      "addExerciseButton": "Add Exercise"
+      "addExerciseButton": "Add Exercise",
+      "category": "Category",
+      "details": "Details",
+      "energy": "Energy",
+      "exercises": "exercises",
+      "name": "Name",
+      "deleteConfirmationDescription": "Are you sure you want to delete this exercise? This action cannot be undone.",
+      "deleteImpactDescription": "This exercise is used in other logs or workout plans. Deleting it may affect those records."
     },
     "exerciseImportCSV": {
       "importExerciseData": "Import Exercise Data",
@@ -728,7 +885,12 @@
       "nameEmptyError": "The 'name' field cannot be empty.",
       "copied": "Copied!",
       "copiedToClipboard": "'{{value}}' copied to clipboard.",
-      "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB."
+      "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB.",
+      "dataParsedSuccessfully": "CSV data has been parsed and loaded successfully.",
+      "headersMapped": "Headers Mapped",
+      "mapRequiredFields": "Your CSV headers do not match the required format. Please map the fields to continue.",
+      "parseSuccessful": "Parse Successful",
+      "readError": "Failed to read the selected file."
     },
     "playbackModal": {
       "voiceLabel": "Voice:",
@@ -761,7 +923,109 @@
       "parseText": "Parse Text",
       "rowsRejected": "{{failed}} of {{total}} rows could not be imported — see details below.",
       "headersMapped": "Headers Mapped",
-      "mapRequiredFields": "Your CSV headers do not match the required format. Please map the fields to continue."
+      "mapRequiredFields": "Your CSV headers do not match the required format. Please map the fields to continue.",
+      "addEmptyEntry": "Add Empty Entry",
+      "clearData": "Clear Data",
+      "confirmImport": "Confirm and Import {{count}} Entries",
+      "copied": "Copied!",
+      "copyTooltip": "Copy ",
+      "customFieldsInfo": "Activity Field & Value are custom fields you can add to each exercise entry.",
+      "dataCleared": "All parsed data cleared.",
+      "description": "Upload a CSV file containing your historical exercise entries. The system will create new exercises or presets if they don",
+      "downloadTemplate": "Download Template",
+      "emptyEntryAdded": "New empty entry added. Please fill in the details.",
+      "emptyFile": "The selected file is empty.",
+      "importSuccess": "Historical exercise entries imported successfully.",
+      "invalidDate": "Row {{rowNum}}: Invalid date format for ",
+      "invalidSetNumber": "Row {{rowNum}}: Invalid set number ",
+      "noDataToImport": "No valid data to import.",
+      "noFile": "Please select a CSV file to import.",
+      "parseError": "Failed to parse CSV: {{error}}",
+      "preview": "Preview of Entries to Import",
+      "processFile": "Process File",
+      "standardValuesDescription": "When importing exercise definitions, ensure that values for ",
+      "standardValuesForDropdowns": "Standard Values for Exercise Definition Dropdowns",
+      "table": {
+        "activityDetails": "Activity Details",
+        "date": "Date",
+        "exercise": "Exercise",
+        "notes": "Notes",
+        "preset": "Preset",
+        "sets": "Sets"
+      },
+      "title": "Import Historical Exercise Entries",
+      "unitsHint": "Expected units in CSV: Weight: {{weightUnit}}; Distance: {{distanceUnit}}; Duration: Minutes; Rest Time: Seconds; Calories Burned: Calories",
+      "validationError": "Row {{rowNum}}: Missing required ",
+      "copiedToClipboard": "'{{value}}' copied to clipboard.",
+      "importError": "Failed to import exercise history. Please try again.",
+      "partialImportError": "Some entries could not be imported: {{details}}"
+    },
+    "exerciseSearch": {
+      "add": "Add",
+      "noResults": "No exercises found.",
+      "placeholder": "Search exercises…",
+      "popular": "Most Used",
+      "recent": "Recent",
+      "searching": "Searching…",
+      "selectButton": "Select"
+    },
+    "failedToFetchById": "Could not load exercise details.",
+    "failedToFetchDetails": "Could not fetch exercise details. Please try again.",
+    "failedToFetchSuggested": "Could not load suggested exercises.",
+    "lastEntries": "Last {{limit}} Entries",
+    "logExerciseEntryDialog": {
+      "addSet": "Add Set",
+      "avgHeartRateLabel": "Average heart rate (bpm)",
+      "caloriesAutoHint": "Auto-calculated if left blank",
+      "cancel": "Cancel",
+      "customActivityDetails": "Custom activity details",
+      "enterDetails": "Enter details for your exercise session on {{selectedDate}}.",
+      "imagePreviewAlt": "Preview",
+      "logExercise": "Log Exercise: {{exerciseName}}",
+      "notesPlaceholder": "Any notes about this session...",
+      "saveEntry": "Save Entry",
+      "saving": "Saving...",
+      "sessionNotes": "Notes",
+      "uploadImage": "Photo",
+      "caloriesBurnedOptional": "Calories burned (optional)"
+    },
+    "progress": {
+      "loadError": "Failed to load exercise progress data."
+    },
+    "suggestions": {
+      "recentLoadError": "Failed to load recent exercises.",
+      "topLoadError": "Failed to load top exercises."
+    },
+    "workoutPlaybackDialog": {
+      "closeKeepDraft": "Close",
+      "completeAtLeastOneSet": "Complete at least one set before finishing.",
+      "discard": "Discard",
+      "discardConfirm": "Discard this in-progress workout? This cannot be undone.",
+      "finish": "Finish Workout",
+      "finishError": "Failed to save workout. Your local progress is still preserved, and you can retry.",
+      "finishing": "Saving...",
+      "noDraft": "No active workout draft was found for this date.",
+      "setRow": "Set {{setNumber}}",
+      "sets": "sets",
+      "title": "Live Workout"
+    },
+    "workoutPlaybackPage": {
+      "addSet": "Add Set",
+      "columnReps": "Reps",
+      "columnRest": "Rest",
+      "columnSet": "Set",
+      "columnType": "Type",
+      "columnWeight": "Weight",
+      "completed": "Completed",
+      "customRest": "Custom (seconds)",
+      "description": "Track your sets live, follow rest countdowns, and save when you finish.",
+      "elapsedTime": "Duration",
+      "inProgress": "In Progress",
+      "progress": "Sets",
+      "restEditorDescription": "Pick a rest duration for this set.",
+      "restEditorTitle": "Edit Rest",
+      "restTimer": "Rest",
+      "volume": "Volume"
     }
   },
   "workoutPresetsManager": {
@@ -783,7 +1047,13 @@
     "deleteSuccess": "Workout preset deleted successfully.",
     "deleteError": "Failed to delete workout preset.",
     "logSuccess": "Workout preset \"{{presetName}}\" logged to diary.",
-    "logError": "Failed to log workout preset \"{{presetName}}\" to diary."
+    "logError": "Failed to log workout preset \"{{presetName}}\" to diary.",
+    "exercises": "Exercises",
+    "logToDiary": "Log to Diary",
+    "name": "Name",
+    "presets": "presets",
+    "startWorkout": "Start Workout",
+    "stats": "Stats"
   },
   "workoutPlansManager": {
     "addPlanButton": "Add Plan",
@@ -805,7 +1075,13 @@
     "deleteError": "Failed to delete workout plan.",
     "updateStatusError": "Could not find the plan to update.",
     "toggleStatusSuccess": "Workout plan {{status}} successfully.",
-    "toggleStatusError": "Failed to toggle workout plan active status."
+    "toggleStatusError": "Failed to toggle workout plan active status.",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "duration": "Duration",
+    "planName": "Plan Name",
+    "plans": "plans",
+    "status": "Status"
   },
   "exerciseCard": {
     "title": "Exercise",
@@ -879,7 +1155,12 @@
     "exerciseEntryAddedSuccessfully": "Exercise entry added successfully.",
     "failedToDeleteExerciseEntry": "Failed to delete exercise entry.",
     "exerciseEntryDeletedSuccessfully": "Exercise entry deleted successfully.",
-    "loadingExercises": "Loading exercises..."
+    "loadingExercises": "Loading exercises...",
+    "deletePresetEntry": "Delete Preset Entry",
+    "editExerciseDescription": "Edit details below.",
+    "noExercisesInPreset": "No exercises in this preset.",
+    "startWorkout": "Start Workout",
+    "workoutPreset": "Workout Preset"
   },
   "foodSearchDialog": {
     "title": "Search and Add Food",
@@ -939,7 +1220,9 @@
     "addToFavorites": "Add to favorites",
     "removeFromFavorites": "Remove from favorites",
     "failedToLoadFavorites": "Failed to load favorites.",
-    "failedToUpdateFavorite": "Failed to update favorite."
+    "failedToUpdateFavorite": "Failed to update favorite.",
+    "provider": "Data Provider",
+    "selectBarcodeProvider": "Select Provider"
   },
   "sync": {
     "syncAll": "Sync all active providers",
@@ -970,7 +1253,10 @@
       "bio": "Bio",
       "tellAboutYourself": "Tell us about yourself",
       "saveProfile": "Save Profile",
-      "saving": "Saving..."
+      "saving": "Saving...",
+      "enterHeight": "Enter your Height",
+      "height": "Height",
+      "uploading": "Uploading..."
     },
     "cycle": {
       "title": "Cycle & Pregnancy",
@@ -992,7 +1278,24 @@
       "successTitle": "Success",
       "successDesc": "Cycle settings updated.",
       "errorTitle": "Error",
-      "errorDesc": "Could not save cycle settings. Please try again."
+      "errorDesc": "Could not save cycle settings. Please try again.",
+      "customizeProducts": "Customize Period Products",
+      "customizeProductsDesc": "Choose which period products appear in your daily logs or add your own.",
+      "customizeSymptoms": "Customize Symptoms",
+      "customizeSymptomsDesc": "Show or hide symptoms in your cycle log, or add new ones.",
+      "discreetMode": "Discreet mode",
+      "discreetModeHint": "Use a neutral “Wellness” label and icon in the navigation.",
+      "export": "Export",
+      "exportData": "Export your data",
+      "exportError": "Could not export data.",
+      "exportHint": "Download all your cycle data as JSON. It never leaves your server.",
+      "exporting": "Exporting…",
+      "lutealConstHelp": "Luteal phase is locked at 14 days. The follicular phase automatically adjusts to your cycle length.",
+      "resetConfirm": "Are you sure you want to reset your cycle tracking profile? This will let you re-run the onboarding configuration from scratch. Your logged cycle history will not be deleted.",
+      "resetError": "Could not reset onboarding. Please try again.",
+      "resetOnboarding": "Reset & Re-run Onboarding",
+      "resetSuccessDesc": "Onboarding has been reset. Please visit the Cycle Hub tab to start onboarding.",
+      "resetSuccessTitle": "Profile Reset"
     },
     "preferences": {
       "title": "Preferences",
@@ -1019,7 +1322,27 @@
       "language": "Language",
       "english": "English",
       "tamil": "தமிழ்",
-      "savePreferences": "Save Preferences"
+      "savePreferences": "Save Preferences",
+      "autoScaleOnlineImports": "Auto-Scale foods by default",
+      "autoScaleOnlineImportsHint": "When enabled, the Auto-Scale checkbox is checked whenever you edit a food, meaning its nutrition values scale automatically as you change the serving size.",
+      "autoScaleOpenFoodFacts": "Auto-scale OpenFoodFacts Imports",
+      "autoScaleOpenFoodFactsHint": "When enabled, nutrition values from OpenFoodFacts will be automatically scaled from per-100g to the product",
+      "calories": "Calories (kcal)",
+      "energyUnit": "Energy Unit",
+      "feetInches": "Feet & Inches (ft/in)",
+      "firstDayOfWeek": "Start Day of the Week",
+      "joules": "Joules (kJ)",
+      "noTimezoneFound": "No timezone found.",
+      "searchTimezones": "Search timezones...",
+      "selectTimezone": "Select timezone...",
+      "stonesLbs": "Stones & Pounds (st/lb)",
+      "successDescription": "Preferences saved.",
+      "successTitle": "Success",
+      "timeFormat": "Time Format",
+      "timeFormat12Lower": "12-hour am/pm (2:30 pm)",
+      "timeFormat12Upper": "12-hour AM/PM (2:30 PM)",
+      "timeFormat24": "24-hour (14:30)",
+      "timezone": "Timezone"
     },
     "waterTracking": {
       "title": "Water Tracking",
@@ -1030,7 +1353,8 @@
       "cups": "Cups",
       "saveWaterDisplayUnit": "Save Water Display Unit",
       "addExerciseWater": "Add exercise water loss to daily goal",
-      "addExerciseWaterHint": "Increases your daily water goal by the estimated sweat loss from activities."
+      "addExerciseWaterHint": "Increases your daily water goal by the estimated sweat loss from activities.",
+      "liters": "Liters"
     },
     "nutrientDisplay": {
       "title": "Nutrient Display",
@@ -1188,7 +1512,9 @@
         "fillRequiredFields": "Please fill in all required fields",
         "enterNewApiKey": "Enter new API key to update",
         "testConnection": "Test Connection",
-        "testing": "Testing…"
+        "testing": "Testing…",
+        "visionNone": "None",
+        "visionService": "Global vision AI service"
       },
       "userSettings": {
         "title": "AI Services",
@@ -1288,7 +1614,9 @@
         "errorReverting": "Failed to revert to global settings",
         "fillRequiredFields": "Please fill in all required fields",
         "testConnection": "Test Connection",
-        "testing": "Testing…"
+        "testing": "Testing…",
+        "activeVisionProvider": "Active vision AI provider",
+        "sameAsDefault": "Same as default"
       },
       "test": {
         "successTitle": "Success",
@@ -1330,7 +1658,31 @@
       "apiKeyCopied": "API key copied to clipboard.",
       "created": "Created:",
       "lastUsed": "Last Used:",
-      "deleteApiKeyConfirm": "Are you sure you want to delete this API key? This action cannot be undone."
+      "deleteApiKeyConfirm": "Are you sure you want to delete this API key? This action cannot be undone.",
+      "1year": "1 Year",
+      "30days": "30 Days",
+      "7days": "7 Days",
+      "90days": "90 Days",
+      "cleanupError": "Failed to cleanup keys",
+      "cleanupExpired": "Cleanup Expired Keys",
+      "cleanupSuccess": "All expired API keys have been removed.",
+      "copyWarning": "Copy this key now. For security, it will NOT be shown again.",
+      "createError": "Failed to generate API key",
+      "createSuccess": "New API key generated successfully! Please copy it now as it won",
+      "deleteError": "Failed to delete API key",
+      "deleteSuccess": "API key deleted successfully!",
+      "descriptionLabel": "Description (e.g., ",
+      "disabled": "Disabled",
+      "expires": "Expires:",
+      "expiresIn": "Expires In",
+      "generate": "Generate New Key",
+      "idOnlyInfo": "Only the Key ID is shown for security.",
+      "loadError": "Failed to load API keys",
+      "never": "Never",
+      "newKeyGenerated": "New API Key Generated!",
+      "placeholder": "Description (e.g., ",
+      "updateError": "Failed to update API key",
+      "updateSuccess": "API key status updated successfully!"
     },
     "accountSecurity": {
       "title": "Account Security",
@@ -1351,7 +1703,148 @@
       "updating": "Updating...",
       "newPasswordsDoNotMatch": "New passwords do not match",
       "passwordLengthError": "Password must be at least 8 characters long",
-      "enterNewEmailAddress": "Please enter a new email address"
+      "enterNewEmailAddress": "Please enter a new email address",
+      "passwordUpdateError": "Failed to update password",
+      "passwordUpdateSuccess": "Password updated successfully"
+    },
+    "allergenPreferences": {
+      "description": "Track allergens you want to be warned about in foods",
+      "title": "Allergen Preferences"
+    },
+    "calculationExplanation": {
+      "adaptiveFootnote": "* Dynamically adjusts your Daily Goal based on your actual metabolism. Needs consistent food and weight tracking for high accuracy.",
+      "burnedActivity": "Activity (Exercise & Steps only)",
+      "burnedBmr": "Activity + BMR (Your base metabolism)",
+      "burnedTitle": "Burned Calories",
+      "dynamicFootnote": "* Ideal for fueling workouts and active recovery.",
+      "fixedFootnote": "* Ideal for strict caloric deficits and weight management.",
+      "netFormula": "Eaten - Total Burned",
+      "netTitle": "Net Energy",
+      "percentageFootnote": "* Creates a safety buffer to avoid overeating from over-estimated calorie burns.",
+      "remainingAdaptive": "Daily Goal - Eaten (Goal is your adjusted Adaptive TDEE)",
+      "remainingDynamic": "Daily Goal - Net Energy (Your goal grows as you move)",
+      "remainingFixed": "Daily Goal - Eaten (Activity does not change your budget)",
+      "remainingPercentage": "Daily Goal - (Eaten - {{pct}}% of Exercise Burned)",
+      "remainingTdee": "Daily Goal − Eaten + (Projected Full Day − TDEE)",
+      "remainingTitle": "Remaining Calories",
+      "tdeeFootnote": "* Projection converges with actual at midnight. Requires BMR to be calculable and a device syncing steps or active calories.",
+      "title": "How your calories will be calculated"
+    },
+    "calorieGoalAdjustment": {
+      "activityHeavy": "Very active (×1.725)",
+      "activityLevel": "Activity level:",
+      "activityLight": "Lightly active (×1.375)",
+      "activityModerate": "Moderately active (×1.55)",
+      "activityNone": "None (×1.0)",
+      "activityNotMuch": "Sedentary (×1.2)",
+      "adaptiveActivityHint": "In Adaptive mode, this setting acts as a fallback until you have enough tracking data.",
+      "adaptiveGoal": "Adaptive Goal",
+      "adaptiveGoalDescription": "The ",
+      "allowNegativeAdjustment": "Allow negative adjustment (penalise for burning less than TDEE)",
+      "dynamicGoal": "Dynamic Goal",
+      "dynamicGoalDescription": "Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.",
+      "fixedGoal": "Fixed Goal",
+      "fixedGoalDescription": "Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.",
+      "percentageGoal": "Percentage Earn-Back",
+      "percentageGoalDescription": "Only earn back a set percentage of your exercise calories. For example, 50% creates a safety buffer to avoid overeating from over-estimated burns.",
+      "percentageLabel": "Earn-back percentage:",
+      "tdeeGoal": "Device Projection",
+      "tdeeGoalDescription": "Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − TDEE.",
+      "title": "Daily Calorie Goal Adjustment"
+    },
+    "dataImport": {
+      "checkin": {
+        "description": "Import body measurements, sleep, vitals, activity, hydration, and mood.",
+        "title": "Check-in & Health Data (CSV)"
+      },
+      "description": "Bulk-import your data from CSV files. These tools are for one-time migrations and periodic backfills, so they live here rather than on the daily screens.",
+      "diary": {
+        "description": "Log past meals to your food diary by date and meal type, matching or creating foods as needed.",
+        "title": "Food Diary (CSV)"
+      },
+      "exercise": {
+        "description": "Add reusable exercises to your exercise database.",
+        "title": "Exercise Database (CSV)"
+      },
+      "exerciseHistory": {
+        "description": "Import past workouts, sets, reps, and weights.",
+        "title": "Workout History (CSV)"
+      },
+      "food": {
+        "description": "Add reusable foods (with servings and nutrition) to your food library.",
+        "title": "Food Database (CSV)"
+      },
+      "garminFit": {
+        "description": "Import workouts and activity data from binary .fit files.",
+        "title": "Workout Activities (FIT)"
+      },
+      "importButton": "Import",
+      "title": "Data Import"
+    },
+    "developerResources": {
+      "description": "Access API documentation and resources",
+      "title": "Developer Resources"
+    },
+    "goalMode": {
+      "baselineAdaptiveGoal": "Baseline (Adaptive Goal)",
+      "baselineAdaptiveTdee": "Adaptive TDEE (Expenditure)",
+      "baselineEstimatedTdee": "Estimated TDEE",
+      "baselineManualGoal": "Baseline (Manual Goal)",
+      "calculationMethodLabel": "Calculation Method",
+      "customPercentageLabel": "Custom deficit percentage:",
+      "goalModeLabel": "Goal Mode",
+      "livePreview": "Live Preview Calculation",
+      "measuredAdaptiveTdee": "Measured Adaptive TDEE",
+      "measuredAdaptiveTdeeHint": "(does not change with Goal Mode)",
+      "methodAdaptive": "Adaptive",
+      "methodManual": "Manual",
+      "modeCut": "Cut (-15%)",
+      "modeHighCut": "High Cut (-20%)",
+      "modeMaintain": "Maintain (0%)",
+      "modeManual": "Manual (Custom %)",
+      "modeRecomp": "Body Recomposition (-10%)",
+      "subtitle": "Adjust your daily calorie target based on your body composition goal.",
+      "title": "Goal Mode"
+    },
+    "mfa": {
+      "confirmPassword": "Confirm Password to Continue",
+      "disable": "Disable",
+      "emailCode": "Email Code MFA",
+      "emailDisabled": "Email Code MFA is currently disabled.",
+      "emailEnabled": "Email Code MFA is currently enabled.",
+      "enable": "Enable",
+      "enterCode": "Enter 6-digit code",
+      "enterPassword": "Enter password",
+      "generateNewCodes": "Generate New Recovery Codes",
+      "passwordRequired": "Please enter your account password to modify security settings.",
+      "recoveryCodesInfo": "Recovery codes can be used to access your account if you lose access to your primary MFA methods.",
+      "recoveryCodesTitle": "Recovery Codes",
+      "saveCodesWarning": "IMPORTANT: Save these codes in a safe place. They will not be shown again.",
+      "scanQr": "Scan the QR code with your authenticator app and enter the generated code to verify.",
+      "title": "Multi-Factor Authentication (MFA)",
+      "totp": "Authenticator App (TOTP)",
+      "totpDisabled": "Authenticator App is currently disabled.",
+      "totpEnabled": "Authenticator App is currently enabled.",
+      "verificationCode": "Verification Code",
+      "verify": "Verify & Enable",
+      "yourRecoveryCodes": "Your Recovery Codes"
+    },
+    "passkey": {
+      "add": "Add Passkey",
+      "addedOn": "Added on",
+      "description": "Passkeys provide a secure, passwordless way to sign in using your device",
+      "namePlaceholder": "e.g. My MacBook, Work Phone",
+      "newName": "Passkey Name (Optional)",
+      "noPasskeys": "No passkeys registered yet.",
+      "title": "Passkeys",
+      "unnamed": "Unnamed Passkey",
+      "yourPasskeys": "Your Registered Passkeys"
+    },
+    "tabs": {
+      "developerIntegrations": "Developer & Integrations",
+      "nutritionDiet": "Nutrition & Diet",
+      "profileAccount": "Profile & Account",
+      "wellness": "Wellness"
     }
   },
   "admin": {
@@ -1365,12 +1858,20 @@
         "enableOidcLoginGlobal": "Enable OIDC Login (Global)",
         "emergencyFailSafe": "Emergency Fail-Safe:",
         "emergencyFailSafeDescription": "If you are ever locked out of your account, you can force email/password login to be enabled by setting the following environment variable on your server and restarting it:",
-        "envVarCopied": "Environment variable copied to clipboard."
+        "envVarCopied": "Environment variable copied to clipboard.",
+        "enforceMfaForAllUsers": "Enforce MFA for all users"
       },
       "oidcProviderManagement": {
         "title": "OIDC Provider Management",
         "description": "Configure your OpenID Connect (OIDC) providers."
-      }
+      },
+      "error": "Error",
+      "errorLoadingSettings": "Error",
+      "errorLoadingSettingsDescription": "Failed to load authentication settings.",
+      "failedToSaveLoginSettings": "Failed to save login settings.",
+      "loadingSettings": "Loading settings...",
+      "loginSettingUpdated": "Login setting updated successfully.",
+      "settingsSaved": "Settings Saved"
     },
     "backupSettings": {
       "title": "Backup Settings",
@@ -1414,7 +1915,11 @@
       "restoreFailed": "Backup restore failed.",
       "failedToFetchSettings": "Failed to fetch backup settings.",
       "failedToSaveSettings": "Failed to save backup settings.",
-      "failedToRestoreBackup": "Failed to restore backup."
+      "failedToRestoreBackup": "Failed to restore backup.",
+      "backupSettingsSaved": "Saved",
+      "invalidTimeDescription": "Please enter a valid time in HH:MM format before saving.",
+      "invalidTimeTitle": "Invalid backup time",
+      "saveWarningSchedulerFailed": "Settings saved, but the live scheduler could not be updated. Changes will take effect on next server restart."
     },
     "oidcSettings": {
       "title": "OIDC Authentication Providers",
@@ -1465,7 +1970,12 @@
       "proxyConfigCopied": "Proxy configuration copied to clipboard.",
       "cancel": "Cancel",
       "save": "Save",
-      "uploadFailed": "Failed to upload logo."
+      "uploadFailed": "Failed to upload logo.",
+      "envConfigured": "Managed by Env",
+      "envManagedNotice": "This provider is configured via environment variables. Some fields are read-only.",
+      "envManagedSecret": "Secret is managed by env",
+      "error": "Error",
+      "logoUploadFailed": "Provider created, but logo upload failed."
     },
     "userManagement": {
       "title": "User Management",
@@ -1495,7 +2005,14 @@
       "failedToUpdateUserStatus": "Failed to {{action}} user.",
       "toggleUserRoleConfirm": "Are you sure you want to change user {{userName}}'s role to {{newRole}}?",
       "userRoleUpdated": "User {{userName}}'s role updated to {{newRole}} successfully.",
-      "failedToUpdateUserRole": "Failed to update user {{userName}}'s role."
+      "failedToUpdateUserRole": "Failed to update user {{userName}}'s role.",
+      "deleteUser": "Delete",
+      "deleteUserConfirm": "Are you sure you want to delete this user?",
+      "error": "Error loading users",
+      "resetMfa": "Reset MFA",
+      "resetMfaSuccess": "MFA reset successfully for {{userName}}.",
+      "resetPassword": "Reset Password",
+      "resetMfaConfirm": "Reset MFA for {{userName}}?"
     }
   },
   "goals": {
@@ -1607,15 +2124,26 @@
       "editGoalsFor": "Edit Goals for {{date}}",
       "changesApplyToDate": "Changes will only apply to this specific date.",
       "applyPreset": "Apply Preset",
-      "selectGoalPreset": "Select a goal preset to apply"
+      "selectGoalPreset": "Select a goal preset to apply",
+      "errorLoading": "Failed to load nutrition goals. Please try again later."
     },
     "mealDistribution": {
       "selectTemplate": "Select a Distribution Template",
       "custom": "Custom",
       "distributeRemaining": "Distribute Remaining Evenly",
       "total": "Total",
-      "mustBe100": "Must be 100% to save"
-    }
+      "mustBe100": "Must be 100% to save",
+      "title": "Meal Calorie Distribution"
+    },
+    "errorSavingPreset": "Failed to save preset.",
+    "presetCreatedSuccess": "Goal preset created successfully!",
+    "presetName": "Preset Name",
+    "presetNamePlaceholder": "e.g., Cutting Phase 1",
+    "presetNameRequired": "Please enter a name for your preset.",
+    "saveAndStart": "Save & Start Plan",
+    "saveAsPreset": "Save Preset & Start 6-Month Cascading Goal",
+    "savePresetDescription": "Give your goal preset a name. This will save your current configuration for future use and apply it as your plan starting today.",
+    "startCascadingPlan": "Start 6-Month Cascading Plan"
   },
   "common": {
     "add": "Add",
@@ -1652,7 +2180,52 @@
     "errorOccurred": "An Error Occurred",
     "confirm": "Confirm",
     "notApplicable": "N/A",
-    "totalSets": "Total Sets"
+    "totalSets": "Total Sets",
+    "actions": "Actions",
+    "advanced": "Advanced",
+    "avgHrUnit": "Avg HR",
+    "back": "Back",
+    "bulkDeleteDescription": "Are you sure you want to delete these {{selectedCount}} items? This action cannot be undone.",
+    "bulkDeleteTitle": "Delete {{selectedCount}} {{entityName}}?",
+    "calculating": "Calculating...",
+    "close": "Close",
+    "collapse": "Collapse",
+    "copied": "Copied!",
+    "copyRawJson": "Copy Raw JSON",
+    "copying": "Copying...",
+    "create": "Create",
+    "creating": "Creating...",
+    "date": "Date",
+    "delete": "Delete",
+    "duplicate": "Duplicate",
+    "edit": "Edit",
+    "error": "Error",
+    "expand": "Expand",
+    "favorite": "Favorite",
+    "favorited": "Favorited",
+    "info": "Info",
+    "items": "items",
+    "kJUnit": "kJ",
+    "kcalUnit": "kcal",
+    "loading": "Loading...",
+    "min": "min",
+    "minutesUnit": "Time",
+    "next": "Next",
+    "outOfTotal": "out of {{totalCount}} items",
+    "pause": "Pause",
+    "processing": "Processing...",
+    "reps": "reps",
+    "resume": "Resume",
+    "save": "Save",
+    "savePreferences": "Save Preferences",
+    "select": "Select",
+    "selectedCount": "{{selectedCount}} selected",
+    "skip": "Skip",
+    "success": "Success",
+    "view": "View details",
+    "weight": "Weight",
+    "workout": "Workout",
+    "caloriesUnit": "calories"
   },
   "diary": {
     "nutritionSummary": "Nutrition Summary",
@@ -1686,7 +2259,67 @@
       "calcium": "calcium"
     },
     "of": "of",
-    "over": "over"
+    "over": "over",
+    "addError": "Failed to add food.",
+    "addSuccess": "Food added successfully.",
+    "calculateExplanation": {
+      "dialogDescription": "Step-by-step breakdown of how your daily energy target is calculated.",
+      "todayTarget": "How today"
+    },
+    "copyAllError": "Failed to copy entire day.",
+    "copyAllFromYesterday": "Copy all from yesterday",
+    "copyAllSuccess": "Entire day copied successfully.",
+    "copyAllToDate": "Copy entire day to date",
+    "copyError": "Failed to copy entries.",
+    "copyFamilyDesc": "Symmetrically copy diary entries between your diary and family member diaries.",
+    "copyFamilyFromError": "Failed to copy entries from family.",
+    "copyFamilyFromSuccess": "Entries copied from family successfully.",
+    "copyFamilyMealType": "Meal Type",
+    "copyFamilyMemberLabel": "Family Member",
+    "copyFamilyMemberPlaceholder": "Select family member",
+    "copyFamilyNoConnections": "No authorized family connections found.",
+    "copyFamilyNoConnectionsHelp": "Your family members must grant you both ",
+    "copyFamilyNoDate": "Please select valid source and target dates.",
+    "copyFamilyNoMember": "Please select a family member.",
+    "copyFamilyTabFrom": "Copy From Family",
+    "copyFamilyTabTo": "Copy To Family",
+    "copyFamilyTitle": "Copy Food with Family",
+    "copyFamilyToError": "Failed to copy entries to family.",
+    "copyFamilyToSuccess": "Entries copied to family successfully.",
+    "copySourceTitleFamily": "Source (Family)",
+    "copySourceTitleSelf": "Source (You)",
+    "copySuccess": "Entries copied successfully.",
+    "copyTargetTitleFamily": "Target (Family)",
+    "copyTargetTitleSelf": "Target (You)",
+    "deleteError": "Failed to delete entry.",
+    "deleteSuccess": "Entry deleted.",
+    "exerciseEntry": {
+      "createError": "Failed to log exercise.",
+      "createPresetSessionError": "Failed to save workout.",
+      "createPresetSessionSuccess": "Workout saved successfully.",
+      "createSuccess": "Exercise logged successfully.",
+      "deleteError": "Failed to delete exercise entry.",
+      "deletePresetError": "Failed to delete preset entry.",
+      "deletePresetSuccess": "Preset entry deleted successfully.",
+      "deleteSuccess": "Exercise entry deleted successfully.",
+      "logPresetError": "Failed to log workout preset.",
+      "logPresetSuccess": "Workout preset logged successfully.",
+      "updateError": "Failed to update exercise entry.",
+      "updateSuccess": "Exercise entry updated successfully."
+    },
+    "goalsLoadError": "Failed to load daily goals.",
+    "loadError": "Failed to load food entries.",
+    "mealAddError": "Failed to add meal.",
+    "mealAddSuccess": "Meal added successfully.",
+    "mealDeleteError": "Failed to delete meal.",
+    "mealDeleteSuccess": "Meal deleted.",
+    "mealDetailsLoadError": "Failed to load meal details.",
+    "mealUpdateError": "Failed to update meal.",
+    "mealUpdateSuccess": "Meal updated successfully.",
+    "mealsLoadError": "Failed to load meal entries.",
+    "updateError": "Failed to update entry.",
+    "updateSuccess": "Entry updated.",
+    "wearableHealthSummary": "Daily Wearable Health Summary"
   },
   "nutrientGoalDirection": {
     "min": "Min",
@@ -1793,7 +2426,8 @@
       "mealType": "Meal Type",
       "selectMealTypePlaceholder": "Select meal type",
       "copyButton": "Copy"
-    }
+    },
+    "userNotFound": "User not found, cannot edit entry."
   },
   "mealCard": {
     "addFoodToMeal": "Add Food to {{mealName}}",
@@ -1867,7 +2501,38 @@
       "uploadError": "Upload failed",
       "tooLarge": "Image is too large (max 10 MB).",
       "deleteSuccess": "Photo removed",
-      "deleteError": "Failed to remove photo"
+      "deleteError": "Failed to remove photo",
+      "calendarLegend": "Progress photos"
+    },
+    "bodyWater": "Body Water %",
+    "boneMass": "Bone Mass",
+    "couldNotLoadUserProfileOrPrefs": "Could not load user profile or preferences for calculation.",
+    "exercise": "Exercise",
+    "failedToCreateCategory": "Failed to create category.",
+    "failedToLoadCategories": "Failed to load custom categories.",
+    "failedToLoadExistingCheckIn": "Failed to load existing check-in data.",
+    "failedToLoadExistingCustom": "Failed to load existing custom measurements.",
+    "failedToLoadMostRecent": "Failed to load most recent measurement.",
+    "failedToLoadRecentCustom": "Failed to load recent custom measurements.",
+    "failedToLoadRecentStandard": "Failed to load recent standard measurements.",
+    "failedToSaveCustomMeasurement": "Failed to save custom measurement.",
+    "failedToSaveMood": "Failed to save mood.",
+    "failedToUpdateMeasurement": "Failed to update measurement.",
+    "level": "level",
+    "measurementUpdatedSuccessfully": "Measurement updated successfully.",
+    "moodSaved": "Mood Saved",
+    "moodSavedSuccessfully": "Mood saved successfully.",
+    "muscleMass": "Muscle Mass",
+    "recentFasts": "Recent Fasts",
+    "recentFastsDescription": "Your latest fasting logs and status.",
+    "recentMeasurementsDescription": "Your latest logs including measurements, completed fasts, and synced health data.",
+    "saveMood": "Save Mood",
+    "stressLevel": "Stress Level",
+    "tabs": {
+      "fasting": "Fasting & Mood",
+      "measurements": "Measurements",
+      "photos": "Photos",
+      "sleep": "Sleep"
     }
   },
   "sleepTimelineEditor": {
@@ -1881,7 +2546,8 @@
     "wakeTime": "Wake Time",
     "duration": "Duration",
     "sleepScore": "Sleep Score",
-    "source": "Source"
+    "source": "Source",
+    "timeAsleep": "Time Asleep"
   },
   "moodMeter": {
     "howAreYouFeelingToday": "How are you feeling today?",
@@ -1894,7 +2560,18 @@
     "calm": "Calm",
     "confident": "Confident",
     "happy": "Happy",
-    "excited": "Excited"
+    "excited": "Excited",
+    "addCustom": "Add a custom mood",
+    "addMood": "Add mood",
+    "deleteAllHistory": "Also remove it from all past entries",
+    "deleteDesc": "It will no longer appear in your picker. Past entries keep it unless you choose to remove it everywhere.",
+    "deleteTitle": "Delete this mood?",
+    "intensity": "Overall mood",
+    "manage": "Manage",
+    "manageMoods": "Manage moods",
+    "moodName": "Mood name",
+    "moods": "Moods",
+    "showHide": "Show or hide moods"
   },
   "sleepEntrySection": {
     "sleepTracking": "Sleep Tracking",
@@ -1918,7 +2595,17 @@
     "stagesUpdatedSuccessfully": "Sleep stages and times updated successfully!",
     "failedToUpdateSleepStages": "Failed to update sleep stages and times",
     "sleepEntryDeletedSuccessfully": "Sleep entry deleted successfully!",
-    "failedToDeleteSleepEntry": "Failed to delete sleep entry"
+    "failedToDeleteSleepEntry": "Failed to delete sleep entry",
+    "avgOvernightHrv": "Avg HRV",
+    "avgSleepStress": "Avg Stress",
+    "avgSpO2": "Avg SpO2",
+    "awake": "Awake",
+    "deepSleep": "Deep",
+    "failedToLoadSleepEntries": "Failed to load sleep entries",
+    "lightSleep": "Light",
+    "remSleep": "REM",
+    "restingHR": "Resting HR",
+    "sleepEntriesSavedSuccessfully": "Sleep entries saved successfully!"
   },
   "foodDatabaseManager": {
     "foodSharedWithPublic": "Food shared with public",
@@ -1987,7 +2674,21 @@
     "hide": "Hide",
     "forceDelete": "Force Delete",
     "addFoodToDatabaseTitle": "Add Food to Database",
-    "addFoodToDatabaseDescription": "Search for foods to add to your personal database."
+    "addFoodToDatabaseDescription": "Search for foods to add to your personal database.",
+    "addToFavorites": "Add to favorites",
+    "failedToAddFood": "Failed to add food.",
+    "failedToImportFoodData": "Failed to import food data. Please try again.",
+    "failedToLoadFoodDetails": "Failed to load food details.",
+    "failedToLoadRecentAndTopFoods": "Failed to load recent and top foods.",
+    "failedToSearchFoods": "Failed to search foods.",
+    "failedToUpdateFoodSnapshot": "Failed to update food entries snapshot.",
+    "failedToUpdateSharing": "Failed to update sharing status.",
+    "foodAddedSuccessfully": "Food added successfully.",
+    "foodDataImportedSuccessfully": "Food data imported successfully.",
+    "foodSnapshotUpdatedSuccessfully": "Food entries snapshot updated successfully.",
+    "foods": "foods",
+    "name": "Name",
+    "removeFromFavorites": "Remove from favorites"
   },
   "mealManagement": {
     "failedToLoadMeals": "Failed to load meals.",
@@ -2032,7 +2733,26 @@
     "usedByCurrentUserWarning": "This meal is used in your meal plans. Deleting it will remove it from those plans.",
     "confirmPermanentDelete": "Are you sure you want to permanently delete this meal?",
     "hide": "Hide",
-    "delete": "Delete"
+    "delete": "Delete",
+    "addToFavorites": "Add to favorites",
+    "failedToCreateMeal": "Failed to create meal.",
+    "failedToCreateMealPlan": "Failed to create meal plan.",
+    "failedToDeleteMealPlan": "Failed to delete meal plan.",
+    "failedToDuplicateMealPlan": "Failed to duplicate meal plan.",
+    "failedToLoadDeletionImpact": "Failed to load meal deletion impact.",
+    "failedToLoadMealDetails": "Failed to load meal details.",
+    "failedToUpdateMeal": "Failed to update meal.",
+    "failedToUpdateMealPlan": "Failed to update meal plan.",
+    "mealCreatedSuccessfully": "Meal created successfully.",
+    "mealDeletedSuccessfully": "Meal deleted successfully.",
+    "mealPlanCreatedSuccessfully": "Meal plan created successfully.",
+    "mealPlanDeletedSuccessfully": "Meal plan deleted successfully.",
+    "mealPlanDuplicatedSuccessfully": "Meal plan duplicated successfully.",
+    "mealPlanUpdatedSuccessfully": "Meal plan updated successfully.",
+    "mealUpdatedSuccessfully": "Meal updated successfully.",
+    "meals": "meals",
+    "name": "Name",
+    "removeFromFavorites": "Remove from favorites"
   },
   "mealBuilder": {
     "errorTitle": "Error",
@@ -2073,7 +2793,22 @@
     "addFoodButton": "Add Food",
     "addFoodToMealDialogTitle": "Add Food to Meal",
     "addFoodToMealDialogDescription": "Search for a food to add to this meal.",
-    "saveMealButton": "Save Meal"
+    "saveMealButton": "Save Meal",
+    "addFoodOrMealToMealTitle": "Add Food or Meal to Meal",
+    "addLinkedMeal": "Add to Meal",
+    "addLinkedMealDescription": "Select how much of this sub-meal to include as an ingredient.",
+    "addLinkedMealTitle": "Add {{name}} to meal",
+    "cannotAddSelfAsIngredient": "A meal cannot contain itself.",
+    "editLinkedMealTitle": "Edit {{name}}",
+    "foodDiarySaveError": "Cannot save food diary entry: missing context.",
+    "foodUpdatedInMeal": "{{name}} updated in meal.",
+    "linkedMealBadge": "Linked meal",
+    "linkedMealPreviewDescription": "Read-only preview of this sub-meal.",
+    "linkedMealPreviewTitle": "Linked meal",
+    "linkedMealServingInfo": "Yields {{totalServings}} × {{servingSize}} {{servingUnit}}",
+    "mealAddedToMeal": "{{name}} added to meal.",
+    "updateEntryButton": "Update Entry",
+    "updateLinkedMeal": "Update"
   },
   "mealPlanCalendar": {
     "title": "Meal Plan",
@@ -2094,7 +2829,17 @@
     "deleteTemplateError": "Failed to delete template.",
     "updateStatusError": "Could not find the meal plan to update.",
     "toggleStatusSuccess": "Meal plan {{status}} successfully.",
-    "toggleStatusError": "Failed to toggle meal plan active status."
+    "toggleStatusError": "Failed to toggle meal plan active status.",
+    "activate": "Activate",
+    "activeStatus": "Active",
+    "deactivate": "Deactivate",
+    "duration": "Duration",
+    "inactiveStatus": "Inactive",
+    "mealsHeader": "Meals",
+    "ongoingStatus": "Indefinite",
+    "planName": "Plan Name",
+    "status": "Status",
+    "templates": "meal plan templates"
   },
   "mealPlanTemplateForm": {
     "createTitle": "Create Meal Plan Template",
@@ -2113,7 +2858,8 @@
     "addFoodToMealPlanDescription": "Search for a food to add to this day's meal plan.",
     "planNameEmptyError": "Plan Name cannot be empty.",
     "endDateError": "End Date cannot be before Start Date.",
-    "removeButton": "X"
+    "removeButton": "X",
+    "multipleActiveHint": "Multiple meal plans can be active at the same time. Active plans automatically populate diary entries."
   },
   "workoutPresetForm": {
     "createTitle": "Create New Workout Preset",
@@ -2176,7 +2922,9 @@
     "pastedToastTitle": "Pasted!",
     "pastedToastDescription": "Pasted {{itemName}} to the new day.",
     "errorToastTitle": "Error",
-    "errorToastDescription": "Failed to load workout presets or exercises."
+    "errorToastDescription": "Failed to load workout presets or exercises.",
+    "addExerciseButtonInDay": "Add Exercise",
+    "pasteButton": "Paste"
   },
   "reports": {
     "errorToastTitle": "Error",
@@ -2345,7 +3093,13 @@
       "lapTableMaxHRBpmHeader": "Max HR (bpm)",
       "lapTableCaloriesHeader": "Calories",
       "heartRateTimeInZonesTitle": "Heart Rate Time in Zones",
-      "timeInZoneSLabel": "Time in Zone (s)"
+      "timeInZoneSLabel": "Time in Zone (s)",
+      "avgMovingSpeed": "Avg Moving Speed",
+      "caloriesBreakdown": "Active / Resting",
+      "elapsedTime": "Elapsed Time",
+      "elevationRange": "Min / Max Elev",
+      "movingTime": "Moving Time",
+      "weather": "Weather"
     },
     "bodyBattery": "Body Battery",
     "charged": "Charged",
@@ -2402,7 +3156,65 @@
     "heartRateNormal": "Normal",
     "heartRateElevated": "Elevated",
     "heartRateHigh": "High",
-    "bpm": "bpm"
+    "bpm": "bpm",
+    "average": "Average",
+    "avgDailyVariance": "Avg Daily Variance",
+    "avgVarianceDescription": "Average deviation from goal per day",
+    "awakeAvg": "Awake Avg",
+    "cumulativeBalanceTitle": "Cumulative Balance",
+    "customMeasurementChartTitle": "{{categoryName}} ({{measurementType}})",
+    "dailyAverages": "Daily Averages",
+    "dailySteps": "Daily Steps",
+    "exerciseVarietyScore": "Exercise Variety Score",
+    "failedToLoadCoreData": "Failed to load core reports data.",
+    "failedToLoadExerciseDashboard": "Failed to load exercise dashboard data.",
+    "failedToLoadStress": "Failed to load stress data.",
+    "fasting": {
+      "avgDuration": "Avg Duration (hrs)",
+      "avgHours": "Avg Hours",
+      "consistencyGrid": "Fasting Heatmap (Last 90 Days)",
+      "dailyDuration": "Daily Fasting Duration",
+      "duration": "Duration",
+      "endDate": "End Date",
+      "history": "Fasting History",
+      "hours": "Hours",
+      "insightsTab": "Fasting",
+      "longestFast": "Longest Fast (hrs)",
+      "protocol": "Protocol",
+      "startDate": "Start Date",
+      "totalFasts": "Total Fasts",
+      "totalHours": "Total Hours",
+      "trends": "Fasting Trends",
+      "zoneDistribution": "Fasting Zones"
+    },
+    "foodDiaryExportTotals": {
+      "total": "Total"
+    },
+    "goal": "Goal",
+    "measurementsTab": "Measurements",
+    "medicationsTab": "Medications",
+    "miniNutritionTrendsError": "Failed to load nutrition trend data.",
+    "moodChartTitle": "Daily Mood",
+    "netEnergyBalance": "Net Balance",
+    "noMoodData": "No daily mood data available.",
+    "noStressData": "No raw stress data available.",
+    "normalRange": "Normal adult resting range",
+    "notApplicable": "N/A",
+    "notes": "Notes: ",
+    "nutrientsTab": "Nutrients",
+    "setPerformanceAnalysis": {
+      "avgReps": "Avg. Reps",
+      "avgWeight": "Avg. Weight",
+      "title": "Set Performance Analysis",
+      "avgWeightHeader": "Avg. Weight ({{weightUnit}})",
+      "titleWithExercise": "Set Performance Analysis - {{exerciseName}}"
+    },
+    "sleepAvg": "Sleep Avg",
+    "stressChartTitle": "Raw Stress Levels",
+    "stressTab": "Stress",
+    "totalEaten": "Total Eaten",
+    "totalGoal": "Total Goal",
+    "uniqueExercises": "Unique Exercises"
   },
   "sleepHealth": {
     "hrvStatus": "HRV Status",
@@ -2421,7 +3233,19 @@
     "respirationLowest": "Lowest",
     "respirationHighest": "Highest",
     "heartRate": "Heart Rate",
-    "restingHeartRate": "Resting Heart Rate"
+    "restingHeartRate": "Resting Heart Rate",
+    "avgHR": "Avg",
+    "avgHRV": "Avg",
+    "avgResp": "Avg",
+    "avgSpO2": "Average",
+    "baseline": "Baseline",
+    "hrvDisclaimer": "*Baseline from your data (mean ± std dev)",
+    "lowestResp": "Lowest",
+    "lowestSpO2": "Lowest",
+    "normalRHR": "Normal adult: 60-100 bpm",
+    "normalRange": "Normal: 12-20 brpm",
+    "pulseOx": "Pulse Ox (SpO2)",
+    "range": "Range"
   },
   "sleepSummary": {
     "title": "Last Night's Sleep",
@@ -2437,7 +3261,15 @@
     "bodyBatteryChange": "Body Battery Change",
     "restlessMoments": "Restless Moments",
     "avgStress": "Avg Sleep Stress",
-    "noData": "No sleep data available"
+    "noData": "No sleep data available",
+    "avgHRV": "Avg HRV",
+    "avgResp": "Avg Resp",
+    "avgSpO2": "Avg SpO2",
+    "batteryChange": "Battery",
+    "lastNight": "Last Night",
+    "restingHR": "Resting HR",
+    "restless": "Restless Moments",
+    "sleepScore": "Sleep Score"
   },
   "exerciseReportsDashboard": {
     "loadingExerciseData": "Loading exercise data...",
@@ -2517,7 +3349,8 @@
     "inches": "inches",
     "waist": "Waist",
     "hips": "Hips",
-    "dailySteps": "Daily Steps"
+    "dailySteps": "Daily Steps",
+    "failedToLoadComparisonData": "Failed to load comparison data."
   },
   "reportsTables": {
     "foodDiaryTable": "Food Diary Table",
@@ -2545,7 +3378,9 @@
     "meal": "Meal",
     "food": "Food",
     "quantity": "Quantity",
-    "total": "Total"
+    "total": "Total",
+    "allTables": "All tables",
+    "showTable": "Show table"
   },
   "moodReports": {
     "title": "Mood Reports",
@@ -2620,7 +3455,14 @@
     "sleepDebtDisclaimer": "*Sleep Debt is calculated based on a recommended 8 hours of sleep. This will be customizable in a future release.",
     "sleepEfficiency": "Sleep Efficiency",
     "hoursShort": "h ",
-    "minutesShort": "m"
+    "minutesShort": "m",
+    "healthMetrics": "Health Metrics",
+    "nightlyDetails": "Nightly Details",
+    "showLess": "Show Less",
+    "sleepTrends": "Sleep Trends",
+    "total": "Total",
+    "showAll": "Show All ({{count}})",
+    "sleepDebtDisclaimerPersonalized": "*Sleep Debt is calculated based on your personalized sleep need of {{time}}."
   },
   "sleepAnalyticsTable": {
     "exportToCSV": "Export to CSV",
@@ -2666,7 +3508,10 @@
     "sleepDataExportedSuccessfully": "Sleep data exported successfully.",
     "failedToLoadSleepEntries": "Failed to load sleep entries",
     "sleepHypnogram": "Sleep Hypnogram",
-    "noSleepStageDataAvailable": "No sleep stage data available for this entry."
+    "noSleepStageDataAvailable": "No sleep stage data available for this entry.",
+    "csvHeadersDuration": "Duration",
+    "csvHeadersTimeAsleep": "Time Asleep",
+    "sleepHistoryTableTitle": "Sleep History & Analytics"
   },
   "workoutReport": {
     "workoutStats": "Workout Stats",
@@ -2685,7 +3530,17 @@
     "estimated1RM": "Estimated 1RM",
     "maxWeight": "Max Weight",
     "maxReps": "Max Reps",
-    "setPerformanceAnalysis": "Set Performance Analysis"
+    "setPerformanceAnalysis": "Set Performance Analysis",
+    "exerciseName": "Exercise Name",
+    "exercises": "Exercises",
+    "primaryMuscles": "Primary Muscles",
+    "reps": "Reps",
+    "rest": "Rest",
+    "set": "Set",
+    "sets": "Sets",
+    "time": "Time",
+    "totalTime": "Time",
+    "volume": "Volume"
   },
   "exerciseHistoryDisplay": {
     "loadingHistory": "Loading history...",
@@ -2757,7 +3612,10 @@
       "mine": "My Exercises",
       "family": "Family",
       "public": "Public"
-    }
+    },
+    "failedToLoadEquipment": "Failed to load equipment.",
+    "failedToLoadExercises": "Failed to load exercises.",
+    "failedToLoadMuscles": "Failed to load muscle groups."
   },
   "addComp": {
     "addNew": "Add New"
@@ -2795,7 +3653,14 @@
       "switchToContinuousScanMode": "Switch to Continuous Scan Mode",
       "forceScan": "Force Scan",
       "turnOffFlashlight": "Turn off flashlight",
-      "turnOnFlashlight": "Turn on flashlight"
+      "turnOnFlashlight": "Turn on flashlight",
+      "camera": "Camera",
+      "continuous": "Continuous",
+      "flashOff": "Flash Off",
+      "flashOn": "Flash On",
+      "manual": "Enter Scan Code",
+      "refresh": "Refresh Focus",
+      "single": "Single Scan"
     }
   },
   "customCategoryManager": {
@@ -2829,7 +3694,12 @@
     "deleteCategorySuccess": "Custom category deleted successfully",
     "deleteCategoryError": "Failed to delete custom category",
     "invalidIdError": "Cannot delete category: Invalid ID.",
-    "userNotAuthenticatedError": "Cannot delete category: User not authenticated."
+    "userNotAuthenticatedError": "Cannot delete category: User not authenticated.",
+    "displayNameHelp": "Optional custom name shown in the app",
+    "displayNameLabel": "Display Name (optional, max 100 characters)",
+    "displayNamePlaceholder": "e.g., Morning Blood Sugar Level",
+    "nameHelp": "Internal identifier used for syncing",
+    "unitPrecisionNote": "Using standard units (like kcal, mmHg, BPM) automatically optimizes chart precision."
   },
   "customFoodForm": {
     "foodNameLabel": "Food Name *",
@@ -3010,7 +3880,21 @@
     "baselineError": "Failed to calculate sleep need baseline"
   },
   "onboarding": {
-    "completeSetup": "Complete Setup"
+    "completeSetup": "Complete Setup",
+    "activityHeavy": "Heavy (6-7 days/week)",
+    "activityHeavyDesc": "Hard exercise or sports.",
+    "activityLevelTitle": "How often do you exercise?",
+    "activityLight": "Light (1-2 days/week)",
+    "activityLightDesc": "Light exercise or sports.",
+    "activityModerate": "Moderate (3-5 days/week)",
+    "activityModerateDesc": "Moderate exercise or sports.",
+    "activityNotMuch": "Not Much",
+    "activityNotMuchDesc": "Sedentary lifestyle, little to no exercise.",
+    "addBurnedCaloriesDesc": "If you exercise, should we add those calories back to your daily budget?",
+    "addBurnedCaloriesTitle": "Add burned calories from exercise?",
+    "planReady": "Your personalized plan is ready to go.",
+    "skipFailed": "Could not skip onboarding. Please try again.",
+    "submissionFailed": "Could not save your plan. Please try again."
   },
   "cycle": {
     "hub": "Cycle & Pregnancy Hub",
@@ -3020,7 +3904,8 @@
       "today": "Today",
       "calendar": "Calendar",
       "insights": "Insights",
-      "care": "Care"
+      "care": "Care",
+      "log": "Log"
     },
     "comingSoon": {
       "calendarTitle": "Cycle Calendar",
@@ -3053,6 +3938,7 @@
       "conditions": "Known conditions (Optional)",
       "complete": "Agree & Complete"
     },
+    "disclaimerFooter": "Predictions are informational and not medical advice or contraception.",
     "disclaimer": {
       "title": "Important Health Disclaimer",
       "text1": "This cycle tracking feature is intended for educational, fitness, and log keeping purposes only. It is not designed or intended to be used as a primary method of contraception or family planning.",
@@ -3064,7 +3950,9 @@
       "ttc": "Trying to Conceive (TTC)",
       "ttcDesc": "Track fertile window, ovulation, and luteal phase indicators.",
       "pregnant": "Pregnancy Tracking",
-      "pregnantDesc": "Track fetal development milestones, contraction timers, and prenatal care."
+      "pregnantDesc": "Track fetal development milestones, contraction timers, and prenatal care.",
+      "menopause": "Menopause-aware",
+      "postpartum": "Postpartum"
     },
     "today": {
       "cycleDay": "Cycle day",
@@ -3073,17 +3961,43 @@
       "nextPeriod": "Next period",
       "ovulation": "Ovulation",
       "cycleLength": "Cycle length",
-      "lateBanner": "Your period is {{n}} days late. Log it when it starts, or adjust your cycle length in settings."
+      "lateBanner": "Your period is {{n}} days late. Log it when it starts, or adjust your cycle length in settings.",
+      "adjustSettingsTitle": "Adjust Cycle Lengths",
+      "avgCycleHint": "Standard is 28 days. Adjust to customize predictions to your body.",
+      "avgCycleLabel": "Typical Cycle Length (days)",
+      "avgPeriodLabel": "Typical Period Length (days)",
+      "guide": {
+        "day": "day",
+        "days": "days",
+        "fertileDesc": "The 7-day span from 5 days before ovulation up to 1 day after ovulation, representing the maximum chance of conception.",
+        "fertileDescDynamic": "Calculated as:",
+        "fertileTitle": "Fertile Window",
+        "follicularDesc": "The phase before ovulation. It automatically expands or contracts to fit your total cycle length (e.g., 16 days for a 30-day cycle).",
+        "follicularDescDynamic": "Calculated as:",
+        "follicularTitle": "Follicular Phase (Variable)",
+        "intro": "Predictions are computed dynamically using your cycle settings and logs:",
+        "note": "Note: Standard cycles use a 14-day luteal phase. You can adjust your cycle settings using the edit pencil on the Cycle Length card.",
+        "ovulationDesc": "Next Period Start - Luteal Phase Length (e.g., July 12 - 14 days = June 28).",
+        "ovulationDescDynamic": "Calculated as:",
+        "ovulationTitle": "Ovulation Day",
+        "periodDesc": "Last Period Start + Typical Cycle Length (e.g., June 12 + 30 days = July 12).",
+        "periodDescDynamic": "Calculated as:",
+        "periodTitle": "Next Period Start",
+        "title": "How are predictions calculated?"
+      },
+      "ttcModeActive": "TTC Mode Active"
     },
     "legend": {
       "period": "Period",
       "fertile": "Fertile",
-      "ovulation": "Ovulation"
+      "ovulation": "Ovulation",
+      "predicted": "Predicted Period"
     },
     "stats": {
       "cycleAvg": "Cycle avg",
       "periodAvg": "Period avg",
-      "lastBbt": "Last BBT"
+      "lastBbt": "Last BBT",
+      "confidence": "Prediction"
     },
     "regularity": {
       "regular": "Regular",
@@ -3112,15 +4026,231 @@
       "moods": "Mood",
       "energy": "Energy",
       "notes": "Notes",
-      "notesPlaceholder": "Anything else to note…"
+      "notesPlaceholder": "Anything else to note…",
+      "cervicalPositionFirmness": "Firmness",
+      "cervicalPositionHeight": "Height",
+      "cervicalPositionOpening": "Opening",
+      "cervicalPositionTitle": "Cervical Position",
+      "customizeProducts": "Customize Products",
+      "customizeSymptoms": "Customize Symptoms",
+      "glance": {
+        "sleep": "Sleep",
+        "water": "Water",
+        "weight": "Weight"
+      },
+      "intercourse": "Intercourse",
+      "intercourseLogged": "Logged",
+      "intercourseNotLogged": "Not logged",
+      "intercourseSection": "Intercourse",
+      "protectedIntercourse": "Protected intercourse (condom/barrier)",
+      "severity": "Severity for new symptoms",
+      "symptoms": "Symptoms"
+    },
+    "bbt": {
+      "create": "Create & track in Check-in",
+      "creating": "Setting up…",
+      "missing": "Track your basal body temperature to confirm ovulation. It lives in Check-in and can sync from your phone.",
+      "stale": "Your last BBT reading was {{n}} days ago. Temperature confirmation is paused until you log a fresh reading — calendar and OPK predictions still work."
+    },
+    "beta": {
+      "description": "Please expect some rough edges. If you spot any bugs or issues, raise them on GitHub to help us improve!",
+      "title": "Initial Beta Release"
+    },
+    "calendar": {
+      "addLog": "Add Log",
+      "editLog": "Edit Log",
+      "editPeriods": "Edit Periods",
+      "fri": "Fri",
+      "logDialogDesc": "Log your cycle parameters, symptoms, mood, and temperature.",
+      "logDialogTitle": "Daily Log - {{date}}",
+      "mon": "Mon",
+      "noLogs": "No logs recorded for this day.",
+      "normalDay": "Non-bleeding day",
+      "paintModeHint": "Tap dates to toggle period flow. Predictions will recompute when saved.",
+      "sat": "Sat",
+      "saveSuccess": "Period updated",
+      "saveSuccessDesc": "Successfully updated menstrual period logs.",
+      "sun": "Sun",
+      "thu": "Thu",
+      "tue": "Tue",
+      "wed": "Wed"
+    },
+    "care": {
+      "add": "Add",
+      "appointment": "Appointment",
+      "appointments": "Appointments",
+      "apptLocation": "Location (optional)",
+      "apptTitle": "Title (optional)",
+      "avgCycle": "Average cycle length",
+      "avgPeriod": "Average period length",
+      "birthPlan": "Birth plan",
+      "cyclesTracked": "Cycles analyzed",
+      "delete": "Delete",
+      "doctorReport": "Doctor report",
+      "hospitalBag": "Hospital bag",
+      "intro": "Articles, appointments, and prep — all stored on your own server.",
+      "library": "Health library",
+      "noAppointments": "No appointments yet.",
+      "print": "Print",
+      "regularity": "Regularity",
+      "reportEmpty": "Log a few cycles to generate a summary you can share.",
+      "reportNote": "Based on self-reported data. Generated locally for sharing with your clinician.",
+      "save": "Save appointment"
+    },
+    "correlation": {
+      "byPhase": "by cycle phase",
+      "emptyDesc": "Keep logging weight, mood, sleep and energy across a few cycles to see how they move with your phases.",
+      "emptyTitle": "Correlations unlock with more data",
+      "higher": "higher",
+      "insight": "{{metric}} tends to be {{dir}} in your {{phase}} phase ({{delta}}{{unit}} vs your average).",
+      "lower": "lower"
+    },
+    "history": {
+      "addSuccess": "Cycle added",
+      "addSuccessDesc": "Successfully logged manual cycle history.",
+      "confirmDelete": "Are you sure you want to delete this cycle record?",
+      "cycleLength": "Cycle Length (days)",
+      "deleteSuccess": "Cycle deleted",
+      "derived": "Auto",
+      "desc": "View and adjust your past period dates and statistics.",
+      "editDesc": "Edit cycle start/end dates or parameters.",
+      "editTitle": "Edit Cycle Record",
+      "exclude": "Exclude from stats",
+      "excludeHelp": "Use for irregular outliers",
+      "excludeToggle": "Toggle exclude",
+      "excluded": "Excluded",
+      "logPrevious": "Log Previous Period",
+      "logPreviousDesc": "Enter past menstrual period dates to seed calculations.",
+      "logPreviousTitle": "Log Previous Period",
+      "manual": "Manual",
+      "noCycles": "No cycles recorded yet. Try logging your period.",
+      "periodLength": "Period Length (days)",
+      "startDate": "Start Date",
+      "title": "Cycle History",
+      "updateSuccess": "Cycle updated",
+      "updateSuccessDesc": "Successfully updated manual cycle dates."
+    },
+    "hormone": {
+      "estrogen": "Estrogen",
+      "fsh": "FSH",
+      "lh": "LH",
+      "progesterone": "Progesterone"
+    },
+    "insights": {
+      "avgVolume": "Avg Flow Volume",
+      "bbt": "Basal Body Temperature (BBT)",
+      "bbtDesc": "Logged temperatures indicating biphasic cycle.",
+      "bcSuppressed": "Flat Hormone Curve (Birth Control active)",
+      "clinicalAlerts": "Clinical Health Alerts",
+      "clinicalAlertsDesc": "Heuristics-based observations worth discussing with a clinician.",
+      "hormones": "Hormone Fluctuations Simulation",
+      "hormonesDesc": "Typical curves for a standard 28-day cycle.",
+      "locked": "Insights Locked",
+      "lockedDesc": "Log at least 2 completed cycles to unlock regularity charts, BBT curves, and symptom matrix details.",
+      "needed": "needed",
+      "nextForecast": "Next Period Supply Forecast",
+      "noBbt": "Log daily temperature logs to view your BBT chart.",
+      "noData": "No insights data available.",
+      "noSymptoms": "Log symptoms in your daily log to view phase correlations.",
+      "productsPerPeriod": "products average",
+      "progress": "Progress: {{count}}/2 cycles",
+      "regularity": "Cycle Regularity",
+      "regularityDesc": "Duration of last cycles vs. average.",
+      "spendDesc": "Pads: {{pads}} · Tampons: {{tampons}}",
+      "supply": "Product Usage & Supply Forecast",
+      "supplyDesc": "Averages and estimations for your next period.",
+      "symptoms": "Symptom Frequencies by Phase",
+      "symptomsDesc": "Occurrence counts aggregated across your tracked cycles.",
+      "yearlySpend": "Yearly Spend (Est.)"
+    },
+    "ttc": {
+      "chartLegend": "Higher bars indicate days closer to ovulation with higher pregnancy probability.",
+      "conceptionChance": "Conception chance",
+      "conceptionProbability": "Conception Probability",
+      "congratsDesc": "You have logged a positive pregnancy test in this cycle. We wish you a healthy and happy pregnancy!",
+      "congratsTitle": "Congratulations! 🎉",
+      "dpo": "Days Past Ovulation (DPO)",
+      "fertileWindowChart": "Fertile Window Conception Chance",
+      "hptTestTitle": "Pregnancy Test (HPT)",
+      "implantationDesc": "A fertilized egg typically implants 6–12 days after ovulation. During this window, it is common to feel no symptoms at all, or mild cramping and spotting. These can feel identical to regular PMS.",
+      "implantationTitle": "Implantation Window",
+      "irregularCaveatDesc": "Predictions may be less accurate due to cycle variation. Logging daily BBT and OPK tests will provide the most precise fertile window.",
+      "irregularCaveatTitle": "Irregular Cycle Detected",
+      "logNegativeHpt": "Log Negative HPT",
+      "logPositiveHpt": "Log Positive HPT",
+      "logTestError": "Failed to log your test. Please try again.",
+      "noOvulationEstimate": "No ovulation estimate available yet. Keep logging to predict.",
+      "opkTestTitle": "Ovulation Test (OPK / LH Surge)",
+      "ovulationEstimateBasis": " based on ",
+      "ovulationEstimateDetail": "Ovulation is estimated on ",
+      "pregnancyModeStubDesc": "Pregnancy Mode is coming soon in Phase 4! We will transition your stats then.",
+      "pregnancyModeStubTitle": "Pregnancy Mode",
+      "startPregnancyMode": "Start Pregnancy Mode",
+      "testCountdown": "Testing is most accurate starting at 10 DPO (in {{n}} days). Try to wait to avoid disappointment or faint line confusion.",
+      "testDeleted": "Test Deleted",
+      "testDeletedDesc": "Removed test entry.",
+      "testLogged": "Test Logged",
+      "testLoggedDesc": "Successfully logged your test result.",
+      "testLoggingTitle": "Ovulation & Pregnancy Tests",
+      "testLogsHistory": "This Cycle",
+      "testReady": "You have reached {{dpo}} DPO! A pregnancy test logged now is highly accurate. Use first morning urine for the best concentration.",
+      "twoWeekWaitTitle": "Two-Week Wait (TWW)"
     }
   },
   "healthDataImport": {
-    "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB."
+    "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB.",
+    "addRow": "Add Row",
+    "category": "Data category",
+    "clearData": "Clear",
+    "copied": "Copied!",
+    "copiedValue": "",
+    "downloadTemplate": "Download Template",
+    "emptyFile": "The selected file is empty.",
+    "import": "Import",
+    "importComplete": "Import complete",
+    "importError": "Import Error",
+    "importFailed": "Failed to import health data.",
+    "importSummary": "Imported {{processed}} records, {{skipped}} skipped, {{errors}} failed.",
+    "importing": "Importing...",
+    "loadedRecords": "Loaded {{count}} rows.",
+    "noItems": "No importable values were found. Check for empty rows or missing dates.",
+    "title": "Import Health Data",
+    "uploadCSV": "Upload CSV",
+    "validationError": "Nothing to import"
   },
   "diaryCsvImport": {
     "fileTooLarge": "The selected file is too large. Please upload a file smaller than 25MB.",
-    "headersMismatch": "The CSV is missing required columns. Please map the fields to continue."
+    "headersMismatch": "The CSV is missing required columns. Please map the fields to continue.",
+    "actions": "Actions",
+    "addRow": "Add Row",
+    "clearData": "Clear Data",
+    "dateMealTypeRequired": "Every row needs a ",
+    "deleteRow": "Delete Row",
+    "downloadTemplate": "Download Template",
+    "emptyFile": "The selected file is empty.",
+    "importComplete": "Import complete",
+    "importData": "Import Data",
+    "importErrorTitle": "Import Error",
+    "importFailed": "Failed to import diary data.",
+    "importSummary": "Imported {{processed}} entries, {{errors}} failed.",
+    "importing": "Importing...",
+    "invalidFormatTitle": "Invalid CSV Format",
+    "matchScope": "Match food names against",
+    "matchScopeDescription": "A food_name match outside the ticked scopes is ignored, and a new food is created for you instead (using the row",
+    "mealType": "Meal",
+    "overrideDescription": "When a row matches one of your own foods, rewrite that food variant",
+    "overrideLabel": "Override existing food nutrition with imported values",
+    "parseText": "Parse Text",
+    "pasteFirst": "Please paste some CSV data first.",
+    "pastePlaceholder": "Or paste CSV content here...",
+    "pickDate": "Pick a date",
+    "recordsLoaded": "Loaded {{length}} rows.",
+    "scopeFamily": "Family",
+    "scopeMine": "My Items",
+    "scopePublic": "Public",
+    "title": "Import Diary Log (CSV)",
+    "uploadCsv": "Upload CSV",
+    "validationErrorTitle": "Validation Error"
   },
   "csvImport": {
     "changeFormat": "Change",
@@ -3141,7 +4271,9 @@
     "summary": {
       "auto": "Auto-detect",
       "autoDelimiter": "Auto-detect ({{label}})",
-      "autoDecimal": "Auto decimals"
+      "autoDecimal": "Auto decimals",
+      "autoDecimalEu": "Auto decimals (1.234,56)",
+      "autoDecimalUs": "Auto decimals (1,234.56)"
     },
     "decimal": {
       "auto": "Auto-detect",
@@ -3162,5 +4294,334 @@
     "none": "None",
     "confirmMapping": "Confirm",
     "cancel": "Cancel"
+  },
+  "auth": {
+    "emailExists": "User with this email already exists.",
+    "invalidOrigin": "Access denied: This connection",
+    "loginError": "Login failed. Please check your credentials.",
+    "loginSuccess": "Login successful!",
+    "magicLinkError": "Failed to request magic link.",
+    "magicLinkSent": "Magic link sent! Check your inbox.",
+    "oidcError": "Failed to initiate provider login.",
+    "passkeyErrorTitle": "Passkey Error",
+    "passkeyGenericError": "Failed to sign in with Passkey. Ensure your device supports it.",
+    "passkeySecureContextError": "Passkey authentication requires a Secure Context (HTTPS or localhost). Please sign in using email/password.",
+    "passkeySuccess": "Logged in with Passkey!",
+    "passwordResetError": "Failed to reset password. The link may be expired.",
+    "passwordResetSuccess": "Password has been reset successfully. You can now log in.",
+    "registerError": "An unexpected error occurred during sign up.",
+    "registerSuccess": "Account created successfully!",
+    "resetEmailError": "Failed to request password reset.",
+    "resetEmailSent": "If an account exists, a password reset email has been sent.",
+    "successTitle": "Success"
+  },
+  "copied": "Copied!",
+  "copyFoodEntryDialog": {
+    "copyButton": "Copy",
+    "description": "Select the target date and meal type to copy the food entries.",
+    "descriptionAll": "Select the target date to copy all food entries from this day.",
+    "mealType": "Meal Type",
+    "selectMealTypePlaceholder": "Select meal type",
+    "targetDate": "Target Date",
+    "title": "Copy Food Entries",
+    "titleAll": "Copy Entire Day"
+  },
+  "customNutrients": {
+    "failedToAddNutrient": "Failed to add nutrient.",
+    "failedToLoadNutrients": "Failed to load custom Nutrients."
+  },
+  "dailyProgress": {
+    "exerciseLoadError": "Failed to load exercise entries.",
+    "foodLoadError": "Failed to load food entries.",
+    "summaryLoadError": "Failed to load daily summary."
+  },
+  "error": "Error",
+  "familyAccess": {
+    "createError": "Failed to grant family access",
+    "createSuccess": "Family access granted successfully",
+    "deleteError": "Failed to remove family access",
+    "deleteSuccess": "Family access removed successfully",
+    "toggleError": "Failed to update access status",
+    "toggleSuccess": "Access status updated",
+    "updateError": "Failed to update family access",
+    "updateSuccess": "Family access updated successfully"
+  },
+  "fasting": {
+    "checklistTitle": "Fasting Timer",
+    "deletedSuccessfully": "Fast deleted successfully.",
+    "editFastDesc": "Modify the fasting log details below.",
+    "editFastTitle": "Edit Fast",
+    "endTime": "End Time",
+    "endedSuccessfully": "Fast ended successfully.",
+    "errorStartAfterEnd": "Start time must be before end time.",
+    "failedToDelete": "Failed to delete fast.",
+    "failedToEnd": "Failed to end fast.",
+    "failedToLoadCurrent": "Failed to load current fast.",
+    "failedToLoadHistory": "Failed to load fasting history.",
+    "failedToLoadRange": "Failed to load fasting data for range.",
+    "failedToLoadStats": "Failed to load fasting stats.",
+    "failedToStart": "Failed to start fast.",
+    "failedToUpdate": "Failed to update fast.",
+    "protocol": "Protocol",
+    "protocolName": "Protocol Name",
+    "protocolNamePlaceholder": "Enter custom protocol name",
+    "selectProtocol": "Select Protocol",
+    "startTime": "Start Time",
+    "startedSuccessfully": "Fast started successfully.",
+    "targetEndTime": "Target End Time",
+    "updatedSuccessfully": "Fast updated successfully."
+  },
+  "i18n": {
+    "locale": "en-US"
+  },
+  "integrations": {
+    "fitbitLinkError": "Failed to link Fitbit account.",
+    "fitbitLinkSuccess": "Fitbit account successfully linked!",
+    "garminLoginError": "Failed to connect to Garmin.",
+    "garminLoginSuccess": "Garmin connected successfully.",
+    "googleHealthLinkError": "Failed to link Google Health account.",
+    "googleHealthLinkSuccess": "Google Health account successfully linked!",
+    "hevySyncError": "Hevy sync failed. Please check your API key in settings.",
+    "hevySyncSuccess": "Hevy data synced successfully.",
+    "ouraLinkError": "Failed to link Oura account.",
+    "ouraLinkSuccess": "Oura account successfully linked!",
+    "polarError": "Failed to link Polar account. Please try again.",
+    "polarSuccess": "Your Polar account has been successfully linked.",
+    "stravaError": "Failed to link Strava account. Please try again.",
+    "stravaSuccess": "Your Strava account has been successfully linked.",
+    "withingsError": "Failed to link Withings account. Please try again.",
+    "withingsSuccess": "Your Withings account has been successfully linked."
+  },
+  "key": "text",
+  "mealCreation": {
+    "convertToMeal": "Create Meal from Diary",
+    "description": "Description",
+    "enterDetails": "Enter details for your new meal template.",
+    "failedToCreateMeal": "Failed to create meal from diary entries.",
+    "makePublic": "Make Public",
+    "mealCreatedSuccessfully": "Meal created successfully from diary entries.",
+    "mealName": "Meal Name"
+  },
+  "mealTypeManager": {
+    "add": "Add Category",
+    "addDesc": "Create a new meal category (e.g., Pre-Workout).",
+    "addSuccess": "Meal category added.",
+    "addTitle": "Add Meal Category",
+    "deleteSuccess": "Meal category deleted.",
+    "description": "Customize meal categories and default start times. Suggested meal types adapt dynamically to your schedule when logging food.",
+    "editTitle": "Edit Meals",
+    "loadError": "Failed to load meal categories.",
+    "nameLabel": "Name",
+    "sortHelp": "Lower numbers appear first. (Breakfast=10, Lunch=20, Dinner=40)",
+    "sortOrderLabel": "Sort Order",
+    "title": "Meal Categories",
+    "updateSuccess": "Meal category updated."
+  },
+  "measurements": {
+    "errorLoadingBodyFat": "Failed to load most recent body fat.",
+    "errorLoadingHeight": "Failed to load most recent height.",
+    "errorLoadingWeight": "Failed to load most recent weight."
+  },
+  "mfaChallenge": {
+    "challengeTitle": "MFA Challenge",
+    "emailCodeLabel": "Email Verification Code",
+    "emailTab": "Email Code",
+    "enterAppCode": "Enter code from authenticator app",
+    "enterEmailCode": "Enter code from email",
+    "enterRecoveryCode": "Enter recovery code",
+    "error": {
+      "missingAuthInfo": "Missing authentication information.",
+      "missingInfo": "Error",
+      "recoveryCodeInvalid": "Invalid recovery code.",
+      "totpInvalid": "Invalid TOTP code.",
+      "verificationFailed": "Verification Failed"
+    },
+    "loggedInAs": "Logged in as:",
+    "recoveryCodeLabel": "Recovery Code",
+    "recoveryTab": "Recovery Code",
+    "sendCode": "Send Code",
+    "setupRequired": "MFA setup is required for your account. Please complete the setup.",
+    "totpCodeLabel": "Authenticator App Code",
+    "totpTab": "App Code",
+    "verify": "Verify",
+    "verifyLogin": "Please verify your login using one of your Multi-Factor Authentication methods.",
+    "verifyRecovery": "Verify Recovery Code"
+  },
+  "mood": {
+    "dailyMood": "Daily Mood",
+    "date": "Date",
+    "deletedSuccessfully": "Mood entry deleted successfully.",
+    "failedAddCustom": "Could not add mood.",
+    "failedDeleteCustom": "Could not remove mood.",
+    "failedLoadPrefs": "Failed to load mood prefs.",
+    "failedSavePrefs": "Could not update moods.",
+    "failedToDelete": "Failed to delete mood entry.",
+    "failedToLoadCustom": "Failed to load moods.",
+    "failedToLoadEntries": "Failed to load mood entries.",
+    "failedToLoadEntry": "Failed to load mood entry.",
+    "failedToSave": "Failed to save mood entry.",
+    "failedToUpdate": "Failed to update mood entry.",
+    "intensityTrend": "Overall mood over time",
+    "mood": "Mood",
+    "moodValue": "Mood Value",
+    "mostCommon": "Most common moods",
+    "noMoodData": "No mood data available for this period.",
+    "notes": "Notes: ",
+    "savedSuccessfully": "Mood entry saved successfully.",
+    "updatedSuccessfully": "Mood entry updated successfully."
+  },
+  "preferences": {
+    "resetError": "Failed to reset preferences"
+  },
+  "pregnancy": {
+    "banner": {
+      "daysUntil": "{{n}} days until due date · {{date}}",
+      "due": "Due",
+      "dueNow": "Due date is here!",
+      "week": "Week {{n}}"
+    },
+    "checklist": {
+      "title": "This week",
+      "week": "Week {{n}}"
+    },
+    "contractions": {
+      "apart": "apart",
+      "count": "in last hr",
+      "dur": "Duration",
+      "fiveOneOne": "Your contractions look like a 5-1-1 pattern (about 5 min apart, ~1 min long, for an hour). Consider contacting your provider. This is not medical advice.",
+      "int": "Interval",
+      "long": "long",
+      "start": "Start contraction",
+      "stop": "Stop",
+      "title": "Contraction timer"
+    },
+    "disclaimer": "Pregnancy information is educational and not a substitute for medical care.",
+    "growth": {
+      "baby": "Your baby",
+      "chart": "Growth across pregnancy",
+      "jumpToCurrent": "Jump to this week ({{n}})",
+      "nextWeek": "Next week",
+      "prevWeek": "Previous week",
+      "sizeThisWeek": "Baby size this week",
+      "week": "Week",
+      "weekScrubber": "Week scrubber",
+      "you": "Your body"
+    },
+    "kicks": {
+      "goal": "Aim for {{n}} movements",
+      "movements": "movements",
+      "recent": "Recent sessions",
+      "start": "Start counting",
+      "stop": "End session",
+      "tap": "Tap to count a kick",
+      "title": "Kick counter"
+    },
+    "photos": {
+      "add": "Add week {{n}}",
+      "delete": "Delete photo",
+      "empty": "Capture your bump each week to see the journey.",
+      "title": "Bump photo journal",
+      "uploading": "Uploading…",
+      "week": "Wk {{n}}",
+      "weekAlt": "Week {{n}} bump photo"
+    },
+    "safety": {
+      "disclaimer": "General guidance only — always confirm with your provider.",
+      "food": "Foods",
+      "foodPlaceholder": "Can I eat… (e.g. tuna, brie)",
+      "medPlaceholder": "Can I take… (e.g. ibuprofen)",
+      "meds": "Medications",
+      "noResults": "No matches. Try another term.",
+      "title": "Food & medication safety"
+    },
+    "setup": {
+      "babies": "Number of babies",
+      "conception": "Conception",
+      "conceptionLabel": "Conception / ovulation date",
+      "disclaimer": "Estimates are informational and not a substitute for medical care.",
+      "dueDate": "Due date",
+      "dueDateLabel": "Due date",
+      "estimatedDue": "Estimated due date: {{date}}",
+      "lmp": "Last period",
+      "lmpLabel": "First day of last period",
+      "more": "3+",
+      "single": "One",
+      "start": "Start tracking",
+      "subtitle": "Tell us how to estimate your due date — you can adjust it later.",
+      "title": "Start pregnancy tracking",
+      "twins": "Twins"
+    },
+    "today": {
+      "babyThisWeek": "Baby this week"
+    },
+    "vitals": {
+      "bp": {
+        "title": "Blood Pressure"
+      },
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "log": "Log",
+      "meds": {
+        "notTaken": "Log dose",
+        "taken": "Taken today"
+      },
+      "noPrenatalsLinked": "No prenatal medications linked. Link medications in settings to track compliance.",
+      "prenatalSupplements": "Prenatal Supplements",
+      "save": "Save",
+      "title": "Maternal Vitals",
+      "weight": {
+        "aboveRange": "Above typical range",
+        "belowRange": "Below typical range",
+        "iomRange": "IOM Range (Wk {{wk}}):",
+        "sinceStart": "since start",
+        "title": "Maternal Weight",
+        "withinRange": "Within typical range"
+      }
+    }
+  },
+  "providers": {
+    "createError": "Failed to add external data provider.",
+    "createSuccess": "External data provider added successfully.",
+    "deleteError": "Failed to delete external data provider",
+    "deleteSuccess": "External data provider deleted successfully",
+    "statusUpdateError": "Failed to update external data provider status",
+    "statusUpdateSuccess": "External data provider status updated successfully",
+    "updateError": "Failed to update external data provider",
+    "updateSuccess": "External data provider updated successfully"
+  },
+  "review": {
+    "errorLoadingCount": "Failed to load review count.",
+    "errorLoadingItems": "Failed to load review items."
+  },
+  "success": "Success",
+  "syncRangeDialog": {
+    "description": "Choose the date range you would like to synchronize from {{provider}}.",
+    "endDate": "End Date",
+    "last180Days": "Last 180 Days",
+    "last30Days": "Last 30 Days",
+    "last365Days": "Last 365 Days",
+    "last7Days": "Last 7 Days",
+    "last90Days": "Last 90 Days",
+    "polarWarning": "Note: Polar only allows syncing data recorded after you connected your account to SparkyFitness.",
+    "startDate": "Start Date",
+    "syncNow": "Start Sync",
+    "timeoutWarning": "For large date ranges, the browser may time out, but the server will continue syncing in the background.",
+    "title": "Sync {{provider}} Data"
+  },
+  "warning": "Warning",
+  "workout": {
+    "avgHr": "Avg HR (bpm)",
+    "calories": "Calories",
+    "caloriesAuto": "Auto",
+    "distance": "Distance",
+    "durationMin": "Duration (min)",
+    "durationSec": "Duration (s)",
+    "durationSet": "Duration set {{setNumber}}",
+    "notesPlaceholder": "Add a note for this set...",
+    "reps": "Reps",
+    "restSec": "Rest (s)",
+    "rpe": "RPE",
+    "type": "Type",
+    "weight": "weight"
   }
 }
