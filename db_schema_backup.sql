@@ -1993,7 +1993,9 @@ CREATE TABLE public.food_entries (
     source character varying(50),
     source_id character varying(255),
     entry_time time without time zone,
+    images jsonb DEFAULT '[]'::jsonb NOT NULL,
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
+    CONSTRAINT food_entries_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text)),
     CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
 );
 
@@ -2038,7 +2040,9 @@ CREATE TABLE public.food_entry_meals (
     unit text DEFAULT 'serving'::text,
     meal_type_id uuid NOT NULL,
     legacy_serving_unit_math boolean DEFAULT false NOT NULL,
-    entry_time time without time zone
+    entry_time time without time zone,
+    images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    CONSTRAINT food_entry_meals_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
 
 
@@ -2143,7 +2147,9 @@ CREATE TABLE public.foods (
     shared_with_public boolean DEFAULT false,
     provider_type text,
     is_quick_food boolean DEFAULT false NOT NULL,
-    provider_verified boolean DEFAULT false NOT NULL
+    provider_verified boolean DEFAULT false NOT NULL,
+    images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    CONSTRAINT foods_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
 
 
@@ -2400,7 +2406,9 @@ CREATE TABLE public.meals (
     shared_with_public boolean DEFAULT false,
     serving_size numeric DEFAULT 1.0 NOT NULL,
     serving_unit text DEFAULT 'serving'::text NOT NULL,
-    total_servings numeric DEFAULT 1.0 NOT NULL
+    total_servings numeric DEFAULT 1.0 NOT NULL,
+    images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    CONSTRAINT meals_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
 
 

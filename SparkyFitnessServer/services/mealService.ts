@@ -32,6 +32,7 @@ interface CreateMealData {
     [key: string]: unknown;
   }>;
   user_id?: string;
+  images?: string[];
   [key: string]: unknown;
 }
 
@@ -42,6 +43,7 @@ interface UpdateMealData {
   serving_size?: unknown;
   serving_unit?: string;
   total_servings?: unknown;
+  images?: string[];
   [key: string]: unknown;
 }
 
@@ -693,8 +695,8 @@ async function getMealPlanEntries(
   try {
     const mealPlanEntries = await mealRepository.getMealPlanEntries(
       userId,
-      startDate,
-      endDate
+      String(startDate),
+      String(endDate)
     );
     return mealPlanEntries;
   } catch (error) {

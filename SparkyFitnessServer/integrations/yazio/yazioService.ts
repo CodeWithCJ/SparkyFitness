@@ -192,6 +192,12 @@ interface YazioServing {
 }
 
 interface YazioProduct extends YazioProductSearchResult {
+  /**
+   * Yazio's API is undocumented and image fields are inconsistent across
+   * product types; both spellings are optional and read defensively.
+   */
+  image_url?: string | null;
+  image?: string | null;
   is_deleted?: boolean;
   servings?: YazioServing[];
 }
@@ -811,6 +817,14 @@ function mapYazioProduct(
     provider_type: 'yazio',
     provider_verified: isYazioProductVerified(product),
     is_custom: false,
+    // Yazio's API is undocumented and does not consistently return an image
+    // field; read it defensively so its absence is simply a no-op.
+    image_url:
+      typeof product.image_url === 'string'
+        ? product.image_url
+        : typeof product.image === 'string'
+          ? product.image
+          : null,
     default_variant: defaultVariant,
     variants,
   };

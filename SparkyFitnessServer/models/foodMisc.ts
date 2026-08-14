@@ -1,4 +1,5 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import type { FoodEntrySnapshot } from '../types/nutrition.js';
 
 const DEFAULT_VARIANT_JSON_SQL = `
   json_build_object(
@@ -43,8 +44,7 @@ const PREFERRED_DEFAULT_VARIANT_JOIN_SQL = `
     LIMIT 1
   ) fv ON TRUE
 `;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodDataProviderById(providerId: any) {
+async function getFoodDataProviderById(providerId: string) {
   const client = await getSystemClient(); // System-level operation
   try {
     const result = await client.query(
@@ -56,10 +56,13 @@ async function getFoodDataProviderById(providerId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getRecentFoods(userId: any, limit: any, mealType: any) {
+async function getRecentFoods(
+  userId: string,
+  limit: number,
+  mealType?: string | null
+) {
   const client = await getClient(userId); // User-specific operation
-  const queryParams = [userId];
+  const queryParams: (string | number)[] = [userId];
   let mealTypeCondition = '';
   if (mealType) {
     queryParams.push(mealType);
@@ -90,6 +93,7 @@ async function getRecentFoods(userId: any, limit: any, mealType: any) {
         f.provider_external_id,
         f.provider_type,
         f.provider_verified,
+        f.images,
         rfe.last_used_date,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -104,10 +108,13 @@ async function getRecentFoods(userId: any, limit: any, mealType: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getTopFoods(userId: any, limit: any, mealType: any) {
+async function getTopFoods(
+  userId: string,
+  limit: number,
+  mealType?: string | null
+) {
   const client = await getClient(userId); // User-specific operation
-  const queryParams = [userId];
+  const queryParams: (string | number)[] = [userId];
   let mealTypeCondition = '';
   if (mealType) {
     queryParams.push(mealType);
@@ -138,6 +145,7 @@ async function getTopFoods(userId: any, limit: any, mealType: any) {
         f.provider_external_id,
         f.provider_type,
         f.provider_verified,
+        f.images,
         tfe.usage_count,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -152,8 +160,7 @@ async function getTopFoods(userId: any, limit: any, mealType: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFavoriteFoods(userId: any) {
+async function getFavoriteFoods(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -168,6 +175,7 @@ async function getFavoriteFoods(userId: any) {
         f.provider_external_id,
         f.provider_type,
         f.provider_verified,
+        f.images,
         ff.created_at AS favorited_at,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM food_favorites ff
@@ -184,8 +192,7 @@ async function getFavoriteFoods(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function addFoodFavorite(userId: any, foodId: any) {
+async function addFoodFavorite(userId: string, foodId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
@@ -198,8 +205,7 @@ async function addFoodFavorite(userId: any, foodId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function removeFoodFavorite(userId: any, foodId: any) {
+async function removeFoodFavorite(userId: string, foodId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -212,7 +218,6 @@ async function removeFoodFavorite(userId: any, foodId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 // A logged supplement contributes its per-dose snapshot, scaled by the dose count taken
 // (GREATEST-clamped so a non-positive value can't subtract). These fragments let the diary
 // daily-summary aggregations count supplements exactly the way the report already does, so
@@ -235,7 +240,7 @@ function supplementCustomUnion(userExpr: string, dateExpr: string): string {
                 WHERE me2.user_id = ${userExpr} AND me2.entry_date = ${dateExpr} AND me2.status IN ('taken', 'prn_taken') AND me2.nutrients_snapshot IS NOT NULL`;
 }
 
-async function getDailyNutritionSummary(userId: any, date: any) {
+async function getDailyNutritionSummary(userId: string, date: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -327,8 +332,7 @@ async function getDailyNutritionSummariesByDates(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodsNeedingReview(userId: any) {
+async function getFoodsNeedingReview(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -358,14 +362,10 @@ async function getFoodsNeedingReview(userId: any) {
   }
 }
 async function updateFoodEntriesSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variantId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  newSnapshotData: any
+  userId: string,
+  foodId: string,
+  variantId: string,
+  newSnapshotData: FoodEntrySnapshot
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -431,8 +431,7 @@ async function updateFoodEntriesSnapshot(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function clearUserIgnoredUpdate(userId: any, variantId: any) {
+async function clearUserIgnoredUpdate(userId: string, variantId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(

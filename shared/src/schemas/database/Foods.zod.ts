@@ -21,6 +21,7 @@ export const foodsSchema = z.object({
   provider_type: z.string().nullable(),
   provider_verified: z.boolean(),
   is_quick_food: z.boolean(),
+  images: z.array(z.string()),
 });
 
 export const foodsInitializerSchema = z.object({
@@ -37,6 +38,7 @@ export const foodsInitializerSchema = z.object({
   provider_type: z.string().optional().nullable(),
   provider_verified: z.boolean().optional(),
   is_quick_food: z.boolean().optional(),
+  images: z.array(z.string()).optional(),
 });
 
 export const foodsMutatorSchema = z.object({
@@ -53,6 +55,7 @@ export const foodsMutatorSchema = z.object({
   provider_type: z.string().optional().nullable(),
   provider_verified: z.boolean().optional(),
   is_quick_food: z.boolean().optional(),
+  images: z.array(z.string()).optional(),
 });
 
 export type Foods = z.infer<typeof foodsSchema>;

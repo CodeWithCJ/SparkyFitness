@@ -39,6 +39,7 @@ jest.mock('../../src/hooks', () => ({
   useDailySummary: jest.fn(),
   useCustomNutrients: jest.fn(),
   useNutrientDisplayPreferences: jest.fn(),
+  useMealTypes: jest.fn(() => ({ mealTypes: [], isLoading: false, isError: false })),
 }));
 
 jest.mock('../../src/hooks/useMeasurements', () => ({

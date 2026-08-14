@@ -226,6 +226,8 @@ describe('mapOpenFoodFactsProduct', () => {
       provider_external_id: '3017620422003',
       provider_type: 'openfoodfacts',
       is_custom: false,
+      // No image fields on the fixture product, so nothing to hotlink.
+      image_url: null,
       default_variant: {
         serving_size: 37,
         serving_unit: 'g',

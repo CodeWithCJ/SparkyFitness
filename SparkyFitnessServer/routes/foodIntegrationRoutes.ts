@@ -522,7 +522,10 @@ router.get('/nutritionix/search', authenticate, async (req, res, next) => {
       .json({ error: 'Missing search query or providerId' });
   }
   try {
-    const data = await searchNutritionixFoods(query, providerId);
+    const data = await searchNutritionixFoods(
+      String(query),
+      String(providerId)
+    );
     res.json(data);
   } catch (error) {
     next(error);
@@ -562,7 +565,10 @@ router.get('/nutritionix/nutrients', authenticate, async (req, res, next) => {
       .json({ error: 'Missing search query or providerId' });
   }
   try {
-    const data = await getNutritionixNutrients(query, providerId);
+    const data = await getNutritionixNutrients(
+      String(query),
+      String(providerId)
+    );
     res.json(data);
   } catch (error) {
     next(error);
@@ -600,7 +606,10 @@ router.get('/nutritionix/item', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Missing nix_item_id or providerId' });
   }
   try {
-    const data = await getNutritionixBrandedNutrients(nix_item_id, providerId);
+    const data = await getNutritionixBrandedNutrients(
+      String(nix_item_id),
+      String(providerId)
+    );
     res.json(data);
   } catch (error) {
     next(error);

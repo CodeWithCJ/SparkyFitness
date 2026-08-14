@@ -71,6 +71,7 @@ import {
   useToggleFavoriteMutation,
 } from '@/hooks/Foods/useFavorites';
 import { DataTable } from '@/components/ui/DataTable';
+import { primaryImageOf } from '@/utils/foodImages';
 import {
   ColumnDef,
   RowSelectionState,
@@ -370,20 +371,35 @@ const MealManagement: React.FC = () => {
         header: t('mealManagement.name', 'Name'),
         cell: ({ row }) => {
           const meal = row.original;
+          const imageSrc = primaryImageOf(meal);
           return (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">{meal.name}</span>
-                {meal.is_public && (
-                  <Badge variant="secondary" className="h-4 px-1 text-[10px]">
-                    <Share2 className="h-2.5 w-2.5 mr-1" />
-                    {t('mealManagement.public', 'Public')}
-                  </Badge>
-                )}
+            <div className="flex items-start gap-2">
+              {imageSrc && (
+                <img
+                  src={imageSrc}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  className="w-10 h-10 flex-shrink-0 object-cover rounded-md"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{meal.name}</span>
+                  {meal.is_public && (
+                    <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                      <Share2 className="h-2.5 w-2.5 mr-1" />
+                      {t('mealManagement.public', 'Public')}
+                    </Badge>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                  {meal.description || t('mealManagement.noDescription')}
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                {meal.description || t('mealManagement.noDescription')}
-              </span>
             </div>
           );
         },

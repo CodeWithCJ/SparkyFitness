@@ -1032,7 +1032,10 @@ export async function processGarminNutritionData(
   const syncedSourceIds: string[] = [];
 
   for (const dayLog of nutritionData) {
-    const mealDate = dayLog.mealDate;
+    // dayLog comes from an untyped Garmin payload; narrow before use so the
+    // entry's calendar-day string keeps its contract downstream.
+    const mealDate =
+      typeof dayLog.mealDate === 'string' ? dayLog.mealDate : null;
     if (!mealDate) continue;
 
     const mealDetails = dayLog.mealDetails;
@@ -1084,7 +1087,9 @@ export async function processGarminNutritionData(
                 userId,
                 {
                   serving_size: 1,
-                  serving_unit: nutritionContent.servingUnit || 'serving',
+                  serving_unit: String(
+                    nutritionContent.servingUnit || 'serving'
+                  ),
                   ...mappedNutrition,
                 }
               );
@@ -1099,7 +1104,7 @@ export async function processGarminNutritionData(
               provider_type: 'garmin',
               shared_with_public: false,
               serving_size: 1,
-              serving_unit: nutritionContent.servingUnit || 'serving',
+              serving_unit: String(nutritionContent.servingUnit || 'serving'),
               source: 'imported',
               ...mappedNutrition,
             });
@@ -1117,10 +1122,10 @@ export async function processGarminNutritionData(
               variant_id: variantId,
               meal_type_id: mealTypeId,
               quantity: loggedFood.servingQty ?? 1,
-              unit: nutritionContent.servingUnit || 'serving',
+              unit: String(nutritionContent.servingUnit || 'serving'),
               entry_date: mealDate,
               serving_size: 1,
-              serving_unit: nutritionContent.servingUnit || 'serving',
+              serving_unit: String(nutritionContent.servingUnit || 'serving'),
               food_name: foodMeta.foodName,
               brand_name: foodMeta.brandName || null,
               ...mappedNutrition,

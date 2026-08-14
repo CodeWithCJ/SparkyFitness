@@ -1,4 +1,5 @@
 import { apiCall } from '../api';
+import { buildImageFormData } from '../imageRequest';
 import type { MealFood } from '@/types/meal';
 import type { FoodEntryMeal } from '@/types/meal';
 import type { FoodEntry } from '@/types/food';
@@ -277,4 +278,57 @@ export const copyFoodEntriesToUser = async (
     body: payload,
   });
   return response;
+};
+
+/**
+ * Sets the per-entry override photo for a diary entry.
+ *
+ * This applies only to the given entry — it never modifies the underlying
+ * food's or meal's own images. Entries without an override fall back to those
+ * at display time.
+ */
+export const setFoodEntryImages = async (
+  entryId: string,
+  images: string[],
+  newFiles: File[]
+): Promise<FoodEntry> => {
+  return await apiCall(`/food-entries/${entryId}/image`, {
+    method: 'POST',
+    body: buildImageFormData(images, newFiles),
+    isFormData: true,
+  });
+};
+
+/** Clears a diary entry's override photo, restoring the food/meal fallback. */
+export const clearFoodEntryImage = async (
+  entryId: string
+): Promise<FoodEntry> => {
+  return await apiCall(`/food-entries/${entryId}/image`, { method: 'DELETE' });
+};
+
+/**
+ * Sets the per-entry override photo for a logged meal.
+ *
+ * Applies to this diary entry only — the meal template's own images are never
+ * modified. Entries without an override fall back to those.
+ */
+export const setFoodEntryMealImages = async (
+  entryId: string,
+  images: string[],
+  newFiles: File[]
+): Promise<FoodEntryMeal> => {
+  return await apiCall(`/food-entry-meals/${entryId}/image`, {
+    method: 'POST',
+    body: buildImageFormData(images, newFiles),
+    isFormData: true,
+  });
+};
+
+/** Clears a logged meal's override photo, restoring the template fallback. */
+export const clearFoodEntryMealImage = async (
+  entryId: string
+): Promise<FoodEntryMeal> => {
+  return await apiCall(`/food-entry-meals/${entryId}/image`, {
+    method: 'DELETE',
+  });
 };

@@ -491,6 +491,84 @@ async function resolveMealType(
   );
   return resolved ? { id: resolved.id, name: resolved.name } : null;
 }
+
+// Resolves a diary food entry from a food name the way log_food resolves
+// foods: small local models reliably repeat a name they just read in the
+// diary but cannot chain a list_diary call into extracting an entry UUID
+// (see #2101 — they invent placeholder ids or fabricate success instead).
+// Ambiguity is returned as data, not guessed at: the model gets the
+// candidates with their ids and can retry with entry_id.
+// The diary projection fields the resolver reads (see getFoodEntriesByDate's
+// SELECT in models/foodEntry.ts — food_name is the entry's snapshot column).
+interface DiaryEntryNameRow {
+  id: string;
+  food_name?: string | null;
+  meal_type?: string | null;
+  meal_type_id?: string | null;
+  quantity?: number | string | null;
+  unit?: string | null;
+}
+
+interface ResolveEntryByNameArgs {
+  foodName: string;
+  entryDate?: string;
+  mealType?: string;
+  mealTypeId?: string;
+}
+
+async function resolveFoodEntryByName(
+  userId: string,
+  tz: string,
+  { foodName, entryDate, mealType, mealTypeId }: ResolveEntryByNameArgs,
+  narrowByMealType: boolean
+): Promise<{ ok: true; entryId: string } | { ok: false; message: string }> {
+  const date = entryDate || todayInZone(tz);
+  const rows: DiaryEntryNameRow[] = await foodEntryService.getFoodEntriesByDate(
+    userId,
+    userId,
+    date
+  );
+  const wanted = foodName.trim().toLowerCase();
+  let matches = rows.filter(
+    (row) => (row.food_name ?? '').trim().toLowerCase() === wanted
+  );
+  if (narrowByMealType && (mealTypeId || mealType)) {
+    const resolvedMealType = await resolveMealType(
+      userId,
+      mealTypeId,
+      mealType
+    );
+    if (!resolvedMealType) {
+      return {
+        ok: false,
+        message: `Meal type "${mealTypeId ?? mealType}" was not found or is not available to this user.`,
+      };
+    }
+    matches = matches.filter((row) => row.meal_type_id === resolvedMealType.id);
+  }
+  if (matches.length === 1) {
+    return { ok: true, entryId: matches[0].id };
+  }
+  if (matches.length === 0) {
+    const names = [...new Set(rows.map((row) => row.food_name ?? ''))]
+      .filter(Boolean)
+      .join(', ');
+    return {
+      ok: false,
+      message: `No entry named "${foodName}" in the diary for ${date}.${names ? ` That day has: ${names}.` : ''} Use list_diary to inspect the day, then retry.`,
+    };
+  }
+  const candidates = matches
+    .map(
+      (row) =>
+        `- ${row.meal_type ?? 'unknown meal'}: ${row.quantity} ${row.unit} (ID: ${row.id})`
+    )
+    .join('\n');
+  return {
+    ok: false,
+    message: `"${foodName}" matches ${matches.length} entries on ${date}:\n${candidates}\nRetry with the entry_id of the one you mean.`,
+  };
+}
 // Full food_entries dumps (`SELECT fe.*`, used by recent-entries and food-usage)
 // add audit/ownership columns on top of the diary projection's surrogate keys.
 const FULL_ENTRY_DROP: readonly string[] = [
@@ -802,9 +880,9 @@ Actions:
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?)
-- delete_entry(entry_id, entry_type:"food_entry"|"food_entry_meal")
+- delete_entry(entry_id?|food_name?, entry_type?, entry_date?, meal_type?|meal_type_id?) — deletes one diary entry. Provide entry_id when you have it; otherwise food_name is resolved against the diary for entry_date (defaults to today), with meal_type narrowing when the same food appears in several meals. Ambiguous names return the candidates with their ids instead of deleting.
 - delete_food(food_id?|food_name?) — deletes food + variants + all diary entries referencing it
-- update_entry(entry_id, entry_type, quantity?, unit?, meal_type_id?, meal_type?) — changes quantity/unit and/or moves the entry to another meal type.
+- update_entry(entry_id?|food_name?, entry_type?, entry_date?, quantity?, unit?, meal_type_id?, meal_type?) — changes quantity/unit and/or moves the entry to another meal type (meal_type/meal_type_id is the NEW meal). Provide entry_id when you have it; otherwise food_name is resolved against the diary for entry_date (defaults to today). Ambiguous names return the candidates with their ids instead of updating.
 - update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to leaving existing diary entries unchanged.
 - copy_from_yesterday(target_date?, source_date?, meal_type_id?|meal_type?)
 - save_as_meal_template(entry_date, meal_type_id?|meal_type?, meal_name, description?) — REQUIRES EXPLICIT action field. Saves diary entries for a given date and meal type as a reusable meal template.
@@ -1664,7 +1742,9 @@ Actions:
                   );
                 }
                 mealId = match.id;
-                mealName = match.name;
+                // Meal rows carry arbitrary selected columns, so narrow the
+                // name before assigning it to a string.
+                mealName = typeof match.name === 'string' ? match.name : '';
               } else if (mealId) {
                 try {
                   const meal = await mealService.getMealById(userId, mealId);
@@ -1824,21 +1904,41 @@ Actions:
             }
 
             case 'delete_entry': {
+              let entryId = args.entry_id;
+              let entryType = args.entry_type;
+              if (!entryId) {
+                if (!args.food_name) {
+                  return ERRORS.MISSING_PARAMS(['entry_id or food_name']);
+                }
+                const resolved = await resolveFoodEntryByName(
+                  userId,
+                  tz,
+                  {
+                    foodName: args.food_name,
+                    entryDate: args.entry_date,
+                    mealType: args.meal_type,
+                    mealTypeId: args.meal_type_id,
+                  },
+                  true
+                );
+                if (!resolved.ok) {
+                  return ERRORS.VALIDATION(resolved.message);
+                }
+                entryId = resolved.entryId;
+                entryType = 'food_entry';
+              }
               try {
-                if (args.entry_type === 'food_entry') {
-                  await foodEntryService.deleteFoodEntry(userId, args.entry_id);
+                if ((entryType ?? 'food_entry') === 'food_entry') {
+                  await foodEntryService.deleteFoodEntry(userId, entryId);
                 } else {
-                  await foodEntryService.deleteFoodEntryMeal(
-                    userId,
-                    args.entry_id
-                  );
+                  await foodEntryService.deleteFoodEntryMeal(userId, entryId);
                 }
               } catch (error) {
                 if (
                   error instanceof Error &&
                   error.message.includes('not found')
                 ) {
-                  return ERRORS.NOT_FOUND('Entry', args.entry_id);
+                  return ERRORS.NOT_FOUND('Entry', entryId);
                 }
                 throw error;
               }
@@ -1878,7 +1978,11 @@ Actions:
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               let result: any;
               try {
-                result = await foodCoreService.deleteFood(userId, foodId, true);
+                result = await foodCoreService.deleteFood(
+                  userId,
+                  String(foodId),
+                  true
+                );
               } catch (error) {
                 if (
                   error instanceof Error &&
@@ -1906,6 +2010,27 @@ Actions:
             }
 
             case 'update_entry': {
+              // Name resolution never narrows by meal_type here: for updates
+              // the meal selector is the TARGET the entry moves to, not a
+              // filter on the source.
+              let entryId = args.entry_id;
+              let entryType = args.entry_type ?? 'food_entry';
+              if (!entryId) {
+                if (!args.food_name) {
+                  return ERRORS.MISSING_PARAMS(['entry_id or food_name']);
+                }
+                const resolved = await resolveFoodEntryByName(
+                  userId,
+                  tz,
+                  { foodName: args.food_name, entryDate: args.entry_date },
+                  false
+                );
+                if (!resolved.ok) {
+                  return ERRORS.VALIDATION(resolved.message);
+                }
+                entryId = resolved.entryId;
+                entryType = 'food_entry';
+              }
               const mealType =
                 args.meal_type_id || args.meal_type
                   ? await resolveMealType(
@@ -1930,11 +2055,11 @@ Actions:
               // not reported as changed.
               let mealTypeChanged = mealType !== undefined;
               try {
-                if (args.entry_type === 'food_entry') {
+                if (entryType === 'food_entry') {
                   await foodEntryService.updateFoodEntry(
                     userId,
                     userId,
-                    args.entry_id,
+                    entryId,
                     {
                       quantity: args.quantity,
                       unit: args.unit,
@@ -1950,10 +2075,10 @@ Actions:
                   const existingMeta =
                     await foodEntryService.getFoodEntryMealMeta(
                       userId,
-                      args.entry_id
+                      entryId
                     );
                   if (!existingMeta) {
-                    return ERRORS.NOT_FOUND('Entry', args.entry_id);
+                    return ERRORS.NOT_FOUND('Entry', entryId);
                   }
                   quantityChanged =
                     args.quantity !== undefined &&
@@ -1976,7 +2101,7 @@ Actions:
                       await foodEntryService.moveFoodEntryMealToMealType(
                         userId,
                         userId,
-                        args.entry_id,
+                        entryId,
                         mealType.id
                       );
                       return formatConfirmation(
@@ -1994,15 +2119,15 @@ Actions:
                   const existing =
                     await foodEntryService.getFoodEntryMealWithComponents(
                       userId,
-                      args.entry_id
+                      entryId
                     );
                   if (!existing) {
-                    return ERRORS.NOT_FOUND('Entry', args.entry_id);
+                    return ERRORS.NOT_FOUND('Entry', entryId);
                   }
                   await foodEntryService.updateFoodEntryMeal(
                     userId,
                     userId,
-                    args.entry_id,
+                    entryId,
                     {
                       meal_template_id: existing.meal_template_id,
                       entry_date: dayString(existing.entry_date),
@@ -2018,7 +2143,7 @@ Actions:
                   error instanceof Error &&
                   error.message.includes('not found')
                 ) {
-                  return ERRORS.NOT_FOUND('Entry', args.entry_id);
+                  return ERRORS.NOT_FOUND('Entry', entryId);
                 }
                 throw error;
               }
@@ -2046,6 +2171,11 @@ Actions:
               }
               let variantId = args.variant_id;
               if (!variantId) {
+                // The guard above ensures one of the two is set, but narrow
+                // explicitly so the repository keeps its non-null contract.
+                if (!args.food_id) {
+                  return ERRORS.DB_ERROR();
+                }
                 const food = await foodRepository.getFoodById(
                   args.food_id,
                   userId
@@ -2122,8 +2252,8 @@ Actions:
               if (args.update_existing_entries) {
                 await foodCoreService.updateFoodEntriesSnapshot(
                   userId,
-                  variant.food_id,
-                  variantId
+                  String(variant.food_id),
+                  String(variantId)
                 );
               }
               return formatConfirmation(

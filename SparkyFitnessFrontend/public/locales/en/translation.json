@@ -2319,7 +2319,20 @@
     "mealsLoadError": "Failed to load meal entries.",
     "updateError": "Failed to update entry.",
     "updateSuccess": "Entry updated.",
-    "wearableHealthSummary": "Daily Wearable Health Summary"
+    "wearableHealthSummary": "Daily Wearable Health Summary",
+    "entryPhoto": "Photos for this entry",
+    "entryPhotoAlt": "Diary entry photo",
+    "addEntryPhoto": "Add photo",
+    "replaceEntryPhoto": "Replace photo",
+    "removeEntryPhoto": "Remove photo",
+    "entryPhotoOverrideHint": "These photos apply to this entry only. Drag to reorder.",
+    "entryPhotoInheritedHint": "Showing the food's own images. Add a photo to override them for this entry.",
+    "entryImageUploadFailedTitle": "Upload failed",
+    "entryImageUploadFailed": "Could not save the photo for this entry.",
+    "entryImageRemoveFailedTitle": "Remove failed",
+    "entryImageRemoveFailed": "Could not remove the photo for this entry.",
+    "inheritedPhotoAlt": "Inherited image {{number}}",
+    "savingPhotos": "Saving photos…"
   },
   "nutrientGoalDirection": {
     "min": "Min",
@@ -2808,7 +2821,8 @@
     "linkedMealServingInfo": "Yields {{totalServings}} × {{servingSize}} {{servingUnit}}",
     "mealAddedToMeal": "{{name}} added to meal.",
     "updateEntryButton": "Update Entry",
-    "updateLinkedMeal": "Update"
+    "updateLinkedMeal": "Update",
+    "mealImages": "Images"
   },
   "mealPlanCalendar": {
     "title": "Meal Plan",
@@ -4623,5 +4637,22 @@
     "rpe": "RPE",
     "type": "Type",
     "weight": "weight"
+  },
+  "food": {
+    "imagesLabel": "Images",
+    "imagesLimitReached": "Maximum of {{count}} images reached.",
+    "imagePreviewAlt": "Food image {{number}}",
+    "newImagePreviewAlt": "New image {{number}}",
+    "removeImage": "Remove image",
+    "viewImages": "View images",
+    "imageViewer": "Image viewer",
+    "previousImage": "Previous image",
+    "nextImage": "Next image",
+    "playSlideshow": "Play slideshow",
+    "pauseSlideshow": "Pause slideshow",
+    "mainImage": "Main",
+    "moveImageEarlier": "Move image left",
+    "moveImageLater": "Move image right",
+    "imagesReorderHint": "Drag to reorder. The first image is used as the thumbnail."
   }
 }

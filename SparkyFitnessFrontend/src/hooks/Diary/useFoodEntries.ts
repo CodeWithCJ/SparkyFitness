@@ -20,6 +20,10 @@ import {
   DownloadDiaryExportOptions,
   copyFoodEntriesFromUser,
   copyFoodEntriesToUser,
+  setFoodEntryImages,
+  clearFoodEntryImage,
+  setFoodEntryMealImages,
+  clearFoodEntryMealImage,
   type CopyFoodEntriesFromUserPayload,
   type CopyFoodEntriesToUserPayload,
   importFoodDiaryEntriesFromCsv,
@@ -28,6 +32,8 @@ import type { FoodDiaryImportRow, FoodDiaryImportScope } from '@/types/diary';
 
 import { goalKeys } from '@/api/keys/goals';
 import { foodEntryKeys, foodEntryMealKeys } from '@/api/keys/diary';
+import type { FoodEntry } from '@/types/food';
+import type { FoodEntryMeal } from '@/types/meal';
 import i18n from '@/i18n';
 import { useFoodEntryInvalidation } from '../useInvalidateKeys';
 import { FoodEntryUpdateData } from '@/types/diary';
@@ -323,4 +329,108 @@ export const useCopyFoodEntriesToUserMutation = () => {
       ),
     },
   });
+};
+
+/**
+ * Builds a mutation that replaces a diary entry's override photos.
+ *
+ * Food entries and logged meals store their photos on different tables and so
+ * hit different endpoints, but the lifecycle — invalidate the diary on success,
+ * surface the same localized error — is identical.
+ */
+const useSetEntryImagesMutation = (
+  request: (
+    entryId: string,
+    images: string[],
+    newFiles: File[]
+  ) => Promise<FoodEntry | FoodEntryMeal>,
+  errorMessage: string
+) => {
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: ({
+      entryId,
+      images,
+      newFiles,
+    }: {
+      entryId: string;
+      images: string[];
+      newFiles: File[];
+    }) => request(entryId, images, newFiles),
+    onSuccess: () => invalidate(),
+    meta: { errorMessage },
+  });
+};
+
+/** Builds a mutation that clears a diary entry's override photos. */
+const useClearEntryImageMutation = (
+  request: (entryId: string) => Promise<FoodEntry | FoodEntryMeal>,
+  errorMessage: string
+) => {
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ entryId }: { entryId: string }) => request(entryId),
+    onSuccess: () => invalidate(),
+    meta: { errorMessage },
+  });
+};
+
+/**
+ * Sets a food diary entry's override photos.
+ *
+ * They apply to that entry only and never modify the parent food; entries
+ * without any fall back to the food's own images.
+ */
+export const useSetFoodEntryImagesMutation = () => {
+  const { t } = useTranslation();
+  return useSetEntryImagesMutation(
+    setFoodEntryImages,
+    t(
+      'diary.entryImageUploadFailed',
+      'Could not save the photo for this entry.'
+    )
+  );
+};
+
+/** Clears a food diary entry's override photos, restoring the food fallback. */
+export const useClearFoodEntryImageMutation = () => {
+  const { t } = useTranslation();
+  return useClearEntryImageMutation(
+    clearFoodEntryImage,
+    t(
+      'diary.entryImageRemoveFailed',
+      'Could not remove the photo for this entry.'
+    )
+  );
+};
+
+/**
+ * Sets a logged meal's override photos.
+ *
+ * They apply to that entry only and never modify the meal template; entries
+ * without any fall back to the template's own images.
+ */
+export const useSetFoodEntryMealImagesMutation = () => {
+  const { t } = useTranslation();
+  return useSetEntryImagesMutation(
+    setFoodEntryMealImages,
+    t(
+      'diary.entryImageUploadFailed',
+      'Could not save the photo for this entry.'
+    )
+  );
+};
+
+/** Clears a logged meal's override photos, restoring the template fallback. */
+export const useClearFoodEntryMealImageMutation = () => {
+  const { t } = useTranslation();
+  return useClearEntryImageMutation(
+    clearFoodEntryMealImage,
+    t(
+      'diary.entryImageRemoveFailed',
+      'Could not remove the photo for this entry.'
+    )
+  );
 };
