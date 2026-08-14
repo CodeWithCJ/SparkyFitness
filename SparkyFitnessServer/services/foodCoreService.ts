@@ -141,13 +141,16 @@ async function refreshExistingExternalFoodMetadata(
     return existingFood;
   }
 
-  await foodRepository.updateFood(
+  // updateFood localizes the images it just stored and returns the row with
+  // /uploads/... paths. Returning our own `metadata` instead would hand the
+  // caller the raw provider URLs even though the database holds local copies.
+  const updatedFood = await foodRepository.updateFood(
     existingFood.id,
     authenticatedUserId,
     metadata
   );
 
-  return { ...existingFood, ...metadata };
+  return updatedFood ?? { ...existingFood, ...metadata };
 }
 
 async function createFood(authenticatedUserId: string, foodData: FoodInput) {

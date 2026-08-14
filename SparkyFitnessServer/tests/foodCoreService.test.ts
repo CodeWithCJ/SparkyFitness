@@ -108,6 +108,12 @@ describe('foodCoreService.createFood', () => {
     const existingFood = makeExistingFood({ images: [] });
     // @ts-expect-error TS(2339): mock typing on the repository default export
     foodRepository.findFoodByBarcode.mockResolvedValue(existingFood);
+    // updateFood downloads the remote image and returns the localized row.
+    // @ts-expect-error TS(2339): mock typing on the repository default export
+    foodRepository.updateFood.mockResolvedValue({
+      ...existingFood,
+      images: ['/uploads/foods/food-existing-456/f.jpg'],
+    });
 
     const result = await foodCoreService.createFood(
       TEST_USER_ID,
@@ -119,9 +125,10 @@ describe('foodCoreService.createFood', () => {
       TEST_USER_ID,
       { images: ['https://images.openfoodfacts.org/f.jpg'] }
     );
+    // The caller must see the localized path, not the provider URL it sent in.
     expect(result).toEqual({
       ...existingFood,
-      images: ['https://images.openfoodfacts.org/f.jpg'],
+      images: ['/uploads/foods/food-existing-456/f.jpg'],
     });
   });
 

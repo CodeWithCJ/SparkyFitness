@@ -265,7 +265,14 @@ class NorishService {
         image_url: (() => {
           if (!norishRecipe.image) return null;
           try {
-            return new URL(norishRecipe.image, this.baseUrl).toString();
+            // Resolve against baseUrl as a directory. Without the trailing
+            // slash a bare relative path ('media/x.jpg') would resolve against
+            // /api/ and drop the /v1 segment. Root-relative and absolute URLs
+            // resolve identically either way.
+            const base = this.baseUrl.endsWith('/')
+              ? this.baseUrl
+              : `${this.baseUrl}/`;
+            return new URL(norishRecipe.image, base).toString();
           } catch {
             return null;
           }
