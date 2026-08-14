@@ -537,7 +537,19 @@ export function useCustomFoodForm({
         is_quick_food: food.is_quick_food || false,
         barcode: food.barcode || '',
       });
-      setImageItems(toSavedImages(food.images));
+      // A provider search result has no `images` array yet — its photo is the
+      // single upstream `image_url`. Seed the picker with it so importing
+      // keeps the image the user saw on the search card; the server downloads
+      // remote URLs into /uploads on save (see utils/imageLocalizer.ts).
+      // Precedence mirrors the server's resolveImageInput: stored array first,
+      // then the full-size URL, then the thumbnail.
+      const providerImage = food.image_source_url || food.image_url;
+      const existingImages = toSavedImages(food.images);
+      setImageItems(
+        existingImages.length > 0
+          ? existingImages
+          : toSavedImages(providerImage ? [providerImage] : [])
+      );
 
       if (food.variants && food.variants.length > 0) {
         const mapped = food.variants.map((v) =>

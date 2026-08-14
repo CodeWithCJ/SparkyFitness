@@ -3,6 +3,7 @@ import { promises } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Readable } from 'node:stream';
+import crypto from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { log } from '../config/logging.js';
@@ -83,12 +84,25 @@ function resolveImageFileName(imageUrl: string, contentType: string): string {
 
   const sourceName = path.basename(new URL(imageUrl).pathname);
   const sourceExtension = path.extname(sourceName).toLowerCase();
+  // Two images on one entity can share a basename while coming from different
+  // URLs (…/a/image.jpg and …/b/image.jpg). Without the URL-derived suffix they
+  // land on the same path, so the concurrent downloads in localizeImages
+  // overwrite each other and both array slots point at one file.
+  const urlHash = crypto
+    .createHash('md5')
+    .update(imageUrl)
+    .digest('hex')
+    .slice(0, 8);
+  const sourceStem =
+    path
+      .basename(sourceName, path.extname(sourceName))
+      .replace(/[^a-zA-Z0-9_-]/g, '_') || 'image';
+
   if (sourceName && allowedExtensions.includes(sourceExtension)) {
-    return sourceName;
+    return `${sourceStem}_${urlHash}${sourceExtension}`;
   }
 
-  const sourceStem = path.basename(sourceName, path.extname(sourceName));
-  return `${sourceStem || 'image'}${allowedExtensions[0]}`;
+  return `${sourceStem}_${urlHash}${allowedExtensions[0]}`;
 }
 
 /**

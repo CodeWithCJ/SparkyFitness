@@ -799,6 +799,22 @@ async function lookupFoodNutrition(
         provider_name: 'OpenFoodFacts',
       });
     }
+    // Honour the user's chosen default food provider. Without this the cascade
+    // order comes from sort_order, which is NULL for most installs and falls
+    // back to created_at DESC — so the most recently added provider silently
+    // won every lookup and the setting the user picked in the UI did nothing.
+    const defaultProviderId = (
+      await preferenceService.getUserPreferences(userId, userId)
+    )?.default_food_data_provider_id;
+    if (defaultProviderId) {
+      const defaultIndex = targetProviders.findIndex(
+        (p) => p.id === defaultProviderId
+      );
+      if (defaultIndex > 0) {
+        const [preferred] = targetProviders.splice(defaultIndex, 1);
+        targetProviders.unshift(preferred);
+      }
+    }
   }
 
   for (const provider of targetProviders) {
@@ -1484,6 +1500,12 @@ Actions:
                 source: 'imported',
                 provider_type: result.source,
                 provider_external_id: match.provider_external_id ?? null,
+                // Carry the provider photo across like the web import does.
+                // createFood funnels this through resolveImageInput and
+                // localizes it after commit, so a food logged through the
+                // assistant gets the same image as one added from the UI.
+                image_url: match.image_url ?? null,
+                image_source_url: match.image_source_url ?? null,
               });
 
               // Create the other variants returned by the provider

@@ -82,7 +82,7 @@ interface FatSecretApiResponse {
   [key: string]: unknown;
 }
 
-// Cache tokens by scope
+// Cache tokens by `${clientId}:${scope}` — see getFatSecretAccessToken.
 const tokensByScope = new Map<string, { token: string; expiry: number }>();
 
 // Serving fields that describe the serving itself rather than a nutrient value;
@@ -251,7 +251,11 @@ async function getFatSecretAccessToken(
   if (!clientId || !clientSecret) {
     throw new Error('FatSecret API credentials are not configured.');
   }
-  const cached = tokensByScope.get(requestedScope);
+  // Keyed by credential as well as scope: two users with different FatSecret
+  // apps must never share a token, or the second silently authenticates as the
+  // first. Mirrors premierUnavailableUntil in services/foodIntegrationService.
+  const cacheKey = `${clientId}:${requestedScope}`;
+  const cached = tokensByScope.get(cacheKey);
   if (cached && Date.now() < cached.expiry) {
     return cached.token;
   }
@@ -303,7 +307,7 @@ async function getFatSecretAccessToken(
     };
     const token = data.access_token;
     const expiry = Date.now() + data.expires_in * 1000 - 60000; // Set expiry 1 minute early
-    tokensByScope.set(requestedScope, { token, expiry });
+    tokensByScope.set(cacheKey, { token, expiry });
     return token;
   } catch (error) {
     log(

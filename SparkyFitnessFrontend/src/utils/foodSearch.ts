@@ -42,6 +42,10 @@ export const convertNutritionixToFood = (
     is_custom: false,
     provider_external_id: item.id,
     provider_type: 'nutritionix',
+    // Nutritionix's instant search exposes the photo as `image`; every other
+    // provider calls it `image_url`. Normalize here so the result card renders
+    // it and the import carries it, like the rest of the providers.
+    image_url: source.image || item.image || null,
     default_variant: defaultVariant,
     variants: [defaultVariant],
     glycemic_index: source.glycemic_index || 'None',
