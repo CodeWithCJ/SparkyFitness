@@ -972,7 +972,7 @@ export default function AddMedicationDialog({
                         <NumericInput
                           id="units-per-serving"
                           className="h-7"
-                          min="0"
+                          min="1"
                           step="1"
                           decimals={0}
                           value={

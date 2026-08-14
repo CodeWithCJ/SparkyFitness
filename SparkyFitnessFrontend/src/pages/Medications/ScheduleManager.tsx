@@ -227,7 +227,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                     {doseScaling.calories != null
                       ? t(
                           'medications.schedule.supplementDoseScalingCalories',
-                          'Each log counts {{dose}} doses: {{dose}} x {{perDose}} kcal = {{total}} kcal.',
+                          'Each log counts {{dose}} servings: {{dose}} x {{perDose}} kcal = {{total}} kcal.',
                           {
                             dose: doseScaling.dose,
                             perDose: doseScaling.calories,
@@ -239,7 +239,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                         )
                       : t(
                           'medications.schedule.supplementDoseScaling',
-                          'Each log counts {{dose}} doses, so {{dose}} times the nutrition entered per dose.',
+                          'Each log counts {{dose}} servings, so {{dose}} times the nutrition entered per serving.',
                           { dose: doseScaling.dose }
                         )}
                   </p>

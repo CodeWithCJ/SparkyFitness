@@ -102,10 +102,19 @@ export function NutrientPicker({
       ...MICRONUTRIENT_CATALOG.flatMap((entry) =>
         [entry.displayName, ...entry.aliases].map(normalizeNutrientName)
       ),
+      // shortLabel is listed for completeness rather than to close a live gap: today every
+      // macro's shortLabel already normalizes onto its own displayName or one of its
+      // aliases ("Carbs" onto the carbs alias, "Fiber" onto the fiber one). Listing it
+      // keeps this set aligned with resolveMacroFieldKey, which matches on the same four,
+      // so a macro added later with a distinct shortLabel cannot slip through and be
+      // counted separately as a custom nutrient.
       ...MACRO_PICKER_FIELDS.flatMap((field) =>
-        [field.displayName, field.fieldKey, ...field.aliases].map(
-          normalizeNutrientName
-        )
+        [
+          field.displayName,
+          field.shortLabel,
+          field.fieldKey,
+          ...field.aliases,
+        ].map(normalizeNutrientName)
       ),
     ]);
     const customOptions: NutrientOption[] = (customNutrients ?? [])
