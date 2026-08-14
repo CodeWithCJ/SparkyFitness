@@ -29,6 +29,7 @@ import {
   removeOrphanedImages,
   removeEntityImageDir,
 } from '../middleware/imageUpload.js';
+import { resolveImageInput, toImageArray } from '../utils/imageLocalizer.js';
 
 /** A food row as returned by the repository. */
 interface FoodRow {
@@ -123,6 +124,17 @@ async function refreshExistingExternalFoodMetadata(
     existingFood.provider_verified !== true
   ) {
     metadata.provider_verified = true;
+  }
+
+  // Backfill the provider photo onto a food imported before it had one (or
+  // imported while the image was being dropped upstream). Only fills a gap —
+  // an existing image is the user's, and re-importing must not overwrite it.
+  const incomingImages = resolveImageInput(foodData);
+  if (
+    incomingImages.length > 0 &&
+    toImageArray(existingFood.images).length === 0
+  ) {
+    metadata.images = incomingImages;
   }
 
   if (Object.keys(metadata).length === 0) {

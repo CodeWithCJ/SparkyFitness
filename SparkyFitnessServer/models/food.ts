@@ -445,7 +445,35 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
         id,
       ]
     );
-    return result.rows[0];
+    const updated = result.rows[0];
+
+    // Mirror createFood: a caller that sets a provider-hosted URL here (e.g.
+    // backfilling the photo onto an already-imported food) gets a local copy
+    // too, rather than leaving the row permanently hotlinked.
+    if (updated && foodData.images !== undefined) {
+      try {
+        const localizedImages = await localizeImages(
+          updated.images,
+          updated.id,
+          'foods'
+        );
+        if (localizedImages) {
+          await client.query(
+            'UPDATE foods SET images = $1::jsonb WHERE id = $2',
+            [JSON.stringify(localizedImages), updated.id]
+          );
+          updated.images = localizedImages;
+        }
+      } catch (imageError) {
+        // Non-fatal, as in createFood: keep the row and its remote URLs.
+        log(
+          'warn',
+          `[food.updateFood] Image localization failed for ${updated.id}; keeping remote URLs:`,
+          imageError
+        );
+      }
+    }
+    return updated;
   } finally {
     client.release();
   }

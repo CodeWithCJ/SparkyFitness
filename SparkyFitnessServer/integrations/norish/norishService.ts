@@ -59,6 +59,7 @@ export interface SparkyFoodMapping {
     provider_external_id: string;
     provider_type: string;
     is_quick_food: boolean;
+    image_url: string | null;
   };
   variant: {
     serving_size: number;
@@ -258,6 +259,17 @@ class NorishService {
         provider_external_id: norishRecipe.id,
         provider_type: 'norish',
         is_quick_food: false,
+        // Hotlinked in search results; localized on import. Relative media
+        // paths are resolved against the instance URL (baseUrl already ends in
+        // /api/v1, so root-relative paths land on the right origin).
+        image_url: (() => {
+          if (!norishRecipe.image) return null;
+          try {
+            return new URL(norishRecipe.image, this.baseUrl).toString();
+          } catch {
+            return null;
+          }
+        })(),
       },
       variant: {
         serving_size: 1,

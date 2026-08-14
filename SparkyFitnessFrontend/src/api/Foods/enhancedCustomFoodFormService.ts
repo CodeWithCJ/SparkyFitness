@@ -184,6 +184,11 @@ export const saveFood = async (
       provider_external_id: foodData.provider_external_id,
       provider_type: foodData.provider_type,
       provider_verified: foodData.provider_verified,
+      // Ordered image list, same contract as the update branch. Without this
+      // a newly created food drops its images entirely: uploads still landed
+      // (the server appends them by placeholder) but any URL already in the
+      // list — notably a provider photo carried over from an import — was lost.
+      images: foodData.images ?? [],
       // Pass primary variant details to createFood, which will create the default variant
       serving_size: primaryVariant.serving_size,
       serving_unit: primaryVariant.serving_unit,

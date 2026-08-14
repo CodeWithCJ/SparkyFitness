@@ -101,6 +101,46 @@ describe('foodCoreService.createFood', () => {
     expect(foodRepository.updateFood).not.toHaveBeenCalled();
     expect(result).toEqual(existingFood);
   });
+  // Regression: re-importing a provider food that was already saved (back when
+  // the image was being dropped) short-circuited on the dedupe and returned the
+  // image-less row, so the photo could never be recovered without deleting it.
+  it('backfills the provider image onto an existing food that has none', async () => {
+    const existingFood = makeExistingFood({ images: [] });
+    // @ts-expect-error TS(2339): mock typing on the repository default export
+    foodRepository.findFoodByBarcode.mockResolvedValue(existingFood);
+
+    const result = await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({ image_url: 'https://images.openfoodfacts.org/f.jpg' })
+    );
+
+    expect(foodRepository.updateFood).toHaveBeenCalledWith(
+      existingFood.id,
+      TEST_USER_ID,
+      { images: ['https://images.openfoodfacts.org/f.jpg'] }
+    );
+    expect(result).toEqual({
+      ...existingFood,
+      images: ['https://images.openfoodfacts.org/f.jpg'],
+    });
+  });
+
+  it('does not overwrite images the existing food already has', async () => {
+    const existingFood = makeExistingFood({
+      images: ['/uploads/foods/food-existing-456/mine.jpg'],
+    });
+    // @ts-expect-error TS(2339): mock typing on the repository default export
+    foodRepository.findFoodByBarcode.mockResolvedValue(existingFood);
+
+    const result = await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({ image_url: 'https://images.openfoodfacts.org/f.jpg' })
+    );
+
+    expect(foodRepository.updateFood).not.toHaveBeenCalled();
+    expect(result).toEqual(existingFood);
+  });
+
   it('should create a new food when barcode does not exist for user', async () => {
     const newFood = makeExistingFood({ id: 'food-new-789' });
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message

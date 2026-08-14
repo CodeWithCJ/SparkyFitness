@@ -80,6 +80,40 @@ describe('enhancedCustomFoodFormService', () => {
     expect(body2).not.toHaveProperty('serving_description');
   });
 
+  // Regression: the create branch built its payload field-by-field and omitted
+  // `images` entirely, so a provider photo carried through the edit form was
+  // dropped at the last hop and the saved food had no image.
+  it('sends the images array when creating a new food', async () => {
+    mockApiCall.mockResolvedValueOnce({ id: 'food-1' });
+
+    await saveFood(
+      createFood({
+        images: ['https://images.openfoodfacts.org/front_en.879.400.jpg'],
+      }),
+      [createVariant()],
+      'user-1'
+    );
+
+    expect(mockApiCall).toHaveBeenCalledWith(
+      '/foods',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.objectContaining({
+          images: ['https://images.openfoodfacts.org/front_en.879.400.jpg'],
+        }),
+      })
+    );
+  });
+
+  it('sends an empty images array when creating a food with no images', async () => {
+    mockApiCall.mockResolvedValueOnce({ id: 'food-1' });
+
+    await saveFood(createFood(), [createVariant()], 'user-1');
+
+    const body = mockApiCall.mock.calls[0]?.[1]?.body as any;
+    expect(body.images).toEqual([]);
+  });
+
   it('does not persist serving display metadata for additional variants on new foods', async () => {
     mockApiCall
       .mockResolvedValueOnce({ id: 'food-1' })

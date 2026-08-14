@@ -67,6 +67,13 @@ async function searchFatSecretFoods(
   }
 }
 
+// Credentials whose premier request has already failed once. Basic-plan
+// accounts are the common case, and every search enriches several foods, so
+// without this each of those calls would repeat the doomed premier handshake.
+// Re-checked hourly so an account that upgrades picks images up on its own.
+const premierUnavailableUntil = new Map<string, number>();
+const PREMIER_RECHECK_MS = 60 * 60 * 1000;
+
 async function getFatSecretNutrients(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   foodId: any,
@@ -82,28 +89,64 @@ async function getFatSecretNutrients(
       log('info', `Returning cached data for foodId: ${foodId}`);
       return cachedData.data;
     }
-    const accessToken = await getFatSecretAccessToken(clientId, clientSecret);
-    const nutrientsUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams({
-      method: 'food.get.v4',
-      food_id: foodId,
-      format: 'json',
-    }).toString()}`;
-    log('info', `FatSecret Nutrients URL: ${nutrientsUrl}`);
-    const response = await fetch(nutrientsUrl, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      log('error', 'FatSecret Food Get API error:', errorText);
-      throw new Error(`FatSecret API error: ${errorText}`);
+    // Food images are a Premier-only feature on two counts: the token needs the
+    // 'premier' scope, and the account needs the images add-on enabled. Most
+    // installs are on the free Basic plan, where requesting either would fail,
+    // so try the premier path first and fall back to the plain Basic call.
+    // Nutrition data is identical either way — only the photo is at stake.
+    const requestNutrients = async (premier: boolean) => {
+      const accessToken = await getFatSecretAccessToken(
+        clientId,
+        clientSecret,
+        premier ? 'premier' : 'basic'
+      );
+      const params: Record<string, string> = {
+        method: 'food.get.v4',
+        food_id: foodId,
+        format: 'json',
+      };
+      if (premier) {
+        params.include_food_images = 'true';
+      }
+      const nutrientsUrl = `${FATSECRET_API_BASE_URL}?${new URLSearchParams(params).toString()}`;
+      log('info', `FatSecret Nutrients URL: ${nutrientsUrl}`);
+      const response = await fetch(nutrientsUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        log('error', 'FatSecret Food Get API error:', errorText);
+        throw new Error(`FatSecret API error: ${errorText}`);
+      }
+      const body = await response.json();
+      assertNoFatSecretApiError(body);
+      return body;
+    };
+
+    const premierBlockedUntil = premierUnavailableUntil.get(clientId) ?? 0;
+    const skipPremier = Date.now() < premierBlockedUntil;
+
+    let data;
+    if (skipPremier) {
+      data = await requestNutrients(false);
+    } else {
+      try {
+        data = await requestNutrients(true);
+      } catch (premierError) {
+        premierUnavailableUntil.set(clientId, Date.now() + PREMIER_RECHECK_MS);
+        log(
+          'debug',
+          `FatSecret premier request failed for foodId ${foodId}; falling back to basic scope without images for the next hour (expected on Basic plans):`,
+          premierError
+        );
+        data = await requestNutrients(false);
+      }
     }
-    const data = await response.json();
-    assertNoFatSecretApiError(data);
     // Store in cache
     foodNutrientCache.set(foodId, {
       data: data,

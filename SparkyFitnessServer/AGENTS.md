@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-08-07_
+_Last updated: 2026-08-13_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -225,6 +225,10 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect the matching file in `routes/v2/` plus the related Zod schema in `schemas/`
 - Food, barcode, or external provider issue:
   inspect the relevant `integrations/*` code, then the matching service and repository files
+- Food/meal image issue (provider photo missing, upload not saved):
+  read `../docs/content/8.developer/12.food-provider-images.md` first - it maps the whole
+  mapper -> schema -> form -> save -> localize path and records which providers actually
+  supply images. Note `schemas/foodSchemas.ts` silently strips undeclared keys
 - Health data or date bucketing issue:
   inspect `integrations/healthData/healthDataRoutes.ts`, `services/measurementService.ts`, and `utils/timezoneLoader.ts`
 - Self-service "delete synced data by source" issue:

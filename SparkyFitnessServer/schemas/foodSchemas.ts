@@ -57,6 +57,15 @@ export const NormalizedFoodSchema = z.object({
   provider_type: z.string().optional(),
   provider_verified: z.boolean().optional(),
   is_custom: z.boolean(),
+  // Upstream provider photo on a not-yet-imported result. Hotlinked by the
+  // search UI; localized into `images` on import (see models/food.ts). Without
+  // these keys the surrounding z.object() silently strips them, which leaves
+  // provider results image-less and starves the localization pipeline.
+  image_url: z.string().nullable().optional(),
+  // Full-size counterpart when a provider serves two sizes (mealie, tandoor).
+  image_source_url: z.string().nullable().optional(),
+  // Local foods returned through this shape carry their stored array.
+  images: z.array(z.string()).optional(),
   default_variant: FoodVariantSchema,
   variants: z.array(FoodVariantSchema).optional(),
 });

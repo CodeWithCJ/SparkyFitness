@@ -175,6 +175,10 @@ function applyDetailToItem(
       ...item,
       default_variant: mappedDetail.default_variant,
       variants: mappedDetail.variants,
+      // foods.search carries no photo, so the enrichment call is the only
+      // place a FatSecret search result can get one. Keep any existing value
+      // if the detail response has none.
+      image_url: mappedDetail.image_url ?? item.image_url ?? null,
     };
   }
   return item;
