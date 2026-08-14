@@ -110,8 +110,13 @@ describe('enhancedCustomFoodFormService', () => {
 
     await saveFood(createFood(), [createVariant()], 'user-1');
 
-    const body = mockApiCall.mock.calls[0]?.[1]?.body as any;
-    expect(body.images).toEqual([]);
+    expect(mockApiCall).toHaveBeenCalledWith(
+      '/foods',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.objectContaining({ images: [] }),
+      })
+    );
   });
 
   it('does not persist serving display metadata for additional variants on new foods', async () => {

@@ -71,6 +71,13 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - `db/` - pool management, grants, migrations, and RLS policies
 - `config/` - logging and Swagger config
 - `utils/` - startup helpers, CORS, permissions, timezone loading, OIDC helpers, migration helpers
+- Food/meal image pipeline - `utils/imageLocalizer.ts` (normalizes `images` /
+  `image_url` / `image_source_url`, downloads remote provider photos after
+  commit) and `utils/imageDownloader.ts` (SSRF-guarded fetch, content-type and
+  size caps, writes under `/uploads/<domain>/<entityId>/`). Persistence lives in
+  `models/food.ts` and `models/meal.ts`; provider photos are mapped in
+  `integrations/*`. Documented in
+  `../docs/content/8.developer/12.food-provider-images.md`
 - `ai/` - AI provider configuration (`config.ts`), the unified provider-dispatch helper (`providerDispatch.ts`), and the in-process chatbot tool registry (`ai/tools/`)
 - `security/` - encryption utilities (`encryption.ts`)
 - `validation/` - legacy express-validator rules for a few older routes (new routes use Zod schemas)

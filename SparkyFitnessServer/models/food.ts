@@ -292,11 +292,24 @@ async function createFood(foodData: FoodInput) {
         'foods'
       );
       if (localizedImages) {
-        await client.query(
-          'UPDATE foods SET images = $1::jsonb WHERE id = $2',
-          [JSON.stringify(localizedImages), newFood.id]
+        // Guarded like updateFood: the food is already committed, so an edit
+        // can land while these downloads run. Don't clobber a newer value.
+        const localizeWrite = await client.query(
+          'UPDATE foods SET images = $1::jsonb WHERE id = $2 AND images = $3::jsonb',
+          [
+            JSON.stringify(localizedImages),
+            newFood.id,
+            JSON.stringify(toImageArray(newFood.images)),
+          ]
         );
-        newFood.images = localizedImages;
+        if (localizeWrite.rowCount === 0) {
+          log(
+            'debug',
+            `[food.createFood] Images for ${newFood.id} changed during localization; keeping the newer value`
+          );
+        } else {
+          newFood.images = localizedImages;
+        }
       }
     } catch (imageError) {
       // The food itself is already committed; keep it and leave the remote URLs.
@@ -458,11 +471,26 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
           'foods'
         );
         if (localizedImages) {
-          await client.query(
-            'UPDATE foods SET images = $1::jsonb WHERE id = $2',
-            [JSON.stringify(localizedImages), updated.id]
+          // Downloads happen outside the transaction, so another request can
+          // have replaced `images` in the meantime. Only write the localized
+          // result back if the row still holds exactly what we localized;
+          // otherwise the newer value wins and this stale write is skipped.
+          const localizeWrite = await client.query(
+            'UPDATE foods SET images = $1::jsonb WHERE id = $2 AND images = $3::jsonb',
+            [
+              JSON.stringify(localizedImages),
+              updated.id,
+              JSON.stringify(toImageArray(updated.images)),
+            ]
           );
-          updated.images = localizedImages;
+          if (localizeWrite.rowCount === 0) {
+            log(
+              'debug',
+              `[food.updateFood] Images for ${updated.id} changed during localization; keeping the newer value`
+            );
+          } else {
+            updated.images = localizedImages;
+          }
         }
       } catch (imageError) {
         // Non-fatal, as in createFood: keep the row and its remote URLs.

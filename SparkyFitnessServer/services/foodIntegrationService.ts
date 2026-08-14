@@ -74,6 +74,26 @@ async function searchFatSecretFoods(
 const premierUnavailableUntil = new Map<string, number>();
 const PREMIER_RECHECK_MS = 60 * 60 * 1000;
 
+/**
+ * True only for failures that mean "this account cannot use premier", i.e. the
+ * token lacks the scope or the add-on is not provisioned.
+ *
+ * Deliberately narrow: rate limits (code 11), timeouts (24), system outages
+ * (20) and food-specific errors are all transient or unrelated, and treating
+ * them as entitlement failures would disable images for a whole hour over a
+ * momentary blip. FatSecret documents code 14 as the missing-scope error, and
+ * an unprovisioned images add-on surfaces as a 401 on the token request.
+ */
+function isPremierEntitlementError(error: unknown): boolean {
+  const code = (error as { fatSecretErrorCode?: unknown } | null)
+    ?.fatSecretErrorCode;
+  if (code === 14 || code === '14') {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /invalid_scope|missing scope|\b401\b|unauthorized/i.test(message);
+}
+
 async function getFatSecretNutrients(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   foodId: any,
@@ -83,8 +103,19 @@ async function getFatSecretNutrients(
   clientSecret: any
 ) {
   try {
-    // Check cache first
-    const cachedData = foodNutrientCache.get(foodId);
+    // Premier and Basic responses differ (only Premier carries food_images), so
+    // the cache must be keyed by the mode the entry was fetched under as well as
+    // by the credential. Keyed on foodId alone, one tenant's Basic response
+    // would hide images from a Premier caller, and a Premier response would be
+    // handed to a Basic caller that is not entitled to it.
+    const cacheKeyFor = (premier: boolean) =>
+      `${clientId}:${premier ? 'premier' : 'basic'}:${foodId}`;
+
+    const premierBlockedUntil = premierUnavailableUntil.get(clientId) ?? 0;
+    const skipPremier = Date.now() < premierBlockedUntil;
+
+    // Check cache first, under the mode this request would be served with.
+    const cachedData = foodNutrientCache.get(cacheKeyFor(!skipPremier));
     if (cachedData && Date.now() < cachedData.expiry) {
       log('info', `Returning cached data for foodId: ${foodId}`);
       return cachedData.data;
@@ -128,27 +159,41 @@ async function getFatSecretNutrients(
       return body;
     };
 
-    const premierBlockedUntil = premierUnavailableUntil.get(clientId) ?? 0;
-    const skipPremier = Date.now() < premierBlockedUntil;
-
     let data;
+    // Tracks which mode actually produced the payload, so the cache entry is
+    // filed under the right key when premier falls back to basic.
+    let servedPremier = false;
     if (skipPremier) {
       data = await requestNutrients(false);
     } else {
       try {
         data = await requestNutrients(true);
+        servedPremier = true;
       } catch (premierError) {
-        premierUnavailableUntil.set(clientId, Date.now() + PREMIER_RECHECK_MS);
-        log(
-          'debug',
-          `FatSecret premier request failed for foodId ${foodId}; falling back to basic scope without images for the next hour (expected on Basic plans):`,
-          premierError
-        );
+        // Only an entitlement failure means premier will keep failing; a
+        // transient error must not cost this account an hour of images.
+        if (isPremierEntitlementError(premierError)) {
+          premierUnavailableUntil.set(
+            clientId,
+            Date.now() + PREMIER_RECHECK_MS
+          );
+          log(
+            'debug',
+            `FatSecret premier not available for foodId ${foodId}; using basic scope without images for the next hour (expected on Basic plans):`,
+            premierError
+          );
+        } else {
+          log(
+            'warn',
+            `FatSecret premier request failed for foodId ${foodId} for a non-entitlement reason; retrying on basic without starting a cooldown:`,
+            premierError
+          );
+        }
         data = await requestNutrients(false);
       }
     }
     // Store in cache
-    foodNutrientCache.set(foodId, {
+    foodNutrientCache.set(cacheKeyFor(servedPremier), {
       data: data,
       expiry: Date.now() + CACHE_DURATION_MS,
     });
