@@ -61,13 +61,13 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
     const [allOverwriteConfirmed, setAllOverwriteConfirmed] = useState(false);
     const [wheelResetNonce, setWheelResetNonce] = useState(0);
 
-    // Detect if initial rest times are mixed (not all equal)
-    const initialTimesMixed = useMemo(() => {
-      const values = Object.values(initialBySetId);
+    // Detect if the current draft rest times are mixed (not all equal)
+    const restTimesMixed = useMemo(() => {
+      const values = Object.values(draftBySetId);
       if (values.length <= 1) return false;
       const first = values[0];
       return values.some((v) => v !== first);
-    }, [initialBySetId]);
+    }, [draftBySetId]);
 
     useImperativeHandle(ref, () => ({
       present: (exerciseName, incomingSets, supersetRound = false) => {
@@ -118,8 +118,8 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
           });
         };
 
-        // If changing all sets from mixed initial state, confirm once.
-        if (selectedKey === ALL_KEY && initialTimesMixed && !allOverwriteConfirmed) {
+        // If changing all sets from a currently-mixed state, confirm once.
+        if (selectedKey === ALL_KEY && restTimesMixed && !allOverwriteConfirmed) {
           Alert.alert(
             'Overwrite rest times?',
             `These sets have different rest times. Set all to ${formatRestLabel(next)}?`,
@@ -146,7 +146,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
 
         applyChange();
       },
-      [selectedKey, sets, initialTimesMixed, allOverwriteConfirmed],
+      [selectedKey, sets, restTimesMixed, allOverwriteConfirmed],
     );
 
     const handleDone = useCallback(() => {

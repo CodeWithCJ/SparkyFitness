@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import WheelPicker, { type PickerOption as WheelPickerOption } from './ui/wheel-picker';
 import { useCSSVariable } from 'uniwind';
@@ -51,9 +51,24 @@ function DurationWheel({ valueSec, onChangeSec, maxSec = 900 }: DurationWheelPro
     [],
   );
 
-  // Map the logical seconds value to the middle repetition so the wheel has
-  // equal room to scroll in both directions before hitting an edge.
-  const secondsWheelValue = SEC_MID_OFFSET + currentSec;
+  // Raw seconds-wheel index (0..SEC_TOTAL-1), kept in local state instead of
+  // recomputed from currentSec every render. Recomputing it (always mid-offset
+  // + currentSec) would snap the wheel back to the middle repetition on its
+  // own echoed onChangeSec, which is jarring right when a scroll crosses a
+  // repetition boundary (e.g. index 359 "59" -> 360 "00"). We only reconcile
+  // this index below when valueSec changes for a reason other than our own
+  // handleSecondChange call.
+  const [secondsIndex, setSecondsIndex] = useState(() => SEC_MID_OFFSET + currentSec);
+  const lastEmittedSecRef = useRef(currentSec);
+
+  useEffect(() => {
+    if (currentSec !== lastEmittedSecRef.current) {
+      lastEmittedSecRef.current = currentSec;
+      setSecondsIndex(SEC_MID_OFFSET + currentSec);
+    }
+  }, [currentSec]);
+
+  const secondsWheelValue = secondsIndex;
 
   const indicatorStyle = useMemo(
     () => ({ backgroundColor: borderSubtle, borderRadius: 8 }),
@@ -72,8 +87,13 @@ function DurationWheel({ valueSec, onChangeSec, maxSec = 900 }: DurationWheelPro
   };
 
   const handleSecondChange = (v: number | string) => {
+    // Preserve the wheel's actual raw index (don't rebase to the middle
+    // repetition) so a scroll across a repetition boundary doesn't snap back.
+    const index = Number(v);
     // Strip the loop offset; the canonical value is always 0–59.
-    const s = Number(v) % 60;
+    const s = index % 60;
+    lastEmittedSecRef.current = s;
+    setSecondsIndex(index);
     const total = Math.max(0, Math.min(maxSec, currentMin * 60 + s));
     onChangeSec(total);
   };

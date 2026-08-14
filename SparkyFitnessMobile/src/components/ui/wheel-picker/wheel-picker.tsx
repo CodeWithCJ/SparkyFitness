@@ -126,14 +126,21 @@ const WheelPicker: React.FC<Props> = ({
     handleScrollEnd(event);
   };
 
+  const scrollEndDragTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleScrollEndDrag = (
     event: NativeSyntheticEvent<NativeScrollEvent>
   ) => {
     // Capture the offset value immediately
     const offsetY = event.nativeEvent.contentOffset?.y;
 
+    if (scrollEndDragTimeoutRef.current != null) {
+      clearTimeout(scrollEndDragTimeoutRef.current);
+    }
+
     // We'll start a short timer to see if momentum scroll begins
-    setTimeout(() => {
+    scrollEndDragTimeoutRef.current = setTimeout(() => {
+      scrollEndDragTimeoutRef.current = null;
       // If momentum scroll hasn't started within the timeout,
       // then it was a slow scroll that won't trigger momentum
       if (!momentumStarted.current && offsetY !== undefined) {
@@ -147,6 +154,17 @@ const WheelPicker: React.FC<Props> = ({
       }
     }, 50);
   };
+
+  // Stale-timer guard: without this a pending timeout from a drag can fire
+  // handleScrollEnd/onChange after this WheelPicker instance has unmounted
+  // (e.g. DurationWheel remounts on a `key` change when switching tabs).
+  useEffect(() => {
+    return () => {
+      if (scrollEndDragTimeoutRef.current != null) {
+        clearTimeout(scrollEndDragTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedIndex < 0 || selectedIndex >= options.length) {

@@ -523,11 +523,19 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     );
     
     if (run) {
-      // Superset: use setExerciseRest to harmonize all members
-      // All updates should have the same seconds value
-      if (updates.length > 0) {
-        const seconds = updates[0].seconds;
-        store.setExerciseRest(exercise.id, seconds);
+      // Superset rest is per-round and shared across members: applies each
+      // changed round (matched by set_number) to every member's matching
+      // set, so editing one round doesn't overwrite the others.
+      const memberExercises = store.session.exercises.filter((e) =>
+        run.entryIds.includes(e.id),
+      );
+      for (const update of updates) {
+        const changedSet = exercise.sets.find((s) => String(s.id) === update.setId);
+        if (!changedSet) continue;
+        for (const member of memberExercises) {
+          const roundSet = member.sets.find((s) => s.set_number === changedSet.set_number);
+          if (roundSet) store.updateSetField(String(roundSet.id), { rest_time: update.seconds });
+        }
       }
     } else {
       // Solo exercise: update individual sets
