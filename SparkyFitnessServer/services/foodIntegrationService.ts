@@ -91,7 +91,32 @@ function isPremierEntitlementError(error: unknown): boolean {
     return true;
   }
   const message = error instanceof Error ? error.message : String(error ?? '');
-  return /invalid_scope|missing scope|\b401\b|unauthorized/i.test(message);
+  // Message matching is the fallback for errors that carry no structured code
+  // (e.g. an OAuth token rejection). Keep it anchored to scope/auth wording:
+  // a bare "401" anywhere in an upstream proxy body is not evidence that this
+  // account lacks the premier add-on, and misreading it costs an hour of images.
+  return /invalid_scope|missing[_ ]scope|insufficient (permissions|scope)|invalid_client|unauthorized_client|\b401 unauthorized\b/i.test(
+    message
+  );
+}
+
+/**
+ * FatSecret returns errors two ways: HTTP 200 with an `{ error: { code } }`
+ * body, and plain non-2xx responses whose body is usually that same JSON.
+ * `assertNoFatSecretApiError` only covers the first, so re-run it over a parsed
+ * non-OK body to keep `fatSecretErrorCode` available for classification.
+ */
+function throwFatSecretHttpError(errorText: string): never {
+  try {
+    assertNoFatSecretApiError(JSON.parse(errorText));
+  } catch (parsedError) {
+    if (parsedError instanceof SyntaxError) {
+      // Not JSON; fall through to the generic error below.
+    } else {
+      throw parsedError;
+    }
+  }
+  throw new Error(`FatSecret API error: ${errorText}`);
 }
 
 async function getFatSecretNutrients(
@@ -114,11 +139,19 @@ async function getFatSecretNutrients(
     const premierBlockedUntil = premierUnavailableUntil.get(clientId) ?? 0;
     const skipPremier = Date.now() < premierBlockedUntil;
 
+    const readCache = (premier: boolean) => {
+      const cached = foodNutrientCache.get(cacheKeyFor(premier));
+      if (cached && Date.now() < cached.expiry) {
+        log('info', `Returning cached data for foodId: ${foodId}`);
+        return cached.data;
+      }
+      return undefined;
+    };
+
     // Check cache first, under the mode this request would be served with.
-    const cachedData = foodNutrientCache.get(cacheKeyFor(!skipPremier));
-    if (cachedData && Date.now() < cachedData.expiry) {
-      log('info', `Returning cached data for foodId: ${foodId}`);
-      return cachedData.data;
+    const cachedData = readCache(!skipPremier);
+    if (cachedData !== undefined) {
+      return cachedData;
     }
     // Food images are a Premier-only feature on two counts: the token needs the
     // 'premier' scope, and the account needs the images add-on enabled. Most
@@ -152,7 +185,7 @@ async function getFatSecretNutrients(
       if (!response.ok) {
         const errorText = await response.text();
         log('error', 'FatSecret Food Get API error:', errorText);
-        throw new Error(`FatSecret API error: ${errorText}`);
+        throwFatSecretHttpError(errorText);
       }
       const body = await response.json();
       assertNoFatSecretApiError(body);
@@ -189,7 +222,15 @@ async function getFatSecretNutrients(
             premierError
           );
         }
-        data = await requestNutrients(false);
+        // The premier read above missed, but a previous fallback may already
+        // have cached the basic payload. Without this, a premier failure that
+        // starts no cooldown (transient) would miss the cache forever: reads
+        // keep using the premier key while writes land on the basic one.
+        const cachedBasic = readCache(false);
+        data =
+          cachedBasic !== undefined
+            ? cachedBasic
+            : await requestNutrients(false);
       }
     }
     // Store in cache

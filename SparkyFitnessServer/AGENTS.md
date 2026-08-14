@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-08-13_
+_Last updated: 2026-08-07_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -71,13 +71,6 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - `db/` - pool management, grants, migrations, and RLS policies
 - `config/` - logging and Swagger config
 - `utils/` - startup helpers, CORS, permissions, timezone loading, OIDC helpers, migration helpers
-- Food/meal image pipeline - `utils/imageLocalizer.ts` (normalizes `images` /
-  `image_url` / `image_source_url`, downloads remote provider photos after
-  commit) and `utils/imageDownloader.ts` (SSRF-guarded fetch, content-type and
-  size caps, writes under `/uploads/<domain>/<entityId>/`). Persistence lives in
-  `models/food.ts` and `models/meal.ts`; provider photos are mapped in
-  `integrations/*`. Documented in
-  `../docs/content/8.developer/12.food-provider-images.md`
 - `ai/` - AI provider configuration (`config.ts`), the unified provider-dispatch helper (`providerDispatch.ts`), and the in-process chatbot tool registry (`ai/tools/`)
 - `security/` - encryption utilities (`encryption.ts`)
 - `validation/` - legacy express-validator rules for a few older routes (new routes use Zod schemas)
@@ -232,10 +225,6 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect the matching file in `routes/v2/` plus the related Zod schema in `schemas/`
 - Food, barcode, or external provider issue:
   inspect the relevant `integrations/*` code, then the matching service and repository files
-- Food/meal image issue (provider photo missing, upload not saved):
-  read `../docs/content/8.developer/12.food-provider-images.md` first - it maps the whole
-  mapper -> schema -> form -> save -> localize path and records which providers actually
-  supply images. Note `schemas/foodSchemas.ts` silently strips undeclared keys
 - Health data or date bucketing issue:
   inspect `integrations/healthData/healthDataRoutes.ts`, `services/measurementService.ts`, and `utils/timezoneLoader.ts`
 - Self-service "delete synced data by source" issue:
