@@ -1,4 +1,7 @@
 {
+  "layout": {
+    "welcome": "Welcome {{activeUserName}}"
+  },
   "chat": {
     "toolCategories": {
       "tooltip": "Choose chatbot tools",
