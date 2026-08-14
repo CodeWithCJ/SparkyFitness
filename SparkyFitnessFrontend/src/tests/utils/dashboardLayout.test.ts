@@ -221,9 +221,16 @@ describe('evaluateMeasurement', () => {
     expect(run([8, 9, 10], 200)).toEqual([8, 9, 10]);
   });
 
+  // One change past the limit, so the burst keeps exercising the capped path
+  // whatever MAX_MEASURE_CHANGES_PER_WINDOW is tuned to.
+  const burstOverLimit = () =>
+    Array.from({ length: MAX_MEASURE_CHANGES_PER_WINDOW + 1 }, (_, i) =>
+      i % 2 ? 12 : 9
+    );
+
   it('settles on the tallest height once a burst looks like a loop', () => {
-    // 20 alternating changes inside one window: a measure -> layout -> measure cycle.
-    const alternating = Array.from({ length: 20 }, (_, i) => (i % 2 ? 12 : 9));
+    // Alternating changes inside one window: a measure -> layout -> measure cycle.
+    const alternating = burstOverLimit();
     const applied = run(alternating);
     expect(applied.slice(0, MAX_MEASURE_CHANGES_PER_WINDOW)).toEqual(
       alternating.slice(0, MAX_MEASURE_CHANGES_PER_WINDOW)
@@ -236,11 +243,11 @@ describe('evaluateMeasurement', () => {
 
   it('is a rate limit, not a permanent cap: later real changes still apply', () => {
     // Exhaust the window...
-    const burst = Array.from({ length: 20 }, (_, i) => (i % 2 ? 12 : 9));
     let guard: MeasureGuard | undefined;
-    for (const rows of burst) {
+    for (const rows of burstOverLimit()) {
       guard = evaluateMeasurement(guard, rows, 1000).guard;
     }
+    expect(guard?.changes).toBeGreaterThan(MAX_MEASURE_CHANGES_PER_WINDOW);
     // ...then a genuine change well after the window expires.
     const later = evaluateMeasurement(guard, 7, 1000 + MEASURE_WINDOW_MS + 1);
     expect(later.apply).toBe(7);
