@@ -44,8 +44,6 @@ const REQUIRED_KEYS = [
   'sparky_macro_widget_name',
   'sparky_macro_widget_description',
   'widget_kcal_left',
-  'widget_kcal_left_caption',
-  'widget_kcal_left_value',
   'widget_kcal_left_empty',
   'widget_grams',
   'widget_protein',
@@ -54,12 +52,19 @@ const REQUIRED_KEYS = [
   'widget_search_food',
   'widget_scan_barcode',
   'widget_preview_calories_left',
-  'widget_preview_calories_value',
   'widget_preview_macros_left',
-  'widget_preview_macros_value',
   'widget_preview_grams_protein',
   'widget_preview_grams_carbs',
   'widget_preview_grams_fat',
+];
+
+// Keys that existed only for the removed resize/responsive experiment layouts.
+// EN and PL must stay identical; a key without a consumer must not linger.
+const DEAD_RESIZE_KEYS = [
+  'widget_kcal_left_caption',
+  'widget_kcal_left_value',
+  'widget_preview_calories_value',
+  'widget_preview_macros_value',
 ];
 
 const FORBIDDEN_KOTLIN_LITERALS = [
@@ -105,6 +110,16 @@ describe('Android widget localization contract', () => {
       expect(pl).toEqual(en);
     });
 
+    it('does not keep resource keys that lost their consumer after the resize removal', () => {
+      const en = new Set(readWidgetStringResources().map((r) => r.name));
+      const pl = new Set(readWidgetStringResourcesPl().map((r) => r.name));
+
+      for (const key of DEAD_RESIZE_KEYS) {
+        expect(en.has(key)).toBe(false);
+        expect(pl.has(key)).toBe(false);
+      }
+    });
+
     it('has non-empty values in both locales', () => {
       const en = readWidgetStringResources();
       const pl = readWidgetStringResourcesPl();
@@ -127,8 +142,6 @@ describe('Android widget localization contract', () => {
       expect(pl.get('widget_search_food')).toBe('Wyszukaj produkt');
       expect(pl.get('widget_scan_barcode')).toBe('Skanuj kod kreskowy');
       expect(pl.get('widget_kcal_left')).toBe('Pozostało %1$s kcal');
-      expect(pl.get('widget_kcal_left_caption')).toBe('Pozostało');
-      expect(pl.get('widget_kcal_left_value')).toBe('%1$s kcal');
     });
 
     it('keeps placeholder position compatible between EN and PL', () => {
@@ -141,7 +154,6 @@ describe('Android widget localization contract', () => {
 
       const placeholderKeys = [
         'widget_kcal_left',
-        'widget_kcal_left_value',
         'widget_grams',
       ];
       for (const key of placeholderKeys) {
@@ -215,6 +227,16 @@ describe('Android widget localization contract', () => {
       expect(macroSrc).not.toMatch(/R\.string\.widget_kcal_left_value/);
     });
 
+    it('localizes accessibility labels in the Kotlin widgets', () => {
+      for (const template of ['CalorieWidget.kt.tmpl', 'MacroWidget.kt.tmpl']) {
+        const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
+        expect(src).toMatch(/widgetContext\.getString\(R\.string\.widget_search_food\)/);
+        expect(src).toMatch(/widgetContext\.getString\(R\.string\.widget_scan_barcode\)/);
+        expect(src).toMatch(/contentDescription = searchFoodLabel/);
+        expect(src).toMatch(/contentDescription = scanBarcodeLabel/);
+      }
+    });
+
     it('uses locale-aware number formatting without hardcoding English separators', () => {
       const helper = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
@@ -276,23 +298,24 @@ describe('Android widget localization contract', () => {
     });
   });
 
-  describe('widget resize contract', () => {
+  describe('widget provider contract (no resize)', () => {
     // The pre-localization widgets (22415819) define the base visual language.
-    // Localization and resizing must not change the default footprint or
-    // composition: the classic 2x1 calorie card and 2x2 macro card stay the
-    // default, and resizing adapts the SAME design (more room, optional
-    // actions) instead of switching into unrelated compact compositions.
-    it('enables horizontal and vertical resizing on both provider XMLs', () => {
+    // Localization must not change the default footprint or composition: the
+    // classic 2x1 calorie card and 2x2 macro card stay fixed and are NOT
+    // resizable. This PR removed the resize/responsive experiment entirely.
+    it('keeps resizeMode="none" on both provider XMLs', () => {
       for (const infoXml of WIDGET_INFO_XMLS) {
         const src = fs.readFileSync(path.join(RES_ROOT, 'xml', infoXml), 'utf8');
-        expect(src).toMatch(/android:resizeMode="horizontal\|vertical"/);
+        expect(src).toMatch(/android:resizeMode="none"/);
       }
     });
 
-    it('never regresses to resizeMode="none"', () => {
+    it('never re-enables horizontal or vertical resizing', () => {
       for (const infoXml of WIDGET_INFO_XMLS) {
         const src = fs.readFileSync(path.join(RES_ROOT, 'xml', infoXml), 'utf8');
-        expect(src).not.toMatch(/resizeMode="none"/);
+        expect(src).not.toMatch(/resizeMode="horizontal\|vertical"/);
+        expect(src).not.toMatch(/minResizeWidth/);
+        expect(src).not.toMatch(/minResizeHeight/);
       }
     });
 
@@ -306,57 +329,53 @@ describe('Android widget localization contract', () => {
         'utf8',
       );
 
-      // Calorie: classic 2x1 footprint with the pre-localization minimums plus
-      // resize minimums. Do NOT silently return to a larger default footprint.
+      // Calorie: classic 2x1 footprint with the pre-localization minimums.
       expect(calorie).toMatch(/android:minWidth="110dp"/);
       expect(calorie).toMatch(/android:minHeight="40dp"/);
-      expect(calorie).toMatch(/android:minResizeWidth="110dp"/);
-      expect(calorie).toMatch(/android:minResizeHeight="40dp"/);
       expect(calorie).toMatch(/android:targetCellWidth="2"/);
       expect(calorie).toMatch(/android:targetCellHeight="1"/);
-      expect(calorie).toMatch(/android:resizeMode="horizontal\|vertical"/);
 
-      // Macro: classic 2x2 footprint restored to 110x110. This is critical:
-      // do not allow future tests to silently re-expand Macro to 150dp/140dp.
+      // Macro: classic 2x2 footprint.
       expect(macro).toMatch(/android:minWidth="110dp"/);
       expect(macro).toMatch(/android:minHeight="110dp"/);
-      expect(macro).toMatch(/android:minResizeWidth="110dp"/);
-      expect(macro).toMatch(/android:minResizeHeight="110dp"/);
       expect(macro).toMatch(/android:targetCellWidth="2"/);
       expect(macro).toMatch(/android:targetCellHeight="2"/);
-      expect(macro).toMatch(/android:resizeMode="horizontal\|vertical"/);
     });
 
-    it('uses SizeMode.Exact with LocalSize.current in both Glance widgets', () => {
-      for (const template of ['CalorieWidget.kt.tmpl', 'MacroWidget.kt.tmpl']) {
-        const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
-        expect(src).toMatch(/import androidx\.glance\.LocalSize/);
-        expect(src).toMatch(/import androidx\.glance\.appwidget\.SizeMode/);
-        expect(src).toMatch(/SizeMode\.Exact/);
-        expect(src).toMatch(/LocalSize\.current/);
-        // The reported size drives small adjustments: width feeds typography.
-        expect(src).toMatch(/size\.width/);
-      }
+    it('restores the classic macro size mode (single 200x200 responsive size)', () => {
       const macroSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
         'utf8',
       );
-      // Macro additionally uses height to gate the action-row expansion.
-      expect(macroSrc).toMatch(/size\.height/);
+      // The pre-localization SizeMode: one responsive size matching the fixed
+      // 2x2 footprint — NOT resizable, NOT SizeMode.Exact.
+      expect(macroSrc).toMatch(
+        /SizeMode\.Responsive\(\s*setOf\(DpSize\(200\.dp, 200\.dp\)\),?\s*\)/,
+      );
+    });
+
+    it('never uses SizeMode.Exact, LocalSize.current or size-driven logic in the Glance widgets', () => {
+      for (const template of ['CalorieWidget.kt.tmpl', 'MacroWidget.kt.tmpl']) {
+        const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
+        expect(src).not.toMatch(/import androidx\.glance\.LocalSize/);
+        expect(src).not.toMatch(/LocalSize\.current/);
+        expect(src).not.toMatch(/SizeMode\.Exact/);
+        expect(src).not.toMatch(/size\.width/);
+        expect(src).not.toMatch(/size\.height/);
+        expect(src).not.toMatch(/showActions/);
+        expect(src).not.toMatch(/headingFontSize/);
+        expect(src).not.toMatch(/wide/);
+      }
     });
 
     it('keeps the classic calorie composition (one-line heading, progress, actions)', () => {
       const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'), 'utf8');
-      // No height-class compositions and no caption/value two-line split.
-      expect(src).not.toMatch(/CalorieHeightClass/);
-      expect(src).not.toMatch(/extraCompact/);
-      expect(src).not.toMatch(/widget_kcal_left_caption/);
-      expect(src).not.toMatch(/widget_kcal_left_value/);
-      // Classic structure: 12dp padding, one-line bold heading (18sp wide /
-      // 14sp narrow), 8dp gap + 8dp progress, flexible spacer, then the
-      // 32dp action row with 24dp icons and a 24dp divider.
+      // Classic structure: 12dp padding, one-line bold 18sp heading, 8dp gap +
+      // 8dp progress, flexible spacer, then the 32dp action row with 24dp
+      // icons and a 24dp divider.
       expect(src).toMatch(/\.padding\(12\.dp\)/);
-      expect(src).toMatch(/val headingFontSize = if \(size\.width >= 150\.dp\) 18\.sp else 14\.sp/);
+      expect(src).toMatch(/fontSize = 18\.sp/);
+      expect(src).toMatch(/maxLines = 1/);
       expect(src).toMatch(/\.height\(8\.dp\)/);
       expect(src).toMatch(/GlanceModifier\.defaultWeight\(\)/);
       expect(src).toMatch(/\.height\(32\.dp\)/);
@@ -367,14 +386,8 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/R\.drawable\.ic_widget_scan/);
     });
 
-    it('keeps the classic macro composition (centered content block, inline rows)', () => {
+    it('keeps the classic macro composition (centered content block, inline rows, actions)', () => {
       const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
-      // No height classes, no compact variants, no stacked default layout.
-      expect(src).not.toMatch(/MacroHeightClass/);
-      expect(src).not.toMatch(/extraCompact/);
-      expect(src).not.toMatch(/stacked/);
-      expect(src).not.toMatch(/widget_kcal_left_caption/);
-      expect(src).not.toMatch(/widget_kcal_left_value/);
       // Classic container strategy: Box centers a CONTENT-SIZED column.
       expect(src).toMatch(/contentAlignment = Alignment\.Center/);
       expect(src).toMatch(/Column\(modifier = GlanceModifier\.fillMaxWidth\(\)\)/);
@@ -384,17 +397,11 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/MacroRows\(/);
       // Rows stay inline: colored dot + label + value on one line.
       expect(src).toMatch(/R\.string\.widget_grams/);
-      // Actions are gated by ONE simple height threshold (expansion feature).
-      expect(src).toMatch(/val showActions = size\.height >= 190\.dp/);
-      expect(src).toMatch(/if \(showActions\) \{/);
-    });
-
-    it('does not lock the macro widget to a single fixed responsive breakpoint', () => {
-      const macroSrc = fs.readFileSync(
-        path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
-        'utf8',
-      );
-      expect(macroSrc).not.toMatch(/SizeMode\.Responsive\(/);
+      // The action row is always rendered in the classic footprint.
+      expect(src).toMatch(/R\.drawable\.ic_widget_search/);
+      expect(src).toMatch(/R\.drawable\.ic_widget_scan/);
+      expect(src).toMatch(/\.height\(40\.dp\)/);
+      expect(src).not.toMatch(/if \(showActions\)/);
     });
   });
 

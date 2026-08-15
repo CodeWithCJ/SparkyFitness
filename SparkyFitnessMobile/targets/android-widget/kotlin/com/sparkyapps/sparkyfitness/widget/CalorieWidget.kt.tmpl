@@ -15,10 +15,8 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.cornerRadius
@@ -46,23 +44,15 @@ import java.time.format.DateTimeFormatter
 import org.json.JSONObject
 
 /**
- * Classic base composition, restored from the pre-localization calorie widget
+ * Classic base composition, unchanged from the pre-localization calorie widget
  * (22415819): one-line localized kcal heading, 8dp progress bar, and the
  * 32dp search/scan action row, with a flexible spacer between progress and
- * actions. Localization and resizing must not change the default footprint or
- * composition; `LocalSize` only drives small typography adjustments.
+ * actions. Only strings, accessibility labels and number formatting follow the
+ * app/system language; geometry, footprint and behavior are untouched.
  */
 class CalorieWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
-
-    /**
-     * Exact size mode: the same classic composition renders against the real
-     * available size so horizontal growth gives the heading and progress more
-     * room while vertical growth is absorbed by the flexible spacer above the
-     * action row. The default 2x1 launcher footprint stays the classic one.
-     */
-    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val fallbackSnapshot = loadSnapshot(context)
@@ -81,12 +71,6 @@ class CalorieWidget : GlanceAppWidget() {
         // Widget-only locale override: localized string and number resolution
         // stay local to widget rendering (see WidgetLocale).
         val widgetContext = WidgetLocale.localizedContext(context)
-        val size = LocalSize.current
-        // Width-based typography only: the composition stays one-line. The
-        // classic default uses 18sp bold; narrow surfaces (and long Polish
-        // phrases such as "Pozostało 2 890 kcal") drop to 14sp instead of
-        // splitting the heading into two lines.
-        val headingFontSize = if (size.width >= 150.dp) 18.sp else 14.sp
 
         val remainingText: String
         val progress: Float
@@ -123,7 +107,7 @@ class CalorieWidget : GlanceAppWidget() {
                     text = remainingText,
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurface,
-                        fontSize = headingFontSize,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                     ),
                     maxLines = 1,

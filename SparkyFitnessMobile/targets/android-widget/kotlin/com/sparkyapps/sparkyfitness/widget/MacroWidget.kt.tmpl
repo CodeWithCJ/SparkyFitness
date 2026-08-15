@@ -5,8 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -17,7 +16,6 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.LinearProgressIndicator
@@ -49,23 +47,22 @@ import java.time.format.DateTimeFormatter
 import org.json.JSONObject
 
 /**
- * Classic base composition, restored from the pre-localization macro widget
+ * Classic base composition, unchanged from the pre-localization macro widget
  * (22415819): one-line localized kcal header, three inline macro rows with
- * progress bars, centered as a content-sized block inside a Box. Shortcut
- * actions appear only when the widget is tall enough (`showActions`), so the
- * default 2x2 footprint matches the classic appearance. `LocalSize` only
- * drives small typography/spacing adjustments and the action threshold.
+ * progress bars, and the search/scan shortcut row — all rendered in the fixed
+ * 2x2 footprint. Only strings, accessibility labels and number formatting
+ * follow the app/system language; geometry, footprint and behavior are
+ * untouched.
  */
 class MacroWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
-    /**
-     * Exact size mode: the same classic composition renders against the real
-     * available size. Extra height may expose the shortcut action row; the
-     * information hierarchy (header + macros) never changes.
-     */
-    override val sizeMode: SizeMode = SizeMode.Exact
+    // Classic pre-localization size mode: a single 200x200 responsive size
+    // matching the fixed 2x2 launcher footprint. No resizing.
+    override val sizeMode: SizeMode = SizeMode.Responsive(
+        setOf(DpSize(200.dp, 200.dp)),
+    )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val fallbackSnapshot = loadSnapshot(context)
@@ -84,21 +81,6 @@ class MacroWidget : GlanceAppWidget() {
         // Widget-only locale override: localized string and number resolution
         // stay local to widget rendering (see WidgetLocale).
         val widgetContext = WidgetLocale.localizedContext(context)
-        val size = LocalSize.current
-        val wide = size.width >= 210.dp
-        // Actions are an expansion feature: the classic default 2x2 footprint
-        // renders header + macros only. One threshold keeps this simple. 190dp
-        // leaves ~162dp of content after the 14+14dp padding — enough for the
-        // kcal header, three inline macro rows and the 40dp action row.
-        val showActions = size.height >= 190.dp
-        // Modest density adaptation only; the composition stays identical.
-        val headerFontSize = if (wide) 20.sp else 14.sp
-        val rowFontSize = if (wide) 14 else 12
-        val dotSize = if (wide) 12.dp else 10.dp
-        val dotGap = if (wide) 8.dp else 6.dp
-        val progressHeight = if (wide) 4.dp else 3.dp
-        val rowSpacing = if (wide) 7 else 5
-        val headerGap = if (wide) 10.dp else 8.dp
 
         val openAppIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://"))
             .setPackage(context.packageName)
@@ -118,64 +100,44 @@ class MacroWidget : GlanceAppWidget() {
                 .clickable(actionStartActivity(openAppIntent)),
             contentAlignment = Alignment.Center,
         ) {
-            // Content-sized column: the classic approach centers the compact
-            // block naturally instead of faking centering with flex spacers.
             Column(modifier = GlanceModifier.fillMaxWidth()) {
-                CalorieHeader(
-                    context = widgetContext,
-                    snapshot = snapshot,
-                    fontSize = headerFontSize,
-                )
-                Spacer(modifier = GlanceModifier.height(headerGap))
-                MacroRows(
-                    context = widgetContext,
-                    snapshot = snapshot,
-                    spacing = rowSpacing,
-                    dotSize = dotSize,
-                    dotGap = dotGap,
-                    progressHeight = progressHeight,
-                    fontSize = rowFontSize,
-                )
-                if (showActions) {
-                    Spacer(modifier = GlanceModifier.height(14.dp))
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        ActionButton(
-                            intent = searchIntent,
-                            icon = R.drawable.ic_widget_search,
-                            contentDescription = searchFoodLabel,
-                            modifier = GlanceModifier
-                                .defaultWeight()
-                                .height(40.dp),
-                        )
-                        Box(
-                            modifier = GlanceModifier
-                                .width(1.dp)
-                                .height(48.dp)
-                                .background(GlanceTheme.colors.surfaceVariant),
-                        ) {}
-                        ActionButton(
-                            intent = scanIntent,
-                            icon = R.drawable.ic_widget_scan,
-                            contentDescription = scanBarcodeLabel,
-                            modifier = GlanceModifier
-                                .defaultWeight()
-                                .height(40.dp),
-                        )
-                    }
+                CalorieHeader(context = widgetContext, snapshot = snapshot)
+                Spacer(modifier = GlanceModifier.height(10.dp))
+                MacroRows(context = widgetContext, snapshot = snapshot, spacing = 7)
+                Spacer(modifier = GlanceModifier.height(14.dp))
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ActionButton(
+                        intent = searchIntent,
+                        icon = R.drawable.ic_widget_search,
+                        contentDescription = searchFoodLabel,
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .height(40.dp),
+                    )
+                    Box(
+                        modifier = GlanceModifier
+                            .width(1.dp)
+                            .height(48.dp)
+                            .background(GlanceTheme.colors.surfaceVariant),
+                    ) {}
+                    ActionButton(
+                        intent = scanIntent,
+                        icon = R.drawable.ic_widget_scan,
+                        contentDescription = scanBarcodeLabel,
+                        modifier = GlanceModifier
+                            .defaultWeight()
+                            .height(40.dp),
+                    )
                 }
             }
         }
     }
 
     @Composable
-    private fun CalorieHeader(
-        context: Context,
-        snapshot: MacroSnapshot?,
-        fontSize: TextUnit,
-    ) {
+    private fun CalorieHeader(context: Context, snapshot: MacroSnapshot?, fontSize: Int = 20) {
         val calories = snapshot?.displayCalories
         val text = if (snapshot?.hasData == true && calories != null) {
             context.getString(R.string.widget_kcal_left, formatInt(context, calories))
@@ -186,7 +148,7 @@ class MacroWidget : GlanceAppWidget() {
             text = text,
             style = TextStyle(
                 color = GlanceTheme.colors.onSurface,
-                fontSize = fontSize,
+                fontSize = fontSize.sp,
                 fontWeight = FontWeight.Bold,
             ),
             maxLines = 1,
@@ -195,25 +157,13 @@ class MacroWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun MacroRows(
-        context: Context,
-        snapshot: MacroSnapshot?,
-        spacing: Int,
-        dotSize: Dp,
-        dotGap: Dp,
-        progressHeight: Dp,
-        fontSize: Int,
-    ) {
+    private fun MacroRows(context: Context, snapshot: MacroSnapshot?, spacing: Int) {
         MacroRow(
             context = context,
             label = context.getString(R.string.widget_protein),
             grams = snapshot?.protein ?: 0.0,
             progress = snapshot.progressFor(MacroKind.PROTEIN),
             color = MacroPalette.protein,
-            dotSize = dotSize,
-            dotGap = dotGap,
-            progressHeight = progressHeight,
-            fontSize = fontSize,
         )
         Spacer(modifier = GlanceModifier.height(spacing.dp))
         MacroRow(
@@ -222,10 +172,6 @@ class MacroWidget : GlanceAppWidget() {
             grams = snapshot?.carbs ?: 0.0,
             progress = snapshot.progressFor(MacroKind.CARBS),
             color = MacroPalette.carbs,
-            dotSize = dotSize,
-            dotGap = dotGap,
-            progressHeight = progressHeight,
-            fontSize = fontSize,
         )
         Spacer(modifier = GlanceModifier.height(spacing.dp))
         MacroRow(
@@ -234,10 +180,6 @@ class MacroWidget : GlanceAppWidget() {
             grams = snapshot?.fat ?: 0.0,
             progress = snapshot.progressFor(MacroKind.FAT),
             color = MacroPalette.fat,
-            dotSize = dotSize,
-            dotGap = dotGap,
-            progressHeight = progressHeight,
-            fontSize = fontSize,
         )
     }
 
@@ -248,42 +190,33 @@ class MacroWidget : GlanceAppWidget() {
         grams: Double,
         progress: Float,
         color: ColorProvider,
-        dotSize: Dp,
-        dotGap: Dp,
-        progressHeight: Dp,
-        fontSize: Int,
     ) {
         Column(modifier = GlanceModifier.fillMaxWidth()) {
-            // Inline row (label left, value right): the classic visual
-            // language. The dot + label + value stay on one line; "Węglowodany"
-            // fits because the shared row typography adapts with width.
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
                     modifier = GlanceModifier
-                        .size(dotSize)
-                        .cornerRadius(dotSize / 2)
+                        .size(12.dp)
+                        .cornerRadius(6.dp)
                         .background(color),
                 ) {}
-                Spacer(modifier = GlanceModifier.width(dotGap))
+                Spacer(modifier = GlanceModifier.width(8.dp))
                 Text(
                     text = label,
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = fontSize.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
                     ),
                     maxLines = 1,
-                    modifier = GlanceModifier.defaultWeight(),
                 )
-                Spacer(modifier = GlanceModifier.width(6.dp))
+                Spacer(modifier = GlanceModifier.defaultWeight())
                 Text(
                     text = context.getString(R.string.widget_grams, formatInt(context, grams)),
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurface,
-                        fontSize = fontSize.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                     ),
                     maxLines = 1,
@@ -294,7 +227,7 @@ class MacroWidget : GlanceAppWidget() {
                 progress = progress,
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .height(progressHeight),
+                    .height(4.dp),
                 color = color,
                 backgroundColor = GlanceTheme.colors.surfaceVariant,
             )

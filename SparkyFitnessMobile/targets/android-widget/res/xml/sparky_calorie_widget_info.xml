@@ -1,19 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Classic 2x1 footprint restored from the pre-localization widget (22415819)
-  with resizing enabled: horizontal growth gives the heading and progress more
-  room; vertical growth is absorbed between progress and the action row.
--->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="110dp"
     android:minHeight="40dp"
-    android:minResizeWidth="110dp"
-    android:minResizeHeight="40dp"
     android:targetCellWidth="2"
     android:targetCellHeight="1"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/sparky_widget_initial_layout"
     android:previewLayout="@layout/sparky_widget_initial_layout"
-    android:resizeMode="horizontal|vertical"
+    android:resizeMode="none"
     android:description="@string/sparky_widget_description"
     android:widgetCategory="home_screen" />

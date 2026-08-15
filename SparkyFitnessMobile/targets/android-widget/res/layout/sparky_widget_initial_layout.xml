@@ -1,21 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Calorie widget initial/preview layout. Mirrors the classic Glance layout:
-  one-line localized kcal heading, 8dp progress bar, and the search/scan
-  action row at the bottom (classic 2x1 footprint, 22415819).
--->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="#FFFFFFFF"
-    android:padding="10dp">
+    android:padding="12dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/widget_preview_calories_left"
-        android:textSize="14sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#FF1F1F1F"
         android:maxLines="1" />
