@@ -189,20 +189,20 @@ jest.mock('../../src/components/ActionSheet', () => {
 
 const mockRestSheet: {
   present: jest.Mock;
-  onChange: ((seconds: number) => void) | null;
-} = { present: jest.fn(), onChange: null };
+  onApply: ((updates: { setId: string; seconds: number }[]) => void) | null;
+} = { present: jest.fn(), onApply: null };
 
-jest.mock('../../src/components/RestPeriodSheet', () => {
+jest.mock('../../src/components/ExerciseSetRestSheet', () => {
   const React = require('react');
   return {
     __esModule: true,
-    default: React.forwardRef(({ onChange }: any, ref: any) => {
+    default: React.forwardRef(({ onApply }: any, ref: any) => {
       React.useImperativeHandle(ref, () => ({
         present: mockRestSheet.present,
         dismiss: jest.fn(),
       }));
       React.useEffect(() => {
-        mockRestSheet.onChange = onChange;
+        mockRestSheet.onApply = onApply;
       });
       return null;
     }),
@@ -731,9 +731,35 @@ describe('WorkoutFormExerciseList', () => {
   it('targets the rest sheet at the pressed exercise', () => {
     const utils = renderList([makeExercise('a'), makeExercise('b')]);
     fireEvent.press(utils.getByTestId('card-b-rest'));
-    expect(mockRestSheet.present).toHaveBeenCalledWith(90);
+    expect(mockRestSheet.present).toHaveBeenCalledWith('B', [
+      {
+        setId: 'b-s1',
+        setNumber: 1,
+        restSec: 90,
+      },
+    ], false);
 
-    mockRestSheet.onChange?.(120);
+    mockRestSheet.onApply?.([{ setId: 'b-s1', seconds: 120 }]);
+    expect(utils.callbacks.setExerciseRest).toHaveBeenCalledWith('b', 120);
+  });
+
+  it('targets the rest sheet for superset members and calls setExerciseRest', () => {
+    const supersetExerciseA = makeExercise('a', { supersetGroup: 1 });
+    const supersetExerciseB = makeExercise('b', { supersetGroup: 1 });
+    const utils = renderList([supersetExerciseA, supersetExerciseB]);
+    
+    fireEvent.press(utils.getByTestId('card-b-rest'));
+    // For superset members, isSupersetRound should be true
+    expect(mockRestSheet.present).toHaveBeenCalledWith('B', [
+      {
+        setId: 'b-s1',
+        setNumber: 1,
+        restSec: 90,
+      },
+    ], true);
+
+    // When superset member rest is applied, use setExerciseRest regardless of matching sets
+    mockRestSheet.onApply?.([{ setId: 'b-s1', seconds: 120 }]);
     expect(utils.callbacks.setExerciseRest).toHaveBeenCalledWith('b', 120);
   });
 

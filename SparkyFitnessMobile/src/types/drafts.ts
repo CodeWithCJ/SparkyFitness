@@ -30,6 +30,8 @@ export interface WorkoutSetMetaPatch {
   setType?: string;
   rpe?: number | null;
   notes?: string | null;
+  /** Rest time in seconds for this set. */
+  restTime?: number | null;
   /** ISO string to mark the set complete, null to clear it. */
   completedAt?: string | null;
 }

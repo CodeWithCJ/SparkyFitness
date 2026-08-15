@@ -318,7 +318,7 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(screen.getByText('220.5')).toBeTruthy();
   });
 
-  it('shows one exercise-level rest chip from the first set (mixed rest degrades to it)', () => {
+  it('shows one exercise-level rest chip spanning the min-max of its sets when rest times differ', () => {
     const preset = buildPreset({
       exercises: [
         {
@@ -336,7 +336,8 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    expect(screen.getByLabelText('Rest 45s')).toBeTruthy();
+    expect(screen.getByLabelText('Rest 45s-2:00')).toBeTruthy();
+    expect(screen.queryByLabelText('Rest 45s')).toBeNull();
     expect(screen.queryByLabelText('Rest 1:30')).toBeNull();
     expect(screen.queryByLabelText('Rest 2:00')).toBeNull();
   });

@@ -14,7 +14,10 @@ import ActiveWorkoutExerciseCard from './ActiveWorkoutExerciseCard';
 import { MetricColumnMenu, SetTypeMenu } from './WorkoutMenus';
 import ActionSheet, { type ActionSheetItem, type ActionSheetRef } from './ActionSheet';
 import { type AnchorRect } from './AnchoredMenu';
-import RestPeriodSheet, { type RestPeriodSheetRef } from './RestPeriodSheet';
+import ExerciseSetRestSheet, {
+  type ExerciseSetRestSheetRef,
+  type ExerciseSetRestUpdate,
+} from './ExerciseSetRestSheet';
 import WorkoutReorderList from './WorkoutReorderList';
 import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
 import {
@@ -400,20 +403,53 @@ const WorkoutFormExerciseList = forwardRef<
     [exercises, onViewExercise],
   );
 
-  // Rest sheet (per-exercise rest duration).
-  const restSheetRef = useRef<RestPeriodSheetRef>(null);
-  const restSheetTargetRef = useRef<string | null>(null);
-  const handlePressRestChip = useCallback((entryId: string, currentSec: number | null) => {
-    restSheetTargetRef.current = entryId;
-    restSheetRef.current?.present(currentSec);
-  }, []);
-  const handleRestChange = useCallback(
-    (seconds: number) => {
-      const target = restSheetTargetRef.current;
-      if (target != null) setExerciseRest(target, seconds);
-    },
-    [setExerciseRest],
-  );
+  // Rest sheet (All/per-set rest duration, committed on Done).
+  const restSheetRef = useRef<ExerciseSetRestSheetRef>(null);
+  const restSheetEntryIdRef = useRef<string | null>(null);
+  const handlePressRestChip = useCallback((entryId: string, _currentSec: number | null) => {
+    const exercise = exercises.find((e) => e.clientId === entryId);
+    if (!exercise) return;
+    restSheetEntryIdRef.current = entryId;
+    const isSupersetMember = exercise.supersetGroup != null;
+    restSheetRef.current?.present(
+      exercise.exerciseName,
+      exercise.sets.map((set, index) => ({
+        setId: set.clientId,
+        setNumber: index + 1,
+        restSec: set.restTime,
+      })),
+      isSupersetMember,
+    );
+  }, [exercises]);
+  const handleRestApply = useCallback((updates: ExerciseSetRestUpdate[]) => {
+    const owner = restSheetEntryIdRef.current;
+    if (!owner) return;
+    const exercise = exercises.find((e) => e.clientId === owner);
+    if (!exercise) return;
+
+    // Superset members: always use setExerciseRest to harmonize all members
+    if (exercise.supersetGroup != null) {
+      if (updates.length > 0) {
+        // All updates should have the same value for superset members
+        setExerciseRest(owner, updates[0].seconds);
+      }
+      return;
+    }
+
+    // Solo exercise: check if all sets have the same rest, then use setExerciseRest
+    if (updates.length === exercise.sets.length && updates.length > 0) {
+      const [first, ...rest] = updates;
+      if (rest.every((u) => u.seconds === first.seconds)) {
+        setExerciseRest(owner, first.seconds);
+        return;
+      }
+    }
+
+    // Otherwise update individual sets
+    for (const update of updates) {
+      updateSetMeta(owner, update.setId, { restTime: update.seconds });
+    }
+  }, [exercises, setExerciseRest, updateSetMeta]);
 
   // Metric column is shared with the active-workout screen (intended).
   // Preset sets store no RPE, so the preset form hides RPE from the column
@@ -645,7 +681,7 @@ const WorkoutFormExerciseList = forwardRef<
         </TouchableOpacity>
       </Animated.View>
 
-      <RestPeriodSheet ref={restSheetRef} onChange={handleRestChange} />
+      <ExerciseSetRestSheet ref={restSheetRef} onApply={handleRestApply} />
 
       <MetricColumnMenu
         anchor={metricMenu?.anchor ?? null}
