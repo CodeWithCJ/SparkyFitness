@@ -283,6 +283,40 @@ describe('healthConnectService.ts (Android)', () => {
       expect(calorieRecords[0].value).toBe(350);
     });
 
+    test('ActiveCalories fall back to total minus basal calories in the sync payload', async () => {
+      mockEmptyReadsWithProbe();
+      mockAggregateGroupByPeriod.mockImplementation(
+        ({ recordType }: { recordType: string }) => {
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve([
+              periodBucket(2024, 1, 15, { ENERGY_TOTAL: { inKilocalories: 2400 } }),
+            ]);
+          }
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.resolve([
+              periodBucket(2024, 1, 15, { BASAL_CALORIES_TOTAL: { inKilocalories: 1750 } }),
+            ]);
+          }
+          return Promise.resolve([]);
+        },
+      );
+
+      const healthMetricStates: HealthMetricStates = { isCaloriesSyncEnabled: true };
+
+      await androidService.syncHealthData('24h', healthMetricStates);
+
+      const payload = mockApiSyncHealthData.mock.calls[0][0];
+      const calorieRecords = payload.filter((r: { type: string }) => r.type === 'active_calories');
+
+      expect(calorieRecords).toHaveLength(1);
+      expect(calorieRecords[0]).toMatchObject({
+        date: '2024-01-15',
+        value: 650,
+        type: 'active_calories',
+        unit: 'kcal',
+      });
+    });
+
     test('HeartRate records are aggregated with min/max/avg by date', async () => {
       mockReadRecords.mockResolvedValue({
         records: [
