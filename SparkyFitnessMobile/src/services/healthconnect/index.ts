@@ -963,8 +963,9 @@ export const getAggregatedActiveCaloriesByDateDetailed = async (
   const records = [...activeResult.records, ...derivedRecords].sort((a, b) =>
     a.date.localeCompare(b.date),
   );
-  const error = activeResult.error ??
-    (records.length === 0 ? totalResult.error ?? basalResult.error : undefined);
+  const error = records.length === 0
+    ? activeResult.error ?? totalResult.error ?? basalResult.error
+    : undefined;
   return { records, ...(error ? { error } : {}) };
 };
 
