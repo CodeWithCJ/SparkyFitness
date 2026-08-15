@@ -518,7 +518,7 @@ export default function CycleToday() {
 
       <p className="pb-4 text-center text-xs text-muted-foreground">
         {t(
-          'cycle.disclaimer',
+          'cycle.disclaimerFooter',
           'Predictions are informational and not medical advice or contraception.'
         )}
       </p>
