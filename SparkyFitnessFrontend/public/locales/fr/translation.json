@@ -7,7 +7,10 @@
     "exercises": "Exercices",
     "goals": "Objectifs",
     "settings": "Paramètres",
-    "admin": "Admin"
+    "admin": "Admin",
+    "cycle": "Cycle",
+    "pregnancy": "Grossesse",
+    "medications": "Médicaments"
   },
   "settings": {
     "profileInformation": {
@@ -55,7 +58,8 @@
       "error": "ERREUR",
       "warn": "AVERT",
       "silent": "SILENCE (Aucun Journal)",
-      "debug": "DEBUG (détaillé)"
+      "debug": "DEBUG (détaillé)",
+      "measurementDecimalPlaces": "Décimales des mesures"
     },
     "waterTracking": {
       "title": "Suivi conso d'eau",
@@ -64,7 +68,9 @@
       "milliliters": "Millilitres (ml)",
       "fluidOunces": "Oz (oz)",
       "cups": "Tasses",
-      "saveWaterDisplayUnit": "Sauvegarder l'unité de conso d'eau"
+      "saveWaterDisplayUnit": "Sauvegarder l'unité de conso d'eau",
+      "addExerciseWater": "Ajouter la perte d'eau liée à l'exercice à l'objectif quotidien",
+      "addExerciseWaterHint": "Augmente votre objectif d'eau quotidien selon la perte de sueur estimée lors des activités."
     },
     "nutrientDisplay": {
       "title": "Affichage des nutriments",
@@ -85,7 +91,11 @@
     "foodExerciseDataProviders": {
       "title": "Fournisseurs de données pour la Nourriture et les Exercices",
       "description": "Configurer les sources de données externes relatives à l'alimentation et à l'exercice physique et synchronisez les données avec Garmin Connect",
-      "invalidKeyLengthWarning": "Si vous rencontrez une erreur « Longueur de clé invalide », assurez-vous que votre clé de chiffrement dans les variables d'environnement du serveur sont de 64 octets hexadécimaux."
+      "invalidKeyLengthWarning": "Si vous rencontrez une erreur « Longueur de clé invalide », assurez-vous que votre clé de chiffrement dans les variables d'environnement du serveur sont de 64 octets hexadécimaux.",
+      "openFoodFacts": {
+        "baseUrlLabel": "URL de base (facultatif)",
+        "baseUrlHelp": "Laissez vide pour utiliser le serveur public Open Food Facts, ou indiquez votre propre instance auto-hébergée."
+      }
     },
     "aiService": {
       "title": "Service d'IA",
@@ -142,7 +152,18 @@
         "deleteConfirm": "Es-tu sûr de vouloir supprimer ce service d'IA global ?",
         "fillRequiredFields": "Merci de remplir tous les champs obligatoires",
         "enterNewApiKey": "Entre la nouvelle clé d'API pour mettre à jour",
-        "successUpdatingConfig": "Configuration IA de l'utilisateur mise à jour avec succès"
+        "successUpdatingConfig": "Configuration IA de l'utilisateur mise à jour avec succès",
+        "chatToolProfile": "Ensemble d'outils du chat",
+        "chatToolProfileFull": "Complet (tous les outils)",
+        "chatToolProfileCore": "Essentiel (plus rapide, moins d'outils)",
+        "chatToolProfileDescription": "Le mode Essentiel limite le chatbot aux fonctions de base pour l'alimentation, l'exercice et les mesures, adapté aux environnements locaux ou à faibles ressources. Le mode Complet active tous les outils.",
+        "recommendedModel": "Recommandé : {{- model}}, un bon compromis entre coût et performance.",
+        "testConnection": "Tester la connexion",
+        "testing": "Test en cours…",
+        "ollamaContextTitle": "Important : augmentez la fenêtre de contexte d'Ollama",
+        "ollamaContextHint": "Par défaut, Ollama utilise un contexte de 4096 jetons et tronque silencieusement tout ce qui dépasse, ce qui corrompt les définitions d'outils et rend le chatbot instable. Définissez OLLAMA_CONTEXT_LENGTH=16384 sur le serveur Ollama (ou ajoutez PARAMETER num_ctx 16384 au Modelfile du modèle), puis redémarrez Ollama. Sur une machine avec 8 Go, commencez à 8192.",
+        "ollamaFullProfileWarningTitle": "Impact potentiel sur les performances des modèles locaux",
+        "ollamaFullProfileWarningHint": "Exécuter un modèle local avec l'ensemble d'outils Complet peut entraîner une latence importante ou des erreurs, sauf sur un système très puissant (ex. GPU avec beaucoup de VRAM). Si les performances sont lentes ou que le modèle se perd, passez à l'ensemble d'outils Essentiel."
       },
       "userSettings": {
         "title": "Services IA",
@@ -226,7 +247,23 @@
         "revertConfirm": "Êtes-vous sûr de vouloir supprimer tous vos paramètres personnalisés de service d'IA et utiliser à la place les paramètres globaux ?",
         "successReverting": "Les paramètres globaux ont été rétablis. Vos paramètres personnalisés ont été supprimés.",
         "errorReverting": "Impossible de revenir aux paramètres globaux",
-        "fillRequiredFields": "Veuillez remplir tous les champs obligatoires"
+        "fillRequiredFields": "Veuillez remplir tous les champs obligatoires",
+        "aiAssistedConversions": "Conversions d'unités assistées par IA",
+        "aiAssistedConversionsDescription": "Convertit les unités alimentaires entre catégories (ex. tasse → g) avec l'IA dans le sélecteur d'unités.",
+        "showTokenStats": "Afficher l'utilisation des jetons",
+        "showTokenStatsDescription": "Affiche le nombre de jetons par message dans le chat.",
+        "activeProvider": "Fournisseur IA actif",
+        "chatToolProfile": "Ensemble d'outils du chat",
+        "chatToolProfileFull": "Complet (tous les outils)",
+        "chatToolProfileCore": "Essentiel (plus rapide, moins d'outils)",
+        "chatToolProfileDescription": "Le mode Essentiel limite le chatbot aux fonctions de base pour l'alimentation, l'exercice et les mesures, adapté aux environnements locaux ou à faibles ressources. Le mode Complet active tous les outils.",
+        "recommendedModel": "Recommandé : {{- model}}, un bon compromis entre coût et performance.",
+        "testConnection": "Tester la connexion",
+        "testing": "Test en cours…",
+        "ollamaContextTitle": "Important : augmentez la fenêtre de contexte d'Ollama",
+        "ollamaContextHint": "Par défaut, Ollama utilise un contexte de 4096 jetons et tronque silencieusement tout ce qui dépasse, ce qui corrompt les définitions d'outils et rend le chatbot instable. Définissez OLLAMA_CONTEXT_LENGTH=16384 sur le serveur Ollama (ou ajoutez PARAMETER num_ctx 16384 au Modelfile du modèle), puis redémarrez Ollama. Sur une machine avec 8 Go, commencez à 8192.",
+        "ollamaFullProfileWarningTitle": "Impact potentiel sur les performances des modèles locaux",
+        "ollamaFullProfileWarningHint": "Exécuter un modèle local avec l'ensemble d'outils Complet peut entraîner une latence importante ou des erreurs, sauf sur un système très puissant (ex. GPU avec beaucoup de VRAM). Si les performances sont lentes ou que le modèle se perd, passez à l'ensemble d'outils Essentiel."
       },
       "serviceTypes": {
         "openai": "OpenAI",
@@ -237,7 +274,21 @@
         "groq": "Groq",
         "ollama": "Ollama",
         "openrouter": "OpenRouter",
-        "custom": "Personnalisé"
+        "custom": "Personnalisé",
+        "xai": "xAI (Grok)",
+        "meta": "Meta"
+      },
+      "test": {
+        "successTitle": "Succès",
+        "failureTitle": "Échec",
+        "categories": {
+          "api_key_missing": "La clé API est manquante ou invalide. Ajoutez une clé valide et réessayez.",
+          "custom_url_missing": "Une URL personnalisée est requise pour ce type de service.",
+          "upstream_error": "Le service IA a renvoyé une erreur. Vérifiez la clé API, le nom du modèle et l'URL.",
+          "timeout": "Le service IA n'a pas répondu à temps. Vérifiez l'URL et que le serveur est accessible.",
+          "unsupported_provider": "Ce type de service n'est pas pris en charge.",
+          "unknown": "Le test de connexion a échoué. Vérifiez la configuration et réessayez."
+        }
       }
     },
     "apiKeyManagement": {
@@ -300,7 +351,54 @@
       "exportSuccess": "Export réussi",
       "exportSuccessDescription": "Ton journal a correctement été exporté.",
       "exportError": "Erreur d'exportation",
-      "exportErrorDescription": "Impossible de télécharger votre journal. Réessaie plus tard."
+      "exportErrorDescription": "Impossible de télécharger votre journal. Réessaie plus tard.",
+      "deleteSynced": {
+        "title": "Supprimer les données synchronisées",
+        "description": "Supprime toutes les entrées synchronisées ou importées depuis une source spécifique (ex. Apple Health, Garmin). Seules les données synchronisées sont concernées : les entrées ajoutées manuellement ne sont jamais touchées. Cette action est irréversible.",
+        "scopeNoteTitle": "Ce qui est supprimé",
+        "scopeIncludes": "Supprime les entrées de journal synchronisées (alimentation, séances d'exercice, sommeil, eau, mesures de bilan personnalisées) ainsi que les données des objets connectés de ce fournisseur (fréquence cardiaque, VFC, respiration, SpO2, constantes et indicateurs de bien-être quotidiens).",
+        "scopeExcludesLibrary": "Ne supprime PAS votre base d'aliments ou d'exercices (les définitions réutilisables), seulement les entrées enregistrées.",
+        "scopeExcludesCheckin": "Ne supprime PAS les mesures de bilan standard (poids, pas, masse grasse, taille) : elles fusionnent toutes les sources en une seule valeur quotidienne et ne peuvent pas être supprimées par source ici.",
+        "scopeExcludesManual": "Ne supprime RIEN de ce que vous avez créé vous-même : les entrées saisies, enregistrées via l'assistant Sparky, ou les séances issues d'un préréglage ou d'un plan enregistré sont toujours conservées.",
+        "loading": "Chargement des sources...",
+        "loadError": "Échec du chargement des sources de données synchronisées.",
+        "empty": "Aucune donnée synchronisée trouvée. Rien à supprimer ici.",
+        "sourceLabel": "Source de données",
+        "sourcePlaceholder": "Sélectionnez une source",
+        "deleteButton": "Supprimer les données synchronisées",
+        "confirmTitle": "Supprimer les données synchronisées ?",
+        "confirmDescription": "Cela supprimera définitivement {{count}} entrées synchronisées depuis {{source}}. Les données saisies manuellement ne sont pas concernées.",
+        "confirmWarning": "Cette action est irréversible. Assurez-vous d'avoir une sauvegarde récente de la base de données avant de supprimer.",
+        "confirmButton": "Supprimer définitivement",
+        "success": "Données synchronisées supprimées.",
+        "error": "Échec de la suppression des données synchronisées."
+      }
+    },
+    "cycle": {
+      "title": "Cycle et grossesse",
+      "description": "Gérez la santé reproductive, les cycles menstruels et le suivi de grossesse",
+      "enableLabel": "Activer le suivi du cycle et de la grossesse",
+      "enableHint": "Active le centre de santé reproductive. L'activer affiche l'onglet correspondant dans la barre latérale.",
+      "mode": "Mode de suivi",
+      "bcMethod": "Contraception",
+      "terminology": "Terminologie",
+      "terminologyDefault": "Par défaut (genré)",
+      "terminologyNeutral": "Neutre",
+      "avgCycleOverride": "Durée moyenne du cycle (jours)",
+      "avgPeriodOverride": "Durée moyenne des règles (jours)",
+      "lutealLength": "Durée de la phase lutéale (jours)",
+      "showFertileWindow": "Afficher les prévisions de fenêtre de fertilité",
+      "showFertileWindowHint": "Affiche ou masque les jours fertiles et les prévisions d'ovulation sur les tableaux de bord et calendriers.",
+      "conditions": "Problèmes de santé",
+      "learned": "Calculé à partir des journaux",
+      "successTitle": "Succès",
+      "successDesc": "Paramètres du cycle mis à jour.",
+      "errorTitle": "Erreur",
+      "errorDesc": "Impossible d'enregistrer les paramètres du cycle. Veuillez réessayer."
+    },
+    "nutrientGoalDirection": {
+      "title": "Sens de l'objectif nutritionnel",
+      "description": "Choisissez si chaque objectif nutritionnel est un minimum à atteindre, un maximum à ne pas dépasser, ou une plage cible à respecter"
     }
   },
   "aboutDialog": {
@@ -369,7 +467,8 @@
       "importSuccess": "Données d'exercice ajoutés",
       "importDuplicateTitle": "Échec de l'import : éléments dupliqués trouvées",
       "importDuplicateDescription": "Les éléments suivants existent déjà : {{duplicateList}}. Veuillez les retirer de votre fichier et réessayer.",
-      "importError": "Impossible d'importer les données d'exercice. Merci de bien vouloir réessayer."
+      "importError": "Impossible d'importer les données d'exercice. Merci de bien vouloir réessayer.",
+      "importFitTab": "Importer FIT"
     },
     "addWorkoutPresetDialog": {
       "searchPlaceholder": "Chercher parmi vos séances prédéfinies…",
@@ -387,7 +486,13 @@
       "topPresetsTitle": "Top séances prédéfinies",
       "searchResultsTitle": "Résultats de la recherche",
       "noMatchingPresets": "Pas d'entrainement prédéfinies correspondante.",
-      "noTopPresets": "Pas de top séances prédéfinies."
+      "noTopPresets": "Pas de top séances prédéfinies.",
+      "ownership": {
+        "all": "Tous",
+        "mine": "Mes préréglages",
+        "family": "Famille",
+        "public": "Public"
+      }
     },
     "dailyProgress": {
       "dailyCalorieGoal": "Objectif de calories journalier",
@@ -404,7 +509,9 @@
       "caloriesBurnedBreakdownTitle": "Détail des calories brûlées",
       "netCalories": "Calories nettes : {{netCalories}}",
       "netCaloriesBreakdown": "{{dailyIntakeCalories}} mangées - {{finalTotalCaloriesBurned}} brulées",
-      "dailyProgress": "Progression journalière"
+      "dailyProgress": "Progression journalière",
+      "bmrSourceExternal": "Appli santé",
+      "targetBand": "cible {{min}}–{{max}}"
     },
     "editExerciseEntryDialog": {
       "setLabel": "Définir",
@@ -541,6 +648,25 @@
       "voiceLabel": "Voix :",
       "selectVoicePlaceholder": "Sélectionner une voix",
       "stepCount": "Étape {{currentInstructionIndex}} de {{totalInstructions}}"
+    },
+    "importFit": {
+      "title": "Importer des fichiers FIT",
+      "description": "Téléversez des fichiers d'activité FIT exportés depuis votre appareil ou application (10 maximum à la fois). Chaque fichier devient une entrée de journal avec fréquence cardiaque, tours et autres données. Retéléverser un fichier met à jour son entrée.",
+      "importButton": "Importer {{count}} fichier(s)",
+      "importing": "Importation...",
+      "successTitle": "Import terminé",
+      "successDescription": "{{count}} activités importées.",
+      "partialTitle": "Import terminé avec des erreurs",
+      "partialDescription": "{{imported}} importées, {{failed}} échouées. Voir les résultats ci-dessous.",
+      "resultsTitle": "Résultats de l'import",
+      "fileColumn": "Fichier",
+      "statusColumn": "Statut",
+      "activityColumn": "Activité",
+      "dateColumn": "Date",
+      "detailsColumn": "Détails",
+      "statusCreated": "Importé",
+      "statusUpdated": "Mis à jour",
+      "statusFailed": "Échoué"
     }
   },
   "workoutPresetsManager": {
@@ -690,7 +816,31 @@
     "addNewFood": "Ajouter un nouvel aliment",
     "addNewFoodDescription": "Entrez les détails d'un nouvel aliment à ajouter à votre base de données.",
     "scanBarcodeDescription": "Positionnez le code-barres du produit devant votre caméra.",
-    "importFromCSVDescription": "Importez un fichier CSV pour ajouter plusieurs aliments à la fois."
+    "importFromCSVDescription": "Importez un fichier CSV pour ajouter plusieurs aliments à la fois.",
+    "yourFoods": "Vos aliments",
+    "yourMeals": "Vos repas",
+    "noSavedFoods": "Aucun aliment enregistré trouvé.",
+    "noSavedFoodsOrMeals": "Aucun aliment ou repas enregistré trouvé.",
+    "searchOnlineToImport": "Recherchez pour trouver des aliments depuis votre fournisseur en ligne.",
+    "onlineSearchFailed": "Échec de la recherche auprès du fournisseur en ligne.",
+    "loadMore": "Charger plus",
+    "loadMoreFailed": "Échec du chargement des résultats supplémentaires.",
+    "scannedProduct": "Produit scanné",
+    "allProviders": "Tous les fournisseurs",
+    "topMatches": "Meilleures correspondances",
+    "bySource": "Par source",
+    "noResults": "Aucun résultat",
+    "couldntLoad": "Échec du chargement",
+    "showAllResults": "Afficher les {{count}} résultats de {{provider}}",
+    "noRecentOrTopItems": "Aucun aliment ou repas récent ou fréquent trouvé. Commencez à enregistrer pour les voir ici.",
+    "recent": "Récents",
+    "frequent": "Fréquents",
+    "favorite": "Favori",
+    "favorites": "Favoris",
+    "addToFavorites": "Ajouter aux favoris",
+    "removeFromFavorites": "Retirer des favoris",
+    "failedToLoadFavorites": "Échec du chargement des favoris.",
+    "failedToUpdateFavorite": "Échec de la mise à jour du favori."
   },
   "foodSearchDialog": {
     "title": "Rechercher et ajouter un aliment",
@@ -1000,7 +1150,20 @@
       "iron": "fer",
       "calcium": "calcium"
     },
-    "of": "de"
+    "of": "de",
+    "dailyEnergyGoal": "Objectif énergétique quotidien",
+    "waterIntake": "Consommation d'eau",
+    "exercise": "Exercice",
+    "widgets": {
+      "layout": "Personnaliser la disposition",
+      "done": "Terminé",
+      "resetLayout": "Réinitialiser la disposition",
+      "maximize": "Agrandir",
+      "restore": "Restaurer",
+      "hide": "Masquer",
+      "layoutErrorNotice": "La disposition personnalisable a rencontré une erreur, une vue simplifiée est donc affichée. Votre disposition enregistrée est conservée."
+    },
+    "over": "sur"
   },
   "foodDiary": {
     "title": "Journal alimentaire",
@@ -1041,7 +1204,9 @@
       "selectMealTypePlaceholder": "Sélectionner le type de repas",
       "copyButton": "Copier"
     },
-    "selectMealType": "Sélectionnez le type de repas"
+    "selectMealType": "Sélectionnez le type de repas",
+    "pastDateWarning": "Attention : vous ajoutez des entrées alimentaires pour une date passée.",
+    "futureDateWarning": "Attention : vous ajoutez des entrées alimentaires pour une date future."
   },
   "mealCard": {
     "addFoodToMeal": "Ajouter un aliment à {{mealName}}",
@@ -1099,7 +1264,23 @@
     "measurementDeletedSuccessfully": "Mesure supprimée avec succès",
     "failedToDeleteMeasurement": "Échec de la suppression de la mesure",
     "failedToLoadRecentMeasurements": "Échec du chargement des mesures récentes",
-    "enterCustomCategory": "Entrer {{categoryName}}"
+    "enterCustomCategory": "Entrer {{categoryName}}",
+    "photos": {
+      "title": "Photos de progression",
+      "subtitle": "Téléversez des photos de face, de dos et de profil pour suivre l'évolution de votre physique.",
+      "addPhotos": "Ajouter des photos de progression",
+      "front": "Face",
+      "back": "Dos",
+      "side": "Profil",
+      "tapToUpload": "Touchez pour téléverser",
+      "upload": "Téléverser",
+      "replace": "Remplacer",
+      "uploadSuccess": "Photo enregistrée",
+      "uploadError": "Échec du téléversement",
+      "tooLarge": "Image trop volumineuse (10 Mo max).",
+      "deleteSuccess": "Photo supprimée",
+      "deleteError": "Échec de la suppression de la photo"
+    }
   },
   "sleepTimelineEditor": {
     "sleepTimeline": "Chronologie du sommeil",
@@ -1213,7 +1394,12 @@
     "hide": "Masquer",
     "forceDelete": "Forcer la suppression",
     "addFoodToDatabaseTitle": "Ajouter un aliment à la base de données",
-    "addFoodToDatabaseDescription": "Rechercher des aliments à ajouter à votre base de données personnelle."
+    "addFoodToDatabaseDescription": "Rechercher des aliments à ajouter à votre base de données personnelle.",
+    "duplicateFood": "Dupliquer l'aliment",
+    "duplicateFoodDialogTitle": "Dupliquer l'aliment",
+    "duplicateFoodDialogDescription": "Modifiez les détails et enregistrez-le comme un nouvel aliment. L'original n'est pas modifié.",
+    "copySuffix": "(copie)",
+    "duplicateFailed": "Échec de la duplication de l'aliment."
   },
   "mealManagement": {
     "failedToLoadMeals": "Échec du chargement des repas.",
@@ -1252,7 +1438,11 @@
     "usedByCurrentUserWarning": "Ce repas est utilisé dans vos plans de repas. Le supprimer le retirera de ces plans.",
     "confirmPermanentDelete": "Êtes-vous sûr de vouloir supprimer définitivement ce repas ?",
     "hide": "Masquer",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "duplicateMeal": "Dupliquer le repas",
+    "duplicateMealDialogTitle": "Dupliquer le repas",
+    "copySuffix": "(copie)",
+    "duplicateMealDialogDescription": "Modifiez les détails et enregistrez-le comme un nouveau repas. L'original n'est pas modifié."
   },
   "mealBuilder": {
     "errorTitle": "Erreur",
@@ -1559,7 +1749,8 @@
       "lapTableCaloriesHeader": "Calories",
       "heartRateTimeInZonesTitle": "Temps dans les zones de FC",
       "timeInZoneSLabel": "Temps dans la zone (s)",
-      "cadence": "Cadence"
+      "cadence": "Cadence",
+      "waterLoss": "Perte d'eau"
     },
     "bodyBattery": "Batterie corporelle",
     "charged": "Chargée",
@@ -2181,7 +2372,14 @@
     "calcium": "Calcium",
     "iron": "Fer",
     "fat": "Lipides",
-    "netCarbs": "Glucides nets"
+    "netCarbs": "Glucides nets",
+    "autoCalculate": "Calcul automatique",
+    "autoCalculateTooltip": "Calcul automatique avec {{algorithm}}",
+    "autoCalculateDisabledNoSex": "Définissez votre sexe dans le profil pour activer le calcul automatique",
+    "autoCalculateSelect": "Inclure dans le calcul automatique groupé",
+    "autoCalculateSelectAll": "Tout sélectionner",
+    "autoCalculateSelectNone": "Tout désélectionner",
+    "autoCalculateApplySelected": "Calculer automatiquement la sélection ({{count}})"
   },
   "sync": {
     "syncAll": "Synchroniser tous les fournisseurs actifs",
@@ -2258,24 +2456,253 @@
   "medications": {
     "common": {
       "save": "Sauvegarder",
-      "reset": "Réinitialiser"
+      "reset": "Réinitialiser",
+      "logging": "Enregistrement…",
+      "saving": "Sauvegarde…",
+      "custom": "Personnalisé"
     },
     "today": {
       "doses": "Doses",
-      "skip": "Passer"
+      "skip": "Passer",
+      "noIntake": "Aucune entrée enregistrée aujourd'hui.",
+      "dosesToday": "Doses aujourd'hui",
+      "adherence14": "Observance sur 14 jours",
+      "perfectDays": "Jours parfaits (14j)",
+      "last14": "14 derniers jours",
+      "streak": "Série de {{count}} jours",
+      "checklistToday": "Liste du jour",
+      "checklistMed": "Liste des médicaments",
+      "scheduled": "Prévu",
+      "undo": "Annuler",
+      "snooze": "Reporter",
+      "snoozed": "Reporté",
+      "take": "Prendre"
     },
     "locations": {
       "head": "Tête",
       "abdomen": "Abdomen",
       "chest": "Poitrine",
       "back": "Dos",
-      "muscles": "Muscles"
+      "muscles": "Muscles",
+      "general": "Général",
+      "joints": "Articulations"
     },
     "symptomNames": {
       "nausea": "Nausée",
       "headache": "Maux de tête",
       "vomiting": "Vomissements",
-      "acid_reflux": "Reflux acide / RGO"
+      "acid_reflux": "Reflux acide / RGO",
+      "fatigue": "Fatigue",
+      "constipation": "Constipation",
+      "diarrhea": "Diarrhée",
+      "stomach_pain": "Douleurs / crampes abdominales",
+      "dizziness": "Vertiges"
+    },
+    "tabs": {
+      "log": "Journal",
+      "cabinet": "Pharmacie",
+      "symptoms": "Symptômes"
+    },
+    "insights": {
+      "title": "Analyses et conseils sur les effets secondaires",
+      "subtitle": "Corrélations pharmacocinétiques superposées aux horaires de prise récents",
+      "disclaimer": "Les analyses sont calculées sur une fenêtre glissante de 30 jours. Il s'agit d'estimations à but éducatif, pas d'un avis médical."
+    },
+    "scheduleDesc": {
+      "atTime": " à {{time}}",
+      "mealSuffix": " (repas {{meal}})",
+      "daily": "Quotidien",
+      "weeklyOn": "Chaque semaine le {{days}}",
+      "everyNDays": "Tous les {{n}} jours",
+      "cyclic": "Cycle : {{on}} jours actifs, {{off}} jours de pause",
+      "monthly": "Chaque mois le jour {{day}}",
+      "prn": "Au besoin (PRN)",
+      "taper": "Réduction progressive / titration"
+    },
+    "bodymap": {
+      "label": "Carte corporelle des sites d'injection"
+    },
+    "calendar": {
+      "maxSeverity": "Sévérité max : {{n}}"
+    },
+    "gi": {
+      "title": "Sous-suivi digestif",
+      "subtitle": "Taux hebdomadaires sur les 30 derniers jours",
+      "nausea": "Nausées / sem",
+      "vomiting": "Vomissements / sem",
+      "reflux": "Reflux / sem",
+      "avgBristol": "Bristol moy."
+    },
+    "symptoms": {
+      "logTitle": "Enregistrer un symptôme",
+      "calendarTitle": "Calendrier des symptômes",
+      "logsTitle": "Historique des symptômes enregistrés",
+      "subtitle": "Enregistrez la sévérité et le contexte physique de vos effets secondaires",
+      "symptom": "Symptôme",
+      "addCustom": "Ajouter un symptôme personnalisé",
+      "customName": "Nom du symptôme (interne)",
+      "customNamePlaceholder": "ex. eruption_cutanee",
+      "displayLabel": "Libellé affiché",
+      "displayLabelPlaceholder": "ex. Éruption cutanée",
+      "saveCustom": "Enregistrer le symptôme personnalisé",
+      "severity": "Sévérité",
+      "mild": "Léger (1-3)",
+      "moderate": "Modéré (4-6)",
+      "severe": "Sévère (7-10)",
+      "primaryLocation": "Emplacement principal",
+      "customLocationPlaceholder": "ex. Épaule gauche, mâchoire…",
+      "linkMed": "Lier à un médicament (facultatif)",
+      "noMedLinked": "Aucun médicament lié",
+      "context": "Contexte / notes",
+      "contextPlaceholder": "ex. Survenu 4 heures après la prise de ma dose du soir.",
+      "bristol": "Journal des selles (échelle de Bristol)",
+      "bristolType": "Type de Bristol {{n}}"
+    },
+    "fasting": {
+      "title": "Minuteur de jeûne GLP-1 oral",
+      "instructions": "Prendre avec 4 à 6 oz d'eau, puis attendre {{min}} min avant de manger, de boire du café ou de prendre d'autres médicaments.",
+      "start": "Comprimé pris : démarrage du minuteur",
+      "complete": "Jeûne terminé : vous pouvez manger.",
+      "waterOnly": "Eau uniquement"
+    },
+    "checkin": {
+      "title": "Bilan quotidien GLP-1",
+      "subtitle": "Suivez les effets du médicament sur vous : ces données sont enregistrées dans vos mesures quotidiennes et apparaissent aussi dans Bilan et rapports.",
+      "save": "Enregistrer le bilan",
+      "saveToday": "Enregistrer le bilan du jour",
+      "metric": {
+        "hunger": "Faim",
+        "food_noise": "Bruit alimentaire",
+        "fullness": "Satiété",
+        "energy": "Énergie"
+      }
+    },
+    "sites": {
+      "customize": "Personnaliser les sites",
+      "dialogTitle": "Sites d'injection",
+      "subtitle": "Activez les sites que vous utilisez et classez-les : les suggestions de rotation suivent cet ordre.",
+      "label": {
+        "upper_arm_left": "Bras gauche (haut)",
+        "upper_arm_right": "Bras droit (haut)",
+        "forearm_left": "Avant-bras gauche",
+        "forearm_right": "Avant-bras droit",
+        "abdomen_left": "Abdomen gauche",
+        "abdomen_right": "Abdomen droit",
+        "thigh_front_left": "Cuisse gauche (avant)",
+        "thigh_front_right": "Cuisse droite (avant)",
+        "upper_back_left": "Haut du dos gauche",
+        "upper_back_right": "Haut du dos droit",
+        "lower_back_left": "Bas du dos gauche",
+        "lower_back_right": "Bas du dos droit",
+        "buttock_left": "Fesse gauche",
+        "buttock_right": "Fesse droite",
+        "thigh_back_left": "Cuisse gauche (arrière)",
+        "thigh_back_right": "Cuisse droite (arrière)"
+      }
+    },
+    "glp1": {
+      "logInjection": "Enregistrer une injection",
+      "logInjectionAt": "Enregistrer une injection : {{site}}",
+      "injectionSite": "Site d'injection",
+      "legendSuggested": "vert = suggéré",
+      "legendResting": "orange = repos <{{days}}j",
+      "selected": "Sélectionné :",
+      "tapZone": "Touchez une zone",
+      "lipoWarning": "Ce site a été utilisé récemment : alternez pour éviter une lipohypertrophie.",
+      "doseMg": "Dose (mg)",
+      "dateTime": "Date et heure",
+      "deduct": "Déduire du stylo/flacon",
+      "dontDeduct": "Ne pas déduire",
+      "pkTitle": "Taux sérique PK",
+      "pkEmpty": "Enregistrez des injections pour modéliser votre taux sérique. (Nécessite un médicament GLP-1 reconnu : à définir sur le médicament.)",
+      "penInventory": "Inventaire stylos / flacons",
+      "addPen": "Ajouter un stylo",
+      "noPens": "Aucun stylo/flacon suivi.",
+      "titrationTitle": "Plan de titration des doses",
+      "addStep": "Ajouter une étape",
+      "statusPlanned": "Planifié",
+      "statusActive": "Actif (en cours)",
+      "statusDone": "Terminé",
+      "noTitration": "Aucune étape de titration pour l'instant : touchez « Ajouter une étape » pour planifier l'augmentation de dose.",
+      "recentInjections": "Injections récentes",
+      "noInjections": "Aucune injection enregistrée pour l'instant."
+    },
+    "types": {
+      "pill": "pilule",
+      "tablet": "comprimé",
+      "capsule": "gélule",
+      "liquid": "liquide",
+      "injection": "injection",
+      "patch": "patch",
+      "inhaler": "inhalateur",
+      "drops": "gouttes",
+      "cream": "crème",
+      "suppository": "suppositoire",
+      "other": "autre",
+      "nasal_spray": "spray nasal"
+    },
+    "cabinet": {
+      "addMed": "Ajouter un médicament",
+      "editMed": "Modifier le médicament",
+      "name": "Nom",
+      "namePlaceholder": "ex. Wegovy",
+      "type": "Type",
+      "strength": "Dosage",
+      "glp1Med": "Médicament GLP-1",
+      "glp1Hint": "Débloque le coach d'injection, la courbe PK et la rotation des sites.",
+      "glp1Drug": "Médicament GLP-1 (pour le modèle PK)",
+      "reason": "Motif / pathologie (facultatif)",
+      "reasonPlaceholder": "ex. Gestion du poids, diabète de type 2",
+      "prescriber": "Prescripteur (facultatif)",
+      "prescriberPlaceholder": "Dr Chen",
+      "pharmacy": "Pharmacie (facultatif)",
+      "pharmacyPlaceholder": "CVS #4421",
+      "rxNumber": "Numéro d'ordonnance (facultatif)",
+      "rxPlaceholder": "Rx-482-93221",
+      "activeScripts": "Ordonnances actives",
+      "glp1Meds": "Médicaments GLP-1",
+      "scheduledToday": "Prévu aujourd'hui",
+      "totalMeds": "Total médicaments"
+    },
+    "schedule": {
+      "heading": "Horaires et rappels",
+      "subheading": "Configurez les rappels et les règles de prise",
+      "addRule": "Ajouter une règle",
+      "title": "Ajouter une règle de prise",
+      "type": "Type de planification",
+      "daily": "Tous les jours",
+      "weekly": "Jours spécifiques de la semaine",
+      "everyNDays": "Tous les N jours",
+      "cyclic": "Cyclique (actif/pause)",
+      "monthly": "Mensuel",
+      "prn": "Au besoin (PRN)",
+      "timeOfDay": "Heure de la journée",
+      "daysOfWeek": "Jours de la semaine",
+      "interval": "Intervalle (jours)",
+      "dayOfMonth": "Jour du mois (1-31)",
+      "daysOn": "Jours actifs",
+      "daysOff": "Jours de pause",
+      "prnReason": "Motif (facultatif)",
+      "prnReasonPlaceholder": "ex. Douleur",
+      "prnMax": "Doses max / jour",
+      "doseOverride": "Quantité de dose (facultatif)",
+      "withMeal": "Avec un repas",
+      "anyTime": "N'importe quand",
+      "beforeMeal": "Avant le repas",
+      "withMealOpt": "Pendant le repas",
+      "afterMeal": "Après le repas",
+      "startDate": "Date de début (facultatif)",
+      "endDate": "Date de fin (facultatif)"
+    },
+    "reports": {
+      "logTableTitle": "Tableau du journal des médicaments",
+      "logTableDesc": "Nombre et horaires de doses par jour du {{start}} au {{end}}, avec les symptômes du même jour.",
+      "logTableEmpty": "Aucune dose de médicament enregistrée sur cette période.",
+      "dosesLogged": "{{count}} doses enregistrées",
+      "dosesTaken": "Doses prises",
+      "times": "Heures",
+      "symptomsColumn": "Symptômes",
+      "injectionAbbrev": "inj"
     }
   },
   "chat": {
@@ -2285,7 +2712,164 @@
       "clearAll": "Tout effacer",
       "emptyHint": "Aucune catégorie sélectionnée — le chatbot utilisera son jeu d'outils par défaut.",
       "food": "Alimentation et eau",
-      "exercise": "Exercice"
+      "exercise": "Exercice",
+      "tooltip": "Choisir les outils du chatbot",
+      "title": "Outils du chatbot",
+      "presetCore": "Essentiel",
+      "checkin": "Corps et bilans",
+      "goals": "Objectifs",
+      "reports": "Rapports et analyses",
+      "coaching": "Coaching",
+      "vision": "Vision",
+      "profile": "Profil et habitudes"
     }
+  },
+  "onboarding": {
+    "completeSetup": "Terminer la configuration"
+  },
+  "cycle": {
+    "hub": "Centre cycle et grossesse",
+    "pregnancyHub": "Centre grossesse",
+    "hubSubtitle": "Suivez, comprenez et synchronisez-vous avec votre corps.",
+    "tabs": {
+      "today": "Aujourd'hui",
+      "calendar": "Calendrier",
+      "insights": "Analyses",
+      "care": "Soins"
+    },
+    "comingSoon": {
+      "calendarTitle": "Calendrier du cycle",
+      "calendarDesc": "Une vue interactive de vos cycles passés, du volume des règles et des prévisions futures arrive en phase 2.",
+      "insightsTitle": "Analyses du cycle",
+      "insightsDesc": "Des graphiques détaillés de la température basale, des cartes de chaleur des symptômes et l'historique de durée des cycles arrivent en phase 2.",
+      "careTitle": "Soins et rappels",
+      "careDesc": "Les rappels de contraception, de changement de protection et l'export PDF pour le médecin arrivent en phase 5.",
+      "placeholder": "Bientôt disponible"
+    },
+    "onboarding": {
+      "stepIndicator": "Étape {{step}} sur 4",
+      "step1Title": "Choisissez votre objectif de suivi",
+      "step1Desc": "Sélectionnez le mode principal de votre suivi.",
+      "step2Title": "Dates et durées du cycle",
+      "step2Desc": "Indiquez-nous les caractéristiques habituelles de votre cycle.",
+      "step3Title": "Votre profil de santé",
+      "step3Desc": "Informations facultatives pour personnaliser les prévisions (peut être ignoré).",
+      "step4Title": "Avertissement et confirmation",
+      "step4Desc": "À lire et à accepter avant de finaliser.",
+      "successTitle": "Bienvenue dans le suivi du cycle !",
+      "successDesc": "Votre profil de cycle a été initialisé avec succès.",
+      "errorTitle": "Échec de la configuration",
+      "errorDesc": "Impossible d'enregistrer vos préférences. Veuillez réessayer.",
+      "lastPeriodStart": "Quand ont commencé vos dernières règles ?",
+      "avgCycleLength": "Cycle habituel (jours)",
+      "avgPeriodLength": "Règles habituelles (jours)",
+      "bcMethod": "Méthode de contraception",
+      "bcHint": "La contraception hormonale supprime les fenêtres de fertilité et n'affiche que les prévisions de règles.",
+      "conditions": "Pathologies connues (facultatif)",
+      "complete": "Accepter et terminer"
+    },
+    "disclaimer": {
+      "title": "Avertissement de santé important",
+      "text1": "Cette fonctionnalité de suivi du cycle est destinée uniquement à des fins éducatives, sportives et de tenue de journal. Elle n'est ni conçue ni destinée à être utilisée comme méthode principale de contraception ou de planification familiale.",
+      "text2": "Les prévisions sont des estimations qui varient selon la régularité individuelle, l'état de santé ou l'irrégularité du cycle. Consultez toujours un professionnel de santé pour toute question médicale."
+    },
+    "mode": {
+      "standard": "Suivi de cycle standard",
+      "standardDesc": "Suivez les règles, les symptômes et prévoyez les futures phases du cycle.",
+      "ttc": "Essai de conception",
+      "ttcDesc": "Suivez la fenêtre de fertilité, l'ovulation et les indicateurs de la phase lutéale.",
+      "pregnant": "Suivi de grossesse",
+      "pregnantDesc": "Suivez les étapes du développement fœtal, le minuteur de contractions et le suivi prénatal."
+    },
+    "today": {
+      "cycleDay": "Jour du cycle",
+      "late": "{{n}} jours de retard",
+      "periodIn": "Règles dans {{n}} jours",
+      "nextPeriod": "Prochaines règles",
+      "ovulation": "Ovulation",
+      "cycleLength": "Durée du cycle",
+      "lateBanner": "Vos règles ont {{n}} jours de retard. Enregistrez-les à leur début, ou ajustez la durée de votre cycle dans les paramètres."
+    },
+    "legend": {
+      "period": "Règles",
+      "fertile": "Fertile",
+      "ovulation": "Ovulation"
+    },
+    "stats": {
+      "cycleAvg": "Cycle moy.",
+      "periodAvg": "Règles moy.",
+      "lastBbt": "Dernière T° basale"
+    },
+    "regularity": {
+      "regular": "Régulier",
+      "somewhat": "Assez régulier",
+      "irregular": "Irrégulier"
+    },
+    "insight": {
+      "menstrual_rest": "Vous êtes en phase menstruelle : le repos et une activité douce peuvent aider.",
+      "menstrual_iron": "Les aliments riches en fer peuvent vous aider pendant vos règles.",
+      "follicular_energy": "L'énergie augmente souvent en phase folliculaire : une bonne semaine pour des entraînements plus intenses.",
+      "fertile_window": "Vous êtes dans votre fenêtre de fertilité.",
+      "ovulation_peak": "L'ovulation approche : c'est votre jour de fertilité maximale.",
+      "luteal_dip": "L'énergie et le sommeil peuvent baisser en fin de phase lutéale. Soyez indulgent·e envers vous-même.",
+      "luteal_pms": "Des symptômes prémenstruels peuvent apparaître maintenant : notez comment vous vous sentez.",
+      "generic_log": "Enregistrez aujourd'hui pour améliorer vos prévisions au fil du temps."
+    },
+    "log": {
+      "title": "Journal du jour",
+      "saved": "Enregistré",
+      "flow": "Flux",
+      "products": "Protections périodiques",
+      "fewerProducts": "Afficher moins",
+      "moreProducts": "+ plus de produits",
+      "bbt": "Température basale",
+      "mucus": "Glaire cervicale",
+      "moods": "Humeur",
+      "energy": "Énergie",
+      "notes": "Notes",
+      "notesPlaceholder": "Autre chose à noter…"
+    }
+  },
+  "foodCsvImport": {
+    "title": "Importer des données alimentaires",
+    "addRow": "Ajouter une ligne",
+    "uploadCsv": "Téléverser un CSV",
+    "downloadTemplate": "Télécharger le modèle",
+    "clearData": "Effacer les données",
+    "pastePlaceholder": "Ou collez le contenu CSV ici...",
+    "parseText": "Analyser le texte",
+    "recordsLoaded": "{{count}} enregistrements chargés avec succès.",
+    "actions": "Actions",
+    "booleanTrue": "Vrai",
+    "booleanFalse": "Faux",
+    "deleteRow": "Supprimer la ligne",
+    "overrideLabel": "Écraser les détails existants de l'aliment",
+    "overrideDescription": "Si un aliment portant le même nom et la même marque existe déjà, mettre à jour ses valeurs nutritionnelles au lieu d'échouer l'import. Laissez décoché pour ignorer et signaler une erreur en cas de doublon.",
+    "importing": "Importation...",
+    "importData": "Importer les données",
+    "importErrorTitle": "Erreur d'import",
+    "pasteFirst": "Veuillez d'abord coller des données CSV.",
+    "invalidFormatTitle": "Format CSV invalide",
+    "headersMismatchText": "Les en-têtes ne correspondent pas au format requis. Utilisez le modèle.",
+    "successTitle": "Succès",
+    "loadedRowsFromText": "{{count}} lignes chargées depuis le texte.",
+    "emptyFile": "Le fichier sélectionné est vide.",
+    "headersMismatchFile": "Les en-têtes du CSV ne correspondent pas au format requis. Associez les champs pour continuer.",
+    "noDataTitle": "Aucune donnée trouvée",
+    "noDataText": "Le fichier CSV contient des en-têtes mais aucune ligne de données.",
+    "validationErrorTitle": "Erreur de validation",
+    "nameRequired": "Le champ « nom » ne peut pas être vide."
+  },
+  "foods": {
+    "providerVerified": "Aliment vérifié"
+  },
+  "nutrientGoalDirection": {
+    "min": "Min",
+    "max": "Max",
+    "to": "à",
+    "invalidBand": "Entrez un minimum valide ≤ maximum",
+    "resetToDefault": "Réinitialiser par défaut",
+    "failedToLoad": "Échec du chargement des préférences de sens des objectifs nutritionnels.",
+    "failedToSave": "Échec de l'enregistrement du sens de l'objectif nutritionnel."
   }
 }
