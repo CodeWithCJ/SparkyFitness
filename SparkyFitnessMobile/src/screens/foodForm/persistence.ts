@@ -87,7 +87,9 @@ export function confirmDiscardEquivalents(): Promise<boolean> {
 }
 
 /**
- * Asks whether to rewrite past diary entries with the food's new nutrition.
+ * Asks whether to rewrite past diary entries with the food's new nutrition and
+ * photos — the snapshot sync refreshes inherited images alongside nutrition,
+ * so the prompt has to name both for the consent to be informed.
  *
  * Entries store a snapshot from when they were logged, so editing a food
  * leaves history untouched by default — a logged meal records what was eaten.
@@ -98,7 +100,7 @@ export function confirmSyncPastEntries(): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(
       'Update past entries?',
-      'Your library food is saved. Do you also want to update past diary entries for this food with the new nutrition? Existing entries keep their original values unless you update them.',
+      'Your library food is saved. Do you also want to update past diary entries for this food with the new nutrition and photos? Existing entries keep their original values unless you update them.',
       [
         { text: 'Keep past entries', style: 'cancel', onPress: () => resolve(false) },
         { text: 'Update past entries', onPress: () => resolve(true) },

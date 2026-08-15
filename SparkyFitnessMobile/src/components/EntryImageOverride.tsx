@@ -18,6 +18,12 @@ interface EntryImageOverrideProps {
   onSave: (items: PickerImage[]) => void;
   onClear: () => void;
   isPending?: boolean;
+  /**
+   * False for a non-owner viewing a shared entry: the photos still render, but
+   * every add/remove action is withheld. The server rejects the write with a
+   * 403 anyway, so offering the control would only produce a failed save.
+   */
+  canEdit?: boolean;
 }
 
 /**
@@ -34,6 +40,7 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
   onSave,
   onClear,
   isPending = false,
+  canEdit = true,
 }) => {
   const getImageSource = useFoodImageSourceContext();
   const [items, setItems] = useState<PickerImage[]>(() => toSavedImages(images));
@@ -60,6 +67,28 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
     }
     onSave(next);
   };
+
+  if (!canEdit) {
+    const shown = hasOverride ? usableFoodImages(images) : inherited;
+    if (shown.length === 0) return null;
+    return (
+      <View>
+        <Text className="text-text-secondary text-sm font-medium mb-2">
+          Photo
+        </Text>
+        <View className="flex-row gap-2">
+          {shown.slice(0, 4).map((image) => (
+            <FoodThumbnail
+              key={image}
+              image={image}
+              getImageSource={getImageSource}
+              size={56}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
 
   if (!hasOverride && inherited.length > 0) {
     return (

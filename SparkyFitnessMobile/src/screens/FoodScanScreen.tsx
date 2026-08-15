@@ -237,6 +237,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           variantId: displayVariant.id,
           source: 'external',
           provider_verified: result.food.provider_verified,
+          // Same reason as the local branch above: FoodEntryAddScreen builds its
+          // create payload from these fields, so an external scan without them
+          // imports a food with no picture.
+          images: result.food.images ?? null,
+          image_url: result.food.image_url ?? null,
+          image_source_url: result.food.image_source_url ?? null,
           externalVariants: orderedVariants?.map((v) => ({
             serving_size: v.serving_size,
             serving_unit: v.serving_unit,

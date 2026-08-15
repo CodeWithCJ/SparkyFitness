@@ -48,6 +48,13 @@ export async function postImageMultipart<T>(params: {
   const config = await getActiveServerConfig();
   if (!config) throw new Error('Server configuration not found.');
   const baseUrl = normalizeUrl(config.url);
+  // Same transport guard `apiFetch` applies: these requests carry auth headers
+  // and user photos, so never send them over plaintext in a release build.
+  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+    throw new Error(
+      'HTTPS is required for server connections. Please update your server URL in Settings.',
+    );
+  }
 
   const form = new FormData();
 
@@ -112,8 +119,12 @@ export async function postImageMultipart<T>(params: {
     );
   }
 
-  // 204 has no body; image endpoints otherwise return the updated row.
-  if (response.status === 204) return undefined as T;
+  // 204 has no body; image endpoints otherwise return the updated row. An
+  // empty 200 is treated the same, as apiFetch does — response.json() would
+  // throw on it after an otherwise successful upload.
+  if (response.status === 204 || response.headers?.get('content-length') === '0') {
+    return undefined as T;
+  }
   return (await response.json()) as T;
 }
 

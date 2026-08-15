@@ -32,13 +32,12 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
   const images = usableFoodImages(item.images);
+  // The thumbnail is a SIBLING of the row's pressable, never nested inside it —
+  // nesting leaves the inner one live while the parent is disabled. Matches
+  // FoodLibraryRow.
   return (
-    <TouchableOpacity
-      className="px-4 py-2 border-b border-border-subtle"
-      activeOpacity={0.7}
-      onPress={() => onSelect(foodItemToFoodInfo(item))}
-    >
-      <View className="flex-row justify-between items-center">
+    <View className="flex-row items-center border-b border-border-subtle">
+      <View className="pl-4 py-2">
         <FoodThumbnail
           image={primaryImageOf(item)}
           getImageSource={getImageSource}
@@ -49,6 +48,12 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
               : undefined
           }
         />
+      </View>
+      <TouchableOpacity
+        className="flex-1 flex-row justify-between items-center pr-4 py-2"
+        activeOpacity={0.7}
+        onPress={() => onSelect(foodItemToFoodInfo(item))}
+      >
         <View className="flex-1 mx-3">
           <View className="flex-row items-start gap-1">
             <Text className="text-text-primary text-base font-medium flex-shrink">
@@ -78,8 +83,8 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
             {`${item.default_variant.serving_size} ${formatServingUnit(item.default_variant.serving_unit)}`}
           </Text>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </View>
   );
 };
 

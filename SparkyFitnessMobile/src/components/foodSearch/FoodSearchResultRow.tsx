@@ -39,22 +39,25 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
   const image = externalFoodImage(item);
+  // Sibling thumbnail, not nested in the row's pressable — see FoodResultRow.
   return (
-  <TouchableOpacity
-    className="px-4 py-2 border-b border-border-subtle"
-    activeOpacity={0.7}
-    disabled={loadingFoodId !== null}
-    onPress={() => {
-      void onSelect(item, providerId);
-    }}
-  >
-    <View className="flex-row justify-between items-center">
+  <View className="flex-row items-center border-b border-border-subtle">
+    <View className="pl-4 py-2">
       <FoodThumbnail
         image={image}
         getImageSource={getImageSource}
         size={40}
         onPress={image ? () => openLightbox([image], 0, item.name) : undefined}
       />
+    </View>
+    <TouchableOpacity
+      className="flex-1 flex-row justify-between items-center pr-4 py-2"
+      activeOpacity={0.7}
+      disabled={loadingFoodId !== null}
+      onPress={() => {
+        void onSelect(item, providerId);
+      }}
+    >
       <View className="flex-1 mx-3">
         <View className="flex-row items-start gap-1">
           <Text className="text-text-primary text-base font-medium flex-shrink">
@@ -107,8 +110,8 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
           </>
         )}
       </View>
-    </View>
-  </TouchableOpacity>
+    </TouchableOpacity>
+  </View>
   );
 };
 

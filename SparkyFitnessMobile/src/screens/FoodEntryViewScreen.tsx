@@ -833,6 +833,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               onSave={setEntryImages}
               onClear={clearEntryImage}
               isPending={isEntryImagePending}
+              canEdit={canEdit}
             />
           </View>
           {isEditing ? (

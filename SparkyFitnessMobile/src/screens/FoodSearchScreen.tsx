@@ -490,6 +490,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           showFoodInfo(
             externalFoodItemToFoodInfo({
               ...detailed,
+              images: detailed.images?.length ? detailed.images : item.images,
               image_url: detailed.image_url ?? item.image_url,
               image_source_url:
                 detailed.image_source_url ?? item.image_source_url,

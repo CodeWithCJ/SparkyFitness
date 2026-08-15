@@ -55,6 +55,12 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
   const pickerLock = useRef(false);
   const [busy, setBusy] = useState(false);
 
+  // The system picker stays open for seconds, so `items` captured by the
+  // handler can be stale by the time it returns — a parent that seeds saved
+  // images meanwhile would be overwritten. Append against the latest list.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
   const remaining = Math.max(0, maxImages - items.length);
   const canAdd = !disabled && remaining > 0;
 
@@ -65,9 +71,12 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
     try {
       const picked = await pick();
       if (picked.length === 0) return;
+      const current = itemsRef.current;
       onItemsChange([
-        ...items,
-        ...picked.slice(0, remaining).map((image) => toNewImage(image.uri)),
+        ...current,
+        ...picked
+          .slice(0, Math.max(0, maxImages - current.length))
+          .map((image) => toNewImage(image.uri)),
       ]);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

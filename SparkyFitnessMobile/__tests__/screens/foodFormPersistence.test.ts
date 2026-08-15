@@ -66,4 +66,13 @@ describe('confirmSyncPastEntries', () => {
     expect(title).toBe('Update past entries?');
     expect(message).toContain('keep their original values');
   });
+
+  it('discloses that photos sync along with nutrition', () => {
+    // The snapshot sync refreshes inherited images too, so a prompt naming
+    // only nutrition would understate what the user is agreeing to.
+    const { spy } = captureAlert();
+    void confirmSyncPastEntries();
+
+    expect(spy.mock.calls[0][1]).toContain('new nutrition and photos');
+  });
 });
