@@ -96,7 +96,7 @@ describe('representative PR3 strings', () => {
 
       expect(i18n.t('settings.language.title')).toBe('Język');
       expect(i18n.t('settings.language.system')).toBe('Systemowy');
-      expect(i18n.t('settings.language.english')).toBe('Angielski');
+      expect(i18n.t('settings.language.english')).toBe('English');
       expect(i18n.t('settings.language.polish')).toBe('Polski');
       expect(i18n.t('settings.language.pickerHint')).toBe('Otwiera menu wyboru języka');
       expect(i18n.t('settings.app')).toBe('Ustawienia aplikacji');

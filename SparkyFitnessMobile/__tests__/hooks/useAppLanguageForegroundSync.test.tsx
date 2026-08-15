@@ -132,13 +132,13 @@ describe('useAppLanguageForegroundSync', () => {
     expect(listeners).toHaveLength(2);
   });
 
-  it('skips the listener on iOS for an explicit preference', () => {
+  it('keeps the listener on iOS for an explicit legacy preference', () => {
     osSpy = jest.replaceProperty(Platform, 'OS', 'ios');
     useAppPreferencesStore.setState({ languagePreference: 'en' });
 
     renderHook(() => useAppLanguageForegroundSync());
 
-    expect(listeners).toHaveLength(0);
+    expect(listeners).toHaveLength(1);
   });
 
   it('keeps the listener on iOS while following the system language', () => {

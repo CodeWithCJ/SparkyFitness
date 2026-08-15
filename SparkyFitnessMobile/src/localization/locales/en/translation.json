@@ -11,7 +11,10 @@
       "english": "English",
       "polish": "Polski",
       "pickerHint": "Opens language selection menu",
-      "changeFailed": "Couldn't change the language"
+      "changeFailed": "Couldn't change the language",
+      "managedByIOS": "Managed by iOS",
+      "iosSettingsHint": "Change this app's language in iOS Settings",
+      "openSettingsFailed": "Could not open iOS Settings"
     }
   },
   "languageSettings": {

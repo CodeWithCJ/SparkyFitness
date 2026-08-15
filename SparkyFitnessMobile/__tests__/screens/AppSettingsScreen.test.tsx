@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, act, screen } from '@testing-library/react-native';
+import { Linking, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import AppSettingsScreen from '../../src/screens/AppSettingsScreen';
@@ -7,7 +8,7 @@ import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
-import i18n, { initializeI18n } from '../../src/localization/i18n';
+import i18n, { getNativeIOSLanguage, initializeI18n } from '../../src/localization/i18n';
 import { AppLanguageNative } from '../../src/services/appLanguageNative';
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
@@ -23,6 +24,11 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
     React.createElement(View, { testID: 'bottom-sheet-picker', ...props });
   return { __esModule: true, default: MockPicker };
 });
+
+jest.mock('../../src/localization/i18n', () => ({
+  ...jest.requireActual('../../src/localization/i18n'),
+  getNativeIOSLanguage: jest.fn(() => 'en'),
+}));
 
 jest.mock('../../src/services/appLanguageNative', () => ({
   AppLanguageNative: {
@@ -56,6 +62,7 @@ jest.mock('../../src/utils/liquidGlass', () => ({
 }));
 
 const mockNative = AppLanguageNative as jest.Mocked<typeof AppLanguageNative>;
+const mockIOSLanguage = getNativeIOSLanguage as jest.MockedFunction<typeof getNativeIOSLanguage>;
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
 const mockNavigation = {
@@ -98,6 +105,9 @@ describe('AppSettingsScreen', () => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
     mockNative.supportsNativePerAppLanguage = false;
+    jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
+    jest.replaceProperty(Platform, 'OS', 'android');
+    mockIOSLanguage.mockReturnValue('en');
     mockNative.setApplicationLanguage.mockClear();
     mockNative.setApplicationLanguage.mockResolvedValue(undefined);
     await initializeI18n('en');
@@ -125,6 +135,43 @@ describe('AppSettingsScreen', () => {
     renderScreen();
 
     expect(picker().accessibilityHint).toBe('Otwiera menu wyboru języka');
+  });
+
+
+  it('renders the native iOS language and opens Settings without changing language state', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    mockIOSLanguage.mockReturnValue('pl');
+    useAppPreferencesStore.setState({ languagePreference: 'en' });
+    await i18n.changeLanguage('en');
+
+    renderScreen();
+
+    expect(screen.getByText('Polski · Managed by iOS')).toBeTruthy();
+    expect(screen.queryByTestId('bottom-sheet-picker')).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ios-language-row'));
+    });
+
+    expect(Linking.openSettings).toHaveBeenCalledTimes(1);
+    expect(i18n.resolvedLanguage).toBe('en');
+    expect(useAppPreferencesStore.getState().languagePreference).toBe('en');
+  });
+
+  it('keeps iOS language state unchanged when Settings cannot be opened', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    mockIOSLanguage.mockReturnValue('pl');
+    (Linking.openSettings as jest.Mock).mockRejectedValueOnce(new Error('not available'));
+    useAppPreferencesStore.setState({ languagePreference: 'en' });
+    await i18n.changeLanguage('en');
+
+    renderScreen();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ios-language-row'));
+    });
+
+    expect(i18n.resolvedLanguage).toBe('en');
+    expect(useAppPreferencesStore.getState().languagePreference).toBe('en');
   });
 
   it('shows an error toast and preserves the previous language when the selection fails', async () => {

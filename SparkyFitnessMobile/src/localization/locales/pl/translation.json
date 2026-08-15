@@ -8,10 +8,13 @@
     "language": {
       "title": "Język",
       "system": "Systemowy",
-      "english": "Angielski",
+      "english": "English",
       "polish": "Polski",
       "pickerHint": "Otwiera menu wyboru języka",
-      "changeFailed": "Nie udało się zmienić języka"
+      "changeFailed": "Nie udało się zmienić języka",
+      "managedByIOS": "Zarządzane przez iOS",
+      "iosSettingsHint": "Zmień język tej aplikacji w Ustawieniach iOS",
+      "openSettingsFailed": "Nie udało się otworzyć Ustawień iOS"
     }
   },
   "languageSettings": {

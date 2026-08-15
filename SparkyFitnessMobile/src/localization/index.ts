@@ -6,6 +6,7 @@ export {
 export {
   SUPPORTED_LANGUAGES,
   getDeviceLanguage,
+  getNativeIOSLanguage,
   initializeI18n,
   normalizeLanguage,
   type LanguagePreference,
