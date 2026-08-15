@@ -22,6 +22,7 @@ import {
   type TelemetryRunContext,
 } from '../shared/telemetryBudget';
 import { collectSessionTelemetry } from './workoutTelemetry';
+import { deriveActiveCalories } from '@workspace/shared';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
@@ -394,6 +395,7 @@ export type CumulativeMetricRecordType =
   | 'Distance'
   | 'ActiveCaloriesBurned'
   | 'TotalCaloriesBurned'
+  | 'BasalMetabolicRate'
   | 'FloorsClimbed';
 
 export interface CumulativeMetricSpec {
@@ -900,7 +902,7 @@ export const getAggregatedStepsByDate = (
 ): Promise<AggregatedHealthRecord[]> =>
   getAggregatedStepsByDateDetailed(startDate, endDate).then(result => result.records);
 
-export const getAggregatedActiveCaloriesByDateDetailed = (
+const getNativeActiveCaloriesByDateDetailed = (
   startDate: Date,
   endDate: Date,
 ): Promise<HealthConnectAggregateResult> =>
@@ -914,6 +916,57 @@ export const getAggregatedActiveCaloriesByDateDetailed = (
     startDate,
     endDate,
   );
+
+const getAggregatedBasalCaloriesByDateDetailed = (
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> =>
+  aggregateCumulativeMetricByDayDetailed(
+    {
+      recordType: 'BasalMetabolicRate',
+      outputType: 'basal_calories',
+      extractValue: (r) => (r as { BASAL_CALORIES_TOTAL?: { inKilocalories?: number } }).BASAL_CALORIES_TOTAL?.inKilocalories ?? 0,
+    },
+    startDate,
+    endDate,
+  );
+
+/** Prefer reported active energy; derive total minus basal only when absent. */
+export const getAggregatedActiveCaloriesByDateDetailed = async (
+  startDate: Date,
+  endDate: Date,
+): Promise<HealthConnectAggregateResult> => {
+  const activeResult = await getNativeActiveCaloriesByDateDetailed(startDate, endDate);
+  const [totalResult, basalResult] = await Promise.all([
+    getAggregatedTotalCaloriesByDateDetailed(startDate, endDate),
+    getAggregatedBasalCaloriesByDateDetailed(startDate, endDate),
+  ]);
+
+  const activeDates = new Set(activeResult.records.map(record => record.date));
+  const basalByDate = new Map(basalResult.records.map(record => [record.date, record.value]));
+  const derivedRecords = totalResult.records.flatMap(totalRecord => {
+    if (activeDates.has(totalRecord.date)) return [];
+    const basal = basalByDate.get(totalRecord.date);
+    if (basal == null) return [];
+    const derived = deriveActiveCalories(totalRecord.value, basal);
+    if (derived == null) return [];
+    return [{
+      ...totalRecord,
+      value: Math.round(derived),
+      type: 'active_calories',
+    }];
+  });
+
+  if (derivedRecords.length > 0) {
+    addLog('[HealthConnectService] Active calorie aggregate missing; derived fallback from total minus basal calories', 'DEBUG');
+  }
+  const records = [...activeResult.records, ...derivedRecords].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+  const error = activeResult.error ??
+    (records.length === 0 ? totalResult.error ?? basalResult.error : undefined);
+  return { records, ...(error ? { error } : {}) };
+};
 
 export const getAggregatedActiveCaloriesByDate = (
   startDate: Date,
