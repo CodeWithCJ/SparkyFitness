@@ -361,14 +361,48 @@ async function getFoodsNeedingReview(userId: string) {
     client.release();
   }
 }
+/**
+ * Rewrites the snapshot past diary entries were logged with.
+ *
+ * `syncImages` decides what happens to the photo column:
+ *  - `false` - `images` is left out of the UPDATE entirely, so every entry
+ *    keeps whatever photo it is showing today (inherited or diary-set).
+ *  - `true` - every matching entry is forced onto the food's current photos,
+ *    including entries where the user picked their own photo in the diary.
+ *
+ * The diary-set photos that get replaced are returned so the caller can unlink
+ * their files: nothing else references `/uploads/food_entries/<entryId>/...`,
+ * so they would otherwise sit on disk forever.
+ */
 async function updateFoodEntriesSnapshot(
   userId: string,
   foodId: string,
   variantId: string,
-  newSnapshotData: FoodEntrySnapshot
-) {
+  newSnapshotData: FoodEntrySnapshot,
+  syncImages: boolean = true
+): Promise<{ rowCount: number; replacedEntryImages: string[] }> {
   const client = await getClient(userId); // User-specific operation
   try {
+    // Collected before the UPDATE overwrites them. Scoped to the same rows the
+    // UPDATE touches, and to diary-set paths only — an inherited path points at
+    // the food's own upload directory and must never be unlinked from here.
+    let replacedEntryImages: string[] = [];
+    if (syncImages) {
+      const existing = await client.query(
+        `SELECT DISTINCT img
+           FROM food_entries,
+                jsonb_array_elements_text(food_entries.images) AS img
+          WHERE user_id = $1
+            AND food_id = $2
+            AND variant_id = $3
+            AND img LIKE '/uploads/food_entries/%'`,
+        [userId, foodId, variantId]
+      );
+      replacedEntryImages = (existing.rows as { img: string }[]).map((row) =>
+        String(row.img)
+      );
+    }
+
     const result = await client.query(
       `UPDATE food_entries
        SET
@@ -394,21 +428,10 @@ async function updateFoodEntriesSnapshot(
           calcium = $20,
           iron = $21,
           glycemic_index = $22,
-          custom_nutrients = $23,
-          -- Refresh the inherited photo, but never a photo the user chose for
-          -- this specific entry. The two are told apart by their upload
-          -- directory: finalizeUploadedImages writes
-          -- /uploads/<domain>/<entityId>/<file>, so a diary-set photo always
-          -- lives under /uploads/food_entries/ while an inherited one points
-          -- at the food's own /uploads/foods/ path (or a remote provider URL).
-          images = CASE
-            WHEN NOT EXISTS (
-              SELECT 1
-                FROM jsonb_array_elements_text(food_entries.images) AS img
-               WHERE img LIKE '/uploads/food_entries/%'
-            ) THEN $27::jsonb
-            ELSE food_entries.images
-          END
+          custom_nutrients = $23
+          -- The user picked "nutrition only", so the photo column is left out
+          -- of the statement and every entry keeps the photo it shows today.
+          ${syncImages ? ', images = $27::jsonb' : ''}
        WHERE user_id = $24 AND food_id = $25 AND variant_id = $26
        RETURNING id`,
       [
@@ -438,10 +461,18 @@ async function updateFoodEntriesSnapshot(
         userId,
         foodId,
         variantId,
-        JSON.stringify(newSnapshotData.images ?? []),
+        // Postgres rejects a bind with more parameters than the statement
+        // references, so $27 is only supplied when the SET clause uses it.
+        ...(syncImages ? [JSON.stringify(newSnapshotData.images ?? [])] : []),
       ]
     );
-    return result.rowCount;
+    return {
+      rowCount: result.rowCount ?? 0,
+      // Only report photos that actually stopped being referenced.
+      replacedEntryImages: replacedEntryImages.filter(
+        (image) => !(newSnapshotData.images ?? []).includes(image)
+      ),
+    };
   } finally {
     client.release();
   }

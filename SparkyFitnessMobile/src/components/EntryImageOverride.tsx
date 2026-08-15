@@ -55,6 +55,25 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
     setItems(toSavedImages(images));
   }
 
+  // `items` is updated optimistically so the picked photo shows while the
+  // upload runs. If the write fails, `images` never changes and the re-seed
+  // above never fires, leaving `items` holding a change that was never
+  // persisted — a later save would then send that list as the complete set and
+  // delete images the server still has. So when a mutation settles and the
+  // saved images did not move, treat it as a failure and drop the optimistic
+  // state. Synced during render for the same reason as the re-seed above.
+  const [wasPending, setWasPending] = useState(isPending);
+  if (wasPending !== isPending) {
+    setWasPending(isPending);
+    if (
+      !isPending &&
+      seededKey === savedKey &&
+      pickerImagesDiffer(items, images)
+    ) {
+      setItems(toSavedImages(images));
+    }
+  }
+
   const hasOverride = usableFoodImages(images).length > 0;
   const inherited = usableFoodImages(inheritedImages);
 

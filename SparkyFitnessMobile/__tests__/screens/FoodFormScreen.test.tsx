@@ -194,7 +194,7 @@ function answerSyncPrompt(choice: 'keep' | 'update' = 'keep') {
         list.find((b) => b.text === text)?.onPress?.();
 
       if (title === 'Update past entries?') {
-        press(choice === 'update' ? 'Update past entries' : 'Keep past entries');
+        press(choice === 'update' ? 'Update' : "Don't Update");
         return;
       }
       if (title === 'Save nutrition') {
@@ -1445,7 +1445,13 @@ describe('FoodFormScreen', () => {
     fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
-      expect(updateFoodEntriesSnapshot).toHaveBeenCalledWith('food-1');
+      // Nutrition-only: this save left the food's photos alone, so the
+      // prompt never offered to touch entry photos and must not sync them.
+      expect(updateFoodEntriesSnapshot).toHaveBeenCalledWith(
+        'food-1',
+        undefined,
+        false,
+      );
     });
   });
 

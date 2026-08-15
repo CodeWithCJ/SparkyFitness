@@ -407,9 +407,14 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
 
             // Same prompt as the main path: one rule — every save of a food
             // you own asks before touching diary history.
-            if (await confirmSyncPastEntries()) {
+            const syncChoice = await confirmSyncPastEntries(imagesChanged);
+            if (syncChoice !== 'none') {
               try {
-                await updateFoodEntriesSnapshot(foodId);
+                await updateFoodEntriesSnapshot(
+                  foodId,
+                  undefined,
+                  syncChoice === 'nutrition-and-photos',
+                );
                 invalidateFoodCaches(queryClient, foodId);
                 Toast.show({ type: 'success', text1: 'Past entries updated' });
               } catch {
@@ -483,10 +488,14 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
       // web: one form saves nutrition, name, brand and photo together, so
       // gating on "did nutrition change" would make the prompt appear and
       // disappear for what looks to the user like the same action.
-      const shouldSync = await confirmSyncPastEntries();
-      if (shouldSync) {
+      const syncChoice = await confirmSyncPastEntries(imagesChanged);
+      if (syncChoice !== 'none') {
         try {
-          await updateFoodEntriesSnapshot(foodId);
+          await updateFoodEntriesSnapshot(
+            foodId,
+            undefined,
+            syncChoice === 'nutrition-and-photos',
+          );
           invalidateFoodCaches(queryClient, foodId);
           Toast.show({ type: 'success', text1: 'Past entries updated' });
         } catch {

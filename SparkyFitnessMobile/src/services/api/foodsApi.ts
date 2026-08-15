@@ -313,13 +313,21 @@ export const updateFood = async (
 export const updateFoodEntriesSnapshot = async (
   foodId: string,
   variantId?: string,
+  /**
+   * `true` forces the food's current photos onto every matching entry,
+   * replacing photos the user set on individual diary entries. `false`
+   * rewrites nutrition only and leaves every entry's photo untouched.
+   */
+  syncImages: boolean = true,
 ): Promise<void> => {
   return apiFetch<void>({
     endpoint: '/api/foods/update-snapshot',
     serviceName: 'Foods API',
     operation: 'sync past entries',
     method: 'POST',
-    body: variantId ? { foodId, variantId } : { foodId },
+    body: variantId
+      ? { foodId, variantId, syncImages }
+      : { foodId, syncImages },
   });
 };
 

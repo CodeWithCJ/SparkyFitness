@@ -50,88 +50,158 @@ describe('foodRepository snapshot functions', () => {
       custom_nutrients: { zinc: '1.3mg' },
       ...overrides,
     });
-    it('should execute UPDATE with all 26 params in correct order and return rowCount', async () => {
+    // With syncImages on, the repository first SELECTs the diary-set photos it
+    // is about to overwrite so the caller can unlink them, then runs the
+    // UPDATE. These helpers keep the two calls straight.
+    const mockSelectThenUpdate = (rowCount = 1, replaced: string[] = []) => {
+      mockClient.query
+        .mockResolvedValueOnce({ rows: replaced.map((img) => ({ img })) })
+        .mockResolvedValueOnce({ rowCount });
+    };
+    const updateCall = () => mockClient.query.mock.calls[1];
+
+    it('should execute UPDATE with all 27 params in correct order and return rowCount', async () => {
       const snapshot = makeSnapshotData();
-      mockClient.query.mockResolvedValue({ rowCount: 3 });
+      mockSelectThenUpdate(3);
       const result = await foodRepository.updateFoodEntriesSnapshot(
         userId,
         foodId,
         variantId,
         snapshot
       );
-      expect(result).toBe(3);
-      expect(mockClient.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE food_entries'),
-        [
-          snapshot.food_name,
-          snapshot.brand_name,
-          snapshot.serving_size,
-          snapshot.serving_unit,
-          snapshot.calories,
-          snapshot.protein,
-          snapshot.carbs,
-          snapshot.fat,
-          snapshot.saturated_fat,
-          snapshot.polyunsaturated_fat,
-          snapshot.monounsaturated_fat,
-          snapshot.trans_fat,
-          snapshot.cholesterol,
-          snapshot.sodium,
-          snapshot.potassium,
-          snapshot.dietary_fiber,
-          snapshot.sugars,
-          snapshot.vitamin_a,
-          snapshot.vitamin_c,
-          snapshot.calcium,
-          snapshot.iron,
-          snapshot.glycemic_index,
-          snapshot.custom_nutrients,
-          userId,
-          foodId,
-          variantId,
-          // Images ride along as the 27th param; the SQL only applies them to
-          // entries still showing an inherited photo.
-          JSON.stringify([]),
-        ]
-      );
+      expect(result.rowCount).toBe(3);
+      expect(updateCall()[0]).toContain('UPDATE food_entries');
+      expect(updateCall()[1]).toEqual([
+        snapshot.food_name,
+        snapshot.brand_name,
+        snapshot.serving_size,
+        snapshot.serving_unit,
+        snapshot.calories,
+        snapshot.protein,
+        snapshot.carbs,
+        snapshot.fat,
+        snapshot.saturated_fat,
+        snapshot.polyunsaturated_fat,
+        snapshot.monounsaturated_fat,
+        snapshot.trans_fat,
+        snapshot.cholesterol,
+        snapshot.sodium,
+        snapshot.potassium,
+        snapshot.dietary_fiber,
+        snapshot.sugars,
+        snapshot.vitamin_a,
+        snapshot.vitamin_c,
+        snapshot.calcium,
+        snapshot.iron,
+        snapshot.glycemic_index,
+        snapshot.custom_nutrients,
+        userId,
+        foodId,
+        variantId,
+        // Images ride along as the 27th param whenever they are being synced.
+        JSON.stringify([]),
+      ]);
     });
 
-    it('refreshes an inherited photo but never a diary-set one', async () => {
-      // The two are told apart by upload directory rather than a flag: a photo
-      // set on the entry itself lives under /uploads/food_entries/, while an
-      // inherited one points at the food's /uploads/foods/ path.
-      mockClient.query.mockResolvedValue({ rowCount: 1 });
+    it('forces the new photo onto every entry when syncing images', async () => {
+      // The "update nutrition & photos" choice deliberately overwrites photos
+      // the user set on individual diary entries, so the statement must carry
+      // no guard exempting them.
+      mockSelectThenUpdate(1);
 
       await foodRepository.updateFoodEntriesSnapshot(
         userId,
         foodId,
         variantId,
-        makeSnapshotData({ images: ['/uploads/foods/f1/new.jpg'] })
+        makeSnapshotData({ images: ['/uploads/foods/f1/new.jpg'] }),
+        true
       );
 
-      const [sql, params] = mockClient.query.mock.calls[0];
-      expect(sql).toContain("img LIKE '/uploads/food_entries/%'");
-      expect(sql).toContain('NOT EXISTS');
+      const [sql, params] = updateCall();
+      expect(sql).toContain('images = $27::jsonb');
+      expect(sql).not.toContain('NOT EXISTS');
       expect(params[26]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
+    });
+
+    it('returns the diary-set photos it replaced so they can be unlinked', async () => {
+      // Nothing else references /uploads/food_entries/<entryId>/..., so an
+      // unreported path would sit on disk forever.
+      mockSelectThenUpdate(2, [
+        '/uploads/food_entries/e1/custom.jpg',
+        '/uploads/food_entries/e2/custom.jpg',
+      ]);
+
+      const result = await foodRepository.updateFoodEntriesSnapshot(
+        userId,
+        foodId,
+        variantId,
+        makeSnapshotData({ images: ['/uploads/foods/f1/new.jpg'] }),
+        true
+      );
+
+      expect(result.replacedEntryImages).toEqual([
+        '/uploads/food_entries/e1/custom.jpg',
+        '/uploads/food_entries/e2/custom.jpg',
+      ]);
+      // Scoped to diary-set paths: an inherited path belongs to the food and
+      // must never be unlinked from here.
+      expect(mockClient.query.mock.calls[0][0]).toContain(
+        "img LIKE '/uploads/food_entries/%'"
+      );
+    });
+
+    it('never reports a replaced photo that survives in the new list', async () => {
+      mockSelectThenUpdate(1, ['/uploads/food_entries/e1/keep.jpg']);
+
+      const result = await foodRepository.updateFoodEntriesSnapshot(
+        userId,
+        foodId,
+        variantId,
+        makeSnapshotData({ images: ['/uploads/food_entries/e1/keep.jpg'] }),
+        true
+      );
+
+      expect(result.replacedEntryImages).toEqual([]);
+    });
+
+    it('leaves the photo column out entirely for a nutrition-only sync', async () => {
+      // Every entry keeps the photo it is showing, custom or inherited, so the
+      // statement must not bind a 27th parameter either — Postgres rejects a
+      // bind carrying more parameters than the statement references.
+      mockClient.query.mockResolvedValue({ rowCount: 1 });
+
+      const result = await foodRepository.updateFoodEntriesSnapshot(
+        userId,
+        foodId,
+        variantId,
+        makeSnapshotData({ images: ['/uploads/foods/f1/new.jpg'] }),
+        false
+      );
+
+      // No pre-SELECT either: nothing is being replaced.
+      expect(mockClient.query).toHaveBeenCalledTimes(1);
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).not.toContain('images =');
+      expect(params).toHaveLength(26);
+      expect(result.replacedEntryImages).toEqual([]);
     });
 
     it('should default custom_nutrients to {} when null or undefined', async () => {
       for (const falsy of [null, undefined]) {
-        mockClient.query.mockResolvedValue({ rowCount: 1 });
+        mockSelectThenUpdate(1);
         await foodRepository.updateFoodEntriesSnapshot(
           userId,
           foodId,
           variantId,
           makeSnapshotData({ custom_nutrients: falsy })
         );
-        const params = mockClient.query.mock.calls[0][1];
         // custom_nutrients is param index 22 (0-based)
-        expect(params[22]).toEqual({});
+        expect(updateCall()[1][22]).toEqual({});
         mockClient.query.mockClear();
       }
     });
     it('should always release client on success', async () => {
-      mockClient.query.mockResolvedValue({ rowCount: 0 });
+      mockSelectThenUpdate(0);
       await foodRepository.updateFoodEntriesSnapshot(
         userId,
         foodId,

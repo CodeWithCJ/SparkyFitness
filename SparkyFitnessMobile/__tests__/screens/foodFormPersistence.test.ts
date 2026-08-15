@@ -12,67 +12,133 @@ describe('confirmSyncPastEntries', () => {
     const spy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     return {
       spy,
+      title: () => spy.mock.calls[0][0],
+      message: () => spy.mock.calls[0][1],
       buttons: () => (spy.mock.calls[0][2] ?? []) as AlertButton[],
       options: () => spy.mock.calls[0][3] as { onDismiss?: () => void },
     };
   }
 
-  it('offers keeping past entries as the safe default', () => {
-    // Diary entries record what was eaten. Rewriting them is the destructive
-    // choice, so the cancel-styled option must be the one that leaves history
-    // alone.
-    const { spy, buttons } = captureAlert();
-    void confirmSyncPastEntries();
+  describe('when the save did not change the food photos', () => {
+    it('offers keeping past entries as the safe default', () => {
+      // Diary entries record what was eaten. Rewriting them is the destructive
+      // choice, so the cancel-styled option must be the one that leaves
+      // history alone.
+      const { spy, buttons } = captureAlert();
+      void confirmSyncPastEntries();
 
-    expect(spy).toHaveBeenCalled();
-    const keep = buttons().find((b) => b.style === 'cancel');
-    expect(keep?.text).toBe('Keep past entries');
+      expect(spy).toHaveBeenCalled();
+      expect(buttons().find((b) => b.style === 'cancel')?.text).toBe(
+        "Don't Update",
+      );
+    });
+
+    it('stays a two-way choice', () => {
+      // Photos are untouched, so a photo option would only ask the user to
+      // decide something this save does not actually change.
+      const { buttons, message } = captureAlert();
+      void confirmSyncPastEntries();
+
+      expect(buttons()).toHaveLength(2);
+      expect(message()).toContain('with the new nutrition?');
+      expect(message()).not.toContain('photo');
+    });
+
+    it('syncs nutrition only when the user picks update', async () => {
+      // Never 'nutrition-and-photos': that path force-replaces custom diary
+      // photos, which the user was never asked about here.
+      const { buttons } = captureAlert();
+      const result = confirmSyncPastEntries();
+
+      buttons().find((b) => b.text === 'Update')?.onPress?.();
+
+      await expect(result).resolves.toBe('nutrition');
+    });
+
+    it('resolves none when the user keeps past entries', async () => {
+      const { buttons } = captureAlert();
+      const result = confirmSyncPastEntries();
+
+      buttons().find((b) => b.text === "Don't Update")?.onPress?.();
+
+      await expect(result).resolves.toBe('none');
+    });
+
+    it('resolves none when dismissed without choosing', async () => {
+      // An Android back-press or outside tap must not be read as consent to
+      // rewrite history.
+      const { options } = captureAlert();
+      const result = confirmSyncPastEntries();
+
+      options().onDismiss?.();
+
+      await expect(result).resolves.toBe('none');
+    });
+
+    it('states that entries are left alone unless updated', () => {
+      const { title, message } = captureAlert();
+      void confirmSyncPastEntries();
+
+      expect(title()).toBe('Update past entries?');
+      expect(message()).toContain('keep their original values');
+    });
   });
 
-  it('resolves true only when the user picks update', async () => {
-    const { buttons } = captureAlert();
-    const result = confirmSyncPastEntries();
+  describe('when the save replaced the food photos', () => {
+    it('offers all three outcomes', () => {
+      const { buttons } = captureAlert();
+      void confirmSyncPastEntries(true);
 
-    buttons().find((b) => b.text === 'Update past entries')?.onPress?.();
+      expect(buttons().map((b) => b.text)).toEqual([
+        "Don't Update",
+        'Update nutrition only',
+        'Update nutrition & photos',
+      ]);
+    });
 
-    await expect(result).resolves.toBe(true);
-  });
+    it('marks only the photo-replacing option as destructive', () => {
+      // It is the one path that discards a photo the user chose for a specific
+      // diary entry, and the server unlinks the replaced file.
+      const { buttons } = captureAlert();
+      void confirmSyncPastEntries(true);
 
-  it('resolves false when the user keeps past entries', async () => {
-    const { buttons } = captureAlert();
-    const result = confirmSyncPastEntries();
+      expect(
+        buttons()
+          .filter((b) => b.style === 'destructive')
+          .map((b) => b.text),
+      ).toEqual(['Update nutrition & photos']);
+    });
 
-    buttons().find((b) => b.text === 'Keep past entries')?.onPress?.();
+    it('keeps the safe choice cancel-styled and default on dismiss', async () => {
+      const { buttons, options } = captureAlert();
+      const result = confirmSyncPastEntries(true);
 
-    await expect(result).resolves.toBe(false);
-  });
+      expect(buttons().find((b) => b.style === 'cancel')?.text).toBe(
+        "Don't Update",
+      );
+      options().onDismiss?.();
 
-  it('resolves false when dismissed without choosing', async () => {
-    // An Android back-press or outside tap must not be read as consent to
-    // rewrite history.
-    const { options } = captureAlert();
-    const result = confirmSyncPastEntries();
+      await expect(result).resolves.toBe('none');
+    });
 
-    options().onDismiss?.();
+    it('resolves nutrition when photos are declined', async () => {
+      const { buttons } = captureAlert();
+      const result = confirmSyncPastEntries(true);
 
-    await expect(result).resolves.toBe(false);
-  });
+      buttons().find((b) => b.text === 'Update nutrition only')?.onPress?.();
 
-  it('states that entries are left alone unless updated', () => {
-    const { spy } = captureAlert();
-    void confirmSyncPastEntries();
+      await expect(result).resolves.toBe('nutrition');
+    });
 
-    const [title, message] = spy.mock.calls[0];
-    expect(title).toBe('Update past entries?');
-    expect(message).toContain('keep their original values');
-  });
+    it('resolves nutrition-and-photos when photos are accepted', async () => {
+      const { buttons } = captureAlert();
+      const result = confirmSyncPastEntries(true);
 
-  it('discloses that photos sync along with nutrition', () => {
-    // The snapshot sync refreshes inherited images too, so a prompt naming
-    // only nutrition would understate what the user is agreeing to.
-    const { spy } = captureAlert();
-    void confirmSyncPastEntries();
+      buttons()
+        .find((b) => b.text === 'Update nutrition & photos')
+        ?.onPress?.();
 
-    expect(spy.mock.calls[0][1]).toContain('new nutrition and photos');
+      await expect(result).resolves.toBe('nutrition-and-photos');
+    });
   });
 });

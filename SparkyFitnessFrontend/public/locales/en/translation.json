@@ -2881,7 +2881,13 @@
     "calciumLabel": "Calcium (mg)",
     "ironLabel": "Iron (mg)",
     "cancelButton": "Cancel",
-    "saveFoodButton": "Save Food"
+    "saveFoodButton": "Save Food",
+    "syncConfirmationTitle": "Sync Past Entries?",
+    "syncConfirmationDescription": "Do you want to update all your past diary entries for this food with the new nutrition? Entries you don't update keep their original values.",
+    "syncConfirmationDescriptionWithPhotos": "Do you want to update all your past diary entries for this food with the new nutrition and photos? Updating photos replaces photos you set on individual diary entries, and can't be undone.",
+    "syncConfirmationConfirm": "Update",
+    "syncConfirmationConfirmWithPhotos": "Update nutrition & photos",
+    "syncConfirmationNutritionOnly": "Update nutrition only"
   },
   "customMeasurements": {
     "title": "Custom Measurements - {{date}}",

@@ -460,7 +460,7 @@ describe('foodsApi', () => {
         'https://example.com/api/foods/update-snapshot',
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ foodId: 'food-abc' }),
+          body: JSON.stringify({ foodId: 'food-abc', syncImages: true }),
         }),
       );
     });
@@ -486,7 +486,25 @@ describe('foodsApi', () => {
       const body = JSON.parse(
         (mockFetch.mock.calls[0][1] as { body: string }).body,
       );
-      expect(body).toEqual({ foodId: 'food-abc', variantId: 'variant-1' });
+      expect(body).toEqual({
+        foodId: 'food-abc',
+        variantId: 'variant-1',
+        syncImages: true,
+      });
+    });
+
+    test('sends syncImages false for a nutrition-only sync', async () => {
+      // The "Update nutrition only" choice: past entries get the new numbers
+      // and every entry keeps the photo it is showing, custom or inherited.
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+
+      await updateFoodEntriesSnapshot('food-abc', undefined, false);
+
+      const body = JSON.parse(
+        (mockFetch.mock.calls[0][1] as { body: string }).body,
+      );
+      expect(body).toEqual({ foodId: 'food-abc', syncImages: false });
     });
   });
 });

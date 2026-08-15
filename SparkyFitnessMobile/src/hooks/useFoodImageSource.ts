@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../services/storage';
 import { normalizeUrl } from '../services/api/apiClient';
+import { addLog } from '../services/LogService';
 import type { ServerConfig } from '../services/storage';
 
 type ImageSource = { uri: string; headers: Record<string, string> };
@@ -32,9 +33,18 @@ export function useFoodImageSource() {
   useEffect(() => {
     let cancelled = false;
     const load = () => {
-      getActiveServerConfig().then((next) => {
-        if (!cancelled) setConfig(next);
-      });
+      // getActiveServerConfig rethrows storage failures. This hook backs an
+      // app-root provider, so an uncaught rejection here has nowhere to land —
+      // keep the last good config and log instead.
+      getActiveServerConfig()
+        .then((next) => {
+          if (!cancelled) setConfig(next);
+        })
+        .catch((error) => {
+          addLog('[Food Images] Failed to read active server config', 'ERROR', [
+            String(error),
+          ]);
+        });
     };
 
     load();
@@ -54,19 +64,27 @@ export function useFoodImageSource() {
   // builds a fresh { uri, headers } literal, which makes <Image>/<SafeImage>
   // treat it as a new source and reload — every food thumbnail in a list
   // flashes whenever the list re-renders.
-  const cacheRef = useRef<Map<string, ImageSource>>(new Map());
-
-  // Base URL / proxy headers change with the active server, so drop the cache
-  // when config changes.
-  useEffect(() => {
-    cacheRef.current.clear();
-  }, [config]);
+  //
+  // The map is tagged with the config it was built for and rebuilt on the first
+  // lookup after a server switch, rather than cleared from an effect. An effect
+  // only runs after descendants have already rendered against the new config,
+  // so they would read the previous server's URIs and proxy headers out of the
+  // stale map — and clearing it later triggers no re-render to correct them.
+  const cacheRef = useRef<{
+    config: ServerConfig | null;
+    map: Map<string, ImageSource>;
+  }>({ config, map: new Map() });
 
   const getImageSource = useCallback<GetFoodImageSource>(
     (imagePath: string) => {
       if (!imagePath) return null;
 
-      const cached = cacheRef.current.get(imagePath);
+      if (cacheRef.current.config !== config) {
+        cacheRef.current = { config, map: new Map() };
+      }
+      const sourceCache = cacheRef.current.map;
+
+      const cached = sourceCache.get(imagePath);
       if (cached) return cached;
 
       let source: ImageSource;
@@ -92,7 +110,7 @@ export function useFoodImageSource() {
         };
       }
 
-      cacheRef.current.set(imagePath, source);
+      sourceCache.set(imagePath, source);
       return source;
     },
     [config],
