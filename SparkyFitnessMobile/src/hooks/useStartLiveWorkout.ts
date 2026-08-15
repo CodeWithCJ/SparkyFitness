@@ -128,6 +128,11 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
           entry_date: entryDate,
           source: 'sparky',
           exercises: stripPlannedSetValues(exercises),
+          // Tags the created session to the preset (recentSessions stats
+          // scoping, server-side) without changing how it's built — the
+          // server keeps the client-supplied exercises verbatim when both
+          // fields are present instead of substituting the preset's own.
+          workout_preset_id: sourcePresetId,
         });
         invalidateCache(entryDate);
         // Chained so the exact-alarm prompt never stacks on top of the OS

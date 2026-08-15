@@ -146,12 +146,16 @@ export const createPresetSessionRequestSchema = z
       data.workout_preset_id !== undefined && data.workout_preset_id !== null;
     const hasExercises = data.exercises !== undefined;
 
-    if (hasPresetId === hasExercises) {
+    // workout_preset_id alone means "copy this preset's own stored
+    // structure"; exercises alone means a freeform/individual session;
+    // both together means "tag this session as started from a preset, but
+    // use the client-supplied (e.g. live-workout) exercise/set structure
+    // instead of the preset's stored one." Only rule out neither.
+    if (!hasPresetId && !hasExercises) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message:
-          "Provide exactly one workout source: workout_preset_id or exercises.",
-        path: hasPresetId ? ["workout_preset_id"] : ["exercises"],
+        message: "Provide a workout source: workout_preset_id or exercises.",
+        path: ["exercises"],
       });
     }
 

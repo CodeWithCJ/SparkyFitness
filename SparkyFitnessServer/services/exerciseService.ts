@@ -1927,9 +1927,19 @@ async function createGroupedWorkoutSession(
           },
           actingUserId
         );
-      exerciseDefinitions = workoutPreset.exercises || [];
-      childEntrySource = 'Workout Preset';
-      preserveLegacyPresetDurationFallback = true;
+      if (exercises !== undefined) {
+        // Client supplied its own exercise/set structure (e.g. a live
+        // workout's Hevy-style placeholders) — use it verbatim. The entry is
+        // still tagged to the preset (for recentSessions stats scoping), but
+        // keeps its own source and stays nested-edit-able like any other
+        // client-authored session, unlike a pure workout_preset_id start
+        // (source 'Workout Preset', not in EDITABLE_SOURCES).
+        exerciseDefinitions = exercises;
+      } else {
+        exerciseDefinitions = workoutPreset.exercises || [];
+        childEntrySource = 'Workout Preset';
+        preserveLegacyPresetDurationFallback = true;
+      }
     } else {
       presetEntry =
         await exercisePresetEntryRepository.createExercisePresetEntryWithClient(
