@@ -1501,3 +1501,103 @@ describe('toStrictJsonSchema', () => {
     expect(JSON.stringify(SCHEMA)).toBe(before);
   });
 });
+
+describe('anthropic max_tokens headroom', () => {
+  // On Claude Opus 5 and Sonnet 5, omitting `thinking` runs adaptive thinking
+  // by default and max_tokens caps thinking *and* the visible response
+  // together. The old 2048 ceiling left a forced tool call at risk of being
+  // truncated, surfacing as stop_reason 'max_tokens'.
+  it('requests enough tokens to survive adaptive thinking plus a tool call', async () => {
+    const m = mockFetch(anthropicToolBody(SAMPLE));
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'anthropic',
+          api_key: 'anth-key',
+        }),
+      })
+    );
+    expect(result.ok).toBe(true);
+    const { body } = captured(m);
+    expect(body.max_tokens).toBe(8192);
+  });
+
+  it('honors SPARKY_FITNESS_ANTHROPIC_MAX_TOKENS', async () => {
+    vi.stubEnv('SPARKY_FITNESS_ANTHROPIC_MAX_TOKENS', '16000');
+    vi.resetModules();
+    const { dispatchAiRequest: dispatchWithEnv } =
+      await import('../ai/providerDispatch.js');
+    const m = mockFetch(anthropicToolBody(SAMPLE));
+    await dispatchWithEnv(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'anthropic',
+          api_key: 'anth-key',
+        }),
+      })
+    );
+    expect(captured(m).body.max_tokens).toBe(16000);
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it('falls back to the default when the override is not a positive integer', async () => {
+    vi.stubEnv('SPARKY_FITNESS_ANTHROPIC_MAX_TOKENS', 'not-a-number');
+    vi.resetModules();
+    const { dispatchAiRequest: dispatchWithEnv } =
+      await import('../ai/providerDispatch.js');
+    const m = mockFetch(anthropicToolBody(SAMPLE));
+    await dispatchWithEnv(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'anthropic',
+          api_key: 'anth-key',
+        }),
+      })
+    );
+    expect(captured(m).body.max_tokens).toBe(8192);
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+});
+
+describe('anthropic temperature compatibility', () => {
+  // Claude Opus 4.7+ reject `temperature` with a 400; Sonnet 5 rejects
+  // non-default values. Forwarding it fails the request outright.
+  it.each(['claude-opus-5', 'claude-opus-4-8', 'claude-sonnet-5'])(
+    'omits temperature for %s',
+    async (model) => {
+      const m = mockFetch(anthropicToolBody(SAMPLE));
+      const result = await dispatchAiRequest(
+        baseRequest({
+          provider: makeProvider({
+            service_type: 'anthropic',
+            api_key: 'anth-key',
+            model_name: model,
+          }),
+          temperature: 0.7,
+        })
+      );
+      expect(result.ok).toBe(true);
+      expect(captured(m).body).not.toHaveProperty('temperature');
+    }
+  );
+
+  it.each(['claude-sonnet-4-6', 'claude-haiku-4-5'])(
+    'still sends temperature for %s',
+    async (model) => {
+      const m = mockFetch(anthropicToolBody(SAMPLE));
+      await dispatchAiRequest(
+        baseRequest({
+          provider: makeProvider({
+            service_type: 'anthropic',
+            api_key: 'anth-key',
+            model_name: model,
+          }),
+          temperature: 0.7,
+        })
+      );
+      expect(captured(m).body.temperature).toBe(0.7);
+    }
+  );
+});

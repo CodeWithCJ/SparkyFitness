@@ -95,8 +95,33 @@ export type DispatchResult =
 
 const DEFAULT_TIMEOUT_MS = 90_000;
 const OLLAMA_DEFAULT_TIMEOUT_MS = 120_000;
-const ANTHROPIC_MAX_TOKENS = 2048;
+// On Claude Opus 5 and Sonnet 5, omitting the `thinking` parameter runs
+// adaptive thinking by default, and max_tokens caps thinking *and* the visible
+// response together. At 2048 with a forced tool call, reasoning could consume
+// the budget and truncate the tool response, surfacing as stop_reason
+// 'max_tokens'. 2048 was also tight for a structured nutrition payload even
+// without thinking. Override with SPARKY_FITNESS_ANTHROPIC_MAX_TOKENS.
+const ANTHROPIC_MAX_TOKENS_DEFAULT = 8192;
+const ANTHROPIC_MAX_TOKENS = (() => {
+  const raw = process.env.SPARKY_FITNESS_ANTHROPIC_MAX_TOKENS;
+  if (!raw) return ANTHROPIC_MAX_TOKENS_DEFAULT;
+  const parsed = parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : ANTHROPIC_MAX_TOKENS_DEFAULT;
+})();
 const ANTHROPIC_VERSION = '2023-06-01';
+
+// Claude Opus 4.7 and later reject `temperature` outright with a 400, and
+// Sonnet 5 rejects non-default values. Sending it to those models fails the
+// request before any work happens, so it is dropped rather than forwarded.
+// Older models (Sonnet 4.6, Haiku 4.5, and earlier) still honor it.
+const ANTHROPIC_MODELS_REJECTING_TEMPERATURE =
+  /^claude-(opus-(4-7|4-8|5)|sonnet-5|fable-5|mythos-5)/;
+
+function anthropicAcceptsTemperature(model: string): boolean {
+  return !ANTHROPIC_MODELS_REJECTING_TEMPERATURE.test(model);
+}
 const DEFAULT_SCHEMA_NAME = 'structured_output';
 const MAX_DETAIL_BODY_CHARS = 500;
 
@@ -548,7 +573,7 @@ function buildAnthropicRequest(ctx: BuildContext): BuiltRequest {
     max_tokens: ANTHROPIC_MAX_TOKENS,
     messages: [{ role: 'user', content }],
   };
-  if (ctx.temperature !== undefined) {
+  if (ctx.temperature !== undefined && anthropicAcceptsTemperature(ctx.model)) {
     body.temperature = ctx.temperature;
   }
   if (ctx.jsonSchema) {
