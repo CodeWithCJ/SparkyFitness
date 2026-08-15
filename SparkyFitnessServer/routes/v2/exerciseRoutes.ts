@@ -153,6 +153,16 @@ router.get('/search', searchHandler);
  *           Optional preset-entry UUID to exclude from the baseline. Used by the live active-workout card so today's
  *           in-progress (or pre-persisted planned) sets do not pollute the historical best/last baseline, and by the
  *           edit-workout screens to exclude the workout being edited. Also applies to recentSessions.
+ *       - in: query
+ *         name: presetId
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: |
+ *           Optional workout preset id to scope recentSessions to. When supplied, only sessions performed as that
+ *           preset are considered, so the live "Previous" placeholders reflect this preset's own history instead of
+ *           this exercise's history from a different preset. Does not affect bestSet/lastSet, which stay
+ *           exercise-global (a PR is a PR regardless of which preset it happened under).
  *     responses:
  *       200:
  *         description: Best set + last set stats + recent sessions.
@@ -178,11 +188,14 @@ const statsHandler: RequestHandler = async (req, res, next) => {
       return;
     }
     const parsedQuery = z
-      .object({ excludePresetEntryId: z.string().uuid().optional() })
+      .object({
+        excludePresetEntryId: z.string().uuid().optional(),
+        presetId: z.coerce.number().int().positive().optional(),
+      })
       .safeParse(req.query);
     if (!parsedQuery.success) {
       res.status(400).json({
-        error: 'Invalid excludePresetEntryId',
+        error: 'Invalid excludePresetEntryId or presetId',
         details: parsedQuery.error.flatten().fieldErrors,
       });
       return;
@@ -190,7 +203,8 @@ const statsHandler: RequestHandler = async (req, res, next) => {
     const stats = await exerciseService.getExerciseStats(
       req.userId,
       parsed.data.exerciseId,
-      parsedQuery.data.excludePresetEntryId ?? null
+      parsedQuery.data.excludePresetEntryId ?? null,
+      parsedQuery.data.presetId ?? null
     );
     const response = exerciseStatsResponseSchema.parse(stats);
     res.status(200).json(response);

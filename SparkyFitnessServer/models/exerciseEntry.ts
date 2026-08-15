@@ -1440,7 +1440,8 @@ async function getRecentSessionsForExercise(
   userId: string,
   exerciseId: string,
   excludePresetEntryId: string | null = null,
-  limit = 3
+  limit = 3,
+  presetId: number | null = null
 ): Promise<RecentSessionRow[]> {
   const client = await getClient(userId);
   try {
@@ -1459,6 +1460,14 @@ async function getRecentSessionsForExercise(
        WHERE ee.user_id = $1
          AND ee.exercise_id = $2
          AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3)
+         AND (
+           $5::integer IS NULL
+           OR EXISTS (
+             SELECT 1 FROM exercise_preset_entries epe
+              WHERE epe.id = ee.exercise_preset_entry_id
+                AND epe.workout_preset_id = $5
+           )
+         )
          AND EXISTS (
            SELECT 1 FROM exercise_entry_sets ees
             WHERE ees.exercise_entry_id = ee.id
@@ -1466,7 +1475,7 @@ async function getRecentSessionsForExercise(
          )
        ORDER BY ee.entry_date DESC, ee.created_at DESC, ee.id DESC
        LIMIT $4`,
-      [userId, exerciseId, excludePresetEntryId, limit]
+      [userId, exerciseId, excludePresetEntryId, limit, presetId]
     );
     return result.rows;
   } finally {

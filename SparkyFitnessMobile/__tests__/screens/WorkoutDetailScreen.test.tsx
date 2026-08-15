@@ -384,7 +384,7 @@ describe('WorkoutDetailScreen', () => {
 
       // View mode: session.id reaches the stats layer so the workout being
       // viewed can't surface as its own Best.
-      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1', undefined);
       expect(mockUseExerciseStats).not.toHaveBeenCalledWith(null, undefined);
       mockUseExerciseStats.mockClear();
 
@@ -392,7 +392,7 @@ describe('WorkoutDetailScreen', () => {
 
       // Edit mode: same exclusion, so the workout being edited can't pollute
       // its own Last/Best/recent-sessions baseline.
-      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1', undefined);
     });
 
     it('renders edit cards and saves set_type/rpe edits through the payload', async () => {

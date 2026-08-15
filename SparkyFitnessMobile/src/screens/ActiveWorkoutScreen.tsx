@@ -164,6 +164,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const session = useActiveWorkoutStore((s) => s.session);
   const sessionId = useActiveWorkoutStore((s) => s.sessionId);
+  const sourcePresetId = useActiveWorkoutStore((s) => s.sourcePresetId);
   const startedAt = useActiveWorkoutStore((s) => s.startedAt);
   const completedSetIds = useActiveWorkoutStore((s) => s.completedSetIds);
   const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
@@ -1202,6 +1203,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               completedSetIds={completedSetIds}
               prSetIds={prSetIds}
               excludePresetEntryId={sessionId ?? undefined}
+              sourcePresetId={sourcePresetId ?? undefined}
               activeSetId={activeSetId}
               focusedSetKey={focusedSetKey}
               setRenderKeys={setRenderKeys}

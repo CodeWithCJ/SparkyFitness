@@ -98,6 +98,14 @@ interface ActiveWorkoutExerciseCardProps {
    */
   excludePresetEntryId?: string;
   /**
+   * Live only: the preset this workout was started from, forwarded to the
+   * stats query so recentSessions (the PREVIOUS column / placeholder source)
+   * reflects this preset's own history instead of this exercise's history
+   * from a different preset. Omitted for freeform (non-preset) workouts,
+   * which keeps the exercise-global fallback unchanged.
+   */
+  sourcePresetId?: number;
+  /**
    * Live only: the store's PR stamps. When any of this exercise's set ids is
    * stamped, the Best line goes gold and shows the new record (the server
    * best stays historical by design).
@@ -231,6 +239,7 @@ function ActiveWorkoutExerciseCard({
   getImageSource,
   mode = 'live',
   excludePresetEntryId,
+  sourcePresetId,
   prSetIds,
   showRestChip = true,
   onChangeCalories,
@@ -290,6 +299,7 @@ function ActiveWorkoutExerciseCard({
   const { data: stats } = useExerciseStats(
     readOnly && excludePresetEntryId == null ? null : exercise.exercise_id,
     excludePresetEntryId,
+    sourcePresetId,
   );
   const lastSet = stats?.lastSet ?? null;
   const bestSet = stats?.bestSet ?? null;

@@ -36,7 +36,7 @@ describe('useExerciseStats', () => {
     await waitFor(() => {
       expect(result.current.data).toEqual(data);
     });
-    expect(mockFetchStats).toHaveBeenCalledWith('ex-1', undefined);
+    expect(mockFetchStats).toHaveBeenCalledWith('ex-1', undefined, undefined);
   });
 
   it('passes populated recentSessions through untouched', async () => {
@@ -79,7 +79,50 @@ describe('useExerciseStats', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(mockFetchStats).toHaveBeenCalledWith('ex-1', 'session-1');
+    expect(mockFetchStats).toHaveBeenCalledWith('ex-1', 'session-1', undefined);
+  });
+
+  it('forwards presetId to the fetch and query key', async () => {
+    mockFetchStats.mockResolvedValue({
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [],
+    });
+
+    const { result } = renderHook(
+      () => useExerciseStats('ex-1', 'session-1', 42),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(mockFetchStats).toHaveBeenCalledWith('ex-1', 'session-1', 42);
+  });
+
+  it('treats different presetId values as distinct query keys', async () => {
+    mockFetchStats.mockResolvedValue({
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [],
+    });
+
+    const { result: resultA } = renderHook(
+      () => useExerciseStats('ex-1', undefined, 1),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+    const { result: resultB } = renderHook(
+      () => useExerciseStats('ex-1', undefined, 2),
+      { wrapper: createQueryWrapper(queryClient) },
+    );
+
+    await waitFor(() => {
+      expect(resultA.current.isSuccess).toBe(true);
+      expect(resultB.current.isSuccess).toBe(true);
+    });
+    expect(mockFetchStats).toHaveBeenCalledWith('ex-1', undefined, 1);
+    expect(mockFetchStats).toHaveBeenCalledWith('ex-1', undefined, 2);
+    expect(mockFetchStats).toHaveBeenCalledTimes(2);
   });
 
   it('does not fire when exerciseId is null/undefined', () => {

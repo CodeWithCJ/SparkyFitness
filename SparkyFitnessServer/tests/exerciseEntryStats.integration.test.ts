@@ -62,8 +62,12 @@ const E2 = '00000000-0000-4000-b000-0000000000e2'; // session exclusion
 const E3 = '00000000-0000-4000-b000-0000000000e3'; // null-preset always counted
 const E4 = '00000000-0000-4000-b000-0000000000e4'; // recent sessions: limit + ordering
 const E5 = '00000000-0000-4000-b000-0000000000e5'; // recent sessions: null/set-less filtering
+const E6 = '00000000-0000-4000-b000-0000000000e6'; // recent sessions: workout_preset_id scoping
 const PE_CURRENT = '00000000-0000-4000-b000-0000000000c1';
 const PE_OTHER = '00000000-0000-4000-b000-0000000000c2';
+const PE_PRESET_A_OLD = '00000000-0000-4000-b000-0000000000c3';
+const PE_PRESET_A_NEW = '00000000-0000-4000-b000-0000000000c4';
+const PE_INDIVIDUAL_E6 = '00000000-0000-4000-b000-0000000000c5';
 
 const EN1 = '00000000-0000-4000-b000-000000000101';
 const EN2_INDIV = '00000000-0000-4000-b000-000000000201';
@@ -79,7 +83,9 @@ const EN5_CARDIO = '00000000-0000-4000-b000-000000000501';
 const EN5_NULLSETS = '00000000-0000-4000-b000-000000000502';
 const EN5_MIXED = '00000000-0000-4000-b000-000000000503';
 
-const ALL_EXERCISES = [E1, E2, E3, E4, E5];
+const ALL_EXERCISES = [E1, E2, E3, E4, E5, E6];
+let presetAId: number;
+let presetBId: number;
 
 describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
   beforeAll(async () => {
@@ -110,6 +116,7 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
         [E3, 'Stats Test Exercise 3'],
         [E4, 'Stats Test Exercise 4'],
         [E5, 'Stats Test Exercise 5'],
+        [E6, 'Stats Test Exercise 6'],
       ] as const) {
         await sys.query(
           'INSERT INTO public.exercises (id, name, source, user_id, is_custom) VALUES ($1, $2, $3, $4, true)',
@@ -125,6 +132,22 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
           [id, U, name, '2026-07-07', 'manual']
         );
       }
+
+      // Two workout presets for the recentSessions presetId-scoping test:
+      // Preset A has history for E6, Preset B has none.
+      await sys.query('DELETE FROM public.workout_presets WHERE user_id = $1', [
+        U,
+      ]);
+      const presetAResult = await sys.query(
+        'INSERT INTO public.workout_presets (user_id, name) VALUES ($1, $2) RETURNING id',
+        [U, 'Stats Test Preset A']
+      );
+      presetAId = presetAResult.rows[0].id;
+      const presetBResult = await sys.query(
+        'INSERT INTO public.workout_presets (user_id, name) VALUES ($1, $2) RETURNING id',
+        [U, 'Stats Test Preset B']
+      );
+      presetBId = presetBResult.rows[0].id;
 
       const insertEntry = async (
         id: string,
@@ -216,6 +239,48 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
       await insertEntry(EN5_MIXED, E5, null, '2026-07-04');
       await insertSet(EN5_MIXED, 1, 'Working Set', null, null);
       await insertSet(EN5_MIXED, 2, 'Working Set', 50, 10);
+
+      // E6 — recentSessions presetId scoping: two sessions performed as
+      // Preset A, plus a more recent/heavier individual (non-preset) session
+      // that a Preset-A-scoped query must exclude.
+      await sys.query(
+        `INSERT INTO public.exercise_preset_entries (id, user_id, workout_preset_id, name, entry_date, source)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          PE_PRESET_A_OLD,
+          U,
+          presetAId,
+          'Preset A Session (old)',
+          '2026-07-01',
+          'manual',
+        ]
+      );
+      await sys.query(
+        `INSERT INTO public.exercise_preset_entries (id, user_id, workout_preset_id, name, entry_date, source)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          PE_PRESET_A_NEW,
+          U,
+          presetAId,
+          'Preset A Session (new)',
+          '2026-07-05',
+          'manual',
+        ]
+      );
+      await sys.query(
+        `INSERT INTO public.exercise_preset_entries (id, user_id, name, entry_date, source)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [PE_INDIVIDUAL_E6, U, 'Individual Session', '2026-07-07', 'manual']
+      );
+      const EN6_PRESET_OLD = '00000000-0000-4000-b000-000000000601';
+      const EN6_PRESET_NEW = '00000000-0000-4000-b000-000000000602';
+      const EN6_INDIVIDUAL = '00000000-0000-4000-b000-000000000603';
+      await insertEntry(EN6_PRESET_OLD, E6, PE_PRESET_A_OLD, '2026-07-01');
+      await insertSet(EN6_PRESET_OLD, 1, 'Working Set', 100, 8);
+      await insertEntry(EN6_PRESET_NEW, E6, PE_PRESET_A_NEW, '2026-07-05');
+      await insertSet(EN6_PRESET_NEW, 1, 'Working Set', 120, 6);
+      await insertEntry(EN6_INDIVIDUAL, E6, PE_INDIVIDUAL_E6, '2026-07-07');
+      await insertSet(EN6_INDIVIDUAL, 1, 'Working Set', 200, 4);
     } finally {
       sys.release();
     }
@@ -232,6 +297,9 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
         'DELETE FROM public.exercise_preset_entries WHERE user_id = $1',
         [U]
       );
+      await sys.query('DELETE FROM public.workout_presets WHERE user_id = $1', [
+        U,
+      ]);
       await sys.query(
         'DELETE FROM public.exercises WHERE id = ANY($1::uuid[])',
         [ALL_EXERCISES]
@@ -324,6 +392,42 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
     expect(sessions[0].sets?.map((s) => Number(s.weight))).toEqual([
       100, 999, 888, 777,
     ]);
+  });
+
+  it('scopes recent sessions to a workout preset id when supplied', async () => {
+    const scoped = await exerciseEntryDb.getRecentSessionsForExercise(
+      U,
+      E6,
+      null,
+      undefined,
+      presetAId
+    );
+    // Only the two Preset-A sessions, newest first; the heavier/more recent
+    // individual (non-preset) session is excluded even though it would
+    // otherwise be the top result.
+    expect(scoped.map((s) => s.entry_date)).toEqual([
+      '2026-07-05',
+      '2026-07-01',
+    ]);
+    expect(scoped.map((s) => Number(s.sets?.[0]?.weight))).toEqual([120, 100]);
+  });
+
+  it('returns no recent sessions for a preset that was never performed', async () => {
+    const scoped = await exerciseEntryDb.getRecentSessionsForExercise(
+      U,
+      E6,
+      null,
+      undefined,
+      presetBId
+    );
+    expect(scoped).toEqual([]);
+  });
+
+  it('is unaffected by presetId scoping when presetId is omitted', async () => {
+    const all = await exerciseEntryDb.getRecentSessionsForExercise(U, E6);
+    expect(
+      all.map((s) => Number(s.sets?.[0]?.weight)).sort((a, b) => a - b)
+    ).toEqual([100, 120, 200]);
   });
 
   it('omits both-null sets and skips entries with no qualifying sets', async () => {

@@ -72,8 +72,14 @@ export const exerciseStatsQueryKeyRoot = ['exerciseStats'] as const;
 export const exerciseStatsQueryKey = (
   exerciseId: string,
   excludePresetEntryId?: string,
+  presetId?: number,
 ) =>
-  [...exerciseStatsQueryKeyRoot, exerciseId, excludePresetEntryId ?? null] as const;
+  [
+    ...exerciseStatsQueryKeyRoot,
+    exerciseId,
+    excludePresetEntryId ?? null,
+    presetId ?? null,
+  ] as const;
 
 export const exerciseDetailQueryKey = (exerciseId: string) =>
   ['exerciseDetail', exerciseId] as const;

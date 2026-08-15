@@ -251,9 +251,12 @@ async function getExerciseStats(
   userId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   exerciseId: any,
-  excludePresetEntryId: string | null = null
+  excludePresetEntryId: string | null = null,
+  presetId: number | null = null
 ) {
   const [bestRow, lastRow, recentRows] = await Promise.all([
+    // Best/last stay exercise-global by design: a heavier lift is a PR
+    // regardless of which preset it was performed under.
     exerciseEntryDb.getBestSetForExercise(
       userId,
       exerciseId,
@@ -264,10 +267,15 @@ async function getExerciseStats(
       exerciseId,
       excludePresetEntryId
     ),
+    // Recent sessions feed the live "Previous" placeholders; scoping to the
+    // preset that started the workout (when supplied) means those placeholders
+    // reflect this preset's own history instead of a different preset's.
     exerciseEntryDb.getRecentSessionsForExercise(
       userId,
       exerciseId,
-      excludePresetEntryId
+      excludePresetEntryId,
+      undefined,
+      presetId
     ),
   ]);
   return {
