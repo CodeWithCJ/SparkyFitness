@@ -144,7 +144,7 @@ async function createFoodEntry(
     if (entryData.food_id) {
       // This is an individual food entry
       const foodSnapshotQuery = await client.query(
-        `SELECT f.name, f.brand, fv.*
+        `SELECT f.name, f.brand, f.images AS food_images, fv.*
          FROM foods f
          JOIN food_variants fv ON f.id = fv.food_id
          WHERE f.id = $1 AND fv.id = $2`,
@@ -325,7 +325,12 @@ async function createFoodEntry(
         entryData.source ?? null,
         entryData.source_id ?? null,
         entryData.entry_time ?? null,
-        JSON.stringify(toImageArray(entryData.images)),
+        // Photos are snapshotted like nutrition: the entry keeps what the food
+        // looked like when it was logged, so editing the food later does not
+        // rewrite history. An explicit client value still wins (that is the
+        // per-entry photo the user chose), and meal-component entries have no
+        // parent food row to read from, so they fall back to an empty array.
+        JSON.stringify(toImageArray(entryData.images ?? snapshot.food_images)),
       ]
     );
     await client.query('COMMIT');

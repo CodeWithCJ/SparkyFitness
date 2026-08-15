@@ -55,6 +55,11 @@ export interface FoodEntrySnapshot extends NutrientFields {
   serving_unit?: string | null;
   allergens?: string[] | null;
   traces?: string[] | null;
+  /**
+   * The parent food's photos, applied to entries that are still showing what
+   * they inherited at log time. Entries with their own diary-set photo keep it.
+   */
+  images?: string[] | null;
 }
 
 /** A serving option for a food, as stored in `food_variants`. */

@@ -61,4 +61,10 @@ export interface ExternalFoodItem {
   variants?: ExternalFoodVariant[];
   /** Whether the food is verified by the provider (e.g. Yazio verified foods) */
   provider_verified?: boolean;
+  /** Provider thumbnail URL; absolute, not yet imported into /uploads. */
+  image_url?: string | null;
+  /** Full-size counterpart of `image_url`, preferred when localizing on save. */
+  image_source_url?: string | null;
+  /** Present once the food has been imported and localized server-side. */
+  images?: string[] | null;
 }

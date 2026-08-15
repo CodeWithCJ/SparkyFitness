@@ -175,11 +175,11 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
   });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {header}
-      {isConnected ? renderSearchBar() : null}
-      {renderContent()}
-    </View>
+      <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+        {header}
+        {isConnected ? renderSearchBar() : null}
+        {renderContent()}
+      </View>
   );
 };
 

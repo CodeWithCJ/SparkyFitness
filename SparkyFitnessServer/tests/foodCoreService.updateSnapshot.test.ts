@@ -100,6 +100,9 @@ describe('foodCoreService.updateFoodEntriesSnapshot', () => {
       {
         food_name: food.name,
         brand_name: food.brand,
+        // Photos ride along with the nutrition snapshot; the SQL applies them
+        // only to entries still showing an inherited photo.
+        images: [],
         serving_size: variant.serving_size,
         serving_unit: variant.serving_unit,
         calories: variant.calories,

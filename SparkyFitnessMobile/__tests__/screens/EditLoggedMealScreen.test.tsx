@@ -49,6 +49,15 @@ jest.mock('../../src/hooks/useDeleteFoodEntryMeal', () => ({
 jest.mock('../../src/hooks', () => ({
   useMealTypes: jest.fn(),
   usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
+  useSetFoodEntryMealImages: jest.fn(() => ({
+    setImages: jest.fn(),
+    setImagesAsync: jest.fn().mockResolvedValue(undefined),
+    isPending: false,
+  })),
+  useClearFoodEntryMealImage: jest.fn(() => ({
+    clearImage: jest.fn(),
+    isPending: false,
+  })),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({

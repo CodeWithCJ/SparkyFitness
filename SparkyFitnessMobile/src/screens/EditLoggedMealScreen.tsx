@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import EntryImageOverride from '../components/EntryImageOverride';
 import Icon from '../components/Icon';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import StepperInput from '../components/StepperInput';
@@ -18,7 +19,12 @@ import NutritionMacroCard from '../components/NutritionMacroCard';
 import StatusView from '../components/StatusView';
 import SwipeableIngredientRow from '../components/SwipeableIngredientRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useMealTypes, usePreferences } from '../hooks';
+import {
+  useMealTypes,
+  usePreferences,
+  useSetFoodEntryMealImages,
+  useClearFoodEntryMealImage,
+} from '../hooks';
 import { useFoodEntryMealDetails } from '../hooks/useFoodEntryMealDetails';
 import { useUpdateFoodEntryMeal } from '../hooks/useUpdateFoodEntryMeal';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
@@ -81,6 +87,18 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const timeSheetRef = useRef<TimeSheetRef>(null);
 
   const { meal, isLoading, isError, error } = useFoodEntryMealDetails(foodEntryMealId, { initialMeal });
+
+  // Per-entry override photo for this logged meal. Never written back to the
+  // meal template, which is what an entry without an override falls back to.
+  const {
+    setImages: setMealEntryImages,
+    isPending: isSettingMealImage,
+  } = useSetFoodEntryMealImages(foodEntryMealId, meal?.entry_date ?? '');
+  const {
+    clearImage: clearMealEntryImage,
+    isPending: isClearingMealImage,
+  } = useClearFoodEntryMealImage(foodEntryMealId, meal?.entry_date ?? '');
+  const isMealImagePending = isSettingMealImage || isClearingMealImage;
   const { mealTypes } = useMealTypes();
   const { preferences } = usePreferences();
   const showNetCarbs = preferences?.show_net_carbs === true;
@@ -366,6 +384,14 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
             autoCapitalize="sentences"
           />
         </View>
+
+        <EntryImageOverride
+          images={meal?.images}
+          inheritedImages={meal?.meal_images}
+          onSave={setMealEntryImages}
+          onClear={clearMealEntryImage}
+          isPending={isMealImagePending}
+        />
 
         {/* Aggregate nutrition */}
         <NutritionMacroCard

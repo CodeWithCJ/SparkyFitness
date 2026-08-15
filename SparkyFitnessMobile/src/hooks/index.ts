@@ -159,3 +159,10 @@ export {
   useDeleteMedicationEntry,
 } from './useMedications';
 
+
+export {
+  useSetFoodEntryImages,
+  useClearFoodEntryImage,
+  useSetFoodEntryMealImages,
+  useClearFoodEntryMealImage,
+} from './useEntryImages';

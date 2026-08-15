@@ -786,6 +786,9 @@ async function updateSnapshotForVariant(
   const newSnapshotData = {
     food_name: food.name,
     brand_name: food.brand,
+    // Photos are snapshotted onto entries at log time, so an explicit sync is
+    // the only thing that refreshes them — same rule as the nutrition fields.
+    images: toImageArray(food.images),
     serving_size: variant.serving_size,
     serving_unit: variant.serving_unit,
     calories: variant.calories,

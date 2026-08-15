@@ -442,6 +442,12 @@ interface NormalizedFood {
   provider_type?: string;
   is_custom: boolean;
   provider_verified?: boolean;
+  // Provider photo. The server's NormalizedFoodSchema declares these, so they
+  // arrive on the wire; they only reach the UI if this interface declares them
+  // AND transformNormalizedFood copies them across.
+  image_url?: string | null;
+  image_source_url?: string | null;
+  images?: string[];
   default_variant: NormalizedFoodVariant;
   variants?: NormalizedFoodVariant[];
 }
@@ -455,6 +461,13 @@ export interface BarcodeFood {
   provider_type?: string;
   is_custom: boolean;
   provider_verified?: boolean;
+  // Provider photo. The server's NormalizedFoodSchema declares these, so they
+  // arrive on the wire; they only reach the UI if this interface declares them
+  // AND transformNormalizedFood copies them across.
+  image_url?: string | null;
+  image_source_url?: string | null;
+  images?: string[];
+
   default_variant: NormalizedFoodVariant;
   variants?: NormalizedFoodVariant[];
 }
@@ -516,6 +529,11 @@ export function transformNormalizedFood(
     source: food.provider_type ?? providerType,
     variants: variants && variants.length > 0 ? variants : undefined,
     provider_verified: food.provider_verified === true,
+    // Carry the provider photo through. Every field this mapper omits is
+    // invisible to the UI no matter what the server sent.
+    image_url: food.image_url ?? null,
+    image_source_url: food.image_source_url ?? null,
+    images: food.images,
   };
 }
 
@@ -599,6 +617,11 @@ export async function lookupBarcodeV2(barcode: string, providerId?: string): Pro
     provider_type: food.provider_type,
     is_custom: food.is_custom,
     provider_verified: food.provider_verified,
+    // Same omission trap as the search mapper: a scanned barcode's photo is
+    // lost unless it is copied here.
+    image_url: food.image_url ?? null,
+    image_source_url: food.image_source_url ?? null,
+    images: food.images,
     default_variant: food.default_variant,
     variants: resolvedVariants,
   };

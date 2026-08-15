@@ -30,6 +30,15 @@ jest.mock('../../src/hooks', () => ({
   usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
   useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() })),
+  useSetFoodEntryImages: jest.fn(() => ({
+    setImages: jest.fn(),
+    setImagesAsync: jest.fn().mockResolvedValue(undefined),
+    isPending: false,
+  })),
+  useClearFoodEntryImage: jest.fn(() => ({
+    clearImage: jest.fn(),
+    isPending: false,
+  })),
 }));
 
 jest.mock('../../src/hooks/useFoodVariants', () => ({

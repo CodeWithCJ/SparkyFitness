@@ -213,14 +213,14 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {header}
+      <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+        {header}
 
-      {renderContent()}
+        {renderContent()}
 
-      <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
-      <CopyMealSheet ref={copySheetRef} isPending={isCopying} onCopy={copyMeal} />
-    </View>
+        <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
+        <CopyMealSheet ref={copySheetRef} isPending={isCopying} onCopy={copyMeal} />
+      </View>
   );
 };
 

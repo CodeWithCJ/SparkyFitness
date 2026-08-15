@@ -89,9 +89,32 @@ describe('foodRepository snapshot functions', () => {
           userId,
           foodId,
           variantId,
+          // Images ride along as the 27th param; the SQL only applies them to
+          // entries still showing an inherited photo.
+          JSON.stringify([]),
         ]
       );
     });
+
+    it('refreshes an inherited photo but never a diary-set one', async () => {
+      // The two are told apart by upload directory rather than a flag: a photo
+      // set on the entry itself lives under /uploads/food_entries/, while an
+      // inherited one points at the food's /uploads/foods/ path.
+      mockClient.query.mockResolvedValue({ rowCount: 1 });
+
+      await foodRepository.updateFoodEntriesSnapshot(
+        userId,
+        foodId,
+        variantId,
+        makeSnapshotData({ images: ['/uploads/foods/f1/new.jpg'] })
+      );
+
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).toContain("img LIKE '/uploads/food_entries/%'");
+      expect(sql).toContain('NOT EXISTS');
+      expect(params[26]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
+    });
+
     it('should default custom_nutrients to {} when null or undefined', async () => {
       for (const falsy of [null, undefined]) {
         mockClient.query.mockResolvedValue({ rowCount: 1 });

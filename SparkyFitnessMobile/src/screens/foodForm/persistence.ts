@@ -86,6 +86,28 @@ export function confirmDiscardEquivalents(): Promise<boolean> {
   });
 }
 
+/**
+ * Asks whether to rewrite past diary entries with the food's new nutrition.
+ *
+ * Entries store a snapshot from when they were logged, so editing a food
+ * leaves history untouched by default — a logged meal records what was eaten.
+ * Mirrors the web "Sync Past Entries?" dialog, including asking only after the
+ * save has succeeded, so the food is saved either way.
+ */
+export function confirmSyncPastEntries(): Promise<boolean> {
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Update past entries?',
+      'Your library food is saved. Do you also want to update past diary entries for this food with the new nutrition? Existing entries keep their original values unless you update them.',
+      [
+        { text: 'Keep past entries', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Update past entries', onPress: () => resolve(true) },
+      ],
+      { onDismiss: () => resolve(false) },
+    );
+  });
+}
+
 export function confirmVariantOverwrite(unitLabel: string): Promise<'overwrite' | 'new' | 'cancel'> {
   return new Promise((resolve) => {
     Alert.alert(

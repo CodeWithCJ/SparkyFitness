@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
+import type { ImageUploadArgs } from '../utils/pickerImages';
 import {
   createMeal,
   deleteMeal,
@@ -130,11 +131,24 @@ export function useMeal(
   };
 }
 
+export type MealImages = ImageUploadArgs;
+
+type CreateMealVariables = {
+  payload: CreateMealPayload;
+  images?: MealImages;
+};
+
+type UpdateMealVariables = {
+  payload: UpdateMealPayload;
+  images?: MealImages;
+};
+
 export function useCreateMeal() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (payload: CreateMealPayload) => createMeal(payload),
+    mutationFn: ({ payload, images }: CreateMealVariables) =>
+      createMeal(payload, images),
     onSuccess: (meal) => {
       invalidateMealCaches(queryClient, meal.id);
     },
@@ -147,9 +161,13 @@ export function useCreateMeal() {
     },
   });
 
+  // Images stay an optional trailing argument so callers that never touch
+  // photos keep their existing single-argument call.
   return {
-    createMeal: mutation.mutate,
-    createMealAsync: mutation.mutateAsync,
+    createMeal: (payload: CreateMealPayload, images?: MealImages) =>
+      mutation.mutate({ payload, images }),
+    createMealAsync: (payload: CreateMealPayload, images?: MealImages) =>
+      mutation.mutateAsync({ payload, images }),
     isPending: mutation.isPending,
   };
 }
@@ -159,11 +177,11 @@ export function useUpdateMeal(options?: { mealId?: string; onSuccess?: (meal: Me
   const { mealId, onSuccess } = options ?? {};
 
   const mutation = useMutation({
-    mutationFn: (payload: UpdateMealPayload) => {
+    mutationFn: ({ payload, images }: UpdateMealVariables) => {
       if (!mealId) {
         throw new Error('Meal ID is required to update a meal.');
       }
-      return updateMeal(mealId, payload);
+      return updateMeal(mealId, payload, images);
     },
     onSuccess: (meal) => {
       invalidateMealCaches(queryClient, meal.id);
@@ -179,8 +197,10 @@ export function useUpdateMeal(options?: { mealId?: string; onSuccess?: (meal: Me
   });
 
   return {
-    updateMeal: mutation.mutate,
-    updateMealAsync: mutation.mutateAsync,
+    updateMeal: (payload: UpdateMealPayload, images?: MealImages) =>
+      mutation.mutate({ payload, images }),
+    updateMealAsync: (payload: UpdateMealPayload, images?: MealImages) =>
+      mutation.mutateAsync({ payload, images }),
     isPending: mutation.isPending,
   };
 }

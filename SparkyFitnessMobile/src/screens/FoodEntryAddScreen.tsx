@@ -780,9 +780,16 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         cholesterol: saveFoodSourceValues.cholesterol,
         vitamin_a: saveFoodSourceValues.vitaminA,
         vitamin_c: saveFoodSourceValues.vitaminC,
+        // Carry the provider photo through import. The server localizes remote
+        // URLs into /uploads after COMMIT; dropping these here is the exact
+        // hand-enumerated-payload trap called out in the food-provider-images
+        // developer doc.
+        images: activeItem.images ?? undefined,
+        image_url: activeItem.image_url ?? null,
+        image_source_url: activeItem.image_source_url ?? null,
       };
     },
-    [activeItem.barcode, activeItem.brand, activeItem.is_custom, activeItem.name, activeItem.provider_external_id, activeItem.provider_type, activeItem.provider_verified, adjustedValues, saveFoodSourceValues],
+    [activeItem.barcode, activeItem.brand, activeItem.is_custom, activeItem.name, activeItem.provider_external_id, activeItem.provider_type, activeItem.provider_verified, activeItem.images, activeItem.image_url, activeItem.image_source_url, adjustedValues, saveFoodSourceValues],
   );
 
   const {

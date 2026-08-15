@@ -6,6 +6,7 @@ import { promises as fsp } from 'fs';
 import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
 import { log } from '../config/logging.js';
+import { getSystemClient } from '../db/poolManager.js';
 import type { ImageDomain } from '../utils/imageDownloader.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -357,6 +358,43 @@ async function cleanupStagedImages(req: unknown): Promise<void> {
  * Deletes local upload files that are present in `previous` but not in `next`.
  * Remote URLs and paths outside the uploads root are ignored.
  */
+/**
+ * True when a diary row still displays this image path.
+ *
+ * Diary entries snapshot their parent's photo at log time, so a path dropped
+ * from a food can still be the picture a past meal shows. Deleting the file
+ * would leave that history rendering a broken image, so the file outlives the
+ * food's own reference to it.
+ */
+async function isImageReferencedByDiary(image: string): Promise<boolean> {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      `SELECT 1
+         FROM food_entries
+        WHERE images @> $1::jsonb
+        UNION ALL
+       SELECT 1
+         FROM food_entry_meals
+        WHERE images @> $1::jsonb
+        LIMIT 1`,
+      [JSON.stringify([image])]
+    );
+    return result.rows.length > 0;
+  } catch (error) {
+    // A failed check must not delete the file: losing a photo referenced by
+    // history is worse than leaving an unreferenced one on disk.
+    log(
+      'warn',
+      'Could not check diary references for image; keeping it',
+      error
+    );
+    return true;
+  } finally {
+    client.release();
+  }
+}
+
 async function removeOrphanedImages(
   previous: unknown,
   next: unknown
@@ -370,6 +408,9 @@ async function removeOrphanedImages(
     }
     if (!image.startsWith('/uploads/')) {
       continue; // remote URL, nothing local to delete
+    }
+    if (await isImageReferencedByDiary(image)) {
+      continue;
     }
     const absolute = path.resolve(
       baseUploadsDir,

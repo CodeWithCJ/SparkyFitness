@@ -11,6 +11,10 @@ import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import type { FoodEntry } from '../types/foodEntries';
 import type { EntryNutrition } from '../utils/mealNutrition';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import FoodThumbnail from './FoodThumbnail';
+import { useFoodImageSourceContext } from './FoodImageSourceProvider';
+import { diaryEntryImage, diaryEntryImages } from '../utils/foodImages';
+import { useOpenLightbox } from './LightboxProvider';
 
 interface SwipeableFoodRowProps {
   entry: FoodEntry;
@@ -27,6 +31,9 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
   );
 
   const isMealComponent = !!entry.food_entry_meal_id;
+  const getImageSource = useFoodImageSourceContext();
+  const entryImage = diaryEntryImage(entry);
+  const openLightbox = useOpenLightbox();
 
   const onDeleteSuccess = () => {
     swipeableRef.current?.close();
@@ -95,6 +102,19 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
         rightThreshold={40}
       >
         <View className="py-1.5 flex-row items-center bg-surface">
+          {/* Diary rows are deliberately dense, so this slot collapses to
+              nothing when an entry has no photo — a photo-free day keeps the
+              exact layout it had before images existed. */}
+          {entryImage ? (
+            <FoodThumbnail
+              image={entryImage}
+              getImageSource={getImageSource}
+              size={32}
+              showFallback={false}
+              style={{ marginRight: 8 }}
+              onPress={() => openLightbox(diaryEntryImages(entry), 0, name)}
+            />
+          ) : null}
           <TouchableOpacity
             className="flex-1 mr-2"
             activeOpacity={0.7}

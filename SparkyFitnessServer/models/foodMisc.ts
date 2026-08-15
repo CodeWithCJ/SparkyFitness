@@ -394,7 +394,21 @@ async function updateFoodEntriesSnapshot(
           calcium = $20,
           iron = $21,
           glycemic_index = $22,
-          custom_nutrients = $23
+          custom_nutrients = $23,
+          -- Refresh the inherited photo, but never a photo the user chose for
+          -- this specific entry. The two are told apart by their upload
+          -- directory: finalizeUploadedImages writes
+          -- /uploads/<domain>/<entityId>/<file>, so a diary-set photo always
+          -- lives under /uploads/food_entries/ while an inherited one points
+          -- at the food's own /uploads/foods/ path (or a remote provider URL).
+          images = CASE
+            WHEN NOT EXISTS (
+              SELECT 1
+                FROM jsonb_array_elements_text(food_entries.images) AS img
+               WHERE img LIKE '/uploads/food_entries/%'
+            ) THEN $27::jsonb
+            ELSE food_entries.images
+          END
        WHERE user_id = $24 AND food_id = $25 AND variant_id = $26
        RETURNING id`,
       [
@@ -424,6 +438,7 @@ async function updateFoodEntriesSnapshot(
         userId,
         foodId,
         variantId,
+        JSON.stringify(newSnapshotData.images ?? []),
       ]
     );
     return result.rowCount;

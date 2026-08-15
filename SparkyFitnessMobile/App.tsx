@@ -14,6 +14,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { FoodImageSourceProvider } from './src/components/FoodImageSourceProvider';
+import { LightboxProvider } from './src/components/LightboxProvider';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useCycleMode } from './src/hooks';
@@ -260,6 +262,10 @@ function AppContent() {
       }}
     >
       <SafeAreaProvider>
+        {/* Inside SafeAreaProvider on purpose: the viewer positions its close
+            button against the insets, so mounting it at the app root crashes
+            with "No safe area value available". */}
+        <LightboxProvider>
         <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
         <Stack.Navigator
@@ -732,6 +738,7 @@ function AppContent() {
         <ActiveWorkoutKeepAwake />
         <MedicationReminderReconciler />
         <SafeAreaToast />
+        </LightboxProvider>
       </SafeAreaProvider>
     </NavigationContainer>
   );
@@ -762,7 +769,12 @@ function App() {
       <KeyboardProvider>
         <GestureHandlerRootView className="flex-1">
           <BottomSheetModalProvider>
-            <AppContent />
+            {/* One resolver for the whole app: food/meal image paths only need
+                the active server's origin and proxy headers, so there is no
+                reason for each screen to own a copy (or its own cache). */}
+            <FoodImageSourceProvider>
+              <AppContent />
+            </FoodImageSourceProvider>
           </BottomSheetModalProvider>
         </GestureHandlerRootView>
       </KeyboardProvider>

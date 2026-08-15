@@ -6,6 +6,10 @@ import VerifiedBadge from '../VerifiedBadge';
 import { deriveShareStatus } from '../../utils/shareStatus';
 import { formatServingUnit } from '../../utils/foodDetails';
 import { foodItemToFoodInfo } from '../../types/foodInfo';
+import FoodThumbnail from '../FoodThumbnail';
+import { useFoodImageSourceContext } from '../FoodImageSourceProvider';
+import { primaryImageOf, usableFoodImages } from '../../utils/foodImages';
+import { useOpenLightbox } from '../LightboxProvider';
 import type { FoodInfoItem } from '../../types/foodInfo';
 import type { FoodItem, TopFoodItem } from '../../types/foods';
 
@@ -25,6 +29,9 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
   onSelect,
 }) => {
   const status = deriveShareStatus(item.user_id, item.shared_with_public, profileId);
+  const getImageSource = useFoodImageSourceContext();
+  const openLightbox = useOpenLightbox();
+  const images = usableFoodImages(item.images);
   return (
     <TouchableOpacity
       className="px-4 py-2 border-b border-border-subtle"
@@ -32,7 +39,17 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
       onPress={() => onSelect(foodItemToFoodInfo(item))}
     >
       <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-3">
+        <FoodThumbnail
+          image={primaryImageOf(item)}
+          getImageSource={getImageSource}
+          size={40}
+          onPress={
+            images.length > 0
+              ? () => openLightbox(images, 0, item.name)
+              : undefined
+          }
+        />
+        <View className="flex-1 mx-3">
           <View className="flex-row items-start gap-1">
             <Text className="text-text-primary text-base font-medium flex-shrink">
               {item.name}

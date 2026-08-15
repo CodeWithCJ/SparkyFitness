@@ -187,6 +187,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           variantId: defaultVariant.id,
           source: 'local',
           provider_verified: result.food.provider_verified,
+          // Carry the scanned product's photo through to the add screen, which
+          // passes it to the create payload. Omitting it here is why a scanned
+          // barcode would save a food with no picture.
+          images: result.food.images ?? null,
+          image_url: result.food.image_url ?? null,
+          image_source_url: result.food.image_source_url ?? null,
           originalItem: result.food,
         };
         navigation.replace('FoodEntryAdd', {

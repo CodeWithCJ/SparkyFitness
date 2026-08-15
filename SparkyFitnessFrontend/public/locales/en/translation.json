@@ -1693,7 +1693,7 @@
     "replaceEntryPhoto": "Replace photo",
     "removeEntryPhoto": "Remove photo",
     "entryPhotoOverrideHint": "These photos apply to this entry only. Drag to reorder.",
-    "entryPhotoInheritedHint": "Showing the food's own images. Add a photo to override them for this entry.",
+    "entryPhotoInheritedHint": "Showing the food's current photo. Add a photo to set one for this entry.",
     "entryImageUploadFailedTitle": "Upload failed",
     "entryImageUploadFailed": "Could not save the photo for this entry.",
     "entryImageRemoveFailedTitle": "Remove failed",

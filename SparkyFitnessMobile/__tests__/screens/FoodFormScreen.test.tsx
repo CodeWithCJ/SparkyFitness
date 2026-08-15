@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -11,6 +12,7 @@ import {
   useFoodVariants,
 } from '../../src/hooks/useFoodVariants';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
+import { updateFoodEntriesSnapshot } from '../../src/services/api/foodsApi';
 
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
 const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
@@ -55,6 +57,17 @@ jest.mock('../../src/hooks/useFoodVariants', () => ({
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
   setPendingMealIngredientSelection: jest.fn(),
+}));
+
+// The edit path writes through foodsApi directly (not a hook), so without this
+// the save hits the real client, throws for lack of a server config, and never
+// reaches the post-save prompt.
+jest.mock('../../src/services/api/foodsApi', () => ({
+  createFoodVariant: jest.fn(() => Promise.resolve({ id: 'variant-new' })),
+  deleteFoodVariant: jest.fn(() => Promise.resolve()),
+  updateFoodVariant: jest.fn(() => Promise.resolve({})),
+  updateFood: jest.fn(() => Promise.resolve({})),
+  updateFoodEntriesSnapshot: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('@tanstack/react-query', () => ({
@@ -168,6 +181,31 @@ const mockToast = Toast as unknown as { show: jest.Mock };
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
+// The edit flow can raise two Alerts: "Save nutrition" (overwrite vs new
+// variant) and, after a successful save, "Update past entries?". An
+// unanswered Alert leaves a pending promise and the save never completes, so
+// tests must answer both. Defaults are the non-destructive choices.
+function answerSyncPrompt(choice: 'keep' | 'update' = 'keep') {
+  return jest
+    .spyOn(Alert, 'alert')
+    .mockImplementation((title, _message, buttons) => {
+      const list = (buttons ?? []) as { text?: string; onPress?: () => void }[];
+      const press = (text: string) =>
+        list.find((b) => b.text === text)?.onPress?.();
+
+      if (title === 'Update past entries?') {
+        press(choice === 'update' ? 'Update past entries' : 'Keep past entries');
+        return;
+      }
+      if (title === 'Save nutrition') {
+        press('Update existing');
+        return;
+      }
+      // Anything else: take the first non-cancel action so the flow proceeds.
+      list.find((b) => b.text && b.text !== 'Cancel')?.onPress?.();
+    });
+}
+
 describe('FoodFormScreen', () => {
   const navigation = mockNavigation;
 
@@ -192,6 +230,7 @@ describe('FoodFormScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    answerSyncPrompt('keep');
     mockFoodForm.mockClear();
     mockSubmittedFoodFormData = {
       name: 'Custom Meal Food',
@@ -400,8 +439,11 @@ describe('FoodFormScreen', () => {
     fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
+      // Second argument is the optional image payload — undefined when the
+      // user added no photos, which keeps the request plain JSON.
       expect(mockSaveFoodAsync).toHaveBeenCalledWith(
         expect.objectContaining({ barcode: '0123456789012' }),
+        undefined,
       );
     });
   });
@@ -1256,6 +1298,155 @@ describe('FoodFormScreen', () => {
       );
     });
     expect(mockCreateVariant).not.toHaveBeenCalled();
+  });
+
+  it('asks before touching past diary entries, and leaves them alone by default', async () => {
+    // Diary entries hold a nutrition snapshot from when they were logged, so a
+    // library edit must not silently rewrite history. Prompted on every save,
+    // matching web, because one form saves nutrition, name, brand and photo
+    // together.
+    const alertSpy = answerSyncPrompt('keep');
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+          is_default: true,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      name: 'Greek Yogurt',
+      brand: 'Brand Co',
+      servingSize: '100',
+      servingUnit: 'g',
+      calories: '999',
+      protein: '10',
+      carbs: '8',
+      fat: '4',
+    };
+
+    const screen = renderScreen({
+      mode: 'edit-food',
+      item: {
+        id: 'food-1',
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: 100,
+        servingUnit: 'g',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+        source: 'local',
+        originalItem: {},
+      },
+      initialValues: {
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+      },
+      returnKey: 'FoodDetail-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+    });
+
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(navigation.goBack).toHaveBeenCalled();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Update past entries?',
+      expect.any(String),
+      expect.any(Array),
+      expect.any(Object),
+    );
+    // Declining must leave history untouched.
+    expect(updateFoodEntriesSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('syncs past entries only when the user opts in', async () => {
+    answerSyncPrompt('update');
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+          is_default: true,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      name: 'Greek Yogurt',
+      brand: 'Brand Co',
+      servingSize: '100',
+      servingUnit: 'g',
+      calories: '999',
+      protein: '10',
+      carbs: '8',
+      fat: '4',
+    };
+
+    const screen = renderScreen({
+      mode: 'edit-food',
+      item: {
+        id: 'food-1',
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: 100,
+        servingUnit: 'g',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+        source: 'local',
+        originalItem: {},
+      },
+      initialValues: {
+        name: 'Greek Yogurt',
+        brand: 'Brand Co',
+        servingSize: '100',
+        servingUnit: 'g',
+        calories: '120',
+        protein: '10',
+        carbs: '8',
+        fat: '4',
+      },
+      returnKey: 'FoodDetail-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+    });
+
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(updateFoodEntriesSnapshot).toHaveBeenCalledWith('food-1');
+    });
   });
 
   it('refuses to save edit-food submissions while the variants query is still loading', async () => {

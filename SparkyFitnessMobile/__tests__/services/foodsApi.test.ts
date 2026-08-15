@@ -1,4 +1,11 @@
-import { fetchFoods, searchFoods, fetchFoodVariants, saveFood, deleteFood } from '../../src/services/api/foodsApi';
+import {
+  fetchFoods,
+  searchFoods,
+  fetchFoodVariants,
+  saveFood,
+  deleteFood,
+  updateFoodEntriesSnapshot,
+} from '../../src/services/api/foodsApi';
 import type { SaveFoodPayload } from '../../src/services/api/foodsApi';
 import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
 
@@ -430,6 +437,56 @@ describe('foodsApi', () => {
       await expect(saveFood(testPayload)).rejects.toThrow(
         'Server configuration not found.'
       );
+    });
+  });
+
+  describe('updateFoodEntriesSnapshot', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    test('posts the food id to /api/foods/update-snapshot', async () => {
+      // Opt-in only: this is the single endpoint that rewrites the nutrition
+      // snapshot on already-logged diary entries. Nothing else in the food
+      // edit flow touches history.
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+
+      await updateFoodEntriesSnapshot('food-abc');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/foods/update-snapshot',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ foodId: 'food-abc' }),
+        }),
+      );
+    });
+
+    test('omits variantId entirely when not supplied, so all variants sync', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+
+      await updateFoodEntriesSnapshot('food-abc');
+
+      const body = JSON.parse(
+        (mockFetch.mock.calls[0][1] as { body: string }).body,
+      );
+      expect(body).not.toHaveProperty('variantId');
+    });
+
+    test('scopes to a single variant when one is given', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+
+      await updateFoodEntriesSnapshot('food-abc', 'variant-1');
+
+      const body = JSON.parse(
+        (mockFetch.mock.calls[0][1] as { body: string }).body,
+      );
+      expect(body).toEqual({ foodId: 'food-abc', variantId: 'variant-1' });
     });
   });
 });
