@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AddMedicationDialog from '@/pages/Medications/AddMedicationDialog';
 import type { Medication } from '@/types/medications';
@@ -260,6 +260,105 @@ describe('AddMedicationDialog dose fields', () => {
     expect(screen.getByLabelText('Strength unit')).toHaveValue('mg');
     expect(screen.getByLabelText('Dose')).toHaveValue(null);
     expect(screen.getByLabelText('Dose unit')).toHaveValue('mg');
+  });
+
+  // The dialog is not remounted between saves, so anything the create-success handler
+  // forgets to clear is still on screen for the next supplement. The macro block is the
+  // dangerous one: it renders from `includeMacros` but only *selected* keys are saved, so
+  // a block left ticked with its keys dropped accepts values and silently discards them.
+  it('resets the macro block and the serving size after a successful create (supplement)', async () => {
+    render(<AddMedicationDialog defaultIsSupplement />);
+    // The serving-size field is the one input in this block with no <Label>, and the
+    // dialog is portalled out of the render container, so query the document for it.
+    const servingInput = () =>
+      document.querySelector<HTMLInputElement>('#units-per-serving');
+
+    openDialog();
+    setField('Name', 'Fish oil');
+    // The only checkbox on the supplement form; the rest are switches.
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.change(screen.getByLabelText('Calories'), {
+      target: { value: '15' },
+    });
+    fireEvent.change(servingInput()!, { target: { value: '2' } });
+    save();
+
+    // Proves the block was genuinely filled in, so the reset assertions below are not
+    // passing against a form that never had the state in the first place.
+    await waitFor(() => expect(mockCreateMutate).toHaveBeenCalledTimes(1));
+    expect(lastCreateBody()).toMatchObject({
+      nutrients: expect.objectContaining({ calories: 15 }),
+      custom_fields: expect.objectContaining({ units_per_serving: 2 }),
+    });
+
+    openDialog();
+    expect(screen.getByRole('checkbox')).toHaveAttribute(
+      'data-state',
+      'unchecked'
+    );
+    expect(screen.queryByLabelText('Calories')).not.toBeInTheDocument();
+    expect(servingInput()).toHaveValue(null);
+  });
+
+  // Same class as the reset above, at the other end: the block opens if ANY of the five
+  // was saved, but only selected keys are saved. Seeding just the saved ones leaves the
+  // other four visible and typeable, and getNutrients() then drops what is typed there.
+  it('saves a macro added to a supplement that had only some of them (edit)', async () => {
+    const partialMacroSupp = {
+      id: 'supp-1',
+      name: 'Fish oil',
+      type_id: 'softgel',
+      is_glp1: false,
+      is_supplement: true,
+      dose_amount: 1,
+      dose_unit: 'dose',
+      custom_fields: {},
+      nutrients: { calories: 15 },
+    } as unknown as Medication;
+
+    render(<AddMedicationDialog editMed={partialMacroSupp} />);
+    openDialog();
+    // The block is already expanded because calories was saved.
+    fireEvent.change(screen.getByLabelText('Protein'), {
+      target: { value: '1.5' },
+    });
+    save();
+
+    await waitFor(() => expect(mockUpdateMutate).toHaveBeenCalledTimes(1));
+    expect(lastUpdateArgs().body).toMatchObject({
+      nutrients: expect.objectContaining({ calories: 15, protein: 1.5 }),
+    });
+  });
+
+  // The five macros are not offered as picker rows, so free text is the only way to name
+  // one there. Left unrouted, "Energy" becomes a custom nutrient no rollup reads, and an
+  // exact "Calories" selects the macro key while the block stays shut and the grid, which
+  // renders only the non-macro rows, shows no field for it.
+  it.each([
+    ['Energy', 'an alias'],
+    ['Calories', 'the canonical name'],
+  ])('routes free-text %s (%s) into the macro block', async (typed) => {
+    render(<AddMedicationDialog defaultIsSupplement />);
+    openDialog();
+    setField('Name', 'Fish oil');
+
+    fireEvent.click(screen.getByRole('button', { name: /Add nutrient/ }));
+    fireEvent.change(screen.getByPlaceholderText('e.g. Ashwagandha'), {
+      target: { value: typed },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    // The block has to be open, or the user has no field to type the value into.
+    fireEvent.change(await screen.findByLabelText('Calories'), {
+      target: { value: '15' },
+    });
+    save();
+
+    await waitFor(() => expect(mockCreateMutate).toHaveBeenCalledTimes(1));
+    const nutrients = lastCreateBody().nutrients as Record<string, unknown>;
+    expect(nutrients).toMatchObject({ calories: 15 });
+    // Not filed as a custom nutrient under the name that was typed.
+    expect(nutrients['custom_nutrients'] ?? {}).toEqual({});
   });
 
   it('locks the dose unit to the strength unit for injectable GLP-1 meds', () => {

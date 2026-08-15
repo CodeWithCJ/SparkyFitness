@@ -1,3 +1,5 @@
+import type { SupplementTotals } from '@workspace/shared';
+import { resolveSupplementTotals } from '@workspace/shared';
 import { getDietTemplate } from '@/constants/dietTemplates';
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
 import i18n from '@/i18n';
@@ -299,6 +301,33 @@ export const calculateNutrition = (
   }
 
   return nutrition;
+};
+
+/**
+ * Folds a day's logged supplement doses into its food totals.
+ *
+ * Limited to the five fields the server rolls up for supplements everywhere else
+ * (`supplementFixed` in foodMisc). A supplement's sodium is not summed by the nutrition
+ * summary or the chatbot either, so adding it here alone would trade one inconsistency for
+ * a subtler one: the Diary would be the only surface that counted it.
+ *
+ * Returns the food totals unchanged when there is no supplement arm, so a day with no
+ * supplements is byte-for-byte what it was before supplements existed.
+ */
+export const addSupplementTotals = <T extends MealTotals>(
+  foodTotals: T,
+  supplementTotals: SupplementTotals | undefined | null
+): T => {
+  if (!supplementTotals) return foodTotals;
+  const supplements = resolveSupplementTotals(supplementTotals);
+  return {
+    ...foodTotals,
+    calories: foodTotals.calories + supplements.calories,
+    protein: foodTotals.protein + supplements.protein,
+    carbs: foodTotals.carbs + supplements.carbs,
+    fat: foodTotals.fat + supplements.fat,
+    dietary_fiber: foodTotals.dietary_fiber + supplements.dietary_fiber,
+  };
 };
 
 export const calculateDayTotals = (

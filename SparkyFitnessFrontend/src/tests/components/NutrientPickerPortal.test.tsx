@@ -196,3 +196,50 @@ describe('NutrientPicker search', () => {
     ).toBeInTheDocument();
   });
 });
+
+/**
+ * Energy and macros deliberately do NOT appear here. They are a closed set that co-occurs
+ * on a label, so they live behind an "Include macros" checkbox as one block. Putting them
+ * in this searchable list pushed the vitamins, which are the common case, below the fold.
+ */
+describe('NutrientPicker excludes energy and macros', () => {
+  const openPicker = (selected: string[] = []) => {
+    const onAdd = jest.fn();
+    renderWithClient(
+      <Dialog open>
+        <DialogContent>
+          <NutrientPicker
+            selected={selected}
+            customNutrients={[]}
+            onAdd={onAdd}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+    fireEvent.click(screen.getByRole('button', { name: /add nutrient/i }));
+    return onAdd;
+  };
+
+  it('offers no energy group', async () => {
+    openPicker();
+
+    await screen.findByPlaceholderText(/search nutrients/i);
+    expect(screen.queryByText(/energy & macros/i)).not.toBeInTheDocument();
+  });
+
+  it.each(['Calories', 'Protein', 'Carbohydrates', 'Dietary fiber'])(
+    'does not list %s',
+    async (label) => {
+      openPicker();
+
+      await screen.findByPlaceholderText(/search nutrients/i);
+      expect(screen.queryByText(label)).not.toBeInTheDocument();
+    }
+  );
+
+  it('still offers vitamins and minerals', async () => {
+    openPicker();
+
+    expect(await screen.findByText(/vitamins & minerals/i)).toBeInTheDocument();
+  });
+});

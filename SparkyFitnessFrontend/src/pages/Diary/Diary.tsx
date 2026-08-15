@@ -31,6 +31,7 @@ import LogMealDialog from '@/pages/Diary/LogMealDialog';
 import { debug, info, error } from '@/utils/logging';
 import {
   calculateDayTotals,
+  addSupplementTotals,
   getEntryNutrition,
   getMealData,
   getMealTotals,
@@ -142,7 +143,12 @@ const Diary = () => {
     ? fetchedFoodEntries.filter((entry) => !entry.food_entry_meal_id)
     : [];
 
-  const dayTotals = calculateDayTotals(foodEntries, foodEntryMeals);
+  // Logged supplement doses contribute to the day's intake, so the nutrition summary has
+  // to account for them or it disagrees with the calorie ring above it, which already does.
+  const dayTotals = addSupplementTotals(
+    calculateDayTotals(foodEntries, foodEntryMeals),
+    summaryData?.supplementTotals
+  );
 
   // Handle navigation for opening food search dialog
   useEffect(() => {

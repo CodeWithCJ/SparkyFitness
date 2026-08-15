@@ -22,6 +22,7 @@ import {
   medicationDetailQueryKey,
   medicationEntriesQueryKey,
 } from './queryKeys';
+import { invalidateMedicationEntryCaches } from './invalidateMedicationEntryCaches';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { entryMatchesDose, type DueDose } from '../utils/medications';
 import { addLog } from '../services/LogService';
@@ -152,8 +153,7 @@ export function useCreateMedicationEntry() {
   return useMutation({
     mutationFn: (body: CreateMedicationEntryInput) => createEntry(body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: medicationEntriesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
+      invalidateMedicationEntryCaches(queryClient);
     },
   });
 }
@@ -164,8 +164,7 @@ export function useUpdateMedicationEntry() {
     mutationFn: ({ id, body }: { id: string; body: UpdateMedicationEntryInput }) =>
       updateEntry(id, body),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: medicationEntriesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
+      invalidateMedicationEntryCaches(queryClient);
     },
   });
 }
@@ -175,8 +174,7 @@ export function useDeleteMedicationEntry() {
   return useMutation({
     mutationFn: (id: string) => deleteEntry(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: medicationEntriesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
+      invalidateMedicationEntryCaches(queryClient);
     },
   });
 }
