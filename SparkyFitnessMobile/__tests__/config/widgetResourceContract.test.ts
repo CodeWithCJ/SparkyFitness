@@ -251,19 +251,34 @@ describe('Android widget localization contract', () => {
         expect(src).toMatch(/formatWidgetInt\(/);
         expect(src).not.toContain('String.format(Locale.US');
         expect(src).not.toContain('%,d');
-        // No divergent per-widget rounding survives: the shared helper owns it.
-        expect(src).not.toMatch(/\.toLong\(\)/);
-        expect(src).not.toMatch(/\.roundToLong\(\)/);
       }
     });
 
-    it('rounds the same value identically in every widget surface', () => {
+    it('keeps the pre-localization per-widget rounding (calorie truncates, macro rounds)', () => {
+      const calorieSrc = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'),
+        'utf8',
+      );
+      // PR3 behavior (22415819): calorie widget truncates 1240.7 -> 1240.
+      expect(calorieSrc).toMatch(/formatWidgetInt\(context, value\.toLong\(\)\)/);
+      expect(calorieSrc).not.toMatch(/\.roundToLong\(\)/);
+
+      const macroSrc = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
+        'utf8',
+      );
+      // PR3 behavior (22415819): macro widget rounds 1240.7 -> 1241.
+      expect(macroSrc).toMatch(/formatWidgetInt\(context, value\.roundToLong\(\)\)/);
+      expect(macroSrc).not.toMatch(/value\.toLong\(\)/);
+
+      // The shared helper formats ONLY: locale-aware separators, no business
+      // rounding inside it (each caller keeps its pre-localization rule).
       const helper = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
         'utf8',
       );
-      expect(helper).toMatch(/formatWidgetInt/);
-      expect(helper).toMatch(/roundToLong\(\)/);
+      expect(helper).toMatch(/fun formatWidgetInt\(context: Context, value: Long\)/);
+      expect(helper).not.toMatch(/roundToLong/);
       expect(helper).not.toMatch(/\.toLong\(\)/);
     });
 
@@ -294,6 +309,20 @@ describe('Android widget localization contract', () => {
         expect(src).toMatch(/scheduleMidnightRefresh\(context\)/);
         expect(src).toMatch(/cancelMidnightRefresh\(context\)/);
         expect(src).toMatch(/setAndAllowWhileIdle/);
+      }
+    });
+
+    it('re-renders all widget instances on ACTION_LOCALE_CHANGED', () => {
+      // Out-of-app App Language changes (Android Settings) must refresh the
+      // widgets without the app foregrounding. Both receivers react to the
+      // manifest-registered LOCALE_CHANGED broadcast and call updateAll.
+      for (const template of [
+        'CalorieWidgetReceiver.kt.tmpl',
+        'MacroWidgetReceiver.kt.tmpl',
+      ]) {
+        const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
+        expect(src).toMatch(/Intent\.ACTION_LOCALE_CHANGED/);
+        expect(src).toMatch(/glanceAppWidget\.updateAll\(context\)/);
       }
     });
   });
@@ -340,6 +369,19 @@ describe('Android widget localization contract', () => {
       expect(macro).toMatch(/android:minHeight="110dp"/);
       expect(macro).toMatch(/android:targetCellWidth="2"/);
       expect(macro).toMatch(/android:targetCellHeight="2"/);
+    });
+
+    it('registers both widget receivers for APPWIDGET_UPDATE and LOCALE_CHANGED', () => {
+      // The config plugin declares the receiver intent-filter in the manifest.
+      // LOCALE_CHANGED is an explicit exemption from the Android 8+ implicit
+      // broadcast limits and covers per-app locale changes, so widgets can
+      // re-render when the app language is changed outside the app.
+      const pluginSrc = fs.readFileSync(
+        path.join(__dirname, '../../plugins/withCalorieWidget.ts'),
+        'utf8',
+      );
+      expect(pluginSrc).toMatch(/android\.appwidget\.action\.APPWIDGET_UPDATE/);
+      expect(pluginSrc).toMatch(/android\.intent\.action\.LOCALE_CHANGED/);
     });
 
     it('restores the classic macro size mode (single 200x200 responsive size)', () => {

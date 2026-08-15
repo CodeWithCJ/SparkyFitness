@@ -211,7 +211,9 @@ class CalorieWidget : GlanceAppWidget() {
     }
 
     private fun formatInt(context: Context, value: Double): String {
-        return formatWidgetInt(context, value)
+        // Pre-localization rounding preserved: the calorie widget truncates
+        // (1240.7 -> 1240) — see 22415819.
+        return formatWidgetInt(context, value.toLong())
     }
 
     companion object {

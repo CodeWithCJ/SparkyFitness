@@ -74,6 +74,9 @@ describe('iOS WidgetKit localization resources', () => {
       expect(pl.get('widget.food')).toBe('Jedzenie');
       expect(pl.get('widget.burned')).toBe('Spalone');
       expect(pl.get('widget.goal')).toBe('Cel');
+      // Word order under the ring number: "1515 / kcal pozostało" reads as
+      // "1515 kcal pozostało". The a11y string stays "Pozostało %@ kcal".
+      expect(pl.get('widget.kcal_left')).toBe('kcal pozostało');
       expect(pl.get('widget.search_food')).toBe('Wyszukaj produkt');
       expect(pl.get('widget.scan_barcode')).toBe('Skanuj kod kreskowy');
     });

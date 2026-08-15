@@ -2,7 +2,7 @@
 "widget.calorie.description" = "Dzisiejsze spożycie kalorii w skrócie.";
 "widget.macro.name" = "Makroskładniki";
 "widget.macro.description" = "Dzisiejsze białko, węglowodany i tłuszcz w skrócie.";
-"widget.kcal_left" = "pozostało kcal";
+"widget.kcal_left" = "kcal pozostało";
 "widget.kcal" = "kcal";
 "widget.food" = "Jedzenie";
 "widget.burned" = "Spalone";

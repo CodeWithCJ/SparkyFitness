@@ -132,6 +132,16 @@ const withCalorieWidget: ConfigPlugin = (config) => {
                 'android:name': 'android.appwidget.action.APPWIDGET_UPDATE',
               },
             },
+            {
+              $: {
+                // Manifest-declared receivers may still receive this implicit
+                // broadcast (explicit exemption in the Android O implicit
+                // broadcast limits). It covers both device-wide and per-app
+                // locale changes, so widgets re-render when the app language
+                // is changed outside the app (e.g. Android Settings).
+                'android:name': 'android.intent.action.LOCALE_CHANGED',
+              },
+            },
           ],
         },
       ];

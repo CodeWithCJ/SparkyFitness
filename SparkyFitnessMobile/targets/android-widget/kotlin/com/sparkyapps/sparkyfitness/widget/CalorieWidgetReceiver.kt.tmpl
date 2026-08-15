@@ -32,6 +32,22 @@ class CalorieWidgetReceiver : GlanceAppWidgetReceiver() {
             }
             return
         }
+        if (intent.action == Intent.ACTION_LOCALE_CHANGED) {
+            // Out-of-app language change (Android Settings App Languages, also
+            // device-wide). The provider XML is registered for this broadcast
+            // by the config plugin; re-render every placed instance so the
+            // localized resources / WidgetLocale context refresh immediately
+            // without the app foregrounding.
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.Default).launch {
+                try {
+                    glanceAppWidget.updateAll(context)
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
         super.onReceive(context, intent)
     }
 

@@ -44,6 +44,7 @@ import androidx.glance.unit.ColorProvider
 import {{APPLICATION_ID}}.R
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToLong
 import org.json.JSONObject
 
 /**
@@ -341,7 +342,9 @@ class MacroWidget : GlanceAppWidget() {
     }
 
     private fun formatInt(context: Context, value: Double): String {
-        return formatWidgetInt(context, value)
+        // Pre-localization rounding preserved: the macro widget rounds
+        // (1240.7 -> 1241) — see 22415819.
+        return formatWidgetInt(context, value.roundToLong())
     }
 
     companion object {

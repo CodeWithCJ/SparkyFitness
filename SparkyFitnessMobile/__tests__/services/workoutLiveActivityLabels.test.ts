@@ -89,6 +89,21 @@ describe('workoutLiveActivityLabels', () => {
       }
     });
 
+    it('reads English labels from the i18n catalog when initialized', () => {
+      // The EN catalog must be the source of truth once i18n is ready, not a
+      // hardcoded map: editing the EN translation must change the Live
+      // Activity text (e.g. before Weblate takes over).
+      const keyPath = 'activeWorkout.liveActivity.rest';
+      const original = (i18n.getResource('en', 'translation', keyPath) ??
+        'Rest') as string;
+      try {
+        i18n.addResource('en', 'translation', keyPath, 'Recovery');
+        expect(buildWorkoutLiveActivityLabels('en').rest).toBe('Recovery');
+      } finally {
+        i18n.addResource('en', 'translation', keyPath, original);
+      }
+    });
+
     it('returns the English fallback when a Polish key is missing', () => {
       const keyPath = 'activeWorkout.liveActivity.skipRest';
       const original = (i18n.getResource('pl', 'translation', keyPath) ??

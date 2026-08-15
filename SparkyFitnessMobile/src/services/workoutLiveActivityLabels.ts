@@ -78,11 +78,14 @@ export function resolveWorkoutLiveActivityLocale(
 export function buildWorkoutLiveActivityLabels(
   locale: WorkoutLiveActivityLocale,
 ): WorkoutLiveActivityLabels {
-  if (!i18n.isInitialized || locale !== 'pl') {
-    // English is the stable fallback: return the built-in map before i18n is
-    // ready (cold start, tests) and for the English locale (identical values).
+  if (!i18n.isInitialized) {
+    // English is the stable cold-start fallback: return the built-in map
+    // before i18n is ready (app boot, tests).
     return locale === 'pl' ? { ...EN_FALLBACK } : EN_FALLBACK;
   }
+  // The i18n catalog (EN and PL) is the source of truth once initialized; the
+  // built-in map is only the per-key English defaultValue, so editing the EN
+  // catalog (e.g. before Weblate) actually changes the Live Activity text.
   const fixedT = i18n.getFixedT(locale, 'translation');
   const labels = {} as WorkoutLiveActivityLabels;
   for (const key of LABEL_KEYS) {
