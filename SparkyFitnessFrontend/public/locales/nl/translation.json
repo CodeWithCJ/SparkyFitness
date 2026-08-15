@@ -3,7 +3,7 @@
     "diary": "Dagboek",
     "checkin": "Inchecken",
     "reports": "Rapporten",
-    "foods": "Eten",
+    "foods": "Voeding",
     "goals": "Doelen",
     "settings": "Instellingen",
     "admin": "Beheer",
@@ -683,7 +683,11 @@
       "heartRateTimeInZonesTitle": "Hartslag Tijd in Zones",
       "timeInZoneSLabel": "Tijd in Zone (s)",
       "cadence": "Cadans",
-      "waterLoss": "Vochtverlies"
+      "waterLoss": "Vochtverlies",
+      "provider": {
+        "appleHealth": "Apple Health"
+      },
+      "hrZonesEstimatedFromAge": "De zones worden geschat op basis van je leeftijd — Apple Health en Health Connect delen geen ingestelde maximale hartslag met apps."
     },
     "bodyBattery": "Lichaamsbatterij",
     "charged": "Opgeladen",
@@ -740,7 +744,8 @@
     "heartRateHigh": "Hoog",
     "bpm": "bpm",
     "bodyBatteryStatusLow": "Laag",
-    "bodyBatteryStatusModerate": "Matig"
+    "bodyBatteryStatusModerate": "Matig",
+    "supplementShare": "{{percent}}% uit voedingssupplementen"
   },
   "exerciseCard": {
     "mechanic": "Oefeningstype",
@@ -817,7 +822,7 @@
     "loadingExercises": "Oefeningen laden..."
   },
   "foodSearchDialog": {
-    "title": "Eten Zoeken en Toevoegen",
+    "title": "Voeding zoeken en toevoegen",
     "description": "Zoek naar voedingsmiddelen om toe te voegen aan je database."
   },
   "enhancedFoodSearch": {
@@ -834,7 +839,7 @@
     "private": "Privé",
     "public": "Openbaar",
     "family": "Gezin",
-    "topFoods": "Meest Gegeten Voedingsmiddelen",
+    "topFoods": "Meest gegeten voedingsmiddelen",
     "noRecentOrTopFoods": "Geen recente of meest gegeten voedingsmiddelen gevonden. Begin met het registreren van voedingsmiddelen om ze hier te zien.",
     "noItemsFoundInDatabase": "Er zijn geen resultaten gevonden in uw database voor \"{{searchTerm}}\".",
     "clickSearchIconOnline": "Klik op het zoekpictogram om online te zoeken.",
@@ -880,9 +885,9 @@
     "profileInformation": {
       "title": "Profielinformatie",
       "description": "Beheer je persoonlijke gegevens en profielfoto",
-      "changePhoto": "Wijzig Foto",
+      "changePhoto": "Wijzig foto",
       "photoSize": "PNG, JPG tot 5MB",
-      "fullName": "Volledige Naam",
+      "fullName": "Volledige naam",
       "enterFullName": "Vul je volledige naam in",
       "phoneNumber": "Telefoonnummer",
       "enterPhoneNumber": "Voer je telefoonnummer in",
@@ -959,6 +964,21 @@
       "openFoodFacts": {
         "baseUrlLabel": "Basis-URL (optioneel)",
         "baseUrlHelp": "Laat dit veld leeg om de openbare Open Food Facts-server te gebruiken, of stel hier je eigen, zelf gehoste instantie in."
+      },
+      "yazio": {
+        "unofficialApiTitle": "⚠️ Onofficiële API — Gebruik op eigen risico",
+        "unofficialApiWarning": "De YAZIO-integratie maakt gebruik van een onofficiële, niet-gedocumenteerde API die niet door YAZIO wordt aangeboden of onderschreven. Als je hiervan gebruikmaakt, loop je het risico dat je YAZIO-account wordt geblokkeerd. De API kan ook op elk moment zonder voorafgaande kennisgeving stoppen met werken als YAZIO zijn backend aanpast.",
+        "moreInfoLink": "Voor meer informatie en inloggegevens, zie",
+        "emailUsernameLabel": "YAZIO email / gebruikersnaam",
+        "emailUsernamePlaceholder": "Vul YAZIO email of gebruikersnaam in",
+        "passwordLabel": "YAZIO wachtwoord",
+        "passwordPlaceholder": "Vul YAZIO wachtwoord in",
+        "clientIdLabel": "YAZIO client-ID",
+        "clientIdPlaceholder": "Vul YAZIO client-ID in",
+        "clientSecretLabel": "YAZIO client-secret",
+        "clientSecretPlaceholder": "Vul YAZIO client-secret in",
+        "allFieldsRequired": "Alle velden (e-mailadres/gebruikersnaam, wachtwoord, client-ID en client-secret) zijn verplicht.",
+        "languageSupportHelp": "De zoekresultaten van YAZIO worden automatisch aangepast aan de taal die je in SparkyFitness hebt ingesteld (ondersteunde talen: Engels, Duits, Frans, Russisch, Spaans, Italiaans, Nederlands, Pools, Portugees, Deens, Fins, Zweeds, Tsjechisch, Hongaars, Grieks, Noors, Turks, Chinees, Japans en Koreaans). Voor andere talen worden de standaard internationale databaseparameters gebruikt."
       }
     },
     "aiService": {
@@ -1185,7 +1205,7 @@
       "updatePassword": "Wachtwoord Bijwerken",
       "updating": "Aan het bijwerken...",
       "newPasswordsDoNotMatch": "Nieuwe wachtwoorden komen niet overeen",
-      "passwordLengthError": "Het wachtwoord moet minimaal 6 tekens lang zijn",
+      "passwordLengthError": "Het wachtwoord moet minimaal 8 tekens lang zijn",
       "enterNewEmailAddress": "Voer een nieuw e-mailadres in",
       "updateEmailHint": "Bevestig je huidige wachtwoord om je e-mailadres te wijzigen. Laat dit veld leeg als je inlogt via SSO.",
       "emailUpdateSuccess": "E-mailadres is succesvol bijgewerkt.",
@@ -1194,7 +1214,7 @@
       "enterCurrentPassword": "Voer huidig wachtwoord in"
     },
     "cycle": {
-      "title": "Cyclus & zwangerschap",
+      "title": "Cyclus en zwangerschap",
       "description": "Beheer je reproductieve gezondheid, menstruatiecycli en het bijhouden van zwangerschappen",
       "enableLabel": "Cyclus & zwangerschapsvolger aanzetten",
       "enableHint": "Schakel het centrum voor reproductieve gezondheid in of uit. Als je dit inschakelt, wordt het navigatietabblad in de zijbalk weergegeven.",
@@ -1221,7 +1241,8 @@
     },
     "customNutrients": {
       "title": "Op maat gemaakte voedingsstoffen",
-      "subtitle": "Beheer je aangepaste definities van voedingsstoffen"
+      "subtitle": "Beheer je aangepaste definities van voedingsstoffen",
+      "failedToAddNutrient": "Het toevoegen van de voedingsstof is mislukt."
     },
     "customMeals": {
       "title": "Maaltijden op maat",
@@ -1246,7 +1267,7 @@
         "title": "Gesynchroniseerde gegevens verwijderen",
         "description": "Verwijder alle gegevens die vanuit een specifieke bron (bijv. Apple Health, Garmin) zijn gesynchroniseerd of geïmporteerd. Dit geldt alleen voor gesynchroniseerde gegevens — gegevens die je handmatig hebt toegevoegd, blijven onaangetast. Deze handeling kan niet ongedaan worden gemaakt.",
         "scopeNoteTitle": "Wat hierdoor wordt verwijderd",
-        "scopeIncludes": "Verwijdert gesynchroniseerde dagboeknotities: voeding, sport-/trainingssessies, slaap, water en aangepaste check-in-metingen.",
+        "scopeIncludes": "Verwijdert gesynchroniseerde dagboekvermeldingen (voeding, sport-/trainingssessies, slaap, water, aangepaste check-in-metingen) en de telemetriegegevens van het draagbare apparaat van die provider (hartslag, HRV, ademhaling, SpO2, vitale functies en dagelijkse welzijnsstatistieken).",
         "scopeExcludesLibrary": "Je voedings- en trainingsdatabase (de herbruikbare voedings- en trainingsdefinities) wordt NIET verwijderd — alleen de geregistreerde gegevens.",
         "scopeExcludesCheckin": "Standaardmetingen bij het inchecken (gewicht, aantal stappen, lichaamsvet, lengte) worden NIET verwijderd — deze worden voor alle aanbieders samengevoegd tot één dagelijkse waarde en kunnen hier niet per bron worden verwijderd.",
         "scopeExcludesManual": "Er wordt NIETS verwijderd wat je zelf hebt aangemaakt — gegevens die je zelf hebt ingevoerd, die via de Sparky-assistent zijn geregistreerd, of trainingen uit een opgeslagen voorinstelling of plan blijven altijd bewaard.",
@@ -1442,7 +1463,20 @@
       "hide": "Verbergen",
       "layoutErrorNotice": "Er is een fout opgetreden bij de aanpasbare lay-out, dus wordt er een eenvoudige weergave getoond. Je opgeslagen lay-out blijft behouden."
     },
-    "over": "meer dan"
+    "over": "te veel",
+    "entryPhoto": "Foto's bij dit bericht",
+    "entryPhotoAlt": "Foto bij dagboeknotitie",
+    "addEntryPhoto": "Foto toevoegen",
+    "replaceEntryPhoto": "Foto vervangen",
+    "removeEntryPhoto": "Foto verwijderen",
+    "entryPhotoOverrideHint": "Deze foto’s hebben alleen betrekking op dit bericht. Sleep ze om de volgorde te wijzigen.",
+    "entryPhotoInheritedHint": "Hier worden de afbeeldingen van het gerecht zelf weergegeven. Voeg een foto toe om deze afbeeldingen voor dit item te overschrijven.",
+    "entryImageUploadFailedTitle": "Upload mislukt",
+    "entryImageUploadFailed": "De foto bij dit bericht kon niet worden opgeslagen.",
+    "entryImageRemoveFailedTitle": "Verwijderen mislukt",
+    "entryImageRemoveFailed": "De foto bij dit bericht kon niet worden verwijderd.",
+    "inheritedPhotoAlt": "Overgenomen afbeelding {{number}}",
+    "savingPhotos": "Foto's opslaan…"
   },
   "mealBuilder": {
     "mealNamePlaceholder": "bv., Eiwitrijk Ontbijt",
@@ -1483,7 +1517,8 @@
     "invalidTotalServings": "Het totale aantal porties moet groter zijn dan nul.",
     "invalidTotalAmount": "De totale hoeveelheid moet groter zijn dan nul.",
     "invalidDefaultServingSize": "De standaardportiegrootte moet groter zijn dan nul.",
-    "perServingTab": "Per portie"
+    "perServingTab": "Per portie",
+    "mealImages": "Afbeeldingen"
   },
   "nutritionCharts": {
     "protein": "Eiwit",
@@ -1645,7 +1680,8 @@
       "deleteConfirm": "Deze vermelding van {{volume}} {{unit}} verwijderen?",
       "deletedSuccess": "Drankje verwijderd",
       "deletedError": "Het verwijderen van de drank is mislukt",
-      "editTime": "Klik om de tijd aan te passen"
+      "editTime": "Klik om de tijd aan te passen",
+      "noManualToRemove": "Hier kan alleen handmatig geregistreerd water worden verwijderd"
     },
     "copyFoodEntryDialog": {
       "title": "Kopieer Voedingsgegevens",
@@ -2416,7 +2452,22 @@
       "take": "Neem in",
       "adherence14": "14-daagse therapietrouw",
       "checklistMed": "Checklist voor medicatie",
-      "scheduled": "Gepland"
+      "scheduled": "Gepland",
+      "medicationsTitle": "De medicijnen van vandaag",
+      "medicationsDescription": "Houd geplande doseringen bij en noteer medicatie die naar behoefte wordt ingenomen",
+      "noMedicationDoses": "Vandaag zijn er geen geplande doses — noteer hieronder eventuele medicatie die naar behoefte wordt ingenomen.",
+      "supplementsTitle": "De supplementen van vandaag",
+      "supplementsDescription": "Houd geplande doses bij en noteer supplementen die naar behoefte worden ingenomen",
+      "noSupplementDoses": "Vandaag zijn er geen geplande doses — noteer hieronder eventuele supplementen die naar behoefte wordt ingenomen.",
+      "noPrnMedications": "Er zijn geen medicijnen geconfigureerd die naar behoefte of op geplande tijdstippen moeten worden ingenomen.",
+      "noPrnSupplements": "Er zijn geen supplementen geconfigureerd die naar behoefte of op geplande tijdstippen moeten worden ingenomen.",
+      "loadingMedications": "Actieve medicijnen worden geladen…",
+      "loadingSupplements": "Actieve supplementen worden geladen…",
+      "loadingChecklist": "Checklist wordt geladen…",
+      "dueToday": "Vandaag innemen",
+      "asNeeded": "Indien nodig",
+      "asNeededHint": "Tik hier om nu een dosis te registreren (geen vast schema of vandaag niet aan de beurt).",
+      "logIntake": "Inname registeren"
     },
     "insights": {
       "title": "Inzichten en tips over bijwerkingen",
@@ -2500,7 +2551,15 @@
       "wed": "Wo",
       "thu": "Do",
       "fri": "Vr",
-      "sat": "Za"
+      "sat": "Za",
+      "titleSupplements": "Supplement logboekkalender",
+      "noSupplements": "Voeg een supplement toe om de bijbehorende logboekkalender hier te bekijken.",
+      "selectSupplement": "Kies een supplement",
+      "allSupplements": "Alle supplementen",
+      "titleAll": "Logboekkalender",
+      "noEntries": "Voeg een medicijn of voedingssupplement toe om de bijbehorende logboekkalender hier te bekijken.",
+      "selectEntry": "Kies een item",
+      "allEntries": "Alles"
     },
     "reports": {
       "logTableTitle": "Tabel voor medicatieoverzicht",
@@ -2563,7 +2622,7 @@
       "title": "Orale GLP-1-nuchterheids timer",
       "instructions": "Innemen met 120–180 ml water, en vervolgens {{min}} min wachten voordat u gaat eten, koffie drinkt of andere medicijnen inneemt.",
       "start": "Tablet ingenomen - start timer",
-      "complete": "Wachten klaar — je kunt nu eten.",
+      "complete": "Vasten klaar — je kunt nu eten.",
       "waterOnly": "Alleen water"
     },
     "checkin": {
@@ -2671,7 +2730,44 @@
       "dose": "Dosis",
       "dosePerInjection": "Dosis per injectie",
       "doseUnit": "Dosiseenheid",
-      "doseFollowsStrength": "Komt overeen met kracht totdat je het wijzigt."
+      "doseFollowsStrength": "Komt overeen met kracht totdat je het wijzigt.",
+      "addSupplement": "Supplement toevoegen",
+      "editSupplement": "Supplement aanpassen",
+      "supplementNamePlaceholder": "bijv. Vitamine D3",
+      "doseForm": "Doseringsvorm",
+      "nutritionPerDose": "Voedingsstof per dosis",
+      "nutritionPerDoseHint": "Lees de voedingsstoffen op het etiket in en vul vervolgens de hoeveelheid in die één dosis bevat.",
+      "clearNutrients": "Alles verwijderen",
+      "nutrientsNeedDiaryAccess": "Voor de voedingswaarde per dosis is voor dit profiel toegang tot het voedingsdagboek vereist. Je kunt het supplement wel opslaan en het schema, de herinneringen en de doses bijhouden.",
+      "addNutrient": "Voedingsstof toevoegen",
+      "searchNutrients": "Voedingsstof zoeken…",
+      "noNutrientMatches": "Geen resultaten gevonden. Maak er een hieronder.",
+      "nutrientGroupCatalog": "Vitaminen en mineralen",
+      "nutrientGroupCustom": "Je aangepaste voedingsstoffen",
+      "createNutrient": "Niet in de lijst? Maak je eigen voedingsstof aan",
+      "nutrientNamePlaceholder": "bijv. Ashwagandha",
+      "nutrientUnit": "Eenheid",
+      "nutrientExists": "Deze voedingsstof bestaat al — kies het uit de lijst.",
+      "createAndAddShort": "Toevoegen",
+      "multivitaminPanel": "Multivitamine paneel",
+      "nutrientCount_one": "{{count}} voedingstof",
+      "nutrientCount_other": "{{count}} voedingstoffen",
+      "empty": "Nog geen medicijnen. Voeg je eerste medicijn toe om te beginnen.",
+      "emptyMeds": "Nog geen medicijnen. Voeg je eerste medicijn toe om te beginnen.",
+      "emptySupplements": "Nog geen supplement. Voeg je eerste supplement toe om te beginnen."
+    },
+    "subtype": {
+      "all": "Alles",
+      "meds": "Medicijnen",
+      "supplements": "Supplementen"
+    },
+    "forms": {
+      "tablet": "Tablet",
+      "capsule": "Capsule",
+      "softgel": "Softgel",
+      "gummy": "Gummy",
+      "powder": "Poeder",
+      "liquid": "Drank"
     }
   },
   "chat": {
@@ -2683,7 +2779,7 @@
       "description": "Met minder tools kunnen kleinere lokale modellen betrouwbaarder reageren.",
       "presetFull": "Vol",
       "emptyHint": "Er zijn geen categorieën geselecteerd — de chatbot gebruikt zijn standaardtoolset.",
-      "food": "Eten & water",
+      "food": "Voeding & water",
       "exercise": "Oefening",
       "checkin": "Lichaam & check-ins",
       "goals": "Doelen",
@@ -2738,7 +2834,8 @@
     "showAllRows": "Alle rijen weergeven ({{count}})"
   },
   "foods": {
-    "providerVerified": "Gecertificeerde voedingsmiddelen"
+    "providerVerified": "Gecertificeerde voedingsmiddelen",
+    "removeNutrient": "Verwijder: {{nutrient}}"
   },
   "sync": {
     "syncAll": "Synchroniseer alle actieve databases",
@@ -3057,5 +3154,48 @@
     "none": "Geen",
     "confirmMapping": "Bevestig",
     "cancel": "Annuleren"
+  },
+  "workoutLaps": {
+    "title": "Trainingsschema: intervallen en ronden",
+    "lapsCount": "{{count}} ronden",
+    "lap": "Ronde",
+    "distance": "Afstand",
+    "time": "Tijd",
+    "pace": "Tempo (/{{unit}})",
+    "avgMaxHr": "Gem / Max hartslag",
+    "resp": "Ademhaling (per min)",
+    "cadence": "Ritme",
+    "power": "Vermogen"
+  },
+  "dailyHealthMetrics": {
+    "title": "Dagelijks overzicht van gezondheidsgegevens (wearable)",
+    "bodyBattery": "Lichaamsbatterij",
+    "peak": "piek",
+    "low": "laag: {{val}}",
+    "avgStress": "Gem stress",
+    "max": "Max: {{val}}",
+    "restingHr": "Rusthartslag",
+    "recovery": "Herstel: {{val}}",
+    "vo2Max": "VO2 Max",
+    "fitnessAge": "Metabole leeftijd: {{val}}",
+    "readiness": "Paraatheid",
+    "recHours": "Opname: {{val}}"
+  },
+  "food": {
+    "imagesLabel": "Afbeeldingen",
+    "imagesLimitReached": "Het maximum van {{count}} afbeeldingen is bereikt.",
+    "imagePreviewAlt": "Afbeelding van eten {{number}}",
+    "newImagePreviewAlt": "Nieuwe afbeelding {{number}}",
+    "removeImage": "Afbeelding verwijderen",
+    "viewImages": "Afbeeldingen bekijken",
+    "imageViewer": "Afbeeldingsviewer",
+    "previousImage": "Vorige afbeelding",
+    "nextImage": "Volgende afbeelding",
+    "playSlideshow": "Diavoorstelling afspelen",
+    "pauseSlideshow": "Diavoorstelling pauzeren",
+    "mainImage": "Hoofdafbeelding",
+    "moveImageEarlier": "Afbeelding naar links verplaatsen",
+    "moveImageLater": "Afbeelding naar rechts verplaatsen",
+    "imagesReorderHint": "Sleep om de volgorde te wijzigen. De eerste afbeelding wordt als voorbeeld gebruikt."
   }
 }
