@@ -52,6 +52,54 @@ It stores and manages health data on infrastructure you control, without relying
 - Light and dark themes
 - OIDC, TOTP, Passkey, MFA etc.
 
+## How SparkyFitness Compares
+
+Most apps do one thing. Covering what SparkyFitness covers means subscribing to several of them — and still getting no single report across them.
+
+> ### 💸 What the same coverage costs commercially, per person, per year
+>
+> | You want to track | Commercial cost |
+> | --- | --- |
+> | Nutrition only | $39.99 – $99.99 |
+> | \+ strength training | $63.98 – $129.98 |
+> | \+ fasting | $83.98 – $199.97 |
+> | \+ cycle, TTC & pregnancy | **$143.97 – $259.96** |
+> | **SparkyFitness, all of it** | **$0** |
+>
+> And those are *per-person* prices — a family of four wanting just nutrition and strength tracking is looking at **$256–$520 a year, every year**. SparkyFitness stays free however many people use it: one instance covers your whole household, with no subscription and no per-user fees. You just need somewhere to run it — a home server, a NAS, or a small VPS.
+>
+> <sub>Full annual list prices from each vendor's US App Store listing, 14 Aug 2026. Real spending is often lower — promotions are common, some apps sell lifetime unlocks, and Cronometer's free tier is usable if seven days of history is enough. See the [full breakdown](https://codewithcj.github.io/SparkyFitness/features/comparison).</sub>
+
+| | **SparkyFitness** | wger | MyFitnessPal | Cronometer | Hevy | Zero | Flo | Garmin Connect | Google Health |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Self-hosted, your data stays yours | ⭐ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| No subscription, no ads | ⭐ | ✅ | ❌ | 🟡 | 🟡 | ❌ | ❌ | ✅ | 🟡 |
+| Works without buying their hardware | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | 🟡 |
+| Food logging with barcode & micronutrients | ✅ | ✅ | 💰 | ⭐ | ❌ | 🟡 | ❌ | ❌ | ❌ |
+| Custom date-range reports & trends | ⭐ free | 🟡 | 💰 | 💰 | 💰 | 💰 | 💰 | ✅ | 💰 |
+| Custom nutrients, goal presets, weekly goals | ⭐ | 🟡 | 💰 | 🟡 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Strength training, PRs & GPS route maps | ✅ | ✅ | 🟡 | 🟡 | ⭐ | ❌ | ❌ | ⭐ | ✅ |
+| Imports sleep stages, HRV & blood glucose\* | ✅ | ❌ | 🟡 | ✅ | ❌ | 🟡 | 🟡 | ⭐ | ✅ |
+| Fasting tracking | ✅ | ❌ | ❌ | ✅ | ❌ | ⭐ | ❌ | ❌ | ❌ |
+| Cycle, TTC & pregnancy tracking | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ⭐ | 🟡 | ✅ |
+| Medication & GLP-1 tracking | ⭐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | 🟡 |
+| Wearable & health-platform sync | ⭐ 8+ services | ❌ | ✅ | ⭐ | ✅ | 🟡 | 🟡 | 🟡 | ✅ |
+| Family sharing with granular permissions | ⭐ 7 permissions | ❌ | ❌ | 💰 | ❌ | ❌ | ❌ | 🟡 | 🟡 |
+| SSO (OIDC), passkeys, TOTP | ✅ | ✅ | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 |
+| CSV import & free data export | ✅ | 🟡 | 💰 | ✅ | ✅ | 🟡 | 🟡 | 🟡 | ❌ |
+| Offline logging on mobile | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| MCP server + bring your own LLM | ⭐ | 🟡 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Social feed & challenges | ❌ | ❌ | ✅ | 🟡 | ⭐ | 🟡 | 🟡 | ⭐ | 🟡 |
+| Licence | Source-available, **not** OSI open source | AGPL-3.0 | Proprietary | Proprietary | Proprietary | Proprietary | Proprietary | Proprietary | Proprietary |
+
+⭐ standout &nbsp;•&nbsp; ✅ supported &nbsp;•&nbsp; 🟡 partial &nbsp;•&nbsp; 💰 paid tier only &nbsp;•&nbsp; ❌ not supported
+
+<sub>\* SparkyFitness stores, analyses and charts these signals — it imports them from your watch, phone or meter rather than measuring them itself.</sub>
+
+> **This comparison is a snapshot, not gospel.** It reflects our best understanding as of 14 Aug 2026, checked against official docs, upstream repos, release notes and App Store listings. Some of it is probably already out of date, some is opinion rather than measurement, and we may be blind to our own weak spots — it is, after all, written by the project being compared. If any cell is wrong, outdated or unfair to another project, please [open an issue](https://github.com/CodeWithCJ/SparkyFitness/issues). Corrections that make SparkyFitness look *worse* are just as welcome.
+
+**[See the full comparison →](https://codewithcj.github.io/SparkyFitness/features/comparison)** — 17 apps across self-hosted, nutrition, specialist and device-ecosystem categories, plus an honest look at where the other apps are better.
+
 ## Health & Device Integrations
 
 SparkyFitness can sync data from multiple health and fitness platforms:
@@ -67,7 +115,7 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 - **OpenFoodFacts**
 - **USDA**
 - **Fatsecret**
-- **Nutritioninx**
+- **Nutritionix**
 - **Mealie**
 - **Tandoor**
 - **Strava** (partially tested)

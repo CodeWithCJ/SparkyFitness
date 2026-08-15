@@ -19,7 +19,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 - OpenFoodFacts
 - USDA
 - Fatsecret
-- Nutritioninx
+- Nutritionix
 - Mealie
 - Tandori
 - Strava (partially tested)
