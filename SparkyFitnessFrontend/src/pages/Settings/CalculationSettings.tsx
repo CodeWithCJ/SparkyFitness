@@ -831,7 +831,7 @@ const CalculationSettings = () => {
                 </Select>
               </div>
               {calorieGoalAdjustmentMode === 'adaptive' && (
-                <p className="text-xs text-muted-foreground italic mt-[-4px]">
+                <p className="text-sm text-muted-foreground italic mt-[-4px]">
                   💡{' '}
                   {t(
                     'settings.calorieGoalAdjustment.adaptiveActivityHint',
@@ -960,7 +960,7 @@ const CalculationSettings = () => {
             </div>
           </div>
 
-          <div className="pt-2 text-xs text-blue-700/70 dark:text-blue-300/60 italic border-t border-blue-100 dark:border-blue-800">
+          <div className="pt-2 text-sm text-blue-700/70 dark:text-blue-300/60 italic border-t border-blue-100 dark:border-blue-800">
             {calorieGoalAdjustmentMode === 'dynamic'
               ? t(
                   'settings.calculationExplanation.dynamicFootnote',
@@ -1122,7 +1122,7 @@ const CalculationSettings = () => {
               />
             </div>
             <span className="text-sm text-muted-foreground">%</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               {t(
                 'settings.goalMode.customPercentageHint',
                 'Positive adds calories (surplus), negative cuts them (deficit).'
@@ -1134,8 +1134,8 @@ const CalculationSettings = () => {
         {/* Live Preview & Diagnostics Callouts */}
         <div className="space-y-3">
           {/* Live Preview Panel */}
-          <div className="p-4 bg-muted/30 dark:bg-muted/5 border border-border rounded-xl space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="p-4 bg-muted/50 dark:bg-muted/30 border border-border rounded-xl space-y-2">
+            <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               {t('settings.goalMode.livePreview', 'Live Preview Calculation')}
             </p>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
@@ -1213,7 +1213,7 @@ const CalculationSettings = () => {
 
             {/* Measured adaptive TDEE — independent of goal mode and method */}
             {measuredAdaptiveTdee != null && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {t(
                   'settings.goalMode.measuredAdaptiveTdee',
                   'Measured Adaptive TDEE'
@@ -1234,7 +1234,7 @@ const CalculationSettings = () => {
 
             {/* Projected Weekly Loss Rate */}
             {goalMode !== 'maintain' && (
-              <div className="pt-2 border-t border-border/40 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="pt-2 border-t border-border/60 text-sm flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">
                     {previewResult.isGainGoal
@@ -1252,7 +1252,7 @@ const CalculationSettings = () => {
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">Rate:</span>
                   <span
-                    className={`font-semibold px-2 py-0.5 rounded-full text-[11px] ${
+                    className={`font-semibold px-2 py-0.5 rounded-full text-xs ${
                       previewResult.safetyZone === 'green'
                         ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300'
                         : previewResult.safetyZone === 'yellow'
@@ -1268,7 +1268,7 @@ const CalculationSettings = () => {
             )}
 
             {/* Detailed Calculation Breakdown */}
-            <div className="pt-3 border-t border-border/40 space-y-2.5">
+            <div className="pt-3 border-t border-border/60 space-y-2.5">
               <CalorieTargetBreakdown
                 previewResult={previewResult}
                 adaptiveTdeeData={adaptiveTdeeData}
@@ -1302,12 +1302,12 @@ const CalculationSettings = () => {
                 {coachingAdvice.icon}
                 <span>{coachingAdvice.title}</span>
               </div>
-              <p className="text-xs leading-relaxed opacity-95">
+              <p className="text-sm leading-relaxed opacity-95">
                 {coachingAdvice.text}
               </p>
               {goalModeCalculationMethod === 'adaptive' &&
                 previewResult.insufficientHistory && (
-                  <p className="mt-2 text-xs opacity-80 border-t border-current/20 pt-2 flex items-start gap-1">
+                  <p className="mt-2 text-sm opacity-80 border-t border-current/20 pt-2 flex items-start gap-1">
                     <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>
                       Note: This target is currently based on an estimated
@@ -1331,7 +1331,7 @@ const CalculationSettings = () => {
                   <p className="font-semibold">
                     Safety Alert: Calorie target below minimum metabolism
                   </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-400/80 leading-relaxed">
+                  <p className="text-sm text-amber-700 dark:text-amber-400/80 leading-relaxed">
                     Your calorie target is below your estimated minimum
                     metabolism (RMR). This may not be sustainable long-term.
                     Consider selecting a less aggressive Goal Mode or switching
@@ -1351,7 +1351,7 @@ const CalculationSettings = () => {
                   <p className="font-semibold">
                     Critical Health Alert: Calorie target below absolute floor
                   </p>
-                  <p className="text-xs text-red-700 dark:text-red-400/80 leading-relaxed">
+                  <p className="text-sm text-red-700 dark:text-red-400/80 leading-relaxed">
                     Your calorie target is below the clinical absolute safety
                     floor of{' '}
                     {energyUnit === 'kcal'
@@ -1372,7 +1372,7 @@ const CalculationSettings = () => {
                 <p className="font-semibold">
                   Target raised to your safety minimum
                 </p>
-                <p className="text-xs text-amber-700 dark:text-amber-400/80 leading-relaxed">
+                <p className="text-sm text-amber-700 dark:text-amber-400/80 leading-relaxed">
                   The deficit you selected works out to{' '}
                   {Math.round(
                     convertEnergy(previewResult.target, 'kcal', energyUnit)
@@ -1399,7 +1399,7 @@ const CalculationSettings = () => {
                     </>
                   )}
                 </p>
-                <p className="text-xs text-amber-700/80 dark:text-amber-400/70 leading-relaxed">
+                <p className="text-sm text-amber-700/80 dark:text-amber-400/70 leading-relaxed">
                   The Manual calculation method does not apply this floor — it
                   warns instead of overriding.
                 </p>
@@ -1415,7 +1415,7 @@ const CalculationSettings = () => {
                 {previewResult.isGainGoal ? (
                   <>
                     <p className="font-semibold">Unsafe Weight Gain Rate</p>
-                    <p className="text-xs text-red-700 dark:text-red-400/80 leading-relaxed">
+                    <p className="text-sm text-red-700 dark:text-red-400/80 leading-relaxed">
                       Gaining more than 0.5% of body weight per week means most
                       of the added weight will be fat rather than muscle. A
                       slower surplus builds a similar amount of muscle with far
@@ -1425,7 +1425,7 @@ const CalculationSettings = () => {
                 ) : (
                   <>
                     <p className="font-semibold">Unsafe Weight Loss Rate</p>
-                    <p className="text-xs text-red-700 dark:text-red-400/80 leading-relaxed">
+                    <p className="text-sm text-red-700 dark:text-red-400/80 leading-relaxed">
                       Losing more than 1.5% of body weight per week is
                       considered excessive. This rate dramatically increases
                       risks of severe muscle loss, lethargy, hormonal
@@ -1444,16 +1444,16 @@ const CalculationSettings = () => {
               <div className="p-4 bg-blue-50/50 dark:bg-blue-950/15 border border-blue-100 dark:border-blue-900/50 rounded-xl flex gap-3 text-sm text-blue-800 dark:text-blue-300">
                 <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="font-semibold text-xs">
+                  <p className="font-semibold text-sm">
                     Awaiting Adaptive TDEE Calibration
                   </p>
-                  <p className="text-xs text-blue-700/90 dark:text-blue-400/80 leading-relaxed">
+                  <p className="text-sm text-blue-700/90 dark:text-blue-400/80 leading-relaxed">
                     Sparky's Adaptive TDEE engine requires at least 14 days of
                     consistent tracking to calculate your metabolism accurately
                     (currently using fallback estimates). To speed up
                     calibration:
                   </p>
-                  <ul className="list-disc pl-4 text-xs text-blue-700/80 dark:text-blue-400/70 space-y-0.5 mt-1">
+                  <ul className="list-disc pl-4 text-sm text-blue-700/80 dark:text-blue-400/70 space-y-0.5 mt-1">
                     <li>Log weight at least 3-4 times per week.</li>
                     <li>Log food intake daily (&gt;200 kcal/day).</li>
                   </ul>
@@ -1598,7 +1598,7 @@ const CalculationSettings = () => {
               Recommended limit for a custom "Added Sugars" nutrient tracked as
               a maximum goal (WHO or AHA guidelines).
             </p>
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
               Requires a custom nutrient named "Added Sugar(s)" (Settings →
               Custom Nutrients), set to a Maximum goal direction — this
               algorithm has no effect until one exists.
