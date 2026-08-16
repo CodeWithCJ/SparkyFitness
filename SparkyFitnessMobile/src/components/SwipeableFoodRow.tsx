@@ -109,7 +109,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
             <FoodThumbnail
               image={entryImage}
               getImageSource={getImageSource}
-              size={32}
+              size={56}
               showFallback={false}
               style={{ marginRight: 8 }}
               onPress={() => openLightbox(diaryEntryImages(entry), 0, name)}

@@ -106,11 +106,13 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
       >
         <Pressable className="py-2.5 bg-surface" onPress={onPress} onLongPress={handleLongPress}>
           <View className="flex-row items-center">
-            <View className="mr-3 items-center justify-center" style={{ width: 36, height: 36 }}>
+            {/* Kept in step with the food row's thumbnail so the two diary
+                row types line up rather than differing by a few pixels. */}
+            <View className="mr-3 items-center justify-center" style={{ width: 56, height: 56 }}>
               <SafeImage
                 source={imageSource}
-                style={{ width: 36, height: 36, borderRadius: 8 }}
-                fallback={<Icon name={iconName} size={20} color={accentPrimary} />}
+                style={{ width: 56, height: 56, borderRadius: 8 }}
+                fallback={<Icon name={iconName} size={28} color={accentPrimary} />}
               />
             </View>
             <View className="flex-1">
