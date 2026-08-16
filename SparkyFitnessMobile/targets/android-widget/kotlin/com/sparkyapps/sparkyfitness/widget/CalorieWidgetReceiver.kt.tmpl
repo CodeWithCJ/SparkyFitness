@@ -12,6 +12,7 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.updateAll
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -48,6 +49,11 @@ class CalorieWidgetReceiver : GlanceAppWidgetReceiver() {
                         WidgetLocale.bumpLocaleRenderRevision(context, id)
                     }
                     glanceAppWidget.updateAll(context)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // A system broadcast must not crash the receiver; the next
+                    // locale/snapshot refresh can retry the invalidation.
                 } finally {
                     pending.finish()
                 }

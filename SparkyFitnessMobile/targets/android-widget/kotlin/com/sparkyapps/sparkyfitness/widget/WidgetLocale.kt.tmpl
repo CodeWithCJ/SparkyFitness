@@ -124,7 +124,10 @@ object WidgetLocale {
             packageName == context.packageName && intent.hasExtra(Intent.EXTRA_LOCALE_LIST)
 
         val effective = if (hasAppLocaleExtras) {
-            val appLocales = intent.getParcelableExtra(Intent.EXTRA_LOCALE_LIST) as? LocaleList
+            val appLocales = intent.getParcelableExtra(
+                Intent.EXTRA_LOCALE_LIST,
+                LocaleList::class.java,
+            )
             if (appLocales != null && !appLocales.isEmpty) {
                 languageFromLocaleList(appLocales)
             } else {
@@ -147,11 +150,6 @@ object WidgetLocale {
             editor.remove(KEY_EFFECTIVE_RENDER_LOCALE).commit()
             false
         }
-    }
-
-    /** Legacy/platform fallback used by rendering and non-app broadcasts. */
-    fun refreshEffectiveRenderLocaleFromPlatform(context: Context): Boolean {
-        return refreshEffectiveRenderLocaleFromBroadcast(context, Intent())
     }
 
     /** Reads only the API 33+ synchronized rendering cache. */

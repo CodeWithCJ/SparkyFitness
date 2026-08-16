@@ -27,13 +27,17 @@ function readWidgetStringResourcesPl(): { name: string; value: string }[] {
 
 function extractStringResources(xml: string): { name: string; value: string }[] {
   const result: { name: string; value: string }[] = [];
-  const regex = /<string\s+name="([^"]+)">([^<]*)<\/string>/g;
+  const regex = /<string\b[^>]*\bname="([^"]+)"[^>]*>([^<]*)<\/string>/g;
   let match: RegExpExecArray | null;
   while ((match = regex.exec(xml)) !== null) {
     result.push({
       name: match[1],
       value: match[2].replace(/\\'/g, "'").replace(/&apos;/g, "'"),
     });
+  }
+  const declaredCount = (xml.match(/<string\b/g) ?? []).length;
+  if (result.length !== declaredCount) {
+    throw new Error(`Widget resource parser matched ${result.length} of ${declaredCount} string declarations`);
   }
   return result;
 }
@@ -290,7 +294,8 @@ describe('Android widget localization contract', () => {
       expect(moduleSrc).toMatch(/getGlanceIds\(CalorieWidget::class\.java\)\.forEach/);
       expect(moduleSrc).toMatch(/getGlanceIds\(MacroWidget::class\.java\)\.forEach/);
       expect(moduleSrc).not.toMatch(/getGlanceIds\([^)]*\)\[0\]/);
-      expect(moduleSrc).toMatch(/catch \(ignored: Exception\)/);
+      expect(moduleSrc).toMatch(/catch \(e: CancellationException\)/);
+      expect(moduleSrc).toMatch(/var firstFailure: Exception\?/);
     });
 
     it('keeps the midnight refresh mechanism with distinct request codes', () => {
@@ -482,6 +487,9 @@ describe('Android widget localization contract', () => {
       expect(prepareIndex).toBeGreaterThan(-1);
       expect(bumpIndex).toBeGreaterThan(prepareIndex);
       expect(resolveIndex).toBeGreaterThan(bumpIndex);
+      expect(moduleSrc).toMatch(/var firstFailure: Exception\?/);
+      expect(moduleSrc).toMatch(/RuntimeException\([^\n]+, firstFailure\)/);
+      expect(moduleSrc).toMatch(/catch \(e: CancellationException\)\s*\{\s*throw e/);
 
       const bridge = fs.readFileSync(
         path.join(__dirname, '../../src/services/CalorieWidgetBridge.ts'),
@@ -531,6 +539,10 @@ describe('Android widget localization contract', () => {
         expect(bumpIndex).toBeGreaterThan(refreshIndex);
         expect(updateIndex).toBeGreaterThan(bumpIndex);
         expect(src).toMatch(/GlanceAppWidgetManager\(context\)/);
+        expect(src).toMatch(/catch \(e: CancellationException\)/);
+        expect(src).toMatch(/throw e/);
+        expect(src).toMatch(/catch \(e: Exception\)/);
+        expect(src).toMatch(/pending.finish\(\)/);
       }
 
       const locale = fs.readFileSync(
@@ -539,18 +551,23 @@ describe('Android widget localization contract', () => {
       );
       expect(locale).toMatch(/Intent\.EXTRA_PACKAGE_NAME/);
       expect(locale).toMatch(/Intent\.EXTRA_LOCALE_LIST/);
-      expect(locale).toMatch(/getParcelableExtra\(Intent\.EXTRA_LOCALE_LIST\)/);
+      expect(locale).toMatch(/getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java,?\s*\)/);
       expect(locale).toMatch(/systemPlatformLanguage\(context\)/);
       expect(locale).toMatch(/refreshEffectiveRenderLocaleFromBroadcast/);
+      expect(locale).not.toMatch(/refreshEffectiveRenderLocaleFromPlatform/);
       // The app-locale payload is the primary path. A stale
       // applicationLocales readback may only remain in the non-app fallback.
       const broadcastStart = locale.indexOf('fun refreshEffectiveRenderLocaleFromBroadcast');
       const broadcastEnd = locale.indexOf('/** Reads only the API 33+ synchronized rendering cache. */', broadcastStart);
       const broadcastBody = locale.slice(broadcastStart, broadcastEnd);
-      const appPayloadBranch = broadcastBody.slice(
-        broadcastBody.indexOf('val effective = if (hasAppLocaleExtras) {'),
-        broadcastBody.indexOf('} else {', broadcastBody.indexOf('val effective = if (hasAppLocaleExtras) {')),
+      const appBranchStart = broadcastBody.indexOf('val effective = if (hasAppLocaleExtras) {');
+      const appBranchEnd = broadcastBody.indexOf(
+        '        } else {\n            val contextLocales',
+        appBranchStart,
       );
+      const appPayloadBranch = broadcastBody.slice(appBranchStart, appBranchEnd);
+      expect(appBranchStart).toBeGreaterThan(-1);
+      expect(appBranchEnd).toBeGreaterThan(appBranchStart);
       expect(appPayloadBranch).not.toMatch(/currentPlatformLanguage\(context\)/);
       expect(appPayloadBranch).toMatch(/appLocales != null && !appLocales\.isEmpty/);
       expect(appPayloadBranch).toMatch(/languageFromLocaleList\(appLocales\)/);
