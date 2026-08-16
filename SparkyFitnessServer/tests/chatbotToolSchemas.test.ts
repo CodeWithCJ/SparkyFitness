@@ -442,6 +442,58 @@ describe('strict discriminated-union validation schemas', () => {
     ).toBe(true);
   });
 
+  it('manageFoodSchema accepts food_name in place of entry_id for delete_entry and update_entry', () => {
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'delete_entry',
+        food_name: 'Oatmeal',
+        entry_date: '2026-06-10',
+      }).success
+    ).toBe(true);
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'update_entry',
+        food_name: 'Oatmeal',
+        meal_type: 'dinner',
+      }).success
+    ).toBe(true);
+  });
+
+  it('manageFoodSchema rejects food_name resolution for meal entries (food entries only)', () => {
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'delete_entry',
+        food_name: 'Oatmeal',
+        entry_type: 'food_entry_meal',
+      }).success
+    ).toBe(false);
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'update_entry',
+        food_name: 'Oatmeal',
+        entry_type: 'food_entry_meal',
+        quantity: 2,
+      }).success
+    ).toBe(false);
+    expect(
+      manageFoodSchema.safeParse({
+        action: 'delete_entry',
+        entry_id: '33333333-3333-4333-8333-333333333333',
+        entry_type: 'food_entry_meal',
+      }).success
+    ).toBe(true);
+  });
+
+  it('manageFoodSchema still requires some entry identifier for delete_entry and update_entry', () => {
+    expect(manageFoodSchema.safeParse({ action: 'delete_entry' }).success).toBe(
+      false
+    );
+    expect(
+      manageFoodSchema.safeParse({ action: 'update_entry', quantity: 2 })
+        .success
+    ).toBe(false);
+  });
+
   it('manageFoodSchema keeps meal_type as a built-in enum fallback (custom types go through meal_type_id)', () => {
     // The legacy fallback accepts only the built-in slots...
     expect(

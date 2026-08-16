@@ -4,7 +4,11 @@ import exerciseRepository from '../../models/exercise.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import { log } from '../../config/logging.js';
-import { todayInZone, instantToDay } from '@workspace/shared';
+import {
+  todayInZone,
+  instantToDay,
+  utcOffsetMinutesFromIsoString,
+} from '@workspace/shared';
 import {
   parseDurationToSeconds,
   googleTimeToIso,
@@ -616,12 +620,11 @@ async function processGoogleSleep(
     const interval = sleepPayload.interval || {};
     const stages = sleepPayload.stages || [];
 
-    const startIso = googleTimeToIso(
-      (interval.startTime ?? point.startTime) as
-        | string
-        | Record<string, unknown>
-        | undefined
-    );
+    const rawStartTime = (interval.startTime ?? point.startTime) as
+      | string
+      | Record<string, unknown>
+      | undefined;
+    const startIso = googleTimeToIso(rawStartTime);
     const endIso = googleTimeToIso(
       (interval.endTime ?? point.endTime) as
         | string
@@ -629,6 +632,14 @@ async function processGoogleSleep(
         | undefined
     );
     if (!startIso) continue;
+
+    // Only the string form can carry an explicit ±HH:MM recording-zone
+    // suffix; the {date,time} object form and Z/naive strings make no zone
+    // claim, so those rows fall back to the profile timezone at read time.
+    const recordUtcOffsetMinutes =
+      typeof rawStartTime === 'string'
+        ? utcOffsetMinutesFromIsoString(rawStartTime)
+        : null;
 
     // Anchor to the wake-up day, matching how Google Health / Fitbit file a
     // sleep session (it belongs to the day the session ends, not the day you
@@ -686,6 +697,9 @@ async function processGoogleSleep(
       entry_date: sleepDate,
       bedtime: startIso,
       wake_time: endIso,
+      ...(recordUtcOffsetMinutes !== null
+        ? { record_utc_offset_minutes: recordUtcOffsetMinutes }
+        : {}),
       duration_in_seconds: durationSec,
       time_asleep_in_seconds: minutesAsleep * 60,
       sleep_score: efficiency,

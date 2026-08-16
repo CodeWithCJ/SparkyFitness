@@ -1,7 +1,73 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mapFatSecretSearchItem } from '../integrations/fatsecret/fatsecretService.js';
 import { mapFatSecretFood } from '../integrations/fatsecret/fatsecretService.js';
 import { assertNoFatSecretApiError } from '../integrations/fatsecret/fatsecretService.js';
+import { getFatSecretAccessToken } from '../integrations/fatsecret/fatsecretService.js';
+
+describe('getFatSecretAccessToken caching', () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  function tokenResponse(token: string) {
+    return new Response(
+      JSON.stringify({ access_token: token, expires_in: 86400 }),
+      { status: 200, headers: { 'content-type': 'application/json' } }
+    );
+  }
+
+  // The cache was keyed on scope alone, so a second tenant with its own
+  // FatSecret app reused the first tenant's token and silently acted as them.
+  it('does not share a cached token between different client ids', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse('token-tenant-a'))
+      .mockResolvedValueOnce(tokenResponse('token-tenant-b'));
+    globalThis.fetch = fetchMock;
+
+    const a = await getFatSecretAccessToken('client-a', 'secret-a', 'basic');
+    const b = await getFatSecretAccessToken('client-b', 'secret-b', 'basic');
+
+    expect(a).toBe('token-tenant-a');
+    expect(b).toBe('token-tenant-b');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('reuses the cached token for the same client id and scope', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(tokenResponse('token-cached'));
+    globalThis.fetch = fetchMock;
+
+    await getFatSecretAccessToken('client-cache', 'secret', 'basic');
+    const second = await getFatSecretAccessToken(
+      'client-cache',
+      'secret',
+      'basic'
+    );
+
+    expect(second).toBe('token-cached');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not serve a basic-scope token for a premier request', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse('token-basic'))
+      .mockResolvedValueOnce(tokenResponse('token-premier'));
+    globalThis.fetch = fetchMock;
+
+    const basic = await getFatSecretAccessToken('client-s', 'secret', 'basic');
+    const premier = await getFatSecretAccessToken(
+      'client-s',
+      'secret',
+      'premier'
+    );
+
+    expect(basic).toBe('token-basic');
+    expect(premier).toBe('token-premier');
+  });
+});
+
 describe('FatSecret Service Mapping', () => {
   describe('assertNoFatSecretApiError', () => {
     it('throws a descriptive error for the IP restriction envelope', () => {

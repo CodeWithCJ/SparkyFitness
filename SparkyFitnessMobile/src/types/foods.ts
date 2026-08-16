@@ -38,6 +38,10 @@ export interface FoodItem {
   is_quick_food?: boolean;
   // Present only on items returned by the favorites endpoint.
   favorited_at?: string;
+  // Ordered image paths; index 0 is the thumbnail. Locally uploaded images are
+  // server-relative (`/uploads/foods/<id>/...`); provider images that could not
+  // be downloaded stay absolute and are hotlinked.
+  images?: string[] | null;
   default_variant: FoodDefaultVariant;
 }
 

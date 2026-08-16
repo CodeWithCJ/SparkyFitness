@@ -13,7 +13,8 @@ import { resolveCollapsedFoodEntries } from '../utils/loggedMealCollapse';
 import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
-import type { ExerciseSessionResponse, CalorieBalance } from '@workspace/shared';
+import type { ExerciseSessionResponse, CalorieBalance, SupplementTotals } from '@workspace/shared';
+import { resolveSupplementTotals } from '@workspace/shared';
 import type { WaterIntake } from '../types/measurements';
 
 import { useRefetchOnFocus } from './useRefetchOnFocus';
@@ -26,6 +27,7 @@ export interface DailySummaryRawData {
   waterIntake: WaterIntake;
   stepCalories: number;
   calorieBalance?: CalorieBalance;
+  supplementTotals?: SupplementTotals;
 }
 
 interface UseDailySummaryOptions {
@@ -47,14 +49,20 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         waterIntake: { water_ml: data.waterIntake },
         stepCalories: data.stepCalories ?? 0,
         calorieBalance: data.calorieBalance,
+        supplementTotals: data.supplementTotals,
         adjustedGoals: data.adjustedGoals ?? null,
       };
     },
     select: (raw): DailySummary => {
-      const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories, calorieBalance, adjustedGoals } = raw;
+      const { goals, foodEntries, exerciseEntries, waterIntake, stepCalories, calorieBalance, supplementTotals, adjustedGoals } = raw;
 
       const calorieGoal = adjustedGoals?.calories ?? goals.calories ?? 0;
-      const caloriesConsumed = calculateCaloriesConsumed(foodEntries);
+      // Logged supplement doses are intake, and the server already counts them in
+      // calorieBalance.eaten, which the dashboard ring renders. Deriving everything else from
+      // food entries alone left the ring disagreeing with the macro pills beneath it, and
+      // with the nutrition details screen, which reads caloriesConsumed.
+      const supplements = resolveSupplementTotals(supplementTotals);
+      const caloriesConsumed = calculateCaloriesConsumed(foodEntries) + supplements.calories;
       const exerciseStats = calculateExerciseStats(exerciseEntries);
       const { caloriesBurned, activeCalories, otherExerciseCalories } = exerciseStats;
       const exerciseMinutes = exerciseStats.durationMinutes;
@@ -92,24 +100,25 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         netCalories,
         remainingCalories,
         protein: {
-          consumed: calculateProtein(foodEntries),
+          consumed: calculateProtein(foodEntries) + supplements.protein,
           goal: adjustedGoals?.protein ?? goals.protein ?? 0,
         },
         carbs: {
-          consumed: calculateCarbs(foodEntries),
+          consumed: calculateCarbs(foodEntries) + supplements.carbs,
           goal: adjustedGoals?.carbs ?? goals.carbs ?? 0,
         },
         fat: {
-          consumed: calculateFat(foodEntries),
+          consumed: calculateFat(foodEntries) + supplements.fat,
           goal: adjustedGoals?.fat ?? goals.fat ?? 0,
         },
         fiber: {
-          consumed: calculateFiber(foodEntries),
+          consumed: calculateFiber(foodEntries) + supplements.dietary_fiber,
           goal: goals.dietary_fiber || 0,
         },
         waterConsumed: waterIntake.water_ml || 0,
         waterGoal: goals.water_goal_ml ?? 2500,
         foodEntries,
+        supplementTotals: supplements,
         exerciseEntries,
         calorieBalance: resolvedCalorieBalance,
         goals,

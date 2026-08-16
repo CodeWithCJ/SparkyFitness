@@ -74,29 +74,61 @@ describe('apiKeyRoutes: credentials target the authenticated actor, not the swit
     // The vulnerability: a medications (or any) delegate switching context and
     // calling this endpoint would otherwise mint a full-access key owned by the
     // victim, enabling account takeover beyond the delegated scope.
-    expect(arg.userId).toBe(DELEGATE_ID);
-    expect(arg.userId).not.toBe(VICTIM_ID);
+    //
+    // `userId` is a real (server-only) field on createApiKeyBodySchema, so
+    // this binding is honoured — it just has to sit under `body`.
+    expect(arg.body.userId).toBe(DELEGATE_ID);
+    expect(arg.body.userId).not.toBe(VICTIM_ID);
   });
 
-  it('delete api-key targets the delegate, not the switched-to victim', async () => {
+  it('delete api-key names the key under body.keyId and never the victim', async () => {
     mockDeleteApiKey.mockResolvedValue(undefined);
 
     const res = await request(app).delete('/api/identity/user/api-key/key-1');
 
     expect(res.status).toBe(200);
     expect(mockDeleteApiKey).toHaveBeenCalledTimes(1);
-    expect(mockDeleteApiKey.mock.calls[0][0].userId).toBe(DELEGATE_ID);
-    expect(mockDeleteApiKey.mock.calls[0][0].userId).not.toBe(VICTIM_ID);
+    const arg = mockDeleteApiKey.mock.calls[0][0];
+    // deleteApiKeyBodySchema is { configId?, keyId } — there is no `userId`
+    // field, so the previous `userId: DELEGATE_ID` would have been stripped by
+    // the zod schema and enforced nothing even had the call been well formed.
+    // Ownership is decided by Better Auth's sessionMiddleware, so what this
+    // route must get right is forwarding the headers: the session belongs to
+    // the authenticated delegate, never to the switched-to victim.
+    expect(arg.body).toEqual({ keyId: 'key-1' });
+    expect(arg.headers).toBeDefined();
+    // Nothing anywhere in the call may name the victim.
+    expect(JSON.stringify(arg)).not.toContain(VICTIM_ID);
   });
 
-  it('list api-keys returns the delegate keys, not the switched-to victim keys', async () => {
-    mockListApiKeys.mockResolvedValue([]);
+  it('list api-keys forwards the session headers and never names the victim', async () => {
+    mockListApiKeys.mockResolvedValue({ apiKeys: [], total: 0 });
 
     const res = await request(app).get('/api/identity/user-api-keys');
 
     expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
     expect(mockListApiKeys).toHaveBeenCalledTimes(1);
-    expect(mockListApiKeys.mock.calls[0][0].userId).toBe(DELEGATE_ID);
-    expect(mockListApiKeys.mock.calls[0][0].userId).not.toBe(VICTIM_ID);
+    const arg = mockListApiKeys.mock.calls[0][0];
+    // /api-key/list is a GET taking `query`, and has no `userId` field either,
+    // so the same reasoning as delete applies.
+    expect(arg.headers).toBeDefined();
+    expect(JSON.stringify(arg)).not.toContain(VICTIM_ID);
+  });
+
+  it('list api-keys unwraps the pagination envelope to a bare array', async () => {
+    mockListApiKeys.mockResolvedValue({
+      apiKeys: [{ id: 'key-1', name: 'mine' }],
+      total: 1,
+      limit: 10,
+      offset: 0,
+    });
+
+    const res = await request(app).get('/api/identity/user-api-keys');
+
+    expect(res.status).toBe(200);
+    // The route is documented as returning "a list of API keys"; Better Auth
+    // returns { apiKeys, total, limit, offset }.
+    expect(res.body).toEqual([{ id: 'key-1', name: 'mine' }]);
   });
 });

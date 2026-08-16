@@ -59,6 +59,7 @@ export interface SparkyFoodMapping {
     provider_external_id: string;
     provider_type: string;
     is_quick_food: boolean;
+    image_url: string | null;
   };
   variant: {
     serving_size: number;
@@ -258,6 +259,24 @@ class NorishService {
         provider_external_id: norishRecipe.id,
         provider_type: 'norish',
         is_quick_food: false,
+        // Hotlinked in search results; localized on import. Relative media
+        // paths are resolved against the instance URL (baseUrl already ends in
+        // /api/v1, so root-relative paths land on the right origin).
+        image_url: (() => {
+          if (!norishRecipe.image) return null;
+          try {
+            // Resolve against baseUrl as a directory. Without the trailing
+            // slash a bare relative path ('media/x.jpg') would resolve against
+            // /api/ and drop the /v1 segment. Root-relative and absolute URLs
+            // resolve identically either way.
+            const base = this.baseUrl.endsWith('/')
+              ? this.baseUrl
+              : `${this.baseUrl}/`;
+            return new URL(norishRecipe.image, base).toString();
+          } catch {
+            return null;
+          }
+        })(),
       },
       variant: {
         serving_size: 1,

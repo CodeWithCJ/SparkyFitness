@@ -32,7 +32,7 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
   });
 
   test('skips migration when the stored version is current', async () => {
-    loadHealthPreference.mockResolvedValue(2);
+    loadHealthPreference.mockResolvedValue(3);
 
     const result = await migrateEnabledMetricPermissionsIfNeeded({
       healthMetricStates: { isExerciseSessionSyncEnabled: true },
@@ -62,11 +62,11 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
 
     expect(result).toBe(true);
     expect(requestHealthPermissions).not.toHaveBeenCalled();
-    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 2);
+    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 3);
   });
 
   test('persists the new version after all enabled permissions are granted', async () => {
-    loadHealthPreference.mockResolvedValue(1);
+    loadHealthPreference.mockResolvedValue(2);
     requestHealthPermissions.mockResolvedValue(true);
 
     const result = await migrateEnabledMetricPermissionsIfNeeded({
@@ -83,7 +83,7 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
 
     expect(result).toBe(true);
     expect(requestHealthPermissions).toHaveBeenCalledWith(metrics[0].permissions);
-    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 2);
+    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 3);
   });
 
   test('does not persist the new version when permissions are only partially granted', async () => {

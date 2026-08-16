@@ -1,4 +1,5 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import type { FoodEntrySnapshot } from '../types/nutrition.js';
 
 const DEFAULT_VARIANT_JSON_SQL = `
   json_build_object(
@@ -43,8 +44,7 @@ const PREFERRED_DEFAULT_VARIANT_JOIN_SQL = `
     LIMIT 1
   ) fv ON TRUE
 `;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodDataProviderById(providerId: any) {
+async function getFoodDataProviderById(providerId: string) {
   const client = await getSystemClient(); // System-level operation
   try {
     const result = await client.query(
@@ -56,10 +56,13 @@ async function getFoodDataProviderById(providerId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getRecentFoods(userId: any, limit: any, mealType: any) {
+async function getRecentFoods(
+  userId: string,
+  limit: number,
+  mealType?: string | null
+) {
   const client = await getClient(userId); // User-specific operation
-  const queryParams = [userId];
+  const queryParams: (string | number)[] = [userId];
   let mealTypeCondition = '';
   if (mealType) {
     queryParams.push(mealType);
@@ -90,6 +93,7 @@ async function getRecentFoods(userId: any, limit: any, mealType: any) {
         f.provider_external_id,
         f.provider_type,
         f.provider_verified,
+        f.images,
         rfe.last_used_date,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -104,10 +108,13 @@ async function getRecentFoods(userId: any, limit: any, mealType: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getTopFoods(userId: any, limit: any, mealType: any) {
+async function getTopFoods(
+  userId: string,
+  limit: number,
+  mealType?: string | null
+) {
   const client = await getClient(userId); // User-specific operation
-  const queryParams = [userId];
+  const queryParams: (string | number)[] = [userId];
   let mealTypeCondition = '';
   if (mealType) {
     queryParams.push(mealType);
@@ -138,6 +145,7 @@ async function getTopFoods(userId: any, limit: any, mealType: any) {
         f.provider_external_id,
         f.provider_type,
         f.provider_verified,
+        f.images,
         tfe.usage_count,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -152,8 +160,7 @@ async function getTopFoods(userId: any, limit: any, mealType: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFavoriteFoods(userId: any) {
+async function getFavoriteFoods(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -168,6 +175,7 @@ async function getFavoriteFoods(userId: any) {
         f.provider_external_id,
         f.provider_type,
         f.provider_verified,
+        f.images,
         ff.created_at AS favorited_at,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM food_favorites ff
@@ -184,8 +192,7 @@ async function getFavoriteFoods(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function addFoodFavorite(userId: any, foodId: any) {
+async function addFoodFavorite(userId: string, foodId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
@@ -198,8 +205,7 @@ async function addFoodFavorite(userId: any, foodId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function removeFoodFavorite(userId: any, foodId: any) {
+async function removeFoodFavorite(userId: string, foodId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -212,7 +218,6 @@ async function removeFoodFavorite(userId: any, foodId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 // A logged supplement contributes its per-dose snapshot, scaled by the dose count taken
 // (GREATEST-clamped so a non-positive value can't subtract). These fragments let the diary
 // daily-summary aggregations count supplements exactly the way the report already does, so
@@ -235,7 +240,44 @@ function supplementCustomUnion(userExpr: string, dateExpr: string): string {
                 WHERE me2.user_id = ${userExpr} AND me2.entry_date = ${dateExpr} AND me2.status IN ('taken', 'prn_taken') AND me2.nutrients_snapshot IS NOT NULL`;
 }
 
-async function getDailyNutritionSummary(userId: any, date: any) {
+/**
+ * The supplement arm of a day's intake, on its own.
+ *
+ * `getDailyNutritionSummary` already folds these into its food totals, but the Diary
+ * computes eaten calories and its macro totals separately (in JS, from food entries), so
+ * it needs the supplement contribution as a distinct number: once to add into the totals,
+ * and once to show as its own line, so what is displayed still reconciles against the
+ * food rows the user can see.
+ *
+ * Fields are exactly the set `supplementFixed` is applied to elsewhere. Returns zeros
+ * rather than nulls on a day with no supplements, so callers can add unconditionally.
+ */
+async function getDailySupplementTotals(userId: string, date: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT
+        ${supplementFixed('calories', '$1', '$2')} AS calories,
+        ${supplementFixed('protein', '$1', '$2')} AS protein,
+        ${supplementFixed('carbs', '$1', '$2')} AS carbs,
+        ${supplementFixed('fat', '$1', '$2')} AS fat,
+        ${supplementFixed('dietary_fiber', '$1', '$2')} AS dietary_fiber`,
+      [userId, date]
+    );
+    const row = result.rows[0] ?? {};
+    return {
+      calories: Number(row.calories) || 0,
+      protein: Number(row.protein) || 0,
+      carbs: Number(row.carbs) || 0,
+      fat: Number(row.fat) || 0,
+      dietary_fiber: Number(row.dietary_fiber) || 0,
+    };
+  } finally {
+    client.release();
+  }
+}
+
+async function getDailyNutritionSummary(userId: string, date: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -327,8 +369,7 @@ async function getDailyNutritionSummariesByDates(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodsNeedingReview(userId: any) {
+async function getFoodsNeedingReview(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -357,18 +398,61 @@ async function getFoodsNeedingReview(userId: any) {
     client.release();
   }
 }
+/**
+ * Rewrites the snapshot past diary entries were logged with.
+ *
+ * `syncImages` decides what happens to the photo column:
+ *  - `false` - `images` is left out of the UPDATE entirely, so every entry
+ *    keeps whatever photo it is showing today (inherited or diary-set).
+ *  - `true` - every matching entry is forced onto the food's current photos,
+ *    including entries where the user picked their own photo in the diary.
+ *
+ * The diary-set photos that get replaced are returned so the caller can unlink
+ * their files: nothing else references `/uploads/food_entries/<entryId>/...`,
+ * so they would otherwise sit on disk forever.
+ */
 async function updateFoodEntriesSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variantId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  newSnapshotData: any
-) {
+  userId: string,
+  foodId: string,
+  variantId: string,
+  newSnapshotData: FoodEntrySnapshot,
+  syncImages: boolean = true
+): Promise<{ rowCount: number; replacedEntryImages: string[] }> {
   const client = await getClient(userId); // User-specific operation
   try {
+    // The read and the overwrite share one transaction, and the read takes row
+    // locks. Without them a diary photo saved between the two statements would
+    // be overwritten by the UPDATE while going unreported here, leaking its
+    // file: nothing would ever reference it again, and nothing would delete it.
+    await client.query('BEGIN');
+
+    // Scoped to the same rows the UPDATE touches, and to diary-set paths only —
+    // an inherited path points at the food's own upload directory and must
+    // never be unlinked from here.
+    let replacedEntryImages: string[] = [];
+    if (syncImages) {
+      // The whole column, not the unnested paths: FOR UPDATE cannot be applied
+      // to a set-returning function or a DISTINCT query, so the rows are locked
+      // as they are and filtered below.
+      const existing = await client.query(
+        `SELECT images
+           FROM food_entries
+          WHERE user_id = $1
+            AND food_id = $2
+            AND variant_id = $3
+            FOR UPDATE`,
+        [userId, foodId, variantId]
+      );
+      const seen = new Set<string>();
+      for (const row of existing.rows as { images: unknown }[]) {
+        for (const image of Array.isArray(row.images) ? row.images : []) {
+          const path = String(image);
+          if (path.startsWith('/uploads/food_entries/')) seen.add(path);
+        }
+      }
+      replacedEntryImages = [...seen];
+    }
+
     const result = await client.query(
       `UPDATE food_entries
        SET
@@ -395,6 +479,9 @@ async function updateFoodEntriesSnapshot(
           iron = $21,
           glycemic_index = $22,
           custom_nutrients = $23
+          -- The user picked "nutrition only", so the photo column is left out
+          -- of the statement and every entry keeps the photo it shows today.
+          ${syncImages ? ', images = $27::jsonb' : ''}
        WHERE user_id = $24 AND food_id = $25 AND variant_id = $26
        RETURNING id`,
       [
@@ -424,15 +511,32 @@ async function updateFoodEntriesSnapshot(
         userId,
         foodId,
         variantId,
+        // Postgres rejects a bind with more parameters than the statement
+        // references, so $27 is only supplied when the SET clause uses it.
+        ...(syncImages ? [JSON.stringify(newSnapshotData.images ?? [])] : []),
       ]
     );
-    return result.rowCount;
+    // Committed before the caller unlinks anything: a file deleted for a
+    // transaction that then rolled back would be gone with its row intact.
+    await client.query('COMMIT');
+
+    return {
+      rowCount: result.rowCount ?? 0,
+      // Only report photos that actually stopped being referenced.
+      replacedEntryImages: replacedEntryImages.filter(
+        (image) => !(newSnapshotData.images ?? []).includes(image)
+      ),
+    };
+  } catch (error) {
+    // Best-effort: the connection may already be unusable, and the original
+    // error is the one worth surfacing.
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
   } finally {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function clearUserIgnoredUpdate(userId: any, variantId: any) {
+async function clearUserIgnoredUpdate(userId: string, variantId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
@@ -449,6 +553,7 @@ export { getRecentFoods };
 export { getTopFoods };
 export { getFavoriteFoods, addFoodFavorite, removeFoodFavorite };
 export { getDailyNutritionSummary, getDailyNutritionSummariesByDates };
+export { getDailySupplementTotals };
 export { getFoodsNeedingReview };
 export { updateFoodEntriesSnapshot };
 export { clearUserIgnoredUpdate };
@@ -460,6 +565,7 @@ export default {
   addFoodFavorite,
   removeFoodFavorite,
   getDailyNutritionSummary,
+  getDailySupplementTotals,
   getDailyNutritionSummariesByDates,
   getFoodsNeedingReview,
   updateFoodEntriesSnapshot,

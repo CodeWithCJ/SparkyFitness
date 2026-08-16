@@ -1,5 +1,10 @@
 import { tool } from 'ai';
-import { dayToUtcRange, todayInZone, BUILT_IN_MOODS } from '@workspace/shared';
+import {
+  dayToUtcRange,
+  todayInZone,
+  utcOffsetMinutesFromIsoString,
+  BUILT_IN_MOODS,
+} from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import measurementService from '../../services/measurementService.js';
 import preferenceService from '../../services/preferenceService.js';
@@ -435,6 +440,12 @@ Actions:
               let bedtime = args.bedtime;
               let wakeTime = args.wake_time;
               const duration = args.duration_seconds ?? 28800; // Default 8h
+              // An explicit ±HH:MM suffix on a caller-supplied timestamp is a
+              // recording-zone claim worth stamping; generated defaults are
+              // profile-tz wall clocks and stay unstamped (Z suffix → null).
+              const recordUtcOffsetMinutes =
+                utcOffsetMinutesFromIsoString(args.bedtime) ??
+                utcOffsetMinutesFromIsoString(args.wake_time);
 
               if (!bedtime && !wakeTime) {
                 // Default: wake time is 7 AM on entry_date in the user's
@@ -464,6 +475,7 @@ Actions:
                 wake_time: wakeTime,
                 duration_in_seconds: duration,
                 source: args.source || 'manual',
+                record_utc_offset_minutes: recordUtcOffsetMinutes ?? undefined,
               });
 
               const parts: string[] = [];

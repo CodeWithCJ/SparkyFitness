@@ -28,7 +28,7 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as any;
+const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn(), navigate: jest.fn() } as any;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
@@ -98,4 +98,16 @@ describe('FoodSettingsScreen', () => {
       expect(spy).toHaveBeenCalledWith({ show_net_carbs: true });
     });
   });
+
+  it('exposes navigation to Meal Types and does not render Suggested Meal Times inline', () => {
+    const { getByText, queryByText } = renderScreen({});
+    // Navigation entry to the single owner of default_time settings.
+    expect(getByText('Meal Types')).toBeTruthy();
+    fireEvent.press(getByText('Meal Types'));
+    expect(navigation.navigate).toHaveBeenCalledWith('MealTypeSettings');
+    // The duplicate editor is gone.
+    expect(queryByText('Suggested Meal Times')).toBeNull();
+    expect(queryByText(/Set target start times for your meal categories/i)).toBeNull();
+  });
+
 });

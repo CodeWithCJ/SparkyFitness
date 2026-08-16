@@ -7,6 +7,11 @@ import { StackActions } from '@react-navigation/native';
 import Icon from '../../components/Icon';
 import StepperInput from '../../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
+import FoodImagePicker from '../../components/FoodImagePicker';
+import {
+  splitPickerImages,
+  type PickerImage,
+} from '../../utils/pickerImages';
 import BottomSheetPicker from '../../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../../components/CalendarSheet';
 import Switch from '../../components/ui/Switch';
@@ -14,7 +19,7 @@ import { setPendingMealIngredientSelection } from '../../services/mealBuilderSel
 import { useMealTypes, usePreferences } from '../../hooks';
 import { useSaveFood } from '../../hooks/useSaveFood';
 import { useAddFoodEntry } from '../../hooks/useAddFoodEntry';
-import { getMealTypeLabel } from '../../constants/meals';
+import { getMealTypeDisplayLabel } from '../../utils/mealNutrition';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../../utils/dateUtils';
 import { parseOptional } from '../../types/foodInfo';
 import { createFoodVariant } from '../../services/api/foodsApi';
@@ -177,9 +182,13 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     setQuantityTouched(true);
   };
 
-  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id }));
+  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeDisplayLabel(mt), value: mt.id }));
 
   const [customNutrientValues, setCustomNutrientValues] = useState<Record<string, number>>({});
+
+  const [pickerImages, setPickerImages] = useState<PickerImage[]>([]);
+  const imageArgs =
+    pickerImages.length > 0 ? splitPickerImages(pickerImages) : undefined;
 
   const { saveFoodAsync, isPending: isSavePending } = useSaveFood();
   // Holds the equivalent-save function for the current submit so onSuccess can
@@ -283,7 +292,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
 
     if (isMealBuilderMode) {
       try {
-        const savedFood = await saveFoodAsync(saveFoodPayload);
+        const savedFood = await saveFoodAsync(saveFoodPayload, imageArgs);
         isSavingRef.current = true;
         saveEquivalentsAsync(savedFood.id);
         setPendingMealIngredientSelection({
@@ -302,7 +311,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
 
     if (isLibraryMode) {
       try {
-        const savedFood = await saveFoodAsync(saveFoodPayload);
+        const savedFood = await saveFoodAsync(saveFoodPayload, imageArgs);
         isSavingRef.current = true;
         saveEquivalentsAsync(savedFood.id);
         Toast.show({ type: 'success', text1: 'Food saved' });
@@ -328,6 +337,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     // isSavingRef is set in onSuccess so it stays false if addEntry fails.
     addEntry({
       saveFoodPayload,
+      saveFoodImages: imageArgs,
       createEntryPayload: {
         meal_type_id: effectiveMealId,
         quantity,
@@ -375,6 +385,15 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
         initialValues={initialFood}
         submitLabel={primaryLabel}
         hideSubmitButton={usesNativeHeader}
+        headerChildren={
+          <View className="mb-4">
+            <FoodImagePicker
+              items={pickerImages}
+              onItemsChange={setPickerImages}
+              disabled={isSubmitting}
+            />
+          </View>
+        }
         showAutoScaleNutrition={showAutoScaleNutrition}
         initialAutoScaleNutritionEnabled={initialAutoScaleNutritionEnabled}
         unitSelector={
@@ -422,7 +441,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
                       className="flex-row items-center"
                     >
                       <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {getMealTypeLabel(selectedMealType.name)}
+                        {getMealTypeDisplayLabel(selectedMealType)}
                       </Text>
                       <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
                     </TouchableOpacity>

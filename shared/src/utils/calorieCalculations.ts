@@ -15,6 +15,22 @@ export interface ResolvedExerciseCalories {
   source: ExerciseCalorieSource;
 }
 
+/** Derives active energy from total energy that includes resting energy. */
+export function deriveActiveCalories(
+  totalCalories: number,
+  restingCalories: number,
+): number | null {
+  if (
+    !Number.isFinite(totalCalories) ||
+    !Number.isFinite(restingCalories) ||
+    totalCalories < 0 ||
+    restingCalories < 0
+  ) {
+    return null;
+  }
+  return Math.max(0, totalCalories - restingCalories);
+}
+
 /**
  * Returns the calorie contribution from the most complete source.
  * It compares:

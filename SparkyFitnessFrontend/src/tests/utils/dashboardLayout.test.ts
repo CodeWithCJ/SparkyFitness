@@ -1,10 +1,16 @@
 import {
   applyAutoHeights,
+  breakpointForWidth,
   buildWidgetKeys,
+  evaluateMeasurement,
   generateDefaultLayouts,
+  MAX_MEASURE_CHANGES_PER_WINDOW,
   mealWidgetKey,
+  MEASURE_WINDOW_MS,
   reconcileLayouts,
+  stabilizeGridWidth,
   type DashboardLayouts,
+  type MeasureGuard,
   type WidgetLayout,
 } from '@/utils/dashboardLayout';
 
@@ -149,5 +155,107 @@ describe('applyAutoHeights', () => {
     const base = onlyLg([{ i: 'energy', x: 0, y: 0, w: 3, h: 5, minH: 6 }]);
     expect(applyAutoHeights(base, { energy: 2 }).lg[0]!.h).toBe(6); // minH floor
     expect(applyAutoHeights(base, {}).lg[0]!.h).toBe(5); // unmeasured -> base
+  });
+});
+
+describe('breakpointForWidth', () => {
+  it('selects the largest breakpoint the width reaches', () => {
+    expect(breakpointForWidth(1400)).toBe('lg');
+    expect(breakpointForWidth(1200)).toBe('lg');
+    expect(breakpointForWidth(1199)).toBe('md');
+    expect(breakpointForWidth(996)).toBe('md');
+    expect(breakpointForWidth(995)).toBe('sm');
+    expect(breakpointForWidth(768)).toBe('sm');
+    expect(breakpointForWidth(767)).toBe('xs');
+    expect(breakpointForWidth(0)).toBe('xs');
+  });
+});
+
+describe('stabilizeGridWidth', () => {
+  it('ignores a scrollbar-sized change that would flip the breakpoint', () => {
+    // The #2056 loop: a ~15px scrollbar toggle straddling the lg threshold.
+    expect(stabilizeGridWidth(1205, 1190)).toBe(1205);
+    expect(stabilizeGridWidth(1190, 1205)).toBe(1190);
+  });
+
+  it('accepts small changes that stay inside one breakpoint', () => {
+    expect(stabilizeGridWidth(1300, 1285)).toBe(1285);
+    expect(stabilizeGridWidth(900, 890)).toBe(890);
+  });
+
+  it('accepts a real resize even when it crosses a breakpoint', () => {
+    expect(stabilizeGridWidth(1205, 1100)).toBe(1100);
+    expect(stabilizeGridWidth(1100, 1205)).toBe(1205);
+  });
+
+  it('always takes the first real measurement and ignores bogus widths', () => {
+    expect(stabilizeGridWidth(0, 1190)).toBe(1190);
+    expect(stabilizeGridWidth(1205, 0)).toBe(1205);
+    expect(stabilizeGridWidth(1205, Number.NaN)).toBe(1205);
+  });
+
+  it('settles: alternating jitter never oscillates the fed width', () => {
+    let width = 1205;
+    for (const next of [1190, 1205, 1190, 1205, 1190]) {
+      width = stabilizeGridWidth(width, next);
+    }
+    expect(width).toBe(1205);
+  });
+});
+
+describe('evaluateMeasurement', () => {
+  const run = (
+    values: number[],
+    stepMs = 0,
+    start = 1000
+  ): (number | null)[] => {
+    let guard: MeasureGuard | undefined;
+    return values.map((rows, i) => {
+      const out = evaluateMeasurement(guard, rows, start + i * stepMs);
+      guard = out.guard;
+      return out.apply;
+    });
+  };
+
+  it('applies normal measurements', () => {
+    expect(run([8, 9, 10], 200)).toEqual([8, 9, 10]);
+  });
+
+  // One change past the limit, so the burst keeps exercising the capped path
+  // whatever MAX_MEASURE_CHANGES_PER_WINDOW is tuned to.
+  const burstOverLimit = () =>
+    Array.from({ length: MAX_MEASURE_CHANGES_PER_WINDOW + 1 }, (_, i) =>
+      i % 2 ? 12 : 9
+    );
+
+  it('settles on the tallest height once a burst looks like a loop', () => {
+    // Alternating changes inside one window: a measure -> layout -> measure cycle.
+    const alternating = burstOverLimit();
+    const applied = run(alternating);
+    expect(applied.slice(0, MAX_MEASURE_CHANGES_PER_WINDOW)).toEqual(
+      alternating.slice(0, MAX_MEASURE_CHANGES_PER_WINDOW)
+    );
+    // Everything past the cap settles on the tallest seen, so content is never clipped.
+    for (const value of applied.slice(MAX_MEASURE_CHANGES_PER_WINDOW)) {
+      expect(value).toBe(12);
+    }
+  });
+
+  it('is a rate limit, not a permanent cap: later real changes still apply', () => {
+    // Exhaust the window...
+    let guard: MeasureGuard | undefined;
+    for (const rows of burstOverLimit()) {
+      guard = evaluateMeasurement(guard, rows, 1000).guard;
+    }
+    expect(guard?.changes).toBeGreaterThan(MAX_MEASURE_CHANGES_PER_WINDOW);
+    // ...then a genuine change well after the window expires.
+    const later = evaluateMeasurement(guard, 7, 1000 + MEASURE_WINDOW_MS + 1);
+    expect(later.apply).toBe(7);
+    expect(later.guard.changes).toBe(1);
+  });
+
+  it('does not trip when changes are spread across windows', () => {
+    const spread = Array.from({ length: 30 }, (_, i) => i + 1);
+    expect(run(spread, MEASURE_WINDOW_MS + 1)).toEqual(spread);
   });
 });

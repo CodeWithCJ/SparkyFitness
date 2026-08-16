@@ -1052,6 +1052,11 @@ const EnhancedFoodSearch = ({
             pinnedFood.provider_external_id ?? food.provider_external_id,
           provider_verified:
             pinnedFood.provider_verified ?? food.provider_verified,
+          // The details endpoint doesn't always echo the photo back, so fall
+          // back to the one the search card already showed.
+          image_url: pinnedFood.image_url ?? food.image_url,
+          image_source_url:
+            pinnedFood.image_source_url ?? food.image_source_url,
         });
         setShowEditDialog(true);
       } catch {
@@ -1199,8 +1204,8 @@ const EnhancedFoodSearch = ({
         </Button>
       </div>
 
-      <div className="flex space-x-2 items-center">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[12rem]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder={t(
@@ -1258,7 +1263,7 @@ const EnhancedFoodSearch = ({
               setManualProviderId(value);
             }}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue
                 placeholder={t(
                   'enhancedFoodSearch.selectProvider',

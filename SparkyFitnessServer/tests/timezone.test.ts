@@ -12,6 +12,9 @@ import {
   instantHourMinute,
   instantToDayWithOffset,
   instantHourMinuteWithOffset,
+  instantHourMinuteInZone,
+  resolveRecordZone,
+  utcOffsetMinutesFromIsoString,
   dayToUtcRange,
   dayRangeToUtcRange,
 } from '@workspace/shared';
@@ -408,5 +411,130 @@ describe('instantHourMinuteWithOffset', () => {
     const fromOffset = instantHourMinuteWithOffset(ts, 540);
     const fromIana = instantHourMinute(ts, 'Asia/Tokyo');
     expect(fromOffset).toEqual(fromIana);
+  });
+});
+// ---------------------------------------------------------------------------
+// resolveRecordZone
+// ---------------------------------------------------------------------------
+describe('resolveRecordZone', () => {
+  it('prefers a valid IANA timezone over an offset', () => {
+    expect(resolveRecordZone('Asia/Tokyo', -300)).toEqual({
+      kind: 'tz',
+      tz: 'Asia/Tokyo',
+    });
+  });
+  it('falls back to the offset for an invalid or empty timezone', () => {
+    expect(resolveRecordZone('Not/AZone', -300)).toEqual({
+      kind: 'offset',
+      minutes: -300,
+    });
+    expect(resolveRecordZone('', 60)).toEqual({ kind: 'offset', minutes: 60 });
+    expect(resolveRecordZone(null, 330)).toEqual({
+      kind: 'offset',
+      minutes: 330,
+    });
+  });
+  it('honors offset 0 (UTC is a real zone claim, not "absent")', () => {
+    expect(resolveRecordZone(null, 0)).toEqual({ kind: 'offset', minutes: 0 });
+  });
+  it('returns null when neither field is usable', () => {
+    expect(resolveRecordZone(null, null)).toBeNull();
+    expect(resolveRecordZone(undefined, undefined)).toBeNull();
+    expect(resolveRecordZone('Not/AZone', null)).toBeNull();
+    expect(resolveRecordZone('', NaN)).toBeNull();
+    expect(resolveRecordZone(null, Infinity)).toBeNull();
+  });
+  it('rejects fractional and out-of-range offsets (falls back to profile tz)', () => {
+    expect(resolveRecordZone(null, 90.5)).toBeNull();
+    expect(resolveRecordZone(null, 100000)).toBeNull();
+    expect(resolveRecordZone(null, -100000)).toBeNull();
+  });
+  it('accepts the ±14:00 spec boundary but nothing past it', () => {
+    expect(resolveRecordZone(null, 840)).toEqual({
+      kind: 'offset',
+      minutes: 840,
+    });
+    expect(resolveRecordZone(null, -840)).toEqual({
+      kind: 'offset',
+      minutes: -840,
+    });
+    expect(resolveRecordZone(null, 841)).toBeNull();
+    expect(resolveRecordZone(null, -841)).toBeNull();
+  });
+});
+// ---------------------------------------------------------------------------
+// instantHourMinuteInZone
+// ---------------------------------------------------------------------------
+describe('instantHourMinuteInZone', () => {
+  const ts = new Date('2024-06-15T15:45:00Z');
+  it('dispatches to the IANA path for tz zones', () => {
+    expect(
+      instantHourMinuteInZone(ts, { kind: 'tz', tz: 'Asia/Tokyo' })
+    ).toEqual({ hour: 0, minute: 45 });
+  });
+  it('dispatches to the fixed-offset path for offset zones', () => {
+    expect(
+      instantHourMinuteInZone(ts, { kind: 'offset', minutes: -240 })
+    ).toEqual({ hour: 11, minute: 45 });
+  });
+});
+// ---------------------------------------------------------------------------
+// utcOffsetMinutesFromIsoString
+// ---------------------------------------------------------------------------
+describe('utcOffsetMinutesFromIsoString', () => {
+  it('parses explicit positive and negative offsets', () => {
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15:00+05:30')).toBe(
+      330
+    );
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15:00-04:00')).toBe(
+      -240
+    );
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15:00.123+01:00')).toBe(
+      60
+    );
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15:00+0000')).toBe(0);
+  });
+  it('treats Z as no zone claim (APIs normalize instants to UTC)', () => {
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15:00Z')).toBeNull();
+    expect(
+      utcOffsetMinutesFromIsoString('2024-06-15T22:15:00.000Z')
+    ).toBeNull();
+  });
+  it('treats -00:00 as unknown offset (RFC 3339 §4.3), unlike +00:00', () => {
+    expect(
+      utcOffsetMinutesFromIsoString('2024-06-15T22:15:00-00:00')
+    ).toBeNull();
+    expect(
+      utcOffsetMinutesFromIsoString('2024-06-15T22:15:00-0000')
+    ).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15:00+00:00')).toBe(0);
+  });
+  it('returns null for naive, date-only, and unparseable input', () => {
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15:00')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('2024-06-15')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('garbage')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString(null)).toBeNull();
+    expect(utcOffsetMinutesFromIsoString(undefined)).toBeNull();
+  });
+  it('rejects offsets outside the real-world range', () => {
+    expect(
+      utcOffsetMinutesFromIsoString('2024-06-15T22:15:00+15:00')
+    ).toBeNull();
+    expect(
+      utcOffsetMinutesFromIsoString('2024-06-15T22:15:00+05:99')
+    ).toBeNull();
+  });
+  it('ignores a ±HH:MM suffix on a malformed datetime', () => {
+    expect(utcOffsetMinutesFromIsoString('T+05:30')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('yesterday 10pm +05:30')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('2024-06-15 +05:30')).toBeNull();
+    expect(utcOffsetMinutesFromIsoString('22:15:00+05:30')).toBeNull();
+  });
+  it('accepts seconds-less and space-separated datetimes with offsets', () => {
+    expect(utcOffsetMinutesFromIsoString('2024-06-15T22:15+05:30')).toBe(330);
+    expect(utcOffsetMinutesFromIsoString('2024-06-15 22:15:00-04:00')).toBe(
+      -240
+    );
   });
 });

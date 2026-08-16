@@ -3,6 +3,8 @@ import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
+import { toImageArray } from '../utils/imageLocalizer.js';
+import type { FoodEntryInput, FoodEntrySnapshot } from '../types/nutrition.js';
 /**
  * @swagger
  * components:
@@ -112,8 +114,10 @@ import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
  *           type: object
  *           description: A JSON object for storing custom nutrient data.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createFoodEntry(entryData: any, createdByUserId: any) {
+async function createFoodEntry(
+  entryData: FoodEntryInput,
+  createdByUserId: string
+) {
   log(
     'info',
     `createFoodEntry in foodEntry.js: entryData: ${JSON.stringify(entryData)}, createdByUserId: ${createdByUserId}`
@@ -133,14 +137,14 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
         throw new Error(`Invalid meal type: ${entryData.meal_type}`);
       }
     }
-    let snapshot;
+    let snapshot: Record<string, unknown>;
     // For individual food entries (food_id present), fetch snapshot from food/variant
     // For entries that are components of a logged meal (food_entry_meal_id present),
     // snapshot data should be directly provided in entryData.
     if (entryData.food_id) {
       // This is an individual food entry
       const foodSnapshotQuery = await client.query(
-        `SELECT f.name, f.brand, fv.*
+        `SELECT f.name, f.brand, f.images AS food_images, fv.*
          FROM foods f
          JOIN food_variants fv ON f.id = fv.food_id
          WHERE f.id = $1 AND fv.id = $2`,
@@ -157,7 +161,7 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
       snapshot = foodSnapshotQuery.rows[0];
       // Apply inline nutrition overrides if provided by the client.
       // The DB snapshot uses 'name'/'brand' keys while entryData uses 'food_name'/'brand_name'.
-      const nutritionOverrideFields = [
+      const nutritionOverrideFields: (keyof FoodEntrySnapshot)[] = [
         'calories',
         'protein',
         'carbs',
@@ -234,10 +238,10 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
-         source, source_id, entry_time
+         source, source_id, entry_time, images
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -321,6 +325,12 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
         entryData.source ?? null,
         entryData.source_id ?? null,
         entryData.entry_time ?? null,
+        // Photos are snapshotted like nutrition: the entry keeps what the food
+        // looked like when it was logged, so editing the food later does not
+        // rewrite history. An explicit client value still wins (that is the
+        // per-entry photo the user chose), and meal-component entries have no
+        // parent food row to read from, so they fall back to an empty array.
+        JSON.stringify(toImageArray(entryData.images ?? snapshot.food_images)),
       ]
     );
     await client.query('COMMIT');
@@ -333,8 +343,7 @@ async function createFoodEntry(entryData: any, createdByUserId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodEntryById(entryId: any, userId: any) {
+async function getFoodEntryById(entryId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
@@ -385,8 +394,7 @@ async function getFoodEntryById(entryId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodEntryOwnerId(entryId: any, userId: any) {
+async function getFoodEntryOwnerId(entryId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
@@ -398,8 +406,7 @@ async function getFoodEntryOwnerId(entryId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFoodEntry(entryId: any, userId: any) {
+async function deleteFoodEntry(entryId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
@@ -412,16 +419,11 @@ async function deleteFoodEntry(entryId: any, userId: any) {
   }
 }
 async function updateFoodEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  snapshotData: any
+  entryId: string,
+  userId: string,
+  actingUserId: string,
+  entryData: FoodEntryInput,
+  snapshotData: FoodEntrySnapshot
 ) {
   const client = await getClient(userId, actingUserId); // User-specific operation
   let mealTypeId = entryData.meal_type_id;
@@ -468,7 +470,10 @@ async function updateFoodEntry(
         custom_nutrients = $29,
         allergens = $32,
         traces = $33,
-        entry_time = $34
+        entry_time = $34,
+        -- NULL means "key omitted": keep whatever override is already stored.
+        -- Clearing the override is done by sending an empty array.
+        images = COALESCE($35::jsonb, images)
       WHERE id = $30
       RETURNING *`,
       [
@@ -506,6 +511,9 @@ async function updateFoodEntry(
         snapshotData.allergens ?? null,
         snapshotData.traces ?? null,
         entryData.entry_time ?? null,
+        entryData.images === undefined
+          ? null
+          : JSON.stringify(toImageArray(entryData.images)),
       ]
     );
     return result.rows[0];
@@ -513,8 +521,7 @@ async function updateFoodEntry(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodEntriesByDate(userId: any, selectedDate: any) {
+async function getFoodEntriesByDate(userId: string, selectedDate: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -557,7 +564,11 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
         fe.source,
         COALESCE(fe.allergens, fv.allergens) AS allergens,
         COALESCE(fe.traces, fv.traces) AS traces,
-        f.provider_verified
+        f.provider_verified,
+        -- Per-entry override photo, plus the parent food's own images so the
+        -- diary can fall back when the entry has no override of its own.
+        fe.images,
+        f.images AS food_images
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
@@ -574,12 +585,9 @@ async function getFoodEntriesByDate(userId: any, selectedDate: any) {
 }
 
 async function getFoodEntriesByDateAndMealType(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealType: any
+  userId: string,
+  date: string,
+  mealType: string
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -619,7 +627,11 @@ async function getFoodEntriesByDateAndMealType(
         fe.iron,
         fe.glycemic_index,
         fe.custom_nutrients,
-        f.provider_verified
+        f.provider_verified,
+        -- Per-entry override photo, plus the parent food's own images so the
+        -- diary can fall back when the entry has no override of its own.
+        fe.images,
+        f.images AS food_images
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
@@ -640,12 +652,9 @@ async function getFoodEntriesByDateAndMealType(
 }
 
 async function getFoodEntriesByDateRange(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  startDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  endDate: any
+  userId: string,
+  startDate: string,
+  endDate: string
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -685,7 +694,11 @@ async function getFoodEntriesByDateRange(
         fe.iron, 
         fe.glycemic_index, 
         fe.custom_nutrients,
-        f.provider_verified
+        f.provider_verified,
+        -- Per-entry override photo, plus the parent food's own images so the
+        -- diary can fall back when the entry has no override of its own.
+        fe.images,
+        f.images AS food_images
        FROM food_entries fe
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
@@ -700,16 +713,11 @@ async function getFoodEntriesByDateRange(
   }
 }
 async function getFoodEntryByDetails(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mealType: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryDate: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variantId: any,
+  userId: string,
+  foodId: string,
+  mealType: string,
+  entryDate: string,
+  variantId: string | null,
   foodEntryMealId = null
 ) {
   const client = await getClient(userId); // User-specific operation
@@ -736,10 +744,8 @@ async function getFoodEntryByDetails(
 }
 
 async function bulkCreateFoodEntries(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entriesData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any
+  entriesData: FoodEntryInput[],
+  authenticatedUserId: string
 ) {
   log(
     'info',
@@ -788,8 +794,7 @@ async function bulkCreateFoodEntries(
         custom_nutrients
       )
       VALUES %L RETURNING *`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const values = entriesData.map((entry: any) => [
+    const values = entriesData.map((entry: FoodEntryInput) => [
       entry.user_id,
       entry.food_id,
       entry.meal_type_id,
@@ -835,10 +840,8 @@ async function bulkCreateFoodEntries(
   }
 }
 async function getFoodEntryComponentsByFoodEntryMealId(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any
+  foodEntryMealId: string,
+  userId: string
 ) {
   log(
     'info',
@@ -891,10 +894,8 @@ async function getFoodEntryComponentsByFoodEntryMealId(
   }
 }
 async function deleteFoodEntryComponentsByFoodEntryMealId(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any
+  foodEntryMealId: string,
+  userId: string
 ) {
   log(
     'info',

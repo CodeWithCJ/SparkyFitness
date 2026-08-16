@@ -5,6 +5,55 @@ import {
   buildSqlSearch,
   buildSqlExactMatchOrder,
 } from '../utils/dbSearchHelper.js';
+import {
+  localizeImages,
+  toImageArray,
+  resolveImageInput,
+} from '../utils/imageLocalizer.js';
+import type {
+  NutrientValue,
+  NutrientFields,
+  FoodVariantInput,
+} from '../types/nutrition.js';
+
+/** A value bound into a parameterised query. */
+type SqlParam = string | number | boolean | null | undefined;
+
+/** An update may change any subset of a food's fields. */
+export type FoodUpdate = Partial<FoodInput>;
+
+/** Booleans arrive from CSV/provider payloads as strings or 0/1 too. */
+type BooleanLike = boolean | string | number | null | undefined;
+
+/**
+ * The food fields this repository reads when creating or updating a row.
+ *
+ * Values arrive from user input, CSV import, and provider adapters, so numeric
+ * and boolean fields are accepted in their raw form and passed through the
+ * `sanitize*` helpers below.
+ */
+export interface FoodInput extends NutrientFields {
+  id?: string;
+  name: string;
+  user_id: string;
+  brand?: string | null;
+  barcode?: string | null;
+  provider_external_id?: string | null;
+  provider_type?: string | null;
+  is_custom?: boolean | string | null;
+  shared_with_public?: boolean | string | null;
+  provider_verified?: boolean | string | null;
+  is_quick_food?: boolean | string | null;
+  images?: string[] | null;
+  image_url?: string | null;
+  image_source_url?: string | null;
+  serving_size?: NutrientValue;
+  serving_unit?: string | null;
+  source?: string | null;
+  ai_confidence?: string | null;
+  allergens?: string[] | null;
+  traces?: string[] | null;
+}
 
 const DEFAULT_VARIANT_JSON_SQL = `
   json_build_object(
@@ -51,8 +100,7 @@ const PREFERRED_DEFAULT_VARIANT_JOIN_SQL = `
     LIMIT 1
   ) fv ON TRUE
 `;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeGlycemicIndex(gi: any) {
+function sanitizeGlycemicIndex(gi: string | null | undefined) {
   const allowedGICategories = [
     'None',
     'Very Low',
@@ -73,8 +121,7 @@ function sanitizeGlycemicIndex(gi: any) {
   }
   return gi;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeNumeric(value: any) {
+function sanitizeNumeric(value: NutrientValue) {
   if (
     value === null ||
     value === undefined ||
@@ -88,11 +135,10 @@ function sanitizeNumeric(value: any) {
   if (typeof value === 'string') {
     sanitizedValue = value.replace(/^["']|["']$/g, '');
   }
-  const num = parseFloat(sanitizedValue);
+  const num = parseFloat(String(sanitizedValue));
   return isNaN(num) ? null : num;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sanitizeBoolean(value: any) {
+function sanitizeBoolean(value: BooleanLike) {
   if (
     value === true ||
     value === 'TRUE' ||
@@ -125,12 +171,12 @@ async function searchFoods(
   try {
     let query = `
       SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
       WHERE f.is_quick_food = FALSE`;
-    const queryParams: any[] = [];
+    const queryParams: SqlParam[] = [];
     let paramIndex = 1;
     let orderByClause = '';
     if (exactMatch) {
@@ -169,16 +215,15 @@ async function searchFoods(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createFood(foodData: any) {
+async function createFood(foodData: FoodInput) {
   const client = await getClient(foodData.user_id); // User-specific operation
   try {
     await client.query('BEGIN'); // Start transaction
     // 1. Create the food entry
     const foodResult = await client.query(
       `INSERT INTO foods (
-        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified`,
+        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, images, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified, images`,
       [
         foodData.name,
         sanitizeBoolean(foodData.is_custom) ?? true,
@@ -192,6 +237,7 @@ async function createFood(foodData: any) {
         foodData.provider_type,
         sanitizeBoolean(foodData.provider_verified) ?? false,
         sanitizeBoolean(foodData.is_quick_food) ?? false,
+        JSON.stringify(resolveImageInput(foodData)),
       ]
     );
     const newFood = foodResult.rows[0];
@@ -235,6 +281,46 @@ async function createFood(foodData: any) {
     );
     const newVariantId = variantResult.rows[0].id;
     await client.query('COMMIT'); // Commit transaction
+
+    // Localize provider-hosted images after COMMIT so network latency never
+    // holds the transaction open. Every food-creation path funnels through
+    // here, so provider imports get local copies without each caller opting in.
+    try {
+      const localizedImages = await localizeImages(
+        newFood.images,
+        newFood.id,
+        'foods'
+      );
+      if (localizedImages) {
+        // Guarded like updateFood: the food is already committed, so an edit
+        // can land while these downloads run. Don't clobber a newer value.
+        const localizeWrite = await client.query(
+          'UPDATE foods SET images = $1::jsonb WHERE id = $2 AND images = $3::jsonb',
+          [
+            JSON.stringify(localizedImages),
+            newFood.id,
+            JSON.stringify(toImageArray(newFood.images)),
+          ]
+        );
+        if (localizeWrite.rowCount === 0) {
+          log(
+            'debug',
+            `[food.createFood] Images for ${newFood.id} changed during localization; keeping the newer value`
+          );
+        } else {
+          newFood.images = localizedImages;
+        }
+      }
+    } catch (imageError) {
+      // The food itself is already committed; keep it and leave the remote URLs.
+      const message =
+        imageError instanceof Error ? imageError.message : String(imageError);
+      log(
+        'warn',
+        `[food] Image localization failed for ${newFood.id}: ${message}`
+      );
+    }
+
     // Return the new food with its default variant details
     return {
       ...newFood,
@@ -275,14 +361,13 @@ async function createFood(foodData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function findFoodByBarcode(barcode: any, userId: any) {
+async function findFoodByBarcode(barcode: string, userId: string) {
   barcode = normalizeBarcode(barcode);
   const client = await getClient(userId);
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -295,13 +380,12 @@ async function findFoodByBarcode(barcode: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodById(foodId: any, userId: any) {
+async function getFoodById(foodId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -313,8 +397,7 @@ async function getFoodById(foodId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodOwnerId(foodId: any, userId: any) {
+async function getFoodOwnerId(foodId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const foodResult = await client.query(
@@ -328,8 +411,7 @@ async function getFoodOwnerId(foodId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateFood(id: any, userId: any, foodData: any) {
+async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
   const client = await getClient(userId); // User-specific operation
   try {
     // Distinguish "barcode key omitted" (leave unchanged) from "barcode set
@@ -354,8 +436,9 @@ async function updateFood(id: any, userId: any, foodData: any) {
         provider_type = COALESCE($8, provider_type),
         provider_verified = COALESCE($9, provider_verified),
         is_quick_food = COALESCE($10, is_quick_food),
+        images = COALESCE($11::jsonb, images),
         updated_at = now()
-      WHERE id = $11
+      WHERE id = $12
       RETURNING *`,
       [
         foodData.name,
@@ -368,16 +451,62 @@ async function updateFood(id: any, userId: any, foodData: any) {
         foodData.provider_type,
         foodData.provider_verified,
         foodData.is_quick_food,
+        // undefined => key omitted => leave images untouched
+        foodData.images === undefined
+          ? null
+          : JSON.stringify(toImageArray(foodData.images)),
         id,
       ]
     );
-    return result.rows[0];
+    const updated = result.rows[0];
+
+    // Mirror createFood: a caller that sets a provider-hosted URL here (e.g.
+    // backfilling the photo onto an already-imported food) gets a local copy
+    // too, rather than leaving the row permanently hotlinked.
+    if (updated && foodData.images !== undefined) {
+      try {
+        const localizedImages = await localizeImages(
+          updated.images,
+          updated.id,
+          'foods'
+        );
+        if (localizedImages) {
+          // Downloads happen outside the transaction, so another request can
+          // have replaced `images` in the meantime. Only write the localized
+          // result back if the row still holds exactly what we localized;
+          // otherwise the newer value wins and this stale write is skipped.
+          const localizeWrite = await client.query(
+            'UPDATE foods SET images = $1::jsonb WHERE id = $2 AND images = $3::jsonb',
+            [
+              JSON.stringify(localizedImages),
+              updated.id,
+              JSON.stringify(toImageArray(updated.images)),
+            ]
+          );
+          if (localizeWrite.rowCount === 0) {
+            log(
+              'debug',
+              `[food.updateFood] Images for ${updated.id} changed during localization; keeping the newer value`
+            );
+          } else {
+            updated.images = localizedImages;
+          }
+        }
+      } catch (imageError) {
+        // Non-fatal, as in createFood: keep the row and its remote URLs.
+        log(
+          'warn',
+          `[food.updateFood] Image localization failed for ${updated.id}; keeping remote URLs:`,
+          imageError
+        );
+      }
+    }
+    return updated;
   } finally {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFood(id: any, userId: any) {
+async function deleteFood(id: string, userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -406,7 +535,7 @@ async function getFoodsWithPagination(
       nextParamIndex,
     } = buildSqlSearch("CONCAT(f.brand, ' ', f.name)", searchTerm, 1);
     whereClauses.push(...searchClauses);
-    const queryParams: any[] = [...searchParams];
+    const queryParams: SqlParam[] = [...searchParams];
     let paramIndex = nextParamIndex;
 
     // Handle ownership/source filtering
@@ -428,7 +557,7 @@ async function getFoodsWithPagination(
 
     let query = `
       SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -485,7 +614,7 @@ async function countFoods(
     const { whereClauses: searchClauses, queryParams: searchParams } =
       buildSqlSearch("CONCAT(brand, ' ', name)", searchTerm, 1);
     whereClauses.push(...searchClauses);
-    const countQueryParams: any[] = [...searchParams];
+    const countQueryParams: SqlParam[] = [...searchParams];
     let paramIndex = countQueryParams.length + 1;
 
     // Handle ownership/source filtering
@@ -556,8 +685,7 @@ async function getFoodDeletionImpact(
     );
 
     const currentUserFoodEntries = currentUserEntriesResult.rows.map(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (row: any) => ({
+      (row: { id: string; entry_date: string; meal_type_id: string }) => ({
         id: row.id,
         entry_date: row.entry_date,
         meal_type_id: row.meal_type_id,
@@ -639,8 +767,7 @@ async function getFoodDeletionImpact(
         [authenticatedUserId]
       );
       familySharedUsers = familyAccessResult.rows.map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (row: any) => row.family_user_id
+        (row: { family_user_id: string }) => row.family_user_id
       );
     }
 
@@ -661,8 +788,7 @@ async function getFoodDeletionImpact(
     systemClient.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFoodAndDependencies(foodId: any, userId: any) {
+async function deleteFoodAndDependencies(foodId: string, userId: string) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
@@ -749,6 +875,7 @@ interface BulkImportFoodData {
   provider_external_id?: string | null;
   provider_type?: string | null;
   provider_verified?: BooleanInput;
+  images?: string[] | null;
   serving_size?: NumericInput;
   serving_unit?: string | null;
   is_default?: BooleanInput;
@@ -788,6 +915,7 @@ interface GroupedImportFood {
   provider_external_id?: string | null;
   provider_type?: string | null;
   provider_verified?: BooleanInput;
+  images?: string[] | null;
   variants: BulkImportFoodData[];
 }
 
@@ -829,6 +957,7 @@ async function createFoodsInBulk(
           provider_external_id: variant.provider_external_id || null,
           provider_type: variant.provider_type || null,
           provider_verified: variant.provider_verified,
+          images: resolveImageInput(variant),
           variants: [],
         };
       }
@@ -897,6 +1026,9 @@ async function createFoodsInBulk(
     let totalFoodsCreated = 0;
     let totalFoodsUpdated = 0;
     let totalVariantsCreated = 0;
+    // Downloads are deferred until after COMMIT so network latency never holds
+    // the bulk transaction open.
+    const pendingImageLocalization: { foodId: string; images: unknown }[] = [];
     for (const food of foodsToCreate) {
       const existingFoodId = existingFoodIdByKey.get(
         `${food.name}|${brandKey(food.brand)}`
@@ -924,8 +1056,8 @@ async function createFoodsInBulk(
         totalFoodsUpdated++;
       } else {
         const foodResult = await client.query(
-          `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type,provider_verified, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+          `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type,provider_verified, images, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now(), now())
            RETURNING id`,
           [
             food.name,
@@ -938,9 +1070,11 @@ async function createFoodsInBulk(
             food.provider_external_id || null,
             food.provider_type || null,
             sanitizeBoolean(food.provider_verified) ?? false,
+            JSON.stringify(resolveImageInput(food)),
           ]
         );
         foodId = foodResult.rows[0].id;
+        pendingImageLocalization.push({ foodId, images: food.images });
         totalFoodsCreated++;
       }
       for (const variant of food.variants) {
@@ -1048,6 +1182,40 @@ async function createFoodsInBulk(
       }
     }
     await client.query('COMMIT');
+
+    // Pull provider-hosted images local, in small batches so a large import
+    // doesn't open hundreds of simultaneous outbound connections.
+    const IMAGE_BATCH_SIZE = 4;
+    for (
+      let i = 0;
+      i < pendingImageLocalization.length;
+      i += IMAGE_BATCH_SIZE
+    ) {
+      const batch = pendingImageLocalization.slice(i, i + IMAGE_BATCH_SIZE);
+      await Promise.all(
+        batch.map(async ({ foodId, images }) => {
+          try {
+            const localized = await localizeImages(images, foodId, 'foods');
+            if (localized) {
+              await client.query(
+                'UPDATE foods SET images = $1::jsonb WHERE id = $2',
+                [JSON.stringify(localized), foodId]
+              );
+            }
+          } catch (imageError) {
+            const message =
+              imageError instanceof Error
+                ? imageError.message
+                : String(imageError);
+            log(
+              'warn',
+              `[food] Bulk image localization failed for ${foodId}: ${message}`
+            );
+          }
+        })
+      );
+    }
+
     return {
       message: 'Food data imported successfully.',
       createdFoods: totalFoodsCreated,
@@ -1062,8 +1230,7 @@ async function createFoodsInBulk(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodsNeedingReview(userId: any) {
+async function getFoodsNeedingReview(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
@@ -1095,8 +1262,7 @@ async function getFoodsNeedingReview(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function clearUserIgnoredUpdate(userId: any, variantId: any) {
+async function clearUserIgnoredUpdate(userId: string, variantId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query(
@@ -1152,7 +1318,6 @@ async function findVisibleFoodByName(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function findFoodByProviderExternalId(
   userId: string,
   providerExternalId: string,
@@ -1161,7 +1326,7 @@ async function findFoodByProviderExternalId(
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified,
+      `SELECT f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
               fv.id AS default_variant_id, fv.serving_size, fv.serving_unit,
               ${DEFAULT_VARIANT_JSON_SQL}
        FROM foods f
@@ -1178,11 +1343,10 @@ async function findFoodByProviderExternalId(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateFoodVariantNutrition(
   variantId: string,
   userId: string,
-  nutritionData: any
+  nutritionData: FoodVariantInput
 ) {
   const client = await getClient(userId);
   try {

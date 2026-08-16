@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,8 @@ import { useTranslation } from 'react-i18next';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { formatServingLabel } from '@/utils/foodServing';
+import { resolveFoodImageSrc, usableFoodImages } from '@/utils/foodImages';
+import ImageLightbox from './ImageLightbox';
 import {
   CONFIDENCE_TONES,
   OVERALL_CONFIDENCE_LABELS,
@@ -42,6 +45,10 @@ interface FoodResultCardProps {
   // When set, the provider badge is tinted with this colour (used by the All
   // Providers "Top Matches" section to tell sources apart at a glance).
   providerBadgeColor?: string;
+  /**
+   * Explicit image override. Provider search results pass the upstream URL
+   * here; local foods and meals fall back to their own stored `images`.
+   */
   imageUrl?: string;
   nutrientConfig: NutrientGridConfig;
   onCardClick?: () => void;
@@ -68,6 +75,30 @@ const FoodResultCard = ({
   const { activeUserId } = useActiveUser();
   const isFood = !isMeal;
   const foodItem = item as Food;
+  // Provider results carry a single upstream `image_url`; imported foods and
+  // meals carry an `images` array. resolveFoodImageSrc handles both absolute
+  // provider URLs and server-relative upload paths.
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  // Set when the thumbnail 404s and we swap to the full-size variant, so the
+  // viewer opens the image that actually loaded rather than the failed one.
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  // Providers that serve a small and a full-size variant give us both; if the
+  // small one is missing upstream, swap to the full size before giving up.
+  const fallbackImageSrc = resolveFoodImageSrc(foodItem.image_source_url);
+  // All images for the viewer; provider results only ever have the one.
+  const galleryImages = (() => {
+    const own = usableFoodImages(item.images);
+    if (own.length > 0) {
+      return own;
+    }
+    if (thumbnailFailed && fallbackImageSrc) {
+      return [fallbackImageSrc];
+    }
+    const single =
+      resolveFoodImageSrc(imageUrl) ?? resolveFoodImageSrc(foodItem.image_url);
+    return single ? [single] : [];
+  })();
+  const resolvedImageSrc = galleryImages[0] ?? null;
   const mealItem = item as Meal;
   // Hex opacity suffixes are only valid on a full #rrggbb value; other colour
   // formats (CSS vars, named colours, #rgb) are used as-is without a tint.
@@ -82,9 +113,46 @@ const FoodResultCard = ({
       onClick={onCardClick}
     >
       <CardContent className="p-4">
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <div className="flex items-center space-x-2 mb-2">
+        <div className="flex justify-between items-start gap-3">
+          {/* Thumbnail rail, mirroring the diary rows: image on the left with
+              the name and nutrients stacked beside it, so a row with a photo
+              is no taller than one without. */}
+          {resolvedImageSrc && (
+            <button
+              type="button"
+              className="shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onClick={(e) => {
+                // The card itself is clickable; don't also select the food.
+                e.stopPropagation();
+                setLightboxOpen(true);
+              }}
+              aria-label={t('food.viewImages', 'View images')}
+            >
+              <img
+                src={resolvedImageSrc}
+                alt={item.name}
+                className="w-14 h-14 object-cover rounded-md cursor-zoom-in"
+                loading="lazy"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  // One-shot flag rather than comparing src: the browser
+                  // resolves `img.src` to an absolute URL, so a relative
+                  // fallback would never compare equal and would retry forever.
+                  if (fallbackImageSrc && !img.dataset['triedFallback']) {
+                    img.dataset['triedFallback'] = 'true';
+                    img.src = fallbackImageSrc;
+                    // Point the viewer at the same replacement.
+                    setThumbnailFailed(true);
+                    return;
+                  }
+                  // A dead provider link shouldn't leave a broken-image icon.
+                  img.style.display = 'none';
+                }}
+              />
+            </button>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-2">
               <h3 className="font-medium">{item.name}</h3>
               {isFood && foodItem.brand && (
                 <Badge variant="secondary" className="text-xs">
@@ -175,13 +243,6 @@ const FoodResultCard = ({
             {isMeal && mealItem.description && (
               <p className="text-sm text-gray-500">{mealItem.description}</p>
             )}
-            {imageUrl && (
-              <img
-                src={imageUrl}
-                alt={item.name}
-                className="w-16 h-16 object-cover rounded-md mr-4"
-              />
-            )}
             {isFood && foodItem.default_variant && (
               <>
                 <NutrientGrid
@@ -224,6 +285,12 @@ const FoodResultCard = ({
           </div>
         </div>
       </CardContent>
+      <ImageLightbox
+        images={galleryImages}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+        title={item.name}
+      />
     </Card>
   );
 };

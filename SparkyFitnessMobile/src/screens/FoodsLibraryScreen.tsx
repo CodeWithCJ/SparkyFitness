@@ -166,18 +166,18 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-      {header}
-      {isConnected ? (
-        <LibrarySearchBar
-          value={searchText}
-          onChangeText={setSearchText}
-          placeholder="Search foods..."
-          isSearching={isSearching}
-        />
-      ) : null}
-      {renderContent()}
-    </View>
+      <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+        {header}
+        {isConnected ? (
+          <LibrarySearchBar
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholder="Search foods..."
+            isSearching={isSearching}
+          />
+        ) : null}
+        {renderContent()}
+      </View>
   );
 };
 

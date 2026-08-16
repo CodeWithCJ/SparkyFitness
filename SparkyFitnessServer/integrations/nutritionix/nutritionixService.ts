@@ -1,8 +1,24 @@
 import { log } from '../../config/logging.js';
 import externalProviderRepository from '../../models/externalProviderRepository.js';
 const NUTRITIONIX_API_BASE_URL = 'https://trackapi.nutritionix.com/v2';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getNutritionixHeaders(providerId: any) {
+
+/** A single entry in Nutritionix's `full_nutrients` array. */
+interface NutritionixNutrient {
+  attr_id: number;
+  value: number;
+}
+
+/** The exercise fields this adapter reads from Nutritionix responses. */
+interface NutritionixExercise {
+  tag_id: number | string;
+  name?: string;
+  user_input?: string;
+  description?: string;
+  duration_min?: number | null;
+  nf_calories?: number;
+}
+
+async function getNutritionixHeaders(providerId: string) {
   const providerData =
     await externalProviderRepository.getExternalDataProviderById(providerId);
   if (!providerData || !providerData.app_id || !providerData.app_key) {
@@ -14,8 +30,7 @@ async function getNutritionixHeaders(providerId: any) {
     'x-app-key': providerData.app_key,
   };
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function searchNutritionixFoods(query: any, providerId: any) {
+async function searchNutritionixFoods(query: string, providerId: string) {
   try {
     const headers = await getNutritionixHeaders(providerId);
     const response = await fetch(
@@ -41,8 +56,7 @@ async function searchNutritionixFoods(query: any, providerId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getNutritionixNutrients(query: any, providerId: any) {
+async function getNutritionixNutrients(query: string, providerId: string) {
   try {
     const headers = await getNutritionixHeaders(providerId);
     const response = await fetch(
@@ -71,6 +85,8 @@ async function getNutritionixNutrients(query: any, providerId: any) {
         fat: food.nf_total_fat,
         serving_size: food.serving_qty,
         serving_unit: food.serving_unit,
+        // Hotlinked in search results; localized on import (models/food.ts).
+        image_url: food.photo?.highres || food.photo?.thumb || null,
         saturated_fat: food.nf_saturated_fat,
         polyunsaturated_fat: food.nf_polyunsaturated_fat, // Assuming this exists or needs to be mapped
         monounsaturated_fat: food.nf_monounsaturated_fat, // Assuming this exists or needs to be mapped
@@ -96,8 +112,10 @@ async function getNutritionixNutrients(query: any, providerId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getNutritionixBrandedNutrients(nixItemId: any, providerId: any) {
+async function getNutritionixBrandedNutrients(
+  nixItemId: string,
+  providerId: string
+) {
   try {
     const headers = await getNutritionixHeaders(providerId);
     const response = await fetch(`${NUTRITIONIX_API_BASE_URL}/search/item`, {
@@ -114,11 +132,10 @@ async function getNutritionixBrandedNutrients(nixItemId: any, providerId: any) {
     // Extract relevant nutrient information
     if (data.foods && data.foods.length > 0) {
       const food = data.foods[0];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const getNutrientValue = (attr_id: any) =>
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        food.full_nutrients?.find((n: any) => n.attr_id === attr_id)?.value ||
-        0;
+      const getNutrientValue = (attr_id: number) =>
+        food.full_nutrients?.find(
+          (n: NutritionixNutrient) => n.attr_id === attr_id
+        )?.value || 0;
       return {
         name: food.food_name,
         brand: food.brand_name || null,
@@ -128,6 +145,8 @@ async function getNutritionixBrandedNutrients(nixItemId: any, providerId: any) {
         fat: getNutrientValue(204), // Total Fat
         serving_size: food.serving_qty,
         serving_unit: food.serving_unit,
+        // Hotlinked in search results; localized on import (models/food.ts).
+        image_url: food.photo?.highres || food.photo?.thumb || null,
         saturated_fat: getNutrientValue(606), // Saturated Fat
         polyunsaturated_fat: getNutrientValue(646), // Polyunsaturated Fat (Commonly 646, verify with Nutritionix API docs)
         monounsaturated_fat: getNutrientValue(645), // Monounsaturated Fat (Commonly 645, verify with Nutritionix API docs)
@@ -154,11 +173,9 @@ async function getNutritionixBrandedNutrients(nixItemId: any, providerId: any) {
   }
 }
 async function searchNutritionixExercises(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  query: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any,
-  userDemographics = {}
+  query: string,
+  providerId: string,
+  userDemographics: Record<string, unknown> = {}
 ) {
   try {
     const headers = await getNutritionixHeaders(providerId);
@@ -182,11 +199,11 @@ async function searchNutritionixExercises(
     const data = await response.json();
     // Map Nutritionix exercise data to a standardized format
     if (data.exercises && data.exercises.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return data.exercises.map((exercise: any) => {
-        const caloriesPerHour = exercise.duration_min
-          ? (exercise.nf_calories / exercise.duration_min) * 60
-          : null;
+      return data.exercises.map((exercise: NutritionixExercise) => {
+        const caloriesPerHour =
+          exercise.duration_min && exercise.nf_calories !== undefined
+            ? (exercise.nf_calories / exercise.duration_min) * 60
+            : null;
         return {
           id: exercise.tag_id, // Using tag_id as a unique identifier for now
           name: exercise.name || exercise.user_input, // Use user_input as fallback for name

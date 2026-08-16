@@ -66,11 +66,73 @@ describe('imageDownloader - downloadImage', () => {
       'ex-ok'
     );
 
-    expect(result).toBe('/uploads/exercises/ex-ok/good.png');
+    // The stem keeps the source name; the suffix is derived from the full URL
+    // so two same-named images on one entity can't overwrite each other.
+    expect(result).toMatch(
+      /^\/uploads\/exercises\/ex-ok\/good_[0-9a-f]{8}\.png$/
+    );
     const written = await fsp.readFile(
-      path.join(TMP_UPLOADS, 'exercises', 'ex-ok', 'good.png')
+      path.join(TMP_UPLOADS, 'exercises', 'ex-ok', path.basename(result))
     );
     expect(written.toString()).toBe('fake-png-bytes');
+  });
+
+  it('writes under the requested domain subdirectory', async () => {
+    const bytes = Buffer.from('fake-food-bytes');
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      imageResponse(bytes, {
+        'content-type': 'image/png',
+        'content-length': String(bytes.length),
+      })
+    );
+
+    const result = await downloadImage(
+      'https://cdn.example.com/product.png',
+      'food-1',
+      'foods'
+    );
+
+    expect(result).toMatch(
+      /^\/uploads\/foods\/food-1\/product_[0-9a-f]{8}\.png$/
+    );
+    const written = await fsp.readFile(
+      path.join(TMP_UPLOADS, 'foods', 'food-1', path.basename(result))
+    );
+    expect(written.toString()).toBe('fake-food-bytes');
+  });
+
+  it('keeps two same-named images on one entity in separate files', async () => {
+    const bytes = Buffer.from('first-bytes');
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      imageResponse(bytes, {
+        'content-type': 'image/png',
+        'content-length': String(bytes.length),
+      })
+    );
+    const first = await downloadImage(
+      'https://cdn-a.example.com/a/image.png',
+      'ex-collide'
+    );
+
+    const otherBytes = Buffer.from('second-bytes');
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      imageResponse(otherBytes, {
+        'content-type': 'image/png',
+        'content-length': String(otherBytes.length),
+      })
+    );
+    const second = await downloadImage(
+      'https://cdn-b.example.com/b/image.png',
+      'ex-collide'
+    );
+
+    // Same basename, same entity, different URLs — previously both wrote to
+    // image.png and the first download was lost.
+    expect(first).not.toBe(second);
+    const firstBody = await fsp.readFile(
+      path.join(TMP_UPLOADS, 'exercises', 'ex-collide', path.basename(first))
+    );
+    expect(firstBody.toString()).toBe('first-bytes');
   });
 
   it('rejects a private/link-local host before making a request (SSRF)', async () => {
@@ -107,10 +169,12 @@ describe('imageDownloader - downloadImage', () => {
       'ex-no-ext'
     );
 
-    expect(result).toBe('/uploads/exercises/ex-no-ext/image.png');
+    expect(result).toMatch(
+      /^\/uploads\/exercises\/ex-no-ext\/image_[0-9a-f]{8}\.png$/
+    );
     expect(
       fs.existsSync(
-        path.join(TMP_UPLOADS, 'exercises', 'ex-no-ext', 'image.png')
+        path.join(TMP_UPLOADS, 'exercises', 'ex-no-ext', path.basename(result))
       )
     ).toBe(true);
   });
@@ -127,7 +191,9 @@ describe('imageDownloader - downloadImage', () => {
       'ex-safe-ext'
     );
 
-    expect(result).toBe('/uploads/exercises/ex-safe-ext/evil.png');
+    expect(result).toMatch(
+      /^\/uploads\/exercises\/ex-safe-ext\/evil_[0-9a-f]{8}\.png$/
+    );
   });
 
   it('follows redirects through the guarded fetch path', async () => {
@@ -148,7 +214,9 @@ describe('imageDownloader - downloadImage', () => {
       'ex-redirect'
     );
 
-    expect(result).toBe('/uploads/exercises/ex-redirect/start.png');
+    expect(result).toMatch(
+      /^\/uploads\/exercises\/ex-redirect\/start_[0-9a-f]{8}\.png$/
+    );
     expect(globalThis.fetch).toHaveBeenNthCalledWith(
       2,
       'https://cdn.example.com/images/final.png',

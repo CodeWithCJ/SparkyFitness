@@ -1,7 +1,11 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import exerciseRepository from '../models/exercise.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
-import { processPolarExercises } from '../integrations/polar/polarDataProcessor.js';
+import sleepRepository from '../models/sleepRepository.js';
+import {
+  processPolarExercises,
+  processPolarSleep,
+} from '../integrations/polar/polarDataProcessor.js';
 
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 vi.mock('../models/measurementRepository.js', () => ({ default: {} }));
@@ -18,7 +22,13 @@ vi.mock('../models/exerciseEntry.js', () => ({
     createExerciseEntry: vi.fn(),
   },
 }));
-vi.mock('../models/sleepRepository.js', () => ({ default: {} }));
+vi.mock('../models/sleepRepository.js', () => ({
+  default: {
+    upsertSleepEntry: vi.fn(),
+    deleteSleepStageEventsByEntryId: vi.fn(),
+    upsertSleepStageEvent: vi.fn(),
+  },
+}));
 vi.mock('../models/activityDetailsRepository.js', () => ({
   default: { createActivityDetail: vi.fn() },
 }));
@@ -59,5 +69,39 @@ describe('processPolarExercises duration units', () => {
       CID,
       'Polar'
     );
+  });
+});
+
+describe('processPolarSleep recording-zone stamp (issue #2033)', () => {
+  // processPolarSleep's untyped `sleepData = []` default infers never[].
+  const night = (startTime: string) =>
+    ({
+      date: '2026-07-15',
+      'sleep-start-time': startTime,
+      'sleep-end-time': '2026-07-15T07:00:00+03:00',
+      'light-sleep': 15000,
+      'deep-sleep': 6000,
+      'rem-sleep': 6000,
+      'total-interruption-duration': 1800,
+      'sleep-score': 80,
+    }) as never;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(sleepRepository.upsertSleepEntry).mockResolvedValue({
+      id: 'sleep-1',
+    });
+  });
+
+  it('stamps the offset from the raw offset-suffixed sleep-start-time', async () => {
+    await processPolarSleep(UID, CID, [night('2026-07-14T23:39:07+03:00')]);
+    const entry = vi.mocked(sleepRepository.upsertSleepEntry).mock.calls[0][2];
+    expect(entry.record_utc_offset_minutes).toBe(180);
+  });
+
+  it('omits the stamp for a naive sleep-start-time (no zone claim)', async () => {
+    await processPolarSleep(UID, CID, [night('2026-07-14T23:39:07')]);
+    const entry = vi.mocked(sleepRepository.upsertSleepEntry).mock.calls[0][2];
+    expect(entry.record_utc_offset_minutes).toBeUndefined();
   });
 });

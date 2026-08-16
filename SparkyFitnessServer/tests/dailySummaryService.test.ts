@@ -7,6 +7,7 @@ import { getExerciseEntriesByDateV2 } from '../services/exerciseEntryHistoryServ
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import foodRepository from '../models/foodMisc.js';
 import bmrService from '../services/bmrService.js';
 
 vi.mock('../services/goalService.js', () => ({
@@ -43,6 +44,12 @@ vi.mock('../models/userRepository.js', () => ({
 vi.mock('../models/preferenceRepository.js', () => ({
   default: {
     getUserPreferences: vi.fn(),
+  },
+}));
+
+vi.mock('../models/foodMisc.js', () => ({
+  default: {
+    getDailySupplementTotals: vi.fn(),
   },
 }));
 
@@ -117,6 +124,13 @@ describe('dailySummaryService', () => {
         serving_size: 100,
       },
     ]);
+    vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      dietary_fiber: 0,
+    });
     vi.mocked(getExerciseEntriesByDateV2).mockResolvedValue([
       activeCaloriesSession,
     ]);
@@ -153,6 +167,49 @@ describe('dailySummaryService', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  test('does not double-count Garmin active calories with workouts and steps', async () => {
+    const garminActiveCalories: ExerciseSessionResponse = {
+      ...activeCaloriesSession,
+      calories_burned: 2180,
+      source: 'garmin',
+    };
+    const garminWorkout: ExerciseSessionResponse = {
+      ...activeCaloriesSession,
+      id: 'garmin-workout-entry',
+      exercise_id: 'garmin-walking',
+      calories_burned: 347,
+      source: 'garmin',
+      name: 'Walking',
+      steps: 6603,
+    };
+    vi.mocked(getExerciseEntriesByDateV2).mockResolvedValue([
+      garminActiveCalories,
+      garminWorkout,
+    ]);
+    vi.mocked(measurementRepository.getStepCaloriesForDate).mockResolvedValue(
+      250
+    );
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      bmr_algorithm: 'Mifflin-St Jeor',
+      activity_level: 'not_much',
+      calorie_goal_adjustment_mode: 'dynamic',
+      exercise_calorie_percentage: 100,
+      include_bmr_in_net_calories: false,
+      tdee_allow_negative_adjustment: false,
+      timezone: 'UTC',
+    });
+
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+    expect(result.calorieBalance.burned).toBe(2180);
+    expect(result.calorieBalance.exerciseSource).toBe('active');
   });
 
   test('returns the TDEE projection used for remaining calories', async () => {
@@ -435,5 +492,129 @@ describe('dailySummaryService', () => {
       expect(result.adjustedGoals!.carbs).toBe(234);
       expect(result.adjustedGoals!.fat).toBe(78);
     });
+  });
+});
+
+// The Diary computes eaten calories from food entries in JS, independently of the SQL
+// nutrition summary that the chatbot and Reports read. That summary has counted supplement
+// doses since supplements shipped, so leaving them out here made the two disagree about the
+// same day. These cover the wiring rather than the arithmetic: each fails if the supplement
+// argument stops reaching computeCalorieBalance, which asserting on a total alone would not.
+describe('dailySummaryService supplement calories', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-06-15T12:00:00Z'));
+
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({ calories: 2000 });
+    vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([
+      { calories: 500, quantity: 100, serving_size: 100 },
+    ]);
+    vi.mocked(getExerciseEntriesByDateV2).mockResolvedValue([]);
+    vi.mocked(measurementRepository.getWaterIntakeByDate).mockResolvedValue(
+      null
+    );
+    vi.mocked(
+      measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+    ).mockResolvedValue(null);
+    vi.mocked(measurementRepository.getStepCaloriesForDate).mockResolvedValue(
+      0
+    );
+    vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
+      null
+    );
+    vi.mocked(userRepository.getUserProfile).mockResolvedValue(null);
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(null);
+    vi.mocked(bmrService.calculateBmr).mockReturnValue(0);
+    vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      dietary_fiber: 0,
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const run = () =>
+    getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+  test('adds logged supplement calories to eaten', async () => {
+    vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      calories: 15,
+      protein: 0,
+      carbs: 0,
+      fat: 1.5,
+      dietary_fiber: 0,
+    });
+
+    const summary = await run();
+
+    // 500 from food, 15 from the day's supplement doses.
+    expect(summary.calorieBalance.eaten).toBe(515);
+  });
+
+  test('leaves eaten untouched when nothing was supplemented', async () => {
+    const summary = await run();
+    expect(summary.calorieBalance.eaten).toBe(500);
+  });
+
+  test('carries the supplement arm through remaining, so the budget shrinks by it', async () => {
+    const withoutSupplements = (await run()).calorieBalance.remaining;
+
+    vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      calories: 15,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      dietary_fiber: 0,
+    });
+    const withSupplements = (await run()).calorieBalance.remaining;
+
+    expect(withoutSupplements - withSupplements).toBe(15);
+  });
+
+  test('returns the supplement totals separately, so the Diary can show what they were', async () => {
+    const totals = {
+      calories: 15,
+      protein: 0,
+      carbs: 0,
+      fat: 1.5,
+      dietary_fiber: 0,
+    };
+    vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue(
+      totals
+    );
+
+    const summary = await run();
+
+    expect(summary.supplementTotals).toEqual(totals);
+  });
+
+  test('scopes the fetch to the target user, not the actor', async () => {
+    await run();
+    expect(foodRepository.getDailySupplementTotals).toHaveBeenCalledWith(
+      targetUserId,
+      date
+    );
+  });
+
+  test('degrades to zeros rather than failing the whole summary', async () => {
+    vi.mocked(foodRepository.getDailySupplementTotals).mockRejectedValue(
+      new Error('supplement totals unavailable')
+    );
+
+    const summary = await run();
+
+    expect(summary.calorieBalance.eaten).toBe(500);
+    expect(summary.supplementTotals.calories).toBe(0);
   });
 });

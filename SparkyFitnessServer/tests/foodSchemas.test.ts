@@ -135,6 +135,39 @@ describe('SearchResponseSchema', () => {
       ).toEqual(['100 g', '1 package (200 g)', '200 g']);
     }
   });
+
+  // Regression: the schema once lacked image keys, so z.object() stripped the
+  // provider photo out of every search response. That left provider results
+  // with no thumbnail and gave the import path no URL to localize.
+  it('preserves the provider image URL on a search result', () => {
+    const result = SearchResponseSchema.parse({
+      foods: [
+        {
+          ...validFood,
+          image_url: 'https://images.openfoodfacts.org/front_en.879.400.jpg',
+          image_source_url:
+            'https://images.openfoodfacts.org/front_en.879.full.jpg',
+        },
+      ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+
+    expect(result.foods[0]?.image_url).toBe(
+      'https://images.openfoodfacts.org/front_en.879.400.jpg'
+    );
+    expect(result.foods[0]?.image_source_url).toBe(
+      'https://images.openfoodfacts.org/front_en.879.full.jpg'
+    );
+  });
+
+  it('preserves a stored images array on a local food', () => {
+    const result = SearchResponseSchema.parse({
+      foods: [{ ...validFood, images: ['/uploads/foods/abc/1.jpg'] }],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+
+    expect(result.foods[0]?.images).toEqual(['/uploads/foods/abc/1.jpg']);
+  });
 });
 
 describe('BarcodeResponseSchema', () => {

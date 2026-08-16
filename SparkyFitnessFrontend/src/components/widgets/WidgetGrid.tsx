@@ -25,10 +25,13 @@ import {
   GRID_ROW_HEIGHT,
   applyAutoHeights,
   areLayoutsEqual,
+  evaluateMeasurement,
   mergePositions,
   pxToRows,
   reconcileLayouts,
+  stabilizeGridWidth,
   type DashboardLayouts,
+  type MeasureGuard,
 } from '@/utils/dashboardLayout';
 
 export interface Widget {
@@ -88,7 +91,16 @@ const WidgetGridInner = ({
   const { t } = useTranslation();
   const { isActingOnBehalf } = useActiveUser();
   const { saved, save, reset, isLoading } = useDashboardLayout(pageKey);
-  const { width, containerRef, mounted } = useContainerWidth();
+  const { width: rawWidth, containerRef, mounted } = useContainerWidth();
+
+  // Content-measured tile heights make the grid's height a function of its
+  // width, and the page's width a function of its height (scrollbar). Feeding
+  // the raw measurement straight to the grid lets a ~15px scrollbar toggle flip
+  // the breakpoint near a threshold and oscillate forever (#2056), so damp it.
+  const [width, setWidth] = useState(rawWidth);
+  useEffect(() => {
+    setWidth((prev) => stabilizeGridWidth(prev, rawWidth));
+  }, [rawWidth]);
 
   // Layout editing is a personal action; when viewing someone else's profile
   // the layout is shown read-only (the server also rejects writes).
@@ -133,10 +145,28 @@ const WidgetGridInner = ({
   // content-driven so tiles grow to fit and never show an inner scrollbar.
   const [measuredRows, setMeasuredRows] = useState<Record<string, number>>({});
 
+  // Per-widget rate limiter that keeps a measurement feedback loop from
+  // re-rendering the grid until React throws. Kept in refs (and evaluated
+  // outside the state updater, which may run twice under StrictMode) so a
+  // double-invoked updater cannot double-count.
+  const measureGuardsRef = useRef<Record<string, MeasureGuard>>({});
+  const acceptedRowsRef = useRef<Record<string, number>>({});
+
   const handleMeasure = useCallback((key: string, px: number) => {
     const rows = pxToRows(px);
+    if (acceptedRowsRef.current[key] === rows) return;
+
+    const { guard, apply } = evaluateMeasurement(
+      measureGuardsRef.current[key],
+      rows,
+      performance.now()
+    );
+    measureGuardsRef.current[key] = guard;
+    if (apply === null || acceptedRowsRef.current[key] === apply) return;
+
+    acceptedRowsRef.current[key] = apply;
     setMeasuredRows((prev) =>
-      prev[key] === rows ? prev : { ...prev, [key]: rows }
+      prev[key] === apply ? prev : { ...prev, [key]: apply }
     );
   }, []);
 

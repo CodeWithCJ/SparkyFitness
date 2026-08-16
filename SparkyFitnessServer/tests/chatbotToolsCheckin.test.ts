@@ -297,6 +297,42 @@ describe('log_custom_metric', () => {
     });
   });
 
+  it('logs custom metric successfully for non-daily frequency category', async () => {
+    vi.mocked(measurementService.getCustomCategories).mockResolvedValue([
+      {
+        id: 'c2',
+        name: 'Blood Pressure Systolic',
+        frequency: 'Unlimited',
+      },
+    ]);
+    vi.mocked(
+      measurementService.upsertCustomMeasurementEntry
+    ).mockResolvedValue({ id: 'm2' });
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'log_custom_metric',
+        category_name: 'Blood Pressure Systolic',
+        value: 118,
+        unit: 'mmHg',
+        entry_date: '2026-08-10',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Custom metric "Blood Pressure Systolic" logged: 118 mmHg on 2026-08-10.'
+    );
+    expect(
+      measurementService.upsertCustomMeasurementEntry
+    ).toHaveBeenCalledWith('user-1', 'user-1', {
+      category_id: 'c2',
+      value: '118',
+      entry_date: '2026-08-10',
+      notes: undefined,
+    });
+  });
+
   it('asks for create_category when the category does not exist', async () => {
     vi.mocked(measurementService.getCustomCategories).mockResolvedValue([]);
 
@@ -598,6 +634,67 @@ describe('log_sleep', () => {
         source: 'manual',
       }
     );
+  });
+
+  it('stamps record_utc_offset_minutes from an explicit-offset caller timestamp', async () => {
+    vi.mocked(measurementService.processSleepEntry).mockResolvedValue({
+      id: 's1',
+    });
+
+    await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'log_sleep',
+        entry_date: '2026-06-01',
+        bedtime: '2026-05-31T22:00:00+05:30',
+      },
+      opts
+    );
+
+    expect(measurementService.processSleepEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ record_utc_offset_minutes: 330 })
+    );
+  });
+
+  it('falls back to the wake_time offset when bedtime carries none', async () => {
+    vi.mocked(measurementService.processSleepEntry).mockResolvedValue({
+      id: 's1',
+    });
+
+    await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'log_sleep',
+        entry_date: '2026-06-01',
+        wake_time: '2026-06-01T06:00:00-04:00',
+      },
+      opts
+    );
+
+    expect(measurementService.processSleepEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ record_utc_offset_minutes: -240 })
+    );
+  });
+
+  it('leaves the stamp unset for Z-suffixed and generated timestamps', async () => {
+    vi.mocked(measurementService.processSleepEntry).mockResolvedValue({
+      id: 's1',
+    });
+
+    await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'log_sleep',
+        entry_date: '2026-06-01',
+        bedtime: '2026-05-31T22:00:00.000Z',
+      },
+      opts
+    );
+
+    const payload = vi.mocked(measurementService.processSleepEntry).mock
+      .calls[0][2];
+    expect(payload.record_utc_offset_minutes).toBeUndefined();
   });
 });
 

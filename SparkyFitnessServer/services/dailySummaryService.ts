@@ -2,6 +2,7 @@ import goalService from './goalService.js';
 import foodEntryService from './foodEntryService.js';
 import { getExerciseEntriesByDateV2 } from './exerciseEntryHistoryService.js';
 import measurementRepository from '../models/measurementRepository.js';
+import foodRepository from '../models/foodMisc.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
@@ -67,6 +68,7 @@ function computeCalorieBalance(
     quantity?: number;
     serving_size?: number | null;
   }>,
+  supplementCalories: number,
   exerciseSessions: ExerciseSessionResponse[],
   stepCalories: number,
   goals: { calories?: number | null },
@@ -81,13 +83,20 @@ function computeCalorieBalance(
   } | null,
   externalBmr: number | null
 ): CalorieBalance {
-  // 1. Eaten calories — scale per-serving values by quantity/serving_size
-  const eatenCalories = foodEntries.reduce((sum, e) => {
+  // 1. Eaten calories — scale per-serving values by quantity/serving_size, then add the
+  // supplement arm. A supplement's energy is intake like any other: it is already counted
+  // by the nutrition summary the chatbot reads, so leaving it out here would have the
+  // Diary and Sparky disagree about the same day. The caller passes it pre-scaled by the
+  // dose snapshot, and it is surfaced separately on the response because both clients
+  // derive their own macro totals from food entries and need the supplement arm as a
+  // distinct number to add in.
+  const eatenFoodCalories = foodEntries.reduce((sum, e) => {
     const cal = e.calories || 0;
     const qty = e.quantity || 0;
     const servingSize = e.serving_size || 100;
     return sum + (cal * qty) / servingSize;
   }, 0);
+  const eatenCalories = eatenFoodCalories + supplementCalories;
 
   // 2. Exercise stats
   const { activeCalories, otherCalories } =
@@ -248,6 +257,7 @@ export async function getDailySummary({
     userProfile,
     userPreferences,
     measurements,
+    supplementTotals,
   ] = await Promise.all([
     goalService.getUserGoals(targetUserId, date, undefined, false),
     goalService.getUserGoals(targetUserId, date, undefined, true),
@@ -279,6 +289,20 @@ export async function getDailySummary({
             return null;
           })
       : null,
+    // Supplement nutrition is diary data and this whole route is gated on `diary`
+    // (dailySummaryRoutes:9), so this adds no reach the caller did not already have
+    // through foodEntries. Failure degrades to zeros rather than failing the summary:
+    // a missing supplement arm understates the day, a 500 shows the user nothing.
+    foodRepository
+      .getDailySupplementTotals(targetUserId, date)
+      .catch((error: unknown) => {
+        log(
+          'warn',
+          `Supplement totals fetch failed for user ${targetUserId} on ${date}, defaulting to zeros:`,
+          error
+        );
+        return { calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 };
+      }),
   ]);
 
   const stepCalories = includeCheckin
@@ -307,6 +331,7 @@ export async function getDailySummary({
 
   const calorieBalance = computeCalorieBalance(
     foodEntries,
+    supplementTotals.calories,
     exerciseSessions as ExerciseSessionResponse[],
     stepCalories,
     goals,
@@ -345,5 +370,9 @@ export async function getDailySummary({
     stepCalories,
     calorieBalance,
     adjustedGoals: computedAdjustedGoals,
+    // Exposed separately as well as folded into `calorieBalance.eaten`, so the Diary can
+    // show what supplements contributed instead of leaving a gap between the headline
+    // total and the food rows underneath it.
+    supplementTotals,
   };
 }

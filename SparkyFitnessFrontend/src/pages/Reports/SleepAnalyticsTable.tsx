@@ -15,7 +15,11 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
-import { formatSecondsToHHMM } from '@/utils/timeFormatters';
+import {
+  formatSecondsToHHMM,
+  formatTimeInZone,
+  sleepEntryZone,
+} from '@/utils/timeFormatters';
 import {
   HIGH_DEBT_THRESHOLD_HOURS,
   GOOD_SLEEP_SCORE_THRESHOLD,
@@ -39,7 +43,8 @@ const SleepAnalyticsTable = ({
     'SleepAnalyticsTable received combinedSleepData:',
     combinedSleepData
   );
-  const { formatDateInUserTimezone, dateFormat, formatTime } = usePreferences();
+  const { formatDateInUserTimezone, dateFormat, timeFormat, timezone } =
+    usePreferences();
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(
     new Set()
   );
@@ -147,6 +152,11 @@ const SleepAnalyticsTable = ({
 
               const insight = t(insightKey, insightDefault);
 
+              // Aggregated rows carry the day zone (earliest-bedtime
+              // session's recording zone), so stage labels agree with the
+              // hypnogram axis and header dates.
+              const zone = sleepEntryZone(sleepEntry, timezone);
+
               const aggregatedStages = sleepEntry.stage_events?.reduce(
                 (acc, event) => {
                   acc[event.stage_type] =
@@ -179,8 +189,12 @@ const SleepAnalyticsTable = ({
                         dateFormat
                       )}
                     </TableCell>
-                    <TableCell>{formatTime(sleepEntry.bedtime)}</TableCell>
-                    <TableCell>{formatTime(sleepEntry.wake_time)}</TableCell>
+                    <TableCell>
+                      {formatTimeInZone(sleepEntry.bedtime, zone, timeFormat)}
+                    </TableCell>
+                    <TableCell>
+                      {formatTimeInZone(sleepEntry.wake_time, zone, timeFormat)}
+                    </TableCell>
                     <TableCell>{totalSleepDuration}</TableCell>
                     <TableCell>{timeAsleep}</TableCell>
                     <TableCell>
@@ -283,8 +297,17 @@ const SleepAnalyticsTable = ({
                                     )}
                                   </div>
                                   <div className="text-xs opacity-80">
-                                    {formatTime(event.start_time)} -{' '}
-                                    {formatTime(event.end_time)}
+                                    {formatTimeInZone(
+                                      event.start_time,
+                                      zone,
+                                      timeFormat
+                                    )}{' '}
+                                    -{' '}
+                                    {formatTimeInZone(
+                                      event.end_time,
+                                      zone,
+                                      timeFormat
+                                    )}
                                   </div>
                                 </div>
                               ))}

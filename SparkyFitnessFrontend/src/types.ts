@@ -51,6 +51,8 @@ export interface SleepEntry {
   avg_overnight_hrv: number | null;
   body_battery_change: number | null;
   resting_heart_rate: number | null;
+  record_timezone?: string | null;
+  record_utc_offset_minutes?: number | null;
   stage_events?: SleepStageEvent[];
 }
 
@@ -75,6 +77,8 @@ export interface SleepAnalyticsData {
   stagePercentages: SleepStageSummary;
   awakePeriods: number;
   totalAwakeDuration: number;
+  record_timezone?: string | null;
+  record_utc_offset_minutes?: number | null;
 }
 
 export interface CombinedSleepData {
@@ -85,6 +89,8 @@ export interface CombinedSleepData {
 export interface SleepChartData {
   date: string;
   segments: SleepStageEvent[];
+  record_timezone?: string | null;
+  record_utc_offset_minutes?: number | null;
 }
 
 export const SLEEP_STAGE_COLORS = {

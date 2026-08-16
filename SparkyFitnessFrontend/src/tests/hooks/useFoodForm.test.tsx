@@ -168,6 +168,65 @@ describe('useCustomFoodForm', () => {
     );
   });
 
+  // Regression: the picker seeded only from `food.images`, which a provider
+  // search result never has — its photo is the single upstream `image_url`.
+  // The edit form therefore opened empty and saved an empty images array,
+  // losing the photo shown on the search card.
+  it('seeds the image picker from a provider result image_url', async () => {
+    const food = createFood({
+      images: undefined,
+      image_url: 'https://images.openfoodfacts.org/front_en.879.400.jpg',
+    });
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({ food, onSave: jest.fn() })
+    );
+
+    await waitFor(() => {
+      expect(result.current.imageItems).toEqual([
+        {
+          kind: 'saved',
+          path: 'https://images.openfoodfacts.org/front_en.879.400.jpg',
+        },
+      ]);
+    });
+  });
+
+  it('prefers the full-size provider image over the thumbnail', async () => {
+    const food = createFood({
+      images: undefined,
+      image_url: 'https://example.com/thumb.jpg',
+      image_source_url: 'https://example.com/full.jpg',
+    });
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({ food, onSave: jest.fn() })
+    );
+
+    await waitFor(() => {
+      expect(result.current.imageItems).toEqual([
+        { kind: 'saved', path: 'https://example.com/full.jpg' },
+      ]);
+    });
+  });
+
+  it('keeps stored images and ignores the provider URL on an already-imported food', async () => {
+    const food = createFood({
+      images: ['/uploads/foods/food-1/a.jpg'],
+      image_url: 'https://example.com/thumb.jpg',
+    });
+
+    const { result } = renderHook(() =>
+      useCustomFoodForm({ food, onSave: jest.fn() })
+    );
+
+    await waitFor(() => {
+      expect(result.current.imageItems).toEqual([
+        { kind: 'saved', path: '/uploads/foods/food-1/a.jpg' },
+      ]);
+    });
+  });
+
   it('opens existing food edits with auto-scale on when the preference is enabled', async () => {
     mockAutoScaleOnlineImports = true;
     const food = createFood();

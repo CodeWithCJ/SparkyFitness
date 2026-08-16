@@ -1,4 +1,7 @@
-import { pinDefaultVariantToServing } from '@/utils/foodSearch';
+import {
+  convertNutritionixToFood,
+  pinDefaultVariantToServing,
+} from '@/utils/foodSearch';
 import type { Food, FoodVariant } from '@/types/food';
 
 const makeVariant = (
@@ -168,5 +171,36 @@ describe('pinDefaultVariantToServing', () => {
     expect(result.default_variant?.serving_description).toBe(
       '1 serving (400 g)'
     );
+  });
+});
+
+// Regression: Nutritionix's instant search calls the photo `image`, so the
+// converter silently dropped it while every other provider used `image_url`.
+describe('convertNutritionixToFood', () => {
+  it('maps the Nutritionix photo onto image_url', () => {
+    const food = convertNutritionixToFood({
+      id: 'nix-1',
+      name: 'Banana',
+      image: 'https://nix-tag-images.s3.amazonaws.com/banana.jpg',
+    });
+
+    expect(food.image_url).toBe(
+      'https://nix-tag-images.s3.amazonaws.com/banana.jpg'
+    );
+  });
+
+  it('falls back to the search item photo when the detail response has none', () => {
+    const food = convertNutritionixToFood(
+      { id: 'nix-1', name: 'Banana', image: 'https://example.com/thumb.jpg' },
+      { id: 'nix-1', name: 'Banana', calories: 105 }
+    );
+
+    expect(food.image_url).toBe('https://example.com/thumb.jpg');
+  });
+
+  it('is null when Nutritionix returns no photo', () => {
+    const food = convertNutritionixToFood({ id: 'nix-1', name: 'Banana' });
+
+    expect(food.image_url).toBeNull();
   });
 });

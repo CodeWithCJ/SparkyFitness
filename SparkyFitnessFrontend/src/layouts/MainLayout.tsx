@@ -457,9 +457,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           <div className="flex items-center gap-2">
             <ProfileSwitcher />
             <span className="text-sm text-muted-foreground hidden sm:inline">
-              Welcome {activeUserName}
+              {t('layout.welcome', 'Welcome {{activeUserName}}', {
+                activeUserName,
+              })}
             </span>
-
             {onStartOnboarding && (
               <Button
                 variant="outline"

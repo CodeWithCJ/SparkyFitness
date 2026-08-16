@@ -119,6 +119,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const { backColor } = useHeaderActionColors();
 
   const { date, photo } = route.params;
+  const mealTypeId = route.params.mealTypeId;
 
   // The scan screen hands off a single photo; the user composes the rest of the
   // image set here. Seeded from the handoff photo.
@@ -186,7 +187,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     if (next.length === 0) {
       navigation
         .getParent<NativeStackNavigationProp<RootStackParamList>>()
-        ?.replace('FoodScan', { date, initialMode: 'photo' });
+        ?.replace('FoodScan', { date, initialMode: 'photo', mealTypeId: mealTypeId ?? undefined });
     }
   };
 
@@ -349,6 +350,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
               totalWeight: payloadWeight,
               weightUnit: payloadWeight !== undefined ? weightUnit : undefined,
             },
+            mealTypeId: mealTypeId ?? undefined,
           });
         },
         onError: (error) => {
@@ -368,7 +370,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           if (!copy.stayOnForm) {
             const parent = navigation.getParent<NativeStackNavigationProp<RootStackParamList>>();
             if (error.code === 'IMAGE_TOO_LARGE' || error.code === 'UNSUPPORTED_MIME_TYPE') {
-              parent?.replace('FoodScan', { date, initialMode: 'photo' });
+              parent?.replace('FoodScan', { date, initialMode: 'photo', mealTypeId: mealTypeId ?? undefined });
             } else {
               parent?.popToTop();
             }

@@ -1,11 +1,33 @@
 import { getClient } from '../db/poolManager.js';
+import { toImageArray } from '../utils/imageLocalizer.js';
 import { log } from '../config/logging.js';
 
+/**
+ * Fields accepted when creating or updating a logged meal.
+ *
+ * `meal_type` is the human name (e.g. "Breakfast") and is resolved to a
+ * `meal_type_id` when the id is not supplied directly.
+ */
+interface FoodEntryMealInput {
+  user_id: string;
+  meal_template_id?: string | null;
+  meal_type_id?: string | null;
+  meal_type?: string | null;
+  entry_date: string;
+  entry_time?: string | null;
+  name: string;
+  description?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  legacy_serving_unit_math?: boolean;
+}
+
+/** The subset of fields an update may change. */
+type FoodEntryMealUpdate = Partial<FoodEntryMealInput>;
+
 async function createFoodEntryMeal(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any
+  foodEntryMealData: FoodEntryMealInput,
+  createdByUserId: string
 ) {
   log(
     'info',
@@ -25,12 +47,22 @@ async function createFoodEntryMeal(
         throw new Error(`Invalid meal type: ${foodEntryMealData.meal_type}`);
       }
     }
+    // Snapshot the template's photo onto the logged meal, mirroring how the
+    // nutrition of its components is snapshotted: editing the template later
+    // must not rewrite what past entries show. Ad-hoc logged meals have no
+    // template and simply keep an empty array.
     const result = await client.query(
       `INSERT INTO food_entry_meals (
                 user_id, meal_template_id, meal_type_id, entry_date, entry_time, name, description,
                 quantity, unit, legacy_serving_unit_math,
-                created_by_user_id, updated_by_user_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                created_by_user_id, updated_by_user_id, images
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+              COALESCE(
+                (SELECT m.images FROM meals m WHERE m.id = $2),
+                '[]'::jsonb
+              )
+            )
             RETURNING *`,
       [
         foodEntryMealData.user_id,
@@ -56,12 +88,9 @@ async function createFoodEntryMeal(
   }
 }
 async function updateFoodEntryMeal(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodEntryMealData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updatedByUserId: any
+  foodEntryMealId: string,
+  foodEntryMealData: FoodEntryMealUpdate,
+  updatedByUserId: string
 ) {
   log(
     'info',
@@ -126,8 +155,7 @@ async function updateFoodEntryMeal(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
+async function getFoodEntryMealById(foodEntryMealId: string, userId: string) {
   log(
     'info',
     `getFoodEntryMealById in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`
@@ -151,9 +179,14 @@ async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
             fem.created_at,
             fem.updated_at,
             fem.created_by_user_id,
-            fem.updated_by_user_id
+            fem.updated_by_user_id,
+            -- Per-entry override photo, plus the meal template's own images so
+            -- the diary can fall back when this entry has no override.
+            fem.images,
+            m.images AS meal_images
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
+            LEFT JOIN meals m ON fem.meal_template_id = m.id
             WHERE fem.id = $1`,
       [foodEntryMealId]
     );
@@ -169,8 +202,7 @@ async function getFoodEntryMealById(foodEntryMealId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
+async function getFoodEntryMealsByDate(userId: string, selectedDate: string) {
   log(
     'debug',
     `getFoodEntryMealsByDate in foodEntryMealRepository: userId: ${userId}, selectedDate: ${selectedDate}`
@@ -194,9 +226,14 @@ async function getFoodEntryMealsByDate(userId: any, selectedDate: any) {
             fem.created_at,
             fem.updated_at,
             fem.created_by_user_id,
-            fem.updated_by_user_id
+            fem.updated_by_user_id,
+            -- Per-entry override photo, plus the meal template's own images so
+            -- the diary can fall back when this entry has no override.
+            fem.images,
+            m.images AS meal_images
             FROM food_entry_meals fem
             LEFT JOIN meal_types mt ON fem.meal_type_id = mt.id
+            LEFT JOIN meals m ON fem.meal_template_id = m.id
             WHERE fem.user_id = $1 AND fem.entry_date = $2
             ORDER BY mt.sort_order ASC, fem.entry_time ASC NULLS LAST, fem.created_at ASC`,
       [userId, selectedDate]
@@ -235,8 +272,7 @@ async function getFoodEntryMealsByDateRange(
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteFoodEntryMeal(foodEntryMealId: any, userId: any) {
+async function deleteFoodEntryMeal(foodEntryMealId: string, userId: string) {
   log(
     'info',
     `deleteFoodEntryMeal in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, userId: ${userId}`
@@ -317,6 +353,34 @@ async function moveFoodEntryMealToMealType(
     client.release();
   }
 }
+/**
+ * Replaces a logged meal's per-entry override photos.
+ *
+ * Scoped by user_id so a caller cannot retarget another user's entry. Passing
+ * an empty array clears the override, restoring the meal template's images as
+ * the fallback; the template itself is never modified.
+ */
+async function setFoodEntryMealImages(
+  foodEntryMealId: string,
+  userId: string,
+  images: string[]
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE food_entry_meals
+         SET images = $3::jsonb, updated_at = now()
+       WHERE id = $1 AND user_id = $2
+       RETURNING id, images`,
+      [foodEntryMealId, userId, JSON.stringify(toImageArray(images))]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+
+export { setFoodEntryMealImages };
 export { createFoodEntryMeal };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealById };
@@ -325,6 +389,7 @@ export { getFoodEntryMealsByDateRange };
 export { deleteFoodEntryMeal };
 export { moveFoodEntryMealToMealType };
 export default {
+  setFoodEntryMealImages,
   createFoodEntryMeal,
   updateFoodEntryMeal,
   getFoodEntryMealById,

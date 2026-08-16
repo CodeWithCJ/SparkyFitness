@@ -49,4 +49,10 @@ export interface FoodEntry {
   // entries that were themselves imported from a provider.
   source?: string | null;
   provider_verified?: boolean;
+
+  // Per-entry override photos. Never written back to the parent food, so an
+  // entry without an override falls back to `food_images`.
+  images?: string[] | null;
+  // The parent food's own images, returned alongside the entry by the server.
+  food_images?: string[] | null;
 }

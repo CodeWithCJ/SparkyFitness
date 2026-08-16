@@ -1,6 +1,6 @@
 {
   "name": "sparkyfitnessmobile",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "private": true,
   "expo": {
     "autolinking": {
@@ -63,6 +63,7 @@
     "expo-haptics": "~56.0.3",
     "expo-health-connect": "^0.1.1",
     "expo-image": "~56.0.11",
+    "expo-image-manipulator": "~56.0.24",
     "expo-image-picker": "~56.0.19",
     "expo-keep-awake": "~56.0.3",
     "expo-linking": "~56.0.15",

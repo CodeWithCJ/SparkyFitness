@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 
 interface ProviderSpecificFieldsProps {
@@ -227,32 +227,47 @@ export const ProviderSpecificFields = ({
           <div className="col-span-2">
             <div className="rounded-md border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-3 space-y-1.5">
               <p className="text-sm font-semibold text-red-800 dark:text-red-200">
-                ⚠️ Unofficial API — Use at your own risk
+                {t(
+                  'settings.foodExerciseDataProviders.yazio.unofficialApiTitle',
+                  '⚠️ Unofficial API — Use at your own risk'
+                )}
               </p>
               <p className="text-sm text-red-700 dark:text-red-300">
-                YAZIO integration uses an{' '}
-                <strong>unofficial, undocumented API</strong> that is not
-                provided or endorsed by YAZIO. Using it may{' '}
-                <strong>risk getting your YAZIO account banned</strong>. The API
-                could also <strong>stop working at any time</strong> without
-                notice if YAZIO changes their backend.
+                <Trans
+                  i18nKey="settings.foodExerciseDataProviders.yazio.unofficialApiWarning"
+                  defaults="YAZIO integration uses an <1>unofficial, undocumented API</1> that is not provided or endorsed by YAZIO. Using it may <3>risk getting your YAZIO account banned</3>. The API could also <5>stop working at any time</5> without notice if YAZIO changes their backend."
+                  components={{
+                    1: <strong />,
+                    3: <strong />,
+                    5: <strong />,
+                  }}
+                />
               </p>
               <p className="text-sm text-red-700 dark:text-red-300">
-                For more information & client credentials, see{' '}
-                <a
-                  href="https://github.com/saganos/yazio_public_api"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-red-800 dark:text-red-200 underline font-medium"
-                >
-                  saganos/yazio_public_api
-                </a>
-                .
+                <Trans
+                  i18nKey="settings.foodExerciseDataProviders.yazio.moreInfoLink"
+                  defaults="For more information & client credentials, see <1>saganos/yazio_public_api</1>."
+                  components={{
+                    1: (
+                      <a
+                        href="https://github.com/saganos/yazio_public_api"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-red-800 dark:text-red-200 underline font-medium"
+                      />
+                    ),
+                  }}
+                />
               </p>
             </div>
           </div>
           <div>
-            <Label htmlFor="add-yazio-username">YAZIO Email / Username</Label>
+            <Label htmlFor="add-yazio-username">
+              {t(
+                'settings.foodExerciseDataProviders.yazio.emailUsernameLabel',
+                'YAZIO Email / Username'
+              )}
+            </Label>
             <Input
               id="add-yazio-username"
               type="text"
@@ -260,12 +275,20 @@ export const ProviderSpecificFields = ({
               onChange={(e) =>
                 setProvider((prev) => ({ ...prev, app_id: e.target.value }))
               }
-              placeholder="Enter YAZIO email or username"
+              placeholder={t(
+                'settings.foodExerciseDataProviders.yazio.emailUsernamePlaceholder',
+                'Enter YAZIO email or username'
+              )}
               autoComplete="username"
             />
           </div>
           <div>
-            <Label htmlFor="add-yazio-password">YAZIO Password</Label>
+            <Label htmlFor="add-yazio-password">
+              {t(
+                'settings.foodExerciseDataProviders.yazio.passwordLabel',
+                'YAZIO Password'
+              )}
+            </Label>
             <Input
               id="add-yazio-password"
               type="password"
@@ -273,16 +296,26 @@ export const ProviderSpecificFields = ({
               onChange={(e) =>
                 setProvider((prev) => ({ ...prev, app_key: e.target.value }))
               }
-              placeholder="Enter YAZIO password"
+              placeholder={t(
+                'settings.foodExerciseDataProviders.yazio.passwordPlaceholder',
+                'Enter YAZIO password'
+              )}
               autoComplete="current-password"
             />
           </div>
           <p className="text-sm text-muted-foreground col-span-2">
-            All fields (Email/Username, Password, Client ID, and Client Secret)
-            are required.
+            {t(
+              'settings.foodExerciseDataProviders.yazio.allFieldsRequired',
+              'All fields (Email/Username, Password, Client ID, and Client Secret) are required.'
+            )}
           </p>
           <div>
-            <Label htmlFor="add-yazio-client-id">YAZIO Client ID</Label>
+            <Label htmlFor="add-yazio-client-id">
+              {t(
+                'settings.foodExerciseDataProviders.yazio.clientIdLabel',
+                'YAZIO Client ID'
+              )}
+            </Label>
             <Input
               id="add-yazio-client-id"
               type="text"
@@ -293,12 +326,20 @@ export const ProviderSpecificFields = ({
                   yazio_client_id: e.target.value,
                 }))
               }
-              placeholder="Enter YAZIO Client ID"
+              placeholder={t(
+                'settings.foodExerciseDataProviders.yazio.clientIdPlaceholder',
+                'Enter YAZIO Client ID'
+              )}
               autoComplete="off"
             />
           </div>
           <div>
-            <Label htmlFor="add-yazio-client-secret">YAZIO Client Secret</Label>
+            <Label htmlFor="add-yazio-client-secret">
+              {t(
+                'settings.foodExerciseDataProviders.yazio.clientSecretLabel',
+                'YAZIO Client Secret'
+              )}
+            </Label>
             <Input
               id="add-yazio-client-secret"
               type="password"
@@ -309,10 +350,19 @@ export const ProviderSpecificFields = ({
                   yazio_client_secret: e.target.value,
                 }))
               }
-              placeholder="Enter YAZIO Client Secret"
+              placeholder={t(
+                'settings.foodExerciseDataProviders.yazio.clientSecretPlaceholder',
+                'Enter YAZIO Client Secret'
+              )}
               autoComplete="off"
             />
           </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            {t(
+              'settings.foodExerciseDataProviders.yazio.languageSupportHelp',
+              'YAZIO food searches automatically adjust to your active language preference in SparkyFitness (supporting English, German, French, Russian, Spanish, Italian, Dutch, Polish, Portuguese, Danish, Finnish, Swedish, Czech, Hungarian, Greek, Norwegian, Turkish, Chinese, Japanese, and Korean). Other languages default to standard international database parameters.'
+            )}
+          </p>
         </>
       )}
       {provider.provider_type === 'garmin' && (

@@ -28,6 +28,9 @@ const OFF_FIELDS = [
   'nutriments',
   'allergens_tags',
   'traces_tags',
+  // Product photos: front image preferred, plain image_url as fallback.
+  'image_front_url',
+  'image_url',
 ];
 
 interface OffProduct {
@@ -42,6 +45,8 @@ interface OffProduct {
   nutriments?: Record<string, unknown>;
   allergens_tags?: string[];
   traces_tags?: string[];
+  image_front_url?: string;
+  image_url?: string;
   [key: string]: unknown;
 }
 
@@ -633,6 +638,8 @@ function mapOpenFoodFactsProduct(
     provider_external_id: product.code,
     provider_type: 'openfoodfacts',
     is_custom: false,
+    // Hotlinked in search results; localized on import (see models/food.ts).
+    image_url: product.image_front_url || product.image_url || null,
     default_variant: metricVariant,
     ...(householdVariant
       ? { variants: [metricVariant, householdVariant] }

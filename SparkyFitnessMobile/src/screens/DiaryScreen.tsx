@@ -5,6 +5,7 @@ import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handl
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { hasSupplementNutrition } from '@workspace/shared';
 import DateNavigator from '../components/DateNavigator';
 import FoodSummary from '../components/FoodSummary';
 import ExerciseSummary from '../components/ExerciseSummary';
@@ -16,8 +17,10 @@ import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
+import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences, useMealTypes } from '../hooks';
 import { useMeasurements } from '../hooks/useMeasurements';
+import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
+import { isManualSource } from '../utils/customMeasurementsForm';
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import {
@@ -27,7 +30,8 @@ import {
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import type { MealTypeKey } from '../utils/mealNutrition';
+import { getHistoricalMealTypeLabel, getMealTypeDisplayLabel } from '../utils/mealNutrition';
+import type { FoodEntry } from '../types/foodEntries';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -117,9 +121,24 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   ), [goToPreviousDay, goToNextDay]);
 
   const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), [setSelectedDate]);
-  const openMealTypeDetail = useCallback((mealType: MealTypeKey) => {
-    navigation.navigate('MealTypeDetail', { date: selectedDate, mealType });
-  }, [navigation, selectedDate]);
+  const { mealTypes } = useMealTypes();
+  const openMealTypeDetail = useCallback(
+    (mealTypeId: string | null, mealTypeName: string, entries: FoodEntry[]) => {
+      // Resolve the label from the canonical definition (ownership-aware); for
+      // a deleted/hidden type fall back to the literal historical name.
+      const definition = mealTypes.find((mt) => mt.id === mealTypeId) ?? null;
+      const mealLabel = definition
+        ? getMealTypeDisplayLabel(definition)
+        : getHistoricalMealTypeLabel(mealTypeName);
+      navigation.navigate('MealTypeDetail', {
+        date: selectedDate,
+        mealTypeId: mealTypeId ?? undefined,
+        mealType: mealTypeName,
+        mealLabel,
+      });
+    },
+    [navigation, selectedDate, mealTypes],
+  );
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit as 'kg' | 'lbs') ?? 'kg';
@@ -131,21 +150,44 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const { getImageSource } = useExerciseImageSource();
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
-  const { summary, isLoading, isError, refetch } = useDailySummary({
+  const {
+    summary,
+    isLoading,
+    isError,
+    refetch,
+  } = useDailySummary({
     date: selectedDate,
     enabled: isConnected,
   });
-  const { measurements, refetch: refetchMeasurements } = useMeasurements({
+  const {
+    measurements,
+    refetch: refetchMeasurements,
+  } = useMeasurements({
     date: selectedDate,
     enabled: isConnected,
   });
-  const { customNutrients } = useCustomNutrients({ enabled: isConnected });
-  const { preferences: nutrientPrefs } = useNutrientDisplayPreferences({ enabled: isConnected });
+  const {
+    data: customMeasurements,
+    refetch: refetchCustomMeasurements,
+  } = useCustomMeasurementsByDate(selectedDate, { enabled: isConnected });
+  const {
+    customNutrients,
+    refetch: refetchCustomNutrients,
+  } = useCustomNutrients({ enabled: isConnected });
+  const {
+    preferences: nutrientPrefs,
+    refetch: refetchNutrientPrefs,
+  } = useNutrientDisplayPreferences({ enabled: isConnected });
   const diaryNutrientRow = nutrientPrefs.find(
     (p) => p.view_group === 'diary' && p.platform === 'mobile',
   );
   const customNutrientKeys = (diaryNutrientRow?.visible_nutrients ?? []).slice(0, 4);
   const hasAnyMeasurement = useMemo(() => {
+    // Only MANUAL custom entries make the Measurements section meaningful — a
+    // user with pages of health-synced custom entries should not see the
+    // section flash on their behalf.
+    const manualCustom = customMeasurements?.filter((e) => isManualSource(e.source)) ?? [];
+    if (manualCustom.length > 0) return true;
     if (!measurements) return false;
     return (
       measurements.weight != null ||
@@ -156,15 +198,45 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       measurements.hips != null ||
       measurements.steps != null
     );
-  }, [measurements]);
+  }, [measurements, customMeasurements]);
+
+  // Manual-only custom entries for the Diary tiles: health-synced entries are
+  // filtered here (before presentation) so MeasurementsSummary never receives
+  // them; the component itself re-filters defensively too.
+  const manualCustomMeasurements = useMemo(
+    () => (customMeasurements ?? []).filter((e) => isManualSource(e.source)),
+    [customMeasurements],
+  );
 
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const onRefresh = useCallback(async () => {
+    if (!isConnected) return;
     setRefreshing(true);
-    await Promise.all([refetch(), refetchMeasurements()]);
-    setRefreshing(false);
-  }, [refetch, refetchMeasurements]);
+    // Error-isolated refresh: one failing query must not prevent the others
+    // from completing nor produce an unhandled rejection. The spinner is torn
+    // down in `finally` regardless of individual query outcomes.
+    try {
+      await Promise.allSettled([
+        refetch(),
+        refetchMeasurements(),
+        refetchCustomMeasurements(),
+        refetchCustomNutrients(),
+        refetchNutrientPrefs(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [
+    isConnected,
+    refetch,
+    refetchMeasurements,
+    refetchCustomMeasurements,
+    refetchCustomNutrients,
+    refetchNutrientPrefs,
+  ]);
+
+  const isRefreshing = refreshing;
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -216,10 +288,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
         automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={accentColor} />
         }
       >
-        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0 || summary.calorieGoal > 0) && (
+        {(summary.foodEntries.length > 0 ||
+          hasSupplementNutrition(summary.supplementTotals) ||
+          summary.exerciseEntries.length > 0 ||
+          summary.calorieGoal > 0) && (
           <DiaryCalorieMacroSummary
             summary={summary}
             showNetCarbs={preferences?.show_net_carbs === true}
@@ -227,7 +302,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             customNutrients={customNutrients}
           />
         )}
-        {summary.foodEntries.length === 0 && summary.exerciseEntries.length === 0 && !hasAnyMeasurement ? (
+        {/* A logged supplement is something the user recorded for this day, so the day is
+            not empty even with no food, exercise or measurement. */}
+        {summary.foodEntries.length === 0 &&
+        !hasSupplementNutrition(summary.supplementTotals) &&
+        summary.exerciseEntries.length === 0 &&
+        !hasAnyMeasurement ? (
           <>
             <EmptyDayIllustration />
             <Button
@@ -242,6 +322,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           <>
             <FoodSummary
               foodEntries={summary.foodEntries}
+              mealTypes={mealTypes}
               goals={summary.goals}
               calorieGoal={summary.calorieGoal}
               onAddFood={() => navigation.navigate('FoodSearch', { date: selectedDate })}
@@ -271,6 +352,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             />
             <MeasurementsSummary
               measurements={measurements}
+              customMeasurements={manualCustomMeasurements}
               weightMode={weightMode}
               bodyUnit={bodyUnit}
               heightMode={heightMode}
@@ -325,11 +407,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   );
 
   return (
-    <GestureDetector gesture={swipeGesture}>
-      <View className="flex-1 bg-background">
-        {content}
-      </View>
-    </GestureDetector>
+    <>
+      <GestureDetector gesture={swipeGesture}>
+        <View className="flex-1 bg-background">
+          {content}
+        </View>
+      </GestureDetector>
+    </>
   );
 };
 

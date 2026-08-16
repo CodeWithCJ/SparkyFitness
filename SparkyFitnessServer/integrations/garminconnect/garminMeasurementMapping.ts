@@ -48,6 +48,27 @@ const garminMeasurementMapping = {
     dataType: 'integer',
     measurementType: 'count',
   },
+  active_calories: {
+    targetType: 'custom',
+    name: 'Active Calories',
+    dataType: 'numeric',
+    measurementType: 'kcal',
+    frequency: 'Daily',
+  },
+  bmr_calories: {
+    targetType: 'custom',
+    name: 'basal_metabolic_rate',
+    dataType: 'numeric',
+    measurementType: 'kcal',
+    frequency: 'Daily',
+  },
+  total_calories: {
+    targetType: 'custom',
+    name: 'total_calories',
+    dataType: 'numeric',
+    measurementType: 'kcal',
+    frequency: 'Daily',
+  },
   bmi: {
     targetType: 'custom',
     name: 'BMI',

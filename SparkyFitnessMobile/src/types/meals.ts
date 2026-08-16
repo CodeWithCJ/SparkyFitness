@@ -121,5 +121,7 @@ export interface Meal {
   updated_at: string;
   // Present only on items returned by the favorites endpoint.
   favorited_at?: string;
+  // Ordered image paths; index 0 is the thumbnail. See FoodItem.images.
+  images?: string[] | null;
   foods: MealFood[];
 }

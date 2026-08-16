@@ -78,7 +78,8 @@
       "mechanicCompound": "Wielostawowe",
       "instructionsLabel": "Instrukcje (jedna na linię)",
       "workoutPresetTab": "Szablony",
-      "importFitTab": "Importuj FIT"
+      "importFitTab": "Importuj FIT",
+      "modalityLabel": "Typ śledzenia"
     },
     "addWorkoutPresetDialog": {
       "searchResultsTitle": "Wyniki wyszukiwania",
@@ -252,7 +253,8 @@
       "noDataFoundDescription": "Plik CSV zawiera nagłówki, ale brak w nim wierszy z danymi.",
       "validationError": "Błąd walidacji",
       "nameEmptyError": "Pole 'nazwa' nie może być puste.",
-      "copiedToClipboard": "'{{value}}' skopiowane do schowka."
+      "copiedToClipboard": "'{{value}}' skopiowane do schowka.",
+      "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB."
     },
     "playbackModal": {
       "voiceLabel": "Głos:",
@@ -277,6 +279,21 @@
       "statusCreated": "Zaimportowano",
       "statusUpdated": "Zaktualizowano",
       "statusFailed": "Niepowodzenie"
+    },
+    "importHistoryCSV": {
+      "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
+      "headersMapped": "Przyporządkowane nagłówki",
+      "mapRequiredFields": "Nagłówki CSV nie odpowiadają wymaganemu formatowi. Przyporządkuj pola, aby kontynuować.",
+      "parseText": "Parsuj tekst",
+      "pasteFirst": "Najpierw wklej dane CSV.",
+      "pastePlaceholder": "Lub wklej zawartość CSV tutaj...",
+      "rowsRejected": "Nie można było zaimportować {{failed}} z {{total}} wierszy — szczegóły poniżej."
+    },
+    "modality": {
+      "duration": "Czas trwania",
+      "durationDistance": "Czas trwania i dystans",
+      "repsOnly": "Powtórzenia",
+      "weightReps": "Ciężar i powtórzenia"
     }
   },
   "documentationViewer": {
@@ -723,7 +740,8 @@
     "meal": "Posiłek",
     "food": "Produkt",
     "quantity": "Ilość",
-    "total": "Suma"
+    "total": "Suma",
+    "durationSec": "Czas (s)"
   },
   "moodReports": {
     "loading": "Ładowanie...",
@@ -1008,17 +1026,17 @@
       "invalidKeyLengthWarning": "Upewnij się, że klucze w zmiennych środowiskowych serwera mają 64 znaki hex.",
       "globalSettings": {
         "errorLoading": "Nie udało się wczytać globalnych usług AI",
-        "errorAdding": "Nie udało się dodać globalnych usług AI",
-        "successAdding": "Globalne usługi AI zostały dodane pomyślnie",
-        "errorUpdating": "Nie udało się zaktualizować globalnych usług AI",
-        "successUpdating": "Aktualizacja globalnych usług AI zakończyła się sukcesem",
-        "errorDeleting": "Nie udało się usunąć globalnych usług AI",
+        "errorAdding": "Nie udało się dodać globalnej usługi AI",
+        "successAdding": "Globalna usługa AI została dodana pomyślnie",
+        "errorUpdating": "Nie udało się zaktualizować globalnej usługi AI",
+        "successUpdating": "Globalna usługa AI została zaktualizowana pomyślnie",
+        "errorDeleting": "Nie udało się usunąć globalnej usługi AI",
         "title": "Globalne ustawienia usług AI",
         "description": "Globalne ustawienia usług AI są współdzielone między wszystkimi użytkownikami. Użytkownicy mogą je nadpisać swoimi własnymi ustawieniami.",
         "allowUserConfig": "Dopuść użytkowników do konfiguracji własnych usług AI",
         "allowUserConfigDescription": "Gdy włączone, użytkownicy mogą dodawać i zarządzać własnymi konfiguracjami usług AI. Jeśli wyłączone, użytkownicy mogą używać tylko globalnych ustawień usług AI.",
         "syncFromEnv": "Synchronizuj ze zmiennych środowiskowych",
-        "addNewService": "Dodaj nowe globalne usługi AI",
+        "addNewService": "Dodaj nową globalną usługę AI",
         "addService": "Dodaj usługę",
         "saveChanges": "Zapisz zmiany",
         "cancel": "Anuluj",
@@ -1026,9 +1044,9 @@
         "delete": "Usuń",
         "globalServices": "Usługi globalne",
         "noServices": "Żadne globalne usługi AI nie zostały skonfigurowane.",
-        "noServicesDescription": "Aby zastosować domyślne ustawienia dla wszystkich użytkowników, dodaj globalne usługi AI.",
+        "noServicesDescription": "Aby zastosować domyślne ustawienia dla wszystkich użytkowników, dodaj globalną usługę AI.",
         "serviceName": "Nazwa usługi",
-        "serviceNamePlaceholder": "Usługi organizacji OpenAI",
+        "serviceNamePlaceholder": "Usługa organizacji OpenAI",
         "serviceType": "Typ usługi",
         "apiKey": "Klucz API",
         "apiKeyOptional": "Klucz API (opcjonalny)",
@@ -1050,14 +1068,14 @@
         "error": "Błąd",
         "success": "Sukces",
         "successDeleting": "Globalna usługa AI została poprawnie usunięta",
-        "errorSyncing": "Nie udało się zsynchronizować z zmiennej środowiskowej",
-        "successSyncing": "Zmienna środowiskowa została zsynchronizowana pomyślnie",
+        "errorSyncing": "Nie udało się zsynchronizować ze zmiennych środowiskowych",
+        "successSyncing": "Zmienne środowiskowe zostały zsynchronizowane pomyślnie",
         "errorUpdatingConfig": "Nie udało się zaktualizować ustawień konfiguracji usługi AI użytkownika",
         "successUpdatingConfig": "Aktualizacja ustawienia konfiguracji usługi AI użytkownika zakończyła się powodzeniem",
         "errorOriginalNotFound": "Nie znaleziono oryginalnej usługi.",
         "deleteConfirm": "Czy jesteś pewien, że chcesz usunąć tę globalną usługę AI?",
         "fillRequiredFields": "Wszystkie wymagane pola muszą zostać uzupełnione",
-        "enterNewApiKey": "Aby zaktualizować wprowadź nowy klucz API",
+        "enterNewApiKey": "Aby zaktualizować, wprowadź nowy klucz API",
         "chatToolProfile": "Zestaw narzędzi czatu",
         "chatToolProfileFull": "Pełny (wszystkie narzędzia)",
         "chatToolProfileCore": "Podstawowy (szybszy, mniej narzędzi)",
@@ -1082,7 +1100,7 @@
         "clearAllHistory": "Wyczyść całą historię",
         "note": "Uwaga: Pełna kompatybilność i funkcjonalność wszystkich modeli oraz usług AI nie jest gwarantowana. Wdrożenie konfiguracji wymaga obligatoryjnego przeprowadzenia testów sprawdzających.",
         "perUserDisabled": "Konfiguracja usług AI przez pojedynczych użytkowników jest wyłączona",
-        "perUserDisabledDescription": "Możesz korzystać jednie z globalnych ustawień usługi AI skonfigurowanych przez twojego administratora. Skontaktuj się z administratorem jeśli potrzebujesz niestandardowej konfiguracji usługi AI.",
+        "perUserDisabledDescription": "Możesz korzystać jedynie z globalnych ustawień usługi AI skonfigurowanych przez twojego administratora. Skontaktuj się z administratorem, jeśli potrzebujesz niestandardowej konfiguracji usługi AI.",
         "usingGlobalSetting": "Wykorzystanie ustawień globalnych:",
         "overrideGlobalSettings": "Nadpisz usługi globalne",
         "useGlobalSettings": "Użyj ustawień globalnych",
@@ -1133,7 +1151,7 @@
         "errorAdding": "Nie udało się dodać usługi AI",
         "successAdding": "Usługa AI została dodana pomyślnie",
         "errorUpdating": "Nie udało się zaktualizować usługi AI",
-        "successUpdating": "Wszystkie usługi AI zostały zaktualizowane pomyślnie",
+        "successUpdating": "Usługa AI została zaktualizowana pomyślnie",
         "errorDeleting": "Nie udało się usunąć usługi AI",
         "successDeleting": "Usługa AI została usunięta pomyślnie",
         "errorUpdatingPreferences": "Nie udało się zaktualizować preferencji",
@@ -1143,7 +1161,7 @@
         "serviceActivated": "Usługa AI została włączona",
         "serviceDeactivated": "Usługa AI została wyłączona",
         "errorOriginalNotFound": "Nie znaleziono oryginalnej usługi.",
-        "enterNewApiKey": "Aby zaktualizować wprowadź nowy klucz API",
+        "enterNewApiKey": "Aby zaktualizować, wprowadź nowy klucz API",
         "errorOriginalNotFoundStatus": "Oryginalna usługa nie została znaleziona podczas aktualizacji statusu.",
         "errorNoGlobalSetting": "Żadne globalne ustawienia nie zostały znalezione do nadpisania",
         "successOverriding": "Globalne ustawienia zostały nadpisane. Możesz dostosować swoje niestandardowe ustawienia.",
@@ -1350,7 +1368,24 @@
       "restoreFailed": "Przywracanie nie powiodło się.",
       "failedToFetchSettings": "Błąd pobierania ustawień.",
       "failedToSaveSettings": "Błąd zapisywania ustawień.",
-      "failedToRestoreBackup": "Błąd przywracania kopii."
+      "failedToRestoreBackup": "Błąd przywracania kopii.",
+      "availableBackups": "Dostępne kopie zapasowe",
+      "availableBackupsDescription": "Wybierz plik kopii zapasowej do pobrania.",
+      "backupCompletedDate": "Ukończono",
+      "backupCount_one": "{{count}} kopia zapasowa",
+      "backupCount_few": "{{count}} kopie zapasowe",
+      "backupCount_many": "{{count}} kopii zapasowych",
+      "backupDate": "Rozpoczęto",
+      "backupFileName": "Nazwa pliku",
+      "backupSize": "Rozmiar",
+      "download": "Pobierz",
+      "downloadBackup": "Pobierz kopię zapasową",
+      "downloadBackupFile": "Pobierz {{fileName}}",
+      "downloadBackupSuccess": "Kopia zapasowa została pobrana pomyślnie.",
+      "error": "Błąd",
+      "failedToDownloadBackup": "Nie udało się pobrać kopii zapasowej.",
+      "failedToFetchBackups": "Nie udało się pobrać listy kopii zapasowych.",
+      "noBackupsFound": "Nie znaleziono plików kopii zapasowych."
     },
     "oidcSettings": {
       "title": "Dostawcy OIDC",
@@ -1398,11 +1433,11 @@
       "cancel": "Anuluj",
       "save": "Zapisz",
       "uploadFailed": "Błąd wgrywania logo.",
-      "providerId": "Wprowadź ID (Slug)",
+      "providerId": "ID dostawcy (Slug)",
       "providerIdInfo": "Wartość ta wejdzie w skład URI przekierowania: /api/auth/sso/callback/YOUR_ID",
       "domain": "Domena organizacji",
       "domainInfo": "Identyfikacja tego dostawcy jest wymagana przez Better Auth.",
-      "callbackUrlCopied": "Callback URL skopiowania do schowka"
+      "callbackUrlCopied": "Callback URL skopiowano do schowka"
     },
     "userManagement": {
       "title": "Zarządzanie użytkownikami",
@@ -2534,7 +2569,31 @@
       "loggedCount_one": "{{count}} zarejestrowany objaw",
       "loggedCount_few": "{{count}} zarejestrowane objawy",
       "loggedCount_many": "{{count}} zarejestrowanych objawów",
-      "maxSeverity": "Maksymalne nasilenie: {{n}}"
+      "maxSeverity": "Maksymalne nasilenie: {{n}}",
+      "allMedications": "Wszystkie leki",
+      "allSkipped": "Wszystkie dawki pominięte",
+      "allTaken": "Wszystkie dawki przyjęte",
+      "fri": "Pt",
+      "generalSymptom": "Ogólny objaw",
+      "mon": "Pn",
+      "monthTotal": "Zarejestrowano {{count}} dawek w {{month}}",
+      "mostlySkipped": "W większości pominięte",
+      "noMeds": "Dodaj lek, aby zobaczyć tutaj kalendarz jego przyjmowania.",
+      "partialTaken": "Częściowo przyjęte",
+      "sat": "So",
+      "selectMedication": "Wybierz lek",
+      "sideEffect": "Objaw niepożądany",
+      "snoozedOnly": "Tylko odłożone",
+      "sun": "Nd",
+      "thu": "Cz",
+      "title": "Kalendarz przyjmowania leków",
+      "tooltipPrn": "Przyjęto PRN: {{count}}",
+      "tooltipSkipped": "Pominięto: {{count}}",
+      "tooltipSnoozed": "Odłożono: {{count}}",
+      "tooltipSymptoms": "Objawy: {{names}}",
+      "tooltipTaken": "Przyjęto: {{count}}",
+      "tue": "Wt",
+      "wed": "Śr"
     },
     "gi": {
       "title": "Monitor objawów żołądkowo-jelitowych",
@@ -2636,7 +2695,10 @@
       "statusDone": "Ukończony",
       "noTitration": "Nie ma jeszcze etapów zwiększania dawki — wybierz „Dodaj etap”, aby zaplanować dawkowanie.",
       "recentInjections": "Ostatnie wstrzyknięcia",
-      "noInjections": "Nie zarejestrowano jeszcze żadnych wstrzyknięć."
+      "noInjections": "Nie zarejestrowano jeszcze żadnych wstrzyknięć.",
+      "pkAxisDates": "Daty",
+      "pkAxisDays": "Dni",
+      "pkDayLabel": "Dzień {{day}}"
     },
     "types": {
       "pill": "pigułka",
@@ -2673,7 +2735,12 @@
       "activeScripts": "Aktywne recepty",
       "glp1Meds": "Leki GLP-1",
       "scheduledToday": "Zaplanowane na dziś",
-      "totalMeds": "Łączna liczba leków"
+      "totalMeds": "Łączna liczba leków",
+      "dose": "Dawka",
+      "doseFollowsStrength": "Zgodna z mocą, dopóki jej nie zmienisz.",
+      "dosePerInjection": "Dawka na wstrzyknięcie",
+      "doseUnit": "Jednostka dawki",
+      "strengthUnit": "Jednostka mocy"
     },
     "schedule": {
       "heading": "Harmonogramy i przypomnienia",
@@ -2838,7 +2905,8 @@
       "reports": "Raporty i analizy",
       "coaching": "Wsparcie trenerskie",
       "vision": "Analiza obrazu",
-      "profile": "Profil i nawyki"
+      "profile": "Profil i nawyki",
+      "medications": "Leki"
     }
   },
   "foodCsvImport": {
@@ -2868,11 +2936,18 @@
     "successTitle": "Gotowe",
     "loadedRowsFromText": "Wczytano wiersze z tekstu: {{count}}.",
     "emptyFile": "Wybrany plik jest pusty.",
-    "headersMismatchFile": "Nagłówki pliku CSV nie mają wymaganego formatu lub kolejności. Pobierz odpowiedni szablon.",
+    "headersMismatchFile": "Nagłówki CSV nie odpowiadają wymaganemu formatowi. Przyporządkuj pola, aby kontynuować.",
     "noDataTitle": "Nie znaleziono danych",
     "noDataText": "Plik CSV zawiera nagłówki, ale nie zawiera wierszy danych.",
     "validationErrorTitle": "Błąd walidacji",
-    "nameRequired": "Pole „name” nie może być puste."
+    "nameRequired": "Pole „name” nie może być puste.",
+    "defaultVariantNote": "Co najmniej jeden wariant każdego produktu musi być ustawiony jako jednostka domyślna (Is Default = True).",
+    "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
+    "filterMissingDefault": "Pokaż bez wariantu domyślnego ({{count}})",
+    "missingDefaultValidationError": "Co najmniej jeden wariant każdego produktu musi być ustawiony jako jednostka domyślna.",
+    "missingDefaultWarning": "Uwaga: liczba produktów bez ustawionego wariantu domyślnego: {{count}}. Ustaw co najmniej jeden wariant jako domyślny (podświetlony na żółto poniżej).",
+    "showAllRows": "Pokaż wszystkie wiersze ({{count}})",
+    "upfrontNote": "Uwaga: każdy produkt musi mieć co najmniej jeden wariant ustawiony jako jednostka domyślna (Is Default = True)."
   },
   "foods": {
     "providerVerified": "Zweryfikowany produkt"
@@ -2939,5 +3014,53 @@
       "other": "Pozostałe",
       "custom": "Własne składniki odżywcze"
     }
+  },
+  "csvImport": {
+    "advanced": "Zaawansowane",
+    "cancel": "Anuluj",
+    "changeFormat": "Zmień",
+    "confirmMapping": "Potwierdź",
+    "dateLabel": "Format daty",
+    "decimal": {
+      "auto": "Auto-wykrywanie",
+      "eu": "1.234,56 (EU)",
+      "euShort": "1.234,56 (EU)",
+      "us": "1,234.56 (US)",
+      "usShort": "1,234.56 (US)"
+    },
+    "decimalDetected": "Wykryto: {{format}} (na podstawie \"{{evidence}}\")",
+    "decimalLabel": "Format liczb",
+    "decimalNotConfident": "Nie znaleziono niejednoznacznych liczb; użyto formatu US.",
+    "delimiter": {
+      "comma": "Przecinek",
+      "pipe": "Pionowa kreska",
+      "semicolon": "Średnik",
+      "tab": "Tabulator"
+    },
+    "delimiterDetectionFailed": "Nie udało się wykryć separatora — wybierz go poniżej.",
+    "delimiterLabel": "Separator",
+    "hideOptions": "Ukryj opcje formatu",
+    "mapHeaders": "Przyporządkuj nagłówki CSV",
+    "mapHeadersDescription": "Kolumny w pliku nie odpowiadają oczekiwanym nazwom. Dopasuj każde wymagane pole do kolumny, która je zawiera, albo kliknij Anuluj i zmień separator powyżej, jeśli kolumny wyglądają nieprawidłowo.",
+    "none": "Brak",
+    "previewSummary": "Wykryto {{columns}} kolumn i {{rows}} wierszy.",
+    "quoteLabel": "Znak cudzysłowu",
+    "resultFailed": "Niepowodzenie",
+    "resultImported": "Zaimportowano",
+    "resultSkipped": "Pominięto",
+    "selectHeader": "Wybierz nagłówek",
+    "summary": {
+      "auto": "Auto-wykrywanie",
+      "autoDecimal": "Auto: przecinek dziesiętny",
+      "autoDelimiter": "Auto-wykrywanie ({{label}})"
+    },
+    "viewErrors": "Pokaż nieudane wiersze"
+  },
+  "diaryCsvImport": {
+    "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
+    "headersMismatch": "W pliku CSV brakuje wymaganych kolumn. Przyporządkuj pola, aby kontynuować."
+  },
+  "healthDataImport": {
+    "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB."
   }
 }

@@ -8,6 +8,7 @@ import {
   type SaveFoodPayload,
 } from '../services/api/foodsApi';
 import { createFoodEntry, type CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
+import type { ImageUploadArgs } from '../utils/pickerImages';
 import { dailySummaryQueryKey, foodsQueryKey } from './queryKeys';
 import { invalidateMealUsageCaches } from './useMeals';
 import type { FoodEntry } from '../types/foodEntries';
@@ -22,6 +23,11 @@ import { persistExternalVariants } from '../utils/persistExternalVariants';
 
 export interface AddFoodEntryInput {
   saveFoodPayload?: SaveFoodPayload;
+  /**
+   * Photos to upload with the food being created. Without this, a food created
+   * from the diary saves with no picture even though the user attached one.
+   */
+  saveFoodImages?: ImageUploadArgs;
   saveThenCreateVariantPayload?: Omit<CreateFoodVariantPayload, 'food_id'>;
   /**
    * All external provider variants for the food being added.
@@ -111,7 +117,7 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
   const mutation = useMutation({
     mutationFn: async (input: AddFoodEntryInput) => {
       if (input.saveFoodPayload) {
-        const saved = await saveFood(input.saveFoodPayload);
+        const saved = await saveFood(input.saveFoodPayload, input.saveFoodImages);
 
         let variantId = saved.default_variant?.id;
         let unit = input.createEntryPayload.unit;

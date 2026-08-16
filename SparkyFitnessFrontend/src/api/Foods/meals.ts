@@ -1,4 +1,5 @@
 import { apiCall } from '../api';
+import { buildPayloadRequest } from '../imageRequest';
 import type {
   Meal,
   MealPayload,
@@ -7,8 +8,22 @@ import type {
   MealFilter,
 } from '@/types/meal';
 
-export const createMeal = async (mealData: MealPayload): Promise<Meal> => {
-  return await apiCall(`/meals`, { method: 'POST', body: mealData });
+/** The server's parseMealBody unwraps the payload from a `mealData` field. */
+const buildMealRequest = (payload: Partial<MealPayload>, imageFiles?: File[]) =>
+  buildPayloadRequest(
+    payload as Record<string, unknown>,
+    'mealData',
+    imageFiles
+  );
+
+export const createMeal = async (
+  mealData: MealPayload,
+  imageFiles?: File[]
+): Promise<Meal> => {
+  return await apiCall(`/meals`, {
+    method: 'POST',
+    ...buildMealRequest(mealData, imageFiles),
+  });
 };
 
 interface MealParams {
@@ -53,9 +68,13 @@ export const getTopMeals = async (limit = 3): Promise<Meal[]> => {
 
 export const updateMeal = async (
   mealId: string,
-  mealData: Partial<MealPayload>
+  mealData: Partial<MealPayload>,
+  imageFiles?: File[]
 ): Promise<Meal> => {
-  return await apiCall(`/meals/${mealId}`, { method: 'PUT', body: mealData });
+  return await apiCall(`/meals/${mealId}`, {
+    method: 'PUT',
+    ...buildMealRequest(mealData, imageFiles),
+  });
 };
 
 export const deleteMeal = async (

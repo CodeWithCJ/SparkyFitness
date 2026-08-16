@@ -1,6 +1,7 @@
 import { apiFetch } from './apiClient';
 import { getTodayDate } from '../../utils/dateUtils';
 import type { CheckInMeasurement, CheckInMeasurementRange, WaterIntake, WaterContainer, WaterIntakeResponse } from '../../types/measurements';
+import type { CustomCategory, CustomMeasurementEntry, SaveCustomMeasurementPayload } from '../../types/customMeasurements';
 
 /**
  * Fetches measurements for a given date.
@@ -105,6 +106,49 @@ export const upsertCheckIn = async (params: {
       height: params.height,
       body_fat_percentage: params.bodyFatPercentage,
     },
+  });
+};
+
+export const fetchCustomCategories = async (): Promise<CustomCategory[]> => {
+  return apiFetch<CustomCategory[]>({
+    endpoint: '/api/measurements/custom-categories',
+    serviceName: 'Measurements API',
+    operation: 'fetch custom categories',
+  });
+};
+
+export const fetchCustomMeasurementsByDate = async (date: string): Promise<CustomMeasurementEntry[]> => {
+  return apiFetch<CustomMeasurementEntry[]>({
+    endpoint: `/api/measurements/custom-entries/${date}`,
+    serviceName: 'Measurements API',
+    operation: 'fetch custom measurements by date',
+  });
+};
+
+export const saveCustomMeasurement = async (payload: SaveCustomMeasurementPayload): Promise<CustomMeasurementEntry> => {
+  return apiFetch<CustomMeasurementEntry>({
+    endpoint: '/api/measurements/custom-entries',
+    serviceName: 'Measurements API',
+    operation: 'save custom measurement',
+    method: 'POST',
+    body: {
+      category_id: payload.category_id,
+      value: payload.value,
+      entry_date: payload.entry_date,
+      entry_hour: payload.entry_hour,
+      entry_timestamp: payload.entry_timestamp,
+      notes: payload.notes,
+      source: payload.source,
+    },
+  });
+};
+
+export const deleteCustomMeasurement = async (id: string): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/measurements/custom-entries/${id}`,
+    serviceName: 'Measurements API',
+    operation: 'delete custom measurement',
+    method: 'DELETE',
   });
 };
 

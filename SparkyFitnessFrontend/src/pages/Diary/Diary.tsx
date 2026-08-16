@@ -31,6 +31,7 @@ import LogMealDialog from '@/pages/Diary/LogMealDialog';
 import { debug, info, error } from '@/utils/logging';
 import {
   calculateDayTotals,
+  addSupplementTotals,
   getEntryNutrition,
   getMealData,
   getMealTotals,
@@ -142,7 +143,12 @@ const Diary = () => {
     ? fetchedFoodEntries.filter((entry) => !entry.food_entry_meal_id)
     : [];
 
-  const dayTotals = calculateDayTotals(foodEntries, foodEntryMeals);
+  // Logged supplement doses contribute to the day's intake, so the nutrition summary has
+  // to account for them or it disagrees with the calorie ring above it, which already does.
+  const dayTotals = addSupplementTotals(
+    calculateDayTotals(foodEntries, foodEntryMeals),
+    summaryData?.supplementTotals
+  );
 
   // Handle navigation for opening food search dialog
   useEffect(() => {
@@ -485,8 +491,11 @@ const Diary = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b">
         <div />
-        <div className="flex items-center gap-2 sm:ml-auto">
-          <div ref={setToolbarContainer} className="flex items-center gap-2" />
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:ml-auto">
+          <div
+            ref={setToolbarContainer}
+            className="flex min-w-0 flex-wrap items-center gap-2"
+          />
           <DayNavigator
             selectedDate={selectedDate}
             onDateChange={(dateString) => {

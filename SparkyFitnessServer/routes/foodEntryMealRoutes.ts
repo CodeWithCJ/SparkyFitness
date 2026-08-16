@@ -5,7 +5,18 @@ import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import { isEntryTimeString } from '@workspace/shared';
+import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
+import {
+  uploadImages,
+  applyImageOrder,
+  parseImageOrder,
+  finalizeUploadedImages,
+  cleanupStagedImages,
+  stagedFilesFrom,
+  removeOrphanedImages,
+} from '../middleware/imageUpload.js';
 const router = express.Router();
+
 // Middleware to protect routes
 router.use(authenticate); // Use the authenticate middleware function
 /**
@@ -132,7 +143,7 @@ router.get('/by-date/:date', async (req, res, next) => {
     const { userId } = req.query; // Check query param
     // Determine target user
 
-    const targetUserId = userId || req.userId;
+    const targetUserId = userId ? String(userId) : req.userId;
     // We rely on getFoodEntryMealsByDate to potentially filter or just fetch.
     // Ideally we check permission here too.
 
@@ -148,7 +159,7 @@ router.get('/by-date/:date', async (req, res, next) => {
     const foodEntryMeals = await foodEntryService.getFoodEntryMealsByDate(
       req.userId,
       targetUserId,
-      date
+      String(date)
     ); // Corrected arguments
     res.status(200).json(foodEntryMeals);
   } catch (err) {
@@ -364,4 +375,141 @@ router.delete('/:id', async (req, res, next) => {
     next(err);
   }
 });
+/**
+ * @swagger
+ * /food-entry-meals/{id}/image:
+ *   post:
+ *     summary: Set a logged meal's override photo
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Attaches a photo to this diary entry only. It never modifies the meal
+ *       template's own images; entries without an override fall back to those.
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               images:
+ *                 description: >
+ *                   Repeated file parts for newly uploaded photos, plus a JSON
+ *                   string field of the same name holding the desired final
+ *                   order. Entries in that array are either existing image
+ *                   paths being kept, or `__new__<n>` placeholders marking
+ *                   where the n-th uploaded file belongs.
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: The updated logged meal.
+ *       400:
+ *         description: No image supplied.
+ *       404:
+ *         description: FoodEntryMeal not found.
+ */
+router.post('/:id/image', uploadImages, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'FoodEntryMeal ID is required.' });
+  }
+  try {
+    const existing = await foodEntryMealRepository.getFoodEntryMealById(
+      id,
+      req.userId
+    );
+    if (!existing) {
+      return res.status(404).json({ error: 'FoodEntryMeal not found.' });
+    }
+
+    const uploadedPaths = await finalizeUploadedImages(
+      stagedFilesFrom(req),
+      'food_entry_meals',
+      id
+    );
+
+    // `images` is the client's desired final order, with __new__<n>
+    // placeholders marking where each uploaded file belongs, so one request
+    // can add, remove, and reorder together.
+    const requestedOrder = parseImageOrder(req.body?.images);
+    if (uploadedPaths.length === 0 && requestedOrder === undefined) {
+      // Nothing to apply; drop the files we already moved out of staging.
+      await removeOrphanedImages(uploadedPaths, []);
+      return res.status(400).json({ error: 'An image file is required.' });
+    }
+    const nextImages = applyImageOrder(requestedOrder, uploadedPaths);
+
+    let updated;
+    try {
+      updated = await foodEntryMealRepository.setFoodEntryMealImages(
+        id,
+        req.userId,
+        nextImages
+      );
+    } catch (persistError) {
+      // The files are already out of staging, so cleanupStagedImages can no
+      // longer reach them; remove them here or they leak permanently.
+      await removeOrphanedImages(uploadedPaths, []);
+      throw persistError;
+    }
+    if (!updated) {
+      // Concurrent delete, or the row is no longer the caller's.
+      await removeOrphanedImages(uploadedPaths, []);
+      return res.status(404).json({ error: 'FoodEntryMeal not found.' });
+    }
+
+    // Drop files the client dropped so replacements don't accumulate on disk.
+    await removeOrphanedImages(existing.images, nextImages);
+
+    res.status(200).json({ ...existing, ...updated });
+  } catch (err) {
+    next(err);
+  } finally {
+    await cleanupStagedImages(req);
+  }
+});
+
+/**
+ * @swagger
+ * /food-entry-meals/{id}/image:
+ *   delete:
+ *     summary: Clear a logged meal's override photo
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Removes the entry-specific photo so the entry falls back to the meal
+ *       template's own image. The template is never modified.
+ *     responses:
+ *       200:
+ *         description: The updated logged meal.
+ *       404:
+ *         description: FoodEntryMeal not found.
+ */
+router.delete('/:id/image', async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'FoodEntryMeal ID is required.' });
+  }
+  try {
+    const existing = await foodEntryMealRepository.getFoodEntryMealById(
+      id,
+      req.userId
+    );
+    if (!existing) {
+      return res.status(404).json({ error: 'FoodEntryMeal not found.' });
+    }
+
+    const updated = await foodEntryMealRepository.setFoodEntryMealImages(
+      id,
+      req.userId,
+      []
+    );
+    await removeOrphanedImages(existing.images, []);
+
+    res.status(200).json({ ...existing, ...updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

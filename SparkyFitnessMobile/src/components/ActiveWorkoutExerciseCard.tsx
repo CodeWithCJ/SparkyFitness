@@ -674,6 +674,7 @@ function ActiveWorkoutExerciseCard({
             {showRestChip && !cardioForm && (
               <RestPeriodChip
                 value={exercise.sets[0]?.rest_time}
+                values={exercise.sets.map((set) => set.rest_time)}
                 readOnly={readOnly}
                 onPress={
                   readOnly

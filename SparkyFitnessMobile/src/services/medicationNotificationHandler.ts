@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
 import { addNotificationResponseListener, dismissDeliveredNotification, MEDICATION_TAKEN_ACTION, MEDICATION_SKIP_ACTION } from './notifications';
 import { createEntry, listEntries } from './api/medicationsApi';
+import { queryClient } from '../hooks/queryClient';
+import { invalidateMedicationEntryCaches } from '../hooks/invalidateMedicationEntryCaches';
 import { addLog } from '../services/LogService';
 import type { MedicationEntryStatus } from '@workspace/shared';
 import { isDoseLogged } from '../utils/medications';
@@ -60,6 +62,12 @@ async function handleNotificationAction(
       entry_date: entryDate,
       taken_at: status === 'taken' ? new Date().toISOString() : undefined,
     });
+
+    // This path writes the entry through the API directly rather than through the
+    // mutations, so nothing else marks the caches stale. With an infinite stale time the
+    // app can resume onto an already-focused dashboard, skip the focus refetch, and show
+    // calories that do not include the dose the user just marked taken from the reminder.
+    invalidateMedicationEntryCaches(queryClient);
 
     if (key) {
       const allPending = await Notifications.getAllScheduledNotificationsAsync();

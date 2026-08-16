@@ -125,6 +125,13 @@ export interface FoodInfoItem {
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
   provider_verified?: boolean;
+  // Photos. `images` is set for already-saved foods and meals; the two URL
+  // fields carry a provider result's photo before it has been imported, and
+  // must survive as far as the create payload or the food is saved without
+  // one. See docs/content/8.developer/12.food-provider-images.md.
+  images?: string[] | null;
+  image_url?: string | null;
+  image_source_url?: string | null;
   // Yield count for meal-source items — surfaces "meal makes N servings"
   // context in the diary-add screen for serving-unit meals where the
   // per-serving size suffix is suppressed.
@@ -168,6 +175,7 @@ export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem 
   vitaminC: item.default_variant.vitamin_c,
   customNutrients: item.default_variant.custom_nutrients ?? null,
   variantId: item.default_variant.id,
+  images: item.images ?? null,
   source: 'local',
   originalItem: item,
 });
@@ -200,6 +208,9 @@ export const externalFoodItemToFoodInfo = (item: ExternalFoodItem): FoodInfoItem
   vitaminC: item.vitamin_c,
   externalVariants: item.variants,
   provider_verified: item.provider_verified,
+  images: item.images ?? null,
+  image_url: item.image_url ?? null,
+  image_source_url: item.image_source_url ?? null,
   source: 'external',
   originalItem: item,
 });
@@ -252,6 +263,7 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
     vitaminA: hasField('vitamin_a') ? Math.round(perServing(sumField('vitamin_a'))) : undefined,
     vitaminC: hasField('vitamin_c') ? Math.round(perServing(sumField('vitamin_c'))) : undefined,
     mealTotalServings: totalServings,
+    images: meal.images ?? null,
     source: 'meal',
     originalItem: meal,
   };

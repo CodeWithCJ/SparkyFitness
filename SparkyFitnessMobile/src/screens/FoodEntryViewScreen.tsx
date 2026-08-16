@@ -19,13 +19,24 @@ import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import EntryImageOverride from '../components/EntryImageOverride';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
-import { getMealTypeLabel } from '../constants/meals';
-import { useMealTypes, usePreferences, useServerConnection, useCustomNutrients } from '../hooks';
+import {
+  getFoodEntryMealTypeLabel,
+  getMealTypeDisplayLabel,
+} from '../utils/mealNutrition';
+import {
+  useMealTypes,
+  usePreferences,
+  useServerConnection,
+  useCustomNutrients,
+  useSetFoodEntryImages,
+  useClearFoodEntryImage,
+} from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
@@ -117,6 +128,25 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const [entry, setEntry] = useState(route.params.entry);
   const [createdVariantOverride, setCreatedVariantOverride] =
     useState<FoodUnitVariant | null>(null);
+
+  // Per-entry override photo. Writes land on the entry only — the parent food
+  // keeps its own images, which is what an entry without an override falls
+  // back to.
+  // Both paths sync the locally held entry so the control reflects what was
+  // saved without waiting for the diary query to round-trip. The clear path
+  // needs it as much as the save path: leaving a stale `images` behind would
+  // keep the override UI showing instead of falling back to the food's photos.
+  const { setImages: setEntryImages, isPending: isSettingEntryImage } =
+    useSetFoodEntryImages(entry.id, entry.entry_date, {
+      onSuccess: (updated) => {
+        if (updated) setEntry((current) => ({ ...current, ...updated }));
+      },
+    });
+  const { clearImage: clearEntryImage, isPending: isClearingEntryImage } =
+    useClearFoodEntryImage(entry.id, entry.entry_date, {
+      onSuccess: () => setEntry((current) => ({ ...current, images: [] })),
+    });
+  const isEntryImagePending = isSettingEntryImage || isClearingEntryImage;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -369,7 +399,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const servingSizeRef = useRef(displayValues.servingSize);
 
   const mealPickerOptions = mealTypes.map((mealType) => ({
-    label: getMealTypeLabel(mealType.name),
+    label: getMealTypeDisplayLabel(mealType),
     value: mealType.id,
   }));
 
@@ -796,6 +826,16 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               {(isEditing && adjustedValues?.brand) || entry.brand_name}
             </Text>
           )}
+          <View className="mt-4">
+            <EntryImageOverride
+              images={entry.images}
+              inheritedImages={entry.food_images}
+              onSave={setEntryImages}
+              onClear={clearEntryImage}
+              isPending={isEntryImagePending}
+              canEdit={canEdit}
+            />
+          </View>
           {isEditing ? (
             <FadeView key="edit-serving">
               <View className="mt-3">
@@ -1121,7 +1161,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     className="flex-row items-center"
                   >
                     <Text className="text-text-primary text-base font-medium">
-                      {getMealTypeLabel(selectedMealType.name)}
+                      {getMealTypeDisplayLabel(selectedMealType)}
                     </Text>
                     <Icon
                       name="chevron-down"
@@ -1135,7 +1175,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               />
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {getMealTypeLabel(entry.meal_type)}
+                {getFoodEntryMealTypeLabel(entry, mealTypes)}
               </Text>
             )}
           </View>

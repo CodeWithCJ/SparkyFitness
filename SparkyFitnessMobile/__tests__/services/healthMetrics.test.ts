@@ -41,6 +41,20 @@ describe('metricReadKind', () => {
 });
 
 describe('HEALTH_METRICS', () => {
+  test('Active Calories requests permissions needed for its total-minus-basal fallback', () => {
+    const activeCaloriesMetric = HEALTH_METRICS.find(
+      metric => metric.recordType === 'ActiveCaloriesBurned'
+    );
+
+    expect(activeCaloriesMetric?.permissions).toEqual(
+      expect.arrayContaining([
+        { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
+        { accessType: 'read', recordType: 'TotalCaloriesBurned' },
+        { accessType: 'read', recordType: 'BasalMetabolicRate' },
+      ])
+    );
+  });
+
   test('Exercise Session requests dependent permissions needed for workout enrichment', () => {
     const exerciseSessionMetric = HEALTH_METRICS.find(
       metric => metric.recordType === 'ExerciseSession'

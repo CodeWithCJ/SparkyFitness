@@ -1297,6 +1297,37 @@ describe('externalFoodSearchApi', () => {
     };
 
     describe('transformNormalizedFood', () => {
+      test('carries the provider photo through to the search row', () => {
+        // Regression: provider results rendered a placeholder icon on mobile
+        // while web showed the photo. The server sends image_url, but this
+        // mapper dropped it — a field this function omits is invisible to the
+        // UI no matter what arrived on the wire.
+        const food = {
+          name: 'Sambar Powder',
+          brand: 'MTR',
+          is_custom: false,
+          image_url: 'https://images.openfoodfacts.org/thumb.jpg',
+          image_source_url: 'https://images.openfoodfacts.org/full.jpg',
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+          },
+        };
+
+        const result = transformNormalizedFood(food, 'openfoodfacts');
+
+        expect(result.image_url).toBe(
+          'https://images.openfoodfacts.org/thumb.jpg',
+        );
+        expect(result.image_source_url).toBe(
+          'https://images.openfoodfacts.org/full.jpg',
+        );
+      });
+
       test('flattens default_variant to top-level fields', () => {
         const food = {
           id: 'internal-1',
@@ -1333,6 +1364,9 @@ describe('externalFoodSearchApi', () => {
           id: 'ext-123',
           name: 'Chicken Breast',
           brand: 'Farm Fresh',
+          image_url: null,
+          image_source_url: null,
+          images: undefined,
           barcode: undefined,
           provider_type: 'openfoodfacts',
           provider_external_id: 'ext-123',

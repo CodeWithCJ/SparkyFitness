@@ -290,3 +290,50 @@ describe('enrichFatSecretResults', () => {
     expect(mockGetFatSecretNutrients).not.toHaveBeenCalled();
   });
 });
+
+// Regression: FatSecret's foods.search response carries no photo, so the
+// enrichment detail call is the only place a search result can get one — but
+// applyDetailToItem copied just the variants and dropped image_url.
+describe('enrichFatSecretResults image handling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCache.clear();
+    mockGetFatSecretAccessToken.mockResolvedValue('token' as never);
+  });
+
+  it('carries the detail image_url onto the enriched search item', async () => {
+    const item = makeSearchItem('1', 100);
+    mockGetFatSecretNutrients.mockResolvedValue({ food: {} });
+    mockMapFatSecretFood.mockReturnValue({
+      ...makeDetailResult('1', 250),
+      image_url: 'https://m.ftscrt.com/static/food/abc.jpg',
+    } as ReturnType<typeof mapFatSecretFood>);
+
+    const result = await enrichFatSecretResults(
+      [item as never],
+      'app_id',
+      'app_key'
+    );
+
+    expect(result[0]!.image_url).toBe(
+      'https://m.ftscrt.com/static/food/abc.jpg'
+    );
+  });
+
+  it('is null when the detail response has no image (non-Premier account)', async () => {
+    const item = makeSearchItem('1', 100);
+    mockGetFatSecretNutrients.mockResolvedValue({ food: {} });
+    mockMapFatSecretFood.mockReturnValue(
+      makeDetailResult('1', 250) as ReturnType<typeof mapFatSecretFood>
+    );
+
+    const result = await enrichFatSecretResults(
+      [item as never],
+      'app_id',
+      'app_key'
+    );
+
+    expect(result[0]!.image_url).toBeNull();
+    expect(result[0]!.default_variant.calories).toBe(250);
+  });
+});

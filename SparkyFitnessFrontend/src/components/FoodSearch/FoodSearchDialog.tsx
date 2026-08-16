@@ -34,7 +34,7 @@ const FoodSearchDialog = ({
   const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('foodSearchDialog.title', title)}</DialogTitle>
           <DialogDescription>

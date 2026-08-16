@@ -3,6 +3,7 @@ import { promises } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Readable } from 'node:stream';
+import crypto from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web';
 import { log } from '../config/logging.js';
@@ -19,7 +20,18 @@ const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
   ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
   : path.join(__dirname, '../uploads');
 
-const UPLOADS_DIR = path.join(baseUploadsDir, 'exercises');
+// Domains that may own a downloaded-image subdirectory under the uploads root.
+// Kept as a closed union so a caller can never steer writes outside the base dir.
+type ImageDomain =
+  | 'exercises'
+  | 'foods'
+  | 'meals'
+  | 'food_entries'
+  | 'food_entry_meals';
+
+function domainUploadsDir(domain: ImageDomain): string {
+  return path.join(baseUploadsDir, domain);
+}
 
 // Image URLs are externally sourced; download through the public-host guard and
 // accept only raster image types/sizes before writing under the served uploads dir.
@@ -72,20 +84,33 @@ function resolveImageFileName(imageUrl: string, contentType: string): string {
 
   const sourceName = path.basename(new URL(imageUrl).pathname);
   const sourceExtension = path.extname(sourceName).toLowerCase();
+  // Two images on one entity can share a basename while coming from different
+  // URLs (…/a/image.jpg and …/b/image.jpg). Without the URL-derived suffix they
+  // land on the same path, so the concurrent downloads in localizeImages
+  // overwrite each other and both array slots point at one file.
+  const urlHash = crypto
+    .createHash('md5')
+    .update(imageUrl)
+    .digest('hex')
+    .slice(0, 8);
+  const sourceStem =
+    path
+      .basename(sourceName, path.extname(sourceName))
+      .replace(/[^a-zA-Z0-9_-]/g, '_') || 'image';
+
   if (sourceName && allowedExtensions.includes(sourceExtension)) {
-    return sourceName;
+    return `${sourceStem}_${urlHash}${sourceExtension}`;
   }
 
-  const sourceStem = path.basename(sourceName, path.extname(sourceName));
-  return `${sourceStem || 'image'}${allowedExtensions[0]}`;
+  return `${sourceStem}_${urlHash}${allowedExtensions[0]}`;
 }
 
 /**
  * Ensures the upload directory exists.
  */
-async function ensureUploadsDir() {
+async function ensureUploadsDir(domain: ImageDomain) {
   try {
-    await fsp.mkdir(UPLOADS_DIR, { recursive: true });
+    await fsp.mkdir(domainUploadsDir(domain), { recursive: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log(
@@ -99,14 +124,16 @@ async function ensureUploadsDir() {
 /**
  * Downloads an image from a URL and saves it locally.
  * @param imageUrl - The URL of the image to download.
- * @param exerciseId - The ID of the exercise, used for creating a subdirectory.
+ * @param entityId - The ID of the owning entity, used for creating a subdirectory.
+ * @param domain - Which uploads subdirectory the image belongs to.
  * @returns The web-accessible path to the downloaded image.
  */
 async function downloadImage(
   imageUrl: string,
-  exerciseId: string
+  entityId: string,
+  domain: ImageDomain = 'exercises'
 ): Promise<string> {
-  await ensureUploadsDir();
+  await ensureUploadsDir(domain);
 
   try {
     const response = await fetchImageResponse(imageUrl);
@@ -121,10 +148,10 @@ async function downloadImage(
       .trim()
       .toLowerCase();
     const imageFileName = resolveImageFileName(imageUrl, contentType);
-    const exerciseUploadDir = path.join(UPLOADS_DIR, exerciseId);
-    const localImagePath = path.join(exerciseUploadDir, imageFileName);
+    const entityUploadDir = path.join(domainUploadsDir(domain), entityId);
+    const localImagePath = path.join(entityUploadDir, imageFileName);
 
-    await fsp.mkdir(exerciseUploadDir, { recursive: true });
+    await fsp.mkdir(entityUploadDir, { recursive: true });
 
     const declaredLength = Number(response.headers.get('content-length'));
     if (Number.isFinite(declaredLength) && declaredLength > MAX_IMAGE_BYTES) {
@@ -165,7 +192,7 @@ async function downloadImage(
       throw streamError;
     }
 
-    return `/uploads/exercises/${exerciseId}/${imageFileName}`; // Return web-accessible path
+    return `/uploads/${domain}/${entityId}/${imageFileName}`; // Return web-accessible path
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     log(
@@ -176,6 +203,7 @@ async function downloadImage(
   }
 }
 export { downloadImage };
+export type { ImageDomain };
 export default {
   downloadImage,
 };

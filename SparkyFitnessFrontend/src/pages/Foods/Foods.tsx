@@ -74,6 +74,9 @@ import { cn } from '@/lib/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { formatServingLabel } from '@/utils/foodServing';
+import { usableFoodImages } from '@/utils/foodImages';
+import { useImageLightbox } from '@/hooks/Foods/useImageLightbox';
+import ImageLightbox from '@/components/FoodSearch/ImageLightbox';
 
 const FoodDatabaseManager = () => {
   const { t } = useTranslation();
@@ -213,6 +216,9 @@ const FoodDatabaseManager = () => {
     [user?.id, t]
   );
 
+  // One viewer for the whole table; the clicked row supplies its own images.
+  const { lightboxProps, openLightbox } = useImageLightbox();
+
   const columns = useMemo<ColumnDef<Food>[]>(
     () => [
       {
@@ -244,48 +250,72 @@ const FoodDatabaseManager = () => {
         enableSorting: true,
         cell: ({ row }) => {
           const food = row.original;
+          const foodImages = usableFoodImages(food.images);
+          const imageSrc = foodImages[0] ?? null;
           return (
-            <div className="flex flex-col gap-1 min-w-[150px]">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-gray-900 dark:text-gray-100">
-                  {food.name}
+            <div className="flex items-start gap-2 min-w-[150px]">
+              {imageSrc && (
+                <button
+                  type="button"
+                  className="flex-shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onClick={() => openLightbox(foodImages, 0, food.name)}
+                  aria-label={t('food.viewImages', 'View images')}
+                >
+                  <img
+                    src={imageSrc}
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    className="w-10 h-10 object-cover rounded-md cursor-zoom-in"
+                    onError={(e) => {
+                      // A dead provider link shouldn't leave a broken-image icon.
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </button>
+              )}
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-gray-900 dark:text-gray-100">
+                    {food.name}
+                  </span>
+                  {food.brand && (
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] h-5 px-1.5 font-black uppercase tracking-tight bg-blue-100/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50"
+                    >
+                      {food.brand}
+                    </Badge>
+                  )}
+                  {getFoodSourceBadge(food)}
+                  {food.shared_with_public && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-green-50 text-green-700 h-5 px-1.5 font-bold"
+                    >
+                      <Share2 className="h-2.5 w-2.5 mr-1" />
+                      {t('foodDatabaseManager.public', 'Public')}
+                    </Badge>
+                  )}
+                </div>
+                <span className="text-[10px] text-gray-500">
+                  {food.default_variant
+                    ? t('foodDatabaseManager.perServing', {
+                        servingSize: formatServingLabel(food.default_variant),
+                        servingUnit: '',
+                        defaultValue: `Per ${formatServingLabel(food.default_variant)}`,
+                      })
+                    : t('foodDatabaseManager.perServing', {
+                        servingSize: 0,
+                        servingUnit: '',
+                        defaultValue: 'Per 0',
+                      })}
                 </span>
-                {food.brand && (
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px] h-5 px-1.5 font-black uppercase tracking-tight bg-blue-100/50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200/50"
-                  >
-                    {food.brand}
-                  </Badge>
-                )}
-                {getFoodSourceBadge(food)}
-                {food.shared_with_public && (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] bg-green-50 text-green-700 h-5 px-1.5 font-bold"
-                  >
-                    <Share2 className="h-2.5 w-2.5 mr-1" />
-                    {t('foodDatabaseManager.public', 'Public')}
-                  </Badge>
-                )}
+                <AllergenBadges
+                  allergens={food.default_variant?.allergens}
+                  traces={food.default_variant?.traces}
+                />
               </div>
-              <span className="text-[10px] text-gray-500">
-                {food.default_variant
-                  ? t('foodDatabaseManager.perServing', {
-                      servingSize: formatServingLabel(food.default_variant),
-                      servingUnit: '',
-                      defaultValue: `Per ${formatServingLabel(food.default_variant)}`,
-                    })
-                  : t('foodDatabaseManager.perServing', {
-                      servingSize: 0,
-                      servingUnit: '',
-                      defaultValue: 'Per 0',
-                    })}
-              </span>
-              <AllergenBadges
-                allergens={food.default_variant?.allergens}
-                traces={food.default_variant?.traces}
-              />
             </div>
           );
         },
@@ -464,6 +494,7 @@ const FoodDatabaseManager = () => {
       customNutrients,
       favoriteFoodIds,
       toggleFavorite,
+      openLightbox,
     ]
   );
 
@@ -842,6 +873,7 @@ const FoodDatabaseManager = () => {
           </div>
         </DialogContent>
       </Dialog>
+      <ImageLightbox {...lightboxProps} />
     </div>
   );
 };

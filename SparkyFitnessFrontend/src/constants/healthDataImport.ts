@@ -130,7 +130,10 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
     description:
       'One sleep session per row. Provide bedtime/wake_time as ISO timestamps. ' +
       'The deep/light/rem/awake columns are aggregate seconds per stage. For a ' +
-      'full stage timeline, optionally put a JSON array in stage_events.',
+      'full stage timeline, optionally put a JSON array in stage_events. ' +
+      'Optional record_timezone (IANA name, e.g. America/New_York) and/or ' +
+      'record_utc_offset_minutes columns pin display to the zone the sleep ' +
+      'was recorded in; without them times display in your profile timezone.',
     requiredHeaders: [
       'date',
       'bedtime',

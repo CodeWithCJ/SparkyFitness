@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import EntryImageOverride from '../components/EntryImageOverride';
 import Icon from '../components/Icon';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 import StepperInput from '../components/StepperInput';
@@ -18,14 +19,22 @@ import NutritionMacroCard from '../components/NutritionMacroCard';
 import StatusView from '../components/StatusView';
 import SwipeableIngredientRow from '../components/SwipeableIngredientRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useMealTypes, usePreferences } from '../hooks';
+import {
+  useMealTypes,
+  usePreferences,
+  useSetFoodEntryMealImages,
+  useClearFoodEntryMealImage,
+} from '../hooks';
 import { useFoodEntryMealDetails } from '../hooks/useFoodEntryMealDetails';
 import { useUpdateFoodEntryMeal } from '../hooks/useUpdateFoodEntryMeal';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel, normalizeDate } from '../utils/dateUtils';
-import { getMealTypeLabel } from '../constants/meals';
+import {
+  getFoodEntryMealTypeLabel,
+  getMealTypeDisplayLabel,
+} from '../utils/mealNutrition';
 import { buildMealIngredientDraftFromEntryMealFood } from '../utils/mealBuilderDraft';
 import { formatCaloriesDisplay, formatServingSizeDisplay } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
@@ -78,6 +87,18 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const timeSheetRef = useRef<TimeSheetRef>(null);
 
   const { meal, isLoading, isError, error } = useFoodEntryMealDetails(foodEntryMealId, { initialMeal });
+
+  // Per-entry override photo for this logged meal. Never written back to the
+  // meal template, which is what an entry without an override falls back to.
+  const {
+    setImages: setMealEntryImages,
+    isPending: isSettingMealImage,
+  } = useSetFoodEntryMealImages(foodEntryMealId, meal?.entry_date ?? '');
+  const {
+    clearImage: clearMealEntryImage,
+    isPending: isClearingMealImage,
+  } = useClearFoodEntryMealImage(foodEntryMealId, meal?.entry_date ?? '');
+  const isMealImagePending = isSettingMealImage || isClearingMealImage;
   const { mealTypes } = useMealTypes();
   const { preferences } = usePreferences();
   const showNetCarbs = preferences?.show_net_carbs === true;
@@ -156,7 +177,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
   const mealPickerOptions = useMemo(
-    () => mealTypes.map((mt) => ({ label: getMealTypeLabel(mt.name), value: mt.id })),
+    () => mealTypes.map((mt) => ({ label: getMealTypeDisplayLabel(mt), value: mt.id })),
     [mealTypes],
   );
 
@@ -364,6 +385,14 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           />
         </View>
 
+        <EntryImageOverride
+          images={meal?.images}
+          inheritedImages={meal?.meal_images}
+          onSave={setMealEntryImages}
+          onClear={clearMealEntryImage}
+          isPending={isMealImagePending}
+        />
+
         {/* Aggregate nutrition */}
         <NutritionMacroCard
           calories={scaledCalories}
@@ -424,7 +453,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
                     className="flex-row items-center"
                   >
                     <Text className="text-text-primary text-base font-medium">
-                      {getMealTypeLabel(selectedMealType.name)}
+                      {getMealTypeDisplayLabel(selectedMealType)}
                     </Text>
                     <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
                   </TouchableOpacity>
@@ -432,7 +461,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               />
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {getMealTypeLabel(meal.meal_type)}
+                {getFoodEntryMealTypeLabel(meal, mealTypes)}
               </Text>
             )}
           </View>

@@ -139,6 +139,14 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       infoPlist: {
         NSLocalNetworkUsageDescription:
           'SparkyFitness connects to self-hosted servers on your local network.',
+        // Required by the food/meal photo picker and the label/barcode
+        // scanner. iOS terminates the app on first use without these, and App
+        // Review rejects a binary that requests either without a purpose
+        // string.
+        NSCameraUsageDescription:
+          'SparkyFitness uses the camera to photograph foods and meals, and to scan barcodes and nutrition labels.',
+        NSPhotoLibraryUsageDescription:
+          'SparkyFitness lets you choose photos from your library for your foods, meals, and diary entries.',
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: false,
         },

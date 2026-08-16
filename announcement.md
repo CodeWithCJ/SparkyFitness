@@ -1,13 +1,27 @@
 ---
-id: sparky-5k-stars
-active: false
-title: SparkyFitness Reaches 5K GitHub Stars! 🌟
+id: sparky-contributions
+active: true
+title: SparkyFitness Contributions! 🌟
 ---
 
-### 🚀 SparkyFitness Reaches 5K GitHub Stars! 🌟
+### ❤️ Want to Contribute to SparkyFitness?
 
-- SparkyFitness has officially reached **5,000+ stars on GitHub**. We couldn't have hit this incredible milestone without your continued support, contributions, and feedback. Thank you all!!!
-- If you're enjoying SparkyFitness and haven't given us a star yet, I humbly request you to drop a star on [our GitHub repository](https://github.com/CodeWithCJ/SparkyFitness). It helps the project reach more people and allows us to keep building and improving the app for users like you!
+We hope you're enjoying **SparkyFitness** and finding it useful for your health and fitness journey! If you'd like to help make SparkyFitness even better, there are many ways to contribute:
 
-- **What's next?** We are already hard at work on the next major updates for health tracking and server performance. Stay tuned, and thank you for being part of the journey! 🚀
+- 🐛 Report bugs and issues
+- 💡 Submit feature requests
+- 📚 Improve documentation
+- 🧪 Test development versions
+- 💰 Sponsor the project
+- 👨‍💻 Contribute code and help fix open issues
+
+### 🚀 Join the Core Team
+
+Are you a developer interested in joining the **SparkyFitness core team** and participating in design decisions?
+
+We're looking for contributors to help with **development, testing, documentation, and feature implementation**.
+
+Interested? **[Join us on Discord](https://discord.gg/vcnMT5cPEA)** and DM me with your expertise and why you'd like to join.
+
+Every contribution, big or small, helps make SparkyFitness better! 🙏
 

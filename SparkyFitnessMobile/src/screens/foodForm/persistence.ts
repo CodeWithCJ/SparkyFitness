@@ -86,6 +86,69 @@ export function confirmDiscardEquivalents(): Promise<boolean> {
   });
 }
 
+export type SyncPastEntriesChoice = 'none' | 'nutrition' | 'nutrition-and-photos';
+
+/**
+ * Asks whether to rewrite past diary entries with the food's new values.
+ *
+ * Entries store a snapshot from when they were logged, so editing a food
+ * leaves history untouched by default — a logged meal records what was eaten.
+ * Mirrors the web "Sync Past Entries?" dialog, including asking only after the
+ * save has succeeded, so the food is saved either way.
+ *
+ * `photosChanged` splits the prompt in two. When the save left the food's
+ * photos alone there is nothing to decide about them, so the dialog stays a
+ * plain yes/no about nutrition. When photos did change, the user gets the
+ * third option, because the two photo outcomes are genuinely different:
+ *
+ *  - `nutrition-and-photos` forces the new photo onto every past entry,
+ *    INCLUDING entries where the user picked their own photo in the diary.
+ *    Those replaced photos are deleted server-side; this is not reversible.
+ *  - `nutrition` rewrites nutrition only, so every entry keeps the photo it
+ *    is showing today, custom or inherited.
+ */
+export function confirmSyncPastEntries(
+  photosChanged = false,
+): Promise<SyncPastEntriesChoice> {
+  if (!photosChanged) {
+    return new Promise((resolve) => {
+      Alert.alert(
+        'Update past entries?',
+        "Your library food is saved. Do you also want to update past diary entries for this food with the new nutrition? Entries you don't update keep their original values.",
+        [
+          // "Update"/"Don't Update" rather than two parallel "… past entries"
+          // labels: the negation lands on the first word, so the options are
+          // told apart at a glance instead of by diffing similar phrases.
+          { text: "Don't Update", style: 'cancel', onPress: () => resolve('none') },
+          // Photos did not change, so syncing them would be a no-op — ask for
+          // the nutrition-only sync and leave every entry's photo alone.
+          { text: 'Update', onPress: () => resolve('nutrition') },
+        ],
+        { onDismiss: () => resolve('none') },
+      );
+    });
+  }
+
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Update past entries?',
+      'Your library food is saved. What should past diary entries for this food use?',
+      [
+        { text: "Don't Update", style: 'cancel', onPress: () => resolve('none') },
+        { text: 'Update nutrition only', onPress: () => resolve('nutrition') },
+        // Destructive: this is the one path that discards a photo the user
+        // chose for a specific diary entry, so it is styled as such.
+        {
+          text: 'Update nutrition & photos',
+          style: 'destructive',
+          onPress: () => resolve('nutrition-and-photos'),
+        },
+      ],
+      { onDismiss: () => resolve('none') },
+    );
+  });
+}
+
 export function confirmVariantOverwrite(unitLabel: string): Promise<'overwrite' | 'new' | 'cancel'> {
   return new Promise((resolve) => {
     Alert.alert(

@@ -294,7 +294,7 @@
       "enterNewEmailAddress": "Bitte neue E-Mail-Adresse eingeben",
       "currentPassword": "Aktuelles Passwort",
       "enterCurrentPassword": "Geben Sie das aktuelle Passwort ein",
-      "updateEmailHint": "Deine E-Mail-Adresse wird sofort aktualisiert.",
+      "updateEmailHint": "Bestätigen Sie Ihr aktuelles Passwort, um Ihre E-Mail zu ändern. Lassen Sie leer, wenn Sie sich mit SSO anmelden.",
       "emailUpdateSuccess": "E-Mail erfolgreich aktualisiert.",
       "emailUpdateError": "Aktualisieren der E-Mail Adresse fehlgeschlagen."
     },
@@ -316,7 +316,10 @@
       "exportSuccessDescription": "Dein Tagebuch wurde erfolgreich exportiert.",
       "exportErrorDescription": "Download des Tagebuchs nicht möglich. Versuche es später noch einmal.",
       "delimiterLabel": "CSV Trennzeichen Format",
-      "delimiterPlaceholder": "Trennzeichen"
+      "delimiterPlaceholder": "Trennzeichen",
+      "deleteSynced": {
+        "confirmWarning": "Diese Aktion kann nicht rückgängig gemacht werden. Stellen Sie sicher, dass Sie eine aktuelle Datenbanksicherung vor dem Löschen haben."
+      }
     },
     "customMeals": {
       "title": "Eigene Mahlzeiten",
@@ -1036,7 +1039,23 @@
       "failedToFetchSettings": "Das Abrufen der Backup-Einstellungen ist fehlgeschlagen.",
       "failedToSaveSettings": "Das Sichern der Backup-Einstellungen ist fehlgeschlagen.",
       "failedToRestoreBackup": "Das Wiederherstellen des Backups ist fehlgeschlagen.",
-      "description": "Einstellungen für regelmäßige Sicherungen und Wiederherstellungsoptionen"
+      "description": "Einstellungen für regelmäßige Sicherungen und Wiederherstellungsoptionen",
+      "error": "Fehler",
+      "downloadBackup": "Backup herunterladen",
+      "availableBackups": "Verfügbare Backups",
+      "availableBackupsDescription": "Wählen Sie eine Sicherungsdatei zum Download.",
+      "noBackupsFound": "Keine Backup-Dateien gefunden.",
+      "backupCount_one": "",
+      "backupCount_other": "{{count}} Backups",
+      "backupFileName": "Dateiname",
+      "backupDate": "Gestartet",
+      "backupCompletedDate": "Vollständig",
+      "backupSize": "Größe",
+      "download": "Herunterladen",
+      "downloadBackupFile": "{{fileName}} herunterladen",
+      "downloadBackupSuccess": "Backup wurde erfolgreich heruntergeladen.",
+      "failedToDownloadBackup": "Es ist ein Fehler ausgetreten, beim herunterladen des Backups.",
+      "failedToFetchBackups": "Das Abrufen der Backups ist fehlgeschlagen."
     }
   },
   "goals": {
@@ -2371,7 +2390,10 @@
       "snoozed": "Geschlummert",
       "skip": "Überspringen",
       "take": "Nehmen",
-      "adherence14": "14-tägige Einhaltung"
+      "adherence14": "14-tägige Einhaltung",
+      "loadingChecklist": "Checkliste wird geladen…",
+      "dueToday": "Fällig heute",
+      "asNeeded": "Bei Bedarf"
     },
     "insights": {
       "title": "Nebenwirkungen Einsichten & Hinweise",
@@ -2415,7 +2437,26 @@
     "calendar": {
       "loggedCount_one": "{{count}} eingetragenes Symptom",
       "loggedCount_other": "{{count}} eingetragene Symptome",
-      "maxSeverity": "Maximale Schwere: {{n}}"
+      "maxSeverity": "Maximale Schwere: {{n}}",
+      "title": "Medikamenten Log Kalender",
+      "selectMedication": "Wählen Sie ein Medikament",
+      "allMedications": "Alle Medikamente",
+      "allTaken": "Alle eingenommenen Dosen",
+      "partialTaken": "Teilweise genommen",
+      "mostlySkipped": "Meist übersprungen",
+      "allSkipped": "Alle Dosen übersprungen",
+      "sideEffect": "Nebenwirkungen",
+      "generalSymptom": "Allgemeines Symptom",
+      "tooltipTaken": "{{count}} genommen",
+      "tooltipSkipped": "{{count}} übersprungen",
+      "tooltipSymptoms": "Symptome: {{names}}",
+      "sun": "So",
+      "mon": "Mon",
+      "tue": "Di",
+      "wed": "Mit",
+      "thu": "Do",
+      "fri": "Fr",
+      "sat": "Sa"
     },
     "gi": {
       "subtitle": "Rate pro Woche in den letzten 30 Tagen",
@@ -2572,6 +2613,12 @@
         "energy": "Energie"
       },
       "title": "Tägliche GLP-1-Kontrolle"
+    },
+    "reports": {
+      "dosesTaken": "Dosen genommen",
+      "times": "Anzahl",
+      "symptomsColumn": "Symptome",
+      "injectionAbbrev": "inj"
     }
   },
   "onboarding": {
@@ -2609,11 +2656,11 @@
       "late": "{{n}} Tage überfällig",
       "periodIn": "Periode in {{n}} Tagen",
       "nextPeriod": "Nächste Periode",
-      "ovulation": "Ovulation"
+      "ovulation": "Eisprung"
     },
     "legend": {
       "period": "Periode",
-      "ovulation": "Ovulation"
+      "ovulation": "Eisprung"
     },
     "regularity": {
       "regular": "Regulär",
@@ -2632,5 +2679,78 @@
       "notes": "Notizen",
       "notesPlaceholder": "Gibt es noch etwas zu beachten…"
     }
+  },
+  "chat": {
+    "toolCategories": {
+      "title": "Chatbot Werkzeuge",
+      "presetFull": "Voll",
+      "food": "Essen & Wasser",
+      "exercise": "Übung",
+      "goals": "Ziele",
+      "profile": "Profil & Gewohnheiten",
+      "medications": "Medikamente",
+      "tooltip": "Chatbot Werkzeuge",
+      "description": "Weniger Tools helfen kleineren lokalen Modellen, zuverlässiger zu antworten.",
+      "emptyHint": "Keine Kategorie ausgewählt - Der Chatbot verwendet die Standard-Werkzeuge",
+      "checkin": "Körper & Check-ins",
+      "reports": "Berichte & Analysen",
+      "coaching": "Training",
+      "clearAll": "Alles löschen",
+      "vision": "Vision",
+      "presetCore": "Standard"
+    }
+  },
+  "foodCsvImport": {
+    "uploadCsv": "CSV Hochladen",
+    "downloadTemplate": "Template Herunterladen",
+    "pastePlaceholder": "Oder hier CSV Inhalt kopieren...",
+    "actions": "Aktionen",
+    "booleanTrue": "Wahr",
+    "booleanFalse": "Falsch",
+    "deleteRow": "Lösche Reihe",
+    "overrideLabel": "Vorhandene Lebensmitteldetails überschreiben",
+    "importing": "Importieren...",
+    "importData": "Daten importieren",
+    "importRecords_one": "Import {{count}} Datensatz",
+    "importRecords_other": "Import {{count}} Datensätze",
+    "importErrorTitle": "Importierungsfehler",
+    "pasteFirst": "Bitte füge zuerst CSV Inhalt ein.",
+    "invalidFormatTitle": "Ungültiges CSV Format",
+    "addRow": "Reihe hinzufügen",
+    "clearData": "Daten löschen",
+    "parseText": "Text analysieren",
+    "recordsLoaded": "{{count}} Datensätze wurden erfolgreich geladen.",
+    "successTitle": "Erfolgreich",
+    "title": "Lebensmitteldaten importieren",
+    "overrideDescription": "Falls bereits ein Lebensmittel mit demselben Namen und derselben Marke vorhanden ist, sollten die Nährwertangaben aktualisiert werden, anstatt den Import abzubrechen. Lassen Sie das Kontrollkästchen deaktiviert, um Duplikate zu überspringen und eine Fehlermeldung auszugeben.",
+    "headersMismatchText": "Die Überschriften entsprechen nicht dem vorgeschriebenen Format. Verwenden Sie bitte die Vorlage.",
+    "loadedRowsFromText": "Es wurden {{count}}  Reihen aus dem Text geladen.",
+    "emptyFile": "Die gewählte Datei ist leer.",
+    "noDataTitle": "Keine Daten gefunden",
+    "validationErrorTitle": "Fehler bei der Validierung",
+    "nameRequired": "Das Feld 'name' darf nicht leer sein.",
+    "fileTooLarge": "Die ausgewählte Datei ist zu groß. Bitte laden Sie eine Datei, die kleiner als 25MB ist hoch.",
+    "missingDefaultValidationError": "Mindestens eine Variante pro Lebensmittel muss als Standardeinheit eingestellt werden.",
+    "showAllRows": "Zeige alle Reihen ({{count}})",
+    "noDataText": "Die CSV-Datei enthält eine Kopfzeile aber keine Datenzeilen."
+  },
+  "foods": {
+    "providerVerified": "Verifizierte Lebensmittel"
+  },
+  "csvImport": {
+    "cancel": "Abbrechen",
+    "none": "Keine",
+    "confirmMapping": "Bestätigen"
+  },
+  "workoutLaps": {
+    "lapsCount": "{{count}} Runden",
+    "lap": "Runde",
+    "distance": "Distanz",
+    "time": "Zeit",
+    "pace": "Pace (/{{unit}})",
+    "cadence": "Frequenz"
+  },
+  "dailyHealthMetrics": {
+    "bodyBattery": "Energielevel"
   }
 }
