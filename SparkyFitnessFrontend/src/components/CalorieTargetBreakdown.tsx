@@ -11,15 +11,20 @@ import {
 } from '@/components/ui/dialog';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
-import { getGoalModeDeficit } from '@workspace/shared';
+import {
+  getGoalModeAdjustment,
+  ENERGY_DENSITY_KCAL_PER_KG,
+} from '@workspace/shared';
 
 interface CalorieTargetResult {
   baselineTdee: number;
+  /** Signed: positive is a deficit, negative is a surplus. */
   appliedDeficit: number;
   rmr: number;
   absoluteFloorValue: number;
   finalTarget: number;
   insufficientHistory: boolean;
+  isGainGoal: boolean;
 }
 
 interface AdaptiveTdeeData {
@@ -108,7 +113,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
       'Baseline (Manual Goal)'
     );
   }
-  const deficitPct = getGoalModeDeficit(goalMode, goalModeCustomPercentage);
+  const deficitPct = getGoalModeAdjustment(goalMode, goalModeCustomPercentage);
   const calculatedDeficitAmount = previewResult.appliedDeficit;
   const safetyRmr = previewResult.rmr;
   const absoluteSafetyFloor = previewResult.absoluteFloorValue;
@@ -257,17 +262,17 @@ Calculated: ${bfp.toFixed(1)}%`;
       <div className="space-y-1">
         <div className="flex items-center justify-between font-medium text-foreground/85">
           <span>1. Basal Metabolic Rate (BMR)</span>
-          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-xs">
             {bmrSource === 'external' ? 'Health App' : bmrAlgorithm}
           </span>
         </div>
         {bmrSource === 'external' ? (
-          <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
+          <div className="text-muted-foreground/70 text-xs bg-muted/10 p-1.5 rounded border border-border/30">
             BMR synced from your health app (Apple Health / Health Connect). No
             formula applied.
           </div>
         ) : (
-          <pre className="text-muted-foreground/70 font-sans whitespace-pre-line text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
+          <pre className="text-muted-foreground/70 font-sans whitespace-pre-line text-xs bg-muted/10 p-1.5 rounded border border-border/30">
             {bmrMathText()}
           </pre>
         )}
@@ -285,11 +290,11 @@ Calculated: ${bfp.toFixed(1)}%`;
       <div className="space-y-1">
         <div className="flex items-center justify-between font-medium text-foreground/85">
           <span>2. Body Fat Percentage</span>
-          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-xs">
             {bodyFatAlgorithm}
           </span>
         </div>
-        <pre className="text-muted-foreground/70 font-sans whitespace-pre-line text-[10px] bg-muted/10 p-1.5 rounded border border-border/30">
+        <pre className="text-muted-foreground/70 font-sans whitespace-pre-line text-xs bg-muted/10 p-1.5 rounded border border-border/30">
           {bodyFatMathText()}
         </pre>
         <div className="flex justify-between items-center bg-muted/20 dark:bg-muted/10 p-1.5 rounded mt-1">
@@ -307,17 +312,24 @@ Calculated: ${bfp.toFixed(1)}%`;
         <div className="space-y-1">
           <div className="flex items-center justify-between font-medium text-foreground/85">
             <span>3. Adaptive TDEE (Expenditure)</span>
-            <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+            <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-xs">
               {previewResult.insufficientHistory
                 ? 'Fallback Estimate'
                 : 'Adaptive TDEE'}
             </span>
           </div>
-          <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
+          <div className="text-muted-foreground/70 text-xs bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
             <div className="font-semibold text-foreground/90">
-              Formula: Average Daily Calories - (Daily Weight Change in kg ×
-              7700 kcal)
+              Formula: Average Daily Calories − (Daily Weight Change in kg ×{' '}
+              {ENERGY_DENSITY_KCAL_PER_KG.LOSS} kcal/kg)
             </div>
+            <p className="text-muted-foreground/80">
+              {ENERGY_DENSITY_KCAL_PER_KG.LOSS} kcal/kg is how much energy a
+              kilogram of body weight represents, so your weight trend can be
+              converted into calories. Body weight lost or gained is a mix of
+              fat (~9,441 kcal/kg) and lean tissue and water (~1,816 kcal/kg),
+              and {ENERGY_DENSITY_KCAL_PER_KG.LOSS} reflects a typical blend.
+            </p>
             {previewResult.insufficientHistory ? (
               <div className="space-y-2 mt-1">
                 <p className="font-semibold text-amber-600 dark:text-amber-400">
@@ -333,7 +345,7 @@ Calculated: ${bfp.toFixed(1)}%`;
                   history.
                 </p>
 
-                <div className="bg-muted/20 dark:bg-muted/10 p-2 rounded border border-border/30 space-y-1.5 mt-1 text-[10px]">
+                <div className="bg-muted/20 dark:bg-muted/10 p-2 rounded border border-border/30 space-y-1.5 mt-1 text-xs">
                   <span className="font-semibold text-foreground/80 block border-b border-border/40 pb-1 mb-1">
                     Adaptive TDEE checklist to transition from fallback:
                   </span>
@@ -405,7 +417,7 @@ Calculated: ${bfp.toFixed(1)}%`;
             ) : (
               <div className="space-y-1 mt-1">
                 <p>Status: Active (calculated baseline from logs).</p>
-                <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                <ul className="list-disc pl-4 space-y-0.5 text-xs">
                   <li>
                     Average daily calorie intake:{' '}
                     {Math.round(
@@ -441,7 +453,7 @@ Calculated: ${bfp.toFixed(1)}%`;
           <span>
             {isAdaptiveMethod ? '4' : '3'}. Daily Calorie Goal calculation
           </span>
-          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-[10px]">
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/10 rounded text-xs">
             {isAdaptiveMethod
               ? previewResult.insufficientHistory
                 ? 'Fallback Estimate (Adaptive TDEE unavailable)'
@@ -449,7 +461,7 @@ Calculated: ${bfp.toFixed(1)}%`;
               : `${goalModeCalculationMethod} Method`}
           </span>
         </div>
-        <div className="text-muted-foreground/70 text-[10px] bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
+        <div className="text-muted-foreground/70 text-xs bg-muted/10 p-1.5 rounded border border-border/30 space-y-1 text-left">
           <div>
             <span className="font-medium">{baselineLabel}:</span>{' '}
             {isAdaptiveMethod ? (
@@ -528,7 +540,7 @@ Calculated: ${bfp.toFixed(1)}%`;
           </div>
           <div>
             <span className="font-medium">Target Cap Safety Floors:</span>
-            <ul className="list-disc pl-4 space-y-0.5 text-[9px] mt-0.5">
+            <ul className="list-disc pl-4 space-y-0.5 text-[11px] mt-0.5">
               <li>
                 RMR Floor: {displayBmrVal} {getEnergyUnitString(energyUnit)}
               </li>
@@ -549,7 +561,7 @@ Calculated: ${bfp.toFixed(1)}%`;
             </ul>
           </div>
           {isAdaptiveMethod && (
-            <div className="text-[10px] text-gray-500 italic mt-0.5">
+            <div className="text-xs text-gray-500 italic mt-0.5">
               {previewResult.finalTarget === Math.round(targetSafetyFloor) &&
               Math.round(targetBaseline * (1 - deficitPct)) <
                 targetSafetyFloor ? (
@@ -566,7 +578,7 @@ Calculated: ${bfp.toFixed(1)}%`;
           )}
           {!isAdaptiveMethod &&
             previewResult.finalTarget < targetSafetyFloor && (
-              <div className="text-[10px] text-red-600 dark:text-red-400 font-medium mt-0.5">
+              <div className="text-xs text-red-600 dark:text-red-400 font-medium mt-0.5">
                 ⚠️ Warning: Calorie budget is below the recommended safety floor
                 (
                 {Math.round(
@@ -576,14 +588,14 @@ Calculated: ${bfp.toFixed(1)}%`;
               </div>
             )}
           {isAdaptiveMethod && daysOfCalorieLogs < 14 && (
-            <div className="flex items-start gap-1 mt-1 p-1 bg-yellow-100 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800 text-[9px]">
+            <div className="flex items-start gap-1 mt-1 p-1 bg-yellow-100 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800 text-[11px]">
               <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
               <span className="text-yellow-700 dark:text-yellow-300">
                 {getTargetFallbackNotice()}
               </span>
             </div>
           )}
-          <div className="pt-1 border-t border-border/40 font-bold text-foreground/90 mt-1 flex justify-between items-center text-[10px]">
+          <div className="pt-1 border-t border-border/40 font-bold text-foreground/90 mt-1 flex justify-between items-center text-xs">
             <span>Final Energy Budget Target:</span>
             <span className="text-primary text-xs font-semibold">
               {Math.round(

@@ -1,6 +1,10 @@
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
-import { isValidTimeZone, SUPPORTED_TIME_FORMATS } from '@workspace/shared';
+import {
+  isValidTimeZone,
+  SUPPORTED_TIME_FORMATS,
+  MAX_GOAL_MODE_PERCENTAGE,
+} from '@workspace/shared';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function validateTimezone(preferenceData: any) {
   if (
@@ -31,7 +35,15 @@ async function validateTimeFormat(preferenceData: TimeFormatPayload) {
 }
 async function validateGoalMode(preferenceData: any) {
   if (preferenceData.goal_mode !== undefined) {
-    const validGoalModes = ['maintain', 'recomp', 'cut', 'high_cut', 'manual'];
+    const validGoalModes = [
+      'maintain',
+      'recomp',
+      'cut',
+      'high_cut',
+      'lean_bulk',
+      'bulk',
+      'manual',
+    ];
     if (!validGoalModes.includes(preferenceData.goal_mode)) {
       throw Object.assign(
         new Error(`Invalid goal_mode: '${preferenceData.goal_mode}'`),
@@ -52,10 +64,16 @@ async function validateGoalMode(preferenceData: any) {
   }
   if (preferenceData.goal_mode_custom_percentage !== undefined) {
     const pct = Number(preferenceData.goal_mode_custom_percentage);
-    if (isNaN(pct) || !Number.isInteger(pct) || pct < 0 || pct > 40) {
+    // Negative values express a surplus (weight gain); positive a deficit.
+    if (
+      isNaN(pct) ||
+      !Number.isInteger(pct) ||
+      pct < -MAX_GOAL_MODE_PERCENTAGE ||
+      pct > MAX_GOAL_MODE_PERCENTAGE
+    ) {
       throw Object.assign(
         new Error(
-          `Invalid goal_mode_custom_percentage: '${preferenceData.goal_mode_custom_percentage}'. Must be an integer between 0 and 40.`
+          `Invalid goal_mode_custom_percentage: '${preferenceData.goal_mode_custom_percentage}'. Must be an integer between -${MAX_GOAL_MODE_PERCENTAGE} and ${MAX_GOAL_MODE_PERCENTAGE}.`
         ),
         { status: 400 }
       );

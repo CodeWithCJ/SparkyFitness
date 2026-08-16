@@ -27,6 +27,7 @@ const defaultProps = {
     absoluteFloorValue: 1500,
     finalTarget: 2194,
     insufficientHistory: false,
+    isGainGoal: false,
   },
   adaptiveTdeeData: {
     tdee: 2194,

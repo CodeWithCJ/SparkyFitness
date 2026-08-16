@@ -1,5 +1,5 @@
 import { tool } from 'ai';
-import { todayInZone } from '@workspace/shared';
+import { todayInZone, ENERGY_DENSITY_KCAL_PER_KG } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import coachRepository from '../../models/coachRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
@@ -313,8 +313,11 @@ async function generateCoachingPlan(
     );
     const avgCals = totalCals / calorieData.length;
 
-    // 1kg of mixed body tissue ~ 6000 cals. Weight change over 14 days.
-    const dailyCaloricBalance = (weightChange * 6000) / 14;
+    // Weight change over 14 days. Note this window is shorter than
+    // AdaptiveTdeeService's 28-day + 7-day-SMA window, where the same constant is
+    // better justified; short windows carry proportionally more water/glycogen.
+    const dailyCaloricBalance =
+      (weightChange * ENERGY_DENSITY_KCAL_PER_KG.LOSS) / 14;
     estimatedTdee = Math.round(avgCals - dailyCaloricBalance);
   }
 

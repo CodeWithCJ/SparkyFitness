@@ -5,7 +5,13 @@ import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
 import i18n from '@/i18n';
 import type { FoodEntry, FoodVariant } from '@/types/food';
 import { FoodEntryMeal, MealTotals } from '@/types/meal';
-import { CALORIE_CALCULATION_CONSTANTS } from '@workspace/shared';
+import {
+  CALORIE_CALCULATION_CONSTANTS,
+  ACTIVITY_MULTIPLIERS,
+  calculateBmr,
+  computeCalorieTarget,
+  goalModeFromPrimaryGoal,
+} from '@workspace/shared';
 import { getMealPercentage } from './goals';
 import { ExpandedGoals } from '@/types/goals';
 
@@ -630,24 +636,32 @@ export const calculateBasePlan = (
     return null;
   }
 
-  let bmr = 10 * weightKg + 6.25 * heightCm - 5 * age;
-  bmr += formData.sex === 'male' ? 5 : -161;
+  const gender = formData.sex === 'male' ? 'male' : 'female';
+  const bmr = calculateBmr('Mifflin-St Jeor', weightKg, heightCm, age, gender);
 
-  const activityMultipliers: Record<string, number> = {
-    not_much: 1.2,
-    light: 1.375,
-    moderate: 1.55,
-    heavy: 1.725,
-  };
+  // Route through the same engine the rest of the app uses, so the plan produced
+  // here matches what Calculation Settings will show afterwards. Presenting it as
+  // adaptive-with-no-history makes the baseline BMR x activity multiplier and
+  // applies the safety floors, which the previous ad-hoc math skipped entirely.
+  const targetResult = computeCalorieTarget({
+    goalMode: goalModeFromPrimaryGoal(formData.primaryGoal),
+    calculationMethod: 'adaptive',
+    customPercentage: 0,
+    bmr,
+    activityLevelMultiplier:
+      ACTIVITY_MULTIPLIERS[formData.activityLevel] ?? 1.2,
+    adaptiveTdee: null,
+    adaptiveTdeeFallback: true,
+    adaptiveTdeeDaysOfData: 0,
+    weightKg,
+    heightCm,
+    age,
+    gender,
+    currentGoalCalories: 0,
+    calculateBmrFn: calculateBmr,
+  });
 
-  const multiplier = activityMultipliers[formData.activityLevel] || 1.2;
-  const tdee = bmr * multiplier;
-
-  let targetCalories = tdee;
-  if (formData.primaryGoal === 'lose_weight') targetCalories = tdee * 0.8;
-  if (formData.primaryGoal === 'gain_weight') targetCalories = tdee + 500;
-
-  const finalDailyCalories = Math.round(targetCalories / 10) * 10;
+  const finalDailyCalories = Math.round(targetResult.finalTarget / 10) * 10;
 
   const dietTemplate =
     localSelectedDiet === 'custom'
@@ -674,5 +688,10 @@ export const calculateBasePlan = (
     fiber: fiberGrams,
   };
 
-  return { bmr, tdee, finalDailyCalories, macros };
+  return {
+    bmr,
+    tdee: targetResult.baselineTdee,
+    finalDailyCalories,
+    macros,
+  };
 };

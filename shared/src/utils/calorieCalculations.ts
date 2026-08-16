@@ -1,4 +1,7 @@
-import { ACTIVITY_MULTIPLIERS } from "../constants/calorieConstants.ts";
+import {
+  ACTIVITY_MULTIPLIERS,
+  ENERGY_DENSITY_KCAL_PER_KG,
+} from "../constants/calorieConstants.ts";
 
 export type CalorieGoalAdjustmentMode =
   | "dynamic"
@@ -194,13 +197,14 @@ export interface TimedSetLike {
  */
 export function setsDurationMinutes(
   sets: readonly TimedSetLike[] | null | undefined,
-  options?: { fallbackMinutes?: number }
+  options?: { fallbackMinutes?: number },
 ): number {
   const rows = Array.isArray(sets) ? sets : [];
   const totalSeconds = rows.reduce(
     // Values flow through pg drivers and legacy call sites, so coerce defensively.
-    (sum, set) => sum + (Number(set.duration) || 0) + (Number(set.rest_time) || 0),
-    0
+    (sum, set) =>
+      sum + (Number(set.duration) || 0) + (Number(set.rest_time) || 0),
+    0,
   );
   const minutes = totalSeconds / 60;
   if (minutes === 0 && options?.fallbackMinutes != null) {
@@ -233,23 +237,86 @@ export function setsDistanceKm(
   return total;
 }
 
-export type GoalMode = "maintain" | "recomp" | "cut" | "high_cut" | "manual";
+export type GoalMode =
+  | "maintain"
+  | "recomp"
+  | "cut"
+  | "high_cut"
+  | "lean_bulk"
+  | "bulk"
+  | "manual";
 export type GoalModeCalculationMethod = "adaptive" | "manual";
 
-export function getGoalModeDeficit(goalMode: string, customPercentage: number = 0): number {
+/** Largest magnitude, in percent, that a manual goal-mode adjustment may take in either direction. */
+export const MAX_GOAL_MODE_PERCENTAGE = 40;
+
+/**
+ * Signed adjustment applied to the baseline TDEE, as a fraction.
+ *
+ * **Return value: positive means a deficit, negative means a surplus.** That is
+ * the orientation the arithmetic needs, since callers apply it as
+ * `baselineTdee * (1 - adjustment)` and the sign flows through without branching.
+ *
+ * Note this is the *opposite* orientation to the stored user preference. The
+ * user-facing `customPercentage` follows the convention people expect from a
+ * fitness app — **positive adds calories, negative cuts them** — so it is negated
+ * on the way in. Migration `20260816173934` flipped existing stored values to
+ * match; anything read from `user_preferences.goal_mode_custom_percentage`
+ * already uses the user-facing orientation.
+ */
+export function getGoalModeAdjustment(
+  goalMode: string,
+  customPercentage: number = 0,
+): number {
   switch (goalMode) {
     case "recomp":
-      return 0.10;
+      return 0.1;
     case "cut":
       return 0.15;
     case "high_cut":
-      return 0.20;
-    case "manual":
-      return Math.min(40, Math.max(0, customPercentage)) / 100;
+      return 0.2;
+    case "lean_bulk":
+      return -0.1;
+    case "bulk":
+      return -0.2;
+    case "manual": {
+      const clamped = Math.min(
+        MAX_GOAL_MODE_PERCENTAGE,
+        Math.max(-MAX_GOAL_MODE_PERCENTAGE, customPercentage),
+      );
+      // Negated: a positive user percentage means "eat more" = a surplus.
+      return -clamped / 100;
+    }
     case "maintain":
     default:
       return 0.0;
   }
+}
+
+/**
+ * Maps the onboarding "primary goal" answer onto a goal mode.
+ *
+ * Deliberately conservative: the gentlest option in each direction, since
+ * onboarding never asks how fast the user wants to move.
+ */
+export function goalModeFromPrimaryGoal(primaryGoal: string): GoalMode {
+  switch (primaryGoal) {
+    case "lose_weight":
+      return "cut";
+    case "gain_weight":
+      return "lean_bulk";
+    case "maintain_weight":
+    default:
+      return "maintain";
+  }
+}
+
+/** True for goal modes that target weight gain rather than loss. */
+export function isGainGoalMode(
+  goalMode: string,
+  customPercentage: number = 0,
+): boolean {
+  return getGoalModeAdjustment(goalMode, customPercentage) < 0;
 }
 
 export type BmrCalculatorFn = (
@@ -258,7 +325,7 @@ export type BmrCalculatorFn = (
   height: number,
   age: number,
   gender: "male" | "female",
-  bodyFatPercentage?: number | null
+  bodyFatPercentage?: number | null,
 ) => number;
 
 export function calculateBmr(
@@ -267,19 +334,14 @@ export function calculateBmr(
   heightCm?: number | null,
   age?: number | null,
   gender?: "male" | "female" | null,
-  bodyFatPercentage?: number | null
+  bodyFatPercentage?: number | null,
 ): number {
-  if (
-    algorithm === "Katch-McArdle" ||
-    algorithm === "Cunningham"
-  ) {
+  if (algorithm === "Katch-McArdle" || algorithm === "Cunningham") {
     if (!weightKg || !bodyFatPercentage) {
       return 0;
     }
     const lbm = weightKg * (1 - bodyFatPercentage / 100);
-    return algorithm === "Katch-McArdle"
-      ? 370 + 21.6 * lbm
-      : 500 + 22 * lbm;
+    return algorithm === "Katch-McArdle" ? 370 + 21.6 * lbm : 500 + 22 * lbm;
   }
 
   if (!weightKg || !heightCm || !age || !gender) {
@@ -310,7 +372,7 @@ export function calculateMinimumMetabolism(
   gender: "male" | "female",
   bodyFatPercentage?: number | null,
   bmrAlgorithm: string = "Mifflin-St Jeor",
-  calculateBmrFn?: BmrCalculatorFn
+  calculateBmrFn?: BmrCalculatorFn,
 ): number {
   const activeBmrFn = calculateBmrFn || calculateBmr;
   if (
@@ -319,27 +381,50 @@ export function calculateMinimumMetabolism(
     bodyFatPercentage > 0
   ) {
     const lbm = weightKg * (1 - bodyFatPercentage / 100);
-    return bmrAlgorithm === "Cunningham"
-      ? 500 + 22 * lbm
-      : 370 + 21.6 * lbm;
+    return bmrAlgorithm === "Cunningham" ? 500 + 22 * lbm : 370 + 21.6 * lbm;
   }
 
-  return activeBmrFn(bmrAlgorithm, weightKg, heightCm, age, gender, bodyFatPercentage);
+  return activeBmrFn(
+    bmrAlgorithm,
+    weightKg,
+    heightCm,
+    age,
+    gender,
+    bodyFatPercentage,
+  );
 }
 
 export interface CalorieTargetResult {
   target: number;
   rmr: number;
   baselineTdee: number;
+  /** Signed: positive is a deficit, negative is a surplus. */
   appliedDeficit: number;
   isBelowRmr: boolean;
   isBelowAbsoluteFloor: boolean;
   absoluteFloorValue: number;
   finalTarget: number;
   insufficientHistory: boolean;
-  projectedWeeklyLossKg: number;
-  projectedWeeklyLossPercent: number;
-  lossSafetyZone: "green" | "yellow" | "red";
+  /** Signed projection: negative is weight loss, positive is weight gain. */
+  projectedWeeklyChangeKg: number;
+  /** Magnitude of the projection as a percentage of body weight. Always >= 0. */
+  projectedWeeklyChangePercent: number;
+  /** True when the goal targets weight gain. */
+  isGainGoal: boolean;
+  /** Rate-of-change safety rating, thresholded per direction. */
+  safetyZone: "green" | "yellow" | "red";
+  /**
+   * True when the adaptive safety floor overrode the requested target.
+   * Only ever true for `calculationMethod === "adaptive"`.
+   */
+  wasClampedToFloor: boolean;
+  /** Which floor bound: the user's own RMR, or the flat absolute minimum. */
+  clampedFloorSource: "rmr" | "absolute" | null;
+  /**
+   * Largest deficit, in percent, that still clears the safety floor.
+   * Null when the goal is not a deficit or the floor never binds.
+   */
+  maxFeasibleDeficitPercent: number | null;
 }
 
 export function computeCalorieTarget({
@@ -358,7 +443,7 @@ export function computeCalorieTarget({
   bodyFatPercentage,
   bmrAlgorithm,
   currentGoalCalories,
-  calculateBmrFn
+  calculateBmrFn,
 }: {
   goalMode: string;
   calculationMethod: string;
@@ -377,8 +462,17 @@ export function computeCalorieTarget({
   currentGoalCalories: number;
   calculateBmrFn?: BmrCalculatorFn;
 }): CalorieTargetResult {
-  const rmr = calculateMinimumMetabolism(weightKg, heightCm, age, gender, bodyFatPercentage, bmrAlgorithm, calculateBmrFn);
-  const deficitPercent = getGoalModeDeficit(goalMode, customPercentage);
+  const rmr = calculateMinimumMetabolism(
+    weightKg,
+    heightCm,
+    age,
+    gender,
+    bodyFatPercentage,
+    bmrAlgorithm,
+    calculateBmrFn,
+  );
+  // Signed: positive is a deficit, negative is a surplus.
+  const deficitPercent = getGoalModeAdjustment(goalMode, customPercentage);
 
   let baselineTdee = currentGoalCalories;
   let insufficientHistory = false;
@@ -393,25 +487,54 @@ export function computeCalorieTarget({
   }
 
   const calculatedTarget = baselineTdee * (1 - deficitPercent);
+  const isGainGoal = deficitPercent < 0;
   const isBelowRmr = calculatedTarget < rmr;
 
   const absoluteFloorValue = gender === "female" ? 1200 : 1500;
   const isBelowAbsoluteFloor = calculatedTarget < absoluteFloorValue;
 
+  // The floor is whichever is higher: the user's own resting metabolism, or the
+  // flat minimum below which hitting protein and micronutrient targets is
+  // impractical. A surplus can never trip it.
   const safetyFloor = Math.max(rmr, absoluteFloorValue);
-  const finalTarget = (calculationMethod === "adaptive" && calculatedTarget < safetyFloor)
+  const wasClampedToFloor =
+    calculationMethod === "adaptive" && calculatedTarget < safetyFloor;
+  const finalTarget = wasClampedToFloor
     ? Math.round(safetyFloor)
     : Math.round(calculatedTarget);
 
-  const dailyDeficit = Math.max(0, baselineTdee - finalTarget);
-  const projectedWeeklyLossKg = (dailyDeficit * 7) / 7700;
-  const projectedWeeklyLossPercent = weightKg > 0 ? (projectedWeeklyLossKg / weightKg) * 100 : 0;
+  // Name which floor actually bound, so the UI can explain rather than just clamp.
+  const clampedFloorSource: "rmr" | "absolute" | null = wasClampedToFloor
+    ? rmr >= absoluteFloorValue
+      ? "rmr"
+      : "absolute"
+    : null;
 
-  let lossSafetyZone: "green" | "yellow" | "red" = "green";
-  if (projectedWeeklyLossPercent > 1.5) {
-    lossSafetyZone = "red";
-  } else if (projectedWeeklyLossPercent > 1.0) {
-    lossSafetyZone = "yellow";
+  // The largest deficit that still clears the floor. Surfaced so a user who asked
+  // for more than is feasible gets an actionable number instead of a silent override.
+  const maxFeasibleDeficitPercent =
+    wasClampedToFloor && baselineTdee > 0
+      ? Math.max(0, (1 - safetyFloor / baselineTdee) * 100)
+      : null;
+
+  // Signed: negative is loss, positive is gain, matching how weight deltas read
+  // elsewhere in the codebase. Uses the same energy density AdaptiveTdeeService
+  // measures with, or the app would project consequences under a different
+  // assumption than it calculates.
+  const dailyEnergyBalance = finalTarget - baselineTdee;
+  const projectedWeeklyChangeKg =
+    (dailyEnergyBalance * 7) / ENERGY_DENSITY_KCAL_PER_KG.LOSS;
+  const projectedWeeklyChangePercent =
+    weightKg > 0 ? (Math.abs(projectedWeeklyChangeKg) / weightKg) * 100 : 0;
+
+  // Loss tolerates a faster rate than gain: beyond ~0.5%/week, added weight is
+  // increasingly fat rather than muscle, so the gain thresholds are much tighter.
+  const [yellowThreshold, redThreshold] = isGainGoal ? [0.25, 0.5] : [1.0, 1.5];
+  let safetyZone: "green" | "yellow" | "red" = "green";
+  if (projectedWeeklyChangePercent > redThreshold) {
+    safetyZone = "red";
+  } else if (projectedWeeklyChangePercent > yellowThreshold) {
+    safetyZone = "yellow";
   }
 
   return {
@@ -424,8 +547,12 @@ export function computeCalorieTarget({
     absoluteFloorValue,
     finalTarget,
     insufficientHistory,
-    projectedWeeklyLossKg,
-    projectedWeeklyLossPercent,
-    lossSafetyZone
+    projectedWeeklyChangeKg,
+    projectedWeeklyChangePercent,
+    isGainGoal,
+    safetyZone,
+    wasClampedToFloor,
+    clampedFloorSource,
+    maxFeasibleDeficitPercent,
   };
 }

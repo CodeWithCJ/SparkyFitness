@@ -13,6 +13,8 @@ import { Save, PlayCircle } from 'lucide-react';
 import { useSaveGoalsMutation } from '@/hooks/Goals/useGoals';
 import { calculateBasePlan } from '@/utils/nutritionCalculations';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import type { ActivityLevel } from '@/contexts/PreferencesContext';
+import { goalModeFromPrimaryGoal } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { useSubmitOnboarding } from '@/hooks/Onboarding/useOnboarding';
 import { format } from 'date-fns';
@@ -35,6 +37,22 @@ interface PersonalPlanProps {
   localDateFormat: string;
   onOnboardingComplete: () => void;
 }
+
+/** Midpoint of each onboarding body-fat bucket, or null if unanswered. */
+const bodyFatFromRange = (range: string | undefined): number | null => {
+  switch (range) {
+    case 'Low (<15%)':
+      return 12;
+    case 'Medium (15-25%)':
+      return 20;
+    case 'High (25-35%)':
+      return 30;
+    case 'Very High (>35%)':
+      return 38;
+    default:
+      return null;
+  }
+};
 
 const PersonalPlan = ({
   formData,
@@ -237,7 +255,10 @@ const PersonalPlan = ({
       mealsPerDay: !formData.mealsPerDay ? 3 : Number(formData.mealsPerDay),
     };
 
-    // Update user preferences with selected units and algorithms
+    // Update user preferences with selected units and algorithms.
+    // activityLevel and goalMode must be persisted here too: the calorie engine
+    // reads user_preferences, not onboarding_data, so without these a user who
+    // answered "heavy" is silently treated as sedentary forever.
     await saveAllPreferences({
       weightUnit: weightUnit,
       measurementUnit: heightUnit,
@@ -248,6 +269,8 @@ const PersonalPlan = ({
       vitaminCalculationAlgorithm: localVitaminAlgorithm,
       sugarCalculationAlgorithm: localSugarAlgorithm,
       selectedDiet: localSelectedDiet,
+      activityLevel: formData.activityLevel as ActivityLevel,
+      goalMode: goalModeFromPrimaryGoal(formData.primaryGoal),
     });
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -266,6 +289,12 @@ const PersonalPlan = ({
         entry_date: todayStr,
         weight: metricWeight,
         height: metricHeight,
+        // Midpoint of the selected bucket. Rough, but it lets the lean-mass BMR
+        // algorithms (Katch-McArdle, Cunningham) work at all rather than
+        // silently falling back to Mifflin-St Jeor.
+        ...(bodyFatFromRange(formData.bodyFatRange) != null && {
+          body_fat_percentage: bodyFatFromRange(formData.bodyFatRange),
+        }),
       });
     } catch (e) {
       console.error('Failed to sync measurements', e);

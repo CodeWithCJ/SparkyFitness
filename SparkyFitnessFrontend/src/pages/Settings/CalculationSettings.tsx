@@ -60,7 +60,8 @@ import {
   computeCalorieTarget,
   todayInZone,
   ACTIVITY_MULTIPLIERS,
-  getGoalModeDeficit,
+  getGoalModeAdjustment,
+  MAX_GOAL_MODE_PERCENTAGE,
   GoalMode,
   GoalModeCalculationMethod,
   calculateBmr,
@@ -118,6 +119,10 @@ const CalculationSettings = () => {
     );
   const [goalModeCustomPercentage, setGoalModeCustomPercentage] =
     useState<number>(contextGoalModeCustomPercentage ?? 0);
+  // Mirrors the input's raw text so a partially typed '-' survives keystrokes.
+  const [customPercentageInput, setCustomPercentageInput] = useState<string>(
+    String(contextGoalModeCustomPercentage ?? 0)
+  );
 
   const [bmrAlgorithm, setBmrAlgorithm] = useState<BmrAlgorithm>(
     contextBmrAlgorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
@@ -206,6 +211,7 @@ const CalculationSettings = () => {
     }
     if (contextGoalModeCustomPercentage !== undefined) {
       setGoalModeCustomPercentage(contextGoalModeCustomPercentage);
+      setCustomPercentageInput(String(contextGoalModeCustomPercentage));
     }
     // Since preferences are loaded by the PreferencesProvider at a higher level,
     // we can assume they are available by the time this component renders.
@@ -360,7 +366,7 @@ const CalculationSettings = () => {
     calculateBmrFn: calculateBmr,
   });
 
-  const deficitPct = getGoalModeDeficit(goalMode, goalModeCustomPercentage);
+  const deficitPct = getGoalModeAdjustment(goalMode, goalModeCustomPercentage);
 
   // Measured adaptive TDEE, shown only when the same sufficiency test used by
   // computeCalorieTarget passes; constant across goal modes and methods.
@@ -401,6 +407,28 @@ const CalculationSettings = () => {
           <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
         ),
         text: 'Maintenance calories are designed to keep body weight relatively stable. Focus on consistent protein intake (1.6–2.2g/kg of body weight), regular resistance training, and monitoring weight trends over time to make minor adjustments.',
+      };
+    }
+
+    if (deficitPct <= -0.2) {
+      return {
+        title: 'Aggressive Surplus Warning',
+        style:
+          'bg-amber-50/50 dark:bg-amber-950/15 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-300',
+        icon: (
+          <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+        ),
+        text: 'A surplus this large will add fat faster than muscle. Muscle gain is capped by your training and recovery, not by how much you eat above maintenance — past roughly 0.5% body weight per week, the extra is mostly fat. Pair this with a hard resistance training program, keep protein at 1.6–2.2g/kg, and reassess your rate every few weeks.',
+      };
+    }
+
+    if (deficitPct < 0) {
+      return {
+        title: 'Lean Bulk Recommendations',
+        style:
+          'bg-blue-50/50 dark:bg-blue-950/15 border border-blue-100 dark:border-blue-900/50 text-blue-800 dark:text-blue-300',
+        icon: <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
+        text: 'A modest surplus supports muscle growth while limiting fat gain. Progressive resistance training is what drives the gain — the calories only permit it. Aim for 1.6–2.2g of protein per kg of body weight. Target gain rate: ~0.1–0.5% body weight/week, slower the more trained you are.',
       };
     }
 
@@ -803,7 +831,7 @@ const CalculationSettings = () => {
                 </Select>
               </div>
               {calorieGoalAdjustmentMode === 'adaptive' && (
-                <p className="text-[10px] text-muted-foreground italic mt-[-4px]">
+                <p className="text-xs text-muted-foreground italic mt-[-4px]">
                   💡{' '}
                   {t(
                     'settings.calorieGoalAdjustment.adaptiveActivityHint',
@@ -1003,6 +1031,12 @@ const CalculationSettings = () => {
                 <SelectItem value="high_cut">
                   {t('settings.goalMode.modeHighCut', 'High Cut (-20%)')}
                 </SelectItem>
+                <SelectItem value="lean_bulk">
+                  {t('settings.goalMode.modeLeanBulk', 'Lean Bulk (+10%)')}
+                </SelectItem>
+                <SelectItem value="bulk">
+                  {t('settings.goalMode.modeBulk', 'Bulk (+20%)')}
+                </SelectItem>
                 <SelectItem value="manual">
                   {t('settings.goalMode.modeManual', 'Manual (Custom %)')}
                 </SelectItem>
@@ -1042,25 +1076,58 @@ const CalculationSettings = () => {
         {goalMode === 'manual' && (
           <div className="mb-4 flex items-center gap-3">
             <Percent className="w-4 h-4 text-muted-foreground" />
-            <Label htmlFor="goal-mode-custom-percentage" className="text-sm">
+            <Label
+              htmlFor="goal-mode-custom-percentage"
+              className="text-sm whitespace-nowrap"
+            >
               {t(
                 'settings.goalMode.customPercentageLabel',
-                'Custom deficit percentage:'
+                'Custom percentage:'
               )}
             </Label>
-            <Input
-              id="goal-mode-custom-percentage"
-              type="number"
-              min={0}
-              max={40}
-              value={goalModeCustomPercentage}
-              onChange={(e) => {
-                const val = Math.min(40, Math.max(0, Number(e.target.value)));
-                setGoalModeCustomPercentage(val);
-              }}
-              className="w-20"
-            />
+            {/* Bounded wrapper: a number Input renders inside its own w-full div
+                (for the stepper arrows), which would otherwise stretch the row
+                and push the trailing '%' and hint to the far edge. */}
+            <div className="w-20 shrink-0">
+              <Input
+                id="goal-mode-custom-percentage"
+                type="number"
+                min={-MAX_GOAL_MODE_PERCENTAGE}
+                max={MAX_GOAL_MODE_PERCENTAGE}
+                value={customPercentageInput}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // Keep the raw string so partial entries stay typable: '-' and
+                  // '' are both NaN, and clamping them would eat the minus sign
+                  // before the user can finish typing a negative value.
+                  setCustomPercentageInput(raw);
+                  if (raw === '' || raw === '-') {
+                    setGoalModeCustomPercentage(0);
+                    return;
+                  }
+                  const parsed = Number(raw);
+                  if (Number.isNaN(parsed)) return;
+                  setGoalModeCustomPercentage(
+                    Math.min(
+                      MAX_GOAL_MODE_PERCENTAGE,
+                      Math.max(-MAX_GOAL_MODE_PERCENTAGE, parsed)
+                    )
+                  );
+                }}
+                onBlur={() => {
+                  // Snap the display back to the clamped, committed value.
+                  setCustomPercentageInput(String(goalModeCustomPercentage));
+                }}
+                className="w-20"
+              />
+            </div>
             <span className="text-sm text-muted-foreground">%</span>
+            <span className="text-xs text-muted-foreground">
+              {t(
+                'settings.goalMode.customPercentageHint',
+                'Positive adds calories (surplus), negative cuts them (deficit).'
+              )}
+            </span>
           </div>
         )}
 
@@ -1087,19 +1154,45 @@ const CalculationSettings = () => {
               </div>
               <div className="hidden md:block text-muted-foreground">→</div>
               <div>
-                <span className="text-muted-foreground">Applied Deficit:</span>{' '}
-                <span className="font-semibold text-red-600 dark:text-red-400">
-                  -
-                  {Math.round(
-                    convertEnergy(
-                      previewResult.appliedDeficit,
-                      'kcal',
-                      energyUnit
+                <span className="text-muted-foreground">
+                  {previewResult.isGainGoal
+                    ? 'Applied Surplus:'
+                    : previewResult.appliedDeficit === 0
+                      ? 'Applied Adjustment:'
+                      : 'Applied Deficit:'}
+                </span>{' '}
+                <span
+                  className={`font-semibold ${
+                    previewResult.appliedDeficit === 0
+                      ? 'text-muted-foreground'
+                      : previewResult.isGainGoal
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-red-600 dark:text-red-400'
+                  }`}
+                >
+                  {/* No sign at zero: "-0 kcal (0%)" reads as an error. */}
+                  {previewResult.appliedDeficit === 0
+                    ? ''
+                    : previewResult.isGainGoal
+                      ? '+'
+                      : '-'}
+                  {Math.abs(
+                    Math.round(
+                      convertEnergy(
+                        previewResult.appliedDeficit,
+                        'kcal',
+                        energyUnit
+                      )
                     )
                   )}{' '}
                   {getEnergyUnitString(energyUnit)} (
-                  {Math.round(
-                    getGoalModeDeficit(goalMode, goalModeCustomPercentage) * 100
+                  {Math.abs(
+                    Math.round(
+                      getGoalModeAdjustment(
+                        goalMode,
+                        goalModeCustomPercentage
+                      ) * 100
+                    )
                   )}
                   %)
                 </span>
@@ -1144,25 +1237,30 @@ const CalculationSettings = () => {
               <div className="pt-2 border-t border-border/40 text-xs flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">
-                    Projected weekly loss:
+                    {previewResult.isGainGoal
+                      ? 'Projected weekly gain:'
+                      : 'Projected weekly loss:'}
                   </span>
                   <span className="font-semibold">
-                    ~{formatProjectedLoss(previewResult.projectedWeeklyLossKg)}
+                    ~
+                    {formatProjectedLoss(
+                      Math.abs(previewResult.projectedWeeklyChangeKg)
+                    )}
                   </span>
                   <span className="text-muted-foreground">/ week</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">Rate:</span>
                   <span
-                    className={`font-semibold px-2 py-0.5 rounded-full text-[10px] ${
-                      previewResult.lossSafetyZone === 'green'
+                    className={`font-semibold px-2 py-0.5 rounded-full text-[11px] ${
+                      previewResult.safetyZone === 'green'
                         ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300'
-                        : previewResult.lossSafetyZone === 'yellow'
+                        : previewResult.safetyZone === 'yellow'
                           ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
                           : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300'
                     }`}
                   >
-                    {previewResult.projectedWeeklyLossPercent.toFixed(2)}% of
+                    {previewResult.projectedWeeklyChangePercent.toFixed(2)}% of
                     body weight / week
                   </span>
                 </div>
@@ -1209,7 +1307,7 @@ const CalculationSettings = () => {
               </p>
               {goalModeCalculationMethod === 'adaptive' &&
                 previewResult.insufficientHistory && (
-                  <p className="mt-2 text-[10px] opacity-80 border-t border-current/20 pt-2 flex items-start gap-1">
+                  <p className="mt-2 text-xs opacity-80 border-t border-current/20 pt-2 flex items-start gap-1">
                     <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>
                       Note: This target is currently based on an estimated
@@ -1266,22 +1364,79 @@ const CalculationSettings = () => {
               </div>
             )}
 
-          {/* Extreme weight loss rate callout */}
-          {goalMode !== 'maintain' &&
-            previewResult.lossSafetyZone === 'red' && (
-              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex gap-3 text-sm text-red-800 dark:text-red-300">
-                <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-semibold">Unsafe Weight Loss Rate</p>
-                  <p className="text-xs text-red-700 dark:text-red-400/80 leading-relaxed">
-                    Losing more than 1.5% of body weight per week is considered
-                    excessive. This rate dramatically increases risks of severe
-                    muscle loss, lethargy, hormonal imbalances, and nutritional
-                    deficiencies. Please choose a less aggressive goal mode.
-                  </p>
-                </div>
+          {/* Safety floor clamp — explain the override instead of applying it silently */}
+          {previewResult.wasClampedToFloor && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex gap-3 text-sm text-amber-800 dark:text-amber-300">
+              <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-semibold">
+                  Target raised to your safety minimum
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400/80 leading-relaxed">
+                  The deficit you selected works out to{' '}
+                  {Math.round(
+                    convertEnergy(previewResult.target, 'kcal', energyUnit)
+                  )}{' '}
+                  {getEnergyUnitString(energyUnit)}, which is below your{' '}
+                  {previewResult.clampedFloorSource === 'rmr'
+                    ? 'estimated resting metabolism (RMR)'
+                    : 'absolute safety floor'}{' '}
+                  of{' '}
+                  {Math.round(
+                    convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)
+                  )}{' '}
+                  {getEnergyUnitString(energyUnit)}, so your target has been
+                  raised to that minimum.
+                  {previewResult.maxFeasibleDeficitPercent != null && (
+                    <>
+                      {' '}
+                      The largest deficit that fits above your minimum is about{' '}
+                      <span className="font-semibold">
+                        {previewResult.maxFeasibleDeficitPercent.toFixed(0)}%
+                      </span>
+                      . To lose faster than that, raise your expenditure through
+                      activity rather than cutting intake further.
+                    </>
+                  )}
+                </p>
+                <p className="text-xs text-amber-700/80 dark:text-amber-400/70 leading-relaxed">
+                  The Manual calculation method does not apply this floor — it
+                  warns instead of overriding.
+                </p>
               </div>
-            )}
+            </div>
+          )}
+
+          {/* Extreme rate-of-change callout */}
+          {goalMode !== 'maintain' && previewResult.safetyZone === 'red' && (
+            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex gap-3 text-sm text-red-800 dark:text-red-300">
+              <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                {previewResult.isGainGoal ? (
+                  <>
+                    <p className="font-semibold">Unsafe Weight Gain Rate</p>
+                    <p className="text-xs text-red-700 dark:text-red-400/80 leading-relaxed">
+                      Gaining more than 0.5% of body weight per week means most
+                      of the added weight will be fat rather than muscle. A
+                      slower surplus builds a similar amount of muscle with far
+                      less fat gain.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">Unsafe Weight Loss Rate</p>
+                    <p className="text-xs text-red-700 dark:text-red-400/80 leading-relaxed">
+                      Losing more than 1.5% of body weight per week is
+                      considered excessive. This rate dramatically increases
+                      risks of severe muscle loss, lethargy, hormonal
+                      imbalances, and nutritional deficiencies. Please choose a
+                      less aggressive goal mode.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Adaptive History Info Banner */}
           {goalModeCalculationMethod === 'adaptive' &&
