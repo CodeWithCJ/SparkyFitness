@@ -4,6 +4,17 @@ import { fireEvent, render, act } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ActiveWorkoutScreen from '../../src/screens/ActiveWorkoutScreen';
+
+// ActiveWorkoutScreen's source-preset/server guard calls both of these; this
+// suite doesn't exercise that guard, but useIsFocused requires a real
+// navigation context (absent here) and would throw if left unmocked.
+jest.mock('../../src/services/storage', () => ({
+  getActiveServerConfig: jest.fn(),
+}));
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: jest.fn(() => true),
+}));
 import { ApiError } from '../../src/services/api/errors';
 import {
   __resetActiveWorkoutStoreForTests,

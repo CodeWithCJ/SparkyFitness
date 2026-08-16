@@ -18,6 +18,7 @@ import {
   KeyboardStickyView,
   type KeyboardAwareScrollViewRef,
 } from 'react-native-keyboard-controller';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -189,23 +190,37 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const { getImageSource } = useExerciseImageSource();
 
   // Preset ids are per-server; a config switched since the workout started
-  // (such as the user backgrounded this screen, switched servers in settings,
-  // and came back) can resolve the id against the wrong server's preset.
+  // (such as the user backgrounding this screen, switching servers in
+  // settings, and coming back) can resolve the id against the wrong server's
+  // preset. sourcePresetId/sourceServerConfigId are fixed for the whole
+  // session, so a switch that happens without this screen unmounting would
+  // never re-trigger the check on its own — re-verify on every focus regain
+  // instead, and clear immediately so a stale verified id from the old
+  // server can't leak through while the fresh check is in flight.
+  const isFocused = useIsFocused();
   const [verifiedSourcePresetId, setVerifiedSourcePresetId] = useState<
     number | undefined
   >(undefined);
   useEffect(() => {
-    if (sourcePresetId == null) return;
+    if (!isFocused || sourcePresetId == null) {
+      setVerifiedSourcePresetId(undefined);
+      return;
+    }
     let cancelled = false;
+    setVerifiedSourcePresetId(undefined);
     void (async () => {
-      const config = await getActiveServerConfig();
-      if (cancelled || config?.id !== sourceServerConfigId) return;
-      setVerifiedSourcePresetId(sourcePresetId);
+      try {
+        const config = await getActiveServerConfig();
+        if (cancelled || config?.id !== sourceServerConfigId) return;
+        setVerifiedSourcePresetId(sourcePresetId);
+      } catch {
+        // Storage read failed — leave verifiedSourcePresetId cleared.
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [sourcePresetId, sourceServerConfigId]);
+  }, [isFocused, sourcePresetId, sourceServerConfigId]);
   const { flush } = useActiveWorkoutAutosave();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
 
