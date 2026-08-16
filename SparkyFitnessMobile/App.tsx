@@ -1,6 +1,7 @@
 import './global.css'
 import { useCallback, useEffect, useMemo } from 'react';
 import { StatusBar, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
 import {
@@ -19,7 +20,9 @@ import { LightboxProvider } from './src/components/LightboxProvider';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useCycleMode } from './src/hooks';
-import { useInitialRoute, useAppStartup } from './src/hooks/useAppStartup';
+import { useAppStartup } from './src/hooks/useAppStartup';
+import { useAppBootstrap } from './src/hooks/useAppBootstrap';
+import { useAppLanguageForegroundSync } from './src/hooks/useAppLanguageForegroundSync';
 import { useAutoSyncOnOpen } from './src/hooks/useAutoSyncOnOpen';
 import { useAddSheetActions } from './src/hooks/useAddSheetActions';
 
@@ -116,6 +119,7 @@ const androidModalAnimation =
   Platform.OS === 'android' ? ({ animation: 'slide_from_bottom' } as const) : {};
 
 function AppContent() {
+  const { t } = useTranslation();
   const { theme } = useUniwind();
   const {
     showReauthModal, showSetupModal, showApiKeySwitchModal,
@@ -123,7 +127,15 @@ function AppContent() {
     dismissModal, handleLoginSuccess, handleSwitchToApiKey, handleSwitchToApiKeyDone,
   } = useAuth();
 
-  const { initialRoute, linkingEnabled, setLinkingEnabled } = useInitialRoute();
+  // Language bootstrap + initial route. `useAppBootstrap` initializes the
+  // effective locale (i18next / AppCompat per-app locale) before the app
+  // renders, then resolves the first route from the active server config.
+  const { initialRoute, linkingEnabled, setLinkingEnabled } = useAppBootstrap();
+
+  // Adopt language changes made outside the app (Android App Languages) when
+  // the app returns to the foreground.
+  useAppLanguageForegroundSync();
+
   const usesLiquidGlassNavigation = useNativeIOSTabsActive();
   const usesNativeIOSHeaders = useNativeIOSHeadersActive();
 
@@ -619,12 +631,12 @@ function AppContent() {
           <Stack.Screen
             name="AppSettings"
             component={SafeAppSettings}
-            options={createStackScreenOptions('App Settings', { headerBackTitle: 'Settings' })}
+            options={createStackScreenOptions(t('settings.app', 'App Settings'), { headerBackTitle: t('navigation.settings', 'Settings') })}
           />
           <Stack.Screen
             name="NotificationSettings"
             component={SafeNotificationSettings}
-            options={createStackScreenOptions('Notifications', { headerBackTitle: 'App Settings' })}
+            options={createStackScreenOptions(t('notifications.title', 'Notifications'), { headerBackTitle: t('settings.app', 'App Settings') })}
           />
           <Stack.Screen
             name="About"

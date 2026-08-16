@@ -10,6 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
 import { useCSSVariable } from 'uniwind';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import type { ParamListBase } from '@react-navigation/native';
 import type {
   NativeStackHeaderItem,
@@ -31,9 +33,11 @@ import {
 } from '../utils/nativeHeaderItems';
 
 /**
- * Canonical label for every form/create/edit save action. The screen title
- * already names the object ("Create Meal", "Edit Preset"), so the button is
- * just "Save" (or "Saving…" while busy).
+ * Canonical English fallback label for every form/create/edit save action. The
+ * screen title already names the object ("Create Meal", "Edit Preset"), so the
+ * button is just "Save" (or "Saving…" while busy). Localized callers pass their
+ * own label; screens that omit a `kind:'primary'` label fall back to the
+ * localized `common.save` / `common.saving` values.
  */
 export const SAVE_LABEL = 'Save';
 export const SAVING_LABEL = 'Saving…';
@@ -110,9 +114,10 @@ export type HeaderItem =
       identifier?: string;
     }
   | {
-      // Sugar for `text` + role:'primary' + weight 600.
+      // Sugar for `text` + role:'primary' + weight 600. When `label` is
+      // omitted the localized `common.save` label is used.
       kind: 'primary';
-      label: string;
+      label?: string;
       onPress: () => void;
       placement?: HeaderPlacement;
       disabled?: boolean;
@@ -187,7 +192,7 @@ function itemIsDisabled(item: HeaderItem): boolean {
   return ('disabled' in item && !!item.disabled) || itemIsBusy(item);
 }
 
-function itemAccessibilityLabel(item: HeaderItem): string | undefined {
+function itemAccessibilityLabel(item: HeaderItem, t: TFunction): string | undefined {
   switch (item.kind) {
     case 'back':
       return 'Back';
@@ -198,8 +203,49 @@ function itemAccessibilityLabel(item: HeaderItem): string | undefined {
       return item.accessibilityLabel;
     case 'text':
     case 'primary':
-      return item.accessibilityLabel ?? item.label;
+      // Explicit caller accessibilityLabel wins; otherwise mirror the visible
+      // label of the custom path (busy only disables the button there — it
+      // never swaps the text), so the a11y label always matches the UI text
+      // instead of hard-coded English.
+      return item.accessibilityLabel ?? resolveItemLabel(item, t);
   }
+}
+
+/**
+ * Resolves the visible label for a header item. `kind:'primary'` items without
+ * an explicit label fall back to the localized `common.save` value with an
+ * explicit English fallback; every other item uses its required label.
+ */
+function resolveItemLabel(item: HeaderItem, t: TFunction): string | undefined {
+  switch (item.kind) {
+    case 'primary':
+      return item.label ?? t('common.save', 'Save');
+    case 'text':
+      return item.label;
+    case 'back':
+    case 'dismiss':
+    case 'icon':
+      return undefined;
+  }
+}
+
+/**
+ * Resolves the busy label for a header item. Primary items without an explicit
+ * busy label fall back to the localized `common.saving` value with an explicit
+ * English fallback.
+ */
+function resolveItemBusyLabel(item: HeaderItem, t: TFunction): string | undefined {
+  if (item.kind === 'primary') {
+    return item.busyLabel ?? t('common.saving', 'Saving…');
+  }
+
+  if (item.kind === 'text') {
+    return isPrimaryItem(item)
+      ? item.busyLabel ?? t('common.saving', 'Saving…')
+      : item.busyLabel;
+  }
+
+  return undefined;
 }
 
 /**
@@ -336,9 +382,11 @@ function HeaderBarButton({
   badgeColor?: string;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const disabled = itemIsDisabled(item);
   const busy = itemIsBusy(item);
 
+  const label = resolveItemLabel(item, t);
   let content: React.ReactNode;
   if (busy) {
     content = <ActivityIndicator size="small" color={color} />;
@@ -374,7 +422,7 @@ function HeaderBarButton({
   } else {
     content = (
       <Text style={{ color, fontSize: 17, fontWeight: isPrimaryItem(item) ? '600' : '500' }}>
-        {item.label}
+        {label}
       </Text>
     );
   }
@@ -385,7 +433,7 @@ function HeaderBarButton({
       disabled={disabled}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityRole="button"
-      accessibilityLabel={itemAccessibilityLabel(item)}
+      accessibilityLabel={itemAccessibilityLabel(item, t)}
       style={disabled ? { opacity: 0.4 } : undefined}
     >
       {content}
@@ -407,6 +455,7 @@ function buildNativeItem(
   identifier: string,
   colors: HeaderColors,
   press: () => void,
+  t: TFunction,
 ): NativeStackHeaderItem | null {
   const color = itemColor(item, colors);
   switch (item.kind) {
@@ -433,15 +482,19 @@ function buildNativeItem(
       });
     case 'text':
     case 'primary': {
-      const label = item.busy && item.busyLabel ? item.busyLabel : item.label;
+      const resolvedLabel = resolveItemLabel(item, t);
+      const resolvedBusyLabel = resolveItemBusyLabel(item, t);
+      const visibleLabel = itemIsBusy(item) && resolvedBusyLabel
+        ? resolvedBusyLabel
+        : (resolvedLabel ?? t('common.save', 'Save'));
       return createNativeHeaderTextButtonItem({
-        label,
+        label: visibleLabel,
         identifier,
         tintColor: color,
         onPress: press,
         disabled: itemIsDisabled(item),
         fontWeight: isPrimaryItem(item) ? '600' : '500',
-        accessibilityLabel: itemAccessibilityLabel(item),
+        accessibilityLabel: item.accessibilityLabel ?? visibleLabel,
       });
     }
   }
@@ -459,6 +512,7 @@ function buildNativeItem(
  * navigation/secondary actions neutral) is enforced here for both paths.
  */
 export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { defaultColor, saveColor } = useHeaderActionColors();
@@ -550,6 +604,8 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       ? {
           id: leftId,
           kind: left.kind,
+          label: resolveItemLabel(left, t),
+          busyLabel: resolveItemBusyLabel(left, t),
           disabled: itemIsDisabled(left),
           busy: itemIsBusy(left),
           menu: menuSignature(left),
@@ -558,8 +614,8 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     right: rightMeta.map(({ item, id }) => ({
       id,
       kind: item.kind,
-      label: 'label' in item ? item.label : undefined,
-      busyLabel: 'busyLabel' in item ? item.busyLabel : undefined,
+      label: resolveItemLabel(item, t),
+      busyLabel: resolveItemBusyLabel(item, t),
       sfSymbol: item.kind === 'icon' ? item.sfSymbol : undefined,
       role: 'role' in item ? item.role : undefined,
       disabled: itemIsDisabled(item),
@@ -585,7 +641,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
           ? buildNativeMenuItem(item, id, colors, accentColor, (handlerKey) => () =>
               handlersRef.current[handlerKey]?.(),
             )
-          : buildNativeItem(item, id, colors, () => handlersRef.current[id]?.());
+          : buildNativeItem(item, id, colors, () => handlersRef.current[id]?.(), t);
 
       if (!left || left.kind === 'back') {
         options.unstable_headerLeftItems = undefined;

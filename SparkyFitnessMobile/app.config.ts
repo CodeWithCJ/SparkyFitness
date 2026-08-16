@@ -126,6 +126,10 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     name: APP_NAME,
     slug: APP_SLUG,
     version: packageJson.version,
+    locales: {
+      en: './locales/en.json',
+      pl: './locales/pl.json',
+    },
     ios: {
       bundleIdentifier: isDev
         ? DEV_BUNDLE_IDENTIFIER
@@ -147,6 +151,12 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
           NSAllowsArbitraryLoads: false,
         },
         ITSAppUsesNonExemptEncryption: false,
+        // Keep the native per-app Language entry visible in iOS Settings even
+        // when the device has only one preferred system language.
+        UIPrefersShowingLanguageSettings: true,
+        // The localized InfoPlist permission strings come from `locales`; this
+        // allows the generated app metadata to use the selected localization.
+        CFBundleAllowMixedLocalizations: true,
       },
       entitlements: {
         'com.apple.security.application-groups': [getIosAppGroup()],
@@ -177,9 +187,19 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         },
       ],
       './plugins/withGlanceAndroidSupport',
+      './plugins/withAppLanguage',
       './plugins/withCalorieWidget',
       './plugins/withExactAlarmModule',
       './plugins/withEnrichedMarkdownNoMath',
+      [
+        'expo-localization',
+        {
+          supportedLocales: {
+            ios: ['en', 'pl'],
+            android: ['en', 'pl'],
+          },
+        },
+      ],
       [
         'expo-widgets',
         {

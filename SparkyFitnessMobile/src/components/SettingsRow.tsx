@@ -56,6 +56,7 @@ interface SettingsRowProps {
   iconColor?: string;
   iconBackgroundColor?: string;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
   disabled?: boolean;
   testID?: string;
 }
@@ -70,6 +71,7 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
   iconColor,
   iconBackgroundColor,
   accessibilityLabel,
+  accessibilityHint,
   disabled,
   testID,
 }) => {
@@ -137,6 +139,7 @@ const SettingsRow: React.FC<SettingsRowProps> = ({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}
       disabled={disabled}
       testID={testID}
       style={({ pressed }) =>

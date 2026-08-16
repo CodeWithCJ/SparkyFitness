@@ -4,6 +4,20 @@ const { TextEncoder, TextDecoder } = require('util');
 if (typeof globalThis.TextEncoder === 'undefined') globalThis.TextEncoder = TextEncoder;
 if (typeof globalThis.TextDecoder === 'undefined') globalThis.TextDecoder = TextDecoder;
 
+// Deterministic expo-localization: tests read the device language through
+// getLocales(). The localization suite overrides the return value per test;
+// the default here keeps every other test environment-agnostic (en-US).
+jest.mock('expo-localization', () => ({
+  getLocales: jest.fn(() => [
+    {
+      languageCode: 'en',
+      languageTag: 'en-US',
+      regionCode: 'US',
+      textDirection: 'ltr',
+    },
+  ]),
+}));
+
 // Mock radon-ide (ESM module that Jest can't transform)
 jest.mock('radon-ide', () => ({
   preview: jest.fn(),

@@ -1,0 +1,29 @@
+{
+  "common": {
+    "save": "Zapisz",
+    "saving": "Zapisywanie…"
+  },
+  "settings": {
+    "app": "Ustawienia aplikacji",
+    "language": {
+      "title": "Język",
+      "system": "Systemowy",
+      "english": "English",
+      "polish": "Polski",
+      "pickerHint": "Otwiera menu wyboru języka",
+      "changeFailed": "Nie udało się zmienić języka",
+      "managedByIOS": "Zarządzane przez iOS",
+      "iosSettingsHint": "Zmień język tej aplikacji w Ustawieniach iOS",
+      "openSettingsFailed": "Nie udało się otworzyć Ustawień iOS"
+    }
+  },
+  "languageSettings": {
+    "subtitle": "Użyj języka urządzenia lub wybierz język dla SparkyFitness."
+  },
+  "navigation": {
+    "settings": "Ustawienia"
+  },
+  "notifications": {
+    "title": "Powiadomienia"
+  }
+}
