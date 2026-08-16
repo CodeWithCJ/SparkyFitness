@@ -14,6 +14,8 @@
 -- and is a no-op where the column is already numeric. NUMERIC is parsed back to a
 -- JS number by the parser registered in db/poolManager.ts, so API shapes are unchanged.
 
+BEGIN;
+
 ALTER TABLE exercise_entries
   ALTER COLUMN avg_heart_rate TYPE numeric,
   ALTER COLUMN max_heart_rate TYPE numeric,
@@ -25,3 +27,5 @@ ALTER TABLE exercise_entry_laps
   ALTER COLUMN avg_heart_rate TYPE numeric,
   ALTER COLUMN max_heart_rate TYPE numeric,
   ALTER COLUMN avg_cadence    TYPE numeric;
+
+COMMIT;
