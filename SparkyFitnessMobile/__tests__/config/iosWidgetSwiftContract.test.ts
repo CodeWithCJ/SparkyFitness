@@ -127,16 +127,26 @@ describe('iOS WidgetKit Swift contract', () => {
     });
   });
 
-  describe('locale override contract', () => {
-    it('reads the stable locale from the shared app group', () => {
+  describe('platform-authoritative locale contract (final PR3)', () => {
+    it('does not persist a widget-only locale override in the shared app group', () => {
       const shared = readSwift('SharedHelpers.swift');
-      expect(shared).toContain('defaults.string(forKey: "widgetLocale")');
-      expect(shared).toContain('widgetLocale');
+      // iOS per-app language is OS-authoritative: no JS-written widgetLocale
+      // value may survive (it could leave the widget stuck in an old language
+      // after a per-app language change in iOS Settings).
+      expect(shared).not.toContain('defaults.string(forKey: "widgetLocale")');
+      expect(shared).not.toMatch(/widgetLocaleCode/);
+      expect(shared).not.toMatch(/UserDefaults\(suiteName: appGroup\)/);
     });
 
-    it('falls back to the current locale when no override is present', () => {
+    it('resolves the widget locale from the native .current locale', () => {
       const shared = readSwift('SharedHelpers.swift');
-      expect(shared).toContain('return .current');
+      expect(shared).toMatch(/func widgetLocale\(\) -> Locale \{\s*return \.current\s*\}/);
+    });
+
+    it('still shares widget data through the app group identifier', () => {
+      const shared = readSwift('SharedHelpers.swift');
+      expect(shared).toMatch(/func appGroupIdentifier\(\) -> String\?/);
+      expect(shared).toContain('APP_GROUP_IDENTIFIER');
     });
   });
 
@@ -159,10 +169,13 @@ describe('iOS WidgetKit Swift contract', () => {
   });
 
   describe('localization fallback hardening', () => {
-    it('falls back through explicit, native, and English bundles before a stable map', () => {
+    it('falls back through the native and English bundles before the stable map', () => {
       const shared = readSwift('SharedHelpers.swift');
       expect(shared).toContain('forResource: "en", ofType: "lproj"');
       expect(shared).toContain('fallbackWidgetString');
+      // No JS-written bundle is ever selected: the native bundle comes first.
+      expect(shared).not.toContain('requested.flatMap');
+      expect(shared).not.toContain('widgetLocaleCode()');
     });
 
     it('never returns the raw key from the localization helper', () => {

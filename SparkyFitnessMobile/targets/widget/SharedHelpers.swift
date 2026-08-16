@@ -32,49 +32,21 @@ func appGroupIdentifier() -> String? {
     return "group.\(bundleIdentifier)"
 }
 
-/// Stable widget locale written by the JS app into the shared app group. This
-/// is what lets the widget follow an explicit in-app language choice that the
-/// system (and therefore WidgetKit) does not know about. `nil` means "follow
-/// the extension's native locale".
-private func widgetLocaleCode() -> String? {
-    guard
-        let appGroup = appGroupIdentifier(),
-        !appGroup.isEmpty,
-        let defaults = UserDefaults(suiteName: appGroup),
-        let code = defaults.string(forKey: "widgetLocale"),
-        code == "en" || code == "pl"
-    else {
-        return nil
-    }
-    return code
-}
-
-/// Locale used for number formatting and localized-string lookups. Prefers the
-/// stable JS-provided locale and falls back to the widget's current locale.
+/// Locale used for number formatting and localized-string lookups. iOS owns
+/// the per-app language (final PR3), so WidgetKit always resolves from its
+/// native locale — there is no persisted widget-only override.
 func widgetLocale() -> Locale {
-    switch widgetLocaleCode() {
-    case "en":
-        return Locale(identifier: "en")
-    case "pl":
-        return Locale(identifier: "pl")
-    default:
-        return .current
-    }
+    return .current
 }
 
-/// Resolves a widget string key against the localized resources, honoring the
-/// JS-provided locale when present. Never intentionally displays a raw key:
+/// Resolves a widget string key against the localized resources. Never
+/// intentionally displays a raw key:
 ///
-///   1. the requested explicit widget-locale bundle (en/pl from the app group);
-///   2. the extension's native/current bundle;
-///   3. the English widget bundle;
-///   4. a stable readable fallback map for the known key set.
+///   1. the extension's native/current bundle (iOS per-app language);
+///   2. the English widget bundle;
+///   3. a stable readable fallback map for the known key set.
 func localizedWidgetString(_ key: String) -> String {
-    let requested = widgetLocaleCode()
     let bundles: [Bundle?] = [
-        requested.flatMap { code in
-            Bundle.main.path(forResource: code, ofType: "lproj").flatMap { Bundle(path: $0) }
-        },
         Bundle.main,
         Bundle.main.path(forResource: "en", ofType: "lproj").flatMap { Bundle(path: $0) },
     ]
