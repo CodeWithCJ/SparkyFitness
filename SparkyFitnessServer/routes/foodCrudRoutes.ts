@@ -1240,6 +1240,15 @@ router.get('/needs-review', authenticate, async (req, res, next) => {
  *               variantId:
  *                 type: string
  *                 format: uuid
+ *               syncImages:
+ *                 type: boolean
+ *                 default: true
+ *                 description: >
+ *                   When true (the default), past entries are forced onto the
+ *                   food's current photos, replacing photos the user set on
+ *                   individual diary entries; the replaced files are unlinked.
+ *                   When false, nutrition is rewritten and every entry keeps
+ *                   the photo it is showing.
  *     responses:
  *       200:
  *         description: The result of the snapshot update.
@@ -1247,15 +1256,24 @@ router.get('/needs-review', authenticate, async (req, res, next) => {
  *         description: foodId is required.
  */
 router.post('/update-snapshot', authenticate, async (req, res, next) => {
-  const { foodId, variantId } = req.body;
+  const { foodId, variantId, syncImages } = req.body;
   if (!foodId) {
     return res.status(400).json({ error: 'foodId is required.' });
+  }
+  // Rejected rather than coerced: every non-empty string is truthy, so a
+  // stringly-typed `"false"` would silently select the path that overwrites
+  // and deletes diary-specific photos.
+  if (syncImages !== undefined && typeof syncImages !== 'boolean') {
+    return res.status(400).json({ error: 'syncImages must be a boolean.' });
   }
   try {
     const result = await foodService.updateFoodEntriesSnapshot(
       req.userId,
       foodId,
-      variantId
+      variantId,
+      // Defaults to true so a client that predates this flag keeps syncing
+      // photos, which is what it has always done.
+      syncImages ?? true
     );
     res.status(200).json(result);
   } catch (error) {

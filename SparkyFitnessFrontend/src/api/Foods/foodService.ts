@@ -116,12 +116,18 @@ export const getFoodById = async (foodId: string): Promise<Food> => {
   });
 };
 
+/**
+ * `syncImages` true forces the food's current photos onto every matching past
+ * entry, replacing photos the user set on individual diary entries; false
+ * rewrites nutrition only and leaves every entry's photo untouched.
+ */
 export const updateFoodEntriesSnapshot = async (
-  foodId: string
+  foodId: string,
+  syncImages: boolean = true
 ): Promise<void> => {
   return apiCall(`/foods/update-snapshot`, {
     method: 'POST',
-    body: { foodId },
+    body: { foodId, syncImages },
   });
 };
 

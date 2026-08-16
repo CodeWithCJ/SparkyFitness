@@ -398,14 +398,61 @@ async function getFoodsNeedingReview(userId: string) {
     client.release();
   }
 }
+/**
+ * Rewrites the snapshot past diary entries were logged with.
+ *
+ * `syncImages` decides what happens to the photo column:
+ *  - `false` - `images` is left out of the UPDATE entirely, so every entry
+ *    keeps whatever photo it is showing today (inherited or diary-set).
+ *  - `true` - every matching entry is forced onto the food's current photos,
+ *    including entries where the user picked their own photo in the diary.
+ *
+ * The diary-set photos that get replaced are returned so the caller can unlink
+ * their files: nothing else references `/uploads/food_entries/<entryId>/...`,
+ * so they would otherwise sit on disk forever.
+ */
 async function updateFoodEntriesSnapshot(
   userId: string,
   foodId: string,
   variantId: string,
-  newSnapshotData: FoodEntrySnapshot
-) {
+  newSnapshotData: FoodEntrySnapshot,
+  syncImages: boolean = true
+): Promise<{ rowCount: number; replacedEntryImages: string[] }> {
   const client = await getClient(userId); // User-specific operation
   try {
+    // The read and the overwrite share one transaction, and the read takes row
+    // locks. Without them a diary photo saved between the two statements would
+    // be overwritten by the UPDATE while going unreported here, leaking its
+    // file: nothing would ever reference it again, and nothing would delete it.
+    await client.query('BEGIN');
+
+    // Scoped to the same rows the UPDATE touches, and to diary-set paths only —
+    // an inherited path points at the food's own upload directory and must
+    // never be unlinked from here.
+    let replacedEntryImages: string[] = [];
+    if (syncImages) {
+      // The whole column, not the unnested paths: FOR UPDATE cannot be applied
+      // to a set-returning function or a DISTINCT query, so the rows are locked
+      // as they are and filtered below.
+      const existing = await client.query(
+        `SELECT images
+           FROM food_entries
+          WHERE user_id = $1
+            AND food_id = $2
+            AND variant_id = $3
+            FOR UPDATE`,
+        [userId, foodId, variantId]
+      );
+      const seen = new Set<string>();
+      for (const row of existing.rows as { images: unknown }[]) {
+        for (const image of Array.isArray(row.images) ? row.images : []) {
+          const path = String(image);
+          if (path.startsWith('/uploads/food_entries/')) seen.add(path);
+        }
+      }
+      replacedEntryImages = [...seen];
+    }
+
     const result = await client.query(
       `UPDATE food_entries
        SET
@@ -432,6 +479,9 @@ async function updateFoodEntriesSnapshot(
           iron = $21,
           glycemic_index = $22,
           custom_nutrients = $23
+          -- The user picked "nutrition only", so the photo column is left out
+          -- of the statement and every entry keeps the photo it shows today.
+          ${syncImages ? ', images = $27::jsonb' : ''}
        WHERE user_id = $24 AND food_id = $25 AND variant_id = $26
        RETURNING id`,
       [
@@ -461,9 +511,27 @@ async function updateFoodEntriesSnapshot(
         userId,
         foodId,
         variantId,
+        // Postgres rejects a bind with more parameters than the statement
+        // references, so $27 is only supplied when the SET clause uses it.
+        ...(syncImages ? [JSON.stringify(newSnapshotData.images ?? [])] : []),
       ]
     );
-    return result.rowCount;
+    // Committed before the caller unlinks anything: a file deleted for a
+    // transaction that then rolled back would be gone with its row intact.
+    await client.query('COMMIT');
+
+    return {
+      rowCount: result.rowCount ?? 0,
+      // Only report photos that actually stopped being referenced.
+      replacedEntryImages: replacedEntryImages.filter(
+        (image) => !(newSnapshotData.images ?? []).includes(image)
+      ),
+    };
+  } catch (error) {
+    // Best-effort: the connection may already be unusable, and the original
+    // error is the one worth surfacing.
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
   } finally {
     client.release();
   }

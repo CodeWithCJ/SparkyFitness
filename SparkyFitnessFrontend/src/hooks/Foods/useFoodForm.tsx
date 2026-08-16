@@ -4,8 +4,15 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from '@/hooks/use-toast';
 import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
+
+/** The three outcomes of the "Sync Past Entries?" prompt. */
+export type SyncPastEntriesChoice =
+  | 'none'
+  | 'nutrition'
+  | 'nutrition-and-photos';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import {
+  pickerImagesDiffer,
   splitPickerImages,
   toSavedImages,
   type PickerImage,
@@ -359,6 +366,10 @@ export function useCustomFoodForm({
   const [variantMeta, setVariantMeta] = useState<VariantMeta[]>([]);
   const [showSyncConfirmation, setShowSyncConfirmation] = useState(false);
   const [savedFoodResult, setSavedFoodResult] = useState<Food | null>(null);
+  // Whether the save that triggered the sync prompt also replaced the food's
+  // photos. Captured at save time rather than derived at render: `food` is a
+  // prop and the sync dialog outlives the save that opened it.
+  const [syncTouchesPhotos, setSyncTouchesPhotos] = useState(false);
   const [showBarcodeConflictConfirmation, setShowBarcodeConflictConfirmation] =
     useState(false);
   // One ordered list of saved images and staged files, so the user can drag a
@@ -1193,12 +1204,15 @@ export function useCustomFoodForm({
         imageFiles,
       });
 
+      const photosChanged = pickerImagesDiffer(imageItems, food?.images);
+
       // The save consumed the staged files; the server echoes back the final
       // list including their new upload paths.
       setImageItems(toSavedImages(savedFood.images));
 
       if (food?.id && user?.id === food.user_id) {
         setSavedFoodResult(savedFood);
+        setSyncTouchesPhotos(photosChanged);
         setShowSyncConfirmation(true);
       } else {
         if (!food?.id) resetForm();
@@ -1246,12 +1260,21 @@ export function useCustomFoodForm({
     await persistFood();
   };
 
-  const handleSyncConfirmation = async (sync: boolean) => {
+  /**
+   * 'none' leaves history alone. 'nutrition' rewrites nutrition and leaves
+   * every entry's photo as it is. 'nutrition-and-photos' additionally forces
+   * the food's photos onto every entry, replacing photos the user set on
+   * individual diary entries — the replaced files are unlinked server-side.
+   */
+  const handleSyncConfirmation = async (choice: SyncPastEntriesChoice) => {
     if (!savedFoodResult) return;
 
-    if (sync) {
+    if (choice !== 'none') {
       try {
-        await updateFoodEntriesSnapshot(savedFoodResult.id);
+        await updateFoodEntriesSnapshot({
+          foodId: savedFoodResult.id,
+          syncImages: choice === 'nutrition-and-photos',
+        });
       } catch {
         /* toast handled by QueryClient */
       }
@@ -1285,6 +1308,7 @@ export function useCustomFoodForm({
     loading,
     showSyncConfirmation,
     setShowSyncConfirmation,
+    syncTouchesPhotos,
     loadedVariants,
     conversionBaseVariants: originalVariants,
     hasTrustedCompatibilityBase,

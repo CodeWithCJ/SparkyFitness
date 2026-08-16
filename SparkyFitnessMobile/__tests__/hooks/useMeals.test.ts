@@ -244,7 +244,13 @@ describe('meal mutations', () => {
       await result.current.updateMealAsync({ name: 'Overnight Oats' });
     });
 
-    expect(mockUpdateMeal).toHaveBeenCalledWith('meal-1', { name: 'Overnight Oats' });
+    // Third argument is the optional image payload — undefined when the caller
+    // is not touching photos, which keeps the request plain JSON.
+    expect(mockUpdateMeal).toHaveBeenCalledWith(
+      'meal-1',
+      { name: 'Overnight Oats' },
+      undefined,
+    );
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: mealDetailQueryKey('meal-1') });
     expect(onSuccess).toHaveBeenCalledWith(mealData);
   });

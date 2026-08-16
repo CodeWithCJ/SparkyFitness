@@ -191,7 +191,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   }
 
   return (
-    <ScrollView
+      <ScrollView
         className="flex-1 bg-background"
         style={[{ flex: 1 }, usesNativeTabs ? undefined : { paddingTop: insets.top }]}
         contentContainerStyle={{

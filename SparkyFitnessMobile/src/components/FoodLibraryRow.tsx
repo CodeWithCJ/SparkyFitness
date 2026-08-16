@@ -8,6 +8,10 @@ import { deriveShareStatus } from '../utils/shareStatus';
 import ShareStatusBadge from './ShareStatusBadge';
 import Icon from './Icon';
 import VerifiedBadge from './VerifiedBadge';
+import FoodThumbnail from './FoodThumbnail';
+import { useFoodImageSourceContext } from './FoodImageSourceProvider';
+import { primaryImageOf, usableFoodImages } from '../utils/foodImages';
+import { useOpenLightbox } from './LightboxProvider';
 
 interface FoodLibraryRowProps {
   food: FoodItem;
@@ -28,13 +32,33 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
   const status = deriveShareStatus(food.user_id, food.shared_with_public, profile?.id);
   // Gold, not accent: a passive indicator, not a tap target. See MealLibraryRow.
   const [goldColor] = useCSSVariable(['--color-cat-amber']) as [string];
+  const getImageSource = useFoodImageSourceContext();
+  const images = usableFoodImages(food.images);
+  const openLightbox = useOpenLightbox();
+  const openImages =
+    images.length > 0 ? () => openLightbox(images, 0, food.name) : undefined;
+
+  // The thumbnail is a SIBLING of the row's pressable, never nested inside it:
+  // a Pressable within a Pressable leaves both live, so a tap on the photo can
+  // open the detail screen instead of the viewer. Mirrors the exercise rows.
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      className={`px-4 py-3 ${showDivider ? 'border-b border-border-subtle' : ''}`}
-      style={({ pressed }) => (pressed && onPress ? { opacity: 0.7 } : null)}
+    <View
+      className={`flex-row items-center ${showDivider ? 'border-b border-border-subtle' : ''}`}
     >
+      <View className="pl-4 py-3">
+        <FoodThumbnail
+          image={primaryImageOf(food)}
+          getImageSource={getImageSource}
+          size={40}
+          onPress={openImages}
+        />
+      </View>
+      <Pressable
+        onPress={onPress}
+        disabled={!onPress}
+        className="flex-1 pr-4 py-3"
+        style={({ pressed }) => (pressed && onPress ? { opacity: 0.7 } : null)}
+      >
       <View className="flex-row justify-between items-center">
         <View className="flex-1 mr-3">
           <View className="flex-row items-center gap-1.5">
@@ -72,7 +96,8 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
           </Text>
         </View>
       </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 };
 

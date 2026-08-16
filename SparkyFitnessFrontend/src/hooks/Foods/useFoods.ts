@@ -176,7 +176,13 @@ export const useUpdateFoodEntriesSnapshotMutation = () => {
   const invalidate = useFoodEntryInvalidation();
   const { t } = useTranslation();
   return useMutation({
-    mutationFn: (syncFoodId: string) => updateFoodEntriesSnapshot(syncFoodId),
+    mutationFn: ({
+      foodId,
+      syncImages,
+    }: {
+      foodId: string;
+      syncImages: boolean;
+    }) => updateFoodEntriesSnapshot(foodId, syncImages),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: foodKeys.all,

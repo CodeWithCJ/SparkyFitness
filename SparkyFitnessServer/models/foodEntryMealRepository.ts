@@ -47,12 +47,22 @@ async function createFoodEntryMeal(
         throw new Error(`Invalid meal type: ${foodEntryMealData.meal_type}`);
       }
     }
+    // Snapshot the template's photo onto the logged meal, mirroring how the
+    // nutrition of its components is snapshotted: editing the template later
+    // must not rewrite what past entries show. Ad-hoc logged meals have no
+    // template and simply keep an empty array.
     const result = await client.query(
       `INSERT INTO food_entry_meals (
                 user_id, meal_template_id, meal_type_id, entry_date, entry_time, name, description,
                 quantity, unit, legacy_serving_unit_math,
-                created_by_user_id, updated_by_user_id
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                created_by_user_id, updated_by_user_id, images
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+              COALESCE(
+                (SELECT m.images FROM meals m WHERE m.id = $2),
+                '[]'::jsonb
+              )
+            )
             RETURNING *`,
       [
         foodEntryMealData.user_id,

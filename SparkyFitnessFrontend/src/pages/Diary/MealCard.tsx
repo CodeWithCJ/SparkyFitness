@@ -634,7 +634,7 @@ const MealCard = ({
                         <img
                           src={entryImageSrc}
                           alt={entryName ?? ''}
-                          className="w-12 h-12 object-cover rounded-md cursor-zoom-in"
+                          className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
                           loading="lazy"
                           onError={(e) => {
                             // A dead provider link shouldn't leave a broken icon.

@@ -484,7 +484,18 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
               serving_description: item.serving_description,
             },
           );
-          showFoodInfo(externalFoodItemToFoodInfo(detailed));
+          // The details endpoint does not always echo the photo the search
+          // result carried, so re-attach it rather than losing the image the
+          // user just saw. Mirrors the web food search.
+          showFoodInfo(
+            externalFoodItemToFoodInfo({
+              ...detailed,
+              images: detailed.images?.length ? detailed.images : item.images,
+              image_url: detailed.image_url ?? item.image_url,
+              image_source_url:
+                detailed.image_source_url ?? item.image_source_url,
+            }),
+          );
         } catch (error) {
           const message =
             getApiErrorMessage(error) ?? "Couldn't load full nutrition details.";
@@ -1053,19 +1064,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
-      {renderHeaderBar()}
-      {renderBody()}
-      <AnchoredMenu
-        visible={menuVisible}
-        anchor={menuAnchor}
-        onClose={() => setMenuVisible(false)}
-        items={menuItems}
-      />
-    </View>
+      <View
+        className="flex-1 bg-background"
+        style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+      >
+        {renderHeaderBar()}
+        {renderBody()}
+        <AnchoredMenu
+          visible={menuVisible}
+          anchor={menuAnchor}
+          onClose={() => setMenuVisible(false)}
+          items={menuItems}
+        />
+      </View>
   );
 };
 

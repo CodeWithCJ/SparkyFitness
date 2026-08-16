@@ -20,6 +20,13 @@ import StatusView from '../components/StatusView';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import Icon from '../components/Icon';
 import { useCreateMeal, useMeal, useUpdateMeal } from '../hooks';
+import FoodImagePicker from '../components/FoodImagePicker';
+import {
+  pickerImagesDiffer,
+  splitPickerImages,
+  toSavedImages,
+  type PickerImage,
+} from '../utils/pickerImages';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { mealIngredientDraftToFoodInfo } from '../types/foodInfo';
 import type { MealFoodPayload, MealIngredientDraft } from '../types/meals';
@@ -115,6 +122,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   // total_servings = totalAmount / servingSize on save.
   const [totalAmountText, setTotalAmountText] = useState('1');
   const [ingredients, setIngredients] = useState<MealIngredientDraft[]>([]);
+  const [pickerImages, setPickerImages] = useState<PickerImage[]>([]);
   const [initializedMealId, setInitializedMealId] = useState<string | null>(null);
 
   const { createMealAsync, isPending } = useCreateMeal();
@@ -145,6 +153,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       )
     );
     setIngredients(editMeal.foods.map(buildMealIngredientDraftFromMealFood));
+    setPickerImages(toSavedImages(editMeal.images));
     setInitializedMealId(editMeal.id);
   }, [editMeal, initializedMealId, isEditMode]);
 
@@ -375,13 +384,27 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         foods: ingredients.map(mealIngredientToPayload),
       };
 
+      // Only send images on edit when they changed: a supplied `images` array
+      // is authoritative server-side and deletes anything omitted.
+      const imageArgs =
+        isEditMode
+          ? pickerImagesDiffer(pickerImages, editMeal?.images)
+            ? splitPickerImages(pickerImages)
+            : undefined
+          : pickerImages.length > 0
+            ? splitPickerImages(pickerImages)
+            : undefined;
+
       if (isEditMode) {
-        await updateMealAsync(payload);
+        await updateMealAsync(payload, imageArgs);
       } else {
-        await createMealAsync({
-          ...payload,
-          is_public: false,
-        });
+        await createMealAsync(
+          {
+            ...payload,
+            is_public: false,
+          },
+          imageArgs,
+        );
       }
       navigation.goBack();
     } catch {
@@ -455,6 +478,12 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         keyboardShouldPersistTaps="handled"
       >
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
+          <FoodImagePicker
+            items={pickerImages}
+            onItemsChange={setPickerImages}
+            disabled={isSaving}
+          />
+
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">Meal Name *</Text>
             <FormInput

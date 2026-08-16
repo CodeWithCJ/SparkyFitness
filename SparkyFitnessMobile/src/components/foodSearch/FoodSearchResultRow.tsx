@@ -4,6 +4,10 @@ import Button from '../ui/Button';
 import MealLibraryRow from '../MealLibraryRow';
 import VerifiedBadge from '../VerifiedBadge';
 import FoodResultRow from './FoodResultRow';
+import FoodThumbnail from '../FoodThumbnail';
+import { useFoodImageSourceContext } from '../FoodImageSourceProvider';
+import { externalFoodImage } from '../../utils/foodImages';
+import { useOpenLightbox } from '../LightboxProvider';
 import { landingKey } from '../../utils/landingLists';
 import { formatServingDescription, formatServingUnit } from '../../utils/foodDetails';
 import { OWNERSHIP_FILTER_LABELS, type OwnershipFilter } from '../../utils/shareStatus';
@@ -31,17 +35,30 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
   loadingFoodId,
   getProviderColor,
   onSelect,
-}) => (
-  <TouchableOpacity
-    className="px-4 py-2 border-b border-border-subtle"
-    activeOpacity={0.7}
-    disabled={loadingFoodId !== null}
-    onPress={() => {
-      void onSelect(item, providerId);
-    }}
-  >
-    <View className="flex-row justify-between items-center">
-      <View className="flex-1 mr-3">
+}) => {
+  const getImageSource = useFoodImageSourceContext();
+  const openLightbox = useOpenLightbox();
+  const image = externalFoodImage(item);
+  // Sibling thumbnail, not nested in the row's pressable — see FoodResultRow.
+  return (
+  <View className="flex-row items-center border-b border-border-subtle">
+    <View className="pl-4 py-2">
+      <FoodThumbnail
+        image={image}
+        getImageSource={getImageSource}
+        size={40}
+        onPress={image ? () => openLightbox([image], 0, item.name) : undefined}
+      />
+    </View>
+    <TouchableOpacity
+      className="flex-1 flex-row justify-between items-center pr-4 py-2"
+      activeOpacity={0.7}
+      disabled={loadingFoodId !== null}
+      onPress={() => {
+        void onSelect(item, providerId);
+      }}
+    >
+      <View className="flex-1 mx-3">
         <View className="flex-row items-start gap-1">
           <Text className="text-text-primary text-base font-medium flex-shrink">
             {item.name}
@@ -93,9 +110,10 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
           </>
         )}
       </View>
-    </View>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  </View>
+  );
+};
 
 interface ShowAllProviderRowProps {
   provider: ExternalProvider;

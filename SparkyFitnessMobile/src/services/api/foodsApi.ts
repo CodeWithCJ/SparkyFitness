@@ -1,4 +1,6 @@
 import { apiFetch } from './apiClient';
+import { postPayloadWithImages } from './imageUploadClient';
+import type { ImageUploadArgs } from '../../utils/pickerImages';
 import {
   FoodItem,
   FoodsResponse,
@@ -148,18 +150,49 @@ export interface SaveFoodPayload {
   provider_external_id?: string | null;
   provider_verified?: boolean;
   custom_nutrients?: Record<string, string | number>;
+  // Provider photo carried through import. The server's resolveImageInput
+  // prefers `images`, then `image_source_url`, then `image_url`, and localizes
+  // remote URLs into /uploads after COMMIT. Omitting these is why a provider
+  // food silently saves without its picture.
+  images?: string[];
+  image_url?: string | null;
+  image_source_url?: string | null;
 }
 
 /**
  * Saves a food item to the database.
+ *
+ * `images` carries the ordered image list (`__new__<n>` placeholders for
+ * uploads); `newImageUris` are the local files those placeholders refer to.
+ * With no files the request stays plain JSON, matching web.
  */
-export const saveFood = async (food: SaveFoodPayload): Promise<FoodItem> => {
-  return apiFetch<FoodItem>({
+export const saveFood = async (
+  food: SaveFoodPayload,
+  images?: ImageUploadArgs,
+): Promise<FoodItem> => {
+  const sendJson = (payload: Record<string, unknown>) =>
+    apiFetch<FoodItem>({
+      endpoint: '/api/foods',
+      serviceName: 'Foods API',
+      operation: 'save food',
+      method: 'POST',
+      body: payload,
+    });
+
+  if (!images) {
+    return sendJson(food as unknown as Record<string, unknown>);
+  }
+
+  return postPayloadWithImages<FoodItem>({
     endpoint: '/api/foods',
     serviceName: 'Foods API',
     operation: 'save food',
     method: 'POST',
-    body: food,
+    payload: food as unknown as Record<string, unknown>,
+    wrapperField: 'foodData',
+    order: images.order,
+    newUris: images.newUris,
+    sendJson,
   });
 };
 
@@ -234,15 +267,67 @@ export interface DeleteFoodResponse {
 }
 
 /**
- * Updates a food item's metadata (name, brand).
+ * Updates a food item's metadata (name, brand, images).
  */
-export const updateFood = async (foodId: string, payload: UpdateFoodPayload): Promise<FoodItem> => {
-  return apiFetch<FoodItem>({
+export const updateFood = async (
+  foodId: string,
+  payload: UpdateFoodPayload,
+  images?: ImageUploadArgs,
+): Promise<FoodItem> => {
+  const sendJson = (body: Record<string, unknown>) =>
+    apiFetch<FoodItem>({
+      endpoint: `/api/foods/${foodId}`,
+      serviceName: 'Foods API',
+      operation: 'update food',
+      method: 'PUT',
+      body,
+    });
+
+  if (!images) {
+    return sendJson(payload as unknown as Record<string, unknown>);
+  }
+
+  return postPayloadWithImages<FoodItem>({
     endpoint: `/api/foods/${foodId}`,
     serviceName: 'Foods API',
     operation: 'update food',
     method: 'PUT',
-    body: payload,
+    payload: payload as unknown as Record<string, unknown>,
+    wrapperField: 'foodData',
+    order: images.order,
+    newUris: images.newUris,
+    sendJson,
+  });
+};
+
+/**
+ * Rewrites the stored nutrition snapshot on every past diary entry for this
+ * food, so already-logged servings reflect the food's current values.
+ *
+ * Opt-in only. Diary entries hold a snapshot taken at log time, and editing a
+ * food deliberately leaves them alone — a past meal is a record of what was
+ * eaten, not a live reference. Web asks before calling this; mobile now does
+ * too. Omitting `variantId` updates entries across all of the food's variants,
+ * matching web.
+ */
+export const updateFoodEntriesSnapshot = async (
+  foodId: string,
+  variantId?: string,
+  /**
+   * `true` forces the food's current photos onto every matching entry,
+   * replacing photos the user set on individual diary entries. `false`
+   * rewrites nutrition only and leaves every entry's photo untouched.
+   */
+  syncImages: boolean = true,
+): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: '/api/foods/update-snapshot',
+    serviceName: 'Foods API',
+    operation: 'sync past entries',
+    method: 'POST',
+    body: variantId
+      ? { foodId, variantId, syncImages }
+      : { foodId, syncImages },
   });
 };
 

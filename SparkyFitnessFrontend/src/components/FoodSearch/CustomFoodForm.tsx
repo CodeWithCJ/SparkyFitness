@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ const CustomFoodForm = ({
   initialVariants,
   visibleNutrients: passedVisibleNutrients,
 }: CustomFoodFormProps) => {
+  const { t } = useTranslation();
   const {
     nutrientDisplayPreferences,
     energyUnit,
@@ -64,6 +66,7 @@ const CustomFoodForm = ({
     variantErrors,
     loading,
     showSyncConfirmation,
+    syncTouchesPhotos,
     loadedVariants,
     conversionBaseVariants,
     hasTrustedCompatibilityBase,
@@ -352,12 +355,58 @@ const CustomFoodForm = ({
           open={showSyncConfirmation}
           onOpenChange={(open) => {
             if (!open) {
-              handleSyncConfirmation(false);
+              handleSyncConfirmation('none');
             }
           }}
-          onConfirm={() => handleSyncConfirmation(true)}
-          title="Sync Past Entries?"
-          description="Do you want to update all your past diary entries for this food with the new nutritional information?"
+          // When this save replaced the food's photos the user gets a third
+          // outcome, because the two photo results genuinely differ: the
+          // confirm action forces the new photo onto every past entry
+          // (replacing photos set on individual diary entries, which are then
+          // deleted), while the secondary action rewrites nutrition only and
+          // leaves every entry's photo alone. With photos untouched there is
+          // nothing to decide, so it stays a plain yes/no about nutrition.
+          onConfirm={() =>
+            handleSyncConfirmation(
+              syncTouchesPhotos ? 'nutrition-and-photos' : 'nutrition'
+            )
+          }
+          variant={syncTouchesPhotos ? 'destructive' : 'default'}
+          secondaryActionLabel={
+            syncTouchesPhotos
+              ? t(
+                  'customFoodForm.syncConfirmationNutritionOnly',
+                  'Update nutrition only'
+                )
+              : undefined
+          }
+          onSecondaryAction={
+            syncTouchesPhotos
+              ? () => handleSyncConfirmation('nutrition')
+              : undefined
+          }
+          title={t(
+            'customFoodForm.syncConfirmationTitle',
+            'Sync Past Entries?'
+          )}
+          description={
+            syncTouchesPhotos
+              ? t(
+                  'customFoodForm.syncConfirmationDescriptionWithPhotos',
+                  "Do you want to update all your past diary entries for this food with the new nutrition and photos? Updating photos replaces photos you set on individual diary entries, and can't be undone."
+                )
+              : t(
+                  'customFoodForm.syncConfirmationDescription',
+                  "Do you want to update all your past diary entries for this food with the new nutrition? Entries you don't update keep their original values."
+                )
+          }
+          confirmLabel={
+            syncTouchesPhotos
+              ? t(
+                  'customFoodForm.syncConfirmationConfirmWithPhotos',
+                  'Update nutrition & photos'
+                )
+              : t('customFoodForm.syncConfirmationConfirm', 'Update')
+          }
         />
       )}
 

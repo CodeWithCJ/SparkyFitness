@@ -62,7 +62,7 @@ export function FoodEntryImageOverride({
           <p className="text-xs text-muted-foreground">
             {t(
               'diary.entryPhotoInheritedHint',
-              "Showing the food's own images. Add a photo to override them for this entry."
+              'Showing the current library photos. Add photos to set them for this entry.'
             )}
           </p>
           <div className="flex flex-wrap gap-2">

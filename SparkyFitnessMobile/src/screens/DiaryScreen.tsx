@@ -407,11 +407,13 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   );
 
   return (
-    <GestureDetector gesture={swipeGesture}>
-      <View className="flex-1 bg-background">
-        {content}
-      </View>
-    </GestureDetector>
+    <>
+      <GestureDetector gesture={swipeGesture}>
+        <View className="flex-1 bg-background">
+          {content}
+        </View>
+      </GestureDetector>
+    </>
   );
 };
 

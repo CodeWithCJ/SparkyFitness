@@ -232,16 +232,21 @@ describe('useAddFoodEntry', () => {
       });
     });
 
-    expect(mockSaveFood).toHaveBeenCalledWith({
-      name: 'Protein Bar',
-      brand: 'Remote Brand',
-      serving_size: 1,
-      serving_unit: 'bar',
-      calories: 200,
-      protein: 20,
-      carbs: 22,
-      fat: 7,
-    });
+    // Second argument is the optional image payload — undefined when the
+    // caller attached no photos, which keeps the request plain JSON.
+    expect(mockSaveFood).toHaveBeenCalledWith(
+      {
+        name: 'Protein Bar',
+        brand: 'Remote Brand',
+        serving_size: 1,
+        serving_unit: 'bar',
+        calories: 200,
+        protein: 20,
+        carbs: 22,
+        fat: 7,
+      },
+      undefined,
+    );
     expect(mockCreateFoodVariant).toHaveBeenCalledWith({
       food_id: 'food-1',
       serving_size: 1,
