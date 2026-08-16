@@ -39,15 +39,23 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
   try {
     // @ts-expect-error TS(2339): Property 'createApiKey' does not exist on type 'In... Remove this comment to see the full error message
     const result = await auth.api.createApiKey({
-      // Key the credential to the authenticated actor, never the switched
-      // context (req.userId). A family-sharing delegate acting on behalf of
-      // another user must not be able to mint/list/delete that user's API
-      // keys — doing so would let a narrow delegation (e.g. medications)
-      // escalate into full account takeover. Mirrors the isAdmin check in
-      // authMiddleware.ts, which also guards on the authenticated user.
-      userId: req.authenticatedUserId,
-      name,
-      expiresIn: expiresIn || 31536000, // Default 1 year
+      // Better Auth's server API takes endpoint fields under `body`; the
+      // plugin declares /api-key/create with `body: createApiKeyBodySchema`.
+      // Passed flat, every field arrived undefined.
+      body: {
+        // Key the credential to the authenticated actor, never the switched
+        // context (req.userId). A family-sharing delegate acting on behalf of
+        // another user must not be able to mint/list/delete that user's API
+        // keys — doing so would let a narrow delegation (e.g. medications)
+        // escalate into full account takeover. Mirrors the isAdmin check in
+        // authMiddleware.ts, which also guards on the authenticated user.
+        //
+        // `userId` is a server-only field on the create schema, so this stays
+        // an explicit binding rather than a session lookup.
+        userId: req.authenticatedUserId,
+        name,
+        expiresIn: expiresIn || 31536000, // Default 1 year
+      },
     });
     res.status(201).json({
       message: 'API key generated successfully',
@@ -89,10 +97,18 @@ router.delete(
     try {
       // @ts-expect-error TS(2339): Property 'deleteApiKey' does not exist on type 'In... Remove this comment to see the full error message
       await auth.api.deleteApiKey({
-        apiKeyId,
-        // Authenticated actor only — a switched-context delegate must not be
-        // able to delete the account owner's keys.
-        userId: req.authenticatedUserId,
+        // Two corrections beyond the `body` wrapper: the delete schema names
+        // the field `keyId` (not `apiKeyId`), and it has no `userId` field at
+        // all, so the previous binding was silently dropped.
+        body: { keyId: apiKeyId },
+        // /api-key/delete runs behind Better Auth's sessionMiddleware, so the
+        // owner comes from the session rather than a passed id. Forwarding the
+        // request headers preserves the guarantee the removed `userId` was
+        // there for: authMiddleware derives req.authenticatedUserId from
+        // getSession({ headers: req.headers }), so the session resolves to the
+        // authenticated actor — never the switched context — and a delegate
+        // still cannot delete the account owner's keys.
+        headers: req.headers,
       });
       res.status(200).json({ message: 'API key deleted successfully.' });
     } catch (error) {
@@ -118,12 +134,19 @@ router.delete(
 router.get('/user-api-keys', authenticate, async (req, res, next) => {
   try {
     // @ts-expect-error TS(2339): Property 'listApiKeys' does not exist on type 'Inf... Remove this comment to see the full error message
-    const apiKeys = await auth.api.listApiKeys({
-      // Authenticated actor only — do not expose the account owner's key
-      // metadata to a switched-context delegate.
-      userId: req.authenticatedUserId,
+    // /api-key/list is a GET declared with `query`, not `body`, and it takes
+    // no `userId` — so unlike the other two this one is not a missing `body`
+    // wrapper. It runs behind sessionMiddleware, so the owner comes from the
+    // session. Forwarding the headers keeps the same guarantee the removed
+    // `userId` was there for: the session is the authenticated actor's, never
+    // the switched context, so a delegate cannot list the owner's keys.
+    const result = await auth.api.listApiKeys({
+      headers: req.headers,
     });
-    res.status(200).json(apiKeys);
+    // The endpoint returns { apiKeys, total, limit, offset }. The route has
+    // always been documented as returning "a list of API keys", so unwrap to
+    // the array rather than leaking the pagination envelope.
+    res.status(200).json(result?.apiKeys ?? []);
   } catch (error) {
     next(error);
   }
