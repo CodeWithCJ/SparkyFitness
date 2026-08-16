@@ -21,7 +21,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Fatsecret
 - Nutritionix
 - Mealie
-- Tandori
+- Tandoor
 - Strava (partially tested)
 
 
