@@ -1,7 +1,7 @@
 import { addLog } from '../LogService';
 import type { PermissionRequest, HealthMetricStates } from '../../types/healthRecords';
 
-const REQUIRED_HEALTH_PERMISSION_VERSION = 2;
+const REQUIRED_HEALTH_PERMISSION_VERSION = 3;
 const REQUIRED_HEALTH_PERMISSION_VERSION_KEY = 'healthPermissionsVersion';
 
 type PermissionedMetric = {
