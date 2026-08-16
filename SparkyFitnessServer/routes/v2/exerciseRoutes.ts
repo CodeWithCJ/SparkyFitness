@@ -2,6 +2,7 @@ import express, { RequestHandler } from 'express';
 import { z } from 'zod';
 import {
   exerciseSearchQuerySchema,
+  exerciseStatsQuerySchema,
   exerciseStatsResponseSchema,
   paginatedExercisesResponseSchema,
 } from '@workspace/shared';
@@ -158,6 +159,7 @@ router.get('/search', searchHandler);
  *         required: false
  *         schema:
  *           type: integer
+ *           minimum: 1
  *         description: |
  *           Optional workout preset id to scope recentSessions to. When supplied, only sessions performed as that
  *           preset are considered, so the live "Previous" placeholders reflect this preset's own history instead of
@@ -167,7 +169,7 @@ router.get('/search', searchHandler);
  *       200:
  *         description: Best set + last set stats + recent sessions.
  *       400:
- *         description: Invalid exerciseId or excludePresetEntryId (not a UUID).
+ *         description: Invalid exerciseId, excludePresetEntryId (not a UUID), or presetId (not a positive integer).
  *       401:
  *         description: Unauthenticated.
  *       403:
@@ -187,12 +189,7 @@ const statsHandler: RequestHandler = async (req, res, next) => {
       });
       return;
     }
-    const parsedQuery = z
-      .object({
-        excludePresetEntryId: z.string().uuid().optional(),
-        presetId: z.coerce.number().int().positive().optional(),
-      })
-      .safeParse(req.query);
+    const parsedQuery = exerciseStatsQuerySchema.safeParse(req.query);
     if (!parsedQuery.success) {
       res.status(400).json({
         error: 'Invalid excludePresetEntryId or presetId',

@@ -29,6 +29,23 @@ export const exerciseHistoryQuerySchema = z
   })
   .strict();
 
+/** Query params for the per-exercise best/last/recent-sessions stats endpoint */
+export const exerciseStatsQuerySchema = z.object({
+  /**
+   * Preset-entry UUID to exclude from the baseline (today's in-progress/
+   * planned sets, or the workout being edited). Applies to bestSet, lastSet,
+   * and recentSessions.
+   */
+  excludePresetEntryId: z.string().uuid().optional(),
+  /**
+   * Workout preset id to scope recentSessions to, so the live "Previous"
+   * placeholders reflect this preset's own history instead of this
+   * exercise's history from a different preset. Does not affect
+   * bestSet/lastSet, which stay exercise-global.
+   */
+  presetId: z.coerce.number().int().positive().optional(),
+});
+
 // --- Building blocks ---
 
 /**
@@ -475,6 +492,7 @@ export const exerciseStatsResponseSchema = z
 // --- Types ---
 
 export type ExerciseHistoryQuery = z.infer<typeof exerciseHistoryQuerySchema>;
+export type ExerciseStatsQuery = z.infer<typeof exerciseStatsQuerySchema>;
 export type ExerciseSnapshotResponse = z.infer<
   typeof exerciseSnapshotResponseSchema
 >;
