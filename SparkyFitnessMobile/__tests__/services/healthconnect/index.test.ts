@@ -10,6 +10,7 @@ import {
   getAggregatedStepsByDate,
   getAggregatedStepsByDateDetailed,
   getAggregatedActiveCaloriesByDate,
+  getAggregatedActiveCaloriesByDateDetailed,
   enrichExerciseSessions,
   alignToLocalDayStart,
 } from '../../../src/services/healthconnect/index';
@@ -1047,6 +1048,57 @@ describe('getAggregatedActiveCaloriesByDate', () => {
 
     expect(result[0].value).toBe(525);
     expect(result).toHaveLength(1);
+    expect(mockAggregateGroupByPeriod).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not derive missing dates when the active aggregate has any records', async () => {
+    mockAggregateGroupByPeriod.mockImplementation(
+      ({ recordType }: { recordType: string }) => recordType === 'ActiveCaloriesBurned'
+        ? Promise.resolve([
+            periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 525 } }),
+          ])
+        : Promise.resolve([
+            periodBucket(2024, 1, 16, { ENERGY_TOTAL: { inKilocalories: 2400 } }),
+          ]),
+    );
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 16),
+    );
+
+    expect(result).toEqual([
+      { date: '2024-01-15', value: 525, type: 'active_calories' },
+    ]);
+    expect(mockAggregateGroupByPeriod).toHaveBeenCalledTimes(1);
+  });
+
+  test('propagates an active-read error even when fallback rows are derived', async () => {
+    mockAggregateGroupByPeriod.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.reject(new Error('Active permission denied'));
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.resolve([
+            periodBucket(2024, 1, 15, { ENERGY_TOTAL: { inKilocalories: 2400 } }),
+          ]);
+        }
+        return Promise.resolve([
+          periodBucket(2024, 1, 15, { BASAL_CALORIES_TOTAL: { inKilocalories: 1750 } }),
+        ]);
+      },
+    );
+
+    const result = await getAggregatedActiveCaloriesByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
+    );
+
+    expect(result.records).toEqual([
+      { date: '2024-01-15', value: 650, type: 'active_calories' },
+    ]);
+    expect(result.error).toContain('Active permission denied');
   });
 
   test('returns empty records when the native aggregate call fails', async () => {

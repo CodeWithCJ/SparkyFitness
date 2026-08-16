@@ -926,6 +926,7 @@ const getAggregatedBasalCaloriesByDateDetailed = (
       recordType: 'BasalMetabolicRate',
       outputType: 'basal_calories',
       extractValue: (r) => (r as { BASAL_CALORIES_TOTAL?: { inKilocalories?: number } }).BASAL_CALORIES_TOTAL?.inKilocalories ?? 0,
+      round: true,
     },
     startDate,
     endDate,
@@ -937,15 +938,17 @@ export const getAggregatedActiveCaloriesByDateDetailed = async (
   endDate: Date,
 ): Promise<HealthConnectAggregateResult> => {
   const activeResult = await getNativeActiveCaloriesByDateDetailed(startDate, endDate);
+  if (activeResult.records.length > 0) {
+    return activeResult;
+  }
+
   const [totalResult, basalResult] = await Promise.all([
     getAggregatedTotalCaloriesByDateDetailed(startDate, endDate),
     getAggregatedBasalCaloriesByDateDetailed(startDate, endDate),
   ]);
 
-  const activeDates = new Set(activeResult.records.map(record => record.date));
   const basalByDate = new Map(basalResult.records.map(record => [record.date, record.value]));
   const derivedRecords = totalResult.records.flatMap(totalRecord => {
-    if (activeDates.has(totalRecord.date)) return [];
     const basal = basalByDate.get(totalRecord.date);
     if (basal == null) return [];
     const derived = deriveActiveCalories(totalRecord.value, basal);
@@ -960,13 +963,8 @@ export const getAggregatedActiveCaloriesByDateDetailed = async (
   if (derivedRecords.length > 0) {
     addLog('[HealthConnectService] Active calorie aggregate missing; derived fallback from total minus basal calories', 'DEBUG');
   }
-  const records = [...activeResult.records, ...derivedRecords].sort((a, b) =>
-    a.date.localeCompare(b.date),
-  );
-  const error = records.length === 0
-    ? activeResult.error ?? totalResult.error ?? basalResult.error
-    : undefined;
-  return { records, ...(error ? { error } : {}) };
+  const error = activeResult.error ?? totalResult.error ?? basalResult.error;
+  return { records: derivedRecords, ...(error ? { error } : {}) };
 };
 
 export const getAggregatedActiveCaloriesByDate = (

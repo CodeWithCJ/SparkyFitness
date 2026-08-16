@@ -19,8 +19,9 @@ import { transformHealthRecords } from './dataTransformation';
 type CumulativeReader = (startDate: Date, endDate: Date) => Promise<ReadResult<AggregatedHealthRecord>>;
 
 // Health Connect metrics with a native day-bucketed aggregation. BasalMetabolicRate
-// is deliberately absent: HC BMR records carry kcal/day values and must stay on the
-// raw-record path, so its 'cumulative-day' readKind resolves to null here.
+// is deliberately absent from the normal metric path: HC BMR records carry kcal/day
+// values and must stay raw when synced directly. It is aggregated internally only
+// to derive the active-calorie fallback from total minus basal calories.
 const CUMULATIVE_READERS: Record<string, CumulativeReader> = {
   Steps: getAggregatedStepsByDateDetailed,
   ActiveCaloriesBurned: getAggregatedActiveCaloriesByDateDetailed,
