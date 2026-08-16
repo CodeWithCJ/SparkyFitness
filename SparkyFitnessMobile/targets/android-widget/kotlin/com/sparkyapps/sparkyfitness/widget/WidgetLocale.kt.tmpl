@@ -94,7 +94,9 @@ object WidgetLocale {
      * the LocaleManager application locale (or system locale when empty), read
      * fresh every render — never the possibly-stale process Context locale,
      * which may not have processed the configuration change yet while the app
-     * is alive.
+     * is alive. Only call on API 33+: the only call site guards on
+     * isNativeAppLanguageSupported() first (API lint would flag a direct call
+     * on older levels).
      */
     private fun nativeEffectiveLocale(context: Context): Locale? {
         val manager = context.getSystemService(LocaleManager::class.java) ?: return null
