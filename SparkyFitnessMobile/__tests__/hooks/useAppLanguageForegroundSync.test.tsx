@@ -118,18 +118,17 @@ describe('useAppLanguageForegroundSync', () => {
     expect(removeSubscription).toHaveBeenCalledTimes(1);
   });
 
-  it('re-registers when the preference changes', () => {
+  it('keeps one listener when the legacy preference changes', () => {
     useAppPreferencesStore.setState({ languagePreference: 'en' });
 
     const { rerender } = renderHook(() => useAppLanguageForegroundSync());
     expect(listeners).toHaveLength(1);
-    expect(removeSubscription).toHaveBeenCalledTimes(0);
 
     useAppPreferencesStore.setState({ languagePreference: 'pl' });
     rerender();
 
-    expect(removeSubscription).toHaveBeenCalledTimes(1);
-    expect(listeners).toHaveLength(2);
+    expect(removeSubscription).toHaveBeenCalledTimes(0);
+    expect(listeners).toHaveLength(1);
   });
 
   it('keeps the listener on iOS for an explicit legacy preference', () => {

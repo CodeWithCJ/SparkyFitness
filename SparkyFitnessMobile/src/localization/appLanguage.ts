@@ -189,10 +189,10 @@ async function adoptNativeState(): Promise<SupportedLanguage> {
 }
 
 /**
- * Initializes storage, then reconciles the Android 13+ platform app language
- * with the stored preference exactly once, then resolves the effective locale
- * before navigation. On Android <=12 and iOS the stored preference is
- * authoritative and no native API is called.
+ * Initializes storage, then resolves the platform-authoritative locale before
+ * navigation. Android 13+ reconciles LocaleManager exactly once; Android <=12
+ * uses the local fallback. iOS reads the OS-owned per-app locale and treats a
+ * persisted language value only as a legacy mirror, never as an override.
  */
 export function initializeAppLanguage(): Promise<SupportedLanguage> {
   return serializeLanguageOperation(async () => {
@@ -204,6 +204,7 @@ export function initializeAppLanguage(): Promise<SupportedLanguage> {
     if (Platform.OS === 'ios') {
       try {
         const language = getNativeIOSLanguage();
+        if (storePreference() !== 'system') setStorePreference('system');
         return applyEffectiveLanguage(language);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -328,7 +329,9 @@ async function runMigration(storedPreference: LanguagePreference): Promise<Suppo
  *
  * Android 13+: snapshot previous native → write requested native → apply i18n
  * → commit store LAST. A failed i18n apply rolls the native value back.
- * Android <=12 / iOS: apply i18n → commit store LAST (no native call).
+ * Android <=12: apply i18n → commit store LAST (no native call). iOS has no
+ * public setter; it only re-reads the OS-owned locale and leaves the mirror
+ * normalized to `system`.
  */
 export function setAppLanguagePreference(
   preference: LanguagePreference,
@@ -475,6 +478,7 @@ export function syncAppLanguageFromSystem(): Promise<SupportedLanguage> {
 
     if (Platform.OS === 'ios') {
       try {
+        if (storePreference() !== 'system') setStorePreference('system');
         return applyEffectiveLanguage(getNativeIOSLanguage());
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

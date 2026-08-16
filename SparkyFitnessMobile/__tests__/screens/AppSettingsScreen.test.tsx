@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, act, screen } from '@testing-library/react-native';
 import { Linking, Platform } from 'react-native';
+import { getLocales } from 'expo-localization';
 import Toast from 'react-native-toast-message';
 
 import AppSettingsScreen from '../../src/screens/AppSettingsScreen';
@@ -8,7 +9,7 @@ import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
-import i18n, { getNativeIOSLanguage, initializeI18n } from '../../src/localization/i18n';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { AppLanguageNative } from '../../src/services/appLanguageNative';
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
@@ -24,11 +25,6 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
     React.createElement(View, { testID: 'bottom-sheet-picker', ...props });
   return { __esModule: true, default: MockPicker };
 });
-
-jest.mock('../../src/localization/i18n', () => ({
-  ...jest.requireActual('../../src/localization/i18n'),
-  getNativeIOSLanguage: jest.fn(() => 'en'),
-}));
 
 jest.mock('../../src/services/appLanguageNative', () => ({
   AppLanguageNative: {
@@ -62,7 +58,6 @@ jest.mock('../../src/utils/liquidGlass', () => ({
 }));
 
 const mockNative = AppLanguageNative as jest.Mocked<typeof AppLanguageNative>;
-const mockIOSLanguage = getNativeIOSLanguage as jest.MockedFunction<typeof getNativeIOSLanguage>;
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
 const mockNavigation = {
@@ -107,7 +102,7 @@ describe('AppSettingsScreen', () => {
     mockNative.supportsNativePerAppLanguage = false;
     jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
     jest.replaceProperty(Platform, 'OS', 'android');
-    mockIOSLanguage.mockReturnValue('en');
+    (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'en' }]);
     mockNative.setApplicationLanguage.mockClear();
     mockNative.setApplicationLanguage.mockResolvedValue(undefined);
     await initializeI18n('en');
@@ -140,14 +135,17 @@ describe('AppSettingsScreen', () => {
 
   it('renders the native iOS language and opens Settings without changing language state', async () => {
     jest.replaceProperty(Platform, 'OS', 'ios');
-    mockIOSLanguage.mockReturnValue('pl');
+    (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'pl' }]);
     useAppPreferencesStore.setState({ languagePreference: 'en' });
     await i18n.changeLanguage('en');
 
     renderScreen();
 
     expect(screen.getByText('Polski · Managed by iOS')).toBeTruthy();
-    expect(screen.queryByTestId('bottom-sheet-picker')).toBeNull();
+    const languagePickers = screen.getAllByTestId('bottom-sheet-picker').filter(
+      (node) => node.props.accessibilityHint !== undefined,
+    );
+    expect(languagePickers).toHaveLength(0);
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('ios-language-row'));
@@ -160,7 +158,7 @@ describe('AppSettingsScreen', () => {
 
   it('keeps iOS language state unchanged when Settings cannot be opened', async () => {
     jest.replaceProperty(Platform, 'OS', 'ios');
-    mockIOSLanguage.mockReturnValue('pl');
+    (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'pl' }]);
     (Linking.openSettings as jest.Mock).mockRejectedValueOnce(new Error('not available'));
     useAppPreferencesStore.setState({ languagePreference: 'en' });
     await i18n.changeLanguage('en');
@@ -206,9 +204,10 @@ describe('AppSettingsScreen', () => {
   });
 
   it('flips the haptics preference from its switch', () => {
-    const { getAllByRole } = renderScreen();
+    const { UNSAFE_getAllByType } = renderScreen();
+    const switches = UNSAFE_getAllByType(require('react-native').Switch);
 
-    fireEvent(getAllByRole('switch')[HAPTICS_SWITCH_INDEX], 'valueChange', false);
+    fireEvent(switches[HAPTICS_SWITCH_INDEX], 'valueChange', false);
 
     expect(useAppPreferencesStore.getState().hapticsEnabled).toBe(false);
   });

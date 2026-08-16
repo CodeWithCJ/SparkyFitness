@@ -123,10 +123,9 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
         {isIOS ? (
           <SettingsRow
             title={t('settings.language.title', 'Language')}
-            subtitle={`${t(
-              `settings.language.${iosLanguage ?? 'en'}`,
-              iosLanguage === 'pl' ? 'Polski' : 'English',
-            )} · ${t('settings.language.managedByIOS', 'Managed by iOS')}`}
+            subtitle={`${iosLanguage === 'pl'
+              ? t('settings.language.polish', 'Polski')
+              : t('settings.language.english', 'English')} · ${t('settings.language.managedByIOS', 'Managed by iOS')}`}
             subtitleNumberOfLines={0}
             onPress={openIOSLanguageSettings}
             accessibilityLabel={t('settings.language.title', 'Language')}

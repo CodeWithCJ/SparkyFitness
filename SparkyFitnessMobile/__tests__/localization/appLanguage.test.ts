@@ -7,7 +7,7 @@ import {
   setAppLanguagePreference,
   syncAppLanguageFromSystem,
 } from '../../src/localization/appLanguage';
-import i18n, { getNativeIOSLanguage, initializeI18n } from '../../src/localization/i18n';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import {
   __resetAppPreferencesStoreForTests,
   useAppPreferencesStore,
@@ -31,7 +31,7 @@ jest.mock('../../src/services/LogService', () => ({
 
 const mockNative = AppLanguageNative as jest.Mocked<typeof AppLanguageNative>;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
-const mockIOSLanguage = getNativeIOSLanguage as jest.MockedFunction<typeof getNativeIOSLanguage>;
+
 
 const MIGRATION_KEY = '@SparkyFitness/app-language-migration';
 
@@ -74,25 +74,25 @@ describe('app language service', () => {
 
     it('uses native Polish over a stale stored English preference', async () => {
       useAppPreferencesStore.setState({ languagePreference: 'en' });
-      mockIOSLanguage.mockReturnValue('pl');
+      (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'pl' }]);
       await initializeAppLanguage();
       expect(i18n.resolvedLanguage).toBe('pl');
-      expect(useAppPreferencesStore.getState().languagePreference).toBe('en');
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('system');
       expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
     });
 
     it('uses native English over a stale stored Polish preference', async () => {
       useAppPreferencesStore.setState({ languagePreference: 'pl' });
-      mockIOSLanguage.mockReturnValue('en');
+      (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'en' }]);
       await initializeAppLanguage();
       expect(i18n.resolvedLanguage).toBe('en');
-      expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('system');
       expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
     });
 
     it('falls back to English for unsupported native locales', async () => {
       // The official locale reader maps an unsupported first locale to en.
-      mockIOSLanguage.mockReturnValue('en');
+      (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'en' }]);
       (getLocales as jest.Mock).mockReturnValue([
         { languageCode: 'de', languageTag: 'de-DE', regionCode: 'DE', textDirection: 'ltr' },
       ]);
