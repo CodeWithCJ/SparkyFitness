@@ -276,7 +276,7 @@ function computeAdaptiveTdeeFromData(
   // Losing weight on a given intake means expenditure exceeded it, so a negative
   // dailyWeightChange raises the estimate above intake.
   let adaptiveTdee =
-    avgDailyIntake - dailyWeightChange * ENERGY_DENSITY_KCAL_PER_KG.LOSS;
+    avgDailyIntake - dailyWeightChange * ENERGY_DENSITY_KCAL_PER_KG;
   // Safety Capping: +/- 500 kcal from BMR-based fallback
   const maxTdee = fallbackTdee + 500;
   const minTdee = Math.max(1200, fallbackTdee - 500);

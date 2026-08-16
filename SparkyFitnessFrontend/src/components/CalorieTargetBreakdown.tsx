@@ -14,18 +14,8 @@ import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import {
   getGoalModeAdjustment,
   ENERGY_DENSITY_KCAL_PER_KG,
+  type CalorieTargetResult,
 } from '@workspace/shared';
-
-interface CalorieTargetResult {
-  baselineTdee: number;
-  /** Signed: positive is a deficit, negative is a surplus. */
-  appliedDeficit: number;
-  rmr: number;
-  absoluteFloorValue: number;
-  finalTarget: number;
-  insufficientHistory: boolean;
-  isGainGoal: boolean;
-}
 
 interface AdaptiveTdeeData {
   tdee?: number;
@@ -91,7 +81,6 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   const { energyUnit, convertEnergy } = usePreferences();
 
   const isAdaptiveMethod = goalModeCalculationMethod === 'adaptive';
-  const targetBaseline = previewResult.baselineTdee;
   // Same label matrix as the CalculationSettings Live Preview (shared t() keys):
   // the baseline is only a TDEE under the adaptive method.
   let baselineLabel: string;
@@ -118,6 +107,20 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   const safetyRmr = previewResult.rmr;
   const absoluteSafetyFloor = previewResult.absoluteFloorValue;
   const targetSafetyFloor = Math.max(safetyRmr, absoluteSafetyFloor);
+
+  // A manual 0% is neither a deficit nor a surplus, so it gets no sign at all:
+  // signing it renders "Deficit (-0%) = -0 kcal", which reads as an error.
+  const hasAdjustment = calculatedDeficitAmount !== 0;
+  const adjustmentSign = !hasAdjustment
+    ? ''
+    : previewResult.isGainGoal
+      ? '+'
+      : '-';
+  const adjustmentLabel = !hasAdjustment
+    ? t('settings.breakdown.adjustment', 'Adjustment')
+    : previewResult.isGainGoal
+      ? t('settings.breakdown.surplus', 'Surplus')
+      : t('settings.breakdown.deficit', 'Deficit');
 
   const displayBmrVal = Math.round(
     convertEnergy(previewResult.rmr, 'kcal', energyUnit)
@@ -323,14 +326,14 @@ Calculated: ${bfp.toFixed(1)}%`;
               {t(
                 'settings.breakdown.adaptiveFormula',
                 'Formula: Average Daily Calories − (Daily Weight Change in kg × {{kcalPerKg}} kcal/kg)',
-                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG.LOSS }
+                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG }
               )}
             </div>
             <p className="text-muted-foreground">
               {t(
                 'settings.breakdown.adaptiveFormulaExplainer',
                 '{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~9,441 kcal/kg) and lean tissue and water (~1,816 kcal/kg), and {{kcalPerKg}} reflects a typical blend.',
-                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG.LOSS }
+                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG }
               )}
             </p>
             {previewResult.insufficientHistory ? (
@@ -529,9 +532,14 @@ Calculated: ${bfp.toFixed(1)}%`;
           </div>
           <div>
             <span className="font-medium">
-              {previewResult.isGainGoal
-                ? t('settings.breakdown.goalSurplusLabel', 'Goal Surplus:')
-                : t('settings.breakdown.goalDeficitLabel', 'Goal Deficit:')}
+              {!hasAdjustment
+                ? t(
+                    'settings.breakdown.goalAdjustmentLabel',
+                    'Goal Adjustment:'
+                  )
+                : previewResult.isGainGoal
+                  ? t('settings.breakdown.goalSurplusLabel', 'Goal Surplus:')
+                  : t('settings.breakdown.goalDeficitLabel', 'Goal Deficit:')}
             </span>{' '}
             {goalMode === 'maintain' ? (
               <span>
@@ -542,13 +550,8 @@ Calculated: ${bfp.toFixed(1)}%`;
                  signed, so formatting them raw double-prints the sign for gain
                  modes ("Deficit (--10%) = --200 kcal"). */
               <span>
-                {goalMode}{' '}
-                {previewResult.isGainGoal
-                  ? t('settings.breakdown.surplus', 'Surplus')
-                  : t('settings.breakdown.deficit', 'Deficit')}{' '}
-                ({previewResult.isGainGoal ? '+' : '-'}
-                {Math.abs(Math.round(deficitPct * 100))}%) ={' '}
-                {previewResult.isGainGoal ? '+' : '-'}
+                {goalMode} {adjustmentLabel} ({adjustmentSign}
+                {Math.abs(Math.round(deficitPct * 100))}%) = {adjustmentSign}
                 {Math.abs(
                   Math.round(
                     convertEnergy(calculatedDeficitAmount, 'kcal', energyUnit)
@@ -582,9 +585,9 @@ Calculated: ${bfp.toFixed(1)}%`;
           </div>
           {isAdaptiveMethod && (
             <div className="text-sm text-gray-500 italic mt-0.5">
-              {previewResult.finalTarget === Math.round(targetSafetyFloor) &&
-              Math.round(targetBaseline * (1 - deficitPct)) <
-                targetSafetyFloor ? (
+              {/* computeCalorieTarget already decided this; re-deriving it here
+                  drifts if the rounding or floor rules change. */}
+              {previewResult.wasClampedToFloor ? (
                 <span className="text-amber-600 dark:text-amber-400 font-medium">
                   ⚠️ Daily budget was automatically raised to safety floor
                   limit.

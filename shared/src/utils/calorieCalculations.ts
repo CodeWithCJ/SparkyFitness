@@ -523,7 +523,7 @@ export function computeCalorieTarget({
   // assumption than it calculates.
   const dailyEnergyBalance = finalTarget - baselineTdee;
   const projectedWeeklyChangeKg =
-    (dailyEnergyBalance * 7) / ENERGY_DENSITY_KCAL_PER_KG.LOSS;
+    (dailyEnergyBalance * 7) / ENERGY_DENSITY_KCAL_PER_KG;
   const projectedWeeklyChangePercent =
     weightKg > 0 ? (Math.abs(projectedWeeklyChangeKg) / weightKg) * 100 : 0;
 

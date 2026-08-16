@@ -16,7 +16,13 @@
 -- convention in case the user switches to manual later.
 --
 -- Zero is left alone -- it is sign-neutral and negating it is a no-op.
+--
+-- The predicate is `> 0`, not `<> 0`, so the statement is idempotent. Under the
+-- old convention the column was validated to [0, 40] and defaulted to 0, so no
+-- negative value can predate this migration: anything positive is an unmigrated
+-- legacy deficit, and anything negative has already been converted. Re-running
+-- is therefore a no-op rather than a flip back.
 
 UPDATE public.user_preferences
 SET goal_mode_custom_percentage = -goal_mode_custom_percentage
-WHERE goal_mode_custom_percentage <> 0;
+WHERE goal_mode_custom_percentage > 0;

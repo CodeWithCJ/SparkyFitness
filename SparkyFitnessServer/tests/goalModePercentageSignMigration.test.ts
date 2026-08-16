@@ -31,8 +31,12 @@ describe('goal_mode_custom_percentage sign flip migration', () => {
     );
   });
 
-  it('leaves zero untouched, since negating it is a no-op', () => {
-    expect(sql).toMatch(/WHERE\s+goal_mode_custom_percentage\s*<>\s*0/i);
+  it('is idempotent: only legacy positive values are negated', () => {
+    // `> 0` rather than `<> 0`. Legacy values were validated to [0, 40], so a
+    // negative value can only be one this migration already converted --
+    // re-running must be a no-op, not a flip back.
+    expect(sql).toMatch(/WHERE\s+goal_mode_custom_percentage\s*>\s*0/i);
+    expect(sql).not.toMatch(/WHERE\s+goal_mode_custom_percentage\s*<>\s*0/i);
   });
 
   it('does not restrict the flip to a single goal_mode', () => {

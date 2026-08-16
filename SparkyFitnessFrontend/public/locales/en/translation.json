@@ -1904,7 +1904,9 @@
       "surplus": "Surplus",
       "deficit": "Deficit",
       "adaptiveFormula": "Formula: Average Daily Calories − (Daily Weight Change in kg × {{kcalPerKg}} kcal/kg)",
-      "adaptiveFormulaExplainer": "{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~9,441 kcal/kg) and lean tissue and water (~1,816 kcal/kg), and {{kcalPerKg}} reflects a typical blend."
+      "adaptiveFormulaExplainer": "{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~9,441 kcal/kg) and lean tissue and water (~1,816 kcal/kg), and {{kcalPerKg}} reflects a typical blend.",
+      "adjustment": "Adjustment",
+      "goalAdjustmentLabel": "Goal Adjustment:"
     }
   },
   "admin": {

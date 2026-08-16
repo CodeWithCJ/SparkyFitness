@@ -54,7 +54,7 @@ export const createInitialPlan = (
     weightKg,
     calories: plan.finalDailyCalories,
     totalFatGrams: plan.macros.fat,
-    activityLevel: formData.activityLevel as 'light' | 'moderate' | 'heavy',
+    activityLevel: formData.activityLevel || undefined,
   };
 
   const advancedNutrients = calculateAllAdvancedNutrients(userData, {

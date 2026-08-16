@@ -11,6 +11,7 @@ import {
   calculateBmr,
   computeCalorieTarget,
   goalModeFromPrimaryGoal,
+  calculateAge,
 } from '@workspace/shared';
 import { getMealPercentage } from './goals';
 import { ExpandedGoals } from '@/types/goals';
@@ -620,10 +621,9 @@ export const calculateBasePlan = (
   const weightKg = Number(formData.currentWeight) || 0;
   const heightCm = Number(formData.height) || 0;
 
-  const birthDate = formData.birthDate
-    ? new Date(formData.birthDate)
-    : new Date();
-  const age = new Date().getFullYear() - birthDate.getFullYear();
+  // Year subtraction is a year off until the birthday passes; calculateAge
+  // accounts for the month and day.
+  const age = formData.birthDate ? calculateAge(formData.birthDate) : 30;
 
   if (
     isNaN(weightKg) ||

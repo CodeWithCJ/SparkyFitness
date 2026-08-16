@@ -1134,6 +1134,7 @@ const CalculationSettings = () => {
               <Input
                 id="goal-mode-custom-percentage"
                 type="number"
+                step="1"
                 min={-MAX_GOAL_MODE_PERCENTAGE}
                 max={MAX_GOAL_MODE_PERCENTAGE}
                 value={customPercentageInput}
@@ -1147,7 +1148,10 @@ const CalculationSettings = () => {
                     setGoalModeCustomPercentage(0);
                     return;
                   }
-                  const parsed = Number(raw);
+                  // Round on commit: the server and the Zod schema both
+                  // require an integer, so a float would only surface as a
+                  // generic "failed to save" toast.
+                  const parsed = Math.round(Number(raw));
                   if (Number.isNaN(parsed)) return;
                   setGoalModeCustomPercentage(
                     Math.min(

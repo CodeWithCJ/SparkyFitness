@@ -317,7 +317,7 @@ async function generateCoachingPlan(
     // AdaptiveTdeeService's 28-day + 7-day-SMA window, where the same constant is
     // better justified; short windows carry proportionally more water/glycogen.
     const dailyCaloricBalance =
-      (weightChange * ENERGY_DENSITY_KCAL_PER_KG.LOSS) / 14;
+      (weightChange * ENERGY_DENSITY_KCAL_PER_KG) / 14;
     estimatedTdee = Math.round(avgCals - dailyCaloricBalance);
   }
 

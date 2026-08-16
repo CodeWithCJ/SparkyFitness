@@ -21,13 +21,22 @@ jest.mock('@/contexts/PreferencesContext', () => ({
 
 const defaultProps = {
   previewResult: {
+    target: 2194,
     baselineTdee: 2194,
     appliedDeficit: 0,
     rmr: 1800,
+    isBelowRmr: false,
+    isBelowAbsoluteFloor: false,
     absoluteFloorValue: 1500,
     finalTarget: 2194,
     insufficientHistory: false,
+    projectedWeeklyChangeKg: 0,
+    projectedWeeklyChangePercent: 0,
     isGainGoal: false,
+    safetyZone: 'green' as const,
+    wasClampedToFloor: false,
+    clampedFloorSource: null,
+    maxFeasibleDeficitPercent: null,
   },
   adaptiveTdeeData: {
     tdee: 2194,
