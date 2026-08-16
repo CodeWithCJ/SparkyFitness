@@ -510,14 +510,38 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/Locale\.forLanguageTag\("pl"\)/);
     });
 
-    it('refreshes the platform cache before LOCALE_CHANGED updateAll', () => {
+    it('refreshes the broadcast locale payload before LOCALE_CHANGED updateAll', () => {
       for (const receiver of ['CalorieWidgetReceiver.kt.tmpl', 'MacroWidgetReceiver.kt.tmpl']) {
         const src = fs.readFileSync(path.join(KOTLIN_ROOT, receiver), 'utf8');
-        const refreshIndex = src.indexOf('refreshEffectiveRenderLocaleFromPlatform(context)');
+        const refreshIndex = src.indexOf('refreshEffectiveRenderLocaleFromBroadcast(context, intent)');
         const updateIndex = src.indexOf('glanceAppWidget.updateAll(context)', refreshIndex);
         expect(refreshIndex).toBeGreaterThan(-1);
         expect(updateIndex).toBeGreaterThan(refreshIndex);
       }
+
+      const locale = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
+        'utf8',
+      );
+      expect(locale).toMatch(/Intent\.EXTRA_PACKAGE_NAME/);
+      expect(locale).toMatch(/Intent\.EXTRA_LOCALE_LIST/);
+      expect(locale).toMatch(/getParcelableExtra\(Intent\.EXTRA_LOCALE_LIST\)/);
+      expect(locale).toMatch(/systemPlatformLanguage\(context\)/);
+      expect(locale).toMatch(/refreshEffectiveRenderLocaleFromBroadcast/);
+      // The app-locale payload is the primary path. A stale
+      // applicationLocales readback may only remain in the non-app fallback.
+      const broadcastStart = locale.indexOf('fun refreshEffectiveRenderLocaleFromBroadcast');
+      const broadcastEnd = locale.indexOf('/** Reads only the API 33+ synchronized rendering cache. */', broadcastStart);
+      const broadcastBody = locale.slice(broadcastStart, broadcastEnd);
+      const appPayloadBranch = broadcastBody.slice(
+        broadcastBody.indexOf('val effective = if (hasAppLocaleExtras) {'),
+        broadcastBody.indexOf('} else {', broadcastBody.indexOf('val effective = if (hasAppLocaleExtras) {')),
+      );
+      expect(appPayloadBranch).not.toMatch(/currentPlatformLanguage\(context\)/);
+      expect(appPayloadBranch).toMatch(/appLocales != null && !appLocales\.isEmpty/);
+      expect(appPayloadBranch).toMatch(/languageFromLocaleList\(appLocales\)/);
+      expect(broadcastBody).toMatch(/systemPlatformLanguage\(context\)/);
+      expect(broadcastBody).toMatch(/editor\.putString\(KEY_EFFECTIVE_RENDER_LOCALE, effective\)/);
     });
 
     it('exposes prepareWidgetLocale through the native bridge', () => {

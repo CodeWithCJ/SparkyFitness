@@ -41,7 +41,7 @@ class MacroWidgetReceiver : GlanceAppWidgetReceiver() {
             val pending = goAsync()
             CoroutineScope(Dispatchers.Default).launch {
                 try {
-                    WidgetLocale.refreshEffectiveRenderLocaleFromPlatform(context)
+                    WidgetLocale.refreshEffectiveRenderLocaleFromBroadcast(context, intent)
                     glanceAppWidget.updateAll(context)
                 } finally {
                     pending.finish()

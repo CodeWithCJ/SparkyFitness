@@ -2,8 +2,10 @@ package com.sparkyapps.sparkyfitness.widget
 
 import android.app.LocaleManager
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
+import android.os.LocaleList
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -88,18 +90,45 @@ object WidgetLocale {
     }
 
     /**
-     * Refreshes the API 33+ rendering cache from the platform for broadcasts
-     * originating outside the RN app. Returns false instead of crashing a
-     * receiver when LocaleManager cannot provide a locale; in that case the
-     * stale cache is removed and rendering falls back to nativeEffectiveLocale.
+     * Refreshes the API 33+ rendering cache from ACTION_LOCALE_CHANGED.
+     *
+     * For an app-locale broadcast, EXTRA_LOCALE_LIST is the event payload and
+     * therefore the primary source. This deliberately avoids reading
+     * LocaleManager.applicationLocales again: that readback may still be stale
+     * immediately after the picker write and could overwrite a newer cache.
+     * An empty app list means follow-system and uses systemLocales. Broadcasts
+     * without app-locale extras use the context configuration with platform
+     * fallback. Failure removes the cache instead of preserving stale data.
      */
-    fun refreshEffectiveRenderLocaleFromPlatform(context: Context): Boolean {
+    fun refreshEffectiveRenderLocaleFromBroadcast(
+        context: Context,
+        intent: Intent,
+    ): Boolean {
         if (!isNativeAppLanguageSupported()) {
             preferences(context).edit().remove(KEY_EFFECTIVE_RENDER_LOCALE).commit()
             return false
         }
 
-        val effective = currentPlatformLanguage(context)
+        val packageName = intent.getStringExtra(Intent.EXTRA_PACKAGE_NAME)
+        val hasAppLocaleExtras =
+            packageName == context.packageName && intent.hasExtra(Intent.EXTRA_LOCALE_LIST)
+
+        val effective = if (hasAppLocaleExtras) {
+            val appLocales = intent.getParcelableExtra(Intent.EXTRA_LOCALE_LIST) as? LocaleList
+            if (appLocales != null && !appLocales.isEmpty) {
+                languageFromLocaleList(appLocales)
+            } else {
+                systemPlatformLanguage(context)
+            }
+        } else {
+            val contextLocales = context.resources.configuration.locales
+            if (!contextLocales.isEmpty) {
+                normalizeLanguage(contextLocales[0])
+            } else {
+                currentPlatformLanguage(context)
+            }
+        }
+
         val editor = preferences(context).edit()
         return if (effective != null) {
             editor.putString(KEY_EFFECTIVE_RENDER_LOCALE, effective)
@@ -110,10 +139,35 @@ object WidgetLocale {
         }
     }
 
+    /** Legacy/platform fallback used by rendering and non-app broadcasts. */
+    fun refreshEffectiveRenderLocaleFromPlatform(context: Context): Boolean {
+        return refreshEffectiveRenderLocaleFromBroadcast(context, Intent())
+    }
+
     /** Reads only the API 33+ synchronized rendering cache. */
     private fun effectiveRenderLocale(context: Context): Locale? {
         if (!isNativeAppLanguageSupported()) return null
         return localeFromCode(preferences(context).getString(KEY_EFFECTIVE_RENDER_LOCALE, null))
+    }
+
+    private fun languageFromLocaleList(locales: LocaleList): String? {
+        if (locales.isEmpty) return null
+        return normalizeLanguage(locales[0])
+    }
+
+    private fun normalizeLanguage(locale: Locale): String {
+        return if (locale.language.equals("pl", ignoreCase = true)) "pl" else "en"
+    }
+
+    private fun systemPlatformLanguage(context: Context): String? {
+        if (!isNativeAppLanguageSupported()) return null
+        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
+        val systemLocales = manager.systemLocales
+        return if (systemLocales != null && !systemLocales.isEmpty) {
+            normalizeLanguage(systemLocales[0])
+        } else {
+            null
+        }
     }
 
     private fun currentPlatformLanguage(context: Context): String? {
@@ -126,9 +180,7 @@ object WidgetLocale {
             val systemLocales = manager.systemLocales
             if (systemLocales != null && !systemLocales.isEmpty) systemLocales[0] else null
         }
-        return platformLocale?.language?.lowercase(Locale.ROOT)?.let { language ->
-            if (language == "pl") "pl" else "en"
-        }
+        return platformLocale?.let(::normalizeLanguage)
     }
 
     private fun localeFromCode(code: String?): Locale? {
