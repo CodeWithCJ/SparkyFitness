@@ -259,6 +259,14 @@ const PersonalPlan = ({
     // activityLevel and goalMode must be persisted here too: the calorie engine
     // reads user_preferences, not onboarding_data, so without these a user who
     // answered "heavy" is silently treated as sedentary forever.
+    //
+    // goalModeCalculationMethod must be persisted ALONGSIDE goalMode, and must
+    // be 'adaptive'. The goal saved below is calculateBasePlan's finalTarget,
+    // which already has the goal-mode adjustment applied. Under the 'manual'
+    // method (the column default) the engine treats the stored goal as the
+    // baseline and applies the adjustment a second time -- a 'cut' would serve
+    // TDEE x 0.85 x 0.85. 'adaptive' makes the engine derive its own baseline
+    // instead, which is exactly what calculateBasePlan modelled.
     await saveAllPreferences({
       weightUnit: weightUnit,
       measurementUnit: heightUnit,
@@ -269,8 +277,11 @@ const PersonalPlan = ({
       vitaminCalculationAlgorithm: localVitaminAlgorithm,
       sugarCalculationAlgorithm: localSugarAlgorithm,
       selectedDiet: localSelectedDiet,
-      activityLevel: formData.activityLevel as ActivityLevel,
+      // Empty when the step was skipped; the column is a plain string, so guard
+      // here rather than persisting '' and relying on every read site's default.
+      activityLevel: (formData.activityLevel || 'not_much') as ActivityLevel,
       goalMode: goalModeFromPrimaryGoal(formData.primaryGoal),
+      goalModeCalculationMethod: 'adaptive',
     });
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
