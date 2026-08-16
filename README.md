@@ -70,9 +70,8 @@ Most apps do one thing. One good nutrition app runs $40–$100 a year; covering 
 | Family sharing with granular permissions | ⭐ 7 permissions | ❌ | ❌ | 🟡 | ❌ | ❌ | ❌ | 🟡 | 🟡 |
 | CSV import & free data export | ✅ | 🟡 | 💰 | ✅ | ✅ | 🟡 | 🟡 | 🟡 | ❌ |
 | MCP server + bring your own LLM | ⭐ | 🟡 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Offline logging on mobile | ❌ | ✅ | ? | ? | ✅ | ? | ? | ? | ? |
 
-⭐ standout &nbsp;•&nbsp; ✅ supported &nbsp;•&nbsp; 🟡 partial &nbsp;•&nbsp; 💰 paid tier only &nbsp;•&nbsp; ❌ not supported &nbsp;•&nbsp; ? unverified
+⭐ standout &nbsp;•&nbsp; ✅ supported &nbsp;•&nbsp; 🟡 partial &nbsp;•&nbsp; 💰 paid tier only &nbsp;•&nbsp; ❌ not supported
 
 <sub>\* Sleep stages, HRV and blood glucose are imported from your watch, phone or meter. SparkyFitness stores, analyses and charts them rather than measuring them itself.</sub>
 
@@ -91,6 +90,7 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 - **Garmin Connect**
 - **Withings**
 - **Polar Flow** 
+- **Oura**
 - **Hevy**
 - **OpenFoodFacts**
 - **USDA**
