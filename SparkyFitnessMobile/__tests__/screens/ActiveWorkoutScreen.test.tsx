@@ -12,6 +12,14 @@ import {
 import { __resetAppPreferencesStoreForTests } from '../../src/stores/appPreferencesStore';
 import type { ActionSheetItem } from '../../src/components/ActionSheet';
 import type { PresetSessionResponse } from '@workspace/shared';
+import { getActiveServerConfig } from '../../src/services/storage';
+
+jest.mock('../../src/services/storage', () => ({
+  getActiveServerConfig: jest.fn(),
+}));
+const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
+  typeof getActiveServerConfig
+>;
 
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: jest.fn(() => ({ preferences: null })),
@@ -69,7 +77,10 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
   return {
     __esModule: true,
     default: (props: any) => (
-      <View testID={`card-${props.exercise.id}`}>
+      <View
+        testID={`card-${props.exercise.id}`}
+        accessibilityLabel={`sourcePresetId:${String(props.sourcePresetId)}`}
+      >
         <Pressable
           testID={`card-${props.exercise.id}-overflow`}
           onPress={() => props.onPressOverflow?.(props.exercise.id)}
@@ -863,5 +874,76 @@ describe('ActiveWorkoutScreen stale deep link guard', () => {
 
     act(() => finishHydration?.());
     expect(navigation.goBack).toHaveBeenCalled();
+  });
+});
+
+describe('ActiveWorkoutScreen source preset server-config guard', () => {
+  /** Flush the config-check promise chain into the effect's state update. */
+  async function flushConfigCheck() {
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('passes sourcePresetId to the stats query when the active server matches', async () => {
+    mockGetActiveServerConfig.mockResolvedValue({
+      id: 'config-1',
+      url: 'https://example.com',
+      apiKey: 'key',
+    });
+    useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+      sourcePresetId: 42,
+      sourceServerConfigId: 'config-1',
+    });
+    const { getByTestId } = renderScreen();
+    await flushConfigCheck();
+
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:42',
+    );
+  });
+
+  it('withholds sourcePresetId when the active server no longer matches the one the workout started on', async () => {
+    // Preset ids can collide across servers, so a config switched since the
+    // workout started must not scope stats to a same-numbered foreign preset.
+    mockGetActiveServerConfig.mockResolvedValue({
+      id: 'other-config',
+      url: 'https://other.example.com',
+      apiKey: 'key',
+    });
+    useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+      sourcePresetId: 42,
+      sourceServerConfigId: 'config-1',
+    });
+    const { getByTestId } = renderScreen();
+    await flushConfigCheck();
+
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:undefined',
+    );
+  });
+
+  it('withholds sourcePresetId for a workout that was not started from a preset', async () => {
+    useActiveWorkoutStore.getState().startWorkout(makeSession());
+    const { getByTestId } = renderScreen();
+    await flushConfigCheck();
+
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:undefined',
+    );
+    expect(mockGetActiveServerConfig).not.toHaveBeenCalled();
   });
 });

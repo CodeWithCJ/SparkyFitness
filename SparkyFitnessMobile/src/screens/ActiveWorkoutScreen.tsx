@@ -65,6 +65,7 @@ import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { deleteWorkout } from '../services/api/exerciseApi';
 import { addLog } from '../services/LogService';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { getActiveServerConfig } from '../services/storage';
 import { useActiveWorkoutStore, type ActiveSetPatch } from '../stores/activeWorkoutStore';
 import { normalizeDate } from '../utils/dateUtils';
 import { runAfterKeyboardSettles } from '../utils/keyboardFocus';
@@ -165,6 +166,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const session = useActiveWorkoutStore((s) => s.session);
   const sessionId = useActiveWorkoutStore((s) => s.sessionId);
   const sourcePresetId = useActiveWorkoutStore((s) => s.sourcePresetId);
+  const sourceServerConfigId = useActiveWorkoutStore((s) => s.sourceServerConfigId);
   const startedAt = useActiveWorkoutStore((s) => s.startedAt);
   const completedSetIds = useActiveWorkoutStore((s) => s.completedSetIds);
   const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
@@ -185,6 +187,25 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
+
+  // Preset ids are per-server; a config switched since the workout started
+  // (such as the user backgrounded this screen, switched servers in settings,
+  // and came back) can resolve the id against the wrong server's preset.
+  const [verifiedSourcePresetId, setVerifiedSourcePresetId] = useState<
+    number | undefined
+  >(undefined);
+  useEffect(() => {
+    if (sourcePresetId == null) return;
+    let cancelled = false;
+    void (async () => {
+      const config = await getActiveServerConfig();
+      if (cancelled || config?.id !== sourceServerConfigId) return;
+      setVerifiedSourcePresetId(sourcePresetId);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sourcePresetId, sourceServerConfigId]);
   const { flush } = useActiveWorkoutAutosave();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
 
@@ -1203,7 +1224,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               completedSetIds={completedSetIds}
               prSetIds={prSetIds}
               excludePresetEntryId={sessionId ?? undefined}
-              sourcePresetId={sourcePresetId ?? undefined}
+              sourcePresetId={verifiedSourcePresetId}
               activeSetId={activeSetId}
               focusedSetKey={focusedSetKey}
               setRenderKeys={setRenderKeys}
