@@ -571,7 +571,8 @@ describe('Android widget localization contract', () => {
       for (const template of ['CalorieWidget.kt.tmpl', 'MacroWidget.kt.tmpl']) {
         const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
         expect(src).toMatch(/currentState<Preferences>\(\)/);
-        expect(src).toMatch(/state\[WidgetLocale\.LOCALE_RENDER_REVISION_STATE_KEY\]/);
+        expect(src).toMatch(/currentState\(WidgetLocale\.LOCALE_RENDER_REVISION_STATE_KEY\)/);
+        expect(src).not.toMatch(/state\[WidgetLocale\.LOCALE_RENDER_REVISION_STATE_KEY\]/);
       }
     });
   });
