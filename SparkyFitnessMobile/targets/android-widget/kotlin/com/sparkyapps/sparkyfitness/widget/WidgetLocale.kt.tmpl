@@ -1,5 +1,6 @@
 package com.sparkyapps.sparkyfitness.widget
 
+import android.app.LocaleManager
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
@@ -13,13 +14,16 @@ import java.util.Locale
  * Platform contract:
  *   Android 13+ (API 33+): the platform per-app language
  *   (android.app.LocaleManager / applicationLocales, final PR3) is the
- *   authoritative source of the app language. Glance renders in the native
- *   application locale, so a widget-only override is NEVER applied here and any
- *   stale value persisted by an older OS/install is cleared on write. This is
- *   what makes an out-of-app App Language change (e.g. Android Settings /
- *   HyperOS App language) win even before the RN app foregrounds and
- *   reconciles its Zustand state — a stale "pl" override must not keep the
- *   widget Polish while the system says English.
+ *   authoritative source of the app language. A widget-only override is NEVER
+ *   applied here and any stale value persisted by an older OS/install is
+ *   cleared on write. On every render we read the CURRENT locale straight from
+ *   LocaleManager and build a local ConfigurationContext. This is what makes a
+ *   language change (in-app via LocaleManager, or out-of-app via Android
+ *   Settings / HyperOS App language) win even while the app process is alive —
+ *   the process Context may not have processed the configuration change yet,
+ *   so we never trust reactApplicationContext.resources.configuration on
+ *   API 33+; we resolve LocaleManager.applicationLocales (falling back to the
+ *   system locale when empty) instead.
  *   Android 12 and below (API <=32): the explicit app language is local to the
  *   RN app (i18next/Zustand), so Android resources would NOT follow it
  *   automatically. The override lets the widgets render in the app-selected
@@ -86,16 +90,41 @@ object WidgetLocale {
     }
 
     /**
+     * Current locale for widget resources on this render. On API 33+ this is
+     * the LocaleManager application locale (or system locale when empty), read
+     * fresh every render — never the possibly-stale process Context locale,
+     * which may not have processed the configuration change yet while the app
+     * is alive.
+     */
+    private fun nativeEffectiveLocale(context: Context): Locale? {
+        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
+        val appLocales = manager.applicationLocales
+        if (appLocales != null && !appLocales.isEmpty) {
+            return appLocales[0]
+        }
+        val systemLocales = manager.systemLocales
+        if (systemLocales != null && !systemLocales.isEmpty) {
+            return systemLocales[0]
+        }
+        return null
+    }
+
+    /**
      * Returns a Context whose resources and number formatting resolve in the
-     * override locale on API <=32, or the original context when no override is
-     * present. On API 33+ the original context is always returned — the native
-     * application locale wins. The override is strictly local to widget
-     * rendering: it never mutates the global locale, the system resources
-     * singleton, or the app process configuration.
+     * override locale on API <=32, or in the LocaleManager-resolved locale on
+     * API 33+. On API 33+ the locale is read fresh from LocaleManager each
+     * render (application locale, else system locale, else the process
+     * configuration), so the widget language follows the platform immediately
+     * — in-app and out-of-app — without restarting the app. The override is
+     * strictly local to widget rendering: it never mutates the global locale,
+     * the system resources singleton, or the app process configuration.
      */
     fun localizedContext(context: Context): Context {
-        if (isNativeAppLanguageSupported()) return context
-        val locale = override(context) ?: return context
+        val locale = if (isNativeAppLanguageSupported()) {
+            nativeEffectiveLocale(context) ?: return context
+        } else {
+            override(context) ?: return context
+        }
         val config = Configuration(context.resources.configuration)
         config.setLocale(locale)
         return context.createConfigurationContext(config)

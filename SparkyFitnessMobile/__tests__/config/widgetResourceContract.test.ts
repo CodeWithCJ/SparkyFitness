@@ -478,16 +478,30 @@ describe('Android widget localization contract', () => {
       expect(src).not.toContain('Resources.getSystem');
     });
 
-    it('never applies the override on Android 13+ (native LocaleManager authoritative)', () => {
+    it('resolves the current LocaleManager locale on Android 13+ (never trusts the stale process context)', () => {
       const src = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
         'utf8',
       );
-      // localizedContext returns the ORIGINAL context on API 33+ before any
-      // override is consulted: the native app locale wins even with a stale
-      // stored "pl" (e.g. after an OS upgrade 12 -> 13 with LocaleManager en).
-      expect(src).toMatch(/TIRAMISU/);
-      expect(src).toMatch(/fun localizedContext\(context: Context\): Context \{\s*if \(isNativeAppLanguageSupported\(\)\) return context/);
+      // On a live API 33+ process the reactApplicationContext resources may not
+      // have processed the configuration change yet, so localizedContext must
+      // read the CURRENT locale straight from LocaleManager every render and
+      // build a local ConfigurationContext — never return the possibly stale
+      // process context unchanged.
+      expect(src).toMatch(/LocaleManager/);
+      expect(src).toMatch(/applicationLocales/);
+      expect(src).toMatch(/systemLocales/);
+      expect(src).toMatch(/createConfigurationContext/);
+      // Must NOT short-circuit to the original (possibly stale) process context.
+      expect(src).not.toMatch(
+        /fun localizedContext\(context: Context\): Context \{\s*if \(isNativeAppLanguageSupported\(\)\) return context/,
+      );
+      expect(src).not.toMatch(/if \(isNativeAppLanguageSupported\(\)\) return context/);
+      // applicationLocales wins; empty applicationLocales falls back to system.
+      expect(src).toMatch(/appLocales != null && !appLocales\.isEmpty/);
+      expect(src).toMatch(/appLocales\[0\]/);
+      expect(src).toMatch(/systemLocales != null && !systemLocales\.isEmpty/);
+      expect(src).toMatch(/systemLocales\[0\]/);
     });
 
     it('clears any stale override on Android 13+ for every request (en/pl/system)', () => {
