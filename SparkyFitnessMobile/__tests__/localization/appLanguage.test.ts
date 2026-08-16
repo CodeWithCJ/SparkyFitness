@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
+import { Platform } from 'react-native';
 
 import {
   initializeAppLanguage,
@@ -31,6 +32,7 @@ jest.mock('../../src/services/LogService', () => ({
 const mockNative = AppLanguageNative as jest.Mocked<typeof AppLanguageNative>;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
+
 const MIGRATION_KEY = '@SparkyFitness/app-language-migration';
 
 async function markMigrationComplete(): Promise<void> {
@@ -44,6 +46,7 @@ describe('app language service', () => {
     await AsyncStorage.clear();
     __resetAppPreferencesStoreForTests();
     await useAppPreferencesStore.persist.rehydrate();
+    jest.replaceProperty(Platform, 'OS', 'android');
     mockNative.isAvailable = true;
     mockNative.supportsNativePerAppLanguage = true;
     mockNative.setApplicationLanguage.mockReset();
@@ -60,6 +63,43 @@ describe('app language service', () => {
     ]);
     await initializeI18n('en');
     await i18n.changeLanguage('en');
+  });
+
+
+  describe('iOS native-authoritative language', () => {
+    beforeEach(() => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+      mockNative.supportsNativePerAppLanguage = false;
+    });
+
+    it('uses native Polish over a stale stored English preference', async () => {
+      useAppPreferencesStore.setState({ languagePreference: 'en' });
+      (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'pl' }]);
+      await initializeAppLanguage();
+      expect(i18n.resolvedLanguage).toBe('pl');
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('system');
+      expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
+    });
+
+    it('uses native English over a stale stored Polish preference', async () => {
+      useAppPreferencesStore.setState({ languagePreference: 'pl' });
+      (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'en' }]);
+      await initializeAppLanguage();
+      expect(i18n.resolvedLanguage).toBe('en');
+      expect(useAppPreferencesStore.getState().languagePreference).toBe('system');
+      expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
+    });
+
+    it('falls back to English for unsupported native locales', async () => {
+      // The official locale reader maps an unsupported first locale to en.
+      (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'en' }]);
+      (getLocales as jest.Mock).mockReturnValue([
+        { languageCode: 'de', languageTag: 'de-DE', regionCode: 'DE', textDirection: 'ltr' },
+      ]);
+      await initializeAppLanguage();
+      expect(i18n.resolvedLanguage).toBe('en');
+      expect(mockNative.setApplicationLanguage).not.toHaveBeenCalled();
+    });
   });
 
   describe('Android <=12 / no native per-app language support', () => {

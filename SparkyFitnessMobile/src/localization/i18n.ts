@@ -37,6 +37,20 @@ export function getDeviceLanguage(): SupportedLanguage {
   return normalizeLanguage(getLocales()[0]?.languageCode);
 }
 
+/**
+ * iOS exposes the per-app language through expo-localization. The first
+ * supported locale is the OS-owned effective value; unsupported locales use
+ * the deterministic English fallback.
+ */
+export function getNativeIOSLanguage(): SupportedLanguage {
+  const locales = getLocales();
+  for (const locale of locales) {
+    const language = locale.languageCode?.toLowerCase().split('-')[0];
+    if (language === 'pl' || language === 'en') return language;
+  }
+  return 'en';
+}
+
 async function initI18nLanguage(language: SupportedLanguage): Promise<void> {
   await i18n.use(initReactI18next).init({
     ...I18N_INIT_OPTIONS,

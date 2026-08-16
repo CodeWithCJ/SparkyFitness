@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 import { AppLanguageNative } from '../services/appLanguageNative';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { addLog } from '../services/LogService';
 import i18n, {
   getDeviceLanguage,
+  getNativeIOSLanguage,
   initializeI18n,
   SUPPORTED_LANGUAGES,
   type LanguagePreference,
@@ -187,14 +189,33 @@ async function adoptNativeState(): Promise<SupportedLanguage> {
 }
 
 /**
- * Initializes storage, then reconciles the Android 13+ platform app language
- * with the stored preference exactly once, then resolves the effective locale
- * before navigation. On Android <=12 and iOS the stored preference is
- * authoritative and no native API is called.
+ * Initializes storage, then resolves the platform-authoritative locale before
+ * navigation. Android 13+ reconciles LocaleManager exactly once; Android <=12
+ * uses the local fallback. iOS reads the OS-owned per-app locale and treats a
+ * persisted language value only as a legacy mirror, never as an override.
  */
 export function initializeAppLanguage(): Promise<SupportedLanguage> {
   return serializeLanguageOperation(async () => {
     await hydratePreferences();
+
+    // iOS owns the per-app language in Settings. The persisted preference is a
+    // legacy mirror only and must never override, or be rewritten as, the
+    // native value.
+    if (Platform.OS === 'ios') {
+      try {
+        const language = getNativeIOSLanguage();
+        if (storePreference() !== 'system') setStorePreference('system');
+        return applyEffectiveLanguage(language);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await addLog(
+          `[AppLanguage] iOS native locale read failed; using English for this launch: ${message}`,
+          'WARNING',
+        );
+        return applyEffectiveLanguage('en');
+      }
+    }
+
     const preference = normalizePreference(storePreference());
     setStorePreference(preference);
 
@@ -308,13 +329,20 @@ async function runMigration(storedPreference: LanguagePreference): Promise<Suppo
  *
  * Android 13+: snapshot previous native → write requested native → apply i18n
  * → commit store LAST. A failed i18n apply rolls the native value back.
- * Android <=12 / iOS: apply i18n → commit store LAST (no native call).
+ * Android <=12: apply i18n → commit store LAST (no native call). iOS has no
+ * public setter; it only re-reads the OS-owned locale and leaves the mirror
+ * normalized to `system`.
  */
 export function setAppLanguagePreference(
   preference: LanguagePreference,
 ): Promise<SupportedLanguage> {
   return serializeLanguageOperation(async () => {
     const normalized = normalizePreference(preference);
+    if (Platform.OS === 'ios') {
+      // There is no public iOS setter. A selection cannot become authoritative;
+      // callers should open Settings instead and wait for a native re-read.
+      return applyEffectiveLanguage(getNativeIOSLanguage());
+    }
     const previousStore = normalizePreference(storePreference());
     const resolvedLanguage = i18n.resolvedLanguage;
     const previousEffective: SupportedLanguage | undefined =
@@ -447,6 +475,20 @@ async function rollbackNativeLanguage(
 export function syncAppLanguageFromSystem(): Promise<SupportedLanguage> {
   return serializeLanguageOperation(async () => {
     await hydratePreferences();
+
+    if (Platform.OS === 'ios') {
+      try {
+        if (storePreference() !== 'system') setStorePreference('system');
+        return applyEffectiveLanguage(getNativeIOSLanguage());
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await addLog(
+          `[AppLanguage] iOS foreground locale read failed; language unchanged for this read: ${message}`,
+          'WARNING',
+        );
+        return applyEffectiveLanguage('en');
+      }
+    }
 
     if (!AppLanguageNative.supportsNativePerAppLanguage) {
       const preference = normalizePreference(storePreference());

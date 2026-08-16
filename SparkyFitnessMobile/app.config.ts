@@ -143,6 +143,12 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
           NSAllowsArbitraryLoads: false,
         },
         ITSAppUsesNonExemptEncryption: false,
+        // Keep the native per-app Language entry visible in iOS Settings even
+        // when the device has only one preferred system language.
+        UIPrefersShowingLanguageSettings: true,
+        // The localized InfoPlist permission strings come from `locales`; this
+        // allows the generated app metadata to use the selected localization.
+        CFBundleAllowMixedLocalizations: true,
       },
       entitlements: {
         'com.apple.security.application-groups': [getIosAppGroup()],

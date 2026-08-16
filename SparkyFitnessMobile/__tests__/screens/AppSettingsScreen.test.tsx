@@ -1,5 +1,7 @@
 import React from 'react';
 import { fireEvent, render, act, screen } from '@testing-library/react-native';
+import { Linking, Platform } from 'react-native';
+import { getLocales } from 'expo-localization';
 import Toast from 'react-native-toast-message';
 
 import AppSettingsScreen from '../../src/screens/AppSettingsScreen';
@@ -98,6 +100,9 @@ describe('AppSettingsScreen', () => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
     mockNative.supportsNativePerAppLanguage = false;
+    jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
+    jest.replaceProperty(Platform, 'OS', 'android');
+    (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'en' }]);
     mockNative.setApplicationLanguage.mockClear();
     mockNative.setApplicationLanguage.mockResolvedValue(undefined);
     await initializeI18n('en');
@@ -125,6 +130,46 @@ describe('AppSettingsScreen', () => {
     renderScreen();
 
     expect(picker().accessibilityHint).toBe('Otwiera menu wyboru języka');
+  });
+
+
+  it('renders the native iOS language and opens Settings without changing language state', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'pl' }]);
+    useAppPreferencesStore.setState({ languagePreference: 'en' });
+    await i18n.changeLanguage('en');
+
+    renderScreen();
+
+    expect(screen.getByText('Polski · Managed by iOS')).toBeTruthy();
+    const languagePickers = screen.getAllByTestId('bottom-sheet-picker').filter(
+      (node) => node.props.accessibilityHint !== undefined,
+    );
+    expect(languagePickers).toHaveLength(0);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ios-language-row'));
+    });
+
+    expect(Linking.openSettings).toHaveBeenCalledTimes(1);
+    expect(i18n.resolvedLanguage).toBe('en');
+    expect(useAppPreferencesStore.getState().languagePreference).toBe('en');
+  });
+
+  it('keeps iOS language state unchanged when Settings cannot be opened', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'pl' }]);
+    (Linking.openSettings as jest.Mock).mockRejectedValueOnce(new Error('not available'));
+    useAppPreferencesStore.setState({ languagePreference: 'en' });
+    await i18n.changeLanguage('en');
+
+    renderScreen();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ios-language-row'));
+    });
+
+    expect(i18n.resolvedLanguage).toBe('en');
+    expect(useAppPreferencesStore.getState().languagePreference).toBe('en');
   });
 
   it('shows an error toast and preserves the previous language when the selection fails', async () => {
@@ -159,9 +204,10 @@ describe('AppSettingsScreen', () => {
   });
 
   it('flips the haptics preference from its switch', () => {
-    const { getAllByRole } = renderScreen();
+    const { UNSAFE_getAllByType } = renderScreen();
+    const switches = UNSAFE_getAllByType(require('react-native').Switch);
 
-    fireEvent(getAllByRole('switch')[HAPTICS_SWITCH_INDEX], 'valueChange', false);
+    fireEvent(switches[HAPTICS_SWITCH_INDEX], 'valueChange', false);
 
     expect(useAppPreferencesStore.getState().hapticsEnabled).toBe(false);
   });

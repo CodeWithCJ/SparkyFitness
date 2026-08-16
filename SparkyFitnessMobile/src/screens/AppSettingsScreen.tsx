@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, ScrollView } from 'react-native';
+import { Linking, Platform, View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
@@ -21,6 +21,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
+  getNativeIOSLanguage,
   setAppLanguagePreference,
   type LanguagePreference,
 } from '../localization';
@@ -48,6 +49,8 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
     (s) => s.setLiquidGlassTabBarEnabled,
   );
   const languagePreference = useAppPreferencesStore((s) => s.languagePreference);
+  const isIOS = Platform.OS === 'ios';
+  const iosLanguage = isIOS ? getNativeIOSLanguage() : null;
   const supportsLiquidGlassTabBar = canUseLiquidGlass();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
@@ -76,6 +79,22 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
     { label: t('settings.language.polish', 'Polski'), value: 'pl' as LanguagePreference },
   ];
 
+  const openIOSLanguageSettings = useCallback(async () => {
+    try {
+      await Linking.openSettings();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      void addLog(
+        `[AppSettings] iOS openSettings failed while opening language settings; language unchanged: ${message}`,
+        'WARNING',
+      );
+      Toast.show({
+        type: 'error',
+        text1: t('settings.language.openSettingsFailed', 'Could not open iOS Settings'),
+      });
+    }
+  }, [t]);
+
   const header = useScreenHeader({ title: t('settings.app', 'App Settings'), left: { kind: 'back' } });
 
   return (
@@ -101,21 +120,35 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
           }
         />
 
-        <SettingsRow
-          title={t('settings.language.title', 'Language')}
-          subtitle={t('languageSettings.subtitle', 'Use your device language or choose a language for SparkyFitness.')}
-          subtitleNumberOfLines={0}
-          rightAccessory={
-            <BottomSheetPicker
-              value={languagePreference}
-              options={languagePickerOptions}
-              onSelect={handleLanguageSelect}
-              title={t('settings.language.title', 'Language')}
-              accessibilityHint={t('settings.language.pickerHint', 'Opens language selection menu')}
-              containerStyle={{ flex: 1, maxWidth: 200 }}
-            />
-          }
-        />
+        {isIOS ? (
+          <SettingsRow
+            title={t('settings.language.title', 'Language')}
+            subtitle={`${iosLanguage === 'pl'
+              ? t('settings.language.polish', 'Polski')
+              : t('settings.language.english', 'English')} · ${t('settings.language.managedByIOS', 'Managed by iOS')}`}
+            subtitleNumberOfLines={0}
+            onPress={openIOSLanguageSettings}
+            accessibilityLabel={t('settings.language.title', 'Language')}
+            accessibilityHint={t('settings.language.iosSettingsHint', "Change this app's language in iOS Settings")}
+            testID="ios-language-row"
+          />
+        ) : (
+          <SettingsRow
+            title={t('settings.language.title', 'Language')}
+            subtitle={t('languageSettings.subtitle', 'Use your device language or choose a language for SparkyFitness.')}
+            subtitleNumberOfLines={0}
+            rightAccessory={
+              <BottomSheetPicker
+                value={languagePreference}
+                options={languagePickerOptions}
+                onSelect={handleLanguageSelect}
+                title={t('settings.language.title', 'Language')}
+                accessibilityHint={t('settings.language.pickerHint', 'Opens language selection menu')}
+                containerStyle={{ flex: 1, maxWidth: 200 }}
+              />
+            }
+          />
+        )}
 
         {supportsLiquidGlassTabBar && (
           <SettingsRow
