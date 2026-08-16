@@ -17,11 +17,14 @@
 --
 -- Zero is left alone -- it is sign-neutral and negating it is a no-op.
 --
--- The predicate is `> 0`, not `<> 0`, so the statement is idempotent. Under the
--- old convention the column was validated to [0, 40] and defaulted to 0, so no
--- negative value can predate this migration: anything positive is an unmigrated
--- legacy deficit, and anything negative has already been converted. Re-running
--- is therefore a no-op rather than a flip back.
+-- This statement is NOT idempotent, and no predicate can make it so: once users
+-- start saving surpluses, a positive value is indistinguishable from an
+-- unmigrated legacy deficit. Single execution is guaranteed by the migration
+-- runner's tracking table, which is the only thing that makes this safe.
+--
+-- `> 0` rather than `<> 0` purely to limit the blast radius if this is ever
+-- replayed by hand: at the moment of running they select exactly the same rows,
+-- since the old convention validated the column to [0, 40] and defaulted to 0.
 
 UPDATE public.user_preferences
 SET goal_mode_custom_percentage = -goal_mode_custom_percentage

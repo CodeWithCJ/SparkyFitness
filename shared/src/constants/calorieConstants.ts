@@ -30,11 +30,11 @@ export const CALORIE_CALCULATION_CONSTANTS = {
  * short-term 1-3 kg swings averages ~2380 kcal/kg, i.e. below both figures.
  *
  * A direction-specific pair was evaluated and deliberately rejected: at the
- * lean-gain rates this app recommends (0.1-0.5% body weight/week, where the
- * literature puts the gain at roughly 60/40 fat to lean), the gain figure works
- * out to ~6086 kcal/kg -- the same 6000 within the precision anything here is
- * measured to. A second constant would have implied a distinction the data does
- * not support.
+ * lean-gain rates this app recommends (0.1-0.5% body weight/week), the gain
+ * lands near the same ~55/45 blend, which works out to
+ * 0.55 * 9441 + 0.45 * 1816 = ~6010 kcal/kg -- the same 6000 within the
+ * precision anything here is measured to. A second constant would have implied
+ * a distinction the data does not support.
  *
  * This is a modelling constant, not a user preference: it is unobservable to the
  * user (it needs a DEXA scan to know), and a wrong value silently skews every
