@@ -1,11 +1,15 @@
 import { NativeModules, Platform } from 'react-native';
 
-export type WidgetLocaleOverride = 'en' | 'pl';
+export type WidgetLocalePreference = 'system' | 'en' | 'pl';
+export type WidgetEffectiveLanguage = 'en' | 'pl';
 
 interface CalorieWidgetNativeModule {
   setCalorieSnapshot(json: string): Promise<void>;
   setMacroSnapshot(json: string): Promise<void>;
-  setWidgetLocale(locale: WidgetLocaleOverride | null): Promise<void>;
+  prepareWidgetLocale(
+    preference: WidgetLocalePreference,
+    effectiveLanguage: WidgetEffectiveLanguage,
+  ): Promise<void>;
   reloadWidget(): Promise<void>;
   reloadMacroWidget(): Promise<void>;
 }
@@ -33,13 +37,16 @@ export const CalorieWidgetBridge = {
     await nativeModule.reloadMacroWidget();
   },
   /**
-   * Persists ('en' | 'pl') or removes (null = follow system/native) the
-   * widget-only locale override used by Glance on Android <=12. A rejected
-   * write stays retryable for the caller.
+   * Commits the user preference and effective render language atomically before
+   * either widget reloads. On API 33+ the effective language is only a
+   * synchronized rendering cache; LocaleManager remains authoritative.
    */
-  async setWidgetLocale(locale: WidgetLocaleOverride | null): Promise<void> {
+  async prepareWidgetLocale(
+    preference: WidgetLocalePreference,
+    effectiveLanguage: WidgetEffectiveLanguage,
+  ): Promise<void> {
     if (!nativeModule) return;
-    await nativeModule.setWidgetLocale(locale);
+    await nativeModule.prepareWidgetLocale(preference, effectiveLanguage);
   },
   get isAvailable(): boolean {
     return nativeModule !== undefined;

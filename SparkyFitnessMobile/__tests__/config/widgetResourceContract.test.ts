@@ -448,103 +448,85 @@ describe('Android widget localization contract', () => {
   });
 
   describe('widget locale override contract', () => {
-    it('owns the widget locale in a dedicated SharedPreferences namespace', () => {
+    it('owns the widget locale and render cache in a dedicated SharedPreferences namespace', () => {
       const src = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
         'utf8',
       );
       expect(src).toMatch(/PREFS_NAME = "SparkyWidgetLocale"/);
+      expect(src).toMatch(/KEY_LOCALE = "widgetLocale"/);
+      expect(src).toMatch(/KEY_EFFECTIVE_RENDER_LOCALE = "effectiveRenderLocale"/);
       expect(src).toMatch(/getSharedPreferences\(PREFS_NAME, Context\.MODE_PRIVATE\)/);
+      expect(src).toMatch(/synchronized rendering cache/);
+      expect(src).toMatch(/not a user preference or locale authority/);
     });
 
-    it('resolves en/pl overrides and treats anything else as system', () => {
-      const src = fs.readFileSync(
-        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
-      );
-      expect(src).toMatch(/Locale\.forLanguageTag\("en"\)/);
-      expect(src).toMatch(/Locale\.forLanguageTag\("pl"\)/);
-      expect(src).toMatch(/Only en, pl, or null are supported/);
-    });
-
-    it('builds a localized context without global locale mutation', () => {
-      const src = fs.readFileSync(
-        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
-      );
-      expect(src).toMatch(/createConfigurationContext\(config\)/);
-      expect(src).toMatch(/config\.setLocale\(locale\)/);
-      expect(src).not.toContain('Locale.setDefault');
-      expect(src).not.toContain('Resources.getSystem');
-    });
-
-    it('resolves the current LocaleManager locale on Android 13+ (never trusts the stale process context)', () => {
-      const src = fs.readFileSync(
-        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
-      );
-      // On a live API 33+ process the reactApplicationContext resources may not
-      // have processed the configuration change yet, so localizedContext must
-      // read the CURRENT locale straight from LocaleManager every render and
-      // build a local ConfigurationContext — never return the possibly stale
-      // process context unchanged.
-      expect(src).toMatch(/LocaleManager/);
-      expect(src).toMatch(/applicationLocales/);
-      expect(src).toMatch(/systemLocales/);
-      expect(src).toMatch(/createConfigurationContext/);
-      // Must NOT short-circuit to the original (possibly stale) process context.
-      expect(src).not.toMatch(
-        /fun localizedContext\(context: Context\): Context \{\s*if \(isNativeAppLanguageSupported\(\)\) return context/,
-      );
-      expect(src).not.toMatch(/if \(isNativeAppLanguageSupported\(\)\) return context/);
-      // applicationLocales wins; empty applicationLocales falls back to system.
-      expect(src).toMatch(/appLocales != null && !appLocales\.isEmpty/);
-      expect(src).toMatch(/appLocales\[0\]/);
-      expect(src).toMatch(/systemLocales != null && !systemLocales\.isEmpty/);
-      expect(src).toMatch(/systemLocales\[0\]/);
-    });
-
-    it('clears any stale override on Android 13+ for every request (en/pl/system)', () => {
-      const src = fs.readFileSync(
-        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
-      );
-      // setOverride on API 33+ removes the key for en, pl AND null — the
-      // actual locale is already controlled by LocaleManager.
-      expect(src).toMatch(/if \(isNativeAppLanguageSupported\(\) \|\| normalized == null\) \{\s*editor\.remove\(KEY_LOCALE\)/);
-    });
-
-    it('keeps the API <=32 override behavior for en/pl', () => {
-      const src = fs.readFileSync(
-        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
-      );
-      // On API <=32 the override is read from the dedicated namespace and
-      // applied through a localized configuration context.
-      expect(src).toMatch(/getString\(KEY_LOCALE, null\)/);
-      expect(src).toMatch(/Locale\.forLanguageTag\("en"\)/);
-      expect(src).toMatch(/Locale\.forLanguageTag\("pl"\)/);
-      expect(src).toMatch(/putString\(KEY_LOCALE, normalized\)/);
-    });
-
-    it('ignores a stale <=12 preference on API 33+ (OS-upgrade safety)', () => {
-      const src = fs.readFileSync(
-        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
-      );
-      // override() short-circuits to null before reading the stored value on
-      // API 33+, so a persisted "pl" from an Android 12 install is harmless
-      // when the device later runs Android 13 with a native English locale.
-      expect(src).toMatch(/fun override\(context: Context\): Locale\? \{\s*if \(isNativeAppLanguageSupported\(\)\) return null/);
-    });
-
-    it('exposes the override via the native bridge for the JS hook', () => {
+    it('prepares preference and effective language atomically before reload', () => {
       const moduleSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'CalorieWidgetModule.kt.tmpl'),
         'utf8',
       );
-      expect(moduleSrc).toMatch(/fun setWidgetLocale\(locale: String\?, promise: Promise\)/);
-      expect(moduleSrc).toMatch(/WidgetLocale\.setOverride\(ctx, locale\)/);
+      expect(moduleSrc).toMatch(/fun prepareWidgetLocale\(/);
+      expect(moduleSrc).toMatch(/preference: String/);
+      expect(moduleSrc).toMatch(/effectiveLanguage: String/);
+      expect(moduleSrc).toMatch(/WidgetLocale\.prepareWidgetLocale\(ctx, preference, effectiveLanguage\)/);
+      expect(moduleSrc).not.toMatch(/prepareWidgetLocale[\s\S]*?\.apply\(\)/);
+
+      const bridge = fs.readFileSync(
+        path.join(__dirname, '../../src/services/CalorieWidgetBridge.ts'),
+        'utf8',
+      );
+      expect(bridge).toMatch(/prepareWidgetLocale\(/);
+      expect(bridge).toMatch(/effectiveLanguage/);
+    });
+
+    it('resolves the render cache before LocaleManager on Android 13+', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
+        'utf8',
+      );
+      const renderContextIndex = src.indexOf('fun localizedContext(context: Context): Context');
+      const cacheIndex = src.indexOf('effectiveRenderLocale(context)', renderContextIndex);
+      const platformIndex = src.indexOf('currentPlatformLanguage(context)', renderContextIndex);
+      expect(renderContextIndex).toBeGreaterThan(-1);
+      expect(cacheIndex).toBeGreaterThan(renderContextIndex);
+      expect(platformIndex).toBeGreaterThan(cacheIndex);
+      expect(src).toMatch(/applicationLocales/);
+      expect(src).toMatch(/systemLocales/);
+      expect(src).toMatch(/createConfigurationContext\(config\)/);
+      expect(src).not.toMatch(/if \(isNativeAppLanguageSupported\(\)\) return context/);
+    });
+
+    it('keeps API <=32 override behavior and removes the API 33 cache there', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
+        'utf8',
+      );
+      expect(src).toMatch(/override\(context\)/);
+      expect(src).toMatch(/editor\.remove\(KEY_EFFECTIVE_RENDER_LOCALE\)/);
+      expect(src).toMatch(/editor\.remove\(KEY_LOCALE\)/);
+      expect(src).toMatch(/editor\.putString\(KEY_LOCALE, normalizedPreference\)/);
+      expect(src).toMatch(/Locale\.forLanguageTag\("en"\)/);
+      expect(src).toMatch(/Locale\.forLanguageTag\("pl"\)/);
+    });
+
+    it('refreshes the platform cache before LOCALE_CHANGED updateAll', () => {
+      for (const receiver of ['CalorieWidgetReceiver.kt.tmpl', 'MacroWidgetReceiver.kt.tmpl']) {
+        const src = fs.readFileSync(path.join(KOTLIN_ROOT, receiver), 'utf8');
+        const refreshIndex = src.indexOf('refreshEffectiveRenderLocaleFromPlatform(context)');
+        const updateIndex = src.indexOf('glanceAppWidget.updateAll(context)', refreshIndex);
+        expect(refreshIndex).toBeGreaterThan(-1);
+        expect(updateIndex).toBeGreaterThan(refreshIndex);
+      }
+    });
+
+    it('exposes prepareWidgetLocale through the native bridge', () => {
+      const moduleSrc = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'CalorieWidgetModule.kt.tmpl'),
+        'utf8',
+      );
+      expect(moduleSrc).toMatch(/fun prepareWidgetLocale\(/);
+      expect(moduleSrc).toMatch(/WidgetLocale\.prepareWidgetLocale\(ctx, preference, effectiveLanguage\)/);
     });
   });
 

@@ -7,52 +7,27 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { CalorieWidgetBridge } from '../services/CalorieWidgetBridge';
 import { addLog } from '../services/LogService';
 
-/**
- * The exact state the widget layer was last fully synced to. Dedupe only
- * against a state whose override write/remove AND both widget reloads
- * succeeded — a failure leaves the previous value in place so the next signal
- * retries the whole flow.
- */
 type WidgetSyncState = {
   preference: LanguagePreference;
   effectiveLanguage: 'en' | 'pl';
 };
 
 /**
- * Keeps the Android Glance widgets in sync with the app language model.
+ * Keeps Android Glance widgets synchronized with the app language model.
  *
- * Glance is a separate native surface. The widget-only locale override
- * (WidgetLocale.kt) is only relevant on Android 12 and below, where the
- * explicit app language is local to the RN app (i18next/Zustand) and Android
- * resources would not follow it automatically:
+ * On Android 13+ LocaleManager/PR3 remains authoritative. The native bridge
+ * also receives the effective i18next language and commits it as a rendering
+ * cache before reload. That cache is not a preference or locale authority; it
+ * only bridges the live-process configuration-change window deterministically.
+ * Android <=12 continues to use the widget-only en/pl override.
  *
- *   Android 13+: LocaleManager/native resource context is authoritative; the
- *     bridge call only clears any stale widget-only override (e.g. one
- *     persisted before an OS upgrade), it never persists one.
- *   Android <=12: explicit en/pl uses the widget-only locale override so Glance
- *     renders in the app-selected language without AppCompat.
- *   system: no widget-only override anywhere.
- *
- * Both signals trigger a sync:
- *   1. `languagePreference` changes (explicit -> system must clear the
- *      override even when the effective i18n language stays the same);
- *   2. effective i18n language changes (e.g. device language change with
- *      `system` preference).
- *
- * The override write/remove happens first; a failure rejects and stays
- * retryable. Reloads run independently: a failure in one widget never blocks
- * the other, never rejects out of the hook, and never marks the state applied,
- * so a later signal retries the failed widget too.
+ * Runs are serialized and deduped by {preference, effectiveLanguage}. Locale
+ * preparation must complete before either widget reload. Any preparation or
+ * partial reload failure leaves the state unapplied so a later signal retries.
  */
 export function useWidgetLanguageRefresh(): void {
   const languagePreference = useAppPreferencesStore((s) => s.languagePreference);
   const lastAppliedRef = useRef<WidgetSyncState | null>(null);
-  // Serializes sync runs so a later preference change can never lose to an
-  // in-flight write (two overlapping runs could otherwise leave the native
-  // override in the older language while the ref claims the newer one, with no
-  // retry path because the dedupe check would then short-circuit). Each queued
-  // run recomputes the desired state when it actually executes, so the last run
-  // always lands on the newest preference + effective language.
   const inFlightRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
@@ -73,11 +48,12 @@ export function useWidgetLanguageRefresh(): void {
       }
 
       try {
-        await CalorieWidgetBridge.setWidgetLocale(
-          desired.preference === 'system' ? null : desired.preference,
+        await CalorieWidgetBridge.prepareWidgetLocale(
+          desired.preference,
+          desired.effectiveLanguage,
         );
       } catch {
-        void addLog('[useWidgetLanguageRefresh] Widget locale override write failed', 'ERROR');
+        void addLog('[useWidgetLanguageRefresh] Widget locale preparation failed', 'ERROR');
         return;
       }
 
@@ -105,8 +81,6 @@ export function useWidgetLanguageRefresh(): void {
       inFlightRef.current = inFlightRef.current.then(runSync, runSync);
     };
 
-    // Cold start: apply the persisted preference to already-placed instances
-    // that may have been rendered before the language state was set.
     syncWidgets();
 
     const onLanguageChanged = () => {

@@ -77,18 +77,16 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
         }
     }
 
-    /**
-     * Persists ("en"/"pl") or removes (null) the widget-only locale override
-     * used by Glance on Android <=12, where Android resources do not follow
-     * the RN-local app language. Values are validated inside WidgetLocale; a
-     * failed write rejects so the JS hook stays retryable.
-     */
     @ReactMethod
-    fun setWidgetLocale(locale: String?, promise: Promise) {
+    fun prepareWidgetLocale(
+        preference: String,
+        effectiveLanguage: String,
+        promise: Promise,
+    ) {
         val ctx = reactApplicationContext
         moduleScope.launch {
             try {
-                WidgetLocale.setOverride(ctx, locale)
+                WidgetLocale.prepareWidgetLocale(ctx, preference, effectiveLanguage)
                 promise.resolve(null)
             } catch (e: Exception) {
                 promise.reject("E_WRITE_FAILED", e)

@@ -41,6 +41,7 @@ class CalorieWidgetReceiver : GlanceAppWidgetReceiver() {
             val pending = goAsync()
             CoroutineScope(Dispatchers.Default).launch {
                 try {
+                    WidgetLocale.refreshEffectiveRenderLocaleFromPlatform(context)
                     glanceAppWidget.updateAll(context)
                 } finally {
                     pending.finish()

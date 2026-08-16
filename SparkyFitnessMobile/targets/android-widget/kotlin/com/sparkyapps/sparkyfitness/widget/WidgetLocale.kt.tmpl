@@ -8,56 +8,131 @@ import java.text.NumberFormat
 import java.util.Locale
 
 /**
- * Widget-only locale override, kept in a dedicated SharedPreferences namespace
- * on purpose — it never touches the RN app preference persistence format.
+ * Android widget locale coordination.
  *
- * Platform contract:
- *   Android 13+ (API 33+): the platform per-app language
- *   (android.app.LocaleManager / applicationLocales, final PR3) is the
- *   authoritative source of the app language. A widget-only override is NEVER
- *   applied here and any stale value persisted by an older OS/install is
- *   cleared on write. On every render we read the CURRENT locale straight from
- *   LocaleManager and build a local ConfigurationContext. This is what makes a
- *   language change (in-app via LocaleManager, or out-of-app via Android
- *   Settings / HyperOS App language) win even while the app process is alive —
- *   the process Context may not have processed the configuration change yet,
- *   so we never trust reactApplicationContext.resources.configuration on
- *   API 33+; we resolve LocaleManager.applicationLocales (falling back to the
- *   system locale when empty) instead.
- *   Android 12 and below (API <=32): the explicit app language is local to the
- *   RN app (i18next/Zustand), so Android resources would NOT follow it
- *   automatically. The override lets the widgets render in the app-selected
- *   language without reintroducing AppCompat and without calling the PR3
- *   native app-language module.
+ * KEY_LOCALE is the user/widget override and is used only on Android <=12,
+ * where the RN app language does not automatically change Android resources.
  *
- * Semantics:
- *   "en"    -> force English widget resources (API <=32 only)
- *   "pl"    -> force Polish widget resources (API <=32 only)
- *   absent  -> follow the system/native resource locale
- *
- * On API 33+ every request (en / pl / system) clears the widget override: the
- * actual locale is already controlled by LocaleManager, so native App Language
- * state is never duplicated into widget SharedPreferences.
+ * KEY_EFFECTIVE_RENDER_LOCALE is different: on Android 13+ it is a short-lived
+ * synchronized rendering cache, not a user preference or locale authority.
+ * LocaleManager/PR3 remains authoritative. The cache only bridges the
+ * configuration-change window for Glance rendering after the app has already
+ * applied a language change through i18next, before the live process Context
+ * necessarily reflects that change.
  */
 object WidgetLocale {
 
     private const val PREFS_NAME = "SparkyWidgetLocale"
     private const val KEY_LOCALE = "widgetLocale"
+    private const val KEY_EFFECTIVE_RENDER_LOCALE = "effectiveRenderLocale"
+
+    private val SUPPORTED_LOCALES = setOf("en", "pl")
+    private val SUPPORTED_PREFERENCES = setOf("system", "en", "pl")
 
     private fun isNativeAppLanguageSupported(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
-    /**
-     * Current override ("en"/"pl") or null when the widget follows the system.
-     * Never returns an override on Android 13+: the native LocaleManager is
-     * authoritative, so a stale <=12 preference is harmless after an OS
-     * upgrade.
-     */
+    private fun preferences(context: Context) =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    /** Current explicit widget override, only meaningful on Android <=12. */
     fun override(context: Context): Locale? {
         if (isNativeAppLanguageSupported()) return null
-        val code = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getString(KEY_LOCALE, null)
-        return when (code) {
+        return localeFromCode(preferences(context).getString(KEY_LOCALE, null))
+    }
+
+    /**
+     * Atomically prepares the locale state before a widget reload.
+     *
+     * API <=32:
+     *   system removes KEY_LOCALE; en/pl store the widget-only override.
+     *   The API 33 render cache is removed because it is not used there.
+     * API 33+:
+     *   any stale KEY_LOCALE is removed and effectiveLanguage is stored only as
+     *   the deterministic rendering cache. It is never a preference authority.
+     */
+    fun prepareWidgetLocale(
+        context: Context,
+        preference: String?,
+        effectiveLanguage: String?,
+    ) {
+        val normalizedPreference = preference?.trim()?.lowercase(Locale.ROOT) ?: "system"
+        val normalizedEffective = effectiveLanguage
+            ?.trim()
+            ?.lowercase(Locale.ROOT)
+            ?: throw IllegalArgumentException("Effective widget language is required")
+
+        if (normalizedPreference !in SUPPORTED_PREFERENCES) {
+            throw IllegalArgumentException("Only system, en, or pl are supported")
+        }
+        if (normalizedEffective !in SUPPORTED_LOCALES) {
+            throw IllegalArgumentException("Effective widget language must be en or pl")
+        }
+
+        val editor = preferences(context).edit()
+        if (isNativeAppLanguageSupported()) {
+            editor.remove(KEY_LOCALE)
+            editor.putString(KEY_EFFECTIVE_RENDER_LOCALE, normalizedEffective)
+        } else {
+            editor.remove(KEY_EFFECTIVE_RENDER_LOCALE)
+            if (normalizedPreference == "system") {
+                editor.remove(KEY_LOCALE)
+            } else {
+                editor.putString(KEY_LOCALE, normalizedPreference)
+            }
+        }
+
+        if (!editor.commit()) {
+            throw IllegalStateException("Failed to persist widget locale state")
+        }
+    }
+
+    /**
+     * Refreshes the API 33+ rendering cache from the platform for broadcasts
+     * originating outside the RN app. Returns false instead of crashing a
+     * receiver when LocaleManager cannot provide a locale; in that case the
+     * stale cache is removed and rendering falls back to nativeEffectiveLocale.
+     */
+    fun refreshEffectiveRenderLocaleFromPlatform(context: Context): Boolean {
+        if (!isNativeAppLanguageSupported()) {
+            preferences(context).edit().remove(KEY_EFFECTIVE_RENDER_LOCALE).commit()
+            return false
+        }
+
+        val effective = currentPlatformLanguage(context)
+        val editor = preferences(context).edit()
+        return if (effective != null) {
+            editor.putString(KEY_EFFECTIVE_RENDER_LOCALE, effective)
+            editor.commit()
+        } else {
+            editor.remove(KEY_EFFECTIVE_RENDER_LOCALE).commit()
+            false
+        }
+    }
+
+    /** Reads only the API 33+ synchronized rendering cache. */
+    private fun effectiveRenderLocale(context: Context): Locale? {
+        if (!isNativeAppLanguageSupported()) return null
+        return localeFromCode(preferences(context).getString(KEY_EFFECTIVE_RENDER_LOCALE, null))
+    }
+
+    private fun currentPlatformLanguage(context: Context): String? {
+        if (!isNativeAppLanguageSupported()) return null
+        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
+        val appLocales = manager.applicationLocales
+        val platformLocale = if (appLocales != null && !appLocales.isEmpty) {
+            appLocales[0]
+        } else {
+            val systemLocales = manager.systemLocales
+            if (systemLocales != null && !systemLocales.isEmpty) systemLocales[0] else null
+        }
+        return platformLocale?.language?.lowercase(Locale.ROOT)?.let { language ->
+            if (language == "pl") "pl" else "en"
+        }
+    }
+
+    private fun localeFromCode(code: String?): Locale? {
+        return when (code?.lowercase(Locale.ROOT)) {
             "en" -> Locale.forLanguageTag("en")
             "pl" -> Locale.forLanguageTag("pl")
             else -> null
@@ -65,65 +140,15 @@ object WidgetLocale {
     }
 
     /**
-     * Persists ("en"/"pl") or removes (null) the widget override on API <=32.
-     * On API 33+ the request clears any stale override instead of persisting:
-     * the native LocaleManager already controls the app language, and
-     * duplicating it in widget SharedPreferences could leave a widget stuck in
-     * an old language after an out-of-app App Language change. Rejects any
-     * other value so the bridge can never persist an unknown locale.
-     */
-    fun setOverride(context: Context, locale: String?) {
-        val normalized = locale?.trim()?.lowercase(Locale.ROOT)?.ifEmpty { null }
-        if (normalized != null && normalized !in SUPPORTED_LOCALES) {
-            throw IllegalArgumentException("Only en, pl, or null are supported")
-        }
-        val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-        if (isNativeAppLanguageSupported() || normalized == null) {
-            editor.remove(KEY_LOCALE)
-        } else {
-            editor.putString(KEY_LOCALE, normalized)
-        }
-        if (!editor.commit()) {
-            throw IllegalStateException("Failed to persist widget locale override")
-        }
-    }
-
-    /**
-     * Current locale for widget resources on this render. On API 33+ this is
-     * the LocaleManager application locale (or system locale when empty), read
-     * fresh every render — never the possibly-stale process Context locale,
-     * which may not have processed the configuration change yet while the app
-     * is alive. Only call on API 33+: the only call site guards on
-     * isNativeAppLanguageSupported() first (API lint would flag a direct call
-     * on older levels).
-     */
-    private fun nativeEffectiveLocale(context: Context): Locale? {
-        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
-        val appLocales = manager.applicationLocales
-        if (appLocales != null && !appLocales.isEmpty) {
-            return appLocales[0]
-        }
-        val systemLocales = manager.systemLocales
-        if (systemLocales != null && !systemLocales.isEmpty) {
-            return systemLocales[0]
-        }
-        return null
-    }
-
-    /**
-     * Returns a Context whose resources and number formatting resolve in the
-     * override locale on API <=32, or in the LocaleManager-resolved locale on
-     * API 33+. On API 33+ the locale is read fresh from LocaleManager each
-     * render (application locale, else system locale, else the process
-     * configuration), so the widget language follows the platform immediately
-     * — in-app and out-of-app — without restarting the app. The override is
-     * strictly local to widget rendering: it never mutates the global locale,
-     * the system resources singleton, or the app process configuration.
+     * Resolves the locale for this render. API 33+ uses the synchronized render
+     * cache first, then the platform as a fallback. API <=32 uses only the
+     * explicit widget override and otherwise follows the context/system.
      */
     fun localizedContext(context: Context): Context {
         val locale = if (isNativeAppLanguageSupported()) {
-            nativeEffectiveLocale(context) ?: return context
+            effectiveRenderLocale(context)
+                ?: currentPlatformLanguage(context)?.let(::localeFromCode)
+                ?: return context
         } else {
             override(context) ?: return context
         }
@@ -131,23 +156,14 @@ object WidgetLocale {
         config.setLocale(locale)
         return context.createConfigurationContext(config)
     }
-
-    private val SUPPORTED_LOCALES = setOf("en", "pl")
 }
 
-/**
- * Locale-aware integer formatting shared by every widget surface. Both widgets
- * render the same values (e.g. remaining calories), so one rounding rule keeps
- * them consistent on the home screen.
- */
+/** Locale-aware integer formatting shared by every widget surface. */
 fun currentWidgetLocale(context: Context): Locale {
     val locales = context.resources.configuration.locales
     return if (locales.isEmpty) Locale.getDefault() else locales[0]
 }
 
 fun formatWidgetInt(context: Context, value: Long): String {
-    // Formatting only — locale-aware grouping/separators. Business rounding
-    // stays with each caller (Calorie truncates, Macro rounds), preserving the
-    // pre-localization behavior.
     return NumberFormat.getIntegerInstance(currentWidgetLocale(context)).format(value)
 }
