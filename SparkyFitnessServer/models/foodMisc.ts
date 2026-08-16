@@ -383,24 +383,37 @@ async function updateFoodEntriesSnapshot(
 ): Promise<{ rowCount: number; replacedEntryImages: string[] }> {
   const client = await getClient(userId); // User-specific operation
   try {
-    // Collected before the UPDATE overwrites them. Scoped to the same rows the
-    // UPDATE touches, and to diary-set paths only — an inherited path points at
-    // the food's own upload directory and must never be unlinked from here.
+    // The read and the overwrite share one transaction, and the read takes row
+    // locks. Without them a diary photo saved between the two statements would
+    // be overwritten by the UPDATE while going unreported here, leaking its
+    // file: nothing would ever reference it again, and nothing would delete it.
+    await client.query('BEGIN');
+
+    // Scoped to the same rows the UPDATE touches, and to diary-set paths only —
+    // an inherited path points at the food's own upload directory and must
+    // never be unlinked from here.
     let replacedEntryImages: string[] = [];
     if (syncImages) {
+      // The whole column, not the unnested paths: FOR UPDATE cannot be applied
+      // to a set-returning function or a DISTINCT query, so the rows are locked
+      // as they are and filtered below.
       const existing = await client.query(
-        `SELECT DISTINCT img
-           FROM food_entries,
-                jsonb_array_elements_text(food_entries.images) AS img
+        `SELECT images
+           FROM food_entries
           WHERE user_id = $1
             AND food_id = $2
             AND variant_id = $3
-            AND img LIKE '/uploads/food_entries/%'`,
+            FOR UPDATE`,
         [userId, foodId, variantId]
       );
-      replacedEntryImages = (existing.rows as { img: string }[]).map((row) =>
-        String(row.img)
-      );
+      const seen = new Set<string>();
+      for (const row of existing.rows as { images: unknown }[]) {
+        for (const image of Array.isArray(row.images) ? row.images : []) {
+          const path = String(image);
+          if (path.startsWith('/uploads/food_entries/')) seen.add(path);
+        }
+      }
+      replacedEntryImages = [...seen];
     }
 
     const result = await client.query(
@@ -466,6 +479,10 @@ async function updateFoodEntriesSnapshot(
         ...(syncImages ? [JSON.stringify(newSnapshotData.images ?? [])] : []),
       ]
     );
+    // Committed before the caller unlinks anything: a file deleted for a
+    // transaction that then rolled back would be gone with its row intact.
+    await client.query('COMMIT');
+
     return {
       rowCount: result.rowCount ?? 0,
       // Only report photos that actually stopped being referenced.
@@ -473,6 +490,11 @@ async function updateFoodEntriesSnapshot(
         (image) => !(newSnapshotData.images ?? []).includes(image)
       ),
     };
+  } catch (error) {
+    // Best-effort: the connection may already be unusable, and the original
+    // error is the one worth surfacing.
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
   } finally {
     client.release();
   }

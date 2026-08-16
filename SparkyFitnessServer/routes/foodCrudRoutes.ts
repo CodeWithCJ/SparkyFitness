@@ -1260,6 +1260,12 @@ router.post('/update-snapshot', authenticate, async (req, res, next) => {
   if (!foodId) {
     return res.status(400).json({ error: 'foodId is required.' });
   }
+  // Rejected rather than coerced: every non-empty string is truthy, so a
+  // stringly-typed `"false"` would silently select the path that overwrites
+  // and deletes diary-specific photos.
+  if (syncImages !== undefined && typeof syncImages !== 'boolean') {
+    return res.status(400).json({ error: 'syncImages must be a boolean.' });
+  }
   try {
     const result = await foodService.updateFoodEntriesSnapshot(
       req.userId,
@@ -1267,7 +1273,7 @@ router.post('/update-snapshot', authenticate, async (req, res, next) => {
       variantId,
       // Defaults to true so a client that predates this flag keeps syncing
       // photos, which is what it has always done.
-      syncImages !== false
+      syncImages ?? true
     );
     res.status(200).json(result);
   } catch (error) {

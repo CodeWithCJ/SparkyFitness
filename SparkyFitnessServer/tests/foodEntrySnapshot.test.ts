@@ -50,15 +50,26 @@ describe('foodRepository snapshot functions', () => {
       custom_nutrients: { zinc: '1.3mg' },
       ...overrides,
     });
-    // With syncImages on, the repository first SELECTs the diary-set photos it
-    // is about to overwrite so the caller can unlink them, then runs the
-    // UPDATE. These helpers keep the two calls straight.
-    const mockSelectThenUpdate = (rowCount = 1, replaced: string[] = []) => {
+    // With syncImages on the repository runs four statements: BEGIN, a locking
+    // SELECT of the photos it is about to overwrite, the UPDATE, then COMMIT.
+    // These helpers keep them straight.
+    const mockSelectThenUpdate = (
+      rowCount = 1,
+      entryImages: string[][] = []
+    ) => {
       mockClient.query
-        .mockResolvedValueOnce({ rows: replaced.map((img) => ({ img })) })
-        .mockResolvedValueOnce({ rowCount });
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({
+          rows: entryImages.map((images) => ({ images })),
+        })
+        .mockResolvedValueOnce({ rowCount })
+        .mockResolvedValueOnce({}); // COMMIT
     };
-    const updateCall = () => mockClient.query.mock.calls[1];
+    const sqlCalls = () =>
+      mockClient.query.mock.calls.filter(
+        ([sql]: [string]) => !['BEGIN', 'COMMIT', 'ROLLBACK'].includes(sql)
+      );
+    const updateCall = () => sqlCalls()[1];
 
     it('should execute UPDATE with all 27 params in correct order and return rowCount', async () => {
       const snapshot = makeSnapshotData();
@@ -123,12 +134,55 @@ describe('foodRepository snapshot functions', () => {
       expect(params[26]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
     });
 
+    it('reads and overwrites in one transaction, locking the rows', async () => {
+      // A diary photo saved between the read and the UPDATE would otherwise be
+      // overwritten without being reported, leaking its file forever.
+      mockSelectThenUpdate(1);
+
+      await foodRepository.updateFoodEntriesSnapshot(
+        userId,
+        foodId,
+        variantId,
+        makeSnapshotData({ images: ['/uploads/foods/f1/new.jpg'] }),
+        true
+      );
+
+      const statements = mockClient.query.mock.calls.map(([sql]: [string]) =>
+        sql.trim().split('\n')[0].trim()
+      );
+      expect(statements[0]).toBe('BEGIN');
+      expect(statements[statements.length - 1]).toBe('COMMIT');
+      expect(sqlCalls()[0][0]).toContain('FOR UPDATE');
+    });
+
+    it('rolls back and rethrows when the update fails', async () => {
+      mockClient.query
+        .mockResolvedValue({}) // ROLLBACK and anything after
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [] })
+        .mockRejectedValueOnce(new Error('DB error'));
+
+      await expect(
+        foodRepository.updateFoodEntriesSnapshot(
+          userId,
+          foodId,
+          variantId,
+          makeSnapshotData(),
+          true
+        )
+      ).rejects.toThrow('DB error');
+
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.release).toHaveBeenCalledTimes(1);
+    });
+
     it('returns the diary-set photos it replaced so they can be unlinked', async () => {
       // Nothing else references /uploads/food_entries/<entryId>/..., so an
-      // unreported path would sit on disk forever.
+      // unreported path would sit on disk forever. Inherited paths belong to
+      // the food and must never be unlinked from here.
       mockSelectThenUpdate(2, [
-        '/uploads/food_entries/e1/custom.jpg',
-        '/uploads/food_entries/e2/custom.jpg',
+        ['/uploads/food_entries/e1/custom.jpg', '/uploads/foods/f1/old.jpg'],
+        ['/uploads/food_entries/e2/custom.jpg'],
       ]);
 
       const result = await foodRepository.updateFoodEntriesSnapshot(
@@ -143,15 +197,29 @@ describe('foodRepository snapshot functions', () => {
         '/uploads/food_entries/e1/custom.jpg',
         '/uploads/food_entries/e2/custom.jpg',
       ]);
-      // Scoped to diary-set paths: an inherited path belongs to the food and
-      // must never be unlinked from here.
-      expect(mockClient.query.mock.calls[0][0]).toContain(
-        "img LIKE '/uploads/food_entries/%'"
+    });
+
+    it('reports each replaced photo once even when entries share it', async () => {
+      mockSelectThenUpdate(2, [
+        ['/uploads/food_entries/e1/custom.jpg'],
+        ['/uploads/food_entries/e1/custom.jpg'],
+      ]);
+
+      const result = await foodRepository.updateFoodEntriesSnapshot(
+        userId,
+        foodId,
+        variantId,
+        makeSnapshotData({ images: [] }),
+        true
       );
+
+      expect(result.replacedEntryImages).toEqual([
+        '/uploads/food_entries/e1/custom.jpg',
+      ]);
     });
 
     it('never reports a replaced photo that survives in the new list', async () => {
-      mockSelectThenUpdate(1, ['/uploads/food_entries/e1/keep.jpg']);
+      mockSelectThenUpdate(1, [['/uploads/food_entries/e1/keep.jpg']]);
 
       const result = await foodRepository.updateFoodEntriesSnapshot(
         userId,
@@ -178,9 +246,10 @@ describe('foodRepository snapshot functions', () => {
         false
       );
 
-      // No pre-SELECT either: nothing is being replaced.
-      expect(mockClient.query).toHaveBeenCalledTimes(1);
-      const [sql, params] = mockClient.query.mock.calls[0];
+      // No pre-SELECT either: nothing is being replaced, so there is nothing
+      // to read or lock.
+      expect(sqlCalls()).toHaveLength(1);
+      const [sql, params] = sqlCalls()[0];
       expect(sql).not.toContain('images =');
       expect(params).toHaveLength(26);
       expect(result.replacedEntryImages).toEqual([]);
