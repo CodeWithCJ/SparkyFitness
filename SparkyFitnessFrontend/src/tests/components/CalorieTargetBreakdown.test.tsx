@@ -21,12 +21,22 @@ jest.mock('@/contexts/PreferencesContext', () => ({
 
 const defaultProps = {
   previewResult: {
+    target: 2194,
     baselineTdee: 2194,
     appliedDeficit: 0,
     rmr: 1800,
+    isBelowRmr: false,
+    isBelowAbsoluteFloor: false,
     absoluteFloorValue: 1500,
     finalTarget: 2194,
     insufficientHistory: false,
+    projectedWeeklyChangeKg: 0,
+    projectedWeeklyChangePercent: 0,
+    isGainGoal: false,
+    safetyZone: 'green' as const,
+    wasClampedToFloor: false,
+    clampedFloorSource: null,
+    maxFeasibleDeficitPercent: null,
   },
   adaptiveTdeeData: {
     tdee: 2194,
@@ -101,5 +111,63 @@ describe('CalorieTargetBreakdown baseline label', () => {
       />
     );
     expect(screen.getByText('Baseline (Manual Goal):')).toBeInTheDocument();
+  });
+});
+
+describe('CalorieTargetBreakdown goal adjustment line', () => {
+  // appliedDeficit and the adjustment percentage are both signed, so rendering
+  // them raw double-printed the sign for gain modes ("Deficit (--10%) = --200").
+  const gainProps = {
+    ...defaultProps,
+    goalMode: 'lean_bulk',
+    previewResult: {
+      ...defaultProps.previewResult,
+      appliedDeficit: -219,
+      finalTarget: 2413,
+      isGainGoal: true,
+    },
+  };
+
+  it('labels a gain mode as a surplus with a single + sign', () => {
+    render(<CalorieTargetBreakdown {...gainProps} />);
+    expect(screen.getByText('Goal Surplus:')).toBeInTheDocument();
+    expect(
+      screen.getByText(/lean_bulk Surplus \(\+10%\) = \+219 kcal/)
+    ).toBeInTheDocument();
+  });
+
+  it('never double-prints a sign for a gain mode', () => {
+    const { container } = render(<CalorieTargetBreakdown {...gainProps} />);
+    expect(container.textContent).not.toMatch(/--|\+-|-\+/);
+  });
+
+  it('labels a manual surplus as a surplus', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...gainProps}
+        goalMode="manual"
+        goalModeCustomPercentage={15}
+      />
+    );
+    expect(screen.getByText('Goal Surplus:')).toBeInTheDocument();
+    expect(screen.getByText(/manual Surplus \(\+15%\)/)).toBeInTheDocument();
+  });
+
+  it('still labels a deficit mode as a deficit', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        goalMode="cut"
+        previewResult={{
+          ...defaultProps.previewResult,
+          appliedDeficit: 329,
+          finalTarget: 1865,
+        }}
+      />
+    );
+    expect(screen.getByText('Goal Deficit:')).toBeInTheDocument();
+    expect(
+      screen.getByText(/cut Deficit \(-15%\) = -329 kcal/)
+    ).toBeInTheDocument();
   });
 });

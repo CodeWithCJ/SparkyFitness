@@ -7,7 +7,11 @@ import preferenceRepository from '../models/preferenceRepository.js';
 import bmrService from './bmrService.js';
 import { log } from '../config/logging.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
-import { todayInZone, dayToPickerDate } from '@workspace/shared';
+import {
+  todayInZone,
+  dayToPickerDate,
+  ENERGY_DENSITY_KCAL_PER_KG,
+} from '@workspace/shared';
 const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
 interface UserProfile {
   date_of_birth?: string | null;
@@ -268,9 +272,11 @@ function computeAdaptiveTdeeFromData(
   const daysInWindow = calculationWindow.length;
   const dailyWeightChange = weightChange / daysInWindow;
 
-  // TDEE = (Avg_Daily_Intake) - (Avg_Daily_Weight_Change_kg * 6000)
-  // Human body tissue change mix (fat + lean/water) is approx 6000 kcal per kg
-  let adaptiveTdee = avgDailyIntake - dailyWeightChange * 6000;
+  // TDEE = (Avg_Daily_Intake) - (Avg_Daily_Weight_Change_kg * kcal_per_kg)
+  // Losing weight on a given intake means expenditure exceeded it, so a negative
+  // dailyWeightChange raises the estimate above intake.
+  let adaptiveTdee =
+    avgDailyIntake - dailyWeightChange * ENERGY_DENSITY_KCAL_PER_KG;
   // Safety Capping: +/- 500 kcal from BMR-based fallback
   const maxTdee = fallbackTdee + 500;
   const minTdee = Math.max(1200, fallbackTdee - 500);

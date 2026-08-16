@@ -8,7 +8,11 @@ import {
   computeExerciseCredited,
   computeCalorieProgress,
 } from '@/utils/calorieCalculations';
-import { computeCalorieTarget, getGoalModeDeficit } from '@workspace/shared';
+import {
+  computeCalorieTarget,
+  getGoalModeAdjustment,
+  isGainGoalMode,
+} from '@workspace/shared';
 
 // ---------------------------------------------------------------------------
 // ACTIVITY_MULTIPLIERS
@@ -247,19 +251,40 @@ describe('computeCalorieProgress', () => {
 });
 
 // ---------------------------------------------------------------------------
-// getGoalModeDeficit
+// getGoalModeAdjustment
 // ---------------------------------------------------------------------------
-describe('getGoalModeDeficit', () => {
+describe('getGoalModeAdjustment', () => {
   it('returns correct deficits for standard modes', () => {
-    expect(getGoalModeDeficit('maintain')).toBe(0.0);
-    expect(getGoalModeDeficit('recomp')).toBe(0.1);
-    expect(getGoalModeDeficit('cut')).toBe(0.15);
-    expect(getGoalModeDeficit('high_cut')).toBe(0.2);
+    expect(getGoalModeAdjustment('maintain')).toBe(0.0);
+    expect(getGoalModeAdjustment('recomp')).toBe(0.1);
+    expect(getGoalModeAdjustment('cut')).toBe(0.15);
+    expect(getGoalModeAdjustment('high_cut')).toBe(0.2);
   });
 
-  it('handles custom percentage in manual mode', () => {
-    expect(getGoalModeDeficit('manual', 12)).toBe(0.12);
-    expect(getGoalModeDeficit('manual', 45)).toBe(0.4); // capped at 40%
+  it('returns negative adjustments (surpluses) for gain modes', () => {
+    expect(getGoalModeAdjustment('lean_bulk')).toBe(-0.1);
+    expect(getGoalModeAdjustment('bulk')).toBe(-0.2);
+  });
+
+  // The stored user percentage is the OPPOSITE orientation to the returned
+  // adjustment: positive means "eat more" to the user, but the return value is
+  // positive-means-deficit so `baselineTdee * (1 - adjustment)` works directly.
+  it('treats a positive custom percentage as a surplus', () => {
+    expect(getGoalModeAdjustment('manual', 12)).toBe(-0.12);
+    expect(getGoalModeAdjustment('manual', 45)).toBe(-0.4); // capped at 40%
+  });
+
+  it('treats a negative custom percentage as a deficit, capped symmetrically', () => {
+    expect(getGoalModeAdjustment('manual', -12)).toBe(0.12);
+    expect(getGoalModeAdjustment('manual', -45)).toBe(0.4);
+  });
+
+  it('identifies gain goals', () => {
+    expect(isGainGoalMode('bulk')).toBe(true);
+    expect(isGainGoalMode('manual', 5)).toBe(true);
+    expect(isGainGoalMode('manual', -5)).toBe(false);
+    expect(isGainGoalMode('cut')).toBe(false);
+    expect(isGainGoalMode('maintain')).toBe(false);
   });
 });
 
@@ -374,5 +399,162 @@ describe('computeCalorieTarget', () => {
     expect(result.insufficientHistory).toBe(true);
     expect(result.appliedDeficit).toBe(0);
     expect(result.finalTarget).toBe(2160);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Weight gain (surplus) goals
+// ---------------------------------------------------------------------------
+describe('computeCalorieTarget with gain goals', () => {
+  const gainBase = {
+    calculationMethod: 'adaptive' as const,
+    customPercentage: 0,
+    bmr: 1800,
+    activityLevelMultiplier: 1.2,
+    adaptiveTdee: 2500,
+    adaptiveTdeeFallback: false,
+    adaptiveTdeeDaysOfData: 30,
+    weightKg: 80,
+    heightCm: 180,
+    age: 35,
+    gender: 'male' as const,
+    currentGoalCalories: 2500,
+  };
+
+  it('produces a target above the baseline for a lean bulk', () => {
+    const result = computeCalorieTarget({ ...gainBase, goalMode: 'lean_bulk' });
+
+    expect(result.isGainGoal).toBe(true);
+    expect(result.finalTarget).toBe(2750); // 2500 * (1 - -0.10)
+    expect(result.finalTarget).toBeGreaterThan(result.baselineTdee);
+    expect(result.appliedDeficit).toBe(-250); // negative means surplus
+  });
+
+  it('projects weight gain as a positive change', () => {
+    const result = computeCalorieTarget({ ...gainBase, goalMode: 'lean_bulk' });
+
+    // 250 kcal/day surplus * 7 / 6000 kcal per kg
+    expect(result.projectedWeeklyChangeKg).toBeCloseTo(0.2917, 3);
+    expect(result.projectedWeeklyChangeKg).toBeGreaterThan(0);
+    expect(result.projectedWeeklyChangePercent).toBeCloseTo(0.3646, 3);
+  });
+
+  it('still reports weight loss as a negative change', () => {
+    const result = computeCalorieTarget({ ...gainBase, goalMode: 'cut' });
+
+    expect(result.isGainGoal).toBe(false);
+    expect(result.projectedWeeklyChangeKg).toBeLessThan(0);
+  });
+
+  it('applies tighter safety thresholds to gain than to loss', () => {
+    // ~0.36%/week is green for loss but yellow for gain.
+    const gain = computeCalorieTarget({ ...gainBase, goalMode: 'lean_bulk' });
+    expect(gain.safetyZone).toBe('yellow');
+
+    const loss = computeCalorieTarget({
+      ...gainBase,
+      goalMode: 'manual',
+      customPercentage: -10,
+    });
+    expect(loss.projectedWeeklyChangePercent).toBeCloseTo(0.3646, 3);
+    expect(loss.safetyZone).toBe('green');
+  });
+
+  it('flags an aggressive surplus as red', () => {
+    const result = computeCalorieTarget({ ...gainBase, goalMode: 'bulk' });
+    expect(result.projectedWeeklyChangePercent).toBeGreaterThan(0.5);
+    expect(result.safetyZone).toBe('red');
+  });
+
+  it('never trips the safety floor for a surplus', () => {
+    const result = computeCalorieTarget({ ...gainBase, goalMode: 'bulk' });
+    expect(result.wasClampedToFloor).toBe(false);
+    expect(result.maxFeasibleDeficitPercent).toBeNull();
+  });
+
+  it('accepts a positive custom percentage as a manual surplus', () => {
+    const result = computeCalorieTarget({
+      ...gainBase,
+      goalMode: 'manual',
+      customPercentage: 15,
+    });
+    expect(result.isGainGoal).toBe(true);
+    expect(result.finalTarget).toBe(2875);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Safety floor reporting (the small-stature case)
+// ---------------------------------------------------------------------------
+describe('computeCalorieTarget safety floor reporting', () => {
+  // A small woman: measured TDEE 1400, so a 15% cut lands under the 1200 floor.
+  const smallBase = {
+    customPercentage: 0,
+    bmr: 1150,
+    activityLevelMultiplier: 1.2,
+    adaptiveTdee: 1400,
+    adaptiveTdeeFallback: false,
+    adaptiveTdeeDaysOfData: 30,
+    weightKg: 50,
+    heightCm: 150,
+    age: 35,
+    gender: 'female' as const,
+    currentGoalCalories: 1400,
+  };
+
+  it('reports the clamp instead of applying it silently', () => {
+    const result = computeCalorieTarget({
+      ...smallBase,
+      goalMode: 'cut',
+      calculationMethod: 'adaptive',
+    });
+
+    expect(result.target).toBe(1190); // what the user asked for
+    expect(result.finalTarget).toBe(1200); // what they actually get
+    expect(result.wasClampedToFloor).toBe(true);
+    expect(result.clampedFloorSource).toBe('absolute');
+  });
+
+  it('offers the largest deficit that still clears the floor', () => {
+    const result = computeCalorieTarget({
+      ...smallBase,
+      goalMode: 'cut',
+      calculationMethod: 'adaptive',
+    });
+
+    // 1 - 1200/1400 = 14.28%
+    expect(result.maxFeasibleDeficitPercent).toBeCloseTo(14.29, 1);
+  });
+
+  it('names RMR as the binding floor when it exceeds the absolute minimum', () => {
+    // A larger woman: RMR ~1682 sits well above the flat 1200 floor, so a 20%
+    // cut off a 2000 kcal TDEE is bound by her own metabolism, not the minimum.
+    const result = computeCalorieTarget({
+      ...smallBase,
+      weightKg: 90,
+      heightCm: 175,
+      age: 30,
+      adaptiveTdee: 2000,
+      currentGoalCalories: 2000,
+      goalMode: 'high_cut',
+      calculationMethod: 'adaptive',
+    });
+
+    expect(result.rmr).toBeGreaterThan(result.absoluteFloorValue);
+    expect(result.wasClampedToFloor).toBe(true);
+    expect(result.clampedFloorSource).toBe('rmr');
+    expect(result.finalTarget).toBe(result.rmr);
+  });
+
+  it('does not clamp under the manual method, leaving the warning flags to speak', () => {
+    const result = computeCalorieTarget({
+      ...smallBase,
+      goalMode: 'cut',
+      calculationMethod: 'manual',
+    });
+
+    expect(result.wasClampedToFloor).toBe(false);
+    expect(result.finalTarget).toBe(1190); // the user gets what they asked for
+    expect(result.isBelowAbsoluteFloor).toBe(true);
   });
 });

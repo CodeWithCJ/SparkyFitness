@@ -45,9 +45,15 @@ Uses height, weight, and age to estimate body fat:
 
 This setting determines **how physical activity changes your calorie budget** throughout the day:
 
-- **Adaptive TDEE:** Dynamically computes your metabolic expenditure by correlating your actual weight changes with your historical calorie intake over the last 35 days. _(Best for high-precision tracking)._
+- **Adaptive TDEE:** Dynamically computes your metabolic expenditure by correlating your actual weight changes with your historical calorie intake over the last 28 days. _(Best for high-precision tracking)._
   - **Expenditure (Adaptive TDEE):** On the Diary page, "Expenditure" represents your calculated Total Daily Energy Expenditure (TDEE). This is the baseline number from which your deficit/surplus is subtracted.
   - **Fallback Behavior:** If you have insufficient history (less than 14 days of weight and calorie data, or fewer than 7 days of calorie entries $\ge 200\text{ kcal}$), the system will use a fallback estimate based on the standard `BMR × Activity Multiplier` formula until enough data is collected.
+  - **The formula:** $\text{TDEE} = \text{Average Daily Calories} - (\text{Daily Weight Change in kg} \times 6{,}000\text{ kcal/kg})$.
+
+    The $6{,}000\text{ kcal/kg}$ term is an energy density — how many calories a kilogram of body weight represents — which is what lets a weight trend be converted into calories. If you ate $2{,}000$ kcal/day and lost $0.5$ kg over 14 days, that lost weight represents about $3{,}000$ kcal your body burned beyond what you ate, or $\sim214$ kcal/day, so your true expenditure was $\sim2{,}214$ kcal/day.
+
+    Weight lost or gained is never pure fat. Fat carries $\sim9{,}441\text{ kcal/kg}$ and lean tissue and water only $\sim1{,}816\text{ kcal/kg}$; $6{,}000$ reflects a typical blend of roughly $55\%$ fat to $45\%$ lean and water. This is a modelling constant and is not user-configurable — it is not something you can observe about yourself without a body composition scan, and a wrong value would skew every calorie target with no visible symptom.
+
 - **Dynamic Goal:** Increases your budget as you burn active calories or take steps (adds exercise directly back to your budget).
 - **Fixed Goal:** Your calorie target remains completely static, ignoring daily exercise.
 - **Percentage Earn-Back:** Adds back a custom percentage (e.g., $50\%$) of active calories burned to create a buffer against device calorie over-estimations.
@@ -60,15 +66,26 @@ This setting determines **how physical activity changes your calorie budget** th
 
 ## 4. Goal Mode & Caloric Deficits
 
-**Goal Mode** applies a body composition percentage-based deficit or maintenance target to your baseline maintenance:
+**Goal Mode** applies a body composition percentage-based adjustment to your baseline maintenance. The sign works the way you would expect: **positive adds calories, negative cuts them.**
 
-| Goal Mode              | Deficit Percentage    | Target Purpose                              |
-| :--------------------- | :-------------------- | :------------------------------------------ |
-| **Maintain**           | $0\%$                 | Weight maintenance                          |
-| **Body Recomposition** | $10\%$                | Gain muscle while losing fat simultaneously |
-| **Cut**                | $15\%$                | Steady fat loss                             |
-| **High Cut**           | $20\%$                | Aggressive fat loss                         |
-| **Manual**             | Custom ($0\% - 40\%$) | Personalized deficit rate                   |
+| Goal Mode              | Adjustment              | Target Purpose                                       |
+| :--------------------- | :---------------------- | :--------------------------------------------------- |
+| **Maintain**           | $0\%$                   | Weight maintenance                                   |
+| **Body Recomposition** | $-10\%$                 | Gain muscle while losing fat simultaneously          |
+| **Cut**                | $-15\%$                 | Steady fat loss                                      |
+| **High Cut**           | $-20\%$                 | Aggressive fat loss                                  |
+| **Lean Bulk**          | $+10\%$                 | Muscle gain with minimal fat gain                    |
+| **Bulk**               | $+20\%$                 | Faster weight gain                                   |
+| **Manual**             | Custom ($-40\% - 40\%$) | Personalized rate; enter $-15$ to cut, $+15$ to gain |
+
+### Rate of Change Guidance
+
+The app rates your projected rate of change, and the safe range is not symmetric:
+
+- **Weight loss:** up to $\sim1.0\%$ of body weight per week is comfortable; above $1.5\%$ is flagged as excessive.
+- **Weight gain:** up to $\sim0.25\%$ per week is comfortable; above $0.5\%$ is flagged, because past that point the extra weight is predominantly fat rather than muscle.
+
+Gain is deliberately much slower than loss. Muscle growth is limited by training and recovery, not by how large the surplus is.
 
 ### Calculation Methods
 
@@ -87,8 +104,13 @@ To protect long-term metabolic health and avoid muscle wasting, SparkyFitness ch
 > [!IMPORTANT]
 > **Enforcement Behavior:**
 >
-> - Under the **Adaptive** method, if your calculated target falls below the safety floor, the system **automatically raises** your target to the effective floor.
+> - Under the **Adaptive** method, if your calculated target falls below the safety floor, the system **automatically raises** your target to the effective floor. When this happens the app tells you which floor bound (your RMR or the absolute clinical minimum) and offers the largest deficit that still clears it.
 > - Under the **Manual** method, the target is **not automatically raised**, but a prominent warning banner is displayed warning you that your budget is in an unsafe range.
+
+Safety floors only ever apply to deficits. A surplus can never trip them.
+
+> [!TIP]
+> If you are small-bodied, the floor can bind before you reach your chosen deficit — for example, a measured TDEE of $1{,}400$ kcal with a $15\%$ cut computes to $1{,}190$ kcal, below the $1{,}200$ floor. This is arithmetic, not a bug: there is simply less room to cut. The lever is raising expenditure through activity rather than cutting intake further. First, though, check that your **Activity Level** is accurate — an understated activity level lowers your estimated expenditure and makes the floor bind sooner than it should.
 
 ---
 
