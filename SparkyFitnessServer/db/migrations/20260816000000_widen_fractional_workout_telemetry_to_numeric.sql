@@ -5,9 +5,10 @@
 -- The values are fractional by design on both ends:
 --   * Health Connect reports cadence and heart rate as averages (Double), and
 --     declares FloorsClimbedRecord.floors as a Double outright.
---   * deriveWorkoutTelemetry()/deriveLaps() in
---     services/workoutTelemetryDerivation.ts emit avg/max cadence rounded to one
---     decimal, which the integer columns could not hold either.
+--   * services/workoutTelemetryDerivation.ts rounds cadence to one decimal on
+--     both paths — deriveWorkoutTelemetry() for avg_cadence and max_cadence,
+--     deriveLaps() for avg_cadence (laps have no max_cadence column) — which the
+--     integer columns could not hold either.
 --
 -- Widening is lossless, matches 20260628000000_convert_exercise_durations_to_numeric.sql,
 -- and is a no-op where the column is already numeric. NUMERIC is parsed back to a
