@@ -320,15 +320,18 @@ Calculated: ${bfp.toFixed(1)}%`;
           </div>
           <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60 space-y-1 text-left">
             <div className="font-semibold text-foreground">
-              Formula: Average Daily Calories − (Daily Weight Change in kg ×{' '}
-              {ENERGY_DENSITY_KCAL_PER_KG.LOSS} kcal/kg)
+              {t(
+                'settings.breakdown.adaptiveFormula',
+                'Formula: Average Daily Calories − (Daily Weight Change in kg × {{kcalPerKg}} kcal/kg)',
+                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG.LOSS }
+              )}
             </div>
             <p className="text-muted-foreground">
-              {ENERGY_DENSITY_KCAL_PER_KG.LOSS} kcal/kg is how much energy a
-              kilogram of body weight represents, so your weight trend can be
-              converted into calories. Body weight lost or gained is a mix of
-              fat (~9,441 kcal/kg) and lean tissue and water (~1,816 kcal/kg),
-              and {ENERGY_DENSITY_KCAL_PER_KG.LOSS} reflects a typical blend.
+              {t(
+                'settings.breakdown.adaptiveFormulaExplainer',
+                '{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~9,441 kcal/kg) and lean tissue and water (~1,816 kcal/kg), and {{kcalPerKg}} reflects a typical blend.',
+                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG.LOSS }
+              )}
             </p>
             {previewResult.insufficientHistory ? (
               <div className="space-y-2 mt-1">
@@ -525,14 +528,31 @@ Calculated: ${bfp.toFixed(1)}%`;
             )}
           </div>
           <div>
-            <span className="font-medium">Goal Deficit:</span>{' '}
+            <span className="font-medium">
+              {previewResult.isGainGoal
+                ? t('settings.breakdown.goalSurplusLabel', 'Goal Surplus:')
+                : t('settings.breakdown.goalDeficitLabel', 'Goal Deficit:')}
+            </span>{' '}
             {goalMode === 'maintain' ? (
-              <span>Maintain (0% deficit)</span>
-            ) : (
               <span>
-                {goalMode} Deficit (-{Math.round(deficitPct * 100)}%) = -
-                {Math.round(
-                  convertEnergy(calculatedDeficitAmount, 'kcal', energyUnit)
+                {t('settings.breakdown.goalMaintain', 'Maintain (0% change)')}
+              </span>
+            ) : (
+              /* Magnitudes only: deficitPct and calculatedDeficitAmount are
+                 signed, so formatting them raw double-prints the sign for gain
+                 modes ("Deficit (--10%) = --200 kcal"). */
+              <span>
+                {goalMode}{' '}
+                {previewResult.isGainGoal
+                  ? t('settings.breakdown.surplus', 'Surplus')
+                  : t('settings.breakdown.deficit', 'Deficit')}{' '}
+                ({previewResult.isGainGoal ? '+' : '-'}
+                {Math.abs(Math.round(deficitPct * 100))}%) ={' '}
+                {previewResult.isGainGoal ? '+' : '-'}
+                {Math.abs(
+                  Math.round(
+                    convertEnergy(calculatedDeficitAmount, 'kcal', energyUnit)
+                  )
                 )}{' '}
                 {getEnergyUnitString(energyUnit)}
               </span>

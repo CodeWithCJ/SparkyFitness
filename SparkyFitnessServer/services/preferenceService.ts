@@ -4,7 +4,16 @@ import {
   isValidTimeZone,
   SUPPORTED_TIME_FORMATS,
   MAX_GOAL_MODE_PERCENTAGE,
+  type UserPreferencesMutator,
 } from '@workspace/shared';
+
+/** The subset of preference fields `validateGoalMode` inspects. */
+type GoalModePreferenceInput = Partial<
+  Pick<
+    UserPreferencesMutator,
+    'goal_mode' | 'goal_mode_calculation_method' | 'goal_mode_custom_percentage'
+  >
+>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function validateTimezone(preferenceData: any) {
   if (
@@ -33,7 +42,7 @@ async function validateTimeFormat(preferenceData: TimeFormatPayload) {
     );
   }
 }
-async function validateGoalMode(preferenceData: any) {
+async function validateGoalMode(preferenceData: GoalModePreferenceInput) {
   if (preferenceData.goal_mode !== undefined) {
     const validGoalModes = [
       'maintain',
@@ -64,7 +73,8 @@ async function validateGoalMode(preferenceData: any) {
   }
   if (preferenceData.goal_mode_custom_percentage !== undefined) {
     const pct = Number(preferenceData.goal_mode_custom_percentage);
-    // Negative values express a surplus (weight gain); positive a deficit.
+    // Stored convention: positive expresses a surplus (weight gain), negative a
+    // deficit. Migration 20260816173934 flipped existing rows to match.
     if (
       isNaN(pct) ||
       !Number.isInteger(pct) ||

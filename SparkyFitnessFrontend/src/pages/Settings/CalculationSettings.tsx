@@ -400,83 +400,125 @@ const CalculationSettings = () => {
   const getCoachingAdvice = () => {
     if (goalMode === 'maintain') {
       return {
-        title: 'Maintenance Coaching',
+        title: t(
+          'settings.goalMode.coaching.maintenanceTitle',
+          'Maintenance Coaching'
+        ),
         style:
           'bg-emerald-50/50 dark:bg-emerald-950/15 border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300',
         icon: (
           <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
         ),
-        text: 'Maintenance calories are designed to keep body weight relatively stable. Focus on consistent protein intake (1.6–2.2g/kg of body weight), regular resistance training, and monitoring weight trends over time to make minor adjustments.',
+        text: t(
+          'settings.goalMode.coaching.maintenanceText',
+          'Maintenance calories are designed to keep body weight relatively stable. Focus on consistent protein intake (1.6–2.2g/kg of body weight), regular resistance training, and monitoring weight trends over time to make minor adjustments.'
+        ),
       };
     }
 
     if (deficitPct <= -0.2) {
       return {
-        title: 'Aggressive Surplus Warning',
+        title: t(
+          'settings.goalMode.coaching.aggressiveSurplusTitle',
+          'Aggressive Surplus Warning'
+        ),
         style:
           'bg-amber-50/50 dark:bg-amber-950/15 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-300',
         icon: (
           <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
         ),
-        text: 'A surplus this large will add fat faster than muscle. Muscle gain is capped by your training and recovery, not by how much you eat above maintenance — past roughly 0.5% body weight per week, the extra is mostly fat. Pair this with a hard resistance training program, keep protein at 1.6–2.2g/kg, and reassess your rate every few weeks.',
+        text: t(
+          'settings.goalMode.coaching.aggressiveSurplusText',
+          'A surplus this large will add fat faster than muscle. Muscle gain is capped by your training and recovery, not by how much you eat above maintenance — past roughly 0.5% body weight per week, the extra is mostly fat. Pair this with a hard resistance training program, keep protein at 1.6–2.2g/kg, and reassess your rate every few weeks.'
+        ),
       };
     }
 
     if (deficitPct < 0) {
       return {
-        title: 'Lean Bulk Recommendations',
+        title: t(
+          'settings.goalMode.coaching.leanBulkTitle',
+          'Lean Bulk Recommendations'
+        ),
         style:
           'bg-blue-50/50 dark:bg-blue-950/15 border border-blue-100 dark:border-blue-900/50 text-blue-800 dark:text-blue-300',
         icon: <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />,
-        text: 'A modest surplus supports muscle growth while limiting fat gain. Progressive resistance training is what drives the gain — the calories only permit it. Aim for 1.6–2.2g of protein per kg of body weight. Target gain rate: ~0.1–0.5% body weight/week, slower the more trained you are.',
+        text: t(
+          'settings.goalMode.coaching.leanBulkText',
+          'A modest surplus supports muscle growth while limiting fat gain. Progressive resistance training is what drives the gain — the calories only permit it. Aim for 1.6–2.2g of protein per kg of body weight. Target gain rate: ~0.1–0.5% body weight/week, slower the more trained you are.'
+        ),
       };
     }
 
     if (deficitPct > 0.25) {
       return {
-        title: 'Highly Aggressive Deficit Warning',
+        title: t(
+          'settings.goalMode.coaching.highlyAggressiveDeficitTitle',
+          'Highly Aggressive Deficit Warning'
+        ),
         style:
           'bg-amber-50/50 dark:bg-amber-950/15 border border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-300',
         icon: (
           <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
         ),
-        text: 'Highly aggressive deficit. Deficits above 25% significantly increase the risk of muscle loss, training performance decline, intense hunger, and poor recovery. Consider a smaller deficit unless under active professional supervision. If proceeding, prioritize high protein (2.2–2.5g/kg) and sleep.',
+        text: t(
+          'settings.goalMode.coaching.highlyAggressiveDeficitText',
+          'Highly aggressive deficit. Deficits above 25% significantly increase the risk of muscle loss, training performance decline, intense hunger, and poor recovery. Consider a smaller deficit unless under active professional supervision. If proceeding, prioritize high protein (2.2–2.5g/kg) and sleep.'
+        ),
       };
     }
 
     if (deficitPct >= 0.17) {
       return {
-        title: 'Aggressive Deficit Recommendations',
+        title: t(
+          'settings.goalMode.coaching.aggressiveDeficitTitle',
+          'Aggressive Deficit Recommendations'
+        ),
         style:
           'bg-emerald-50/50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300',
         icon: (
           <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
         ),
-        text: 'Aggressive deficit for fast fat loss. To prevent muscle loss, consume 2.2–2.5g of protein per kg of body weight, prioritize sleep, and consider returning to maintenance every 6–8 weeks. Target loss rate: ~0.75–1.0% body weight/week.',
+        text: t(
+          'settings.goalMode.coaching.aggressiveDeficitText',
+          'Aggressive deficit for fast fat loss. To prevent muscle loss, consume 2.2–2.5g of protein per kg of body weight, prioritize sleep, and consider returning to maintenance every 6–8 weeks. Target loss rate: ~0.75–1.0% body weight/week.'
+        ),
       };
     }
 
     if (deficitPct >= 0.1) {
       return {
-        title: 'Standard Deficit Recommendations',
+        title: t(
+          'settings.goalMode.coaching.standardDeficitTitle',
+          'Standard Deficit Recommendations'
+        ),
         style:
           'bg-emerald-50/50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300',
         icon: (
           <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
         ),
-        text: 'Ideal deficit for steady fat loss while preserving lean mass. Focus on a high protein intake (2.0–2.4g/kg of body weight) and monitor energy and recovery levels. Target loss rate: ~0.5–0.75% body weight/week.',
+        text: t(
+          'settings.goalMode.coaching.standardDeficitText',
+          'Ideal deficit for steady fat loss while preserving lean mass. Focus on a high protein intake (2.0–2.4g/kg of body weight) and monitor energy and recovery levels. Target loss rate: ~0.5–0.75% body weight/week.'
+        ),
       };
     }
 
     // deficitPct < 0.10 (but > 0)
     return {
-      title: 'Body Recomposition Recommendations',
+      title: t(
+        'settings.goalMode.coaching.recompositionTitle',
+        'Body Recomposition Recommendations'
+      ),
       style:
         'bg-emerald-50/50 dark:bg-emerald-950/15 border border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300',
       icon: (
         <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
       ),
-      text: 'Suitable for body recomposition or a slow cut. The modest calorie deficit helps preserve performance and muscle while gradually reducing body fat. Aim for 1.6–2.2g of protein per kg of body weight daily, and keep a consistent resistance training program. Target loss rate: ~0.25–0.5% body weight/week.',
+      text: t(
+        'settings.goalMode.coaching.recompositionText',
+        'Suitable for body recomposition or a slow cut. The modest calorie deficit helps preserve performance and muscle while gradually reducing body fat. Aim for 1.6–2.2g of protein per kg of body weight daily, and keep a consistent resistance training program. Target loss rate: ~0.25–0.5% body weight/week.'
+      ),
     };
   };
 
@@ -1156,10 +1198,16 @@ const CalculationSettings = () => {
               <div>
                 <span className="text-muted-foreground">
                   {previewResult.isGainGoal
-                    ? 'Applied Surplus:'
+                    ? t('settings.goalMode.appliedSurplus', 'Applied Surplus:')
                     : previewResult.appliedDeficit === 0
-                      ? 'Applied Adjustment:'
-                      : 'Applied Deficit:'}
+                      ? t(
+                          'settings.goalMode.appliedAdjustment',
+                          'Applied Adjustment:'
+                        )
+                      : t(
+                          'settings.goalMode.appliedDeficit',
+                          'Applied Deficit:'
+                        )}
                 </span>{' '}
                 <span
                   className={`font-semibold ${
@@ -1238,8 +1286,14 @@ const CalculationSettings = () => {
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground">
                     {previewResult.isGainGoal
-                      ? 'Projected weekly gain:'
-                      : 'Projected weekly loss:'}
+                      ? t(
+                          'settings.goalMode.projectedWeeklyGain',
+                          'Projected weekly gain:'
+                        )
+                      : t(
+                          'settings.goalMode.projectedWeeklyLoss',
+                          'Projected weekly loss:'
+                        )}
                   </span>
                   <span className="font-semibold">
                     ~
@@ -1370,7 +1424,10 @@ const CalculationSettings = () => {
               <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-semibold">
-                  Target raised to your safety minimum
+                  {t(
+                    'settings.goalMode.raisedToFloorTitle',
+                    'Target raised to your safety minimum'
+                  )}
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-400/80 leading-relaxed">
                   The deficit you selected works out to{' '}
@@ -1445,7 +1502,10 @@ const CalculationSettings = () => {
                 <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-semibold text-sm">
-                    Awaiting Adaptive TDEE Calibration
+                    {t(
+                      'settings.goalMode.awaitingCalibrationTitle',
+                      'Awaiting Adaptive TDEE Calibration'
+                    )}
                   </p>
                   <p className="text-sm text-blue-700/90 dark:text-blue-400/80 leading-relaxed">
                     Sparky's Adaptive TDEE engine requires at least 14 days of
