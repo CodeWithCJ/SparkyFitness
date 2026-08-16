@@ -5,7 +5,7 @@
 -- The values are fractional by design on both ends:
 --   * Health Connect reports cadence and heart rate as averages (Double), and
 --     declares FloorsClimbedRecord.floors as a Double outright.
---   * deriveWorkoutTelemetry()/deriveLapTelemetry() in
+--   * deriveWorkoutTelemetry()/deriveLaps() in
 --     services/workoutTelemetryDerivation.ts emit avg/max cadence rounded to one
 --     decimal, which the integer columns could not hold either.
 --
