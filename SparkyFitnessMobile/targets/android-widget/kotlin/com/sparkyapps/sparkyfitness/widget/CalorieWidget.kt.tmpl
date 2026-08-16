@@ -66,6 +66,9 @@ class CalorieWidget : GlanceAppWidget() {
     @Composable
     private fun WidgetContent(context: Context, fallbackSnapshot: CalorieSnapshot?) {
         val state = currentState<Preferences>()
+        // Reading the dedicated revision makes an active Glance session observe
+        // language-only invalidation even when the snapshot itself is unchanged.
+        val localeRenderRevision = state[WidgetLocale.LOCALE_RENDER_REVISION_STATE_KEY]
         val snapshot = parseSnapshot(state[SNAPSHOT_STATE_KEY]) ?: fallbackSnapshot
 
         // Widget-only locale override: localized string and number resolution

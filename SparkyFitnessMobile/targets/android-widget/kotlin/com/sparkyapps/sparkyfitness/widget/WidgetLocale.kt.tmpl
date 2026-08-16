@@ -6,6 +6,9 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.LocaleList
+import androidx.glance.GlanceId
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.datastore.preferences.core.longPreferencesKey
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -23,6 +26,13 @@ import java.util.Locale
  * necessarily reflects that change.
  */
 object WidgetLocale {
+
+    /**
+     * Glance view-state token used only to make an active PreferencesGlanceStateDefinition
+     * session observe a language-only render change. LocaleManager/render cache remains
+     * the language source; this is not a preference or locale authority.
+     */
+    val LOCALE_RENDER_REVISION_STATE_KEY = longPreferencesKey("localeRenderRevision")
 
     private const val PREFS_NAME = "SparkyWidgetLocale"
     private const val KEY_LOCALE = "widgetLocale"
@@ -181,6 +191,19 @@ object WidgetLocale {
             if (systemLocales != null && !systemLocales.isEmpty) systemLocales[0] else null
         }
         return platformLocale?.let(::normalizeLanguage)
+    }
+
+    /**
+     * Bumps the dedicated Glance state revision without changing any snapshot
+     * data. updateAppWidgetState is the state mutation that an active Glance
+     * composition observes; update/updateAll alone may reuse a running
+     * provideGlance session.
+     */
+    suspend fun bumpLocaleRenderRevision(context: Context, glanceId: GlanceId) {
+        updateAppWidgetState(context, glanceId) { state ->
+            val previous = state[LOCALE_RENDER_REVISION_STATE_KEY] ?: 0L
+            state[LOCALE_RENDER_REVISION_STATE_KEY] = previous + 1L
+        }
     }
 
     private fun localeFromCode(code: String?): Locale? {

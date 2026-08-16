@@ -87,6 +87,19 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
         moduleScope.launch {
             try {
                 WidgetLocale.prepareWidgetLocale(ctx, preference, effectiveLanguage)
+
+                // GlanceAppWidget.update/updateAll may reuse an already-running
+                // provideGlance session. Mutating this dedicated Preferences
+                // state revision makes the active composition observe the
+                // language-only render change before the JS reloads either widget.
+                val manager = GlanceAppWidgetManager(ctx)
+                manager.getGlanceIds(CalorieWidget::class.java).forEach { id ->
+                    WidgetLocale.bumpLocaleRenderRevision(ctx, id)
+                }
+                manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
+                    WidgetLocale.bumpLocaleRenderRevision(ctx, id)
+                }
+
                 promise.resolve(null)
             } catch (e: Exception) {
                 promise.reject("E_WRITE_FAILED", e)

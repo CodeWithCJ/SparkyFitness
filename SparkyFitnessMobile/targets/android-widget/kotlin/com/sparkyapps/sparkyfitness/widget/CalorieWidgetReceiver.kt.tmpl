@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.updateAll
 import java.time.LocalDate
@@ -42,6 +43,10 @@ class CalorieWidgetReceiver : GlanceAppWidgetReceiver() {
             CoroutineScope(Dispatchers.Default).launch {
                 try {
                     WidgetLocale.refreshEffectiveRenderLocaleFromBroadcast(context, intent)
+                    val manager = GlanceAppWidgetManager(context)
+                    manager.getGlanceIds(CalorieWidget::class.java).forEach { id ->
+                        WidgetLocale.bumpLocaleRenderRevision(context, id)
+                    }
                     glanceAppWidget.updateAll(context)
                 } finally {
                     pending.finish()

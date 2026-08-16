@@ -457,6 +457,11 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/KEY_LOCALE = "widgetLocale"/);
       expect(src).toMatch(/KEY_EFFECTIVE_RENDER_LOCALE = "effectiveRenderLocale"/);
       expect(src).toMatch(/getSharedPreferences\(PREFS_NAME, Context\.MODE_PRIVATE\)/);
+      expect(src).toMatch(/LOCALE_RENDER_REVISION_STATE_KEY/);
+      expect(src).toMatch(/longPreferencesKey\(\"localeRenderRevision\"\)/);
+      expect(src).toMatch(/updateAppWidgetState\(context, glanceId\)/);
+      expect(src).toMatch(/previous \+ 1L/);
+      expect(src).not.toMatch(/System\.currentTimeMillis|System\.nanoTime/);
       expect(src).toMatch(/synchronized rendering cache/);
       expect(src).toMatch(/not a user preference or locale authority/);
     });
@@ -470,7 +475,13 @@ describe('Android widget localization contract', () => {
       expect(moduleSrc).toMatch(/preference: String/);
       expect(moduleSrc).toMatch(/effectiveLanguage: String/);
       expect(moduleSrc).toMatch(/WidgetLocale\.prepareWidgetLocale\(ctx, preference, effectiveLanguage\)/);
-      expect(moduleSrc).not.toMatch(/prepareWidgetLocale[\s\S]*?\.apply\(\)/);
+      expect(moduleSrc).toMatch(/WidgetLocale\.bumpLocaleRenderRevision\(ctx, id\)/);
+      const prepareIndex = moduleSrc.indexOf('WidgetLocale.prepareWidgetLocale(ctx, preference, effectiveLanguage)');
+      const bumpIndex = moduleSrc.indexOf('WidgetLocale.bumpLocaleRenderRevision(ctx, id)', prepareIndex);
+      const resolveIndex = moduleSrc.indexOf('promise.resolve(null)', bumpIndex);
+      expect(prepareIndex).toBeGreaterThan(-1);
+      expect(bumpIndex).toBeGreaterThan(prepareIndex);
+      expect(resolveIndex).toBeGreaterThan(bumpIndex);
 
       const bridge = fs.readFileSync(
         path.join(__dirname, '../../src/services/CalorieWidgetBridge.ts'),
@@ -514,9 +525,12 @@ describe('Android widget localization contract', () => {
       for (const receiver of ['CalorieWidgetReceiver.kt.tmpl', 'MacroWidgetReceiver.kt.tmpl']) {
         const src = fs.readFileSync(path.join(KOTLIN_ROOT, receiver), 'utf8');
         const refreshIndex = src.indexOf('refreshEffectiveRenderLocaleFromBroadcast(context, intent)');
-        const updateIndex = src.indexOf('glanceAppWidget.updateAll(context)', refreshIndex);
+        const bumpIndex = src.indexOf('WidgetLocale.bumpLocaleRenderRevision(context, id)', refreshIndex);
+        const updateIndex = src.indexOf('glanceAppWidget.updateAll(context)', bumpIndex);
         expect(refreshIndex).toBeGreaterThan(-1);
-        expect(updateIndex).toBeGreaterThan(refreshIndex);
+        expect(bumpIndex).toBeGreaterThan(refreshIndex);
+        expect(updateIndex).toBeGreaterThan(bumpIndex);
+        expect(src).toMatch(/GlanceAppWidgetManager\(context\)/);
       }
 
       const locale = fs.readFileSync(
@@ -551,6 +565,14 @@ describe('Android widget localization contract', () => {
       );
       expect(moduleSrc).toMatch(/fun prepareWidgetLocale\(/);
       expect(moduleSrc).toMatch(/WidgetLocale\.prepareWidgetLocale\(ctx, preference, effectiveLanguage\)/);
+    });
+
+    it('makes both active widget compositions observe the locale revision state', () => {
+      for (const template of ['CalorieWidget.kt.tmpl', 'MacroWidget.kt.tmpl']) {
+        const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
+        expect(src).toMatch(/currentState<Preferences>\(\)/);
+        expect(src).toMatch(/state\[WidgetLocale\.LOCALE_RENDER_REVISION_STATE_KEY\]/);
+      }
     });
   });
 
