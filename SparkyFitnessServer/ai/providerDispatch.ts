@@ -100,16 +100,9 @@ const OLLAMA_DEFAULT_TIMEOUT_MS = 120_000;
 // response together. At 2048 with a forced tool call, reasoning could consume
 // the budget and truncate the tool response, surfacing as stop_reason
 // 'max_tokens'. 2048 was also tight for a structured nutrition payload even
-// without thinking. Override with SPARKY_FITNESS_ANTHROPIC_MAX_TOKENS.
-const ANTHROPIC_MAX_TOKENS_DEFAULT = 8192;
-const ANTHROPIC_MAX_TOKENS = (() => {
-  const raw = process.env.SPARKY_FITNESS_ANTHROPIC_MAX_TOKENS;
-  if (!raw) return ANTHROPIC_MAX_TOKENS_DEFAULT;
-  const parsed = parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed > 0
-    ? parsed
-    : ANTHROPIC_MAX_TOKENS_DEFAULT;
-})();
+// without thinking. Every Claude model in the catalog supports 8192 output
+// tokens, so it is a safe floor across the board.
+const ANTHROPIC_MAX_TOKENS = 8192;
 const ANTHROPIC_VERSION = '2023-06-01';
 
 // Claude Opus 4.7 and later reject `temperature` outright with a 400, and
