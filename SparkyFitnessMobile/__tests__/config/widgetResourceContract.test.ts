@@ -387,6 +387,11 @@ describe('Android widget localization contract', () => {
       );
       expect(pluginSrc).toMatch(/android\.appwidget\.action\.APPWIDGET_UPDATE/);
       expect(pluginSrc).toMatch(/android\.intent\.action\.LOCALE_CHANGED/);
+      // Keep widget receivers private to external applications. Android system
+      // broadcasts remain deliverable to non-exported manifest receivers.
+      expect(pluginSrc).toMatch(/'android:exported': 'false'/);
+      expect(pluginSrc).toMatch(/for \(const receiver of WIDGET_RECEIVERS\)/);
+      expect(pluginSrc).not.toMatch(/'android:exported': 'true'/);
     });
 
     it('restores the classic macro size mode (single 200x200 responsive size)', () => {
