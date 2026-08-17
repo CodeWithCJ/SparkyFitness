@@ -29,6 +29,23 @@ export const exerciseHistoryQuerySchema = z
   })
   .strict();
 
+/** Query params for the per-exercise best/last/recent-sessions stats endpoint */
+export const exerciseStatsQuerySchema = z.object({
+  /**
+   * Preset-entry UUID to exclude from the baseline (today's in-progress/
+   * planned sets, or the workout being edited). Applies to bestSet, lastSet,
+   * and recentSessions.
+   */
+  excludePresetEntryId: z.string().uuid().optional(),
+  /**
+   * Workout preset id to scope recentSessions to, so the live "Previous"
+   * placeholders reflect this preset's own history instead of this
+   * exercise's history from a different preset. Does not affect
+   * bestSet/lastSet, which stay exercise-global.
+   */
+  presetId: z.coerce.number().int().positive().optional(),
+});
+
 // --- Building blocks ---
 
 /**
@@ -146,12 +163,16 @@ export const createPresetSessionRequestSchema = z
       data.workout_preset_id !== undefined && data.workout_preset_id !== null;
     const hasExercises = data.exercises !== undefined;
 
-    if (hasPresetId === hasExercises) {
+    // workout_preset_id alone means "copy this preset's own stored
+    // structure"; exercises alone means a freeform/individual session;
+    // both together means "tag this session as started from a preset, but
+    // use the client-supplied (e.g. live-workout) exercise/set structure
+    // instead of the preset's stored one." Only rule out neither.
+    if (!hasPresetId && !hasExercises) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message:
-          "Provide exactly one workout source: workout_preset_id or exercises.",
-        path: hasPresetId ? ["workout_preset_id"] : ["exercises"],
+        message: "Provide a workout source: workout_preset_id or exercises.",
+        path: ["exercises"],
       });
     }
 
@@ -471,6 +492,7 @@ export const exerciseStatsResponseSchema = z
 // --- Types ---
 
 export type ExerciseHistoryQuery = z.infer<typeof exerciseHistoryQuerySchema>;
+export type ExerciseStatsQuery = z.infer<typeof exerciseStatsQuerySchema>;
 export type ExerciseSnapshotResponse = z.infer<
   typeof exerciseSnapshotResponseSchema
 >;

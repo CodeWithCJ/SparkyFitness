@@ -86,6 +86,8 @@ describe('exerciseService.getExerciseStats', () => {
     expect(exerciseEntryDb.getRecentSessionsForExercise).toHaveBeenCalledWith(
       userId,
       exerciseId,
+      null,
+      undefined,
       null
     );
 
@@ -188,7 +190,37 @@ describe('exerciseService.getExerciseStats', () => {
     expect(exerciseEntryDb.getRecentSessionsForExercise).toHaveBeenCalledWith(
       userId,
       exerciseId,
-      excludePresetEntryId
+      excludePresetEntryId,
+      undefined,
+      null
+    );
+  });
+
+  it('forwards presetId to getRecentSessionsForExercise only', async () => {
+    const presetId = 42;
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getBestSetForExercise.mockResolvedValue(null);
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseEntryDb.getLastSetForExercise.mockResolvedValue(null);
+
+    await exerciseService.getExerciseStats(userId, exerciseId, null, presetId);
+
+    expect(exerciseEntryDb.getBestSetForExercise).toHaveBeenCalledWith(
+      userId,
+      exerciseId,
+      null
+    );
+    expect(exerciseEntryDb.getLastSetForExercise).toHaveBeenCalledWith(
+      userId,
+      exerciseId,
+      null
+    );
+    expect(exerciseEntryDb.getRecentSessionsForExercise).toHaveBeenCalledWith(
+      userId,
+      exerciseId,
+      null,
+      undefined,
+      presetId
     );
   });
 

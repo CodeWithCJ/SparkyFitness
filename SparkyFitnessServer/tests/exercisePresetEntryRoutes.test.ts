@@ -15,14 +15,14 @@ vi.mock('@workspace/shared', () => ({
         data.workout_preset_id !== undefined && data.workout_preset_id !== null;
       const hasExercises = data.exercises !== undefined;
 
-      if (hasPresetId === hasExercises) {
+      if (!hasPresetId && !hasExercises) {
         return {
           success: false,
           error: {
             issues: [
               {
                 message:
-                  'Provide exactly one workout source: workout_preset_id or exercises.',
+                  'Provide a workout source: workout_preset_id or exercises.',
               },
             ],
             flatten: () => ({ formErrors: [], fieldErrors: {} }),
@@ -344,17 +344,34 @@ describe('exercisePresetEntryRoutes', () => {
       }
     );
   });
-  it('rejects ambiguous create payloads', async () => {
+  it('accepts create payloads that tag a preset while supplying client exercises', async () => {
+    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+    exerciseService.createGroupedWorkoutSession.mockResolvedValue(
+      groupedSessionFixture
+    );
+    const body = {
+      workout_preset_id: 42,
+      name: 'Morning Workout',
+      entry_date: '2026-03-12',
+      exercises: [
+        {
+          exercise_id: '11111111-1111-4111-8111-111111111111',
+        },
+      ],
+    };
+    const response = await invokeRoute('post', '/', { body });
+    expect(response.statusCode).toBe(201);
+    expect(exerciseService.createGroupedWorkoutSession).toHaveBeenCalledWith(
+      '99999999-9999-4999-8999-999999999999',
+      '99999999-9999-4999-8999-999999999999',
+      body
+    );
+  });
+  it('rejects create payloads with neither a preset nor exercises', async () => {
     const response = await invokeRoute('post', '/', {
       body: {
-        workout_preset_id: 42,
         name: 'Morning Workout',
         entry_date: '2026-03-12',
-        exercises: [
-          {
-            exercise_id: '11111111-1111-4111-8111-111111111111',
-          },
-        ],
       },
     });
     expect(response.statusCode).toBe(400);

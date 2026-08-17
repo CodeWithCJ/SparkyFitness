@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { fireEvent, render, act } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useIsFocused } from '@react-navigation/native';
 import ActiveWorkoutScreen from '../../src/screens/ActiveWorkoutScreen';
 import { useActiveWorkoutAutosave } from '../../src/hooks/useActiveWorkoutAutosave';
 import {
@@ -12,6 +13,20 @@ import {
 import { __resetAppPreferencesStoreForTests } from '../../src/stores/appPreferencesStore';
 import type { ActionSheetItem } from '../../src/components/ActionSheet';
 import type { PresetSessionResponse } from '@workspace/shared';
+import { getActiveServerConfig } from '../../src/services/storage';
+
+jest.mock('../../src/services/storage', () => ({
+  getActiveServerConfig: jest.fn(),
+}));
+const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
+  typeof getActiveServerConfig
+>;
+
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: jest.fn(() => true),
+}));
+const mockUseIsFocused = useIsFocused as jest.MockedFunction<typeof useIsFocused>;
 
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: jest.fn(() => ({ preferences: null })),
@@ -69,7 +84,10 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
   return {
     __esModule: true,
     default: (props: any) => (
-      <View testID={`card-${props.exercise.id}`}>
+      <View
+        testID={`card-${props.exercise.id}`}
+        accessibilityLabel={`sourcePresetId:${String(props.sourcePresetId)}`}
+      >
         <Pressable
           testID={`card-${props.exercise.id}-overflow`}
           onPress={() => props.onPressOverflow?.(props.exercise.id)}
@@ -863,5 +881,147 @@ describe('ActiveWorkoutScreen stale deep link guard', () => {
 
     act(() => finishHydration?.());
     expect(navigation.goBack).toHaveBeenCalled();
+  });
+});
+
+describe('ActiveWorkoutScreen source preset server-config guard', () => {
+  /** Flush the config-check promise chain into the effect's state update. */
+  async function flushConfigCheck() {
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
+
+  /** Re-render with a fresh element so the mocked useIsFocused() is re-read. */
+  function rerenderScreen(rerender: (ui: React.ReactElement) => void) {
+    rerender(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+          <ActiveWorkoutScreen navigation={navigation} route={route} />
+        </QueryClientProvider>
+      </SafeAreaProvider>,
+    );
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    mockUseIsFocused.mockReturnValue(true);
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('passes sourcePresetId to the stats query when the active server matches', async () => {
+    mockGetActiveServerConfig.mockResolvedValue({
+      id: 'config-1',
+      url: 'https://example.com',
+      apiKey: 'key',
+    });
+    useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+      sourcePresetId: 42,
+      sourceServerConfigId: 'config-1',
+    });
+    const { getByTestId } = renderScreen();
+    await flushConfigCheck();
+
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:42',
+    );
+  });
+
+  it('withholds sourcePresetId when the active server no longer matches the one the workout started on', async () => {
+    // Preset ids can collide across servers, so a config switched since the
+    // workout started must not scope stats to a same-numbered foreign preset.
+    mockGetActiveServerConfig.mockResolvedValue({
+      id: 'other-config',
+      url: 'https://other.example.com',
+      apiKey: 'key',
+    });
+    useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+      sourcePresetId: 42,
+      sourceServerConfigId: 'config-1',
+    });
+    const { getByTestId } = renderScreen();
+    await flushConfigCheck();
+
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:undefined',
+    );
+  });
+
+  it('withholds sourcePresetId for a workout that was not started from a preset', async () => {
+    useActiveWorkoutStore.getState().startWorkout(makeSession());
+    const { getByTestId } = renderScreen();
+    await flushConfigCheck();
+
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:undefined',
+    );
+    expect(mockGetActiveServerConfig).not.toHaveBeenCalled();
+  });
+
+  it('re-verifies and clears the stale presetId when the active server changes after an initial successful validation', async () => {
+    mockGetActiveServerConfig.mockResolvedValue({
+      id: 'config-1',
+      url: 'https://example.com',
+      apiKey: 'key',
+    });
+    useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+      sourcePresetId: 42,
+      sourceServerConfigId: 'config-1',
+    });
+    const { getByTestId, rerender } = renderScreen();
+    await flushConfigCheck();
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:42',
+    );
+
+    // The user backgrounds this screen (e.g. to Server Settings) and switches
+    // the active server. sourcePresetId/sourceServerConfigId are fixed for
+    // the whole session, so only the focus transition can catch this — the
+    // screen never unmounts.
+    mockUseIsFocused.mockReturnValue(false);
+    rerenderScreen(rerender);
+    await flushConfigCheck();
+    // Blurred: the previously-verified id must not linger on screen.
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:undefined',
+    );
+
+    mockGetActiveServerConfig.mockResolvedValue({
+      id: 'other-config',
+      url: 'https://other.example.com',
+      apiKey: 'key',
+    });
+    mockUseIsFocused.mockReturnValue(true);
+    rerenderScreen(rerender);
+    await flushConfigCheck();
+
+    // Refocused against a different server: re-verification must fail, not
+    // resurrect the stale, now-foreign preset id 42.
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:undefined',
+    );
+  });
+
+  it('leaves sourcePresetId withheld without throwing when the config lookup rejects', async () => {
+    mockGetActiveServerConfig.mockRejectedValue(new Error('storage unavailable'));
+    useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+      sourcePresetId: 42,
+      sourceServerConfigId: 'config-1',
+    });
+
+    const { getByTestId } = renderScreen();
+    await flushConfigCheck();
+
+    expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
+      'sourcePresetId:undefined',
+    );
   });
 });

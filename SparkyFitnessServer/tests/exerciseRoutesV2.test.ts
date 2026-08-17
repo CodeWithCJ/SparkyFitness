@@ -360,6 +360,7 @@ describe('GET /v2/exercises/:exerciseId/stats', () => {
     expect(exerciseService.getExerciseStats).toHaveBeenCalledWith(
       'user-123',
       EXERCISE_UUID,
+      null,
       null
     );
   });
@@ -431,7 +432,8 @@ describe('GET /v2/exercises/:exerciseId/stats', () => {
     expect(exerciseService.getExerciseStats).toHaveBeenCalledWith(
       'user-123',
       EXERCISE_UUID,
-      excludeId
+      excludeId,
+      null
     );
   });
 
@@ -441,7 +443,38 @@ describe('GET /v2/exercises/:exerciseId/stats', () => {
     );
 
     expect(res.statusCode).toBe(400);
-    expect(res.body.error).toBe('Invalid excludePresetEntryId');
+    expect(res.body.error).toBe('Invalid excludePresetEntryId or presetId');
+    expect(exerciseService.getExerciseStats).not.toHaveBeenCalled();
+  });
+
+  it('forwards a valid presetId query param to the service', async () => {
+    // @ts-expect-error TS(2339): mockResolvedValue not on typed function.
+    exerciseService.getExerciseStats.mockResolvedValue({
+      bestSet: null,
+      lastSet: null,
+      recentSessions: [],
+    });
+
+    const res = await request(app).get(
+      `/v2/exercises/${EXERCISE_UUID}/stats?presetId=42`
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(exerciseService.getExerciseStats).toHaveBeenCalledWith(
+      'user-123',
+      EXERCISE_UUID,
+      null,
+      42
+    );
+  });
+
+  it('returns 400 when presetId is not a positive integer', async () => {
+    const res = await request(app).get(
+      `/v2/exercises/${EXERCISE_UUID}/stats?presetId=not-a-number`
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe('Invalid excludePresetEntryId or presetId');
     expect(exerciseService.getExerciseStats).not.toHaveBeenCalled();
   });
 

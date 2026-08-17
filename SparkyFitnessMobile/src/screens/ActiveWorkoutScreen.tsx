@@ -18,6 +18,7 @@ import {
   KeyboardStickyView,
   type KeyboardAwareScrollViewRef,
 } from 'react-native-keyboard-controller';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -65,6 +66,7 @@ import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { deleteWorkout } from '../services/api/exerciseApi';
 import { addLog } from '../services/LogService';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { getActiveServerConfig } from '../services/storage';
 import { useActiveWorkoutStore, type ActiveSetPatch } from '../stores/activeWorkoutStore';
 import { normalizeDate } from '../utils/dateUtils';
 import { runAfterKeyboardSettles } from '../utils/keyboardFocus';
@@ -164,6 +166,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const session = useActiveWorkoutStore((s) => s.session);
   const sessionId = useActiveWorkoutStore((s) => s.sessionId);
+  const sourcePresetId = useActiveWorkoutStore((s) => s.sourcePresetId);
+  const sourceServerConfigId = useActiveWorkoutStore((s) => s.sourceServerConfigId);
   const startedAt = useActiveWorkoutStore((s) => s.startedAt);
   const completedSetIds = useActiveWorkoutStore((s) => s.completedSetIds);
   const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
@@ -184,6 +188,39 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
   const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
+
+  // Preset ids are per-server; a config switched since the workout started
+  // (such as the user backgrounding this screen, switching servers in
+  // settings, and coming back) can resolve the id against the wrong server's
+  // preset. sourcePresetId/sourceServerConfigId are fixed for the whole
+  // session, so a switch that happens without this screen unmounting would
+  // never re-trigger the check on its own — re-verify on every focus regain
+  // instead, and clear immediately so a stale verified id from the old
+  // server can't leak through while the fresh check is in flight.
+  const isFocused = useIsFocused();
+  const [verifiedSourcePresetId, setVerifiedSourcePresetId] = useState<
+    number | undefined
+  >(undefined);
+  useEffect(() => {
+    if (!isFocused || sourcePresetId == null) {
+      setVerifiedSourcePresetId(undefined);
+      return;
+    }
+    let cancelled = false;
+    setVerifiedSourcePresetId(undefined);
+    void (async () => {
+      try {
+        const config = await getActiveServerConfig();
+        if (cancelled || config?.id !== sourceServerConfigId) return;
+        setVerifiedSourcePresetId(sourcePresetId);
+      } catch {
+        // Storage read failed — leave verifiedSourcePresetId cleared.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isFocused, sourcePresetId, sourceServerConfigId]);
   const { flush } = useActiveWorkoutAutosave();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
 
@@ -1202,6 +1239,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               completedSetIds={completedSetIds}
               prSetIds={prSetIds}
               excludePresetEntryId={sessionId ?? undefined}
+              sourcePresetId={verifiedSourcePresetId}
               activeSetId={activeSetId}
               focusedSetKey={focusedSetKey}
               setRenderKeys={setRenderKeys}

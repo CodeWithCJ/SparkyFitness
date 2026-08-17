@@ -53,7 +53,14 @@ function handleRouteError(error: any, res: any, next: any) {
  *   post:
  *     summary: Create a grouped workout session
  *     tags: [Fitness & Workouts]
- *     description: Creates a grouped workout from either a workout preset or an inline exercises array. Returns the full nested grouped session payload used by the mobile client.
+ *     description: |
+ *       Creates a grouped workout from a workout preset, an inline exercises array, or both.
+ *       `workout_preset_id` alone copies that preset's own stored exercise/set structure.
+ *       `exercises` alone creates a freeform session with the given structure.
+ *       Both together (e.g. a live workout started from a preset) tag the session to that
+ *       preset for stats scoping while using the client-supplied exercise/set structure
+ *       verbatim, keeping the session editable like any other client-authored session.
+ *       Returns the full nested grouped session payload used by the mobile client.
  *     security:
  *       - cookieAuth: []
  *     responses:

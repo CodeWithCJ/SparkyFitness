@@ -532,7 +532,7 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('skips the exercise stats fetch', () => {
       renderCard(true, { mode: 'view' });
-      expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined, undefined);
     });
 
     it('never labels a collapsed exercise as planned', () => {
@@ -620,7 +620,7 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('fetches exercise stats so "Last time" works for drafts', () => {
       renderCard(true, { mode: 'edit' });
-      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', undefined);
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', undefined, undefined);
     });
 
     describe('calories chip', () => {
@@ -759,7 +759,12 @@ describe('ActiveWorkoutExerciseCard', () => {
 
     it('passes the session id as excludePresetEntryId to the stats query', () => {
       renderCard(true, { mode: 'live', excludePresetEntryId: 'session-1' });
-      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1', undefined);
+    });
+
+    it('passes sourcePresetId through to the stats query', () => {
+      renderCard(true, { mode: 'live', sourcePresetId: 42 });
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', undefined, 42);
     });
 
     it('marks the tap-focused row from focusedSetKey (distinct from the cursor)', () => {
@@ -831,7 +836,7 @@ describe('ActiveWorkoutExerciseCard', () => {
       // Without the viewed session's id to exclude, Best could show the very
       // workout being viewed — the hook stays disabled instead.
       const { queryByTestId } = renderCard(true, { mode: 'view' });
-      expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined);
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(null, undefined, undefined);
       expect(mockCapturePrBaseline).not.toHaveBeenCalled();
       expect(queryByTestId('icon-trophy-outline')).toBeNull();
     });
@@ -842,7 +847,7 @@ describe('ActiveWorkoutExerciseCard', () => {
         mode: 'view',
         excludePresetEntryId: 'session-1',
       });
-      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1');
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1', undefined);
       expect(mockCapturePrBaseline).not.toHaveBeenCalled();
       expect(getByTestId('icon-trophy-outline')).toBeTruthy();
       expect(getByText('100 × 5')).toBeTruthy();
@@ -934,7 +939,7 @@ describe('ActiveWorkoutExerciseCard', () => {
         excludePresetEntryId: 'session-9',
       });
 
-      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-9');
+      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-9', undefined);
       expect(prevOf(utils, 101)).toBe('prev:60x8');
     });
 

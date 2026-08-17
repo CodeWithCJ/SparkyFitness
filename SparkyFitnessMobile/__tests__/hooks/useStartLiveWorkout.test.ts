@@ -221,6 +221,11 @@ describe('useStartLiveWorkout', () => {
     const store = useActiveWorkoutStore.getState();
     expect(store.sourcePresetId).toBe(42);
     expect(store.sourceServerConfigId).toBe('config-1');
+    // Also tags the created session server-side (recentSessions stats
+    // scoping), independent of the client-supplied exercises.
+    expect(mockCreateWorkout).toHaveBeenCalledWith(
+      expect.objectContaining({ workout_preset_id: 42 }),
+    );
   });
 
   it('leaves the source preset link null for starts without a preset', async () => {
@@ -233,6 +238,9 @@ describe('useStartLiveWorkout', () => {
     expect(mockGetActiveServerConfig).not.toHaveBeenCalled();
     expect(useActiveWorkoutStore.getState().sourcePresetId).toBeNull();
     expect(useActiveWorkoutStore.getState().sourceServerConfigId).toBeNull();
+    expect(mockCreateWorkout).toHaveBeenCalledWith(
+      expect.not.objectContaining({ workout_preset_id: expect.anything() }),
+    );
   });
 
   it('defaults the name to the dated workout name when omitted', async () => {

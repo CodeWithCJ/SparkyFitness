@@ -80,7 +80,7 @@ describe('Exercise entry API schemas', () => {
     expect(result.data.exercises).toHaveLength(1);
   });
 
-  it('rejects create payloads that provide both workout sources', () => {
+  it('accepts create payloads that provide both workout sources (preset-tagged, client-supplied exercises)', () => {
     const result = runSchema('createPresetSessionRequestSchema', {
       workout_preset_id: 42,
       name: 'Morning Workout',
@@ -91,7 +91,9 @@ describe('Exercise entry API schemas', () => {
         },
       ],
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    expect(result.data.workout_preset_id).toBe(42);
+    expect(result.data.exercises).toHaveLength(1);
   });
 
   it('rejects create payloads that provide neither workout source', () => {
