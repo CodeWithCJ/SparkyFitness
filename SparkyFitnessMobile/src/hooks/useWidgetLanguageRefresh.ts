@@ -52,8 +52,12 @@ export function useWidgetLanguageRefresh(): void {
           desired.preference,
           desired.effectiveLanguage,
         );
-      } catch {
-        void addLog('[useWidgetLanguageRefresh] Widget locale preparation failed', 'ERROR');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        void addLog(
+          `[useWidgetLanguageRefresh] Widget locale preparation failed: ${message}`,
+          'ERROR',
+        );
         return;
       }
 

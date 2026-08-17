@@ -128,13 +128,15 @@ describe('useWidgetLanguageRefresh', () => {
   it('retries after locale preparation failure', async () => {
     setPreference('pl');
     resolvedLanguage = 'pl';
-    mockPrepareWidgetLocale.mockRejectedValueOnce(new Error('persist failed'));
+    mockPrepareWidgetLocale.mockRejectedValueOnce(
+      new Error('E_WRITE_FAILED: persist failed'),
+    );
     renderHook(() => useWidgetLanguageRefresh());
     await flushSync();
 
     expect(mockReload).not.toHaveBeenCalled();
     expect(mockAddLog).toHaveBeenCalledWith(
-      '[useWidgetLanguageRefresh] Widget locale preparation failed',
+      '[useWidgetLanguageRefresh] Widget locale preparation failed: E_WRITE_FAILED: persist failed',
       'ERROR',
     );
 

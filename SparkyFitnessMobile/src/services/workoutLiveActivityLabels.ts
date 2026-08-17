@@ -81,7 +81,7 @@ export function buildWorkoutLiveActivityLabels(
   if (!i18n.isInitialized) {
     // English is the stable cold-start fallback: return the built-in map
     // before i18n is ready (app boot, tests).
-    return locale === 'pl' ? { ...EN_FALLBACK } : EN_FALLBACK;
+    return { ...EN_FALLBACK };
   }
   // The i18n catalog (EN and PL) is the source of truth once initialized; the
   // built-in map is only the per-key English defaultValue, so editing the EN
