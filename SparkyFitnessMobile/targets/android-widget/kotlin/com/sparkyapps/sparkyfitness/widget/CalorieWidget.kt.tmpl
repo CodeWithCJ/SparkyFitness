@@ -41,9 +41,15 @@ import androidx.glance.state.PreferencesGlanceStateDefinition
 import {{APPLICATION_ID}}.R
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import org.json.JSONObject
 
+/**
+ * Classic base composition, unchanged from the pre-localization calorie widget
+ * (22415819): one-line localized kcal heading, 8dp progress bar, and the
+ * 32dp search/scan action row, with a flexible spacer between progress and
+ * actions. Only strings, accessibility labels and number formatting follow the
+ * app/system language; geometry, footprint and behavior are untouched.
+ */
 class CalorieWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
@@ -60,15 +66,25 @@ class CalorieWidget : GlanceAppWidget() {
     @Composable
     private fun WidgetContent(context: Context, fallbackSnapshot: CalorieSnapshot?) {
         val state = currentState<Preferences>()
+        // Observe the dedicated revision so an active Glance session recomposes
+        // after a language-only invalidation.
+        currentState(WidgetLocale.LOCALE_RENDER_REVISION_STATE_KEY)
         val snapshot = parseSnapshot(state[SNAPSHOT_STATE_KEY]) ?: fallbackSnapshot
+
+        // Widget-only locale override: localized string and number resolution
+        // stay local to widget rendering (see WidgetLocale).
+        val widgetContext = WidgetLocale.localizedContext(context)
 
         val remainingText: String
         val progress: Float
         if (snapshot == null) {
-            remainingText = "-"
+            remainingText = widgetContext.getString(R.string.widget_kcal_left_empty)
             progress = 0f
         } else {
-            remainingText = "${formatInt(snapshot.remaining)} kcal left"
+            remainingText = widgetContext.getString(
+                R.string.widget_kcal_left,
+                formatInt(widgetContext, snapshot.remaining),
+            )
             progress = snapshot.progress.coerceIn(0.0, 1.0).toFloat()
         }
 
@@ -78,6 +94,8 @@ class CalorieWidget : GlanceAppWidget() {
             .setPackage(context.packageName)
         val scanIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://scan"))
             .setPackage(context.packageName)
+        val searchFoodLabel = widgetContext.getString(R.string.widget_search_food)
+        val scanBarcodeLabel = widgetContext.getString(R.string.widget_scan_barcode)
 
         Box(
             modifier = GlanceModifier
@@ -101,7 +119,9 @@ class CalorieWidget : GlanceAppWidget() {
                 Spacer(modifier = GlanceModifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = progress,
-                    modifier = GlanceModifier.fillMaxWidth().height(8.dp),
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .height(8.dp),
                     color = GlanceTheme.colors.primary,
                     backgroundColor = GlanceTheme.colors.surfaceVariant,
                 )
@@ -119,7 +139,7 @@ class CalorieWidget : GlanceAppWidget() {
                     ) {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_search),
-                            contentDescription = "Search food",
+                            contentDescription = searchFoodLabel,
                             colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
                             modifier = GlanceModifier.size(24.dp),
                         )
@@ -139,7 +159,7 @@ class CalorieWidget : GlanceAppWidget() {
                     ) {
                         Image(
                             provider = ImageProvider(R.drawable.ic_widget_scan),
-                            contentDescription = "Scan barcode",
+                            contentDescription = scanBarcodeLabel,
                             colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
                             modifier = GlanceModifier.size(24.dp),
                         )
@@ -193,8 +213,10 @@ class CalorieWidget : GlanceAppWidget() {
         }
     }
 
-    private fun formatInt(value: Double): String {
-        return String.format(Locale.getDefault(), "%,d", value.toLong())
+    private fun formatInt(context: Context, value: Double): String {
+        // Pre-localization rounding preserved: the calorie widget truncates
+        // (1240.7 -> 1240) — see 22415819.
+        return formatWidgetInt(context, value.toLong())
     }
 
     companion object {

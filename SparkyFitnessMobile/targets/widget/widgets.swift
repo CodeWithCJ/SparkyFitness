@@ -116,14 +116,8 @@ private struct RingWithLabel: View {
 
     private var remainingText: String {
         guard snapshot.hasData else { return "-" }
-        return Self.numberFormatter.string(from: NSNumber(value: Int(snapshot.remaining.rounded()))) ?? "0"
+        return localizedNumberString(snapshot.remaining)
     }
-
-    private static let numberFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        return f
-    }()
 
     var body: some View {
         CalorieRing(progress: snapshot.progress, size: ringSize, strokeWidth: strokeWidth)
@@ -133,11 +127,18 @@ private struct RingWithLabel: View {
                         .font(.system(size: numberFontSize, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
-                    Text("kcal left")
+                    Text(localizedWidgetString("widget.kcal_left"))
                         .font(.system(size: numberFontSize * 0.58))
                         .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, strokeWidth)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    String(
+                        format: localizedWidgetString("widget.a11y.kcal_left"),
+                        remainingText
+                    )
+                )
             )
     }
 }
@@ -147,14 +148,8 @@ private struct StatBlock: View {
     let value: Double
 
     private var valueText: String {
-        Self.numberFormatter.string(from: NSNumber(value: Int(value.rounded()))) ?? "0"
+        localizedNumberString(value)
     }
-
-    private static let numberFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        return f
-    }()
 
     var body: some View {
         HStack(spacing: 8) {
@@ -171,12 +166,14 @@ private struct StatBlock: View {
                 .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
     }
 }
 
 struct ActionButton: View {
     let icon: String
     let destination: URL
+    let accessibilityLabel: String
 
     var body: some View {
         Link(destination: destination) {
@@ -186,6 +183,7 @@ struct ActionButton: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
         }
+        .accessibilityLabel(accessibilityLabel)
     }
 }
 
@@ -218,8 +216,8 @@ struct widgetEntryView: View {
                 numberFontSize: 18
             )
             VStack(spacing: 3) {
-                StatBlock(label: "Food", value: entry.snapshot.food)
-                StatBlock(label: "Burned", value: entry.snapshot.burned)
+                StatBlock(label: localizedWidgetString("widget.food"), value: entry.snapshot.food)
+                StatBlock(label: localizedWidgetString("widget.burned"), value: entry.snapshot.burned)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -241,9 +239,9 @@ struct widgetEntryView: View {
                 )
 
                 VStack(alignment: .leading, spacing: 20) {
-                    StatBlock(label: "Goal", value: entry.snapshot.goal)
-                    StatBlock(label: "Food", value: entry.snapshot.food)
-                    StatBlock(label: "Burned", value: entry.snapshot.burned)
+                    StatBlock(label: localizedWidgetString("widget.goal"), value: entry.snapshot.goal)
+                    StatBlock(label: localizedWidgetString("widget.food"), value: entry.snapshot.food)
+                    StatBlock(label: localizedWidgetString("widget.burned"), value: entry.snapshot.burned)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -255,11 +253,13 @@ struct widgetEntryView: View {
                 VStack(spacing: 16) {
                     ActionButton(
                         icon: "magnifyingglass",
-                        destination: URL(string: "sparkyfitnessmobile://search")!
+                        destination: URL(string: "sparkyfitnessmobile://search")!,
+                        accessibilityLabel: localizedWidgetString("widget.search_food")
                     )
                     ActionButton(
                         icon: "barcode.viewfinder",
-                        destination: URL(string: "sparkyfitnessmobile://scan")!
+                        destination: URL(string: "sparkyfitnessmobile://scan")!,
+                        accessibilityLabel: localizedWidgetString("widget.scan_barcode")
                     )
                 }
                 .frame(width: buttonColumnWidth)
@@ -278,8 +278,8 @@ struct widget: Widget {
             widgetEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Calorie Tracker")
-        .description("Today's calorie intake at a glance.")
+        .configurationDisplayName("widget.calorie.name")
+        .description("widget.calorie.description")
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

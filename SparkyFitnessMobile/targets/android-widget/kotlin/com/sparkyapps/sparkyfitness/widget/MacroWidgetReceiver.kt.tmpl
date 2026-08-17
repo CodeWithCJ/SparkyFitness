@@ -7,10 +7,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.updateAll
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,6 +28,32 @@ class MacroWidgetReceiver : GlanceAppWidgetReceiver() {
                 try {
                     glanceAppWidget.updateAll(context)
                     scheduleMidnightRefresh(context)
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
+        if (intent.action == Intent.ACTION_LOCALE_CHANGED) {
+            // Out-of-app language change (Android Settings App Languages, also
+            // device-wide). The provider XML is registered for this broadcast
+            // by the config plugin; re-render every placed instance so the
+            // localized resources / WidgetLocale context refresh immediately
+            // without the app foregrounding.
+            val pending = goAsync()
+            CoroutineScope(Dispatchers.Default).launch {
+                try {
+                    WidgetLocale.refreshEffectiveRenderLocaleFromBroadcast(context, intent)
+                    val manager = GlanceAppWidgetManager(context)
+                    manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
+                        WidgetLocale.bumpLocaleRenderRevision(context, id)
+                    }
+                    glanceAppWidget.updateAll(context)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // A system broadcast must not crash the receiver; the next
+                    // locale/snapshot refresh can retry the invalidation.
                 } finally {
                     pending.finish()
                 }

@@ -1,0 +1,242 @@
+package com.sparkyapps.sparkyfitness.widget
+
+import android.app.LocaleManager
+import android.content.Context
+import android.content.Intent
+import android.content.res.Configuration
+import android.os.Build
+import android.os.LocaleList
+import androidx.glance.GlanceId
+import androidx.glance.appwidget.state.updateAppWidgetState
+import androidx.datastore.preferences.core.longPreferencesKey
+import java.text.NumberFormat
+import java.util.Locale
+
+/**
+ * Android widget locale coordination.
+ *
+ * KEY_LOCALE is the user/widget override and is used only on Android <=12,
+ * where the RN app language does not automatically change Android resources.
+ *
+ * KEY_EFFECTIVE_RENDER_LOCALE is different: on Android 13+ it is a short-lived
+ * synchronized rendering cache, not a user preference or locale authority.
+ * LocaleManager/PR3 remains authoritative. The cache only bridges the
+ * configuration-change window for Glance rendering after the app has already
+ * applied a language change through i18next, before the live process Context
+ * necessarily reflects that change.
+ */
+object WidgetLocale {
+
+    /**
+     * Glance view-state token used only to make an active PreferencesGlanceStateDefinition
+     * session observe a language-only render change. LocaleManager/render cache remains
+     * the language source; this is not a preference or locale authority.
+     */
+    val LOCALE_RENDER_REVISION_STATE_KEY = longPreferencesKey("localeRenderRevision")
+
+    private const val PREFS_NAME = "SparkyWidgetLocale"
+    private const val KEY_LOCALE = "widgetLocale"
+    private const val KEY_EFFECTIVE_RENDER_LOCALE = "effectiveRenderLocale"
+
+    private val SUPPORTED_LOCALES = setOf("en", "pl")
+    private val SUPPORTED_PREFERENCES = setOf("system", "en", "pl")
+
+    private fun isNativeAppLanguageSupported(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+
+    private fun preferences(context: Context) =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    /** Current explicit widget override, only meaningful on Android <=12. */
+    fun override(context: Context): Locale? {
+        if (isNativeAppLanguageSupported()) return null
+        return localeFromCode(preferences(context).getString(KEY_LOCALE, null))
+    }
+
+    /**
+     * Atomically prepares the locale state before a widget reload.
+     *
+     * API <=32:
+     *   system removes KEY_LOCALE; en/pl store the widget-only override.
+     *   The API 33 render cache is removed because it is not used there.
+     * API 33+:
+     *   any stale KEY_LOCALE is removed and effectiveLanguage is stored only as
+     *   the deterministic rendering cache. It is never a preference authority.
+     */
+    fun prepareWidgetLocale(
+        context: Context,
+        preference: String?,
+        effectiveLanguage: String?,
+    ) {
+        val normalizedPreference = preference?.trim()?.lowercase(Locale.ROOT) ?: "system"
+        val normalizedEffective = effectiveLanguage
+            ?.trim()
+            ?.lowercase(Locale.ROOT)
+            ?: throw IllegalArgumentException("Effective widget language is required")
+
+        if (normalizedPreference !in SUPPORTED_PREFERENCES) {
+            throw IllegalArgumentException("Only system, en, or pl are supported")
+        }
+        if (normalizedEffective !in SUPPORTED_LOCALES) {
+            throw IllegalArgumentException("Effective widget language must be en or pl")
+        }
+
+        val editor = preferences(context).edit()
+        if (isNativeAppLanguageSupported()) {
+            editor.remove(KEY_LOCALE)
+            editor.putString(KEY_EFFECTIVE_RENDER_LOCALE, normalizedEffective)
+        } else {
+            editor.remove(KEY_EFFECTIVE_RENDER_LOCALE)
+            if (normalizedPreference == "system") {
+                editor.remove(KEY_LOCALE)
+            } else {
+                editor.putString(KEY_LOCALE, normalizedPreference)
+            }
+        }
+
+        if (!editor.commit()) {
+            throw IllegalStateException("Failed to persist widget locale state")
+        }
+    }
+
+    /**
+     * Refreshes the API 33+ rendering cache from ACTION_LOCALE_CHANGED.
+     *
+     * For an app-locale broadcast, EXTRA_LOCALE_LIST is the event payload and
+     * therefore the primary source. This deliberately avoids reading
+     * LocaleManager.applicationLocales again: that readback may still be stale
+     * immediately after the picker write and could overwrite a newer cache.
+     * An empty app list means follow-system and uses systemLocales. Broadcasts
+     * without app-locale extras use the context configuration with platform
+     * fallback. Failure removes the cache instead of preserving stale data.
+     */
+    fun refreshEffectiveRenderLocaleFromBroadcast(
+        context: Context,
+        intent: Intent,
+    ): Boolean {
+        if (!isNativeAppLanguageSupported()) {
+            preferences(context).edit().remove(KEY_EFFECTIVE_RENDER_LOCALE).commit()
+            return false
+        }
+
+        val packageName = intent.getStringExtra(Intent.EXTRA_PACKAGE_NAME)
+        val hasAppLocaleExtras =
+            packageName == context.packageName && intent.hasExtra(Intent.EXTRA_LOCALE_LIST)
+
+        val effective = if (hasAppLocaleExtras) {
+            val appLocales = intent.getParcelableExtra(
+                Intent.EXTRA_LOCALE_LIST,
+                LocaleList::class.java,
+            )
+            if (appLocales != null && !appLocales.isEmpty) {
+                languageFromLocaleList(appLocales)
+            } else {
+                systemPlatformLanguage(context)
+            }
+        } else {
+            val contextLocales = context.resources.configuration.locales
+            if (!contextLocales.isEmpty) {
+                normalizeLanguage(contextLocales[0])
+            } else {
+                currentPlatformLanguage(context)
+            }
+        }
+
+        val editor = preferences(context).edit()
+        return if (effective != null) {
+            editor.putString(KEY_EFFECTIVE_RENDER_LOCALE, effective)
+            editor.commit()
+        } else {
+            editor.remove(KEY_EFFECTIVE_RENDER_LOCALE).commit()
+            false
+        }
+    }
+
+    /** Reads only the API 33+ synchronized rendering cache. */
+    private fun effectiveRenderLocale(context: Context): Locale? {
+        if (!isNativeAppLanguageSupported()) return null
+        return localeFromCode(preferences(context).getString(KEY_EFFECTIVE_RENDER_LOCALE, null))
+    }
+
+    private fun languageFromLocaleList(locales: LocaleList): String? {
+        if (locales.isEmpty) return null
+        return normalizeLanguage(locales[0])
+    }
+
+    private fun normalizeLanguage(locale: Locale): String {
+        return if (locale.language.equals("pl", ignoreCase = true)) "pl" else "en"
+    }
+
+    private fun systemPlatformLanguage(context: Context): String? {
+        if (!isNativeAppLanguageSupported()) return null
+        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
+        val systemLocales = manager.systemLocales
+        return if (systemLocales != null && !systemLocales.isEmpty) {
+            normalizeLanguage(systemLocales[0])
+        } else {
+            null
+        }
+    }
+
+    private fun currentPlatformLanguage(context: Context): String? {
+        if (!isNativeAppLanguageSupported()) return null
+        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
+        val appLocales = manager.applicationLocales
+        val platformLocale = if (appLocales != null && !appLocales.isEmpty) {
+            appLocales[0]
+        } else {
+            val systemLocales = manager.systemLocales
+            if (systemLocales != null && !systemLocales.isEmpty) systemLocales[0] else null
+        }
+        return platformLocale?.let(::normalizeLanguage)
+    }
+
+    /**
+     * Bumps the dedicated Glance state revision without changing any snapshot
+     * data. updateAppWidgetState is the state mutation that an active Glance
+     * composition observes; update/updateAll alone may reuse a running
+     * provideGlance session.
+     */
+    suspend fun bumpLocaleRenderRevision(context: Context, glanceId: GlanceId) {
+        updateAppWidgetState(context, glanceId) { state ->
+            val previous = state[LOCALE_RENDER_REVISION_STATE_KEY] ?: 0L
+            state[LOCALE_RENDER_REVISION_STATE_KEY] = previous + 1L
+        }
+    }
+
+    private fun localeFromCode(code: String?): Locale? {
+        return when (code?.lowercase(Locale.ROOT)) {
+            "en" -> Locale.forLanguageTag("en")
+            "pl" -> Locale.forLanguageTag("pl")
+            else -> null
+        }
+    }
+
+    /**
+     * Resolves the locale for this render. API 33+ uses the synchronized render
+     * cache first, then the platform as a fallback. API <=32 uses only the
+     * explicit widget override and otherwise follows the context/system.
+     */
+    fun localizedContext(context: Context): Context {
+        val locale = if (isNativeAppLanguageSupported()) {
+            effectiveRenderLocale(context)
+                ?: currentPlatformLanguage(context)?.let(::localeFromCode)
+                ?: return context
+        } else {
+            override(context) ?: return context
+        }
+        val config = Configuration(context.resources.configuration)
+        config.setLocale(locale)
+        return context.createConfigurationContext(config)
+    }
+}
+
+/** Locale-aware integer formatting shared by every widget surface. */
+fun currentWidgetLocale(context: Context): Locale {
+    val locales = context.resources.configuration.locales
+    return if (locales.isEmpty) Locale.getDefault() else locales[0]
+}
+
+fun formatWidgetInt(context: Context, value: Long): String {
+    return NumberFormat.getIntegerInstance(currentWidgetLocale(context)).format(value)
+}

@@ -1,0 +1,17 @@
+"widget.calorie.name" = "Calories";
+"widget.calorie.description" = "Today's calorie intake at a glance.";
+"widget.macro.name" = "Macros";
+"widget.macro.description" = "Today's protein, carbs, and fat at a glance.";
+"widget.kcal_left" = "kcal left";
+"widget.kcal" = "kcal";
+"widget.food" = "Food";
+"widget.burned" = "Burned";
+"widget.goal" = "Goal";
+"widget.protein" = "Protein";
+"widget.carbs" = "Carbs";
+"widget.fat" = "Fat";
+"widget.grams" = "%@ g";
+"widget.a11y.kcal_left" = "%@ kcal left";
+"widget.a11y.kcal" = "%@ kcal";
+"widget.search_food" = "Search food";
+"widget.scan_barcode" = "Scan barcode";

@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { PresetSessionResponse } from '@workspace/shared';
+import type {
+  ExerciseSnapshotResponse,
+  PresetSessionResponse,
+} from '@workspace/shared';
 import { addUserInteractionListener } from 'expo-widgets';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import {
   __resetActiveWorkoutStoreForTests,
   useActiveWorkoutStore,
@@ -134,10 +138,10 @@ function makeSession(overrides?: Partial<PresetSessionResponse>): PresetSessionR
           category: 'Strength',
           images: [],
           calories_per_hour: 400,
-        } as any,
+        } as ExerciseSnapshotResponse,
         activity_details: [],
         sets: [makeSet(101, 1), makeSet(102, 2)],
-      } as any,
+      } satisfies PresetSessionResponse['exercises'][number],
     ],
     ...overrides,
   };
@@ -188,6 +192,10 @@ describe('workoutLiveActivity', () => {
     mockAddUserInteractionListener.mockClear();
     jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(true);
     await AsyncStorage.clear();
+    await initializeI18n('en');
+    if (i18n.resolvedLanguage !== 'en') {
+      await i18n.changeLanguage('en');
+    }
   });
 
   afterEach(() => {
@@ -207,6 +215,21 @@ describe('workoutLiveActivity', () => {
       expect(url).toBe(ACTIVE_WORKOUT_URL);
       expect(props).toEqual({
         workoutName: 'Push Day',
+        locale: 'en',
+        labels: {
+          rest: 'Rest',
+          paused: 'Paused',
+          elapsed: 'Elapsed',
+          workoutComplete: 'Workout complete',
+          complete: 'Complete',
+          addFifteenSeconds: 'Add 15 seconds',
+          addFifteenSecondsShort: '+15s',
+          skipRest: 'Skip rest',
+          workout: 'Workout',
+          exercise: 'Exercise',
+          set: 'Set',
+          setOf: 'of',
+        },
         startedAt: FIXED_NOW,
         phase: 'active',
         restStartedAt: null,
@@ -346,13 +369,13 @@ describe('workoutLiveActivity', () => {
 
     it('holds all operations until hydration, then adopts without a duplicate start', async () => {
       (useActiveWorkoutStore.persist.hasHydrated as jest.Mock).mockReturnValue(false);
-      let finishHydration: (() => void) | undefined;
+      let finishHydration: ((state?: unknown) => void) | undefined;
       jest
         .spyOn(useActiveWorkoutStore.persist, 'onFinishHydration')
-        .mockImplementation(((cb: () => void) => {
+        .mockImplementation((cb: (state?: unknown) => void) => {
           finishHydration = cb;
-          return () => {};
-        }) as any);
+          return () => undefined;
+        });
       const leftover = makeInstance();
       mockFactory.getInstances.mockReturnValue([leftover]);
 
@@ -556,6 +579,137 @@ describe('workoutLiveActivity', () => {
 
       const [props] = mockFactory.start.mock.calls[0];
       expect(props.appIconUri).toBeUndefined();
+    });
+  });
+
+  describe('language change', () => {
+    it('updates the existing activity to the new locale without restarting', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      expect(mockFactory.start).toHaveBeenCalledTimes(1);
+      expect(mockFactory.start.mock.calls[0][0]).toMatchObject({ locale: 'en' });
+
+      await i18n.changeLanguage('pl');
+      await flushPromises();
+
+      // Same instance id: updated, never ended+restarted.
+      expect(createdInstances).toHaveLength(1);
+      expect(instance.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locale: 'pl',
+          labels: expect.objectContaining({ rest: 'Odpoczynek' }),
+          startedAt: FIXED_NOW,
+          phase: 'active',
+        }),
+      );
+      expect(instance.end).not.toHaveBeenCalled();
+    });
+
+    it('does not perform a redundant update for a second identical pl event', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      await i18n.changeLanguage('pl');
+      await flushPromises();
+      const updateCount = instance.update.mock.calls.length;
+      expect(updateCount).toBeGreaterThan(0);
+
+      await i18n.changeLanguage('pl');
+      await flushPromises();
+
+      expect(instance.update.mock.calls.length).toBe(updateCount);
+    });
+
+    it('leaves timestamps and phase unchanged when only the language changes', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      await i18n.changeLanguage('pl');
+      await flushPromises();
+
+      const lastUpdate = instance.update.mock.calls.at(-1)?.[0];
+      expect(lastUpdate).toMatchObject({
+        startedAt: FIXED_NOW,
+        phase: 'active',
+        restStartedAt: null,
+        restEndsAt: null,
+      });
+    });
+  });
+
+  describe('reconcile with persisted state', () => {
+    it('adopts a leftover instance and updates it to the current locale', async () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      const leftover = makeInstance();
+      mockFactory.getInstances.mockReturnValue([leftover]);
+
+      // The app restarts already in Polish; reconcile must repaint in Polish.
+      await i18n.changeLanguage('pl');
+      await initHydrated();
+
+      expect(mockFactory.start).not.toHaveBeenCalled();
+      expect(leftover.update).toHaveBeenCalledWith(
+        expect.objectContaining({ locale: 'pl' }),
+      );
+    });
+
+    it('deduplicates multiple existing instances on restart', async () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      const a = makeInstance();
+      const b = makeInstance();
+      mockFactory.getInstances.mockReturnValue([a, b]);
+
+      await initHydrated();
+
+      expect(a.update).toHaveBeenCalled();
+      expect(b.end).toHaveBeenCalledWith('immediate');
+    });
+  });
+
+  describe('update error handling', () => {
+    it('logs a rejected locale update and keeps the queue flowing', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      instance.update.mockRejectedValueOnce(new Error('boom'));
+      await i18n.changeLanguage('pl');
+      await flushPromises();
+
+      expect(mockAddLog).toHaveBeenCalledWith(
+        expect.stringContaining('sync failed'),
+        'ERROR',
+      );
+
+      // A later real state change still retries the update.
+      useActiveWorkoutStore.getState().completeSet('101');
+      await flushPromises();
+      expect(instance.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ phase: 'resting' }),
+      );
+    });
+
+    it('does not show toasts or alerts on update failures', async () => {
+      const alertSpy = jest.spyOn(global, 'alert').mockImplementation(() => undefined);
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      instance.update.mockRejectedValueOnce(new Error('boom'));
+      await i18n.changeLanguage('pl');
+      await flushPromises();
+
+      expect(alertSpy).not.toHaveBeenCalled();
+      alertSpy.mockRestore();
     });
   });
 });

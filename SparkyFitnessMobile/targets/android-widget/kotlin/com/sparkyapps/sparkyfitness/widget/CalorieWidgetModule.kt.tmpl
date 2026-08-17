@@ -7,6 +7,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -78,16 +79,64 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
+    fun prepareWidgetLocale(
+        preference: String,
+        effectiveLanguage: String,
+        promise: Promise,
+    ) {
+        val ctx = reactApplicationContext
+        moduleScope.launch {
+            try {
+                WidgetLocale.prepareWidgetLocale(ctx, preference, effectiveLanguage)
+
+                // GlanceAppWidget.update/updateAll may reuse an already-running
+                // provideGlance session. Mutating this dedicated Preferences
+                // state revision makes the active composition observe the
+                // language-only render change before the JS reloads either widget.
+                val manager = GlanceAppWidgetManager(ctx)
+                manager.getGlanceIds(CalorieWidget::class.java).forEach { id ->
+                    WidgetLocale.bumpLocaleRenderRevision(ctx, id)
+                }
+                manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
+                    WidgetLocale.bumpLocaleRenderRevision(ctx, id)
+                }
+
+                promise.resolve(null)
+            } catch (e: Exception) {
+                promise.reject("E_WRITE_FAILED", e)
+            }
+        }
+    }
+
+    @ReactMethod
     fun reloadWidget(promise: Promise) {
         val ctx = reactApplicationContext
         moduleScope.launch {
             try {
                 val manager = GlanceAppWidgetManager(ctx)
                 val widget = CalorieWidget()
+                var failures = 0
+                var firstFailure: Exception? = null
                 manager.getGlanceIds(CalorieWidget::class.java).forEach { id ->
-                    widget.update(ctx, id)
+                    try {
+                        widget.update(ctx, id)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        failures++
+                        if (firstFailure == null) firstFailure = e
+                    }
                 }
-                promise.resolve(null)
+                if (failures > 0) {
+                    promise.reject(
+                        "E_RELOAD_FAILED",
+                        RuntimeException("$failures calorie widget instance(s) failed to update", firstFailure),
+                    )
+                } else {
+                    promise.resolve(null)
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 promise.reject("E_RELOAD_FAILED", e)
             }
@@ -101,10 +150,28 @@ class CalorieWidgetModule(reactContext: ReactApplicationContext) :
             try {
                 val manager = GlanceAppWidgetManager(ctx)
                 val widget = MacroWidget()
+                var failures = 0
+                var firstFailure: Exception? = null
                 manager.getGlanceIds(MacroWidget::class.java).forEach { id ->
-                    widget.update(ctx, id)
+                    try {
+                        widget.update(ctx, id)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        failures++
+                        if (firstFailure == null) firstFailure = e
+                    }
                 }
-                promise.resolve(null)
+                if (failures > 0) {
+                    promise.reject(
+                        "E_RELOAD_FAILED",
+                        RuntimeException("$failures macro widget instance(s) failed to update", firstFailure),
+                    )
+                } else {
+                    promise.resolve(null)
+                }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 promise.reject("E_RELOAD_FAILED", e)
             }

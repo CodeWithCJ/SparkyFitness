@@ -110,6 +110,8 @@ import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWork
 import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
+import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
+import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -128,13 +130,21 @@ function AppContent() {
   } = useAuth();
 
   // Language bootstrap + initial route. `useAppBootstrap` initializes the
-  // effective locale (i18next / AppCompat per-app locale) before the app
-  // renders, then resolves the first route from the active server config.
+  // effective locale (Android 13+ native LocaleManager, Android <=12 local
+  // i18next preference) before the app renders, then resolves the first route
+  // from the active server config.
   const { initialRoute, linkingEnabled, setLinkingEnabled } = useAppBootstrap();
 
   // Adopt language changes made outside the app (Android App Languages) when
   // the app returns to the foreground.
   useAppLanguageForegroundSync();
+
+  // Keep the native surfaces (Android Glance widgets, iOS WidgetKit, Workout
+  // Live Activity) in sync with the effective app locale. These hooks listen
+  // to i18n 'languageChanged' and reload/update the native surfaces without
+  // touching any React Native screen strings.
+  useWidgetLanguageRefresh();
+  useIOSWidgetLanguageRefresh();
 
   const usesLiquidGlassNavigation = useNativeIOSTabsActive();
   const usesNativeIOSHeaders = useNativeIOSHeadersActive();
