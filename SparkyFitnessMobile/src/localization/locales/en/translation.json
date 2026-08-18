@@ -11,7 +11,9 @@
     "cancel": "Cancel",
     "continue": "Continue",
     "retry": "Retry",
-    "details": "Details"
+    "details": "Details",
+    "error": "Error",
+    "delete": "Delete"
   },
   "settings": {
     "app": "App Settings",
@@ -327,5 +329,83 @@
     "minutes": "Minutes",
     "calories": "Calories",
     "noExerciseEntries": "No exercise entries yet"
+  },
+  "syncScreen": {
+    "healthConnectSettings": "Health Connect settings",
+    "healthAppSettings": "Health app settings",
+    "title": "Health Data Sync",
+    "syncNow": "Sync Now",
+    "syncing": "Syncing…",
+    "sendToServer": "Send your health data to your server",
+    "lastSynced": "Last synced:",
+    "commonError": "Error",
+    "timeRanges": {
+      "today": "Today",
+      "last24Hours": "Last 24 Hours",
+      "last3Days": "Last 3 Days",
+      "last7Days": "Last 7 Days",
+      "last30Days": "Last 30 Days",
+      "last90Days": "Last 90 Days",
+      "last6Months": "Last 6 Months",
+      "lastYear": "Last Year"
+    },
+    "permissionRequired": {
+      "title": "Permission Required",
+      "backgroundAccess": "Background access permission is required for background sync. Please grant the permission in Health Connect settings.",
+      "allTitle": "Permissions Required",
+      "allMessage": "Some permissions were not granted. Please enable all required health permissions in the {{settings}} to sync all data."
+    },
+    "permissionError": {
+      "title": "Permission Error",
+      "backgroundAccess": "Failed to request background access permission: {{error}}",
+      "metricRead": "Failed to request {{metric}} permissions: {{error}}",
+      "metricWrite": "Failed to request {{metric}} write permission: {{error}}",
+      "allMetrics": "An error occurred while requesting health permissions: {{error}}"
+    },
+    "permissionDenied": {
+      "title": "Permission Denied",
+      "read": "Please grant {{metric}} permission in {{settings}}.",
+      "write": "Please grant {{metric}} write permission in {{settings}}."
+    },
+    "removal": {
+      "removed": "Removed",
+      "deleted": "Deleted SparkyFitness data from {{store}}.",
+      "partial": "Partially removed",
+      "partialMessage": "Some records couldn't be deleted from {{store}}.",
+      "errorMessage": "Could not remove data from {{store}}.",
+      "confirmTitle": "Remove all {{store}} data",
+      "confirmMessage": "Delete every nutrition and hydration record SparkyFitness wrote to {{store}}, and turn writeback off? Your SparkyFitness diary and records from other apps are not affected."
+    },
+    "range": {
+      "title": "Sync Range",
+      "selectTitle": "Select Sync Range",
+      "description": "Controls how much data will be included in the next sync",
+      "largeWarning": "Large time ranges may take a while."
+    },
+    "unavailable": {
+      "healthConnect": "Health Connect is not available. Please make sure it is installed and enabled.",
+      "healthKit": "Health data (HealthKit) is not available. Please enable Health access in the iOS Health app."
+    },
+    "import": {
+      "title": "Import Full History",
+      "subtitle": "One-time import of all past health data"
+    },
+    "report": {
+      "generating": "Generating…",
+      "title": "Health Data Report",
+      "subtitle": "Export anonymized health data for bug reports",
+      "privacy": "Reads the last 4 hours of data from Health Connect for troubleshooting.\nValues are rounded for privacy. Nothing is sent automatically.",
+      "error": "Failed to generate health data report: {{error}}"
+    }
+  },
+  "syncFrequency": {
+    "title": "Background Sync",
+    "enable": "Enable Background Sync",
+    "iosNote": "When enabled, the app will update in the background when your phone allows it. Manually syncing will always update right away."
+  },
+  "syncOnOpen": {
+    "title": "Sync on Open",
+    "enable": "Sync when app opens",
+    "description": "When enabled, health data will sync automatically when you open the app."
   }
 }

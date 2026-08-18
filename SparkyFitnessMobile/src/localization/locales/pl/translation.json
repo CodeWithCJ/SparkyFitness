@@ -11,7 +11,9 @@
     "cancel": "Anuluj",
     "continue": "Kontynuuj",
     "retry": "Spróbuj ponownie",
-    "details": "Szczegóły"
+    "details": "Szczegóły",
+    "error": "Błąd",
+    "delete": "Usuń"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -327,5 +329,83 @@
     "minutes": "Minuty",
     "calories": "Kalorie",
     "noExerciseEntries": "Brak zapisanych ćwiczeń"
+  },
+  "syncScreen": {
+    "healthConnectSettings": "ustawieniach Health Connect",
+    "healthAppSettings": "ustawieniach aplikacji Zdrowie",
+    "title": "Synchronizacja danych zdrowotnych",
+    "syncNow": "Synchronizuj teraz",
+    "syncing": "Synchronizowanie…",
+    "sendToServer": "Wyślij dane zdrowotne na serwer",
+    "lastSynced": "Ostatnia synchronizacja:",
+    "commonError": "Błąd",
+    "timeRanges": {
+      "today": "Dzisiaj",
+      "last24Hours": "Ostatnie 24 godziny",
+      "last3Days": "Ostatnie 3 dni",
+      "last7Days": "Ostatnie 7 dni",
+      "last30Days": "Ostatnie 30 dni",
+      "last90Days": "Ostatnie 90 dni",
+      "last6Months": "Ostatnie 6 miesięcy",
+      "lastYear": "Ostatni rok"
+    },
+    "permissionRequired": {
+      "title": "Wymagane uprawnienie",
+      "backgroundAccess": "Uprawnienie do dostępu w tle jest wymagane do synchronizacji w tle. Przyznaj je w ustawieniach Health Connect.",
+      "allTitle": "Wymagane uprawnienia",
+      "allMessage": "Nie przyznano części uprawnień. Włącz wszystkie wymagane uprawnienia zdrowotne w {{settings}}, aby synchronizować wszystkie dane."
+    },
+    "permissionError": {
+      "title": "Błąd uprawnień",
+      "backgroundAccess": "Nie udało się poprosić o uprawnienie do dostępu w tle: {{error}}",
+      "metricRead": "Nie udało się poprosić o uprawnienia do {{metric}}: {{error}}",
+      "metricWrite": "Nie udało się poprosić o uprawnienie do zapisu {{metric}}: {{error}}",
+      "allMetrics": "Wystąpił błąd podczas żądania uprawnień zdrowotnych: {{error}}"
+    },
+    "permissionDenied": {
+      "title": "Odmowa uprawnień",
+      "read": "Przyznaj uprawnienie do {{metric}} w {{settings}}.",
+      "write": "Przyznaj uprawnienie do zapisu {{metric}} w {{settings}}."
+    },
+    "removal": {
+      "removed": "Usunięto",
+      "deleted": "Usunięto dane SparkyFitness z {{store}}.",
+      "partial": "Usunięto częściowo",
+      "partialMessage": "Niektórych rekordów nie można było usunąć z {{store}}.",
+      "errorMessage": "Nie udało się usunąć danych z {{store}}.",
+      "confirmTitle": "Usuń wszystkie dane z {{store}}",
+      "confirmMessage": "Usunąć wszystkie rekordy składników odżywczych i nawodnienia zapisane przez SparkyFitness w {{store}} oraz wyłączyć zapis zwrotny? Dziennik SparkyFitness i dane z innych aplikacji nie zostaną zmienione."
+    },
+    "range": {
+      "title": "Zakres synchronizacji",
+      "selectTitle": "Wybierz zakres synchronizacji",
+      "description": "Określa ilość danych uwzględnianych podczas następnej synchronizacji",
+      "largeWarning": "Duże zakresy czasu mogą wymagać chwili."
+    },
+    "unavailable": {
+      "healthConnect": "Health Connect jest niedostępne. Upewnij się, że jest zainstalowane i włączone.",
+      "healthKit": "Dane zdrowotne (HealthKit) są niedostępne. Włącz dostęp do Zdrowia w aplikacji Zdrowie na iOS."
+    },
+    "import": {
+      "title": "Importuj pełną historię",
+      "subtitle": "Jednorazowy import wszystkich wcześniejszych danych zdrowotnych"
+    },
+    "report": {
+      "generating": "Generowanie…",
+      "title": "Raport danych zdrowotnych",
+      "subtitle": "Eksportuj zanonimizowane dane zdrowotne do zgłoszenia błędu",
+      "privacy": "Odczytuje dane z ostatnich 4 godzin z Health Connect na potrzeby diagnostyki.\nWartości są zaokrąglane dla prywatności. Nic nie jest wysyłane automatycznie.",
+      "error": "Nie udało się wygenerować raportu danych zdrowotnych: {{error}}"
+    }
+  },
+  "syncFrequency": {
+    "title": "Synchronizacja w tle",
+    "enable": "Włącz synchronizację w tle",
+    "iosNote": "Po włączeniu aplikacja będzie aktualizować dane w tle, gdy telefon na to pozwoli. Synchronizacja ręczna zawsze rozpocznie się od razu."
+  },
+  "syncOnOpen": {
+    "title": "Synchronizuj przy otwarciu",
+    "enable": "Synchronizuj po otwarciu aplikacji",
+    "description": "Po włączeniu dane zdrowotne będą synchronizowane automatycznie po otwarciu aplikacji."
   }
 }

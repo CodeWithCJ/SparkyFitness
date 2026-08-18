@@ -15,7 +15,7 @@ import type { TimeRange } from '../../src/services/storage';
 // A single, controllable metric list — the real HEALTH_METRICS is platform
 // filtered and huge. We mutate this array per test so we can drive one record
 // type through `fetchHealthDisplayData` and assert the formatter output.
-const mockHealthMetrics: { id: string; label: string; recordType: string }[] = [];
+const mockHealthMetrics: { id: string; defaultLabel: string; recordType: string }[] = [];
 
 jest.mock('../../src/HealthMetrics', () => ({
   get HEALTH_METRICS() {
@@ -60,7 +60,7 @@ const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 function setMetric(recordType: string): void {
   mockHealthMetrics.length = 0;
-  mockHealthMetrics.push({ id: 'metric', label: recordType, recordType });
+  mockHealthMetrics.push({ id: 'metric', defaultLabel: recordType, recordType });
 }
 
 const TIME_RANGE: TimeRange = '7d';
@@ -401,8 +401,8 @@ describe('fetchHealthDisplayData', () => {
     it('isolates failures so one bad metric does not sink the others', async () => {
       mockHealthMetrics.length = 0;
       mockHealthMetrics.push(
-        { id: 'good', label: 'Weight', recordType: 'Weight' },
-        { id: 'bad', label: 'Heart Rate', recordType: 'HeartRate' },
+        { id: 'good', defaultLabel: 'Weight', recordType: 'Weight' },
+        { id: 'bad', defaultLabel: 'Heart Rate', recordType: 'HeartRate' },
       );
       mockReadHealthRecords.mockImplementation(async (recordType: string) => {
         if (recordType === 'HeartRate') throw new Error('boom');
