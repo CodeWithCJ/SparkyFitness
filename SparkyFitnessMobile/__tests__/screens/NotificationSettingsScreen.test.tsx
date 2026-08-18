@@ -164,5 +164,15 @@ describe('NotificationSettingsScreen', () => {
       expect(mockRequestPermission).not.toHaveBeenCalled();
       expect(mockMaybePrompt).not.toHaveBeenCalled();
     });
+    });
+
+  it('provides contextual accessibility labels for notification switches', () => {
+    const { getAllByRole } = renderScreen();
+    const switches = getAllByRole('switch');
+
+    expect(switches[0].props.accessibilityLabel).toBe('Allow Notifications');
+    expect(switches[1].props.accessibilityLabel).toBe('Rest Timer');
+    expect(switches[2].props.accessibilityLabel).toBe('Fasting Goals');
+    expect(switches[3].props.accessibilityLabel).toBe('Medication Reminders');
   });
 });

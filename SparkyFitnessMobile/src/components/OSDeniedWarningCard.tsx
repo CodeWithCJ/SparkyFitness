@@ -10,16 +10,15 @@ interface Props {
   actionLabel: string;
 }
 
-const TITLE = 'Grant permissions';
-const DEFAULT_BODY =
-  "SparkyFitness alerts (rest timers, fasting goals, medication reminders) won't fire.";
 
 const OSDeniedWarningCard: React.FC<Props> = ({ onPress, actionLabel }) => {
+  const { t } = useTranslation();
   const [iconWarning] = useCSSVariable(['--color-icon-warning']) as [string];
-  const title = t('notificationSettings.permissionTitle', { defaultValue: TITLE });
-  const body = t('notificationSettings.permissionBody', {
-    defaultValue: DEFAULT_BODY,
-  });
+  const title = t('notificationSettings.permissionTitle', 'Grant permissions');
+  const body = t(
+    'notificationSettings.permissionBody',
+    "SparkyFitness alerts (rest timers, fasting goals, medication reminders) won't fire.",
+  );
 
   return (
     <Pressable

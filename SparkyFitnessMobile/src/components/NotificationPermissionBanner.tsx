@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AppState } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import OSDeniedWarningCard from './OSDeniedWarningCard';
@@ -87,14 +88,11 @@ const NotificationPermissionBanner = forwardRef<
 
   return (
     <OSDeniedWarningCard
-      actionLabel={t(
+      actionLabel={
         osStatus === 'undetermined'
-          ? 'notificationSettings.enableNotifications'
-          : 'notificationSettings.openSettings',
-        {
-          defaultValue: osStatus === 'undetermined' ? 'Enable Notifications' : 'Open Settings',
-        },
-      )}
+          ? t('notificationSettings.enableNotifications', { defaultValue: 'Enable Notifications' })
+          : t('notificationSettings.openSettings', { defaultValue: 'Open Settings' })
+      }
       onPress={() => {
         void handlePress();
       }}
