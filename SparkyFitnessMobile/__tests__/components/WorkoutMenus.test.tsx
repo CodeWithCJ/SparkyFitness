@@ -33,7 +33,7 @@ describe('SetTypeMenu', () => {
     const { getByLabelText } = renderMenu();
     // The current type is check-marked.
     expect(getByLabelText('✓ Normal')).toBeTruthy();
-    expect(getByLabelText('Warmup')).toBeTruthy();
+    expect(getByLabelText('Warm-up')).toBeTruthy();
   });
 
   it('omits the Delete item unless onDelete is passed (form surfaces opt in)', () => {

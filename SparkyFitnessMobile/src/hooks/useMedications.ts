@@ -205,7 +205,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
   const showEntryError = useCallback((message: string, error: Error) => {
     addLog(`${message}: ${error.message}`, 'ERROR');
     Toast.show({ type: 'error', text1: message });
-  }, [t]);
+  }, []);
 
   const logDose = useCallback(
     (due: DueDose, status: 'taken' | 'skipped') => {

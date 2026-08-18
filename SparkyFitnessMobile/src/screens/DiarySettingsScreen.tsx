@@ -107,7 +107,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       }
       mutation.mutate(toggleNutrientVisibility(base, name, value));
     },
-    [base, mutation],
+    [base, mutation, t],
   );
 
   const renderContent = () => {

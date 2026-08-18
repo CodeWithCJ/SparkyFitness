@@ -21,13 +21,12 @@ import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import WeekdaySheet, { type WeekdaySheetRef } from '../components/medications/WeekdaySheet';
 import Switch from '../components/ui/Switch';
-import { formatLocalizedTimeOfDay } from '../utils/medicationScheduleLocalization';
+import { formatLocalizedTimeOfDay, localizedMealTimingLabel, localizedWeekdayLabels } from '../utils/medicationScheduleLocalization';
 import type { CreateScheduleInput, MedicationSchedule, MedicationWithMeal } from '@workspace/shared';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
 import { scheduleTypeLabel } from '../utils/medicationLocalization';
-import { localizedMealTimingLabel, localizedWeekdayLabels } from '../utils/medicationScheduleLocalization';
 import { SCHEDULE_TYPES } from '../types/medications';
 
 type MedicationScheduleFormScreenProps = RootStackScreenProps<'MedicationScheduleForm'>;
@@ -326,6 +325,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
     createScheduleMutation,
     updateScheduleMutation,
     navigation,
+    t,
   ]);
 
   const handleDelete = useCallback(() => {
@@ -349,7 +349,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
         },
       },
     ]);
-  }, [isEditing, scheduleId, existing, medicationId, deleteScheduleMutation, navigation]);
+  }, [isEditing, scheduleId, existing, medicationId, deleteScheduleMutation, navigation, t]);
 
   const header = useScreenHeader({
     title: isEditing ? t('medications.schedule.editTitle', { defaultValue: 'Edit Schedule' }) : t('medications.schedule.newTitle', { defaultValue: 'New Schedule' }),

@@ -112,7 +112,7 @@ function scheduleFrequencyIdentity(schedule: ScheduleFields): string {
 
 export function localizedDescribeSchedules(
   t: TFunction,
-  schedules: Array<ScheduleFields & { active?: boolean | null }>,
+  schedules: (ScheduleFields & { active?: boolean | null })[],
 ): string {
   if (schedules.length === 0) {
     return t('medications.scheduleSummary.asNeeded', { defaultValue: 'As needed' });

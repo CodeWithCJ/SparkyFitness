@@ -236,7 +236,7 @@ describe('useSyncHealthData', () => {
           expect.objectContaining({
             type: 'error',
             text1: 'Sync Error',
-            text2: 'Server unavailable',
+            text2: 'The health data sync failed: Server unavailable',
           })
         );
       });
@@ -328,7 +328,7 @@ describe('useSyncHealthData', () => {
           expect.objectContaining({
             type: 'error',
             text1: 'Sync Error',
-            text2: 'Unknown sync error',
+            text2: 'The health data sync failed: Unknown sync error',
           })
         );
       });

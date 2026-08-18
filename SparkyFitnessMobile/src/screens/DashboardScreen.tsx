@@ -119,6 +119,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     openCalendar,
     selectedDate,
     usesNativeTabs,
+    t,
   ]);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();

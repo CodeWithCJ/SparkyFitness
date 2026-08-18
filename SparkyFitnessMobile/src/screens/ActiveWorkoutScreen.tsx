@@ -750,6 +750,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     handleReplaceExercise,
     handleClearExerciseSets,
     handleRemoveExercise,
+    t,
   ]);
 
   // Live editing: which set cell is tap-focused (the keyboard target). Keyed by
@@ -997,7 +998,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       }
     }
     await attempt();
-  }, [flush, navigation]);
+  }, [flush, navigation, t]);
 
   // Long-gap guard on the way out: a workout left open across a long break
   // (forgotten overnight, one straggler set the next morning) would stamp the
