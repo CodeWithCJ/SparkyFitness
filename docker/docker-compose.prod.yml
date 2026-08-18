@@ -79,10 +79,8 @@ services:
       # --- API key rate limiting (optional) ---
       SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS: ${SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS:-}
       SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS: ${SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS:-}
-      # --- Dev tools / Vision API (optional) ---
+      # --- Dev tools (optional) ---
       DEV_TOOLS_ENABLED: ${DEV_TOOLS_ENABLED:-false}
-      VISION_API_PROVIDER: ${VISION_API_PROVIDER:-}
-      VISION_API_KEY: ${VISION_API_KEY:-}
       PUID: 1000
       GUID: 1000
     networks:

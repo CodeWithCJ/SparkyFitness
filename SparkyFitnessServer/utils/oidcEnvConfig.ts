@@ -33,7 +33,9 @@ function getEnvOidcConfig() {
   const idTokenAlg = process.env[ENV_ID_TOKEN_SIGNED_ALG]?.trim();
   const userInfoAlg = process.env[ENV_USERINFO_SIGNED_ALG]?.trim();
   const timeout = process.env[ENV_TIMEOUT]?.trim();
-  const autoRegister = process.env[ENV_AUTO_REGISTER]?.trim();
+  // Treat an empty value as unset: compose passthrough always defines these vars
+  // (as ''), so `!== undefined` alone would flip the default to false.
+  const autoRegister = process.env[ENV_AUTO_REGISTER]?.trim() || undefined;
   const adminGroup = process.env[ENV_ADMIN_GROUP]?.trim();
   if (!issuer || !clientId || !clientSecret || !slug) {
     return null;
