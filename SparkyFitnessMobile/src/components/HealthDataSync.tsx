@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, Image, Platform, ActivityIndicator } from 'react-native';
-import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER, getHealthMetricLabel } from '../HealthMetrics';
+import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER, getHealthMetricLabel, getHealthCategoryLabel } from '../HealthMetrics';
 import Button from './ui/Button';
 import Switch from './ui/Switch';
 import CollapsibleSection from './CollapsibleSection';
@@ -106,7 +106,12 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           </Text>
         </View>
         {showLoading && (
-          <ActivityIndicator size="small" className="mr-2" />
+          <ActivityIndicator
+            size="small"
+            className="mr-2"
+            accessibilityLabel={t('healthSync.loading', { defaultValue: 'Loading health data' })}
+            accessibilityState={{ busy: true }}
+          />
         )}
         {value && (
           <Text
@@ -182,7 +187,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         return (
           <CollapsibleSection
             key={category}
-            title={t(`healthCategories.${category}`, { defaultValue: category })}
+            title={getHealthCategoryLabel(t, category)}
             expanded={!collapsedCategories.has(category)}
             onToggle={() => handleCategoryToggle(category)}
             itemCount={metricsInCategory.length}

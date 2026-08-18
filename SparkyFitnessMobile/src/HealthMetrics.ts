@@ -223,6 +223,26 @@ export function getHealthMetricLabel(t: (key: string, options: { defaultValue: s
     case 'appleMoveTime': return t('healthMetrics.appleMoveTime', { defaultValue: 'Apple Move Time' });
     case 'appleExerciseTime': return t('healthMetrics.appleExerciseTime', { defaultValue: 'Apple Exercise Time' });
     case 'appleStandTime': return t('healthMetrics.appleStandTime', { defaultValue: 'Apple Stand Time' });
-    default: return metric.defaultLabel;
+    default: return t('healthMetrics.unknown', { defaultValue: 'Health metric' });
+  }
+}
+
+export function getHealthCategoryLabel(
+  t: (key: string, options: { defaultValue: string }) => string,
+  category: string,
+): string {
+  switch (category) {
+    case 'Common': return t('healthCategories.Common', { defaultValue: 'Common' });
+    case 'Activity': return t('healthCategories.Activity', { defaultValue: 'Activity' });
+    case 'Vitals': return t('healthCategories.Vitals', { defaultValue: 'Vitals' });
+    case 'Body Measurements': return t('healthCategories.Body Measurements', { defaultValue: 'Body Measurements' });
+    case 'Nutrition': return t('healthCategories.Nutrition', { defaultValue: 'Nutrition' });
+    case 'Reproductive': return t('healthCategories.Reproductive', { defaultValue: 'Reproductive' });
+    case 'Mobility': return t('healthCategories.Mobility', { defaultValue: 'Mobility' });
+    case 'Running': return t('healthCategories.Running', { defaultValue: 'Running' });
+    case 'Cycling': return t('healthCategories.Cycling', { defaultValue: 'Cycling' });
+    case 'Environment': return t('healthCategories.Environment', { defaultValue: 'Environment' });
+    case 'Apple': return t('healthCategories.Apple', { defaultValue: 'Apple' });
+    default: return t('healthCategories.unknown', { defaultValue: 'Other' });
   }
 }

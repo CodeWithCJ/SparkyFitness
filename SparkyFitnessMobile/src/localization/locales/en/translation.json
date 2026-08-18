@@ -321,7 +321,8 @@
     "headphoneAudioExposure": "Headphone Audio Exposure",
     "appleMoveTime": "Apple Move Time",
     "appleExerciseTime": "Apple Exercise Time",
-    "appleStandTime": "Apple Stand Time"
+    "appleStandTime": "Apple Stand Time",
+    "unknown": "Health metric"
   },
   "healthCategories": {
     "Common": "Common",
@@ -334,7 +335,8 @@
     "Running": "Running",
     "Cycling": "Cycling",
     "Environment": "Environment",
-    "Apple": "Apple"
+    "Apple": "Apple",
+    "unknown": "Other"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -360,7 +362,8 @@
     "enableAllHint": "Toggles synchronization for all health metrics.",
     "writeMetricLabel": "Write {{metric}} to {{store}}",
     "writeMetricHint": "Toggles writing this metric to the health store.",
-    "noData": "No data"
+    "noData": "No data",
+    "loading": "Loading health data"
   },
   "auth": {
     "frontendUrl": "Frontend URL",
@@ -1325,5 +1328,19 @@
     "nextPeriod": "Next period est. {{date}}",
     "day": "Day {{day}}",
     "active": "Active"
+  },
+  "syncHealth": {
+    "unknownError": "Unknown sync error",
+    "syncing": "Syncing health data…",
+    "incomplete": "Sync incomplete",
+    "complete": "Sync complete",
+    "success": "Health data synced successfully.",
+    "error": "Sync Error",
+    "errorDetails": "The health data sync failed: {{message}}",
+    "loading": "Loading health data",
+    "readErrors_one": "{{count}} metric could not be read. It will retry next sync.",
+    "readErrors_other": "{{count}} metrics could not be read. They will retry next sync.",
+    "uploadErrors_one": "{{count}} record was rejected by the server. See logs.",
+    "uploadErrors_other": "{{count}} records were rejected by the server. See logs."
   }
 }

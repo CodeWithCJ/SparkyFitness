@@ -5,7 +5,7 @@ import Button from './ui/Button';
 import BottomSheetPicker from './BottomSheetPicker';
 import Switch from './ui/Switch';
 import { useTranslation } from 'react-i18next';
-import { getHealthMetricLabel } from '../HealthMetrics';
+import { getHealthMetricLabel, getHealthCategoryLabel } from '../HealthMetrics';
 import {
   WRITEBACK_METRICS,
   WRITEBACK_CATEGORY_ORDER,
@@ -100,7 +100,7 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
         return (
           <CollapsibleSection
             key={category}
-            title={t(`healthCategories.${category}`, { defaultValue: category })}
+            title={getHealthCategoryLabel(t, category)}
             expanded={!collapsedCategories.has(category)}
             onToggle={() => toggleCategory(category)}
             itemCount={metricsInCategory.length}

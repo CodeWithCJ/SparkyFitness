@@ -327,7 +327,8 @@
     "headphoneAudioExposure": "Narażenie na hałas ze słuchawek",
     "appleMoveTime": "Czas ruchu Apple",
     "appleExerciseTime": "Czas ćwiczeń Apple",
-    "appleStandTime": "Czas stania Apple"
+    "appleStandTime": "Czas stania Apple",
+    "unknown": "Metryka zdrowotna"
   },
   "healthCategories": {
     "Common": "Ogólne",
@@ -340,7 +341,8 @@
     "Running": "Bieganie",
     "Cycling": "Kolarstwo",
     "Environment": "Środowisko",
-    "Apple": "Apple"
+    "Apple": "Apple",
+    "unknown": "Inne"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -366,7 +368,8 @@
     "enableAllHint": "Włącza lub wyłącza synchronizację wszystkich parametrów zdrowotnych.",
     "writeMetricLabel": "Zapisuj {{metric}} w {{store}}",
     "writeMetricHint": "Włącza lub wyłącza zapis tego parametru w magazynie danych zdrowotnych.",
-    "noData": "Brak danych"
+    "noData": "Brak danych",
+    "loading": "Ładowanie danych zdrowotnych"
   },
   "auth": {
     "frontendUrl": "Adres URL frontendu",
@@ -1345,5 +1348,23 @@
     "nextPeriod": "Przewidywana miesiączka: {{date}}",
     "day": "Dzień {{day}}",
     "active": "Aktywny"
+  },
+  "syncHealth": {
+    "unknownError": "Nieznany błąd synchronizacji",
+    "syncing": "Synchronizowanie danych zdrowotnych…",
+    "incomplete": "Synchronizacja niepełna",
+    "complete": "Synchronizacja zakończona",
+    "success": "Dane zdrowotne zostały pomyślnie zsynchronizowane.",
+    "error": "Błąd synchronizacji",
+    "errorDetails": "Synchronizacja danych zdrowotnych nie powiodła się: {{message}}",
+    "loading": "Ładowanie danych zdrowotnych",
+    "readErrors_one": "Nie udało się odczytać {{count}} metryki. Zostanie ponownie zsynchronizowana przy następnej próbie.",
+    "readErrors_few": "Nie udało się odczytać {{count}} metryk. Zostaną ponownie zsynchronizowane przy następnej próbie.",
+    "readErrors_many": "Nie udało się odczytać {{count}} metryk. Zostaną ponownie zsynchronizowane przy następnej próbie.",
+    "readErrors_other": "Nie udało się odczytać {{count}} metryk. Zostaną ponownie zsynchronizowane przy następnej próbie.",
+    "uploadErrors_one": "Serwer odrzucił {{count}} rekord. Sprawdź dzienniki.",
+    "uploadErrors_few": "Serwer odrzucił {{count}} rekordy. Sprawdź dzienniki.",
+    "uploadErrors_many": "Serwer odrzucił {{count}} rekordów. Sprawdź dzienniki.",
+    "uploadErrors_other": "Serwer odrzucił {{count}} rekordów. Sprawdź dzienniki."
   }
 }

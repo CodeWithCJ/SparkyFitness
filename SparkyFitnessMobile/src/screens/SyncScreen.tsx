@@ -54,7 +54,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { formatRelativeTime } from '../utils/dateUtils';
 import { getErrorMessage } from '../utils/errors';
-import { HEALTH_METRICS } from '../HealthMetrics';
+import { HEALTH_METRICS, getHealthMetricLabel } from '../HealthMetrics';
 import type { HealthMetric } from '../HealthMetrics';
 import type { HealthMetricStates, HealthDataDisplayState } from '../types/healthRecords';
 import { useSyncHealthData } from '../hooks';
@@ -259,7 +259,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
       try {
         const granted = await requestHealthPermissions(metric.permissions);
         if (!granted) {
-          Alert.alert(t('syncScreen.permissionDenied.title', { defaultValue: 'Permission Denied' }), t('syncScreen.permissionDenied.read', { defaultValue: 'Please grant {{metric}} permission in {{settings}}.', metric: t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel }).toLowerCase(), settings: healthSettingsName }));
+          Alert.alert(t('syncScreen.permissionDenied.title', { defaultValue: 'Permission Denied' }), t('syncScreen.permissionDenied.read', { defaultValue: 'Please grant {{metric}} permission in {{settings}}.', metric: getHealthMetricLabel(t, metric).toLowerCase(), settings: healthSettingsName }));
           setHealthMetricStates(prevStates => ({
             ...prevStates,
             [metric.stateKey]: false,
@@ -267,18 +267,18 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           await saveHealthPreference(metric.preferenceKey, false);
           addLog(`Permission Denied: ${metric.defaultLabel} permission not granted.`, 'WARNING');
         } else {
-          addLog(`${metric.defaultLabel} sync enabled and permissions granted.`, 'INFO');
+          addLog(`${metric.id} sync enabled and permissions granted.`, 'INFO');
           enableBackgroundDeliveryForMetric(metric.recordType).catch(() => {});
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
-        Alert.alert(t('syncScreen.permissionError.title', { defaultValue: 'Permission Error' }), t('syncScreen.permissionError.metricRead', { defaultValue: 'Failed to request {{metric}} permissions: {{error}}', metric: t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel }).toLowerCase(), error: errorMessage }));
+        Alert.alert(t('syncScreen.permissionError.title', { defaultValue: 'Permission Error' }), t('syncScreen.permissionError.metricRead', { defaultValue: 'Failed to request {{metric}} permissions: {{error}}', metric: getHealthMetricLabel(t, metric).toLowerCase(), error: errorMessage }));
         setHealthMetricStates(prevStates => ({
           ...prevStates,
           [metric.stateKey]: false,
         }));
         await saveHealthPreference(metric.preferenceKey, false);
-        addLog(`Permission Request Error for ${metric.defaultLabel}: ${errorMessage}`, 'ERROR');
+        addLog(`Permission Request Error for ${metric.id}: ${errorMessage}`, 'ERROR');
       }
     }
     refreshSubscriptions();
@@ -300,24 +300,24 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
       if (!granted) {
         Alert.alert(
           t('syncScreen.permissionDenied.title', { defaultValue: 'Permission Denied' }),
-          t('syncScreen.permissionDenied.write', { defaultValue: 'Please grant {{metric}} write permission in {{settings}}.', metric: t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel }).toLowerCase(), settings: healthSettingsName })
+          t('syncScreen.permissionDenied.write', { defaultValue: 'Please grant {{metric}} write permission in {{settings}}.', metric: getHealthMetricLabel(t, metric).toLowerCase(), settings: healthSettingsName })
         );
         setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
         await saveHealthPreference(metric.preferenceKey, false);
-        addLog(`Writeback permission denied: ${metric.defaultLabel}.`, 'WARNING');
+        addLog(`Writeback permission denied: ${metric.id}.`, 'WARNING');
       } else {
-        addLog(`${metric.defaultLabel} writeback enabled and write permission granted.`, 'INFO');
+        addLog(`${metric.id} writeback enabled and write permission granted.`, 'INFO');
       }
     } catch (permissionError) {
       const errorMessage =
         permissionError instanceof Error ? permissionError.message : String(permissionError);
       Alert.alert(
         t('syncScreen.permissionError.title', { defaultValue: 'Permission Error' }),
-        t('syncScreen.permissionError.metricWrite', { defaultValue: 'Failed to request {{metric}} write permission: {{error}}', metric: t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel }).toLowerCase(), error: errorMessage })
+        t('syncScreen.permissionError.metricWrite', { defaultValue: 'Failed to request {{metric}} write permission: {{error}}', metric: getHealthMetricLabel(t, metric).toLowerCase(), error: errorMessage })
       );
       setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
       await saveHealthPreference(metric.preferenceKey, false);
-      addLog(`Writeback permission request error for ${metric.defaultLabel}: ${errorMessage}`, 'ERROR');
+      addLog(`Writeback permission request error for ${metric.id}: ${errorMessage}`, 'ERROR');
     }
   };
 
@@ -423,7 +423,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        saveErrors.push(`${metric.defaultLabel}: ${errorMessage}`);
+        saveErrors.push(`${metric.id}: ${errorMessage}`);
       }
     }
 
