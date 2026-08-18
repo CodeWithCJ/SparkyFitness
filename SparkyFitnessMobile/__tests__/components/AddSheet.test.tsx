@@ -157,7 +157,8 @@ describe('AddSheet', () => {
 
 
   it('renders Polish labels when the active i18n language is Polish', async () => {
-    const i18n = require('../../src/localization/i18n').default;
+    const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+    await initializeI18n('en');
     const { ref, getByText } = renderAddSheet();
     await i18n.changeLanguage('pl');
     act(() => ref.current?.present({ initialMenu: 'exercise' }));
