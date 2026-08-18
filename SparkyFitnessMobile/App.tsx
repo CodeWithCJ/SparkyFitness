@@ -369,7 +369,7 @@ function AppContent() {
           <Stack.Screen
             name="MealDetail"
             component={SafeMealDetail}
-            options={createStackScreenOptions('', { headerBackTitle: t('screens.meals', { defaultValue: 'Meals' }) })}
+            options={createStackScreenOptions(t('screens.meal', { defaultValue: 'Meal' }), { headerBackTitle: t('screens.meals', { defaultValue: 'Meals' }) })}
           />
           <Stack.Screen
             name="ExerciseDetail"
