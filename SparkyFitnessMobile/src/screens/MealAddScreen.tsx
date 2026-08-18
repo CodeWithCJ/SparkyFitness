@@ -41,7 +41,7 @@ import {
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput, toFiniteNumber } from '../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
@@ -50,6 +50,20 @@ const MEAL_SERVING_PRECISION = 6;
 const SERVING_UNIT_OPTIONS = [
   'serving', 'g', 'ml', 'oz', 'cup', 'tbsp', 'tsp', 'piece',
 ].map((unit) => ({ label: unit, value: unit }));
+
+function getServingUnitLabel(unit: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const labels: Record<string, string> = {
+    serving: t('mealBuilder.units.serving', { defaultValue: 'serving' }),
+    g: t('mealBuilder.units.g', { defaultValue: 'g' }),
+    ml: t('mealBuilder.units.ml', { defaultValue: 'ml' }),
+    oz: t('mealBuilder.units.oz', { defaultValue: 'oz' }),
+    cup: t('mealBuilder.units.cup', { defaultValue: 'cup' }),
+    tbsp: t('mealBuilder.units.tbsp', { defaultValue: 'tbsp' }),
+    tsp: t('mealBuilder.units.tsp', { defaultValue: 'tsp' }),
+    piece: t('mealBuilder.units.piece', { defaultValue: 'piece' }),
+  };
+  return labels[unit] ?? unit;
+}
 
 interface MealTotals {
   calories: number;
@@ -100,6 +114,10 @@ const mealIngredientToPayload = ({
 
 const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const { t } = useTranslation();
+  const localizedServingUnitOptions = useMemo(
+    () => SERVING_UNIT_OPTIONS.map((option) => ({ ...option, label: getServingUnitLabel(option.value, t) })),
+    [t],
+  );
   const isEditMode = route.params?.mode === 'edit';
   const editMealId = isEditMode ? route.params.mealId : undefined;
   const insets = useSafeAreaInsets();
@@ -429,8 +447,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
+      label: t('common.save', { defaultValue: 'Save' }),
+      busyLabel: t('common.saving', { defaultValue: 'Saving…' }),
       busy: isSaving,
       disabled: isSaving,
       placement: 'native-only',
@@ -528,7 +546,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               ) : (
                 <>
                   <Text className="text-text-secondary text-sm font-medium">
-                    {t('mealBuilder.totalAmount', { defaultValue: 'Total Amount ({{unit}}) *', unit: servingUnit })}
+                    {t('mealBuilder.totalAmount', { defaultValue: 'Total Amount ({{unit}}) *', unit: getServingUnitLabel(servingUnit, t) })}
                   </Text>
                   <FormInput
                     placeholder="1"
@@ -546,18 +564,21 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               </Text>
               <BottomSheetPicker
                 value={servingUnit}
-                options={SERVING_UNIT_OPTIONS}
+                options={localizedServingUnitOptions}
                 onSelect={handleServingUnitChange}
                 title={t('mealBuilder.selectUnit', { defaultValue: 'Select Unit' })}
                 renderTrigger={({ onPress, selectedOption }) => (
                   <TouchableOpacity
                     onPress={onPress}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('mealBuilder.unitPickerLabel', { defaultValue: 'Unit, {{unit}}', unit: getServingUnitLabel(servingUnit, t) })}
+                    accessibilityHint={t('common.openSelectionMenu', { defaultValue: 'Opens selection menu' })}
                     className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
                     style={{ minHeight: 44 }}
                   >
                     <Text className="text-text-primary" style={{ fontSize: 16 }}>
-                      {selectedOption?.label ?? servingUnit}
+                      {selectedOption?.label ?? getServingUnitLabel(servingUnit, t)}
                     </Text>
                     <Icon name="chevron-down" size={12} color={textMuted} weight="medium" />
                   </TouchableOpacity>
@@ -573,7 +594,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             <View className="flex-row gap-3">
               <View className="flex-1 gap-1.5">
                 <Text className="text-text-secondary text-sm font-medium">
-                  {t('mealBuilder.servingSize', { defaultValue: 'Serving Size ({{unit}}) *', unit: servingUnit })}
+                  {t('mealBuilder.servingSize', { defaultValue: 'Serving Size ({{unit}}) *', unit: getServingUnitLabel(servingUnit, t) })}
                 </Text>
                 <FormInput
                   placeholder="1"
@@ -678,7 +699,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                           </Text>
                           <Text className="text-text-muted text-sm mt-1">
                             {formatServingSizeDisplay(quantity)}{' '}
-                            {ingredient.unit || ingredient.serving_unit || t('mealBuilder.servingUnit', { defaultValue: 'serving' })}
+                            {getServingUnitLabel(ingredient.unit || ingredient.serving_unit || 'serving', t)}
                           </Text>
                         </View>
                       </View>

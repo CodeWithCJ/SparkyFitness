@@ -1575,7 +1575,18 @@
       "noIngredientsMessage": "Dodaj co najmniej jeden produkt przed zapisaniem posiłku.",
       "missingIngredientTitle": "Brak danych składnika",
       "missingIngredientMessage": "Jednemu z wybranych produktów brakuje wariantu porcji. Dodaj go ponownie."
-    }
+    },
+    "units": {
+      "serving": "porcja",
+      "g": "g",
+      "ml": "ml",
+      "oz": "uncja",
+      "cup": "szklanka",
+      "tbsp": "łyżka",
+      "tsp": "łyżeczka",
+      "piece": "sztuka"
+    },
+    "unitPickerLabel": "Jednostka: {{unit}}"
   },
   "nutrition": {
     "protein": "białko",

@@ -1551,7 +1551,18 @@
       "noIngredientsMessage": "Add at least one food before saving this meal.",
       "missingIngredientTitle": "Missing ingredient data",
       "missingIngredientMessage": "One of the selected foods is missing a serving variant. Please re-add it."
-    }
+    },
+    "units": {
+      "serving": "serving",
+      "g": "g",
+      "ml": "ml",
+      "oz": "oz",
+      "cup": "cup",
+      "tbsp": "tbsp",
+      "tsp": "tsp",
+      "piece": "piece"
+    },
+    "unitPickerLabel": "Unit, {{unit}}"
   },
   "nutrition": {
     "protein": "protein",
