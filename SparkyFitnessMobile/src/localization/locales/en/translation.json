@@ -1462,5 +1462,28 @@
     "title": "Fasting history",
     "hint": "Tap to edit · swipe left to delete",
     "empty": "No past fasts yet."
+  },
+  "fastingEdit": {
+    "fastEnded": "Fast ended",
+    "failedEnd": "Failed to end fast",
+    "endTitle": "End fast",
+    "time": "Time",
+    "fasted": "{{duration}} fasted",
+    "started": "Started",
+    "ended": "Ended",
+    "beforeEnd": "Start time must be before the end time.",
+    "ending": "Ending...",
+    "endAction": "End Fast",
+    "updated": "Fast updated",
+    "failedUpdate": "Failed to update fast",
+    "deleted": "Fast deleted",
+    "failedDelete": "Failed to delete fast",
+    "deleteTitle": "Delete fast?",
+    "deleteMessage": "This cannot be undone.",
+    "editTitle": "Edit fast",
+    "saving": "Saving...",
+    "saveChanges": "Save changes",
+    "deleting": "Deleting...",
+    "deleteAction": "Delete fast"
   }
 }

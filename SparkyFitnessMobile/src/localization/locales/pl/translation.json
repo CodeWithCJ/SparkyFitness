@@ -1486,5 +1486,28 @@
     "title": "Historia postów",
     "hint": "Stuknij, aby edytować · przesuń w lewo, aby usunąć",
     "empty": "Brak wcześniejszych postów."
+  },
+  "fastingEdit": {
+    "fastEnded": "Post zakończony",
+    "failedEnd": "Nie udało się zakończyć postu",
+    "endTitle": "Zakończ post",
+    "time": "Czas",
+    "fasted": "{{duration}} postu",
+    "started": "Rozpoczęto",
+    "ended": "Zakończono",
+    "beforeEnd": "Czas rozpoczęcia musi być wcześniejszy niż czas zakończenia.",
+    "ending": "Kończenie…",
+    "endAction": "Zakończ post",
+    "updated": "Post zaktualizowany",
+    "failedUpdate": "Nie udało się zaktualizować postu",
+    "deleted": "Post usunięty",
+    "failedDelete": "Nie udało się usunąć postu",
+    "deleteTitle": "Usunąć post?",
+    "deleteMessage": "Tej operacji nie można cofnąć.",
+    "editTitle": "Edytuj post",
+    "saving": "Zapisywanie…",
+    "saveChanges": "Zapisz zmiany",
+    "deleting": "Usuwanie…",
+    "deleteAction": "Usuń post"
   }
 }
