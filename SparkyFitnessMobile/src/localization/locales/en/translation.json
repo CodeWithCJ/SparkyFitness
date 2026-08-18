@@ -24,7 +24,9 @@
     "success": "Success",
     "clear": "Clear",
     "discardChanges": "Discard changes",
-    "loadMore": "Load More"
+    "loadMore": "Load More",
+    "edit": "Edit",
+    "connectionRetry": "Please check your connection and try again."
   },
   "settings": {
     "app": "App Settings",
@@ -1511,5 +1513,50 @@
       "estimatedOvulation": "Est. Ovulation",
       "logged": "Logged"
     }
+  },
+  "mealBuilder": {
+    "linkedMeal": "Linked meal",
+    "linkedMealWebEdit": "Edit this sub-meal ingredient in the web app.",
+    "editTitle": "Edit Meal",
+    "createTitle": "Create Meal",
+    "loading": "Loading meal...",
+    "loadErrorTitle": "Failed to load meal",
+    "mealName": "Meal Name",
+    "mealNamePlaceholder": "e.g. Chicken Rice Bowl",
+    "descriptionOptional": "Description (optional)",
+    "descriptionPlaceholder": "Notes about this meal",
+    "totalServings": "Total Servings",
+    "totalAmount": "Total Amount ({{unit}}) *",
+    "unit": "Unit",
+    "selectUnit": "Select Unit",
+    "servingSize": "Serving Size ({{unit}}) *",
+    "servingUnit": "serving",
+    "foodsInMeal": "Foods in Meal",
+    "ingredient": "ingredient",
+    "removeIngredient": "Remove {{name}}",
+    "editIngredient": "Edit {{name}}",
+    "addFood": "Add Food",
+    "mealTotal": "Meal total",
+    "perServing": "Per serving",
+    "errors": {
+      "missingNameTitle": "Missing meal name",
+      "missingNameMessage": "Please enter a name for your meal.",
+      "invalidServingSizeTitle": "Invalid serving size",
+      "invalidServingSizeMessage": "Default serving size must be greater than zero.",
+      "invalidTotalServingsTitle": "Invalid total servings",
+      "invalidTotalServingsMessage": "Total servings must be greater than zero.",
+      "invalidTotalAmountTitle": "Invalid total amount",
+      "invalidTotalAmountMessage": "Total amount must be greater than zero.",
+      "noIngredientsTitle": "No ingredients yet",
+      "noIngredientsMessage": "Add at least one food before saving this meal.",
+      "missingIngredientTitle": "Missing ingredient data",
+      "missingIngredientMessage": "One of the selected foods is missing a serving variant. Please re-add it."
+    }
+  },
+  "nutrition": {
+    "protein": "protein",
+    "carbs": "carbs",
+    "fat": "fat",
+    "caloriesShort": "cal"
   }
 }

@@ -26,7 +26,9 @@
     "success": "Sukces",
     "clear": "Wyczyść",
     "discardChanges": "Odrzuć zmiany",
-    "loadMore": "Załaduj więcej"
+    "loadMore": "Załaduj więcej",
+    "edit": "Edytuj",
+    "connectionRetry": "Sprawdź połączenie i spróbuj ponownie."
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -1535,5 +1537,50 @@
       "estimatedOvulation": "Szacowana owulacja",
       "logged": "Zapisano"
     }
+  },
+  "mealBuilder": {
+    "linkedMeal": "Połączony posiłek",
+    "linkedMealWebEdit": "Ten składnik będący podposiłkiem można edytować w aplikacji internetowej.",
+    "editTitle": "Edytuj posiłek",
+    "createTitle": "Utwórz posiłek",
+    "loading": "Wczytywanie posiłku…",
+    "loadErrorTitle": "Nie udało się wczytać posiłku",
+    "mealName": "Nazwa posiłku",
+    "mealNamePlaceholder": "np. Miska z kurczakiem i ryżem",
+    "descriptionOptional": "Opis (opcjonalnie)",
+    "descriptionPlaceholder": "Notatki o tym posiłku",
+    "totalServings": "Liczba porcji",
+    "totalAmount": "Łączna ilość ({{unit}}) *",
+    "unit": "Jednostka",
+    "selectUnit": "Wybierz jednostkę",
+    "servingSize": "Rozmiar porcji ({{unit}}) *",
+    "servingUnit": "porcja",
+    "foodsInMeal": "Produkty w posiłku",
+    "ingredient": "składnik",
+    "removeIngredient": "Usuń: {{name}}",
+    "editIngredient": "Edytuj: {{name}}",
+    "addFood": "Dodaj produkt",
+    "mealTotal": "Suma posiłku",
+    "perServing": "Na porcję",
+    "errors": {
+      "missingNameTitle": "Brak nazwy posiłku",
+      "missingNameMessage": "Wpisz nazwę posiłku.",
+      "invalidServingSizeTitle": "Nieprawidłowy rozmiar porcji",
+      "invalidServingSizeMessage": "Domyślny rozmiar porcji musi być większy od zera.",
+      "invalidTotalServingsTitle": "Nieprawidłowa liczba porcji",
+      "invalidTotalServingsMessage": "Liczba porcji musi być większa od zera.",
+      "invalidTotalAmountTitle": "Nieprawidłowa łączna ilość",
+      "invalidTotalAmountMessage": "Łączna ilość musi być większa od zera.",
+      "noIngredientsTitle": "Brak składników",
+      "noIngredientsMessage": "Dodaj co najmniej jeden produkt przed zapisaniem posiłku.",
+      "missingIngredientTitle": "Brak danych składnika",
+      "missingIngredientMessage": "Jednemu z wybranych produktów brakuje wariantu porcji. Dodaj go ponownie."
+    }
+  },
+  "nutrition": {
+    "protein": "białko",
+    "carbs": "węglowodany",
+    "fat": "tłuszcz",
+    "caloriesShort": "kcal"
   }
 }
