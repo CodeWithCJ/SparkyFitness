@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { SvgXml } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 
 const buildSvg = (main: string, subtle: string, medium: string, accent: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 746.83 359.73" opacity=".9">
@@ -25,6 +26,7 @@ const buildSvg = (main: string, subtle: string, medium: string, accent: string) 
 </svg>`;
 
 const EmptyDayIllustration: React.FC = () => {
+  const { t } = useTranslation();
   const [main, subtle, medium, accent] = useCSSVariable([
     '--color-progress-track',
     '--color-border-subtle',
@@ -35,7 +37,7 @@ const EmptyDayIllustration: React.FC = () => {
   return (
     <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center">
       <SvgXml xml={buildSvg(main, subtle, medium, accent)} width="80%" height={100} />
-      <Text className="text-sm text-text-secondary mt-2">No entries recorded for this day</Text>
+      <Text className="text-sm text-text-secondary mt-2">{t('diary.emptyDay', { defaultValue: 'No entries recorded for this day' })}</Text>
     </View>
   );
 };

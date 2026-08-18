@@ -608,5 +608,8 @@
   "restPeriod": {
     "rest": "Odpoczynek: {{duration}}",
     "off": "Wyłączone"
+  },
+  "diary": {
+    "emptyDay": "Brak wpisów z tego dnia"
   }
 }

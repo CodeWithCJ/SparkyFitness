@@ -602,5 +602,8 @@
   "restPeriod": {
     "rest": "Rest {{duration}}",
     "off": "Off"
+  },
+  "diary": {
+    "emptyDay": "No entries recorded for this day"
   }
 }
