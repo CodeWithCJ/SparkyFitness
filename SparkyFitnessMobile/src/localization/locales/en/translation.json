@@ -26,7 +26,8 @@
     "discardChanges": "Discard changes",
     "loadMore": "Load More",
     "edit": "Edit",
-    "connectionRetry": "Please check your connection and try again."
+    "connectionRetry": "Please check your connection and try again.",
+    "deleteItemTitle": "Delete {{title}}?"
   },
   "settings": {
     "app": "App Settings",
@@ -1573,11 +1574,25 @@
   "foodSummary": {
     "tapToAddFood": "Tap to add food",
     "caloriesShort": "Cal",
-    "nutritionBreakdown": "{{label}} nutrition breakdown"
+    "nutritionBreakdown": "{{label}} nutrition breakdown",
+    "mealTypes": {
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "snacks": "Snacks"
+    }
   },
   "exerciseSummary": {
     "tapToAdd": "Tap to add exercise",
     "addExercise": "Add exercise",
     "title": "Exercise"
+  },
+  "foodRow": {
+    "unknownFood": "Unknown food",
+    "adjustServing": "Adjust serving",
+    "caloriesShort": "Cal"
+  },
+  "exerciseRow": {
+    "deleteExercise": "Delete exercise"
   }
 }

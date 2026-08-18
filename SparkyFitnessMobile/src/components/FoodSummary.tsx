@@ -49,6 +49,23 @@ const EmptyState: React.FC<{ onAddFood?: () => void }> = ({ onAddFood }) => {
   );
 };
 
+function getLocalizedSystemMealLabel(name: string, t: ReturnType<typeof useTranslation>['t'], fallback: string): string {
+  const copy = {
+    breakfast: t('foodSummary.mealTypes.breakfast', { defaultValue: 'Breakfast' }),
+    lunch: t('foodSummary.mealTypes.lunch', { defaultValue: 'Lunch' }),
+    dinner: t('foodSummary.mealTypes.dinner', { defaultValue: 'Dinner' }),
+    snacks: t('foodSummary.mealTypes.snacks', { defaultValue: 'Snacks' }),
+  };
+  switch (name.toLowerCase()) {
+    case 'breakfast': return copy.breakfast;
+    case 'lunch': return copy.lunch;
+    case 'dinner': return copy.dinner;
+    case 'snacks':
+    case 'snack': return copy.snacks;
+    default: return fallback;
+  }
+}
+
 const MealSection: React.FC<MealSectionProps> = ({
   group,
   goals,
@@ -59,7 +76,9 @@ const MealSection: React.FC<MealSectionProps> = ({
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
-  const label = getMealGroupLabel(group);
+  const label = group.isSystem
+    ? getLocalizedSystemMealLabel(group.name, t, getMealGroupLabel(group))
+    : getMealGroupLabel(group);
   // Single canonical MEAL_CONFIG lookup (read once, reuse both fields). A
   // custom category named "breakfast" still gets the neutral icon, never the
   // system one — ownership is decided by isSystem, not by the name.

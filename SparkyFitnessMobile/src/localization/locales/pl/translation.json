@@ -28,7 +28,8 @@
     "discardChanges": "Odrzuć zmiany",
     "loadMore": "Załaduj więcej",
     "edit": "Edytuj",
-    "connectionRetry": "Sprawdź połączenie i spróbuj ponownie."
+    "connectionRetry": "Sprawdź połączenie i spróbuj ponownie.",
+    "deleteItemTitle": "Usunąć „{{title}}”?"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -1597,11 +1598,25 @@
   "foodSummary": {
     "tapToAddFood": "Dotknij, aby dodać produkt",
     "caloriesShort": "kcal",
-    "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{label}}"
+    "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{label}}",
+    "mealTypes": {
+      "breakfast": "Śniadanie",
+      "lunch": "Obiad",
+      "dinner": "Kolacja",
+      "snacks": "Przekąski"
+    }
   },
   "exerciseSummary": {
     "tapToAdd": "Dotknij, aby dodać ćwiczenie",
     "addExercise": "Dodaj ćwiczenie",
     "title": "Ćwiczenia"
+  },
+  "foodRow": {
+    "unknownFood": "Nieznany produkt",
+    "adjustServing": "Dostosuj porcję",
+    "caloriesShort": "kcal"
+  },
+  "exerciseRow": {
+    "deleteExercise": "Usuń ćwiczenie"
   }
 }

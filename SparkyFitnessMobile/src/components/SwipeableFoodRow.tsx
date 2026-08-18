@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, View, Text, TouchableOpacity } from 'react-native';
 import Button from './ui/Button';
 import { useNavigation } from '@react-navigation/native';
@@ -23,6 +24,7 @@ interface SwipeableFoodRowProps {
 }
 
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, onAdjustServing }) => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const swipeableRef = useRef<any>(null);
   const invalidateCacheRef = useRef<() => void>(() => {});
@@ -68,7 +70,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
   );
 
   const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
-  const name = entry.food_name || 'Unknown food';
+  const name = entry.food_name || t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
   const timeLabel = formatTimeLabel(entry.entry_time);
 
   const handlePress = () => {
@@ -86,10 +88,10 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
       onPress?: () => void;
     }[] = [];
     if (canQuickAdjust) {
-      buttons.push({ text: 'Adjust serving', onPress: () => onAdjustServing!(entry) });
+      buttons.push({ text: t('foodRow.adjustServing', { defaultValue: 'Adjust serving' }), onPress: () => onAdjustServing!(entry) });
     }
-    buttons.push({ text: 'Delete', style: 'destructive', onPress: deleteEntry });
-    buttons.push({ text: 'Cancel', style: 'cancel' });
+    buttons.push({ text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: deleteEntry });
+    buttons.push({ text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' });
     Alert.alert(name, undefined, buttons);
   };
 
@@ -143,11 +145,11 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
               className="py-0 px-0"
               textClassName="text-sm text-text-secondary font-medium"
             >
-              {`${nutrition.calories} Cal ▾`}
+              {`${nutrition.calories} ${t('foodRow.caloriesShort', { defaultValue: 'Cal' })} ▾`}
             </Button>
           ) : (
             <Text className="text-sm text-text-secondary font-medium mr-2">
-              {nutrition.calories} Cal
+              {nutrition.calories} {t('foodRow.caloriesShort', { defaultValue: 'Cal' })}
             </Text>
           )}
         </View>
