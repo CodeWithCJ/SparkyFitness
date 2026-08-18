@@ -35,7 +35,29 @@
       "openSettingsFailed": "Nie udało się otworzyć Ustawień iOS"
     },
     "lastSynced": "Ostatnia synchronizacja: {{time}}",
-    "addServer": "Dotknij, aby dodać serwer"
+    "addServer": "Dotknij, aby dodać serwer",
+    "title": "Ustawienia",
+    "shareReportFailed": "Nie udało się udostępnić raportu diagnostycznego: {{error}}",
+    "serverConnected": "Ustawienia serwera. Połączono.",
+    "serverConnectionFailed": "Ustawienia serwera. Połączenie nie powiodło się.",
+    "serverNotConfigured": "Ustawienia serwera. Nie skonfigurowano serwera.",
+    "shareReportDescription": "Eksportuje lokalny raport diagnostyczny (wersja aplikacji, stan synchronizacji, logi). Nie zawiera danych zdrowotnych ani danych o żywności. Nic nie jest wysyłane automatycznie.",
+    "rows": {
+      "server": "Serwer",
+      "healthSync": "Synchronizacja danych zdrowotnych",
+      "app": "Ustawienia aplikacji",
+      "calories": "Kalorie i PPM",
+      "food": "Żywność",
+      "dashboard": "Pulpit",
+      "diary": "Dziennik",
+      "wellness": "Zdrowie",
+      "cyclePregnancy": "Cykl i ciąża",
+      "workout": "Trening",
+      "whatsNew": "Co nowego",
+      "logs": "Wyświetl logi",
+      "about": "Informacje",
+      "shareReport": "Udostępnij raport diagnostyczny"
+    }
   },
   "languageSettings": {
     "subtitle": "Użyj języka urządzenia lub wybierz język dla SparkyFitness."
@@ -497,5 +519,33 @@
       "fixed": "Aktywność nie zmienia budżetu"
     },
     "externalFormula": "wzór"
+  },
+  "dashboardSettings": {
+    "updateFailed": "Nie udało się zaktualizować ustawienia.",
+    "noCustomNutrients": "Brak własnych składników odżywczych",
+    "customNutrientsDescription": "Własne składniki odżywcze są tworzone w aplikacji SparkyFitness w przeglądarce. Po ich dodaniu pojawią się tutaj i będzie można wybrać, które mają być widoczne na pulpicie.",
+    "title": "Ustawienia pulpitu",
+    "askSparky": "Zapytaj Sparky",
+    "askSparkySubtitle": "Pokaż przycisk czatu Zapytaj Sparky na pulpicie",
+    "hydration": "Nawodnienie",
+    "hydrationSubtitle": "Pokaż kartę nawodnienia na pulpicie",
+    "fasting": "Post",
+    "fastingSubtitle": "Pokaż kartę postu na pulpicie",
+    "cyclePregnancy": "Cykl i ciąża",
+    "cyclePregnancySubtitle": "Pokaż kartę zdrowia na pulpicie",
+    "medications": "Leki",
+    "medicationsSubtitle": "Pokaż kartę leków na pulpicie",
+    "customNutrientDisplay": "Wyświetlanie własnych składników odżywczych"
+  },
+  "diarySettings": {
+    "updateFailed": "Nie udało się zaktualizować ustawienia.",
+    "limitReached": "Osiągnięto limit",
+    "limitDescription": "Możesz wyświetlić tutaj maksymalnie {{count}} własnych składników odżywczych.",
+    "noCustomNutrients": "Brak własnych składników odżywczych",
+    "customNutrientsDescription": "Własne składniki odżywcze są tworzone w aplikacji SparkyFitness w przeglądarce. Po ich dodaniu pojawią się tutaj i będzie można wybrać, które mają być widoczne w dzienniku.",
+    "title": "Ustawienia dziennika",
+    "summary": "Podsumowanie dziennika",
+    "summarySubtitle": "Pokaż kalorie i makroskładniki",
+    "customNutrientDisplay": "Wyświetlanie własnych składników odżywczych"
   }
 }

@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -32,6 +33,7 @@ const MAX_DIARY_CUSTOM_NUTRIENTS = 4;
 const SERVER_DEFAULT_DIARY_NUTRIENTS: string[] = [];
 
 const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -86,7 +88,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       if (context?.previous) {
         queryClient.setQueryData(nutrientDisplayPreferencesQueryKey, context.previous);
       }
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update setting.' });
+      Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('diarySettings.updateFailed', { defaultValue: 'Failed to update setting.' }) });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: nutrientDisplayPreferencesQueryKey });
@@ -98,8 +100,8 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       if (value && base.length >= MAX_DIARY_CUSTOM_NUTRIENTS) {
         Toast.show({
           type: 'info',
-          text1: 'Limit reached',
-          text2: `Up to ${MAX_DIARY_CUSTOM_NUTRIENTS} custom nutrients can be shown here.`,
+          text1: t('diarySettings.limitReached', { defaultValue: 'Limit reached' }),
+          text2: t('diarySettings.limitDescription', { defaultValue: 'Up to {{count}} custom nutrients can be shown here.', count: MAX_DIARY_CUSTOM_NUTRIENTS }),
         });
         return;
       }
@@ -117,11 +119,10 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       return (
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <Text className="text-base font-semibold text-text-primary mb-2">
-            No custom nutrients
+            {t('diarySettings.noCustomNutrients', { defaultValue: 'No custom nutrients' })}
           </Text>
           <Text className="text-text-secondary text-sm">
-            Custom nutrients are created in the SparkyFitness web app. Once you add
-            some, they will appear here so you can choose which show on your Diary.
+            {t('diarySettings.customNutrientsDescription', { defaultValue: 'Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Diary.' })}
           </Text>
         </View>
       );
@@ -146,7 +147,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
     );
   };
 
-  const header = useScreenHeader({ title: 'Diary Settings', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('diarySettings.title', { defaultValue: 'Diary Settings' }), left: { kind: 'back' } });
 
   return (
     <View
@@ -164,8 +165,8 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       >
         <SettingsRowGroup>
           <SettingsRow
-            title="Diary Summary"
-            subtitle="Show calories and macronutrients"
+            title={t('diarySettings.summary', { defaultValue: 'Diary Summary' })}
+            subtitle={t('diarySettings.summarySubtitle', { defaultValue: 'Show calories and macronutrients' })}
             rightAccessory={
               <Switch
                 value={diarySummaryVisible}
@@ -176,7 +177,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
         </SettingsRowGroup>
 
         <Text className="text-base font-semibold text-text-primary mb-4">
-          Custom Nutrient Display
+          {t('diarySettings.customNutrientDisplay', { defaultValue: 'Custom Nutrient Display' })}
         </Text>
 
         {renderContent()}

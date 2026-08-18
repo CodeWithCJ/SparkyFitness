@@ -33,7 +33,29 @@
       "openSettingsFailed": "Could not open iOS Settings"
     },
     "lastSynced": "Last synced {{time}}",
-    "addServer": "Tap to add a server"
+    "addServer": "Tap to add a server",
+    "title": "Settings",
+    "shareReportFailed": "Failed to share diagnostic report: {{error}}",
+    "serverConnected": "Server settings. Connected.",
+    "serverConnectionFailed": "Server settings. Connection failed.",
+    "serverNotConfigured": "Server settings. No server configured.",
+    "shareReportDescription": "Exports a local diagnostic report (app version, sync status, logs). No personal health or food data is included. Nothing is sent automatically.",
+    "rows": {
+      "server": "Server",
+      "healthSync": "Health Data Sync",
+      "app": "App Settings",
+      "calories": "Calories & BMR",
+      "food": "Food",
+      "dashboard": "Dashboard",
+      "diary": "Diary",
+      "wellness": "Wellness",
+      "cyclePregnancy": "Cycle & Pregnancy",
+      "workout": "Workout",
+      "whatsNew": "What's New",
+      "logs": "View Logs",
+      "about": "About",
+      "shareReport": "Share Diagnostic Report"
+    }
   },
   "languageSettings": {
     "subtitle": "Use your device language or choose a language for SparkyFitness."
@@ -491,5 +513,33 @@
       "fixed": "Activity does not change your budget"
     },
     "externalFormula": "formula"
+  },
+  "dashboardSettings": {
+    "updateFailed": "Failed to update setting.",
+    "noCustomNutrients": "No custom nutrients",
+    "customNutrientsDescription": "Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Dashboard.",
+    "title": "Dashboard Settings",
+    "askSparky": "Ask Sparky",
+    "askSparkySubtitle": "Show the Ask Sparky chat launcher on the Dashboard",
+    "hydration": "Hydration",
+    "hydrationSubtitle": "Show the hydration card on the Dashboard",
+    "fasting": "Fasting",
+    "fastingSubtitle": "Show the fasting card on the Dashboard",
+    "cyclePregnancy": "Cycle & Pregnancy",
+    "cyclePregnancySubtitle": "Show the wellness card on the Dashboard",
+    "medications": "Medications",
+    "medicationsSubtitle": "Show the medications card on the Dashboard",
+    "customNutrientDisplay": "Custom Nutrient Display"
+  },
+  "diarySettings": {
+    "updateFailed": "Failed to update setting.",
+    "limitReached": "Limit reached",
+    "limitDescription": "Up to {{count}} custom nutrients can be shown here.",
+    "noCustomNutrients": "No custom nutrients",
+    "customNutrientsDescription": "Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Diary.",
+    "title": "Diary Settings",
+    "summary": "Diary Summary",
+    "summarySubtitle": "Show calories and macronutrients",
+    "customNutrientDisplay": "Custom Nutrient Display"
   }
 }

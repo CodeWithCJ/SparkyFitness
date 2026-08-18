@@ -116,7 +116,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Toast.show({ type: 'error', text1: 'Error', text2: `Failed to share diagnostic report: ${errorMessage}` });
+      Toast.show({
+          type: 'error',
+          text1: t('common.error', { defaultValue: 'Error' }),
+          text2: t('settings.shareReportFailed', { defaultValue: 'Failed to share diagnostic report: {{error}}', error: errorMessage }),
+        });
     } finally {
       setIsSharing(false);
     }
@@ -138,27 +142,27 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         <View className={usesNativeTabs ? 'px-4 pb-4' : 'flex-1 p-4'}>
           {!usesNativeTabs && (
             <View className="mb-6">
-              <Text className="text-2xl font-bold text-text-primary">Settings</Text>
+              <Text className="text-2xl font-bold text-text-primary">{t('settings.title', { defaultValue: 'Settings' })}</Text>
             </View>
           )}
 
           <SettingsRow
             icon="server"
-            title="Server"
+            title={t('settings.rows.server', { defaultValue: 'Server' })}
             subtitle={serverSubtitle}
             onPress={() => navigation.navigate('ServerSettings')}
             iconColor={catSlate}
             accessibilityLabel={
               activeConfig
-                ? `Server settings. ${isConnected ? 'Connected' : 'Connection failed'}.`
-                : 'Server settings. No server configured.'
+                ? t(isConnected ? 'settings.serverConnected' : 'settings.serverConnectionFailed', { defaultValue: isConnected ? 'Server settings. Connected.' : 'Server settings. Connection failed.' })
+                : t('settings.serverNotConfigured', { defaultValue: 'Server settings. No server configured.' })
             }
           />
 
-          <SectionErrorBoundary sectionName="Settings">
+          <SectionErrorBoundary sectionName={t('settings.title', { defaultValue: 'Settings' })}>
             <SettingsRow
               icon="health-data-sync"
-              title="Health Data Sync"
+              title={t('settings.rows.healthSync', { defaultValue: 'Health Data Sync' })}
               subtitle={syncSubtitle}
               onPress={() => navigation.navigate('Sync')}
               iconColor={catPink}
@@ -167,14 +171,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             <SettingsRowGroup>
               <SettingsRow
                 icon="app-settings"
-                title="App Settings"
+                title={t('settings.rows.app', { defaultValue: 'App Settings' })}
                 onPress={() => navigation.navigate('AppSettings')}
                 iconColor={catViolet}
               />
               {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"
-                  title="Calories & BMR"
+                  title={t('settings.rows.calories', { defaultValue: 'Calories & BMR' })}
                   onPress={() => navigation.navigate('CalorieSettings')}
                   iconColor={catCalories}
                 />
@@ -182,7 +186,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="food-search-settings"
-                  title="Food"
+                  title={t('settings.rows.food', { defaultValue: 'Food' })}
                   onPress={() => navigation.navigate('FoodSettings')}
                   iconColor={catOrange}
                 />
@@ -190,7 +194,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="dashboard-settings"
-                  title="Dashboard"
+                  title={t('settings.rows.dashboard', { defaultValue: 'Dashboard' })}
                   onPress={() => navigation.navigate('DashboardSettings')}
                   iconColor={macroGreen}
                 />
@@ -198,7 +202,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="diary-settings"
-                  title="Diary"
+                  title={t('settings.rows.diary', { defaultValue: 'Diary' })}
                   onPress={() => navigation.navigate('DiarySettings')}
                   iconColor={catTeal}
                 />
@@ -206,14 +210,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="wellness"
-                  title={discreetMode ? 'Wellness' : 'Cycle & Pregnancy'}
+                  title={discreetMode ? t('settings.rows.wellness', { defaultValue: 'Wellness' }) : t('settings.rows.cyclePregnancy', { defaultValue: 'Cycle & Pregnancy' })}
                   onPress={() => navigation.navigate('CycleSettings')}
                   iconColor={catPink}
                 />
               )}
               <SettingsRow
                 icon="workout-settings"
-                title="Workout"
+                title={t('settings.rows.workout', { defaultValue: 'Workout' })}
                 onPress={() => navigation.navigate('WorkoutSettings')}
                 iconColor={catBlue}
               />
@@ -222,19 +226,19 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             <SettingsRowGroup>
               <SettingsRow
                 icon="whats-new"
-                title="What's New"
+                title={t('settings.rows.whatsNew', { defaultValue: "What's New" })}
                 onPress={() => navigation.navigate('WhatsNew')}
                 iconColor={catPink}
               />
               <SettingsRow
                 icon="document-text"
-                title="View Logs"
+                title={t('settings.rows.logs', { defaultValue: 'View Logs' })}
                 onPress={() => navigation.navigate('Logs')}
                 iconColor={catSlate}
               />
               <SettingsRow
                 icon="info-circle"
-                title="About"
+                title={t('settings.rows.about', { defaultValue: 'About' })}
                 onPress={() => navigation.navigate('About')}
                 iconColor={hydration}
               />
@@ -242,15 +246,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
             <SettingsRow
               icon="share"
-              title="Share Diagnostic Report"
+              title={t('settings.rows.shareReport', { defaultValue: 'Share Diagnostic Report' })}
               onPress={handleShareDiagnosticReport}
               disabled={isSharing}
               iconColor={catSlate}
               rightAccessory={isSharing ? <ActivityIndicator size="small" /> : undefined}
             />
             <Text className="text-text-secondary text-sm px-2 mb-4 mt-2">
-              Exports a local diagnostic report (app version, sync status, logs).
-              No personal health or food data is included. Nothing is sent automatically.
+              {t('settings.shareReportDescription', { defaultValue: 'Exports a local diagnostic report (app version, sync status, logs). No personal health or food data is included. Nothing is sent automatically.' })}
             </Text>
 
             {__DEV__ &&
