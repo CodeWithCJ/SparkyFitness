@@ -35,7 +35,8 @@
     "no": "Nie",
     "and": "i",
     "listFinalSeparator": " i ",
-    "date": "Data"
+    "date": "Data",
+    "add": "Dodaj"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -1933,5 +1934,65 @@
       "swollen_feet": "Opuchnięte stopy",
       "breast_swelling": "Obrzmienie piersi"
     }
+  },
+  "cycleInsights": {
+    "cycleSummary": "Podsumowanie cyklu",
+    "avgCycle": "Średnia długość cyklu",
+    "avgPeriod": "Średnia długość miesiączki",
+    "regularity": "Regularność",
+    "set": "Ustawiono",
+    "regular": "Regularny",
+    "nextPredictions": "Najbliższe prognozy",
+    "upcomingCycle": "Nadchodzący cykl",
+    "followingCycle": "Kolejny cykl",
+    "nextPeriod": "Następna miesiączka",
+    "estimatedOvulation": "Szacowana owulacja",
+    "patternsToWatch": "Wzorce, na które warto zwrócić uwagę",
+    "symptomForecast": "Prognoza objawów",
+    "forecastHint": "Zapisuj objawy przez kilka cykli, aby prognozować nadchodzące dni.",
+    "personalCorrelations": "Korelacje osobiste",
+    "days": "{{count}} dni"
+  },
+  "cycleCorrelations": {
+    "metrics": {
+      "weight": "Masa ciała",
+      "mood": "Nastrój",
+      "sleep": "Sen",
+      "energy": "Energia"
+    },
+    "phases": {
+      "menstrual": "Miesiączkowa",
+      "follicular": "Folikularna",
+      "fertile": "Płodna",
+      "ovulation": "Owulacja",
+      "luteal": "Lutealna"
+    },
+    "byPhase": "{{metric}} według fazy cyklu",
+    "higher": "wyższy",
+    "lower": "niższy",
+    "peak": "{{metric}} jest zwykle {{direction}} w fazie {{phase}} ({{delta}}{{unit}} względem średniej).",
+    "noDataTitle": "Korelacje pojawią się po zebraniu większej ilości danych",
+    "noDataHint": "Zapisuj masę ciała, nastrój, sen i energię przez kilka cykli, aby zobaczyć ich zależność od faz cyklu.",
+    "conditions": {
+      "longCycles": "Średnia długość Twoich cykli przekracza 35 dni. Jeśli to nowa sytuacja, warto omówić ją z lekarzem.",
+      "irregularCycles": "Długość Twoich cykli jest dość zmienna. Zapisanie kolejnych cykli pomoże uzyskać dokładniejszy obraz; warto wspomnieć o tym lekarzowi.",
+      "shortCycles": "Twoje cykle są krótsze niż zwykle. Jeśli to nowa sytuacja, warto skonsultować ją z lekarzem."
+    }
+  },
+  "cycleHistory": {
+    "title": "Historia cyklu",
+    "logManual": "Zapisz cykl ręcznie",
+    "startDate": "Data rozpoczęcia",
+    "selectDate": "Wybierz datę",
+    "periodDays": "Dni miesiączki",
+    "cycleDays": "Dni cyklu",
+    "excludeFromPredictions": "Wyklucz z prognoz",
+    "saveManual": "Zapisz cykl ręcznie",
+    "empty": "Brak zapisanych cykli.",
+    "startedAccessibility": "Cykl rozpoczęty {{date}}",
+    "started": "Rozpoczęto {{date}}",
+    "dayCycle": "{{count}}-dniowy cykl",
+    "currentCycle": "Bieżący cykl",
+    "dayPeriod": "{{count}} dni miesiączki"
   }
 }

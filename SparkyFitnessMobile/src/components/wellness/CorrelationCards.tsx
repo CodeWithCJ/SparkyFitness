@@ -1,16 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { useCycleCorrelations } from '../../hooks/useCycleInsights';
 import type { CorrelationResult } from '@workspace/shared';
 import Icon from '../Icon';
-
-const METRIC_LABELS: Record<string, string> = {
-  weight: 'Weight',
-  mood: 'Mood',
-  sleep: 'Sleep',
-  energy: 'Energy',
-};
 
 const METRIC_UNITS: Record<string, string> = {
   weight: 'kg',
@@ -19,31 +13,20 @@ const METRIC_UNITS: Record<string, string> = {
   energy: '',
 };
 
-const PHASE_LABELS: Record<string, string> = {
-  menstrual: 'Menstrual',
-  follicular: 'Follicular',
-  fertile: 'Fertile',
-  ovulation: 'Ovulation',
-  luteal: 'Luteal',
-};
-
-const CONDITION_LABELS: Record<string, string> = {
-  long_cycles:
-    'Your cycles average over 35 days. If this is new for you, it may be worth discussing with a clinician.',
-  irregular_cycles:
-    'Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.',
-  short_cycles:
-    'Your cycles are shorter than typical. If this is new, it may be worth a clinician’s input.',
-};
 
 interface CorrelationCardProps {
   c: CorrelationResult;
 }
 
 const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
+  const { t } = useTranslation();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   if (!c.hasEnoughData) return null;
-  const label = METRIC_LABELS[c.metric] || c.metric;
+  const label = c.metric === 'weight' ? t('cycleCorrelations.metrics.weight', { defaultValue: 'Weight' })
+    : c.metric === 'mood' ? t('cycleCorrelations.metrics.mood', { defaultValue: 'Mood' })
+      : c.metric === 'sleep' ? t('cycleCorrelations.metrics.sleep', { defaultValue: 'Sleep' })
+        : c.metric === 'energy' ? t('cycleCorrelations.metrics.energy', { defaultValue: 'Energy' })
+          : c.metric;
   const unit = METRIC_UNITS[c.metric] || '';
   const max = Math.max(...c.byPhase.map((p) => p.mean), 1);
 
@@ -52,7 +35,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
       <View className="flex-row items-center gap-1.5">
         <Icon name="measurements" size={18} color={accentColor} />
         <Text className="text-text-primary text-sm font-semibold">
-          {label} by cycle phase
+          {t('cycleCorrelations.byPhase', { defaultValue: '{{metric}} by cycle phase', metric: label })}
         </Text>
       </View>
       <View className="gap-2">
@@ -61,7 +44,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
           return (
             <View key={p.phase} className="flex-row items-center gap-2">
               <Text className="w-20 text-text-secondary text-sm">
-                {PHASE_LABELS[p.phase] || p.phase}
+                {p.phase === 'menstrual' ? t('cycleCorrelations.phases.menstrual', { defaultValue: 'Menstrual' }) : p.phase === 'follicular' ? t('cycleCorrelations.phases.follicular', { defaultValue: 'Follicular' }) : p.phase === 'fertile' ? t('cycleCorrelations.phases.fertile', { defaultValue: 'Fertile' }) : p.phase === 'ovulation' ? t('cycleCorrelations.phases.ovulation', { defaultValue: 'Ovulation' }) : p.phase === 'luteal' ? t('cycleCorrelations.phases.luteal', { defaultValue: 'Luteal' }) : p.phase}
               </Text>
               <View className="flex-1 h-2 rounded-full bg-progress-rail overflow-hidden">
                 <View
@@ -78,7 +61,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
       </View>
       {c.peakPhase ? (
         <Text className="text-sm text-text-secondary leading-relaxed border-t border-border-subtle pt-2">
-          {label} tends to be {c.peakDelta > 0 ? 'higher' : 'lower'} in your {PHASE_LABELS[c.peakPhase] || c.peakPhase} phase ({c.peakDelta > 0 ? `+${c.peakDelta}` : c.peakDelta}{unit} vs your average).
+          {t('cycleCorrelations.peak', { defaultValue: '{{metric}} tends to be {{direction}} in your {{phase}} phase ({{delta}}{{unit}} vs your average).', metric: label, direction: c.peakDelta > 0 ? t('cycleCorrelations.higher', { defaultValue: 'higher' }) : t('cycleCorrelations.lower', { defaultValue: 'lower' }), phase: c.peakPhase === 'menstrual' ? t('cycleCorrelations.phases.menstrual', { defaultValue: 'Menstrual' }) : c.peakPhase === 'follicular' ? t('cycleCorrelations.phases.follicular', { defaultValue: 'Follicular' }) : c.peakPhase === 'fertile' ? t('cycleCorrelations.phases.fertile', { defaultValue: 'Fertile' }) : c.peakPhase === 'ovulation' ? t('cycleCorrelations.phases.ovulation', { defaultValue: 'Ovulation' }) : c.peakPhase === 'luteal' ? t('cycleCorrelations.phases.luteal', { defaultValue: 'Luteal' }) : c.peakPhase, delta: c.peakDelta > 0 ? `+${c.peakDelta}` : c.peakDelta, unit })}
         </Text>
       ) : null}
     </View>
@@ -86,6 +69,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
 };
 
 const CorrelationCards: React.FC = () => {
+  const { t } = useTranslation();
   const { correlations } = useCycleCorrelations();
   const [textMuted, warningColor] = useCSSVariable([
     '--color-text-muted',
@@ -101,10 +85,10 @@ const CorrelationCards: React.FC = () => {
       <View className="bg-surface rounded-xl p-6 border-none items-center gap-2">
         <Icon name="wellness" size={24} color={textMuted} />
         <Text className="text-text-primary font-semibold text-sm">
-          Correlations unlock with more data
+          {t('cycleCorrelations.noDataTitle', { defaultValue: 'Correlations unlock with more data' })}
         </Text>
         <Text className="text-text-secondary text-xs text-center max-w-[260px] leading-relaxed">
-          Keep logging weight, mood, sleep and energy across a few cycles to see how they move with your phases.
+          {t('cycleCorrelations.noDataHint', { defaultValue: 'Keep logging weight, mood, sleep and energy across a few cycles to see how they move with your phases.' })}
         </Text>
       </View>
     );
@@ -121,7 +105,7 @@ const CorrelationCards: React.FC = () => {
             <Icon name="warning" size={18} color={warningColor} />
           </View>
           <Text className="flex-1 text-sm text-text-primary leading-normal">
-            {CONDITION_LABELS[f.key] || ''}
+            {f.key === 'long_cycles' ? t('cycleCorrelations.conditions.longCycles', { defaultValue: 'Your cycles average over 35 days. If this is new for you, it may be worth discussing with a clinician.' }) : f.key === 'irregular_cycles' ? t('cycleCorrelations.conditions.irregularCycles', { defaultValue: 'Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.' }) : f.key === 'short_cycles' ? t('cycleCorrelations.conditions.shortCycles', { defaultValue: 'Your cycles are shorter than typical. If this is new, it may be worth a clinician’s input.' }) : f.key}
           </Text>
         </View>
       ))}

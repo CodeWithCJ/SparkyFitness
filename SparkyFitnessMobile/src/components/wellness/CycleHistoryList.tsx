@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity, Switch, TextInput } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { useCycleHistory } from '../../hooks/useCycleHistory';
@@ -10,6 +11,7 @@ import CalendarSheet, { type CalendarSheetRef } from '../CalendarSheet';
 import { getTodayDate, formatDate } from '../../utils/dateUtils';
 
 const CycleHistoryList: React.FC = () => {
+  const { t } = useTranslation();
   const { cycles, createCycle, deleteCycle } = useCycleHistory();
   const maxCycleLength = cycles.reduce((max, c) => Math.max(max, c.cycle_length || 0), 0);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -41,30 +43,30 @@ const CycleHistoryList: React.FC = () => {
   return (
     <View className="gap-4">
       <View className="flex-row justify-between items-center">
-        <Text className="text-text-primary text-base font-bold">Cycle History</Text>
+        <Text className="text-text-primary text-base font-bold">{t('cycleHistory.title', { defaultValue: 'Cycle History' })}</Text>
         <TouchableOpacity
           onPress={() => setShowAddForm(!showAddForm)}
           className="flex-row items-center"
         >
           <Icon name={showAddForm ? 'close' : 'add'} size={18} color={accentColor} />
           <Text className="font-semibold text-sm ml-1" style={{ color: accentColor }}>
-            {showAddForm ? 'Cancel' : 'Add'}
+            {showAddForm ? t('common.cancel', { defaultValue: 'Cancel' }) : t('common.add', { defaultValue: 'Add' })}
           </Text>
         </TouchableOpacity>
       </View>
 
       {showAddForm && (
         <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3">
-          <Text className="text-text-primary font-semibold text-sm">Log Manual Cycle</Text>
+          <Text className="text-text-primary font-semibold text-sm">{t('cycleHistory.logManual', { defaultValue: 'Log Manual Cycle' })}</Text>
           
           <View>
-            <Text className="text-text-secondary text-xs mb-1">Start Date</Text>
+            <Text className="text-text-secondary text-xs mb-1">{t('cycleHistory.startDate', { defaultValue: 'Start Date' })}</Text>
             <TouchableOpacity
               onPress={() => calendarSheetRef.current?.present()}
               className="bg-raised rounded-lg p-2.5 text-text-primary border border-border-subtle flex-row justify-between items-center"
             >
               <Text className="text-text-primary">
-                {startDate ? formatDate(startDate) : 'Select Date'}
+                {startDate ? formatDate(startDate) : t('cycleHistory.selectDate', { defaultValue: 'Select Date' })}
               </Text>
               <Icon name="calendar" size={18} color={accentColor} />
             </TouchableOpacity>
@@ -72,7 +74,7 @@ const CycleHistoryList: React.FC = () => {
 
           <View className="flex-row gap-3">
             <View className="flex-1">
-              <Text className="text-text-secondary text-xs mb-1">Period Days</Text>
+              <Text className="text-text-secondary text-xs mb-1">{t('cycleHistory.periodDays', { defaultValue: 'Period Days' })}</Text>
               <TextInput
                 value={periodLength}
                 onChangeText={setPeriodLength}
@@ -81,7 +83,7 @@ const CycleHistoryList: React.FC = () => {
               />
             </View>
             <View className="flex-1">
-              <Text className="text-text-secondary text-xs mb-1">Cycle Days</Text>
+              <Text className="text-text-secondary text-xs mb-1">{t('cycleHistory.cycleDays', { defaultValue: 'Cycle Days' })}</Text>
               <TextInput
                 value={cycleLength}
                 onChangeText={setCycleLength}
@@ -92,7 +94,7 @@ const CycleHistoryList: React.FC = () => {
           </View>
 
           <View className="flex-row justify-between items-center py-2">
-            <Text className="text-text-primary text-sm">Exclude from predictions</Text>
+            <Text className="text-text-primary text-sm">{t('cycleHistory.excludeFromPredictions', { defaultValue: 'Exclude from predictions' })}</Text>
             <Switch
               value={isExcluded}
               onValueChange={setIsExcluded}
@@ -100,29 +102,29 @@ const CycleHistoryList: React.FC = () => {
           </View>
 
           <Button variant="primary" onPress={handleAdd}>
-            Save Manual Cycle
+            {t('cycleHistory.saveManual', { defaultValue: 'Save Manual Cycle' })}
           </Button>
         </View>
       )}
 
       {cycles.length === 0 ? (
         <View className="bg-surface rounded-xl p-4 border-0 shadow-sm items-center">
-          <Text className="text-text-secondary text-sm">No logged cycles yet.</Text>
+          <Text className="text-text-secondary text-sm">{t('cycleHistory.empty', { defaultValue: 'No logged cycles yet.' })}</Text>
         </View>
       ) : (
         <View className="bg-surface rounded-xl border-0 shadow-sm overflow-hidden">
           {cycles.map((c, idx) => (
             <SwipeableDeleteRow
               key={c.id || c.start_date}
-              title={`cycle started ${c.start_date}`}
+              title={t('cycleHistory.startedAccessibility', { defaultValue: 'Cycle started {{date}}', date: c.start_date })}
               onConfirmDelete={() => c.id && deleteCycle(c.id)}
               className={`p-3.5 ${idx < cycles.length - 1 ? 'border-b border-border-subtle' : ''}`}
             >
               <Text className="text-text-primary font-semibold text-sm">
-                Started {c.start_date}
+                {t('cycleHistory.started', { defaultValue: 'Started {{date}}', date: c.start_date })}
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
-                {c.cycle_length ? `${c.cycle_length} day cycle` : 'Current cycle'} • {c.period_length || 5} day period
+                {c.cycle_length ? t('cycleHistory.dayCycle', { defaultValue: '{{count}} day cycle', count: c.cycle_length }) : t('cycleHistory.currentCycle', { defaultValue: 'Current cycle' })} • {t('cycleHistory.dayPeriod', { defaultValue: '{{count}} day period', count: c.period_length || 5 })}
               </Text>
               {c.cycle_length && c.period_length && (
                 <View className="mt-2">

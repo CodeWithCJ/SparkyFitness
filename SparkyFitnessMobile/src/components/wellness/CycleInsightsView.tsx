@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { useCycleInsights } from '../../hooks/useCycleInsights';
@@ -13,6 +14,7 @@ import BBTLineChart from './BBTLineChart';
 import CorrelationCards from './CorrelationCards';
 
 const CycleInsightsView: React.FC = () => {
+  const { t } = useTranslation();
   const [accentColor, dangerColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-danger',
@@ -77,24 +79,24 @@ const CycleInsightsView: React.FC = () => {
     <View className="gap-6">
       {/* 1. Stats Summary Card */}
       <View className="bg-surface rounded-xl p-4 shadow-sm gap-4">
-        <Text className="text-text-secondary text-base font-semibold">Cycle Summary</Text>
+        <Text className="text-text-secondary text-base font-semibold">{t('cycleInsights.cycleSummary', { defaultValue: 'Cycle Summary' })}</Text>
         <View className="flex-row justify-between">
           <View className="flex-1 items-center border-r border-border-subtle">
-            <Text className="text-text-secondary text-xs font-medium">Avg Cycle</Text>
+            <Text className="text-text-secondary text-xs font-medium">{t('cycleInsights.avgCycle', { defaultValue: 'Avg Cycle' })}</Text>
             <Text className="text-text-primary text-lg font-bold mt-1">
-              {cycleStats.avgCycleLength} days
+              {t('cycleInsights.days', { defaultValue: '{{count}} days', count: cycleStats.avgCycleLength })}
             </Text>
           </View>
           <View className="flex-1 items-center border-r border-border-subtle">
-            <Text className="text-text-secondary text-xs font-medium">Avg Period</Text>
+            <Text className="text-text-secondary text-xs font-medium">{t('cycleInsights.avgPeriod', { defaultValue: 'Avg Period' })}</Text>
             <Text className="text-text-primary text-lg font-bold mt-1">
-              {cycleStats.avgPeriodLength} days
+              {t('cycleInsights.days', { defaultValue: '{{count}} days', count: cycleStats.avgPeriodLength })}
             </Text>
           </View>
           <View className="flex-1 items-center">
-            <Text className="text-text-secondary text-xs font-medium">Regularity</Text>
+            <Text className="text-text-secondary text-xs font-medium">{t('cycleInsights.regularity', { defaultValue: 'Regularity' })}</Text>
             <Text className="text-text-primary text-lg font-bold mt-1 capitalize">
-              {settings?.avg_cycle_length_override ? 'Set' : 'Regular'}
+              {settings?.avg_cycle_length_override ? t('cycleInsights.set', { defaultValue: 'Set' }) : t('cycleInsights.regular', { defaultValue: 'Regular' })}
             </Text>
           </View>
         </View>
@@ -103,14 +105,14 @@ const CycleInsightsView: React.FC = () => {
       {/* 2. Predictions & Confidence */}
       {predictions && predictions.cycles.length > 0 && (
         <View className="bg-surface rounded-xl p-4 shadow-sm gap-4">
-          <Text className="text-text-secondary text-base font-semibold">Next Predictions</Text>
+          <Text className="text-text-secondary text-base font-semibold">{t('cycleInsights.nextPredictions', { defaultValue: 'Next Predictions' })}</Text>
 
           <View className="gap-4">
             {predictions.cycles.slice(0, 2).map((c, index) => (
               <View key={index} className="gap-2">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-text-secondary text-xs font-semibold uppercase tracking-wider">
-                    {index === 0 ? 'Upcoming Cycle' : 'Following Cycle'}
+                    {index === 0 ? t('cycleInsights.upcomingCycle', { defaultValue: 'Upcoming Cycle' }) : t('cycleInsights.followingCycle', { defaultValue: 'Following Cycle' })}
                   </Text>
                   <Text className="text-text-secondary text-sm font-medium">
                     {formatShortDate(c.periodStart)} – {formatShortDate(c.periodEnd)}
@@ -118,14 +120,14 @@ const CycleInsightsView: React.FC = () => {
                 </View>
 
                 <View className="flex-row gap-2.5">
-                  {/* Next Period Tile */}
+                  {/* {t('cycleInsights.nextPeriod', { defaultValue: 'Next Period' })} Tile */}
                   <View className="flex-1 bg-surface rounded-xl p-3 flex-row items-center gap-2.5 shadow-sm">
                     <View className="w-8 h-8 items-center justify-center">
                       <CycleIcon id="flow-medium" size={32} />
                     </View>
                     <View className="flex-1">
                       <Text className="text-text-secondary text-xs font-semibold uppercase">
-                        Next Period
+                        {t('cycleInsights.nextPeriod', { defaultValue: 'Next Period' })}
                       </Text>
                       <Text className="text-text-primary text-sm font-bold mt-0.5">
                         {formatShortDate(c.periodStart)}
@@ -133,7 +135,7 @@ const CycleInsightsView: React.FC = () => {
                     </View>
                   </View>
 
-                  {/* Est. Ovulation Tile */}
+                  {/* {t('cycleInsights.estimatedOvulation', { defaultValue: 'Est. Ovulation' })} Tile */}
                   {c.ovulation && (
                     <View className="flex-1 bg-surface rounded-xl p-3 flex-row items-center gap-2.5 shadow-sm">
                       <View className="w-8 h-8 items-center justify-center">
@@ -141,7 +143,7 @@ const CycleInsightsView: React.FC = () => {
                       </View>
                       <View className="flex-1">
                         <Text className="text-text-secondary text-xs font-semibold uppercase">
-                          Est. Ovulation
+                          {t('cycleInsights.estimatedOvulation', { defaultValue: 'Est. Ovulation' })}
                         </Text>
                         <Text className="text-text-primary text-sm font-bold mt-0.5">
                           {formatShortDate(c.ovulation)}
@@ -159,7 +161,7 @@ const CycleInsightsView: React.FC = () => {
       {/* 3. Anomalies/Alerts */}
       {anomalies.length > 0 && (
         <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
-          <Text className="text-text-secondary text-base font-semibold">Patterns to Watch</Text>
+          <Text className="text-text-secondary text-base font-semibold">{t('cycleInsights.patternsToWatch', { defaultValue: 'Patterns to Watch' })}</Text>
           <View className="gap-2">
             {anomalies.map((anom: { message: string }, idx: number) => (
               <View
@@ -183,12 +185,12 @@ const CycleInsightsView: React.FC = () => {
         <BBTLineChart data={bbtData} isLoading={isLoading} />
       </View>
 
-      {/* 5. Symptom Forecasting */}
+      {/* 5. {t('cycleInsights.symptomForecast', { defaultValue: 'Symptom Forecast' })}ing */}
       <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
-        <Text className="text-text-secondary text-base font-semibold">Symptom Forecast</Text>
+        <Text className="text-text-secondary text-base font-semibold">{t('cycleInsights.symptomForecast', { defaultValue: 'Symptom Forecast' })}</Text>
         {forecastEntries.length === 0 ? (
           <Text className="text-text-secondary text-sm italic text-center py-4">
-            Log symptoms across a couple of cycles to forecast upcoming days.
+            {t('cycleInsights.forecastHint', { defaultValue: 'Log symptoms across a couple of cycles to forecast upcoming days.' })}
           </Text>
         ) : (
           <View className="gap-2">
@@ -206,7 +208,7 @@ const CycleInsightsView: React.FC = () => {
 
       {/* 6. Personalized Correlations */}
       <View className="gap-2">
-        <Text className="text-text-secondary text-base font-semibold px-1">Personal Correlations</Text>
+        <Text className="text-text-secondary text-base font-semibold px-1">{t('cycleInsights.personalCorrelations', { defaultValue: 'Personal Correlations' })}</Text>
         <CorrelationCards />
       </View>
     </View>

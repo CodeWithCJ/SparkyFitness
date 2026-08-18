@@ -33,7 +33,8 @@
     "no": "No",
     "and": "and",
     "listFinalSeparator": ", and ",
-    "date": "Date"
+    "date": "Date",
+    "add": "Add"
   },
   "settings": {
     "app": "App Settings",
@@ -1907,5 +1908,65 @@
       "swollen_feet": "Swollen feet",
       "breast_swelling": "Breast swelling"
     }
+  },
+  "cycleInsights": {
+    "cycleSummary": "Cycle Summary",
+    "avgCycle": "Avg Cycle",
+    "avgPeriod": "Avg Period",
+    "regularity": "Regularność",
+    "set": "Set",
+    "regular": "Regular",
+    "nextPredictions": "Next Predictions",
+    "upcomingCycle": "Upcoming Cycle",
+    "followingCycle": "Following Cycle",
+    "nextPeriod": "Next Period",
+    "estimatedOvulation": "Est. Ovulation",
+    "patternsToWatch": "Patterns to Watch",
+    "symptomForecast": "Symptom Forecast",
+    "forecastHint": "Log symptoms across a couple of cycles to forecast upcoming days.",
+    "personalCorrelations": "Personal Correlations",
+    "days": "{{count}} days"
+  },
+  "cycleCorrelations": {
+    "metrics": {
+      "weight": "Weight",
+      "mood": "Mood",
+      "sleep": "Sen",
+      "energy": "Energy"
+    },
+    "phases": {
+      "menstrual": "Menstrual",
+      "follicular": "Follicular",
+      "fertile": "Fertile",
+      "ovulation": "Owulacja",
+      "luteal": "Luteal"
+    },
+    "byPhase": "{{metric}} by cycle phase",
+    "higher": "higher",
+    "lower": "lower",
+    "peak": "{{metric}} tends to be {{direction}} in your {{phase}} phase ({{delta}}{{unit}} vs your average).",
+    "noDataTitle": "Correlations unlock with more data",
+    "noDataHint": "Keep logging weight, mood, sleep and energy across a few cycles to see how they move with your phases.",
+    "conditions": {
+      "longCycles": "Your cycles average over 35 days. If this is new for you, it may be worth discussing with a clinician.",
+      "irregularCycles": "Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.",
+      "shortCycles": "Your cycles are shorter than typical. If this is new, it may be worth a clinician’s input."
+    }
+  },
+  "cycleHistory": {
+    "title": "Cycle History",
+    "logManual": "Log Manual Cycle",
+    "startDate": "Start Date",
+    "selectDate": "Select Date",
+    "periodDays": "Period Days",
+    "cycleDays": "Cycle Days",
+    "excludeFromPredictions": "Exclude from predictions",
+    "saveManual": "Save Manual Cycle",
+    "empty": "No logged cycles yet.",
+    "startedAccessibility": "Cycle started {{date}}",
+    "started": "Started {{date}}",
+    "dayCycle": "{{count}} day cycle",
+    "currentCycle": "Current cycle",
+    "dayPeriod": "{{count}} day period"
   }
 }
