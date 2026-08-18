@@ -16,7 +16,7 @@ Branch: `feat/mobile-complete-localization`
 | 9 | Wellness/cycle/pregnancy | TBD | pending | pending | pending | pending | pending | pending | no |
 | 10 | Medications, notifications and permissions | TBD | pending | pending | pending | pending | pending | pending | no |
 | 11 | Settings, diagnostics, chat and developer tools | 81 | in review | implemented | implemented | verified | 88 targeted tests pass | independent review pending | no |
-| 12 | Errors, alerts, toasts, accessibility and utility-generated labels | TBD | pending | pending | pending | pending | pending | pending | no |
+| 12 | Errors, alerts, toasts, accessibility and utility-generated labels | 0 after unit | in progress | verified | verified | verified | i18n/typecheck pass | review pending | no |
 | 13 | Android native resources, App Languages and widgets | TBD | pending | pending | pending | pending | pending | pending | no |
 | 14 | iOS resources, widgets and Live Activities | TBD | pending | pending | pending | pending | pending | pending | no |
 | 15 | Repository-wide second audit and adversarial reviews | TBD | pending | pending | pending | pending | pending | pending | no |
