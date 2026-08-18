@@ -32,7 +32,8 @@
     "yes": "Yes",
     "no": "No",
     "and": "and",
-    "listFinalSeparator": ", and "
+    "listFinalSeparator": ", and ",
+    "date": "Date"
   },
   "settings": {
     "app": "App Settings",
@@ -1803,6 +1804,108 @@
       "retakePhoto": "Retake photo",
       "takeLabelPhoto": "Take nutrition label photo",
       "takeMealPhoto": "Take meal photo"
+    }
+  },
+  "cycleToday": {
+    "menstrualFlow": "Menstrual Flow",
+    "flow": {
+      "none": "None",
+      "spot": "Spot",
+      "light": "Light",
+      "medium": "Med",
+      "heavy": "Heavy"
+    },
+    "weight": "Weight ({{unit}})",
+    "weightExampleLbs": "e.g. 143",
+    "weightExampleKg": "e.g. 65",
+    "cervicalMucus": "Cervical Mucus",
+    "selectCervicalMucus": "Select Cervical Mucus",
+    "tapToSelect": "Tap to select...",
+    "mucus": {
+      "none": "None",
+      "dry": "Dry",
+      "sticky": "Sticky",
+      "creamy": "Creamy",
+      "watery": "Watery",
+      "eggWhite": "Egg White"
+    },
+    "intercourse": "Intercourse",
+    "intercourseOption": {
+      "none": "None",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "protection": "Protection",
+    "protectionOption": {
+      "protected": "Protected",
+      "unprotected": "Unprotected"
+    },
+    "cervicalPosition": "Cervical Position",
+    "selectCervicalPosition": "Select Cervical Position",
+    "position": {
+      "none": "None",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "basalTemperature": "Basal Body Temperature",
+    "basalTemperatureHint": "Track your waking temperature (°C) to identify biphasic shifts post-ovulation.",
+    "temperatureExample": "e.g. 36.5",
+    "notes": "Notes",
+    "notesPlaceholder": "Log details about how you feel, energy level...",
+    "saving": "Saving...",
+    "save": "Save Log Entry",
+    "invalidTemperature": "Invalid temperature input",
+    "invalidWeight": "Invalid weight input"
+  },
+  "cycleSymptoms": {
+    "title": "Symptoms",
+    "showAll": "Show all",
+    "showLess": "Show less",
+    "items": {
+      "cramps": "Cramps",
+      "headache": "Headache",
+      "migraine": "Migraine",
+      "backache": "Backache",
+      "ovulation_pain": "Ovulation pain",
+      "tender_breasts": "Tender breasts",
+      "nausea": "Nausea",
+      "bloating": "Bloating",
+      "diarrhea": "Diarrhea",
+      "constipation": "Constipation",
+      "cravings": "Cravings",
+      "acne": "Acne",
+      "oily_skin": "Oily skin",
+      "fatigue": "Fatigue",
+      "insomnia": "Insomnia",
+      "dizziness": "Dizziness",
+      "mood_swings": "Mood swings",
+      "anxiety": "Anxiety",
+      "hot_flashes": "Hot flashes",
+      "spotting": "Spotting",
+      "body_aches": "Body aches",
+      "joint_pain": "Joint pain",
+      "muscle_soreness": "Muscle soreness",
+      "pelvic_pain": "Pelvic pain",
+      "cervical_pain": "Cervical pain",
+      "stiff_neck": "Stiff neck",
+      "digestive_cramps": "Digestive cramps",
+      "acid_reflux": "Acid reflux",
+      "indigestion": "Indigestion",
+      "increased_appetite": "Increased appetite",
+      "decreased_appetite": "Decreased appetite",
+      "fatigue_morning": "Morning fatigue",
+      "brain_fog": "Brain fog",
+      "irritability": "Irritability",
+      "sadness": "Sadness",
+      "oversleeping": "Oversleeping",
+      "restless_sleep": "Restless sleep",
+      "dry_skin": "Dry skin",
+      "skin_breakouts": "Skin breakouts",
+      "chills": "Chills",
+      "night_sweats": "Night sweats",
+      "swollen_feet": "Swollen feet",
+      "breast_swelling": "Breast swelling"
     }
   }
 }

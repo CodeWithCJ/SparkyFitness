@@ -34,7 +34,8 @@
     "yes": "Tak",
     "no": "Nie",
     "and": "i",
-    "listFinalSeparator": " i "
+    "listFinalSeparator": " i ",
+    "date": "Data"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -1829,6 +1830,108 @@
       "retakePhoto": "Zrób zdjęcie ponownie",
       "takeLabelPhoto": "Zrób zdjęcie etykiety żywieniowej",
       "takeMealPhoto": "Zrób zdjęcie posiłku"
+    }
+  },
+  "cycleToday": {
+    "menstrualFlow": "Krwawienie miesiączkowe",
+    "flow": {
+      "none": "Brak",
+      "spot": "Plamienie",
+      "light": "Lekkie",
+      "medium": "Średnie",
+      "heavy": "Obfite"
+    },
+    "weight": "Masa ciała ({{unit}})",
+    "weightExampleLbs": "np. 143",
+    "weightExampleKg": "np. 65",
+    "cervicalMucus": "Śluz szyjkowy",
+    "selectCervicalMucus": "Wybierz śluz szyjkowy",
+    "tapToSelect": "Dotknij, aby wybrać…",
+    "mucus": {
+      "none": "Brak",
+      "dry": "Suchy",
+      "sticky": "Lepki",
+      "creamy": "Kremowy",
+      "watery": "Wodnisty",
+      "eggWhite": "Jak białko jaja"
+    },
+    "intercourse": "Współżycie",
+    "intercourseOption": {
+      "none": "Brak",
+      "yes": "Tak",
+      "no": "Nie"
+    },
+    "protection": "Zabezpieczenie",
+    "protectionOption": {
+      "protected": "Z zabezpieczeniem",
+      "unprotected": "Bez zabezpieczenia"
+    },
+    "cervicalPosition": "Położenie szyjki macicy",
+    "selectCervicalPosition": "Wybierz położenie szyjki macicy",
+    "position": {
+      "none": "Brak",
+      "low": "Niskie",
+      "medium": "Średnie",
+      "high": "Wysokie"
+    },
+    "basalTemperature": "Podstawowa temperatura ciała",
+    "basalTemperatureHint": "Mierz temperaturę po przebudzeniu (°C), aby rozpoznać dwufazowe zmiany po owulacji.",
+    "temperatureExample": "np. 36,5",
+    "notes": "Notatki",
+    "notesPlaceholder": "Zapisz szczegóły samopoczucia, poziomu energii…",
+    "saving": "Zapisywanie…",
+    "save": "Zapisz wpis dnia",
+    "invalidTemperature": "Nieprawidłowa temperatura",
+    "invalidWeight": "Nieprawidłowa masa ciała"
+  },
+  "cycleSymptoms": {
+    "title": "Objawy",
+    "showAll": "Pokaż wszystkie",
+    "showLess": "Pokaż mniej",
+    "items": {
+      "cramps": "Skurcze",
+      "headache": "Ból głowy",
+      "migraine": "Migrena",
+      "backache": "Ból pleców",
+      "ovulation_pain": "Ból owulacyjny",
+      "tender_breasts": "Tkliwość piersi",
+      "nausea": "Nudności",
+      "bloating": "Wzdęcia",
+      "diarrhea": "Biegunka",
+      "constipation": "Zaparcia",
+      "cravings": "Zachcianki",
+      "acne": "Trądzik",
+      "oily_skin": "Tłusta skóra",
+      "fatigue": "Zmęczenie",
+      "insomnia": "Bezsenność",
+      "dizziness": "Zawroty głowy",
+      "mood_swings": "Wahania nastroju",
+      "anxiety": "Niepokój",
+      "hot_flashes": "Uderzenia gorąca",
+      "spotting": "Plamienie",
+      "body_aches": "Bóle całego ciała",
+      "joint_pain": "Ból stawów",
+      "muscle_soreness": "Bolesność mięśni",
+      "pelvic_pain": "Ból miednicy",
+      "cervical_pain": "Ból szyjki macicy",
+      "stiff_neck": "Sztywność karku",
+      "digestive_cramps": "Skurcze trawienne",
+      "acid_reflux": "Refluks żołądkowy",
+      "indigestion": "Niestrawność",
+      "increased_appetite": "Zwiększony apetyt",
+      "decreased_appetite": "Zmniejszony apetyt",
+      "fatigue_morning": "Poranne zmęczenie",
+      "brain_fog": "Mgła mózgowa",
+      "irritability": "Rozdrażnienie",
+      "sadness": "Smutek",
+      "oversleeping": "Nadmierna senność",
+      "restless_sleep": "Niespokojny sen",
+      "dry_skin": "Sucha skóra",
+      "skin_breakouts": "Wypryski skórne",
+      "chills": "Dreszcze",
+      "night_sweats": "Nocne poty",
+      "swollen_feet": "Opuchnięte stopy",
+      "breast_swelling": "Obrzmienie piersi"
     }
   }
 }
