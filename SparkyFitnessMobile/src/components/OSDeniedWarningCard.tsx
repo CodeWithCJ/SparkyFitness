@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 
 import Icon from './Icon';
@@ -15,18 +16,27 @@ const DEFAULT_BODY =
 
 const OSDeniedWarningCard: React.FC<Props> = ({ onPress, actionLabel }) => {
   const [iconWarning] = useCSSVariable(['--color-icon-warning']) as [string];
+  const title = t('notificationSettings.permissionTitle', { defaultValue: TITLE });
+  const body = t('notificationSettings.permissionBody', {
+    defaultValue: DEFAULT_BODY,
+  });
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${TITLE}. ${DEFAULT_BODY} ${actionLabel}.`}
+      accessibilityLabel={t('notificationSettings.permissionWarningAccessibility', {
+        defaultValue: '{{title}}. {{body}} {{action}}.',
+        title,
+        body,
+        action: actionLabel,
+      })}
       className="bg-surface rounded-xl p-4 mb-4 shadow-sm flex-row items-start"
     >
       <Icon name="warning" size={20} color={iconWarning} style={{ marginTop: 2 }} />
       <View className="flex-1 ml-3">
-        <Text className="text-base font-semibold text-text-primary">{TITLE}</Text>
-        <Text className="text-text-primary text-sm mt-1 opacity-80">{DEFAULT_BODY}</Text>
+        <Text className="text-base font-semibold text-text-primary">{title}</Text>
+        <Text className="text-text-primary text-sm mt-1 opacity-80">{body}</Text>
         <Text className="text-sm font-semibold text-accent-primary self-end mt-2">{actionLabel}</Text>
       </View>
     </Pressable>

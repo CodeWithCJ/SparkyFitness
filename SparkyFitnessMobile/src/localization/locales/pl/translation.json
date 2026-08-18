@@ -19,7 +19,8 @@
     "itemCount_one": "{{count}} element",
     "itemCount_few": "{{count}} elementy",
     "itemCount_many": "{{count}} elementów",
-    "itemCount_other": "{{count}} elementów"
+    "itemCount_other": "{{count}} elementów",
+    "off": "Wyłączone"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -569,5 +570,43 @@
     "tryAgain": "Spróbuj ponownie",
     "goBack": "Wróć",
     "sectionFailed": "Nie udało się załadować tej sekcji."
+  },
+  "notificationSettings": {
+    "title": "Powiadomienia",
+    "allow": "Zezwalaj na powiadomienia",
+    "allowSubtitle": "Główne ustawienie wszystkich alertów SparkyFitness.",
+    "alerts": "Alerty",
+    "restTimer": "Minutnik odpoczynku",
+    "restTimerSubtitle": "Alert po zakończeniu odpoczynku, także w tle.",
+    "fastingGoals": "Cele postu",
+    "fastingGoalsSubtitle": "Alert po osiągnięciu celu postu.",
+    "medications": "Leki",
+    "medicationReminders": "Przypomnienia o lekach",
+    "medicationRemindersSubtitle": "Przypomnienia o zaplanowanych lekach.",
+    "repeatReminders": "Powtarzanie przypomnień",
+    "repeatRemindersSubtitle": "Powtarzaj każde przypomnienie co 10 minut, maksymalnie 3 razy, aż dawka zostanie zarejestrowana.",
+    "hideMedicationNames": "Ukrywaj nazwy leków",
+    "hideMedicationNamesSubtitle": "Pokazuj ogólne przypomnienie zamiast nazwy leku i dawki.",
+    "enableNotifications": "Włącz powiadomienia",
+    "openSettings": "Otwórz ustawienia",
+    "permissionTitle": "Udziel uprawnień",
+    "permissionBody": "Alerty SparkyFitness (minutniki odpoczynku, cele postu i przypomnienia o lekach) nie będą działać.",
+    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}."
+  },
+  "workoutSettings": {
+    "title": "Ustawienia treningu",
+    "defaultRest": "Domyślny odpoczynek",
+    "defaultRestSubtitle": "Odpoczynek między seriami nowo dodanych ćwiczeń.",
+    "defaultRestAccessibility": "Domyślny odpoczynek: {{duration}}",
+    "restSound": "Dźwięk minutnika odpoczynku",
+    "restSoundSubtitle": "Odtwarzaj dźwięk po zakończeniu odpoczynku, gdy aplikacja jest otwarta.",
+    "keepAwake": "Nie wyłączaj ekranu",
+    "keepAwakeSubtitle": "Nie pozwalaj ekranowi zasnąć podczas aktywnego treningu.",
+    "restSoundAccessibility": "Dźwięk minutnika odpoczynku",
+    "keepAwakeAccessibility": "Nie wyłączaj ekranu"
+  },
+  "restPeriod": {
+    "rest": "Odpoczynek: {{duration}}",
+    "off": "Wyłączone"
   }
 }

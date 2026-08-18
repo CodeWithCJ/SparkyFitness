@@ -17,7 +17,8 @@
     "collapseSection": "Collapse this section",
     "expandSection": "Expand this section",
     "itemCount_one": "{{count}} item",
-    "itemCount_other": "{{count}} items"
+    "itemCount_other": "{{count}} items",
+    "off": "Off"
   },
   "settings": {
     "app": "App Settings",
@@ -563,5 +564,43 @@
     "tryAgain": "Try Again",
     "goBack": "Go Back",
     "sectionFailed": "This section failed to load."
+  },
+  "notificationSettings": {
+    "title": "Notifications",
+    "allow": "Allow Notifications",
+    "allowSubtitle": "Master switch for all alerts from SparkyFitness.",
+    "alerts": "Alerts",
+    "restTimer": "Rest Timer",
+    "restTimerSubtitle": "Alert when a rest period ends, even in the background.",
+    "fastingGoals": "Fasting Goals",
+    "fastingGoalsSubtitle": "Alert when you reach your fasting goal.",
+    "medications": "Medications",
+    "medicationReminders": "Medication Reminders",
+    "medicationRemindersSubtitle": "Reminders for scheduled medications.",
+    "repeatReminders": "Repeat Reminders",
+    "repeatRemindersSubtitle": "Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.",
+    "hideMedicationNames": "Hide Medication Names",
+    "hideMedicationNamesSubtitle": "Show a generic reminder instead of the medication name and dose.",
+    "enableNotifications": "Enable Notifications",
+    "openSettings": "Open Settings",
+    "permissionTitle": "Grant permissions",
+    "permissionBody": "SparkyFitness alerts (rest timers, fasting goals, medication reminders) won't fire.",
+    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}."
+  },
+  "workoutSettings": {
+    "title": "Workout Settings",
+    "defaultRest": "Default rest period",
+    "defaultRestSubtitle": "Rest between sets for newly added exercises.",
+    "defaultRestAccessibility": "Default rest period, {{duration}}",
+    "restSound": "Rest timer sound",
+    "restSoundSubtitle": "Play a sound when the rest timer ends while the app is open.",
+    "keepAwake": "Keep screen awake",
+    "keepAwakeSubtitle": "Prevent the screen from sleeping while a workout is active.",
+    "restSoundAccessibility": "Rest timer sound",
+    "keepAwakeAccessibility": "Keep screen awake"
+  },
+  "restPeriod": {
+    "rest": "Rest {{duration}}",
+    "off": "Off"
   }
 }
