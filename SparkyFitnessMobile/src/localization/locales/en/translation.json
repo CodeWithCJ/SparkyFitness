@@ -255,7 +255,9 @@
       "noServerSelected": "No server selected.",
       "httpsRequired": "HTTPS is required for server connections.",
       "frontendUrlRequired": "Please enter your Frontend URL first.",
-      "saveFailed": "Failed to save: {{message}}"
+      "saveFailed": "Failed to save: {{message}}",
+      "generic": "Authentication failed. Please try again.",
+      "connectionRetry": "Could not connect to server. Please try again."
     },
     "authenticatorApp": "Authenticator App",
     "emailCode": "Email Code",
@@ -275,7 +277,18 @@
     "addHeader": "Add header",
     "proxyHeadersHelp": "Used when running behind certain reverse proxies",
     "reservedHeader": "Reserved Header",
-    "reservedHeaderMessage": "\"{{name}}\" may conflict with headers set by the app. Continue anyway?"
+    "reservedHeaderMessage": "\"{{name}}\" may conflict with headers set by the app. Continue anyway?",
+    "signInWithProvider": "Sign in with {{provider}}",
+    "passwordPlaceholder": "Password",
+    "hidePassword": "Hide password",
+    "showPassword": "Show password",
+    "hideApiKey": "Hide API key",
+    "showApiKey": "Show API key",
+    "headerNamePlaceholder": "Name (e.g. X-Access-Token)",
+    "headerValuePlaceholder": "Value",
+    "removeHeader": "Remove header {{number}}",
+    "hideHeaderValue": "Hide header value",
+    "showHeaderValue": "Show header value"
   },
   "onboarding": {
     "subtitle": "Your self-hosted fitness tracker",

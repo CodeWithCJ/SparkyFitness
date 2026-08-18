@@ -297,7 +297,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       onSuccess();
     } catch (err) {
       if (err instanceof LoginError) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
         setError(t('auth.errors.connectionFailed', { defaultValue: 'Could not connect to server. Check the URL and try again.' }));
       }
@@ -336,9 +336,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       }
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
-        setError(String(err));
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       }
     } finally {
       setLoading(false);
@@ -375,9 +375,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       }
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
-        setError(String(err));
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       }
     } finally {
       setLoading(false);
@@ -413,7 +413,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         } else if (err.message.toLowerCase().includes('invalid code')) {
           setError(t('auth.errors.invalidVerificationCode', { defaultValue: 'Invalid verification code. Please try again.' }));
         } else if (err.statusCode === undefined) {
-          setError(err.message);
+          setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
         } else if (
           err.message.includes('INVALID_TWO_FACTOR_COOKIE') ||
           err.message.toLowerCase().includes('invalid two factor cookie') ||
@@ -423,7 +423,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           setError(t('auth.errors.sessionExpired', { defaultValue: 'Your session has expired. Please sign in again.' }));
           setStep('form');
         } else {
-          setError(err.message);
+          setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
         }
       } else {
         setError(t('auth.errors.verificationFailed', { defaultValue: 'Verification failed. Please try again.' }));
@@ -443,7 +443,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       setEmailOtpSent(true);
     } catch (err) {
       if (err instanceof LoginError) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
         setError(t('auth.errors.sendEmailCodeFailed', { defaultValue: 'Failed to send email code. Please try again.' }));
       }
@@ -624,7 +624,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       <>
         {/* Frontend URL — always visible */}
         <View className="mb-3">
-          <Text className="text-sm mb-2 text-text-secondary">Frontend URL</Text>
+          <Text className="text-sm mb-2 text-text-secondary">{t('auth.frontendUrl', { defaultValue: 'Frontend URL' })}</Text>
           <View className="flex-row items-center">
             {/* While unfocused, the input's own text is transparent and
                 UnfocusedInputEcho renders the value on top; see FormInput.tsx. */}
@@ -693,7 +693,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                       <View className="flex-row items-center">
                         <FormInput
                           className="flex-1 rounded-lg"
-                          placeholder="Password"
+                          placeholder={t('auth.passwordPlaceholder', { defaultValue: 'Password' })}
                           value={password}
                           onChangeText={setPassword}
                           secureTextEntry={!showPassword}
@@ -703,7 +703,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         <Button
                           variant="ghost"
                           onPress={() => setShowPassword(!showPassword)}
-                          accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                          accessibilityLabel={showPassword ? t('auth.hidePassword', { defaultValue: 'Hide password' }) : t('auth.showPassword', { defaultValue: 'Show password' })}
                           className="absolute right-1 p-2 py-2 px-2 rounded-lg"
                         >
                           <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
@@ -734,7 +734,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         <View className="flex-row items-center">
                           <OidcProviderLogo logoUrl={provider.logo_url} serverUrl={serverUrl} />
                           <Text className="text-base font-semibold text-text-primary">
-                            {provider.display_name || `Sign in with ${provider.id}`}
+                            {provider.display_name || t('auth.signInWithProvider', { defaultValue: 'Sign in with {{provider}}', provider: provider.id })}
                           </Text>
                         </View>
                       </Button>
@@ -791,7 +791,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   <Button
                     variant="ghost"
                     onPress={() => setShowApiKey(!showApiKey)}
-                    accessibilityLabel={showApiKey ? "Hide API key" : "Show API key"}
+                    accessibilityLabel={showApiKey ? t('auth.hideApiKey', { defaultValue: 'Hide API key' }) : t('auth.showApiKey', { defaultValue: 'Show API key' })}
                     className="absolute right-1 p-2 py-2 px-2 rounded-lg"
                   >
                     <Icon name={showApiKey ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
@@ -891,7 +891,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         <View className="flex-row items-center mb-1.5">
                           <FormInput
                             className="flex-1 rounded-lg"
-                            placeholder="Name (e.g. X-Access-Token)"
+                            placeholder={t('auth.headerNamePlaceholder', { defaultValue: 'Name (e.g. X-Access-Token)' })}
                             value={header.name}
                             onChangeText={(text) => handleChangeHeader(index, 'name', text)}
                             autoCapitalize="none"
@@ -901,7 +901,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                           <Button
                             variant="ghost"
                             onPress={() => handleRemoveHeader(index)}
-                            accessibilityLabel={`Remove header ${index + 1}`}
+                            accessibilityLabel={t('auth.removeHeader', { defaultValue: 'Remove header {{number}}', number: index + 1 })}
                             className="absolute right-1 py-0 px-1.5"
                           >
                             <Icon name="remove-circle" size={18} color="#ef4444" />
@@ -910,7 +910,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         <View className="flex-row items-center">
                           <FormInput
                             className="flex-1 rounded-lg"
-                            placeholder="Value"
+                            placeholder={t('auth.headerValuePlaceholder', { defaultValue: 'Value' })}
                             value={header.value}
                             onChangeText={(text) => handleChangeHeader(index, 'value', text)}
                             autoCapitalize="none"
@@ -921,7 +921,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                           <Button
                             variant="ghost"
                             onPress={() => toggleShowHeader(index)}
-                            accessibilityLabel={showHeaders[index] ? "Hide header value" : "Show header value"}
+                            accessibilityLabel={showHeaders[index] ? t('auth.hideHeaderValue', { defaultValue: 'Hide header value' }) : t('auth.showHeaderValue', { defaultValue: 'Show header value' })}
                             className="absolute right-1 p-2 py-2 px-2 rounded-lg"
                           >
                             <Icon name={showHeaders[index] ? 'eye-off' : 'eye'} size={18} color={textSecondary} />

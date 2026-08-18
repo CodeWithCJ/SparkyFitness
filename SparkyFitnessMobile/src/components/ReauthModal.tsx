@@ -204,9 +204,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       onLoginSuccess();
     } catch (err) {
       if (err instanceof LoginError) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
-        setError('Could not connect to server. Please try again.');
+        setError(t('auth.errors.connectionRetry', { defaultValue: 'Could not connect to server. Please try again.' }));
       }
     } finally {
       setLoading(false);
@@ -230,9 +230,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       onLoginSuccess();
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
-        setError(String(err));
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       }
     } finally {
       setLoading(false);
@@ -259,9 +259,9 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       }
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
-        setError(String(err));
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       }
     } finally {
       setLoading(false);
@@ -293,7 +293,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
         } else if (err.message.toLowerCase().includes('invalid code')) {
           setError(t('auth.errors.invalidVerificationCode', { defaultValue: 'Invalid verification code. Please try again.' }));
         } else if (err.statusCode === undefined) {
-          setError(err.message);
+          setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
         } else if (
           err.message.includes('INVALID_TWO_FACTOR_COOKIE') ||
           err.message.toLowerCase().includes('invalid two factor cookie') ||
@@ -303,7 +303,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
           setError(t('auth.errors.sessionExpired', { defaultValue: 'Your session has expired. Please sign in again.' }));
           setStep('credentials');
         } else {
-          setError(err.message);
+          setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
         }
       } else {
         setError(t('auth.errors.verificationFailed', { defaultValue: 'Verification failed. Please try again.' }));
@@ -322,7 +322,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       setEmailOtpSent(true);
     } catch (err) {
       if (err instanceof LoginError) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
         setError(t('auth.errors.sendEmailCodeFailed', { defaultValue: 'Failed to send email code. Please try again.' }));
       }
@@ -425,7 +425,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                     <View className="mb-4">
                       <Text className="text-sm mb-2 text-text-secondary">{t('auth.password', { defaultValue: 'Password' })}</Text>
                       <FormInput
-                        placeholder="Password"
+                        placeholder={t('auth.passwordPlaceholder', { defaultValue: 'Password' })}
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry
@@ -455,7 +455,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                       <View className="flex-row items-center">
                         <OidcProviderLogo logoUrl={provider.logo_url} serverUrl={currentUrl} />
                         <Text className="text-base font-semibold text-text-primary">
-                          {provider.display_name || `Sign in with ${provider.id}`}
+                          {provider.display_name || t('auth.signInWithProvider', { defaultValue: 'Sign in with {{provider}}', provider: provider.id })}
                         </Text>
                       </View>
                     </Button>

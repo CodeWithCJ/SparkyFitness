@@ -255,7 +255,9 @@
       "noServerSelected": "Nie wybrano serwera.",
       "httpsRequired": "Połączenia z serwerem wymagają HTTPS.",
       "frontendUrlRequired": "Najpierw wprowadź adres URL frontendu.",
-      "saveFailed": "Nie udało się zapisać: {{message}}"
+      "saveFailed": "Nie udało się zapisać: {{message}}",
+      "generic": "Uwierzytelnianie nie powiodło się. Spróbuj ponownie.",
+      "connectionRetry": "Nie można połączyć się z serwerem. Spróbuj ponownie."
     },
     "authenticatorApp": "Aplikacja uwierzytelniająca",
     "emailCode": "Kod e-mail",
@@ -275,7 +277,18 @@
     "addHeader": "Dodaj nagłówek",
     "proxyHeadersHelp": "Używane podczas pracy za niektórymi odwrotnymi proxy",
     "reservedHeader": "Zastrzeżony nagłówek",
-    "reservedHeaderMessage": "„{{name}}” może kolidować z nagłówkami ustawianymi przez aplikację. Czy mimo to kontynuować?"
+    "reservedHeaderMessage": "„{{name}}” może kolidować z nagłówkami ustawianymi przez aplikację. Czy mimo to kontynuować?",
+    "signInWithProvider": "Zaloguj się przez {{provider}}",
+    "passwordPlaceholder": "Hasło",
+    "hidePassword": "Ukryj hasło",
+    "showPassword": "Pokaż hasło",
+    "hideApiKey": "Ukryj klucz API",
+    "showApiKey": "Pokaż klucz API",
+    "headerNamePlaceholder": "Nazwa (np. X-Access-Token)",
+    "headerValuePlaceholder": "Wartość",
+    "removeHeader": "Usuń nagłówek {{number}}",
+    "hideHeaderValue": "Ukryj wartość nagłówka",
+    "showHeaderValue": "Pokaż wartość nagłówka"
   },
   "onboarding": {
     "subtitle": "Twój własny tracker fitness",

@@ -274,7 +274,7 @@ export default function OnboardingScreen({ navigation }: Props) {
       await finishWithConnection();
     } catch (err) {
       if (err instanceof LoginError) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
         setError(t('auth.errors.connectionFailed', { defaultValue: 'Could not connect to server. Check the URL and try again.' }));
       }
@@ -302,9 +302,9 @@ export default function OnboardingScreen({ navigation }: Props) {
       }
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
-        setError(String(err));
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       }
     } finally {
       setLoading(false);
@@ -330,9 +330,9 @@ export default function OnboardingScreen({ navigation }: Props) {
       }
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
-        setError(String(err));
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       }
     } finally {
       setLoading(false);
@@ -435,7 +435,7 @@ export default function OnboardingScreen({ navigation }: Props) {
           setError(t('auth.errors.sessionExpired', { defaultValue: 'Your session has expired. Please sign in again.' }));
           setStep('auth');
         } else {
-          setError(err.message);
+          setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
         }
       } else {
         setError(t('auth.errors.verificationFailed', { defaultValue: 'Verification failed. Please try again.' }));
@@ -455,7 +455,7 @@ export default function OnboardingScreen({ navigation }: Props) {
       setEmailOtpSent(true);
     } catch (err) {
       if (err instanceof LoginError) {
-        setError(err.message);
+        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
       } else {
         setError(t('auth.errors.sendEmailCodeFailed', { defaultValue: 'Failed to send email code. Please try again.' }));
       }
@@ -666,7 +666,7 @@ export default function OnboardingScreen({ navigation }: Props) {
                 <View className="mb-4">
                   <Text className="text-sm mb-2 text-text-secondary">{t('auth.password', { defaultValue: 'Password' })}</Text>
                   <FormInput
-                    placeholder="Password"
+                    placeholder={t('auth.passwordPlaceholder', { defaultValue: 'Password' })}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -705,7 +705,7 @@ export default function OnboardingScreen({ navigation }: Props) {
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <OidcProviderLogo logoUrl={provider.logo_url} serverUrl={serverUrl} />
                         <Text className="text-base font-semibold text-text-primary">
-                          {provider.display_name || `Sign in with ${provider.id}`}
+                          {provider.display_name || t('auth.signInWithProvider', { defaultValue: 'Sign in with {{provider}}', provider: provider.id })}
                         </Text>
                       </View>
                     </Button>
@@ -770,7 +770,7 @@ export default function OnboardingScreen({ navigation }: Props) {
               <Button
                 variant="ghost"
                 onPress={() => pasteFromClipboard(apiKeyInputRef, setApiKey)}
-                accessibilityLabel="Paste API key from clipboard"
+                accessibilityLabel={t('auth.pasteApiKey', { defaultValue: 'Paste API key from clipboard' })}
                 className="p-2 py-2 px-2 rounded-lg"
               >
                 <Icon name="paste" size={20} color={textSecondary} />
