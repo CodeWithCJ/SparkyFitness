@@ -6,7 +6,10 @@
     "showLess": "Pokaż mniej",
     "learnMore": "Dowiedz się więcej",
     "next": "Dalej",
-    "later": "Później"
+    "later": "Później",
+    "close": "Zamknij",
+    "cancel": "Anuluj",
+    "continue": "Kontynuuj"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -248,7 +251,11 @@
       "invalidVerificationCode": "Nieprawidłowy kod weryfikacyjny. Spróbuj ponownie.",
       "sessionExpired": "Sesja wygasła. Zaloguj się ponownie.",
       "verificationFailed": "Weryfikacja nie powiodła się. Spróbuj ponownie.",
-      "sendEmailCodeFailed": "Nie udało się wysłać kodu e-mail. Spróbuj ponownie."
+      "sendEmailCodeFailed": "Nie udało się wysłać kodu e-mail. Spróbuj ponownie.",
+      "noServerSelected": "Nie wybrano serwera.",
+      "httpsRequired": "Połączenia z serwerem wymagają HTTPS.",
+      "frontendUrlRequired": "Najpierw wprowadź adres URL frontendu.",
+      "saveFailed": "Nie udało się zapisać: {{message}}"
     },
     "authenticatorApp": "Aplikacja uwierzytelniająca",
     "emailCode": "Kod e-mail",
@@ -258,7 +265,17 @@
     "sendCode": "Wyślij kod",
     "verify": "Zweryfikuj",
     "resendCode": "Wyślij kod ponownie",
-    "useApiKeyInstead": "Użyj zamiast tego klucza API"
+    "useApiKeyInstead": "Użyj zamiast tego klucza API",
+    "sessionExpiredTitle": "Sesja wygasła",
+    "pasteApiKey": "Wklej klucz API ze schowka",
+    "editServer": "Edytuj serwer",
+    "addServer": "Dodaj serwer",
+    "advancedOptions": "Opcje zaawansowane",
+    "proxyHeaders": "Nagłówki proxy",
+    "addHeader": "Dodaj nagłówek",
+    "proxyHeadersHelp": "Używane podczas pracy za niektórymi odwrotnymi proxy",
+    "reservedHeader": "Zastrzeżony nagłówek",
+    "reservedHeaderMessage": "„{{name}}” może kolidować z nagłówkami ustawianymi przez aplikację. Czy mimo to kontynuować?"
   },
   "onboarding": {
     "subtitle": "Twój własny tracker fitness",

@@ -6,7 +6,10 @@
     "showLess": "Show less",
     "learnMore": "Learn more",
     "next": "Next",
-    "later": "Later"
+    "later": "Later",
+    "close": "Close",
+    "cancel": "Cancel",
+    "continue": "Continue"
   },
   "settings": {
     "app": "App Settings",
@@ -248,7 +251,11 @@
       "invalidVerificationCode": "Invalid verification code. Please try again.",
       "sessionExpired": "Your session has expired. Please sign in again.",
       "verificationFailed": "Verification failed. Please try again.",
-      "sendEmailCodeFailed": "Failed to send email code. Please try again."
+      "sendEmailCodeFailed": "Failed to send email code. Please try again.",
+      "noServerSelected": "No server selected.",
+      "httpsRequired": "HTTPS is required for server connections.",
+      "frontendUrlRequired": "Please enter your Frontend URL first.",
+      "saveFailed": "Failed to save: {{message}}"
     },
     "authenticatorApp": "Authenticator App",
     "emailCode": "Email Code",
@@ -258,7 +265,17 @@
     "sendCode": "Send Code",
     "verify": "Verify",
     "resendCode": "Resend Code",
-    "useApiKeyInstead": "Use API Key Instead"
+    "useApiKeyInstead": "Use API Key Instead",
+    "sessionExpiredTitle": "Session Expired",
+    "pasteApiKey": "Paste API key from clipboard",
+    "editServer": "Edit Server",
+    "addServer": "Add Server",
+    "advancedOptions": "Advanced options",
+    "proxyHeaders": "Proxy Headers",
+    "addHeader": "Add header",
+    "proxyHeadersHelp": "Used when running behind certain reverse proxies",
+    "reservedHeader": "Reserved Header",
+    "reservedHeaderMessage": "\"{{name}}\" may conflict with headers set by the app. Continue anyway?"
   },
   "onboarding": {
     "subtitle": "Your self-hosted fitness tracker",
