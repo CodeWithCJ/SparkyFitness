@@ -110,13 +110,16 @@
       "open": "Otwórz aktywny trening",
       "pause": "Wstrzymaj",
       "resume": "Wznów",
-      "skipRest": "Pomiń odpoczynek",
-      "resting": "Odpoczynek",
+      "skipRest": "Pomiń przerwę",
+      "resting": "Przerwa",
       "paused": "Wstrzymano",
-      "workoutComplete": "Trening ukończony",
+      "workoutComplete": "Trening zakończony",
       "workoutActive": "Trening aktywny",
-      "nextSet": "Następna seria: {{exerciseName}} — {{setNumber}}/{{setCount}}",
-      "nextUpSet": "Następna w kolejce: {{exerciseName}} — seria {{setNumber}}/{{setCount}}"
+      "nextSet": "{{prefix}}: {{exercise}} — {{set}}",
+      "nextUpSet": "Następna w kolejce: {{exerciseName}} — seria {{setNumber}}/{{setCount}}",
+      "next": "Następne",
+      "nextUp": "Następne ćwiczenie",
+      "doneNext": "Gotowe, rozpocznij następną serię"
     },
     "header": {
       "addExercise": "Dodaj ćwiczenie",
@@ -168,14 +171,16 @@
     "rest": {
       "addSecondsShort": "+{{seconds}} s",
       "subtractSecondsShort": "−{{seconds}} s",
-      "completeSet": "Ukończ serię",
+      "completeSet": "Zakończ serię",
       "completeSetTitle": "Ukończ serię",
       "extendBySeconds": "Wydłuż odpoczynek o {{seconds}} sekund",
       "shortenBySeconds": "Skróć odpoczynek o {{seconds}} sekund",
-      "skip": "Pomiń odpoczynek",
-      "pause": "Wstrzymaj odpoczynek",
-      "resume": "Wznów odpoczynek",
-      "targetValue": "Cel: {{value}}"
+      "skip": "Pomiń przerwę",
+      "pause": "Wstrzymaj przerwę",
+      "resume": "Wznów przerwę",
+      "targetValue": "Cel: {{value}}",
+      "shorten": "Skróć przerwę o 15 sekund",
+      "extend": "Wydłuż przerwę o 15 sekund"
     },
     "setDetail": {
       "addNote": "Dodaj notatkę do tej serii…",
@@ -196,6 +201,20 @@
       "set": "Seria",
       "previous": "Poprz.",
       "seconds": "Sek."
+    },
+    "exercise": {
+      "expand": "Rozwiń {{name}}",
+      "viewDetails": "Wyświetl szczegóły {{name}}",
+      "collapse": "Zwiń {{name}}",
+      "moreOptions": "Więcej opcji dla {{name}}",
+      "notePlaceholder": "Dodaj notatkę do tego ćwiczenia…",
+      "notesFor": "Notatki dla {{name}}",
+      "caloriesFor": "Spalone kalorie: {{name}}",
+      "editCaloriesFor": "Edytuj spalone kalorie: {{name}}",
+      "best": "Najlepszy wynik: {{value}}",
+      "changeMetric": "Zmień kolumnę metryki",
+      "notesForSet": "Notatki do serii {{number}}",
+      "addSet": "Dodaj serię do {{name}}"
     }
   },
   "addSheet": {
@@ -1218,7 +1237,7 @@
     "remainsInDiary": "Pozostaje w dzienniku.",
     "saveError": "Nie udało się zapisać treningu",
     "failedChangesMessage": "Niektóre zmiany nie dotarły jeszcze do serwera.",
-    "set": "seria",
+    "set": "Seria",
     "activityName": "Nazwa aktywności",
     "addNotes": "Dodaj notatki...",
     "exerciseDetails": "Szczegóły ćwiczenia",
@@ -1333,7 +1352,17 @@
     "loadingPresets": "Wczytywanie presetów treningów...",
     "tryConnection": "Sprawdź połączenie i spróbuj ponownie.",
     "tryOwnership": "Zmień filtr własności.",
-    "durationSpan": "Czas trwania treningu: {{span}}"
+    "durationSpan": "Czas trwania treningu: {{span}}",
+    "setOf": "Seria {{number}} z {{count}}",
+    "metricVolumeShort": "Obj.",
+    "metricE1rmShort": "1RM",
+    "metricTenrmShort": "10RM",
+    "kg": "KG",
+    "lbs": "LBS",
+    "prev": "Poprz.",
+    "mi": "Mile",
+    "km": "Km",
+    "reps": "Powt."
   },
   "cycleCard": {
     "phase": {

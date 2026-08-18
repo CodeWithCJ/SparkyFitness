@@ -113,8 +113,11 @@
       "paused": "Paused",
       "workoutComplete": "Workout complete",
       "workoutActive": "Workout active",
-      "nextSet": "Next: {{exerciseName}} — set {{setNumber}}/{{setCount}}",
-      "nextUpSet": "Next up: {{exerciseName}} — set {{setNumber}}/{{setCount}}"
+      "nextSet": "{{prefix}}: {{exercise}} — {{set}}",
+      "nextUpSet": "Next up: {{exerciseName}} — set {{setNumber}}/{{setCount}}",
+      "next": "Next",
+      "nextUp": "Next Up",
+      "doneNext": "Done, start next set"
     },
     "header": {
       "addExercise": "Add exercise",
@@ -169,7 +172,9 @@
       "skip": "Skip rest",
       "pause": "Pause rest",
       "resume": "Resume rest",
-      "targetValue": "Target: {{value}}"
+      "targetValue": "Target: {{value}}",
+      "shorten": "Shorten rest by 15 seconds",
+      "extend": "Extend rest by 15 seconds"
     },
     "setDetail": {
       "addNote": "Add a note for this set…",
@@ -190,6 +195,20 @@
       "set": "Set",
       "previous": "Prev",
       "seconds": "Sec"
+    },
+    "exercise": {
+      "expand": "Expand {{name}}",
+      "viewDetails": "View {{name}} details",
+      "collapse": "Collapse {{name}}",
+      "moreOptions": "More options for {{name}}",
+      "notePlaceholder": "Add a note for this exercise…",
+      "notesFor": "Notes for {{name}}",
+      "caloriesFor": "Calories burned for {{name}}",
+      "editCaloriesFor": "Edit calories burned for {{name}}",
+      "best": "Best {{value}}",
+      "changeMetric": "Change metric column",
+      "notesForSet": "Notes for set {{number}}",
+      "addSet": "Add set to {{name}}"
     }
   },
   "addSheet": {
@@ -1091,7 +1110,7 @@
     "reorderDoneText": "Done",
     "dragToReorder": "Drag to reorder",
     "reorderTitle": "Reorder exercises",
-    "set": "set",
+    "set": "Set",
     "activity": "Activity",
     "activityName": "Activity Name",
     "selectActivity": "Select Activity",
@@ -1313,7 +1332,17 @@
     "failedMorePresets": "Failed to load more presets.",
     "searchWorkoutPresets": "Search workout presets...",
     "workoutPresetCount_one": "{{formattedCount}} exercise",
-    "workoutPresetCount_other": "{{formattedCount}} exercises"
+    "workoutPresetCount_other": "{{formattedCount}} exercises",
+    "setOf": "Set {{number}} of {{count}}",
+    "metricVolumeShort": "Vol",
+    "metricE1rmShort": "1RM",
+    "metricTenrmShort": "10RM",
+    "kg": "KG",
+    "lbs": "LBS",
+    "prev": "Prev",
+    "mi": "Mi",
+    "km": "Km",
+    "reps": "Reps"
   },
   "cycleCard": {
     "phase": {

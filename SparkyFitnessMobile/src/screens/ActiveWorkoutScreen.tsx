@@ -485,7 +485,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onPress: () => useActiveWorkoutStore.getState().removeExercise(entryId),
       },
     ]);
-  }, []);
+  }, [t]);
 
   const handleClearExerciseSets = useCallback((entryId: string) => {
     useActiveWorkoutStore.getState().clearExerciseCompletions(entryId);
@@ -504,7 +504,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         },
       ],
     );
-  }, []);
+  }, [t]);
 
   // Tap an exercise thumbnail → its library detail. Maps the session's full
   // snapshot to an Exercise so the detail screen gets muscles/equipment/etc.
@@ -544,7 +544,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       })),
       isSupersetMember,
     );
-  }, []);
+  }, [t]);
   const handleApplySetRests = useCallback((updates: ExerciseSetRestUpdate[]) => {
     const store = useActiveWorkoutStore.getState();
     if (!store.session) return;
@@ -857,7 +857,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       return;
     }
     store.deleteSet(setId);
-  }, []);
+  }, [t]);
 
   // Set-type menu: tapping a set number (or long-pressing the row) anchors
   // the shared SetTypeMenu. Replaces an Alert, which capped at 3 buttons on
@@ -930,7 +930,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         },
       ],
     );
-  }, [createdByLiveStart, sessionId, session, queryClient, navigation]);
+  }, [createdByLiveStart, sessionId, session, queryClient, navigation, t]);
 
   const handleFinish = useCallback(async () => {
     // "Discard changes" sits one tap from "Retry", and a mis-tap would
@@ -1034,7 +1034,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         },
       ],
     );
-  }, [handleFinish]);
+  }, [handleFinish, t]);
 
   const handleDurationSave = useCallback(
     (minutes: number) => {
@@ -1059,15 +1059,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         0,
       ) ?? 0;
     const remaining = totalSets - doneSets;
-    const message =
-      remaining > 0
-        ? `${doneSets} of ${totalSets} sets logged. ${remaining} still to go.`
-        : `All ${totalSets} sets logged. Nice work!`;
+    const message = remaining > 0
+      ? t('workout.setsRemaining', { defaultValue: '{{done}} of {{total}} sets logged. {{remaining}} still to go.', done: doneSets, total: totalSets, remaining })
+      : t('workout.allSetsLogged', { defaultValue: 'All {{total}} sets logged. Nice work!', total: totalSets });
     Alert.alert(t('workout.endWorkoutTitle', { defaultValue: 'End workout?' }), message, [
       { text: t('workout.keepGoing', { defaultValue: 'Keep going' }), style: 'cancel' },
       { text: t('workout.endWorkout', { defaultValue: 'End Workout' }), style: 'default', onPress: maybeAdjustDurationThenFinish },
     ]);
-  }, [session, completedSetIds, maybeAdjustDurationThenFinish]);
+  }, [session, completedSetIds, maybeAdjustDurationThenFinish, t]);
 
   if (session == null || sessionId == null) {
     return (
