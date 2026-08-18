@@ -4,7 +4,9 @@
     "saving": "Zapisywanie…",
     "back": "Wstecz",
     "showLess": "Pokaż mniej",
-    "learnMore": "Dowiedz się więcej"
+    "learnMore": "Dowiedz się więcej",
+    "next": "Dalej",
+    "later": "Później"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -216,5 +218,56 @@
     "allTime": "Cały okres",
     "pickDateRange": "Wybierz zakres dat…",
     "removeData": "Usuń dane SparkyFitness z {{store}}"
+  },
+  "auth": {
+    "frontendUrl": "Adres URL frontendu",
+    "email": "E-mail",
+    "password": "Hasło",
+    "apiKey": "Klucz API",
+    "signIn": "Zaloguj się",
+    "sso": "SSO",
+    "passkey": "Passkey",
+    "connect": "Połącz",
+    "connectTitle": "Połącz ze SparkyFitness",
+    "signInWithPasskey": "Zaloguj się za pomocą Passkey",
+    "orSignInWith": "Lub zaloguj się przez",
+    "noMethods": "Na tym serwerze nie włączono standardowych metod logowania. Użyj klucza API lub skontaktuj się z administratorem.",
+    "pasteUrl": "Wklej adres URL ze schowka",
+    "twoFactorTitle": "Uwierzytelnianie dwuskładnikowe",
+    "errors": {
+      "emailRequired": "Wprowadź adres e-mail.",
+      "passwordRequired": "Wprowadź hasło.",
+      "connectionFailed": "Nie można połączyć się z serwerem. Sprawdź adres URL i spróbuj ponownie.",
+      "apiKeyRequired": "Wprowadź klucz API.",
+      "invalidApiKey": "Nieprawidłowy klucz API. Sprawdź go i spróbuj ponownie.",
+      "unknown": "Nieznany błąd",
+      "connectionStatus": "Połączenie nie powiodło się ({{status}}): {{message}}",
+      "connectionWithMessage": "Nie można połączyć się z serwerem: {{message}}",
+      "verificationCodeRequired": "Wprowadź kod weryfikacyjny.",
+      "tooManyAttempts": "Zbyt wiele prób. Poczekaj chwilę i spróbuj ponownie.",
+      "invalidVerificationCode": "Nieprawidłowy kod weryfikacyjny. Spróbuj ponownie.",
+      "sessionExpired": "Sesja wygasła. Zaloguj się ponownie.",
+      "verificationFailed": "Weryfikacja nie powiodła się. Spróbuj ponownie.",
+      "sendEmailCodeFailed": "Nie udało się wysłać kodu e-mail. Spróbuj ponownie."
+    },
+    "authenticatorApp": "Aplikacja uwierzytelniająca",
+    "emailCode": "Kod e-mail",
+    "enterAuthenticatorCode": "Wprowadź kod z aplikacji uwierzytelniającej.",
+    "enterEmailCode": "Wprowadź kod wysłany na adres e-mail.",
+    "requestEmailCode": "Naciśnij przycisk poniżej, aby otrzymać kod weryfikacyjny e-mailem.",
+    "sendCode": "Wyślij kod",
+    "verify": "Zweryfikuj",
+    "resendCode": "Wyślij kod ponownie",
+    "useApiKeyInstead": "Użyj zamiast tego klucza API"
+  },
+  "onboarding": {
+    "subtitle": "Twój własny tracker fitness",
+    "learnMoreTitle": "Dowiedz się więcej o SparkyFitness",
+    "learnMoreBody": "SparkyFitness pomaga śledzić jedzenie, treningi i dane zdrowotne w jednym miejscu.",
+    "learnMorePrivacy": "Aplikacja działa na Twoim serwerze, dzięki czemu Twoje dane pozostają prywatne.",
+    "errors": {
+      "validFrontendUrl": "Wprowadź prawidłowy adres URL frontendu",
+      "serverUnreachable": "Nie można połączyć się z serwerem. Sprawdź adres URL i spróbuj ponownie."
+    }
   }
 }

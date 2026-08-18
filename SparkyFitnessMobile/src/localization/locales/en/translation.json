@@ -4,7 +4,9 @@
     "saving": "Saving…",
     "back": "Back",
     "showLess": "Show less",
-    "learnMore": "Learn more"
+    "learnMore": "Learn more",
+    "next": "Next",
+    "later": "Later"
   },
   "settings": {
     "app": "App Settings",
@@ -216,5 +218,56 @@
     "allTime": "All time",
     "pickDateRange": "Pick a date range…",
     "removeData": "Remove SparkyFitness data from {{store}}"
+  },
+  "auth": {
+    "frontendUrl": "Frontend URL",
+    "email": "Email",
+    "password": "Password",
+    "apiKey": "API Key",
+    "signIn": "Sign In",
+    "sso": "SSO",
+    "passkey": "Passkey",
+    "connect": "Connect",
+    "connectTitle": "Connect to SparkyFitness",
+    "signInWithPasskey": "Sign in with Passkey",
+    "orSignInWith": "Or sign in with",
+    "noMethods": "No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.",
+    "pasteUrl": "Paste URL from clipboard",
+    "twoFactorTitle": "Two-Factor Authentication",
+    "errors": {
+      "emailRequired": "Please enter your email.",
+      "passwordRequired": "Please enter your password.",
+      "connectionFailed": "Could not connect to server. Check the URL and try again.",
+      "apiKeyRequired": "Please enter an API key.",
+      "invalidApiKey": "Invalid API key. Please check and try again.",
+      "unknown": "Unknown error",
+      "connectionStatus": "Connection failed ({{status}}): {{message}}",
+      "connectionWithMessage": "Could not connect to server: {{message}}",
+      "verificationCodeRequired": "Please enter the verification code.",
+      "tooManyAttempts": "Too many attempts. Please wait a moment and try again.",
+      "invalidVerificationCode": "Invalid verification code. Please try again.",
+      "sessionExpired": "Your session has expired. Please sign in again.",
+      "verificationFailed": "Verification failed. Please try again.",
+      "sendEmailCodeFailed": "Failed to send email code. Please try again."
+    },
+    "authenticatorApp": "Authenticator App",
+    "emailCode": "Email Code",
+    "enterAuthenticatorCode": "Enter the code from your authenticator app.",
+    "enterEmailCode": "Enter the code sent to your email.",
+    "requestEmailCode": "Tap the button below to receive a verification code by email.",
+    "sendCode": "Send Code",
+    "verify": "Verify",
+    "resendCode": "Resend Code",
+    "useApiKeyInstead": "Use API Key Instead"
+  },
+  "onboarding": {
+    "subtitle": "Your self-hosted fitness tracker",
+    "learnMoreTitle": "Learn more about SparkyFitness",
+    "learnMoreBody": "SparkyFitness helps you track your food, workouts, and health data in one place.",
+    "learnMorePrivacy": "It runs on your own server so your data stays private.",
+    "errors": {
+      "validFrontendUrl": "Enter a valid Frontend URL",
+      "serverUnreachable": "Could not reach server. Check the URL and try again."
+    }
   }
 }
