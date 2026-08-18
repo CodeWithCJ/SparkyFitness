@@ -79,7 +79,34 @@
     "add": "Add"
   },
   "notifications": {
-    "title": "Notifications"
+    "title": "Notifications",
+    "channels": {
+      "medicationReminders": "Medication reminders",
+      "workoutTimer": "Workout timer",
+      "fasting": "Fasting"
+    },
+    "actions": {
+      "completeSet": "Complete Set",
+      "logAsTaken": "Log as taken",
+      "skip": "Skip"
+    },
+    "permission": {
+      "notificationsOff": "Notifications off",
+      "timerInApp": "Timer will still alert in the app."
+    },
+    "exactAlarm": {
+      "title": "On-time alerts",
+      "message": "Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.",
+      "notNow": "Not Now",
+      "openSettings": "Open Settings"
+    },
+    "rest": {
+      "title": "Rest complete"
+    },
+    "fasting": {
+      "title": "Fasting goal reached",
+      "body": "You've hit your fasting goal. Great work!"
+    }
   },
   "activeWorkout": {
     "liveActivity": {

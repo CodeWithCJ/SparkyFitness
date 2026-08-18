@@ -81,7 +81,34 @@
     "add": "Dodaj"
   },
   "notifications": {
-    "title": "Powiadomienia"
+    "title": "Powiadomienia",
+    "channels": {
+      "medicationReminders": "Przypomnienia o lekach",
+      "workoutTimer": "Timer treningu",
+      "fasting": "Post"
+    },
+    "actions": {
+      "completeSet": "Wykonaj serię",
+      "logAsTaken": "Oznacz jako przyjęty",
+      "skip": "Pomiń"
+    },
+    "permission": {
+      "notificationsOff": "Powiadomienia wyłączone",
+      "timerInApp": "Timer nadal powiadomi w aplikacji."
+    },
+    "exactAlarm": {
+      "title": "Alerty na czas",
+      "message": "Android opóźnia zaplanowane alerty, jeśli SparkyFitness nie może ustawiać dokładnych alarmów. Włącz „Alarmy i przypomnienia”, aby timery odpoczynku i przypomnienia o lekach działały na czas.",
+      "notNow": "Nie teraz",
+      "openSettings": "Otwórz ustawienia"
+    },
+    "rest": {
+      "title": "Odpoczynek zakończony"
+    },
+    "fasting": {
+      "title": "Osiągnięto cel postu",
+      "body": "Osiągnięto cel postu. Świetna robota!"
+    }
   },
   "activeWorkout": {
     "liveActivity": {
