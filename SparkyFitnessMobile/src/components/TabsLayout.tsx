@@ -132,7 +132,7 @@ function DashboardStackScreen() {
           name="DashboardRoot"
           component={SafeDashboard as React.ComponentType}
           options={{
-            title: 'Dashboard',
+            title: t('navigation.dashboard', { defaultValue: 'Dashboard' }),
             headerBackTitle: t('navigation.dashboard', { defaultValue: 'Dashboard' }),
           }}
         />
@@ -158,7 +158,7 @@ function DiaryStackScreen() {
           name="DiaryRoot"
           component={SafeDiary as React.ComponentType}
           options={{
-            title: 'Diary',
+            title: t('navigation.diary', { defaultValue: 'Diary' }),
             headerBackTitle: t('navigation.diary', { defaultValue: 'Diary' }),
           }}
         />
@@ -180,7 +180,7 @@ function LibraryStackScreen() {
   return (
     <View className="flex-1">
       <LibraryStack.Navigator screenOptions={screenOptions}>
-        <LibraryStack.Screen name="LibraryRoot" component={SafeLibrary as React.ComponentType} options={{ title: 'Library', headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) }} />
+        <LibraryStack.Screen name="LibraryRoot" component={SafeLibrary as React.ComponentType} options={{ title: t('navigation.library', { defaultValue: 'Library' }), headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) }} />
       </LibraryStack.Navigator>
       <NativeTabsBannerOverlay />
     </View>
@@ -199,7 +199,7 @@ function SettingsStackScreen() {
   return (
     <View className="flex-1">
       <SettingsStack.Navigator screenOptions={screenOptions}>
-        <SettingsStack.Screen name="SettingsRoot" component={SafeSettings as React.ComponentType} options={{ title: 'Settings', headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) }} />
+        <SettingsStack.Screen name="SettingsRoot" component={SafeSettings as React.ComponentType} options={{ title: t('navigation.settings', { defaultValue: 'Settings' }), headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) }} />
       </SettingsStack.Navigator>
       <NativeTabsBannerOverlay />
     </View>
@@ -298,6 +298,7 @@ export function FallbackTabsLayout({
   rememberActiveTab,
   getLastActiveTab,
 }: { onAddPress?: () => void } & TabTrackingProps) {
+  const { t } = useTranslation();
   // The AddSheet is rendered in App.tsx with proper props
   return (
     <FallbackTab.Navigator
@@ -324,10 +325,11 @@ export function FallbackTabsLayout({
         </View>
       )}
     >
-      <FallbackTab.Screen name="Dashboard" component={SafeDashboard} />
-      <FallbackTab.Screen name="Diary" component={SafeDiary} />
+      <FallbackTab.Screen name="Dashboard" component={SafeDashboard} options={{ tabBarLabel: t('navigation.dashboard', { defaultValue: 'Dashboard' }), tabBarAccessibilityLabel: t('navigation.dashboard', { defaultValue: 'Dashboard' }) }} />
+      <FallbackTab.Screen name="Diary" component={SafeDiary} options={{ tabBarLabel: t('navigation.diary', { defaultValue: 'Diary' }), tabBarAccessibilityLabel: t('navigation.diary', { defaultValue: 'Diary' }) }} />
       <FallbackTab.Screen
         name="Add"
+        options={{ tabBarLabel: t('navigation.add', { defaultValue: 'Add' }), tabBarAccessibilityLabel: t('navigation.add', { defaultValue: 'Add' }) }}
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
@@ -337,8 +339,8 @@ export function FallbackTabsLayout({
       >
         {() => <AddRedirectScreen getLastActiveTab={getLastActiveTab} />}
       </FallbackTab.Screen>
-      <FallbackTab.Screen name="Library" component={SafeLibrary} />
-      <FallbackTab.Screen name="Settings" component={SafeSettings} />
+      <FallbackTab.Screen name="Library" component={SafeLibrary} options={{ tabBarLabel: t('navigation.library', { defaultValue: 'Library' }), tabBarAccessibilityLabel: t('navigation.library', { defaultValue: 'Library' }) }} />
+      <FallbackTab.Screen name="Settings" component={SafeSettings} options={{ tabBarLabel: t('navigation.settings', { defaultValue: 'Settings' }), tabBarAccessibilityLabel: t('navigation.settings', { defaultValue: 'Settings' }) }} />
     </FallbackTab.Navigator>
   );
 }
