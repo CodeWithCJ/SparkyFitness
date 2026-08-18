@@ -1772,5 +1772,56 @@
       "ft": "ft",
       "in": "cal"
     }
+  },
+  "foodScan": {
+    "segment": {
+      "barcode": "Kod kreskowy",
+      "label": "Etykieta",
+      "photo": "Zdjęcie"
+    },
+    "errors": {
+      "capturePhoto": "Nie udało się zrobić zdjęcia.",
+      "processPhoto": "Nie udało się przetworzyć zdjęcia.",
+      "noPhoto": "Biblioteka nie zwróciła zdjęcia.",
+      "analyzeLabel": "Nie udało się przeanalizować etykiety żywieniowej. Spróbuj ponownie.",
+      "loadPhoto": "Nie udało się wczytać zdjęcia.",
+      "lookupBarcode": "Nie udało się wyszukać tego kodu kreskowego. Spróbuj ponownie."
+    },
+    "permission": {
+      "camera": "Potrzebujemy uprawnień, aby wyświetlić kamerę",
+      "grant": "Przyznaj uprawnienia"
+    },
+    "label": {
+      "analyzing": "Analizowanie etykiety…",
+      "retake": "Zrób ponownie",
+      "usePhoto": "Użyj zdjęcia"
+    },
+    "lookup": {
+      "failed": "Wyszukiwanie nie powiodło się",
+      "noMatch": "Brak produktu dla tego kodu",
+      "nextSteps": "Możesz zeskanować etykietę żywieniową lub wprowadzić dane ręcznie.",
+      "scanLabel": "Skanuj etykietę żywieniową",
+      "addManually": "Dodaj produkt ręcznie"
+    },
+    "photo": {
+      "frameMeal": "Umieść cały posiłek w kadrze",
+      "notSetUp": "Szacowanie ze zdjęcia nie jest skonfigurowane",
+      "setupHelp": "Otwórz SparkyFitness w przeglądarce i przejdź do Ustawienia → AI, aby dodać dostawcę AI, a następnie wróć tutaj.",
+      "logManually": "Zapisz ręcznie"
+    },
+    "barcode": {
+      "typeInstead": "Wpisz kod kreskowy"
+    },
+    "manual": {
+      "title": "Wpisz kod kreskowy",
+      "placeholder": "Numer kodu kreskowego",
+      "useBarcode": "Użyj kodu",
+      "lookup": "Wyszukaj"
+    },
+    "accessibility": {
+      "chooseLabelPhoto": "Wybierz zdjęcie etykiety z biblioteki",
+      "choosePhoto": "Wybierz zdjęcie z biblioteki",
+      "howItWorks": "Jak działa szacowanie ze zdjęcia"
+    }
   }
 }

@@ -1746,5 +1746,56 @@
       "ft": "ft",
       "in": "in"
     }
+  },
+  "foodScan": {
+    "segment": {
+      "barcode": "Barcode",
+      "label": "Label",
+      "photo": "Photo"
+    },
+    "errors": {
+      "capturePhoto": "Failed to capture photo.",
+      "processPhoto": "Failed to process photo.",
+      "noPhoto": "No photo returned by picker.",
+      "analyzeLabel": "Failed to analyze nutrition label. Please try again.",
+      "loadPhoto": "Failed to load photo.",
+      "lookupBarcode": "Couldn't look up this barcode. Please try again."
+    },
+    "permission": {
+      "camera": "We need your permission to show the camera",
+      "grant": "Grant Permission"
+    },
+    "label": {
+      "analyzing": "Analyzing label...",
+      "retake": "Retake",
+      "usePhoto": "Use Photo"
+    },
+    "lookup": {
+      "failed": "Lookup failed",
+      "noMatch": "No match for barcode",
+      "nextSteps": "You can scan the nutrition label or enter it manually.",
+      "scanLabel": "Scan Nutrition Label",
+      "addManually": "Add Food Manually"
+    },
+    "photo": {
+      "frameMeal": "Frame the whole meal",
+      "notSetUp": "AI photo estimates aren't set up",
+      "setupHelp": "Open SparkyFitness in a browser and visit Settings → AI to add an AI provider, then return here.",
+      "logManually": "Log manually"
+    },
+    "barcode": {
+      "typeInstead": "Type Barcode Instead"
+    },
+    "manual": {
+      "title": "Enter Barcode",
+      "placeholder": "Barcode number",
+      "useBarcode": "Use Barcode",
+      "lookup": "Look Up"
+    },
+    "accessibility": {
+      "chooseLabelPhoto": "Choose label photo from library",
+      "choosePhoto": "Choose photo from library",
+      "howItWorks": "How photo estimation works"
+    }
   }
 }

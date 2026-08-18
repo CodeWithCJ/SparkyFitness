@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -18,7 +19,7 @@ import UIButton from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
-import SegmentedControl, { type Segment } from '../components/SegmentedControl';
+import SegmentedControl from '../components/SegmentedControl';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodInfoItem } from '../types/foodInfo';
 import { useCSSVariable } from 'uniwind';
@@ -42,11 +43,7 @@ type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
 type ScanMode = 'barcode' | 'label' | 'photo';
 
-const SCAN_SEGMENTS: Segment<ScanMode>[] = [
-  { key: 'barcode', label: 'Barcode' },
-  { key: 'label', label: 'Label' },
-  { key: 'photo', label: 'Photo' },
-];
+const SCAN_SEGMENTS: ScanMode[] = ['barcode', 'label', 'photo'];
 
 const GUIDE_WIDTH = 280;
 const GUIDE_HEIGHT = 160;
@@ -66,6 +63,7 @@ const CORNER_STYLE = {
 };
 
 const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const [permission, requestPermission] = useCameraPermissions();
@@ -114,12 +112,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   // capture-barcode mode is barcode-only.
   const scanSegments = useMemo(() => {
     if (isCaptureBarcodeMode) {
-      return SCAN_SEGMENTS.filter((segment) => segment.key === 'barcode');
+      return SCAN_SEGMENTS.filter((key) => key === 'barcode').map((key) => ({ key, label: t('foodScan.segment.barcode', { defaultValue: 'Barcode' }) }));
     }
-    return isMealBuilderMode
-      ? SCAN_SEGMENTS.filter((segment) => segment.key !== 'photo')
-      : SCAN_SEGMENTS;
-  }, [isCaptureBarcodeMode, isMealBuilderMode]);
+    return (isMealBuilderMode ? SCAN_SEGMENTS.filter((key) => key !== 'photo') : SCAN_SEGMENTS).map((key) => ({ key, label: key === 'barcode' ? t('foodScan.segment.barcode', { defaultValue: 'Barcode' }) : key === 'label' ? t('foodScan.segment.label', { defaultValue: 'Label' }) : t('foodScan.segment.photo', { defaultValue: 'Photo' }) }));
+  }, [isCaptureBarcodeMode, isMealBuilderMode, t]);
 
   const aiSettingQuery = useActiveAiServiceSetting({
     // Skip the AI gating fetch in capture-barcode mode — Photo segment is
@@ -275,7 +271,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       }
     } catch (error) {
       const message =
-        getApiErrorMessage(error) ?? "Couldn't look up this barcode. Please try again.";
+        getApiErrorMessage(error) ?? t('foodScan.errors.lookupBarcode', { defaultValue: "Couldn't look up this barcode. Please try again." });
       setLookupError({ barcode, message });
     } finally {
       setLoading(false);
@@ -362,17 +358,17 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       if (result.canceled) return;
       const asset = result.assets?.[0];
       if (!asset?.uri) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('foodScan.errors.capturePhoto', { defaultValue: 'Failed to capture photo.' }) });
         return;
       }
       const prepared = await prepareLabelPhoto(asset);
       if (!prepared) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to process photo.' });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('foodScan.errors.processPhoto', { defaultValue: 'Failed to process photo.' }) });
         return;
       }
       setCapturedPhoto(prepared);
     } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+      Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('foodScan.errors.capturePhoto', { defaultValue: 'Failed to capture photo.' }) });
     } finally {
       pickerLock.current = false;
     }
@@ -394,18 +390,18 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       if (result.canceled) return;
       const asset = result.assets?.[0];
       if (!asset?.uri) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'No photo returned by picker.' });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('foodScan.errors.noPhoto', { defaultValue: 'No photo returned by picker.' }) });
         return;
       }
       const prepared = await prepareLabelPhoto(asset);
       if (!prepared) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to process photo.' });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('foodScan.errors.processPhoto', { defaultValue: 'Failed to process photo.' }) });
         return;
       }
       setCapturedPhoto(prepared);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load photo.';
-      Toast.show({ type: 'error', text1: 'Error', text2: msg });
+      const msg = err instanceof Error ? err.message : t('foodScan.errors.loadPhoto', { defaultValue: 'Failed to load photo.' });
+      Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: msg });
     } finally {
       pickerLock.current = false;
     }
@@ -447,8 +443,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     } catch {
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: 'Failed to analyze nutrition label. Please try again.',
+        text1: t('common.error', { defaultValue: 'Error' }),
+        text2: t('foodScan.errors.analyzeLabel', { defaultValue: 'Failed to analyze nutrition label. Please try again.' }),
       });
     } finally {
       setLabelProcessing(false);
@@ -510,7 +506,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     try {
       const photo = await cameraRef.current.takePictureAsync({ base64: false, quality: 0.7, shutterSound: soundsEnabled });
       if (!photo?.uri) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('foodScan.errors.capturePhoto', { defaultValue: 'Failed to capture photo.' }) });
         return;
       }
       // Mark seen even if user retakes — the intro shouldn't reappear later.
@@ -520,7 +516,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         params: { date, photo: { uri: photo.uri }, mealTypeId: mealTypeId ?? undefined },
       });
     } catch {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to capture photo.' });
+      Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('foodScan.errors.capturePhoto', { defaultValue: 'Failed to capture photo.' }) });
     }
   };
 
@@ -537,7 +533,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       if (result.canceled) return;
       const asset = result.assets?.[0];
       if (!asset?.uri) {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'No photo returned by picker.' });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('foodScan.errors.noPhoto', { defaultValue: 'No photo returned by picker.' }) });
         return;
       }
       await markFoodPhotoIntroSeen();
@@ -546,8 +542,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         params: { date, photo: { uri: asset.uri }, mealTypeId: mealTypeId ?? undefined },
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load photo.';
-      Toast.show({ type: 'error', text1: 'Error', text2: msg });
+      const msg = err instanceof Error ? err.message : t('foodScan.errors.loadPhoto', { defaultValue: 'Failed to load photo.' });
+      Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: msg });
     } finally {
       pickerLock.current = false;
     }
@@ -593,9 +589,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
       >
         <Text className="text-text-primary text-base text-center mb-4">
-          We need your permission to show the camera
+          {t('foodScan.permission.camera', { defaultValue: 'We need your permission to show the camera' })}
         </Text>
-        <Button onPress={requestPermission} title="Grant Permission" />
+        <Button onPress={requestPermission} title={t('foodScan.permission.grant', { defaultValue: 'Grant Permission' })} />
       </View>
     );
   }
@@ -652,7 +648,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         <View className="absolute inset-0 justify-center items-center bg-black/40">
           <ActivityIndicator size="large" color="#fff" />
           {labelProcessing ? (
-            <Text className="text-white text-base mt-3">Analyzing label...</Text>
+            <Text className="text-white text-base mt-3">{t('foodScan.label.analyzing', { defaultValue: 'Analyzing label...' })}</Text>
           ) : null}
         </View>
       ) : null}
@@ -665,7 +661,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               onPress={handleRetake}
               className="flex-1 bg-white/20 py-4 rounded-lg items-center"
             >
-              <Text className="text-white font-semibold text-base">Retake</Text>
+              <Text className="text-white font-semibold text-base">{t('foodScan.label.retake', { defaultValue: 'Retake' })}</Text>
             </TouchableOpacity>
             <UIButton
               variant="primary"
@@ -687,12 +683,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         >
           <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
             <Text className="text-text-primary text-base font-semibold">
-              {lookupError ? 'Lookup failed' : 'No match for barcode'}
+              {lookupError ? t('foodScan.lookup.failed', { defaultValue: 'Lookup failed' }) : t('foodScan.lookup.noMatch', { defaultValue: 'No match for barcode' })}
             </Text>
             <Text className="text-text-secondary text-sm text-center">
               {lookupError
                 ? lookupError.message
-                : 'You can scan the nutrition label or enter it manually.'}
+                : t('foodScan.lookup.nextSteps', { defaultValue: 'You can scan the nutrition label or enter it manually.' })}
             </Text>
             <View className="gap-3 mt-2 self-stretch">
               <UIButton
@@ -701,7 +697,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 className="rounded-lg"
                 textClassName="text-sm"
               >
-                Scan Nutrition Label
+                {t('foodScan.lookup.scanLabel', { defaultValue: 'Scan Nutrition Label' })}
               </UIButton>
               <UIButton
                 variant="outline"
@@ -714,7 +710,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 className="rounded-lg"
               >
                 <Text style={{ fontSize: 14, fontWeight: '600', color: accentPrimary }}>
-                  Add Food Manually
+                  {t('foodScan.lookup.addManually', { defaultValue: 'Add Food Manually' })}
                 </Text>
               </UIButton>
             </View>
@@ -738,7 +734,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             className="text-white text-sm mt-3"
             style={{ position: 'absolute', bottom: 220 }}
           >
-            Frame the whole meal
+            {t('foodScan.photo.frameMeal', { defaultValue: 'Frame the whole meal' })}
           </Text>
         </View>
       ) : null}
@@ -750,11 +746,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         >
           <View className="self-stretch bg-surface rounded-xl p-5 gap-3">
             <Text className="text-text-primary text-base font-semibold">
-              AI photo estimates aren&apos;t set up
+              {t('foodScan.photo.notSetUp', { defaultValue: "AI photo estimates aren't set up" })}
             </Text>
             <Text className="text-text-secondary text-sm">
-              Open SparkyFitness in a browser and visit Settings → AI to add an
-              AI provider, then return here.
+              {t('foodScan.photo.setupHelp', { defaultValue: 'Open SparkyFitness in a browser and visit Settings → AI to add an AI provider, then return here.' })}
             </Text>
             <View className="gap-2 mt-2">
               <UIButton
@@ -763,7 +758,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 className="rounded-lg"
                 textClassName="text-sm"
               >
-                Log manually
+                {t('foodScan.photo.logManually', { defaultValue: 'Log manually' })}
               </UIButton>
               <UIButton
                 variant="ghost"
@@ -771,7 +766,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 className="rounded-lg"
                 textClassName="text-sm"
               >
-                Not now
+                {t('common.later', { defaultValue: 'Not now' })}
               </UIButton>
             </View>
           </View>
@@ -799,7 +794,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   onPress={handleShowManualEntry}
                   className="bg-raised px-6 py-3 rounded-xl"
                 >
-                  <Text className="text-text-primary text-sm font-semibold">Type Barcode Instead</Text>
+                  <Text className="text-text-primary text-sm font-semibold">{t('foodScan.barcode.typeInstead', { defaultValue: 'Type Barcode Instead' })}</Text>
                 </TouchableOpacity>
               ) : null}
 
@@ -820,7 +815,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                       void handleLabelPickFromLibrary();
                     }}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    accessibilityLabel="Choose label photo from library"
+                    accessibilityLabel={t('foodScan.accessibility.chooseLabelPhoto', { defaultValue: 'Choose label photo from library' })}
                     accessibilityRole="button"
                     className="bg-black/50 rounded-full items-center justify-center"
                     style={{
@@ -860,7 +855,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                         void handlePhotoPickFromLibrary();
                       }}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      accessibilityLabel="Choose photo from library"
+                      accessibilityLabel={t('foodScan.accessibility.choosePhoto', { defaultValue: 'Choose photo from library' })}
                       accessibilityRole="button"
                       className="bg-black/50 rounded-full items-center justify-center"
                       style={{
@@ -879,7 +874,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   <TouchableOpacity
                     onPress={() => navigation.navigate('FoodPhotoIntro', { date, mealTypeId: mealTypeId ?? undefined })}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    accessibilityLabel="How photo estimation works"
+                    accessibilityLabel={t('foodScan.accessibility.howItWorks', { defaultValue: 'How photo estimation works' })}
                     accessibilityRole="button"
                     className="bg-black/50 rounded-full items-center justify-center"
                     style={{
@@ -918,9 +913,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
             bounces={false}
           >
             <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm gap-4">
-              <Text className="text-text-primary text-base font-semibold text-center">Enter Barcode</Text>
+              <Text className="text-text-primary text-base font-semibold text-center">{t('foodScan.manual.title', { defaultValue: 'Enter Barcode' })}</Text>
               <FormInput
-                placeholder="Barcode number"
+                placeholder={t('foodScan.manual.placeholder', { defaultValue: 'Barcode number' })}
                 keyboardType="number-pad"
                 autoFocus
                 value={manualBarcode}
@@ -937,7 +932,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   className="flex-1 py-3 rounded-lg"
                   textClassName="text-sm"
                 >
-                  Cancel
+                  {t('common.cancel', { defaultValue: 'Cancel' })}
                 </UIButton>
                 <UIButton
                   variant="primary"
@@ -948,7 +943,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                   className="flex-1 py-3 rounded-lg"
                   textClassName="text-sm"
                 >
-                  {isCaptureBarcodeMode ? 'Use Barcode' : 'Look Up'}
+                  {isCaptureBarcodeMode ? t('foodScan.manual.useBarcode', { defaultValue: 'Use Barcode' }) : t('foodScan.manual.lookup', { defaultValue: 'Look Up' })}
                 </UIButton>
               </View>
             </View>
