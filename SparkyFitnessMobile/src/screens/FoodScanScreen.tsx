@@ -29,6 +29,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { lookupBarcodeV2, scanNutritionLabel } from '../services/api/externalFoodSearchApi';
 import { selectDisplayVariant } from '../utils/foodDetails';
 import { getApiErrorMessage } from '../services/api/errors';
+import { TimeoutError } from '../utils/concurrency';
 import { fireSuccessHaptic } from '../services/haptics';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { toFormString } from '../types/foodInfo';
@@ -270,8 +271,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         });
       }
     } catch (error) {
-      const message =
-        getApiErrorMessage(error) ?? t('foodScan.errors.lookupBarcode', { defaultValue: "Couldn't look up this barcode. Please try again." });
+      const message = error instanceof TimeoutError
+        ? t('foodScan.errors.timeout', { defaultValue: 'Request timed out. Check your server connection.' })
+        : getApiErrorMessage(error) ?? t('foodScan.errors.lookupBarcode', { defaultValue: "Couldn't look up this barcode. Please try again." });
       setLookupError({ barcode, message });
     } finally {
       setLoading(false);

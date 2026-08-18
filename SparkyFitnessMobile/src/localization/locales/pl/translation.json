@@ -1785,7 +1785,8 @@
       "noPhoto": "Biblioteka nie zwróciła zdjęcia.",
       "analyzeLabel": "Nie udało się przeanalizować etykiety żywieniowej. Spróbuj ponownie.",
       "loadPhoto": "Nie udało się wczytać zdjęcia.",
-      "lookupBarcode": "Nie udało się wyszukać tego kodu kreskowego. Spróbuj ponownie."
+      "lookupBarcode": "Nie udało się wyszukać tego kodu kreskowego. Spróbuj ponownie.",
+      "timeout": "Upłynął limit czasu żądania. Sprawdź połączenie z serwerem."
     },
     "permission": {
       "camera": "Potrzebujemy uprawnień, aby wyświetlić kamerę",

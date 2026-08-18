@@ -1759,7 +1759,8 @@
       "noPhoto": "No photo returned by picker.",
       "analyzeLabel": "Failed to analyze nutrition label. Please try again.",
       "loadPhoto": "Failed to load photo.",
-      "lookupBarcode": "Couldn't look up this barcode. Please try again."
+      "lookupBarcode": "Couldn't look up this barcode. Please try again.",
+      "timeout": "Request timed out. Check your server connection."
     },
     "permission": {
       "camera": "We need your permission to show the camera",
