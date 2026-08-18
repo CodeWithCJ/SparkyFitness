@@ -274,7 +274,7 @@ export default function OnboardingScreen({ navigation }: Props) {
       await finishWithConnection();
     } catch (err) {
       if (err instanceof LoginError) {
-        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
+        setError(err.message);
       } else {
         setError(t('auth.errors.connectionFailed', { defaultValue: 'Could not connect to server. Check the URL and try again.' }));
       }
@@ -455,7 +455,7 @@ export default function OnboardingScreen({ navigation }: Props) {
       setEmailOtpSent(true);
     } catch (err) {
       if (err instanceof LoginError) {
-        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
+        setError(err.message);
       } else {
         setError(t('auth.errors.sendEmailCodeFailed', { defaultValue: 'Failed to send email code. Please try again.' }));
       }
