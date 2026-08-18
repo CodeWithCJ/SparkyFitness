@@ -1595,5 +1595,91 @@
   },
   "exerciseRow": {
     "deleteExercise": "Delete exercise"
+  },
+  "cycleSettings": {
+    "title": {
+      "wellness": "Wellness Settings",
+      "cyclePregnancy": "Cycle & Pregnancy"
+    },
+    "enable": {
+      "title": "Enable Cycle & Pregnancy Tracking",
+      "subtitle": "Turn on logging, predictions, and history"
+    },
+    "groups": {
+      "features": "Feature Configuration",
+      "calculations": "Cycle Calculations Overrides",
+      "conditions": "Conditions",
+      "conditionsSubtitle": "Select applicable conditions to personalize your tracking.",
+      "display": "Display Options",
+      "actions": "Actions"
+    },
+    "fields": {
+      "trackingMode": "Tracking Mode",
+      "birthControl": "Birth Control Method",
+      "averageCycleLength": "Average Cycle Length",
+      "averagePeriodLength": "Average Period Length",
+      "lutealLength": "Luteal Phase Length",
+      "showFertileWindow": "Show Fertile Window",
+      "discreetMode": "Discreet Mode",
+      "terminology": "Terminology",
+      "export": "Export Cycle & Pregnancy Data",
+      "reset": "Reset Onboarding Wizard"
+    },
+    "pickers": {
+      "mode": "Select Mode",
+      "method": "Select Method",
+      "terminology": "Select Terminology"
+    },
+    "values": {
+      "custom": "Custom override",
+      "defaultHistory": "Default/History",
+      "lutealSubtitle": "Days post-ovulation (default 14)",
+      "fertileSubtitle": "Highlight fertile days on calendar",
+      "discreetSubtitle": "Hides \"Cycle\" or \"Pregnancy\" labels in UI",
+      "exportSubtitle": "Download JSON data export",
+      "resetSubtitle": "Restart setup walkthrough"
+    },
+    "reset": {
+      "title": "Reset Onboarding",
+      "message": "Are you sure you want to reset your cycle onboarding? This will clear your setup progress, but your logged cycle days will remain intact.",
+      "action": "Reset",
+      "success": "Onboarding reset completed."
+    },
+    "export": {
+      "preparing": "Preparing Export",
+      "generating": "Generating JSON export file...",
+      "failed": "Export Failed",
+      "failedMessage": "Could not export cycle data."
+    },
+    "mode": {
+      "standard": "Standard Cycle",
+      "ttc": "Trying to Conceive",
+      "pregnant": "Pregnancy Tracking",
+      "postpartum": "Postpartum",
+      "menopause": "Menopause-aware"
+    },
+    "birthControl": {
+      "none": "None",
+      "pill": "Pill",
+      "iudHormonal": "Hormonal IUD",
+      "iudCopper": "Copper IUD",
+      "implant": "Implant",
+      "ring": "Ring",
+      "patch": "Patch",
+      "shot": "Shot",
+      "condoms": "Condoms / barrier",
+      "other": "Other"
+    },
+    "terminology": {
+      "default": "Default",
+      "neutral": "Gender-Neutral"
+    },
+    "condition": {
+      "pcos": "PCOS",
+      "endometriosis": "Endometriosis",
+      "fibroids": "Fibroids",
+      "thyroid": "Thyroid condition",
+      "other": "Other"
+    }
   }
 }

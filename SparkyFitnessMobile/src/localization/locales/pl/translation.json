@@ -1619,5 +1619,91 @@
   },
   "exerciseRow": {
     "deleteExercise": "Usuń ćwiczenie"
+  },
+  "cycleSettings": {
+    "title": {
+      "wellness": "Ustawienia zdrowia",
+      "cyclePregnancy": "Cykl i ciąża"
+    },
+    "enable": {
+      "title": "Włącz śledzenie cyklu i ciąży",
+      "subtitle": "Włącz zapisywanie, prognozy i historię"
+    },
+    "groups": {
+      "features": "Konfiguracja funkcji",
+      "calculations": "Ustawienia obliczeń cyklu",
+      "conditions": "Choroby i dolegliwości",
+      "conditionsSubtitle": "Wybierz dolegliwości, aby dopasować śledzenie do swoich potrzeb.",
+      "display": "Opcje wyświetlania",
+      "actions": "Działania"
+    },
+    "fields": {
+      "trackingMode": "Tryb śledzenia",
+      "birthControl": "Metoda antykoncepcji",
+      "averageCycleLength": "Średnia długość cyklu",
+      "averagePeriodLength": "Średnia długość miesiączki",
+      "lutealLength": "Długość fazy lutealnej",
+      "showFertileWindow": "Pokaż okno płodności",
+      "discreetMode": "Tryb dyskretny",
+      "terminology": "Terminologia",
+      "export": "Eksportuj dane cyklu i ciąży",
+      "reset": "Uruchom ponownie konfigurację"
+    },
+    "pickers": {
+      "mode": "Wybierz tryb",
+      "method": "Wybierz metodę",
+      "terminology": "Wybierz terminologię"
+    },
+    "values": {
+      "custom": "Własne ustawienie",
+      "defaultHistory": "Domyślne/z historii",
+      "lutealSubtitle": "Dni po owulacji (domyślnie 14)",
+      "fertileSubtitle": "Wyróżnia dni płodne w kalendarzu",
+      "discreetSubtitle": "Ukrywa etykiety „Cykl” i „Ciąża” w aplikacji",
+      "exportSubtitle": "Pobierz eksport danych JSON",
+      "resetSubtitle": "Uruchom ponownie konfigurację"
+    },
+    "reset": {
+      "title": "Resetowanie konfiguracji",
+      "message": "Czy na pewno chcesz zresetować konfigurację cyklu? Postęp konfiguracji zostanie wyczyszczony, ale zapisane dni cyklu pozostaną bez zmian.",
+      "action": "Resetuj",
+      "success": "Konfigurację zresetowano."
+    },
+    "export": {
+      "preparing": "Przygotowywanie eksportu",
+      "generating": "Tworzenie pliku eksportu JSON…",
+      "failed": "Eksport nieudany",
+      "failedMessage": "Nie udało się wyeksportować danych cyklu."
+    },
+    "mode": {
+      "standard": "Standardowy cykl",
+      "ttc": "Staranie się o ciążę",
+      "pregnant": "Śledzenie ciąży",
+      "postpartum": "Połóg",
+      "menopause": "Uwzględnianie menopauzy"
+    },
+    "birthControl": {
+      "none": "Brak",
+      "pill": "Tabletka",
+      "iudHormonal": "Hormonalna wkładka wewnątrzmaciczna",
+      "iudCopper": "Miedziana wkładka wewnątrzmaciczna",
+      "implant": "Implant",
+      "ring": "Krążek",
+      "patch": "Plaster",
+      "shot": "Zastrzyk",
+      "condoms": "Prezerwatywy / metoda barierowa",
+      "other": "Inna"
+    },
+    "terminology": {
+      "default": "Domyślna",
+      "neutral": "Neutralna płciowo"
+    },
+    "condition": {
+      "pcos": "PCOS",
+      "endometriosis": "Endometrioza",
+      "fibroids": "Mięśniaki",
+      "thyroid": "Choroby tarczycy",
+      "other": "Inna"
+    }
   }
 }
