@@ -9,7 +9,9 @@
     "later": "Later",
     "close": "Close",
     "cancel": "Cancel",
-    "continue": "Continue"
+    "continue": "Continue",
+    "retry": "Retry",
+    "details": "Details"
   },
   "settings": {
     "app": "App Settings",
@@ -299,5 +301,31 @@
       "validFrontendUrl": "Enter a valid Frontend URL",
       "serverUnreachable": "Could not reach server. Check the URL and try again."
     }
+  },
+  "dashboard": {
+    "chooseDate": "Choose dashboard date",
+    "noServerConfigured": "No server configured",
+    "configureServer": "Configure your server connection in Settings to view your daily summary.",
+    "goToSettings": "Go to Settings",
+    "loadingSummary": "Loading summary...",
+    "loadFailed": "Failed to load summary",
+    "checkConnection": "Please check your connection and try again.",
+    "askSparky": "Ask Sparky…",
+    "nutrients": "Nutrients",
+    "food": "Food",
+    "tapToAddFood": "Tap to add food",
+    "healthTrends": "Health Trends",
+    "consumed": "Consumed",
+    "remaining": "remaining",
+    "ofCalories": "of {{value}} kcal",
+    "burned": "Burned",
+    "hydration": "Hydration",
+    "ofVolume": "of {{value}} {{unit}}",
+    "perBottle": "{{value}} {{unit}} per bottle",
+    "configureWaterContainer": "Configure water container on server to\nenable quick add/remove buttons",
+    "exercise": "Exercise",
+    "minutes": "Minutes",
+    "calories": "Calories",
+    "noExerciseEntries": "No exercise entries yet"
   }
 }

@@ -9,7 +9,9 @@
     "later": "Później",
     "close": "Zamknij",
     "cancel": "Anuluj",
-    "continue": "Kontynuuj"
+    "continue": "Kontynuuj",
+    "retry": "Spróbuj ponownie",
+    "details": "Szczegóły"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -299,5 +301,31 @@
       "validFrontendUrl": "Wprowadź prawidłowy adres URL frontendu",
       "serverUnreachable": "Nie można połączyć się z serwerem. Sprawdź adres URL i spróbuj ponownie."
     }
+  },
+  "dashboard": {
+    "chooseDate": "Wybierz datę pulpitu",
+    "noServerConfigured": "Nie skonfigurowano serwera",
+    "configureServer": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić dzienne podsumowanie.",
+    "goToSettings": "Przejdź do ustawień",
+    "loadingSummary": "Ładowanie podsumowania...",
+    "loadFailed": "Nie udało się załadować podsumowania",
+    "checkConnection": "Sprawdź połączenie i spróbuj ponownie.",
+    "askSparky": "Zapytaj Sparky…",
+    "nutrients": "Składniki odżywcze",
+    "food": "Jedzenie",
+    "tapToAddFood": "Dotknij, aby dodać jedzenie",
+    "healthTrends": "Trendy zdrowotne",
+    "consumed": "Spożyte",
+    "remaining": "pozostało",
+    "ofCalories": "z {{value}} kcal",
+    "burned": "Spalone",
+    "hydration": "Nawodnienie",
+    "ofVolume": "z {{value}} {{unit}}",
+    "perBottle": "{{value}} {{unit}} na butelkę",
+    "configureWaterContainer": "Skonfiguruj pojemnik na wodę na serwerze, aby\nwłączyć przyciski szybkiego dodawania i odejmowania",
+    "exercise": "Ćwiczenia",
+    "minutes": "Minuty",
+    "calories": "Kalorie",
+    "noExerciseEntries": "Brak zapisanych ćwiczeń"
   }
 }

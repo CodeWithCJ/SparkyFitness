@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable } from 'react-native';
 import { Canvas, Group, Path, Rect, Skia } from '@shopify/react-native-skia';
 import Button from './ui/Button';
@@ -46,6 +47,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   onIncrement, onDecrement, disableDecrement,
   containers, activeContainerId, onSelectContainer,
 }) => {
+  const { t } = useTranslation();
   const hydrationColor = useCSSVariable('--color-hydration') as string;
   const trackColor = useCSSVariable('--color-progress-track') as string;
   const outlineColor = useCSSVariable('--color-border-strong') as string;
@@ -122,7 +124,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-3">Hydration</Text>
+      <Text className="text-md font-bold text-text-secondary mb-3">{t('dashboard.hydration', { defaultValue: 'Hydration' })}</Text>
       <View className="flex-row items-center">
         <View className="flex-row items-center mr-4">
           {showButtons && (
@@ -162,7 +164,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
             {displayConsumed} {unitLabel}
           </Text>
           <Text className="text-sm text-text-secondary mt-0.5">
-            of {displayGoal} {unitLabel}
+            {t('dashboard.ofVolume', { defaultValue: 'of {{value}} {{unit}}', value: displayGoal, unit: unitLabel })}
           </Text>
           {showChips && (
             <View className="flex-row flex-wrap justify-center mt-2 gap-1">
@@ -186,12 +188,12 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
       </View>
       {showButtons && containerVolume != null && !showChips && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          {convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 })} {unitLabel} per bottle
+          {t('dashboard.perBottle', { defaultValue: '{{value}} {{unit}} per bottle', value: convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: unitLabel })}
         </Text>
       )}
       {showButtons && containerVolume == null && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          Configure water container on server to{'\n'}enable quick add/remove buttons
+          {t('dashboard.configureWaterContainer', { defaultValue: 'Configure water container on server to\nenable quick add/remove buttons' })}
         </Text>
       )}
     </View>

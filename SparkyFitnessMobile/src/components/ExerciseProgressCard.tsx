@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
@@ -120,6 +121,7 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
   exerciseCalories,
   exerciseCaloriesGoal,
 }) => {
+  const { t } = useTranslation();
   const [exerciseColor, trackColor] = useCSSVariable([
     '--color-calories',
     '--color-progress-track',
@@ -129,11 +131,11 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-4">Exercise</Text>
+      <Text className="text-md font-bold text-text-secondary mb-4">{t('dashboard.exercise', { defaultValue: 'Exercise' })}</Text>
       {hasEntries ? (
         <>
           <ProgressBar
-            label="Minutes"
+            label={t('dashboard.minutes', { defaultValue: 'Minutes' })}
             current={exerciseMinutes}
             goal={exerciseMinutesGoal}
             unit="min"
@@ -143,7 +145,7 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
           />
           <View className="h-3" />
           <ProgressBar
-            label="Calories"
+            label={t('dashboard.calories', { defaultValue: 'Calories' })}
             current={exerciseCalories}
             goal={exerciseCaloriesGoal}
             unit="Cal"
@@ -153,7 +155,7 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
           />
         </>
       ) : (
-        <Text className="text-sm text-text-secondary text-center py-2">No exercise entries yet</Text>
+        <Text className="text-sm text-text-secondary text-center py-2">{t('dashboard.noExerciseEntries', { defaultValue: 'No exercise entries yet' })}</Text>
       )}
     </View>
   );

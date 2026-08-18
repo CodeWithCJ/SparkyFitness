@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import ProgressRing from './ProgressRing';
@@ -32,6 +33,7 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
   remainingCalories,
   progressPercent,
 }) => {
+  const { t } = useTranslation();
   const [progressTrackColor, progressFillColor] = useCSSVariable([
     '--color-progress-track',
     '--color-calories',
@@ -42,7 +44,7 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
       <View className="flex-row items-center justify-center">
-        <SideStat label="Consumed" value={caloriesConsumed} />
+        <SideStat label={t('dashboard.consumed', { defaultValue: 'Consumed' })} value={caloriesConsumed} />
 
         <View className="relative items-center justify-center mx-2">
           <View>
@@ -59,15 +61,15 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
               {displayRemaining.toLocaleString()}
             </Text>
             <Text className="text-text-secondary text-xs">
-              remaining
+              {t('dashboard.remaining', { defaultValue: 'remaining' })}
             </Text>
             <Text className="text-text-muted text-xs mt-0.5">
-              of {calorieGoal.toLocaleString()} kcal
+              {t('dashboard.ofCalories', { defaultValue: 'of {{value}} kcal', value: calorieGoal.toLocaleString() })}
             </Text>
           </View>
         </View>
 
-        <SideStat label="Burned" value={caloriesBurned} />
+        <SideStat label={t('dashboard.burned', { defaultValue: 'Burned' })} value={caloriesBurned} />
       </View>
     </View>
   );
