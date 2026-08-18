@@ -27,7 +27,8 @@
     "loadMore": "Load More",
     "edit": "Edit",
     "connectionRetry": "Please check your connection and try again.",
-    "deleteItemTitle": "Delete {{title}}?"
+    "deleteItemTitle": "Delete {{title}}?",
+    "tryAgain": "Try again"
   },
   "settings": {
     "app": "App Settings",
@@ -1680,6 +1681,51 @@
       "fibroids": "Fibroids",
       "thyroid": "Thyroid condition",
       "other": "Other"
+    }
+  },
+  "measurements": {
+    "fields": {
+      "weight": "Weight",
+      "bodyFatPercentage": "Body fat %",
+      "height": "Height",
+      "neck": "Neck",
+      "waist": "Waist",
+      "hips": "Hips",
+      "steps": "Steps",
+      "heightWithUnit": "Height ({{unit}})",
+      "neckWithUnit": "Neck ({{unit}})",
+      "waistWithUnit": "Waist ({{unit}})",
+      "hipsWithUnit": "Hips ({{unit}})"
+    },
+    "validation": {
+      "invalid": "Invalid {{label}}",
+      "enterNumber": "Enter a number.",
+      "wholeNumber": "{{label}} must be a whole number.",
+      "max": "Must be {{max}} or less.",
+      "invalidWeight": "Invalid weight",
+      "stonesLbsNumber": "Enter a number for stones and lbs.",
+      "nonNegative": "Values must be 0 or greater.",
+      "invalidHeight": "Invalid height",
+      "feetInchesNumber": "Enter a number for feet and inches."
+    },
+    "nothingToSave": "Nothing to save",
+    "enterValue": "Enter or clear at least one value.",
+    "saved": "Saved",
+    "partialSave": "Some changes may not have been saved.",
+    "date": "Date",
+    "willBeCleared": "Will be cleared",
+    "custom": {
+      "title": "Custom Measurements",
+      "loadError": "Couldn't load custom measurements.",
+      "deleteEntry": "Delete {{label}} entry",
+      "moreCategories": "More categories ▾",
+      "hideCategories": "Hide categories ▴"
+    },
+    "confirm": {
+      "measurement": "measurement",
+      "measurements": "measurements",
+      "title": "Clear {{count}} {{noun}}?",
+      "message": "{{labels}} will be cleared."
     }
   }
 }

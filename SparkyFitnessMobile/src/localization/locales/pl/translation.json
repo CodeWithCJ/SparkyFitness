@@ -29,7 +29,8 @@
     "loadMore": "Załaduj więcej",
     "edit": "Edytuj",
     "connectionRetry": "Sprawdź połączenie i spróbuj ponownie.",
-    "deleteItemTitle": "Usunąć „{{title}}”?"
+    "deleteItemTitle": "Usunąć „{{title}}”?",
+    "tryAgain": "Spróbuj ponownie"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -1704,6 +1705,51 @@
       "fibroids": "Mięśniaki",
       "thyroid": "Choroby tarczycy",
       "other": "Inna"
+    }
+  },
+  "measurements": {
+    "fields": {
+      "weight": "Masa ciała",
+      "bodyFatPercentage": "Tkanka tłuszczowa %",
+      "height": "Wzrost",
+      "neck": "Szyja",
+      "waist": "Talia",
+      "hips": "Biodra",
+      "steps": "Kroki",
+      "heightWithUnit": "Wzrost ({{unit}})",
+      "neckWithUnit": "Szyja ({{unit}})",
+      "waistWithUnit": "Talia ({{unit}})",
+      "hipsWithUnit": "Biodra ({{unit}})"
+    },
+    "validation": {
+      "invalid": "Nieprawidłowe: {{label}}",
+      "enterNumber": "Wpisz liczbę.",
+      "wholeNumber": "{{label}} musi być liczbą całkowitą.",
+      "max": "Maksymalnie {{max}}.",
+      "invalidWeight": "Nieprawidłowa masa ciała",
+      "stonesLbsNumber": "Wpisz liczbę kamieni i funtów.",
+      "nonNegative": "Wartość musi być większa lub równa 0.",
+      "invalidHeight": "Nieprawidłowy wzrost",
+      "feetInchesNumber": "Wpisz liczbę stóp i cali."
+    },
+    "nothingToSave": "Brak danych do zapisania",
+    "enterValue": "Wpisz wartość lub wyczyść co najmniej jedno pole.",
+    "saved": "Zapisano",
+    "partialSave": "Niektóre zmiany mogły nie zostać zapisane.",
+    "date": "Data",
+    "willBeCleared": "Zostanie wyczyszczone",
+    "custom": {
+      "title": "Własne pomiary",
+      "loadError": "Nie udało się wczytać własnych pomiarów.",
+      "deleteEntry": "Usuń wpis „{{label}}”",
+      "moreCategories": "Więcej kategorii ▾",
+      "hideCategories": "Ukryj kategorie ▴"
+    },
+    "confirm": {
+      "measurement": "pomiar",
+      "measurements": "pomiary",
+      "title": "Wyczyścić {{count}} {{noun}}?",
+      "message": "{{labels}} zostaną wyczyszczone."
     }
   }
 }

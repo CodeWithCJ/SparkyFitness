@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -43,7 +44,7 @@ import {
 import { isAutoHealthSyncCustomCategoryName } from '../utils/autoHealthSyncCategories';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   useCustomCategories,
@@ -78,16 +79,6 @@ const EMPTY_FORM: FormState = {
   heightFeet: '',
   weightStones: '',
   bodyFatPercentage: '',
-};
-
-const FIELD_LABELS: Record<FieldKey, string> = {
-  weight: 'Weight',
-  bodyFatPercentage: 'Body fat %',
-  height: 'Height',
-  neck: 'Neck',
-  waist: 'Waist',
-  hips: 'Hips',
-  steps: 'Steps',
 };
 
 const FIELD_FORM_KEYS: Record<FieldKey, (keyof FormState)[]> = {
@@ -142,6 +133,19 @@ function isDailyCustomCategory(category: {
 }
 
 const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
+  const fieldLabel = (key: FieldKey, fallback: string) => {
+    switch (key) {
+      case 'weight': return t('measurements.fields.weight', { defaultValue: 'Weight' });
+      case 'bodyFatPercentage': return t('measurements.fields.bodyFatPercentage', { defaultValue: 'Body fat %' });
+      case 'height': return t('measurements.fields.height', { defaultValue: 'Height' });
+      case 'neck': return t('measurements.fields.neck', { defaultValue: 'Neck' });
+      case 'waist': return t('measurements.fields.waist', { defaultValue: 'Waist' });
+      case 'hips': return t('measurements.fields.hips', { defaultValue: 'Hips' });
+      case 'steps': return t('measurements.fields.steps', { defaultValue: 'Steps' });
+      default: return fallback;
+    }
+  };
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
@@ -423,19 +427,19 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       const parsed = parseDecimalInput(trimmed);
       if (Number.isNaN(parsed)) {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: 'Enter a number.' });
+        Toast.show({ type: 'error', text1: t('measurements.validation.invalid', { defaultValue: 'Invalid {{label}}', label }), text2: t('measurements.validation.enterNumber', { defaultValue: 'Enter a number.' }) });
         return { kind: 'invalid' };
       }
       if (parsed < 0) {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: 'Value must be 0 or greater.' });
+        Toast.show({ type: 'error', text1: t('measurements.validation.invalid', { defaultValue: 'Invalid {{label}}', label }), text2: t('measurements.validation.nonNegative', { defaultValue: 'Value must be 0 or greater.' }) });
         return { kind: 'invalid' };
       }
       if (opts?.integer && !Number.isInteger(parsed)) {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: `${label} must be a whole number.` });
+        Toast.show({ type: 'error', text1: t('measurements.validation.invalid', { defaultValue: 'Invalid {{label}}', label }), text2: t('measurements.validation.wholeNumber', { defaultValue: '{{label}} must be a whole number.', label }) });
         return { kind: 'invalid' };
       }
       if (opts?.max != null && parsed > opts.max) {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: opts.maxMessage ?? `Must be ${opts.max} or less.` });
+        Toast.show({ type: 'error', text1: t('measurements.validation.invalid', { defaultValue: 'Invalid {{label}}', label }), text2: opts.maxMessage ?? t('measurements.validation.max', { defaultValue: 'Must be {{max}} or less.', max: opts.max }) });
         return { kind: 'invalid' };
       }
       return { kind: 'value', value: parsed };
@@ -474,21 +478,21 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         const stones = stRaw === '' ? 0 : parseDecimalInput(stRaw);
         const lbs = lbRaw === '' ? 0 : parseDecimalInput(lbRaw);
         if (Number.isNaN(stones) || Number.isNaN(lbs)) {
-          Toast.show({ type: 'error', text1: 'Invalid weight', text2: 'Enter a number for stones and lbs.' });
+          Toast.show({ type: 'error', text1: t('measurements.validation.invalidWeight', { defaultValue: 'Invalid weight' }), text2: t('measurements.validation.stonesLbsNumber', { defaultValue: 'Enter a number for stones and lbs.' }) });
           return;
         }
         if (stones < 0 || lbs < 0) {
-          Toast.show({ type: 'error', text1: 'Invalid weight', text2: 'Values must be 0 or greater.' });
+          Toast.show({ type: 'error', text1: t('measurements.validation.invalidWeight', { defaultValue: 'Invalid weight' }), text2: t('measurements.validation.nonNegative', { defaultValue: 'Values must be 0 or greater.' }) });
           return;
         }
         payload.weight = stonesLbsToKg(stones, lbs);
       }
     } else {
-      if (!apply('weight', evaluateField('weight', 'weight'), (v) => weightToKg(v, weightMode))) return;
+      if (!apply('weight', evaluateField('weight', fieldLabel('weight', 'Weight')), (v) => weightToKg(v, weightMode))) return;
     }
-    if (!apply('neck', evaluateField('neck', 'neck'), (v) => lengthToCm(v, bodyUnit))) return;
-    if (!apply('waist', evaluateField('waist', 'waist'), (v) => lengthToCm(v, bodyUnit))) return;
-    if (!apply('hips', evaluateField('hips', 'hips'), (v) => lengthToCm(v, bodyUnit))) return;
+    if (!apply('neck', evaluateField('neck', fieldLabel('neck', 'Neck')), (v) => lengthToCm(v, bodyUnit))) return;
+    if (!apply('waist', evaluateField('waist', fieldLabel('waist', 'Waist')), (v) => lengthToCm(v, bodyUnit))) return;
+    if (!apply('hips', evaluateField('hips', fieldLabel('hips', 'Hips')), (v) => lengthToCm(v, bodyUnit))) return;
     if (heightMode === 'ft_in') {
       const feetRaw = form.heightFeet.trim();
       const inchesRaw = form.height.trim();
@@ -501,23 +505,23 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         const feet = feetRaw === '' ? 0 : parseDecimalInput(feetRaw);
         const inches = inchesRaw === '' ? 0 : parseDecimalInput(inchesRaw);
         if (Number.isNaN(feet) || Number.isNaN(inches)) {
-          Toast.show({ type: 'error', text1: 'Invalid height', text2: 'Enter a number for feet and inches.' });
+          Toast.show({ type: 'error', text1: t('measurements.validation.invalidHeight', { defaultValue: 'Invalid height' }), text2: t('measurements.validation.feetInchesNumber', { defaultValue: 'Enter a number for feet and inches.' }) });
           return;
         }
         if (feet < 0 || inches < 0) {
-          Toast.show({ type: 'error', text1: 'Invalid height', text2: 'Values must be 0 or greater.' });
+          Toast.show({ type: 'error', text1: t('measurements.validation.invalidHeight', { defaultValue: 'Invalid height' }), text2: t('measurements.validation.nonNegative', { defaultValue: 'Values must be 0 or greater.' }) });
           return;
         }
         payload.height = feetInchesToCm(feet, inches);
       }
     } else {
-      if (!apply('height', evaluateField('height', 'height'), (v) => lengthToCm(v, heightMode))) return;
+      if (!apply('height', evaluateField('height', fieldLabel('height', 'Height')), (v) => lengthToCm(v, heightMode))) return;
     }
-    if (!apply('steps', evaluateField('steps', 'steps', { integer: true }), (v) => v)) return;
+    if (!apply('steps', evaluateField('steps', fieldLabel('steps', 'Steps'), { integer: true }), (v) => v)) return;
     if (
       !apply(
         'bodyFatPercentage',
-        evaluateField('bodyFatPercentage', 'body fat %', {
+        evaluateField('bodyFatPercentage', fieldLabel('bodyFatPercentage', 'Body fat %'), {
           max: 100,
           maxMessage: 'Body fat % must be between 0 and 100.',
         }),
@@ -545,14 +549,14 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       form: customForm,
       dirtyKeys: new Set(dirtyCustomKeysRef.current),
       onInvalid: (label) => {
-        Toast.show({ type: 'error', text1: `Invalid ${label}`, text2: 'Enter a number.' });
+        Toast.show({ type: 'error', text1: t('measurements.validation.invalid', { defaultValue: 'Invalid {{label}}', label }), text2: t('measurements.validation.enterNumber', { defaultValue: 'Enter a number.' }) });
       },
     });
     if (!customResult.ok) return;
     const customOps = customResult.operations;
 
     if (!hasAnyField && customOps.length === 0) {
-       Toast.show({ type: 'info', text1: 'Nothing to save', text2: 'Enter or clear at least one value.' });
+       Toast.show({ type: 'info', text1: t('measurements.nothingToSave', { defaultValue: 'Nothing to save' }), text2: t('measurements.enterValue', { defaultValue: 'Enter or clear at least one value.' }) });
       return;
     }
 
@@ -613,7 +617,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         }
 
         if (customSucceeded) {
-          Toast.show({ type: 'success', text1: 'Saved' });
+          Toast.show({ type: 'success', text1: t('measurements.saved', { defaultValue: 'Saved' }) });
           navigation.goBack();
           return;
         }
@@ -634,7 +638,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         refetchCustomCategories(),
         refetchCustomEntries(),
       ]);
-      Toast.show({ type: 'error', text1: 'Some changes may not have been saved.' });
+      Toast.show({ type: 'error', text1: t('measurements.partialSave', { defaultValue: 'Some changes may not have been saved.' }) });
     };
 
     // Custom deletes (clearing a prefilled entry or pressing the row delete
@@ -643,7 +647,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       (op): op is Extract<CustomOp, { kind: 'delete' }> => op.kind === 'delete',
     );
     const clearingLabels = [
-      ...cleared.map((k) => FIELD_LABELS[k]),
+      ...cleared.map((k) => fieldLabel(k, k)),
       ...customDeleteOps.map((op) => {
         const cat = dailyCustomCategories.find((c) => c.id === op.categoryId);
         return cat ? (cat.display_name ?? cat.name) : op.categoryId;
@@ -651,20 +655,22 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ];
 
     if (clearingLabels.length > 0) {
-      const noun = clearingLabels.length === 1 ? 'measurement' : 'measurements';
+      const noun = clearingLabels.length === 1
+        ? t('measurements.confirm.measurement', { defaultValue: 'measurement' })
+        : t('measurements.confirm.measurements', { defaultValue: 'measurements' });
       Alert.alert(
-        `Clear ${clearingLabels.length} ${noun}?`,
-        `${joinWithAnd(clearingLabels)} will be cleared.`,
+        t('measurements.confirm.title', { defaultValue: 'Clear {{count}} {{noun}}?', count: clearingLabels.length, noun }),
+        t('measurements.confirm.message', { defaultValue: '{{labels}} will be cleared.', labels: joinWithAnd(clearingLabels) }),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Save', style: 'destructive', onPress: doSave },
+          { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+          { text: t('common.save', { defaultValue: 'Save' }), style: 'destructive', onPress: doSave },
         ],
       );
       return;
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, dailyCustomCategories, customForm, refetchMeasurements, refetchCustomCategories, refetchCustomEntries]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, dailyCustomCategories, customForm, refetchMeasurements, refetchCustomCategories, refetchCustomEntries, t]);
 
   const isCustomDataLoading = isCustomCategoriesLoading || isCustomMeasurementsLoading;
   const isCustomDataError = isCustomCategoriesError || isCustomMeasurementsError;
@@ -707,18 +713,18 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           : form[key].trim() === '';
     return prefilledKeys.has(key) && empty ? (
       <Text className="text-xs italic mt-1" style={{ color: textSecondary }}>
-        Will be cleared
+        {t('measurements.willBeCleared', { defaultValue: 'Will be cleared' })}
       </Text>
     ) : null;
   };
 
   const header = useScreenHeader({
-    title: 'Measurements',
+    title: t('screens.measurements', { defaultValue: 'Measurements' }),
     left: { kind: 'dismiss', onPress: handleClose, disabled: isDismissDisabled },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
+      label: t('common.save', { defaultValue: 'Save' }),
+      busyLabel: t('common.saving', { defaultValue: 'Saving…' }),
       busy: isSaving,
       disabled: isSaveDisabled,
       placement: 'native-only',
@@ -772,7 +778,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
               onPress={() => deleteCustomRow(cat.id, row)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel={`Delete ${label} entry`}
+              accessibilityLabel={t('measurements.custom.deleteEntry', { defaultValue: 'Delete {{label}} entry', label })}
               testID={`delete-custom-${row.key}`}
             >
               <Icon name="trash" size={18} color={textSecondary} />
@@ -781,7 +787,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
         {row?.entryId != null && row.value.trim() === '' ? (
           <Text className="text-xs italic mt-1" style={{ color: textSecondary }}>
-            Will be cleared
+            {t('measurements.willBeCleared', { defaultValue: 'Will be cleared' })}
           </Text>
         ) : null}
       </View>
@@ -807,7 +813,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           activeOpacity={0.7}
           className="flex-row items-center mb-4"
         >
-          <Text className="text-text-primary text-base">Date</Text>
+          <Text className="text-text-primary text-base">{t('measurements.date', { defaultValue: 'Date' })}</Text>
           <Text className="text-accent-primary text-base font-medium mx-1.5">
             {formatDateLabel(selectedDate)}
           </Text>
@@ -856,7 +862,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Body fat %</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.fields.bodyFatPercentage', { defaultValue: 'Body fat %' })}</Text>
               <FormInput
                 value={form.bodyFatPercentage}
                 onChangeText={(v) => updateField('bodyFatPercentage', v)}
@@ -868,7 +874,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Height ({heightSuffix})</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.fields.heightWithUnit', { defaultValue: 'Height ({{unit}})', unit: heightSuffix })}</Text>
               {heightMode === 'ft_in' ? (
                 <View className="flex-row gap-3">
                   <View className="flex-1">
@@ -903,7 +909,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Neck ({bodySuffix})</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.fields.neckWithUnit', { defaultValue: 'Neck ({{unit}})', unit: bodySuffix })}</Text>
               <FormInput
                 value={form.neck}
                 onChangeText={(v) => updateField('neck', v)}
@@ -915,7 +921,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Waist ({bodySuffix})</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.fields.waistWithUnit', { defaultValue: 'Waist ({{unit}})', unit: bodySuffix })}</Text>
               <FormInput
                 value={form.waist}
                 onChangeText={(v) => updateField('waist', v)}
@@ -927,7 +933,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Hips ({bodySuffix})</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.fields.hipsWithUnit', { defaultValue: 'Hips ({{unit}})', unit: bodySuffix })}</Text>
               <FormInput
                 value={form.hips}
                 onChangeText={(v) => updateField('hips', v)}
@@ -939,7 +945,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">Steps</Text>
+              <Text className="text-text-secondary text-sm mb-1">{t('measurements.fields.steps', { defaultValue: 'Steps' })}</Text>
               <FormInput
                 value={form.steps}
                 onChangeText={(v) => updateField('steps', v)}
@@ -953,11 +959,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             {isCustomDataError ? (
               <View className="mt-4 mb-2 py-6 items-center">
                 <Text className="text-text-secondary text-sm text-center mb-3">
-                  {"Couldn't load custom measurements."}
+                  {t('measurements.custom.loadError', { defaultValue: "Couldn't load custom measurements." })}
                 </Text>
                 <Button variant="secondary" onPress={handleRetryCustomData} className="px-6">
                   <Text className="text-text-primary text-sm font-semibold">
-                    Try again
+                    {t('common.tryAgain', { defaultValue: 'Try again' })}
                   </Text>
                 </Button>
               </View>
@@ -969,7 +975,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
               dailyCustomCategories.length > 0 && (
                 <View className="mt-4 mb-2">
                   <Text className="text-text-primary text-base font-semibold mb-3">
-                     Custom Measurements
+                    {t('measurements.custom.title', { defaultValue: 'Custom Measurements' })}
                   </Text>
                   {primaryCustomCategories.map(renderCustomCategory)}
                   {moreCustomCategories.length > 0 && (
@@ -982,10 +988,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         textClassName="text-sm"
                         accessibilityRole="button"
                         accessibilityState={{ expanded: showMoreCategories }}
-                        accessibilityLabel="More categories"
+                        accessibilityLabel={t('measurements.custom.moreCategories', { defaultValue: 'More categories' })}
                       >
                         <Text style={{ color: accentPrimary }} className="text-sm font-medium">
-                          {showMoreCategories ? 'Hide categories ▴' : 'More categories ▾'}
+                          {showMoreCategories
+                            ? t('measurements.custom.hideCategories', { defaultValue: 'Hide categories ▴' })
+                            : t('measurements.custom.moreCategories', { defaultValue: 'More categories ▾' })}
                         </Text>
                       </Button>
                       {showMoreCategories &&
