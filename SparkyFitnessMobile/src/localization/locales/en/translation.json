@@ -1795,7 +1795,13 @@
     "accessibility": {
       "chooseLabelPhoto": "Choose label photo from library",
       "choosePhoto": "Choose photo from library",
-      "howItWorks": "How photo estimation works"
+      "howItWorks": "How photo estimation works",
+      "back": "Go back",
+      "flashlightOn": "Turn flashlight on",
+      "flashlightOff": "Turn flashlight off",
+      "retakePhoto": "Retake photo",
+      "takeLabelPhoto": "Take nutrition label photo",
+      "takeMealPhoto": "Take meal photo"
     }
   }
 }

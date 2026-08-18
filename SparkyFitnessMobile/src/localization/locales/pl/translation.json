@@ -1821,7 +1821,13 @@
     "accessibility": {
       "chooseLabelPhoto": "Wybierz zdjęcie etykiety z biblioteki",
       "choosePhoto": "Wybierz zdjęcie z biblioteki",
-      "howItWorks": "Jak działa szacowanie ze zdjęcia"
+      "howItWorks": "Jak działa szacowanie ze zdjęcia",
+      "back": "Wróć",
+      "flashlightOn": "Włącz latarkę",
+      "flashlightOff": "Wyłącz latarkę",
+      "retakePhoto": "Zrób zdjęcie ponownie",
+      "takeLabelPhoto": "Zrób zdjęcie etykiety żywieniowej",
+      "takeMealPhoto": "Zrób zdjęcie posiłku"
     }
   }
 }

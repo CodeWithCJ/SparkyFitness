@@ -626,6 +626,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       >
         <TouchableOpacity
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel={t('foodScan.accessibility.back', { defaultValue: 'Go back' })}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="bg-black/50 rounded-full p-2"
         >
@@ -633,6 +635,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setFlashlight(!flashlight)}
+          accessibilityRole="button"
+          accessibilityLabel={flashlight
+            ? t('foodScan.accessibility.flashlightOff', { defaultValue: 'Turn flashlight off' })
+            : t('foodScan.accessibility.flashlightOn', { defaultValue: 'Turn flashlight on' })}
           className="bg-black/50 rounded-full p-2"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
@@ -659,6 +665,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
           <View className="absolute bottom-12 left-4 right-4 flex-row gap-3" style={{ paddingBottom: insets.bottom }}>
             <TouchableOpacity
               onPress={handleRetake}
+              accessibilityRole="button"
+              accessibilityLabel={t('foodScan.accessibility.retakePhoto', { defaultValue: 'Retake photo' })}
               className="flex-1 bg-white/20 py-4 rounded-lg items-center"
             >
               <Text className="text-white font-semibold text-base">{t('foodScan.label.retake', { defaultValue: 'Retake' })}</Text>
@@ -670,7 +678,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               }}
               className="flex-1 py-4 rounded-lg"
             >
-              Use Photo
+              {t('foodScan.label.usePhoto', { defaultValue: 'Use Photo' })}
             </UIButton>
           </View>
         </View>
@@ -804,6 +812,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                     onPress={() => {
                       void handleLabelCapture();
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('foodScan.accessibility.takeLabelPhoto', { defaultValue: 'Take nutrition label photo' })}
                     className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
                     activeOpacity={0.7}
                   >
@@ -841,6 +851,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                       onPress={() => {
                         void handlePhotoCapture();
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('foodScan.accessibility.takeMealPhoto', { defaultValue: 'Take meal photo' })}
                       disabled={!photoModeAvailable}
                       className={`w-20 h-20 rounded-full border-4 border-white items-center justify-center ${photoModeAvailable ? '' : 'opacity-40'}`}
                       activeOpacity={0.7}
