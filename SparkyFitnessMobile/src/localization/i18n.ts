@@ -37,6 +37,17 @@ export function getDeviceLanguage(): SupportedLanguage {
   return normalizeLanguage(getLocales()[0]?.languageCode);
 }
 
+export function getAppLocale(): 'pl-PL' | 'en-US' {
+  return i18n.resolvedLanguage === 'pl' ? 'pl-PL' : 'en-US';
+}
+
+export function formatLocalizedNumber(
+  value: number,
+  options?: Intl.NumberFormatOptions,
+): string {
+  return value.toLocaleString(getAppLocale(), options);
+}
+
 /**
  * iOS exposes the per-app language through expo-localization. The first
  * supported locale is the OS-owned effective value; unsupported locales use

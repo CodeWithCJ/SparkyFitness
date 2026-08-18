@@ -169,10 +169,10 @@ function AppContent() {
 
   const { enabled: cycleEnabled, mode: cycleMode, discreetMode: cycleDiscreet } = useCycleMode();
   const cycleSheetLabel = cycleDiscreet
-    ? 'Wellness'
+    ? t('addSheet.wellness', { defaultValue: 'Wellness' })
     : cycleMode === 'pregnant' || cycleMode === 'postpartum'
-      ? 'Log Pregnancy Entry'
-      : 'Log Cycle';
+      ? t('addSheet.logPregnancyEntry', { defaultValue: 'Log Pregnancy Entry' })
+      : t('addSheet.logCycle', { defaultValue: 'Log Cycle' });
 
   const [primary, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',

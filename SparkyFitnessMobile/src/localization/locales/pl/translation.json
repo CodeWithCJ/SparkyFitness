@@ -56,6 +56,8 @@
     "pastSets": "Wcześniejsze serie i powtórzenia",
     "wellness": "Zdrowie",
     "askSparky": "Zapytaj Sparky’ego",
-    "syncHealth": "Synchronizuj dane zdrowotne"
+    "syncHealth": "Synchronizuj dane zdrowotne",
+    "logPregnancyEntry": "Zapisz wpis dotyczący ciąży",
+    "logCycle": "Zapisz cykl"
   }
 }
