@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +29,7 @@ type SettingsScreenProps = CompositeScreenProps<
 >;
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const usesNativeTabs = useNativeIOSTabsActive();
@@ -54,8 +56,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   );
 
   const syncSubtitle = lastSyncedTime
-    ? `Last synced ${formatRelativeTime(new Date(lastSyncedTime))}`
-    : 'Never synced';
+    ? t('settings.lastSynced', { defaultValue: 'Last synced {{time}}', time: formatRelativeTime(new Date(lastSyncedTime), t) })
+    : t('date.neverSynced', { defaultValue: 'Never synced' });
 
   const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration, macroGreen, catTeal, catBlue] = useCSSVariable([
     '--color-icon-success',
@@ -86,7 +88,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       </Text>
     </View>
   ) : (
-    'Tap to add a server'
+    t('settings.addServer', { defaultValue: 'Tap to add a server' })
   );
 
   const handleShareDiagnosticReport = async (): Promise<void> => {

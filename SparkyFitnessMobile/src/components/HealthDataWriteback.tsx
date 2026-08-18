@@ -65,20 +65,25 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
     });
   };
 
-  const renderMetricItem = (metric: WritebackMetric) => (
+  const renderMetricItem = (metric: WritebackMetric) => {
+    const metricLabel = t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel });
+    return (
     <View key={metric.id} className="flex-row justify-between items-center mb-2">
       <View className="flex-row items-center flex-1 mr-2">
         <Image source={metric.icon} className="w-6 h-6" />
         <Text className="ml-2 text-base text-text-primary flex-shrink" numberOfLines={1}>
-          {t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel })}
+          {metricLabel}
         </Text>
       </View>
       <Switch
+        accessibilityLabel={t('healthSync.writeMetricLabel', { defaultValue: 'Write {{metric}} to {{store}}', metric: metricLabel, store: storeName })}
+        accessibilityHint={t('healthSync.writeMetricHint', { defaultValue: 'Toggles writing this metric to the health store.' })}
         onValueChange={(newValue) => handleToggleWriteback(metric, newValue)}
         value={!!writebackStates[metric.id]}
       />
     </View>
-  );
+    );
+  };
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">

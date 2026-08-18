@@ -13,7 +13,11 @@
     "retry": "Retry",
     "details": "Details",
     "error": "Error",
-    "delete": "Delete"
+    "delete": "Delete",
+    "collapseSection": "Collapse this section",
+    "expandSection": "Expand this section",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items"
   },
   "settings": {
     "app": "App Settings",
@@ -27,7 +31,9 @@
       "managedByIOS": "Managed by iOS",
       "iosSettingsHint": "Change this app's language in iOS Settings",
       "openSettingsFailed": "Could not open iOS Settings"
-    }
+    },
+    "lastSynced": "Last synced {{time}}",
+    "addServer": "Tap to add a server"
   },
   "languageSettings": {
     "subtitle": "Use your device language or choose a language for SparkyFitness."
@@ -224,7 +230,13 @@
     "removeFrom": "Remove from {{store}}",
     "allTime": "All time",
     "pickDateRange": "Pick a date range…",
-    "removeData": "Remove SparkyFitness data from {{store}}"
+    "removeData": "Remove SparkyFitness data from {{store}}",
+    "source": "Source:",
+    "syncMetricLabel": "Sync {{metric}}",
+    "syncMetricHint": "Toggles synchronization for this health metric.",
+    "enableAllHint": "Toggles synchronization for all health metrics.",
+    "writeMetricLabel": "Write {{metric}} to {{store}}",
+    "writeMetricHint": "Toggles writing this metric to the health store."
   },
   "auth": {
     "frontendUrl": "Frontend URL",
@@ -401,11 +413,25 @@
   "syncFrequency": {
     "title": "Background Sync",
     "enable": "Enable Background Sync",
-    "iosNote": "When enabled, the app will update in the background when your phone allows it. Manually syncing will always update right away."
+    "iosNote": "When enabled, the app will update in the background when your phone allows it. Manually syncing will always update right away.",
+    "toggleLabel": "Background sync",
+    "toggleHint": "Toggles background health data synchronization."
   },
   "syncOnOpen": {
     "title": "Sync on Open",
     "enable": "Sync when app opens",
-    "description": "When enabled, health data will sync automatically when you open the app."
+    "description": "When enabled, health data will sync automatically when you open the app.",
+    "toggleLabel": "Sync when app opens",
+    "toggleHint": "Toggles automatic synchronization when the app opens."
+  },
+  "date": {
+    "neverSynced": "Never synced",
+    "justNow": "Just now",
+    "minutesAgo_one": "{{count}} minute ago",
+    "minutesAgo_other": "{{count}} minutes ago",
+    "hoursAgo_one": "{{count}} hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
+    "yesterdayAt": "Yesterday at {{time}}",
+    "onDateAt": "{{date}} at {{time}}"
   }
 }

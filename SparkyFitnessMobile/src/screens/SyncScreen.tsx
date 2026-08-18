@@ -516,8 +516,8 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           <Text className="text-text-muted text-center mb-2">
             {lastSyncedTimeLoaded
               ? (lastSyncedTime
-                ? <><Text className="font-bold">{t('syncScreen.lastSynced', { defaultValue: 'Last synced:' })}</Text> {formatRelativeTime(new Date(lastSyncedTime))}</>
-                : formatRelativeTime(null))
+                ? <><Text className="font-bold">{t('syncScreen.lastSynced', { defaultValue: 'Last synced:' })}</Text> {formatRelativeTime(new Date(lastSyncedTime), t)}</>
+                : formatRelativeTime(null, t))
               : ' '}
           </Text>
           <HealthSourceLabel className="text-center mb-2" />

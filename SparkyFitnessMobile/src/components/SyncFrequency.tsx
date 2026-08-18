@@ -16,6 +16,8 @@ const SyncFrequency: React.FC<SyncFrequencyProps> = ({ isEnabled, onToggle }) =>
       <View className="flex-row justify-between items-center">
         <Text className="text-base text-text-primary">{t('syncFrequency.enable', { defaultValue: 'Enable Background Sync' })}</Text>
         <Switch
+          accessibilityLabel={t('syncFrequency.toggleLabel', { defaultValue: 'Background sync' })}
+          accessibilityHint={t('syncFrequency.toggleHint', { defaultValue: 'Toggles background health data synchronization.' })}
           onValueChange={onToggle}
           value={isEnabled}
         />

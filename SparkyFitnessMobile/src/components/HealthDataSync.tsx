@@ -86,6 +86,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   const groupedMetrics = groupMetricsByCategory(HEALTH_METRICS);
 
   const renderMetricItem = (metric: HealthMetric) => {
+    const metricLabel = t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel });
     const value = healthData?.[metric.id];
     const showLoading = isLoadingHealthData && !value;
 
@@ -98,7 +99,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel })}
+            {metricLabel}
           </Text>
         </View>
         {showLoading && (
@@ -113,6 +114,8 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           </Text>
         )}
         <Switch
+          accessibilityLabel={t('healthSync.syncMetricLabel', { defaultValue: 'Sync {{metric}}', metric: metricLabel })}
+          accessibilityHint={t('healthSync.syncMetricHint', { defaultValue: 'Toggles synchronization for this health metric.' })}
           onValueChange={(newValue) => handleToggleHealthMetric(metric, newValue)}
           value={healthMetricStates[metric.stateKey]}
         />
@@ -154,6 +157,8 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           </Text>
         </View>
         <Switch
+          accessibilityLabel={t('healthSync.enableAll', { defaultValue: 'Enable All Health Metrics' })}
+          accessibilityHint={t('healthSync.enableAllHint', { defaultValue: 'Toggles synchronization for all health metrics.' })}
           onValueChange={handleToggleAllMetrics}
           value={isAllMetricsEnabled}
         />

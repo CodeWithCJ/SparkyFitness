@@ -58,8 +58,26 @@ export const formatDateLabel = (dateString: string): string => {
 };
 
 // Format a timestamp as a human-readable relative time ("Just now", "3 minutes ago", etc.)
-export const formatRelativeTime = (timestamp: Date | null): string => {
-  if (!timestamp) return 'Never synced';
+export interface RelativeTimeTranslator {
+  (key: string, options: Record<string, unknown>): string;
+}
+
+export const formatRelativeTime = (timestamp: Date | null, t?: RelativeTimeTranslator): string => {
+  const translate = t ?? ((key: string, options: Record<string, unknown>) => {
+    const defaults: Record<string, string> = {
+      'date.neverSynced': 'Never synced',
+      'date.justNow': 'Just now',
+      'date.minutesAgo': '{{count}} minute{{plural}} ago',
+      'date.hoursAgo': '{{count}} hour{{plural}} ago',
+      'date.yesterdayAt': 'Yesterday at {{time}}',
+      'date.onDateAt': '{{date}} at {{time}}',
+    };
+    let value = defaults[key] ?? key;
+    for (const [name, replacement] of Object.entries(options)) value = value.replace(`{{${name}}}`, String(replacement));
+    if (key === 'date.minutesAgo' || key === 'date.hoursAgo') value = value.replace('{{plural}}', Number(options.count) === 1 ? '' : 's');
+    return value;
+  });
+  if (!timestamp) return translate('date.neverSynced', { defaultValue: 'Never synced' });
 
   const now = new Date();
   const diffMs = now.getTime() - timestamp.getTime();
@@ -69,23 +87,14 @@ export const formatRelativeTime = (timestamp: Date | null): string => {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffSeconds < 60) {
-    return 'Just now';
+    return translate('date.justNow', { defaultValue: 'Just now' });
   } else if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+    return translate('date.minutesAgo', { defaultValue: '{{count}} minute{{plural}} ago', count: diffMinutes, plural: diffMinutes === 1 ? '' : 's' });
   } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    return translate('date.hoursAgo', { defaultValue: '{{count}} hour{{plural}} ago', count: diffHours, plural: diffHours === 1 ? '' : 's' });
   } else if (diffDays === 1) {
-    return `Yesterday at ${timestamp.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit',
-    })}`;
+    return translate('date.yesterdayAt', { defaultValue: 'Yesterday at {{time}}', time: timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) });
   } else {
-    return `${timestamp.toLocaleDateString([], {
-      month: 'short',
-      day: 'numeric',
-    })} at ${timestamp.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit',
-    })}`;
+    return translate('date.onDateAt', { defaultValue: '{{date}} at {{time}}', date: timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' }), time: timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) });
   }
 };

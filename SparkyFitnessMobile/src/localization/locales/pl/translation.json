@@ -13,7 +13,13 @@
     "retry": "Spróbuj ponownie",
     "details": "Szczegóły",
     "error": "Błąd",
-    "delete": "Usuń"
+    "delete": "Usuń",
+    "collapseSection": "Zwiń tę sekcję",
+    "expandSection": "Rozwiń tę sekcję",
+    "itemCount_one": "{{count}} element",
+    "itemCount_few": "{{count}} elementy",
+    "itemCount_many": "{{count}} elementów",
+    "itemCount_other": "{{count}} elementów"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -27,7 +33,9 @@
       "managedByIOS": "Zarządzane przez iOS",
       "iosSettingsHint": "Zmień język tej aplikacji w Ustawieniach iOS",
       "openSettingsFailed": "Nie udało się otworzyć Ustawień iOS"
-    }
+    },
+    "lastSynced": "Ostatnia synchronizacja: {{time}}",
+    "addServer": "Dotknij, aby dodać serwer"
   },
   "languageSettings": {
     "subtitle": "Użyj języka urządzenia lub wybierz język dla SparkyFitness."
@@ -224,7 +232,13 @@
     "removeFrom": "Usuń z {{store}}",
     "allTime": "Cały okres",
     "pickDateRange": "Wybierz zakres dat…",
-    "removeData": "Usuń dane SparkyFitness z {{store}}"
+    "removeData": "Usuń dane SparkyFitness z {{store}}",
+    "source": "Źródło:",
+    "syncMetricLabel": "Synchronizuj: {{metric}}",
+    "syncMetricHint": "Włącza lub wyłącza synchronizację tego parametru zdrowotnego.",
+    "enableAllHint": "Włącza lub wyłącza synchronizację wszystkich parametrów zdrowotnych.",
+    "writeMetricLabel": "Zapisuj {{metric}} w {{store}}",
+    "writeMetricHint": "Włącza lub wyłącza zapis tego parametru w magazynie danych zdrowotnych."
   },
   "auth": {
     "frontendUrl": "Adres URL frontendu",
@@ -401,11 +415,29 @@
   "syncFrequency": {
     "title": "Synchronizacja w tle",
     "enable": "Włącz synchronizację w tle",
-    "iosNote": "Po włączeniu aplikacja będzie aktualizować dane w tle, gdy telefon na to pozwoli. Synchronizacja ręczna zawsze rozpocznie się od razu."
+    "iosNote": "Po włączeniu aplikacja będzie aktualizować dane w tle, gdy telefon na to pozwoli. Synchronizacja ręczna zawsze rozpocznie się od razu.",
+    "toggleLabel": "Synchronizacja w tle",
+    "toggleHint": "Włącza lub wyłącza synchronizację danych zdrowotnych w tle."
   },
   "syncOnOpen": {
     "title": "Synchronizuj przy otwarciu",
     "enable": "Synchronizuj po otwarciu aplikacji",
-    "description": "Po włączeniu dane zdrowotne będą synchronizowane automatycznie po otwarciu aplikacji."
+    "description": "Po włączeniu dane zdrowotne będą synchronizowane automatycznie po otwarciu aplikacji.",
+    "toggleLabel": "Synchronizuj po otwarciu aplikacji",
+    "toggleHint": "Włącza lub wyłącza automatyczną synchronizację po otwarciu aplikacji."
+  },
+  "date": {
+    "neverSynced": "Brak synchronizacji",
+    "justNow": "Właśnie teraz",
+    "minutesAgo_one": "{{count}} minutę temu",
+    "minutesAgo_few": "{{count}} minuty temu",
+    "minutesAgo_many": "{{count}} minut temu",
+    "minutesAgo_other": "{{count}} minut temu",
+    "hoursAgo_one": "{{count}} godzinę temu",
+    "hoursAgo_few": "{{count}} godziny temu",
+    "hoursAgo_many": "{{count}} godzin temu",
+    "hoursAgo_other": "{{count}} godzin temu",
+    "yesterdayAt": "Wczoraj o {{time}}",
+    "onDateAt": "{{date}} o {{time}}"
   }
 }

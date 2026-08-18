@@ -16,6 +16,8 @@ const SyncOnOpen: React.FC<SyncOnOpenProps> = ({ isEnabled, onToggle }) => {
       <View className="flex-row justify-between items-center">
         <Text className="text-base text-text-primary">{t('syncOnOpen.enable', { defaultValue: 'Sync when app opens' })}</Text>
         <Switch
+          accessibilityLabel={t('syncOnOpen.toggleLabel', { defaultValue: 'Sync when app opens' })}
+          accessibilityHint={t('syncOnOpen.toggleHint', { defaultValue: 'Toggles automatic synchronization when the app opens.' })}
           onValueChange={onToggle}
           value={isEnabled}
         />
