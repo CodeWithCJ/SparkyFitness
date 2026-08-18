@@ -132,7 +132,7 @@ function DashboardStackScreen() {
           name="DashboardRoot"
           component={SafeDashboard as React.ComponentType}
           options={{
-            title: t('navigation.dashboard', { defaultValue: 'Dashboard' }),
+            title: 'Dashboard',
             headerBackTitle: t('navigation.dashboard', { defaultValue: 'Dashboard' }),
           }}
         />
@@ -158,7 +158,7 @@ function DiaryStackScreen() {
           name="DiaryRoot"
           component={SafeDiary as React.ComponentType}
           options={{
-            title: t('navigation.diary', { defaultValue: 'Diary' }),
+            title: 'Diary',
             headerBackTitle: t('navigation.diary', { defaultValue: 'Diary' }),
           }}
         />
@@ -180,7 +180,7 @@ function LibraryStackScreen() {
   return (
     <View className="flex-1">
       <LibraryStack.Navigator screenOptions={screenOptions}>
-        <LibraryStack.Screen name="LibraryRoot" component={SafeLibrary as React.ComponentType} options={{ title: t('navigation.library', { defaultValue: 'Library' }), headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) }} />
+        <LibraryStack.Screen name="LibraryRoot" component={SafeLibrary as React.ComponentType} options={{ title: 'Library', headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) }} />
       </LibraryStack.Navigator>
       <NativeTabsBannerOverlay />
     </View>
@@ -199,7 +199,7 @@ function SettingsStackScreen() {
   return (
     <View className="flex-1">
       <SettingsStack.Navigator screenOptions={screenOptions}>
-        <SettingsStack.Screen name="SettingsRoot" component={SafeSettings as React.ComponentType} options={{ title: t('navigation.settings', { defaultValue: 'Settings' }), headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) }} />
+        <SettingsStack.Screen name="SettingsRoot" component={SafeSettings as React.ComponentType} options={{ title: 'Settings', headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) }} />
       </SettingsStack.Navigator>
       <NativeTabsBannerOverlay />
     </View>
