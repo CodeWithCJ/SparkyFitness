@@ -1,6 +1,7 @@
 import type { SupplementTotals } from '@workspace/shared';
 import {
   resolveSupplementTotals,
+  addSupplementCustomNutrients,
   FOOD_VARIANT_NUTRIENT_FIELDS,
 } from '@workspace/shared';
 import { getDietTemplate } from '@/constants/dietTemplates';
@@ -326,6 +327,12 @@ export const calculateNutrition = (
  * That was already untrue of the range query in `reportRepository`, and the inconsistency
  * it was avoiding is the one users hit.
  *
+ * Custom nutrients are folded in as well, and they are where most micronutrients actually
+ * live: only six of the catalog's entries have a fixed column, so a magnesium or vitamin D
+ * supplement contributes nothing the loop below can reach. `NutritionSummaryCard` already
+ * falls back to `dayTotals.custom_nutrients` for a nutrient with no fixed field, so this
+ * needs no display change to become visible.
+ *
  * Returns the food totals unchanged when there is no supplement arm, so a day with no
  * supplements is byte-for-byte what it was before supplements existed.
  */
@@ -342,6 +349,13 @@ export const addSupplementTotals = <T extends MealTotals>(
     const food = Number(foodTotals[field]) || 0;
     (combined as MealTotals)[field] = food + supplements[field];
   }
+  // Replaced with a new map rather than mutated: `foodTotals.custom_nutrients` is the
+  // object the caller's food totals hold, and adding doses into it in place would
+  // double-count as soon as anything folds the same day again.
+  combined.custom_nutrients = addSupplementCustomNutrients(
+    foodTotals.custom_nutrients,
+    supplements
+  );
   return combined;
 };
 
