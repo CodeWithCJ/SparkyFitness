@@ -154,7 +154,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             iconColor={catSlate}
             accessibilityLabel={
               activeConfig
-                ? t(isConnected ? 'settings.serverConnected' : 'settings.serverConnectionFailed', { defaultValue: isConnected ? 'Server settings. Connected.' : 'Server settings. Connection failed.' })
+              ? (isConnected
+                ? t('settings.serverConnected', { defaultValue: 'Server settings. Connected.' })
+                : t('settings.serverConnectionFailed', { defaultValue: 'Server settings. Connection failed.' }))
                 : t('settings.serverNotConfigured', { defaultValue: 'Server settings. No server configured.' })
             }
           />
