@@ -22,7 +22,8 @@
     "itemCount_other": "{{count}} elementów",
     "off": "Wyłączone",
     "openSelectionMenu": "Otwiera menu wyboru",
-    "selectOptionHint": "Stuknij dwukrotnie, aby wybrać tę opcję"
+    "selectOptionHint": "Stuknij dwukrotnie, aby wybrać tę opcję",
+    "success": "Sukces"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -837,5 +838,110 @@
     "asNeeded": "W razie potrzeby",
     "taper": "Stopniowe zmniejszanie dawki",
     "at": "{{frequency}} o {{time}}"
+  },
+  "devTools": {
+    "title": "Narzędzia deweloperskie",
+    "description": "Te narzędzia są widoczne tylko w wersjach deweloperskich.",
+    "seed": {
+      "title": "Dodaj testowe dane zdrowotne",
+      "description": "Dodaj przykładowe dane zdrowotne do testów.",
+      "sevenDays": "7 dni",
+      "fourteenDays": "14 dni",
+      "thirtyDays": "30 dni",
+      "oneYear": "1 rok",
+      "steps": "(Kroki)",
+      "oldData": "Stare dane",
+      "oldRange": "(1–3 lata)",
+      "richWorkout": "Bogaty trening",
+      "richWorkoutDetail": "(Trasa+HR+Okrążenia)",
+      "richWorkoutIosDetail": "(Trasa+HR)",
+      "richStrength": "Trening siłowy",
+      "richStrengthDetail": "(Nierówne HR)"
+    },
+    "healthConnect": {
+      "title": "Health Connect",
+      "data": "Dane Health Connect",
+      "backgroundPermission": {
+        "title": "Uprawnienie dostępu w tle",
+        "granted": "Uprawnienie dostępu w tle zostało przyznane.",
+        "notGranted": "Uprawnienie dostępu w tle NIE zostało przyznane."
+      }
+    },
+    "sync": {
+      "title": "Synchronizacja w tle",
+      "description": "Ręcznie uruchom proces synchronizacji w tle.",
+      "trigger": "Uruchom synchronizację",
+      "checkPermission": "Sprawdź uprawnienie w tle"
+    },
+    "auth": {
+      "title": "Uwierzytelnianie",
+      "description": "Uruchom modale uwierzytelniania do testów.",
+      "reauth": "Pokaż ReauthModal"
+    },
+    "whatsNew": {
+      "title": "Baner „Co nowego”",
+      "description": "Wyczyść zapamiętaną wersję, aby baner ponownie pojawił się nad paskiem kart.",
+      "reset": "Zresetuj baner"
+    },
+    "announcement": {
+      "title": "Ogłoszenie systemowe",
+      "description": "Wyczyść flagę zamknięcia, aby aktywne ogłoszenia systemowe pojawiły się ponownie.",
+      "reset": "Zresetuj ogłoszenie"
+    },
+    "popovers": {
+      "title": "Podpowiedzi wyszukiwania żywności",
+      "description": "Wyczyść flagę wyświetlenia, aby podpowiedź pojawiła się ponownie przy następnym wyszukiwaniu żywności.",
+      "sources": "Wprowadzenie do źródeł",
+      "provider": "Przełącznik źródeł"
+    },
+    "toast": {
+      "syncCompleted": "Synchronizacja w tle zakończona. Szczegóły znajdziesz w logach.",
+      "syncFailed": "Synchronizacja nie powiodła się: {{message}}",
+      "healthSeeded_one": "Dodano {{count}} rekord danych zdrowotnych z ostatnich {{days}} dni.",
+      "healthSeeded_few": "Dodano {{count}} rekordy danych zdrowotnych z ostatnich {{days}} dni.",
+      "healthSeeded_many": "Dodano {{count}} rekordów danych zdrowotnych z ostatnich {{days}} dni.",
+      "healthSeeded_other": "Dodano {{count}} rekordu danych zdrowotnych z ostatnich {{days}} dni.",
+      "healthSeedFailed": "Nie udało się dodać danych zdrowotnych.",
+      "healthSeedFailedWithMessage": "Nie udało się dodać danych zdrowotnych: {{message}}",
+      "historicalSeeded_one": "Dodano {{count}} historyczny rekord kroków z ostatniego roku.",
+      "historicalSeeded_few": "Dodano {{count}} historyczne rekordy kroków z ostatniego roku.",
+      "historicalSeeded_many": "Dodano {{count}} historycznych rekordów kroków z ostatniego roku.",
+      "historicalSeeded_other": "Dodano {{count}} historycznego rekordu kroków z ostatniego roku.",
+      "historicalSeedFailed": "Nie udało się dodać historycznych danych kroków.",
+      "historicalSeedFailedWithMessage": "Nie udało się dodać historycznych danych kroków: {{message}}",
+      "reset": "Zresetowano",
+      "whatsNewReset": "Baner „Co nowego” pojawi się ponownie.",
+      "announcementReset": "Modal ogłoszenia systemowego pojawi się ponownie.",
+      "announcementResetFailed": "Nie udało się zresetować ogłoszenia.",
+      "popoverReset": "Podpowiedź „{{label}}” pojawi się ponownie.",
+      "popoverResetFailed": "Nie udało się zresetować podpowiedzi.",
+      "seedOldSeeded_one": "Dodano {{count}} rekord sprzed 1–3 lat.",
+      "seedOldSeeded_few": "Dodano {{count}} rekordy sprzed 1–3 lat.",
+      "seedOldSeeded_many": "Dodano {{count}} rekordów sprzed 1–3 lat.",
+      "seedOldSeeded_other": "Dodano {{count}} rekordów sprzed 1–3 lat.",
+      "seedOldFailedWithMessage": "Nie udało się dodać starych danych zdrowotnych: {{message}}",
+      "seedOldFailed": "Nie udało się dodać starych danych zdrowotnych.",
+      "richWorkoutSeeded": "Dodano 12-minutowy spacer z trasą, tętnem, prędkością i okrążeniami. Uruchom synchronizację na pierwszym planie, aby go pobrać.",
+      "richWorkoutIosSeeded": "Dodano 12-minutowy spacer z trasą i tętnem. Uruchom synchronizację na pierwszym planie, aby go pobrać.",
+      "richStrengthSeeded": "Dodano 35-minutową sesję siłową z nierównym tętnem (bez trasy/powtórzeń — urządzenia ich nie raportują). Uruchom synchronizację na pierwszym planie, aby ją pobrać.",
+      "richStrengthIosSeeded": "Dodano 35-minutową sesję siłową z nierównym tętnem (bez trasy/okrążeń/powtórzeń — urządzenia ich nie raportują). Uruchom synchronizację na pierwszym planie, aby ją pobrać.",
+      "richWorkoutFailed": "Nie udało się dodać bogatego treningu.",
+      "richWorkoutFailedWithMessage": "Nie udało się dodać bogatego treningu: {{message}}",
+      "richStrengthFailed": "Nie udało się dodać treningu siłowego.",
+      "richStrengthFailedWithMessage": "Nie udało się dodać treningu siłowego: {{message}}"
+    },
+    "gallery": {
+      "title": "Galeria karty cyklu",
+      "description": "Podgląd na fikcyjnych danych karty cyklu na pulpicie w każdej fazie. Układy ciąży i dyskretne korzystają z prawdziwych danych: zmień tryb w ustawieniach Hub.",
+      "cycleTracking": "Śledzenie cyklu",
+      "state": {
+        "menstrual": "Miesiączka — dzień 2",
+        "follicular": "Faza folikularna — dzień 8",
+        "fertile": "Okno płodności — dzień 12",
+        "ovulation": "Owulacja — dzień 14",
+        "luteal": "Faza lutealna — dzień 21",
+        "late": "Opóźniona miesiączka — dzień 31"
+      }
+    }
   }
 }

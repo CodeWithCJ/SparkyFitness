@@ -20,7 +20,8 @@
     "itemCount_other": "{{count}} items",
     "off": "Off",
     "openSelectionMenu": "Opens selection menu",
-    "selectOptionHint": "Double tap to select this option"
+    "selectOptionHint": "Double tap to select this option",
+    "success": "Success"
   },
   "settings": {
     "app": "App Settings",
@@ -831,5 +832,104 @@
     "asNeeded": "As needed",
     "taper": "Taper",
     "at": "{{frequency}} at {{time}}"
+  },
+  "devTools": {
+    "title": "Dev Tools",
+    "description": "These tools are only visible in development builds.",
+    "seed": {
+      "title": "Seed Health Data",
+      "description": "Insert sample health data for testing.",
+      "sevenDays": "7 Days",
+      "fourteenDays": "14 Days",
+      "thirtyDays": "30 Days",
+      "oneYear": "1 Year",
+      "steps": "(Steps)",
+      "oldData": "Old Data",
+      "oldRange": "(1-3 Years)",
+      "richWorkout": "Rich Workout",
+      "richWorkoutDetail": "(Route+HR+Laps)",
+      "richWorkoutIosDetail": "(Route+HR)",
+      "richStrength": "Rich Strength",
+      "richStrengthDetail": "(Spiky HR)"
+    },
+    "healthConnect": {
+      "title": "Health Connect",
+      "data": "Health Connect Data",
+      "backgroundPermission": {
+        "title": "Background Access Permission",
+        "granted": "Background access permission is granted.",
+        "notGranted": "Background access permission is NOT granted."
+      }
+    },
+    "sync": {
+      "title": "Background Sync",
+      "description": "Manually trigger the background sync process.",
+      "trigger": "Trigger Sync",
+      "checkPermission": "Check BG Permission"
+    },
+    "auth": {
+      "title": "Auth",
+      "description": "Trigger auth modals for testing.",
+      "reauth": "Show ReauthModal"
+    },
+    "whatsNew": {
+      "title": "What's New Banner",
+      "description": "Clear the last-seen version so the banner re-appears above the tab bar.",
+      "reset": "Reset Banner"
+    },
+    "announcement": {
+      "title": "System Announcement",
+      "description": "Clear the dismissed announcement flag so active system announcements re-appear.",
+      "reset": "Reset Announcement"
+    },
+    "popovers": {
+      "title": "Food Search Popovers",
+      "description": "Clear a seen flag so its coaching popover re-appears on the next food search.",
+      "sources": "Sources Intro",
+      "provider": "Source Switcher"
+    },
+    "toast": {
+      "syncCompleted": "Background sync completed. Check Logs for details.",
+      "syncFailed": "Sync failed: {{message}}",
+      "healthSeeded_one": "Seeded {{count}} health record for the past {{days}} days.",
+      "healthSeeded_other": "Seeded {{count}} health records for the past {{days}} days.",
+      "healthSeedFailed": "Failed to seed health data.",
+      "healthSeedFailedWithMessage": "Failed to seed health data: {{message}}",
+      "historicalSeeded_one": "Seeded {{count}} historical step record across the past year.",
+      "historicalSeeded_other": "Seeded {{count}} historical step records across the past year.",
+      "historicalSeedFailed": "Failed to seed historical step data.",
+      "historicalSeedFailedWithMessage": "Failed to seed historical step data: {{message}}",
+      "reset": "Reset",
+      "whatsNewReset": "What's New banner will re-appear.",
+      "announcementReset": "System announcement modal will re-appear.",
+      "announcementResetFailed": "Could not reset announcement.",
+      "popoverReset": "{{label}} popover will re-appear.",
+      "popoverResetFailed": "Could not reset popover.",
+      "seedOldSeeded_one": "Seeded {{count}} record in clusters 1-3 years back.",
+      "seedOldSeeded_other": "Seeded {{count}} records in clusters 1-3 years back.",
+      "seedOldFailedWithMessage": "Failed to seed old health data: {{message}}",
+      "seedOldFailed": "Failed to seed old health data.",
+      "richWorkoutSeeded": "Seeded a 12-minute walk with route, HR, speed and laps. Run a foreground sync to pull it in.",
+      "richWorkoutIosSeeded": "Seeded a 12-minute walk with route and HR. Run a foreground sync to pull it in.",
+      "richStrengthSeeded": "Seeded a 35-minute strength session with spiky HR (no route/reps — devices never report those). Run a foreground sync to pull it in.",
+      "richStrengthIosSeeded": "Seeded a 35-minute strength session with spiky HR (no route/laps/reps — devices never report those). Run a foreground sync to pull it in.",
+      "richWorkoutFailed": "Failed to seed rich workout.",
+      "richWorkoutFailedWithMessage": "Failed to seed rich workout: {{message}}",
+      "richStrengthFailed": "Failed to seed rich strength workout.",
+      "richStrengthFailedWithMessage": "Failed to seed rich strength workout: {{message}}"
+    },
+    "gallery": {
+      "title": "Cycle Card Gallery",
+      "description": "Fake-data preview of the dashboard cycle card in every phase. The pregnancy and discreet layouts follow real data: switch mode in Hub settings.",
+      "cycleTracking": "Cycle Tracking",
+      "state": {
+        "menstrual": "Menstrual — day 2",
+        "follicular": "Follicular — day 8",
+        "fertile": "Fertile window — day 12",
+        "ovulation": "Ovulation — day 14",
+        "luteal": "Luteal — day 21",
+        "late": "Period late — day 31"
+      }
+    }
   }
 }
