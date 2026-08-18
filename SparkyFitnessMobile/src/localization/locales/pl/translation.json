@@ -30,7 +30,8 @@
     "exercises": "Ćwiczenia",
     "diary": "Dziennik",
     "details": "Szczegóły",
-    "dashboard": "Pulpit"
+    "dashboard": "Pulpit",
+    "add": "Dodaj"
   },
   "notifications": {
     "title": "Powiadomienia"

@@ -30,7 +30,8 @@
     "exercises": "Exercises",
     "diary": "Diary",
     "details": "Details",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "add": "Add"
   },
   "notifications": {
     "title": "Notifications"
