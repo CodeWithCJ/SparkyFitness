@@ -957,7 +957,7 @@
       "richWorkoutDetail": "(Trasa+HR+Okrążenia)",
       "richWorkoutIosDetail": "(Trasa+HR)",
       "richStrength": "Trening siłowy",
-      "richStrengthDetail": "(Nierówne HR)"
+      "richStrengthDetail": "(Zmienna częstość tętna)"
     },
     "healthConnect": {
       "title": "Health Connect",
@@ -1024,8 +1024,8 @@
       "seedOldFailed": "Nie udało się dodać starych danych zdrowotnych.",
       "richWorkoutSeeded": "Dodano 12-minutowy spacer z trasą, tętnem, prędkością i okrążeniami. Uruchom synchronizację na pierwszym planie, aby go pobrać.",
       "richWorkoutIosSeeded": "Dodano 12-minutowy spacer z trasą i tętnem. Uruchom synchronizację na pierwszym planie, aby go pobrać.",
-      "richStrengthSeeded": "Dodano 35-minutową sesję siłową z nierównym tętnem (bez trasy/powtórzeń — urządzenia ich nie raportują). Uruchom synchronizację na pierwszym planie, aby ją pobrać.",
-      "richStrengthIosSeeded": "Dodano 35-minutową sesję siłową z nierównym tętnem (bez trasy/okrążeń/powtórzeń — urządzenia ich nie raportują). Uruchom synchronizację na pierwszym planie, aby ją pobrać.",
+      "richStrengthSeeded": "Dodano 35-minutową sesję siłową ze zmienną częstością tętna (bez trasy i powtórzeń — urządzenia ich nie raportują). Uruchom synchronizację na pierwszym planie, aby ją pobrać.",
+      "richStrengthIosSeeded": "Dodano 35-minutową sesję siłową ze zmienną częstością tętna (bez trasy, okrążeń i powtórzeń — urządzenia ich nie raportują). Uruchom synchronizację na pierwszym planie, aby ją pobrać.",
       "richWorkoutFailed": "Nie udało się dodać bogatego treningu.",
       "richWorkoutFailedWithMessage": "Nie udało się dodać bogatego treningu: {{message}}",
       "richStrengthFailed": "Nie udało się dodać treningu siłowego.",
@@ -1033,7 +1033,7 @@
     },
     "gallery": {
       "title": "Galeria karty cyklu",
-      "description": "Podgląd na fikcyjnych danych karty cyklu na pulpicie w każdej fazie. Układy ciąży i dyskretne korzystają z prawdziwych danych: zmień tryb w ustawieniach Hub.",
+      "description": "Podgląd karty cyklu na przykładowych danych w każdej fazie. Widoki ciąży i trybu dyskretnego odwzorowują prawdziwe dane — zmień tryb w ustawieniach Hub.",
       "cycleTracking": "Śledzenie cyklu",
       "state": {
         "menstrual": "Miesiączka — dzień 2",
@@ -1041,7 +1041,8 @@
         "fertile": "Okno płodności — dzień 12",
         "ovulation": "Owulacja — dzień 14",
         "luteal": "Faza lutealna — dzień 21",
-        "late": "Opóźniona miesiączka — dzień 31"
+        "late": "Opóźniona miesiączka — dzień 31",
+        "unknown": "Faza cyklu"
       }
     }
   },
@@ -1330,5 +1331,19 @@
     "tryConnection": "Sprawdź połączenie i spróbuj ponownie.",
     "tryOwnership": "Zmień filtr własności.",
     "durationSpan": "Czas trwania treningu: {{span}}"
+  },
+  "cycleCard": {
+    "phase": {
+      "period": "Miesiączka",
+      "follicular": "Faza folikularna",
+      "fertile": "Szacowane okno płodności",
+      "ovulation": "Szacowana owulacja",
+      "luteal": "Faza lutealna",
+      "active": "Cykl aktywny"
+    },
+    "periodLate": "Miesiączka spóźnia się {{count}} {{unit}}",
+    "nextPeriod": "Przewidywana miesiączka: {{date}}",
+    "day": "Dzień {{day}}",
+    "active": "Aktywny"
   }
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -6,7 +7,7 @@ import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useCurrentPregnancy, usePregnancyOverview } from '../hooks/usePregnancy';
 import { useCyclePredictionData } from '../hooks/useCyclePredictionData';
-import { getPhaseDisplayName, getPhaseColor } from '../utils/cycleDisplayUtils';
+import { getPhaseColor } from '../utils/cycleDisplayUtils';
 import { formatDate } from '../utils/dateUtils';
 import { babyWeek } from '@workspace/shared';
 import WombScene from './wellness/pregnancy/WombScene';
@@ -63,9 +64,19 @@ export const CycleCardRingContent: React.FC<{
   title: string;
   info: CycleRingContentInfo;
 }> = ({ title, info }) => {
+  const { t } = useTranslation();
   const tokens = useWellnessTokens();
   const [textAccent] = useCSSVariable(['--color-accent-primary']) as [string];
-  const phaseName = getPhaseDisplayName(info.phase, false);
+  const phaseName = (() => {
+    switch (info.phase) {
+      case 'menstrual': return t('cycleCard.phase.period', { defaultValue: 'Period' });
+      case 'follicular': return t('cycleCard.phase.follicular', { defaultValue: 'Follicular Phase' });
+      case 'fertile': return t('cycleCard.phase.fertile', { defaultValue: 'Est. Fertile Window' });
+      case 'ovulation': return t('cycleCard.phase.ovulation', { defaultValue: 'Est. Ovulation' });
+      case 'luteal': return t('cycleCard.phase.luteal', { defaultValue: 'Luteal Phase' });
+      default: return t('cycleCard.phase.active', { defaultValue: 'Cycle Active' });
+    }
+  })();
   const phaseColor = getPhaseColor(info.phase, tokens);
 
   return (
@@ -82,11 +93,11 @@ export const CycleCardRingContent: React.FC<{
 
           {info.daysLate > 0 ? (
             <Text className="text-sm font-semibold text-text-primary mt-0.5">
-              Period {info.daysLate} {info.daysLate === 1 ? 'day' : 'days'} late
+              {t('cycleCard.periodLate', { defaultValue: 'Period {{count}} {{unit}} late', count: info.daysLate, unit: info.daysLate === 1 ? 'day' : 'days' })}
             </Text>
           ) : info.nextPeriodStart ? (
             <Text className="text-sm text-text-secondary mt-0.5">
-              Next period est. {formatDate(info.nextPeriodStart)}
+              {t('cycleCard.nextPeriod', { defaultValue: 'Next period est. {{date}}', date: formatDate(info.nextPeriodStart) })}
             </Text>
           ) : null}
         </View>
@@ -101,7 +112,7 @@ export const CycleCardRingContent: React.FC<{
         fertileEndDay={info.fertileEndDay}
         ovulationDay={info.ovulationDay}
         centerLabel=""
-        centerValue={info.day > 0 ? `Day ${info.day}` : 'Active'}
+        centerValue={info.day > 0 ? t('cycleCard.day', { defaultValue: 'Day {{day}}', day: info.day }) : t('cycleCard.active', { defaultValue: 'Active' })}
         centerSub=""
         size={98}
         strokeWidth={7.5}

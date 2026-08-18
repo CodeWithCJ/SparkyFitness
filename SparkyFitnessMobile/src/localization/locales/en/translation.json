@@ -947,7 +947,7 @@
       "richWorkoutDetail": "(Route+HR+Laps)",
       "richWorkoutIosDetail": "(Route+HR)",
       "richStrength": "Rich Strength",
-      "richStrengthDetail": "(Spiky HR)"
+      "richStrengthDetail": "(Variable HR)"
     },
     "healthConnect": {
       "title": "Health Connect",
@@ -1008,8 +1008,8 @@
       "seedOldFailed": "Failed to seed old health data.",
       "richWorkoutSeeded": "Seeded a 12-minute walk with route, HR, speed and laps. Run a foreground sync to pull it in.",
       "richWorkoutIosSeeded": "Seeded a 12-minute walk with route and HR. Run a foreground sync to pull it in.",
-      "richStrengthSeeded": "Seeded a 35-minute strength session with spiky HR (no route/reps — devices never report those). Run a foreground sync to pull it in.",
-      "richStrengthIosSeeded": "Seeded a 35-minute strength session with spiky HR (no route/laps/reps — devices never report those). Run a foreground sync to pull it in.",
+      "richStrengthSeeded": "Seeded a 35-minute strength session with variable HR (no route/reps — devices never report those). Run a foreground sync to pull it in.",
+      "richStrengthIosSeeded": "Seeded a 35-minute strength session with variable HR (no route/laps/reps — devices never report those). Run a foreground sync to pull it in.",
       "richWorkoutFailed": "Failed to seed rich workout.",
       "richWorkoutFailedWithMessage": "Failed to seed rich workout: {{message}}",
       "richStrengthFailed": "Failed to seed rich strength workout.",
@@ -1025,7 +1025,8 @@
         "fertile": "Fertile window — day 12",
         "ovulation": "Ovulation — day 14",
         "luteal": "Luteal — day 21",
-        "late": "Period late — day 31"
+        "late": "Period late — day 31",
+        "unknown": "Cycle phase"
       }
     }
   },
@@ -1310,5 +1311,19 @@
     "searchWorkoutPresets": "Search workout presets...",
     "workoutPresetCount_one": "{{formattedCount}} exercise",
     "workoutPresetCount_other": "{{formattedCount}} exercises"
+  },
+  "cycleCard": {
+    "phase": {
+      "period": "Period",
+      "follicular": "Follicular Phase",
+      "fertile": "Est. Fertile Window",
+      "ovulation": "Est. Ovulation",
+      "luteal": "Luteal Phase",
+      "active": "Cycle Active"
+    },
+    "periodLate": "Period {{count}} {{unit}} late",
+    "nextPeriod": "Next period est. {{date}}",
+    "day": "Day {{day}}",
+    "active": "Active"
   }
 }

@@ -23,7 +23,9 @@ const CYCLE_GALLERY_BASE: Omit<CycleRingContentInfo, 'day' | 'phase'> = {
   daysLate: 0,
 };
 
-const CYCLE_GALLERY_STATES: { phaseKey: string; info: CycleRingContentInfo }[] = [
+type CycleGalleryPhase = 'menstrual' | 'follicular' | 'fertile' | 'ovulation' | 'luteal' | 'late';
+
+const CYCLE_GALLERY_STATES: { phaseKey: CycleGalleryPhase; info: CycleRingContentInfo }[] = [
   { phaseKey: 'menstrual', info: { ...CYCLE_GALLERY_BASE, day: 2, phase: 'menstrual' } },
   { phaseKey: 'follicular', info: { ...CYCLE_GALLERY_BASE, day: 8, phase: 'follicular' } },
   { phaseKey: 'fertile', info: { ...CYCLE_GALLERY_BASE, day: 12, phase: 'fertile' } },
@@ -35,7 +37,7 @@ const CYCLE_GALLERY_STATES: { phaseKey: string; info: CycleRingContentInfo }[] =
   },
 ];
 
-const cycleGalleryLabel = (t: ReturnType<typeof useTranslation>['t'], phaseKey: string): string => {
+const cycleGalleryLabel = (t: ReturnType<typeof useTranslation>['t'], phaseKey: CycleGalleryPhase): string => {
   switch (phaseKey) {
     case 'menstrual': return t('devTools.gallery.state.menstrual', { defaultValue: 'Menstrual — day 2' });
     case 'follicular': return t('devTools.gallery.state.follicular', { defaultValue: 'Follicular — day 8' });
@@ -43,7 +45,7 @@ const cycleGalleryLabel = (t: ReturnType<typeof useTranslation>['t'], phaseKey: 
     case 'ovulation': return t('devTools.gallery.state.ovulation', { defaultValue: 'Ovulation — day 14' });
     case 'luteal': return t('devTools.gallery.state.luteal', { defaultValue: 'Luteal — day 21' });
     case 'late': return t('devTools.gallery.state.late', { defaultValue: 'Period late — day 31' });
-    default: return phaseKey;
+    default: return t('devTools.gallery.state.unknown', { defaultValue: 'Cycle phase' });
   }
 };
 
@@ -70,9 +72,9 @@ const DevTools: React.FC = () => {
     try {
       const result = await seedHistoricalSteps();
       if (result.success) {
-        Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.historicalSeeded', { defaultValue: 'Seeded {{count}} historical step records across the past year.', count: result.recordsInserted }) });
+        Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.historicalSeeded', { defaultValue: 'Seeded {{count}} historical step records across the past year.', defaultValue_one: 'Seeded {{count}} historical step record across the past year.', defaultValue_other: 'Seeded {{count}} historical step records across the past year.', count: result.recordsInserted }) });
       } else {
-        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: result.error || t('devTools.toast.historicalSeedFailed', { defaultValue: 'Failed to seed historical step data.' }) });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('devTools.toast.historicalSeedFailed', { defaultValue: 'Failed to seed historical step data.' }) });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -87,9 +89,9 @@ const DevTools: React.FC = () => {
     try {
       const result = await seedOldHealthData();
       if (result.success) {
-        Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.seedOldSeeded', { defaultValue: 'Seeded {{count}} records in clusters 1-3 years back.', count: result.recordsInserted }) });
+        Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.seedOldSeeded', { defaultValue: 'Seeded {{count}} records in clusters 1-3 years back.', defaultValue_one: 'Seeded {{count}} record in clusters 1-3 years back.', defaultValue_other: 'Seeded {{count}} records in clusters 1-3 years back.', count: result.recordsInserted }) });
       } else {
-        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: result.error || t('devTools.toast.seedOldFailed', { defaultValue: 'Failed to seed old health data.' }) });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('devTools.toast.seedOldFailed', { defaultValue: 'Failed to seed old health data.' }) });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -104,9 +106,9 @@ const DevTools: React.FC = () => {
     try {
       const result = await seedHealthData(days);
       if (result.success) {
-        Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.healthSeeded', { defaultValue: 'Seeded {{count}} health records for the past {{days}} days.', count: result.recordsInserted, days }) });
+        Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.healthSeeded', { defaultValue: 'Seeded {{count}} health records for the past {{days}} days.', defaultValue_one: 'Seeded {{count}} health record for the past {{days}} days.', defaultValue_other: 'Seeded {{count}} health records for the past {{days}} days.', count: result.recordsInserted, days }) });
       } else {
-        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: result.error || t('devTools.toast.healthSeedFailed', { defaultValue: 'Failed to seed health data.' }) });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('devTools.toast.healthSeedFailed', { defaultValue: 'Failed to seed health data.' }) });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -123,7 +125,7 @@ const DevTools: React.FC = () => {
       if (result.success) {
         Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.richWorkoutSeeded', { defaultValue: 'Seeded a 12-minute walk with route, HR, speed and laps. Run a foreground sync to pull it in.' }) });
       } else {
-        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: result.error || t('devTools.toast.richWorkoutFailed', { defaultValue: 'Failed to seed rich workout.' }) });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('devTools.toast.richWorkoutFailed', { defaultValue: 'Failed to seed rich workout.' }) });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -140,7 +142,7 @@ const DevTools: React.FC = () => {
       if (result.success) {
         Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.richStrengthSeeded', { defaultValue: 'Seeded a 35-minute strength session with spiky HR (no route/reps — devices never report those). Run a foreground sync to pull it in.' }) });
       } else {
-        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: result.error || t('devTools.toast.richStrengthFailed', { defaultValue: 'Failed to seed rich strength workout.' }) });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('devTools.toast.richStrengthFailed', { defaultValue: 'Failed to seed rich strength workout.' }) });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -157,7 +159,7 @@ const DevTools: React.FC = () => {
       if (result.success) {
         Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.richWorkoutIosSeeded', { defaultValue: 'Seeded a 12-minute walk with route and HR. Run a foreground sync to pull it in.' }) });
       } else {
-        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: result.error || t('devTools.toast.richWorkoutFailed', { defaultValue: 'Failed to seed rich workout.' }) });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('devTools.toast.richWorkoutFailed', { defaultValue: 'Failed to seed rich workout.' }) });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -174,7 +176,7 @@ const DevTools: React.FC = () => {
       if (result.success) {
         Toast.show({ type: 'success', text1: t('common.success', { defaultValue: 'Success' }), text2: t('devTools.toast.richStrengthIosSeeded', { defaultValue: 'Seeded a 35-minute strength session with spiky HR (no route/laps/reps — devices never report those). Run a foreground sync to pull it in.' }) });
       } else {
-        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: result.error || t('devTools.toast.richStrengthFailed', { defaultValue: 'Failed to seed rich strength workout.' }) });
+        Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('devTools.toast.richStrengthFailed', { defaultValue: 'Failed to seed rich strength workout.' }) });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
