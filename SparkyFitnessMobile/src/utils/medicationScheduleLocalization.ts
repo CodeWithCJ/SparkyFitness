@@ -102,7 +102,7 @@ export function localizedDescribeSchedule(t: TFunction, schedule: ScheduleFields
 function scheduleFrequencyIdentity(schedule: ScheduleFields): string {
   const type = schedule.schedule_type_id;
   if (type === 'weekly' || type === 'specific_days') {
-    return `${type}:${[...(schedule.days_of_week ?? [])].sort((a, b) => a - b).join(',')}`;
+    return `weekly:${[...(schedule.days_of_week ?? [])].sort((a, b) => a - b).join(',')}`;
   }
   if (type === 'every_n_days') return `${type}:${schedule.interval_days ?? ''}`;
   if (type === 'monthly') return `${type}:${schedule.day_of_month ?? ''}`;

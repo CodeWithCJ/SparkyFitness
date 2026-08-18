@@ -110,6 +110,8 @@ export async function reconcileMedicationReminders(
     const today = getTodayDate();
     const tz = getDeviceTimezone();
     const hideNames = prefs.medicationReminderHideNames;
+    const reminderLocale = i18n.resolvedLanguage?.split('-')[0] === 'pl' ? 'pl' : 'en';
+
 
     const desiredKeys = new Set<string>();
     const dosesToSchedule: {
@@ -152,11 +154,11 @@ export async function reconcileMedicationReminders(
         if (!n.content.data?.medicationId) return false;
         const key = n.content.data.key as string | undefined;
         if (!key || !desiredKeys.has(key)) return true;
-        // Pending content baked in the name (or lack of one) at schedule time;
-        // a hide-names preference flip must cancel so the loop below
-        // reschedules with matching content. Unstamped requests predate the
-        // preference and carry the name.
-        return (n.content.data.hideNames === 'true') !== hideNames;
+        // Notification copy is language-sensitive as well as privacy-sensitive:
+        // changing EN ↔ PL must replace pending notifications created earlier.
+        return (n.content.data.hideNames === 'true') !== hideNames
+          || n.content.data.locale !== reminderLocale;
+
       })
       .map((n) => n.identifier);
     if (toCancel.length > 0) await cancelReminders(toCancel);
@@ -190,6 +192,8 @@ export async function reconcileMedicationReminders(
         key: baseKey,
         baseKey,
         hideNames: String(hideNames),
+        locale: reminderLocale,
+
       };
 
       const [year, month, day] = date.split('-').map(Number);
