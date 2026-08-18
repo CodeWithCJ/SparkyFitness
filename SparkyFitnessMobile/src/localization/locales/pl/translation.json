@@ -1593,5 +1593,15 @@
     "carbs": "węglowodany",
     "fat": "tłuszcz",
     "caloriesShort": "kcal"
+  },
+  "foodSummary": {
+    "tapToAddFood": "Dotknij, aby dodać produkt",
+    "caloriesShort": "kcal",
+    "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{label}}"
+  },
+  "exerciseSummary": {
+    "tapToAdd": "Dotknij, aby dodać ćwiczenie",
+    "addExercise": "Dodaj ćwiczenie",
+    "title": "Ćwiczenia"
   }
 }

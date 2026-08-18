@@ -1569,5 +1569,15 @@
     "carbs": "carbs",
     "fat": "fat",
     "caloriesShort": "cal"
+  },
+  "foodSummary": {
+    "tapToAddFood": "Tap to add food",
+    "caloriesShort": "Cal",
+    "nutritionBreakdown": "{{label}} nutrition breakdown"
+  },
+  "exerciseSummary": {
+    "tapToAdd": "Tap to add exercise",
+    "addExercise": "Add exercise",
+    "title": "Exercise"
   }
 }
