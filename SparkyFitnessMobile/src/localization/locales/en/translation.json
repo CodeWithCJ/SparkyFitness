@@ -23,7 +23,8 @@
     "selectOptionHint": "Double tap to select this option",
     "success": "Success",
     "clear": "Clear",
-    "discardChanges": "Discard changes"
+    "discardChanges": "Discard changes",
+    "loadMore": "Load More"
   },
   "settings": {
     "app": "App Settings",
@@ -1443,5 +1444,23 @@
     "startFast": "Start a fast",
     "readyToStart": "Ready to start",
     "startFastAction": "Start Fast"
+  },
+  "fastingProtocol": {
+    "fastStarted": "Fast started",
+    "failedStart": "Failed to start fast",
+    "startTitle": "Start a fast",
+    "hourFast": "hour fast",
+    "startTime": "Start time",
+    "starting": "Starting...",
+    "startAction": "Start Fasting"
+  },
+  "fastingHistory": {
+    "deleteTitle": "Delete fast?",
+    "deleteMessage": "This cannot be undone.",
+    "deleted": "Fast deleted",
+    "failedDelete": "Failed to delete fast",
+    "title": "Fasting history",
+    "hint": "Tap to edit · swipe left to delete",
+    "empty": "No past fasts yet."
   }
 }

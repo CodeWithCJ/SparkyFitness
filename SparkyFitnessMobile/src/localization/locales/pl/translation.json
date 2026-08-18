@@ -25,7 +25,8 @@
     "selectOptionHint": "Stuknij dwukrotnie, aby wybrać tę opcję",
     "success": "Sukces",
     "clear": "Wyczyść",
-    "discardChanges": "Odrzuć zmiany"
+    "discardChanges": "Odrzuć zmiany",
+    "loadMore": "Załaduj więcej"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -1467,5 +1468,23 @@
     "startFast": "Rozpocznij post",
     "readyToStart": "Gotowy do rozpoczęcia",
     "startFastAction": "Rozpocznij post"
+  },
+  "fastingProtocol": {
+    "fastStarted": "Post rozpoczęty",
+    "failedStart": "Nie udało się rozpocząć postu",
+    "startTitle": "Rozpocznij post",
+    "hourFast": "godzin postu",
+    "startTime": "Czas rozpoczęcia",
+    "starting": "Rozpoczynanie…",
+    "startAction": "Rozpocznij post"
+  },
+  "fastingHistory": {
+    "deleteTitle": "Usunąć post?",
+    "deleteMessage": "Tej operacji nie można cofnąć.",
+    "deleted": "Post usunięty",
+    "failedDelete": "Nie udało się usunąć postu",
+    "title": "Historia postów",
+    "hint": "Stuknij, aby edytować · przesuń w lewo, aby usunąć",
+    "empty": "Brak wcześniejszych postów."
   }
 }

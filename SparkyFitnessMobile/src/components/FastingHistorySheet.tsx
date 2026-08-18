@@ -4,6 +4,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -86,6 +87,7 @@ export interface FastingHistorySheetRef {
 }
 
 const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const editSheetRef = useRef<FastingEditSheetRef>(null);
 
@@ -113,20 +115,20 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => 
   const openEdit = (fast: FastingLog) => editSheetRef.current?.present(fast);
 
   const confirmDelete = (fast: FastingLog) => {
-    Alert.alert('Delete fast?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('fastingHistory.deleteTitle', { defaultValue: 'Delete fast?' }), t('fastingHistory.deleteMessage', { defaultValue: 'This cannot be undone.' }), [
+      { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('common.delete', { defaultValue: 'Delete' }),
         style: 'destructive',
         onPress: () => {
           deleteFast(fast.id, {
-            onSuccess: () => Toast.show({ type: 'success', text1: 'Fast deleted' }),
+            onSuccess: () => Toast.show({ type: 'success', text1: t('fastingHistory.deleted', { defaultValue: 'Fast deleted' }) }),
             onError: (error) => {
               addLog(`Failed to delete fast: ${error}`, 'ERROR');
               Toast.show({
                 type: 'error',
-                text1: 'Failed to delete fast',
-                text2: 'Please try again.',
+                text1: t('fastingHistory.failedDelete', { defaultValue: 'Failed to delete fast' }),
+                text2: t('common.retry', { defaultValue: 'Please try again.' }),
               });
             },
           });
@@ -147,10 +149,10 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => 
       >
         <BottomSheetScrollView contentContainerClassName="bg-surface px-5 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-1">
-            Fasting history
+            {t('fastingHistory.title', { defaultValue: 'Fasting history' })}
           </Text>
           <Text className="text-center text-text-muted text-xs mb-4">
-            Tap to edit · swipe left to delete
+            {t('fastingHistory.hint', { defaultValue: 'Tap to edit · swipe left to delete' })}
           </Text>
 
           {isLoading && pastFasts.length === 0 ? (
@@ -160,7 +162,7 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => 
           ) : pastFasts.length === 0 ? (
             <View className="items-center py-8">
               <Icon name="history" size={28} color={textMuted} />
-              <Text className="text-sm text-text-muted mt-2">No past fasts yet.</Text>
+              <Text className="text-sm text-text-muted mt-2">{t('fastingHistory.empty', { defaultValue: 'No past fasts yet.' })}</Text>
             </View>
           ) : (
             <View>
@@ -183,7 +185,7 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => 
               className="items-center py-3 mt-1"
             >
               <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
-                Load more
+                {t('common.loadMore', { defaultValue: 'Load more' })}
               </Text>
             </Pressable>
           )}

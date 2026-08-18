@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import {
   BottomSheetModal,
   BottomSheetScrollView,
@@ -41,6 +42,7 @@ export interface FastingProtocolSheetRef {
 }
 
 const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) => {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] = useCSSVariable([
@@ -129,14 +131,14 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
       {
         onSuccess: () => {
           bottomSheetRef.current?.dismiss();
-          Toast.show({ type: 'success', text1: 'Fast started' });
+          Toast.show({ type: 'success', text1: t('fastingProtocol.fastStarted', { defaultValue: 'Fast started' }) });
         },
         onError: (error) => {
           addLog(`Failed to start fast: ${error}`, 'ERROR');
           Toast.show({
             type: 'error',
-            text1: 'Failed to start fast',
-            text2: 'Please try again.',
+            text1: t('fastingProtocol.failedStart', { defaultValue: 'Failed to start fast' }),
+            text2: t('common.retry', { defaultValue: 'Please try again.' }),
           });
         },
       },
@@ -167,7 +169,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
           container absorb them. */}
       <BottomSheetScrollView contentContainerClassName="bg-surface px-5 pb-safe-or-8">
         <Text className="text-lg font-semibold text-text-primary text-center mb-4">
-          Start a fast
+          {t('fastingProtocol.startTitle', { defaultValue: 'Start a fast' })}
         </Text>
 
         {/* Protocol list */}
@@ -203,7 +205,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
                     keyboardType="number-pad"
                     InputComponent={BottomSheetTextInput}
                   />
-                  <Text className="text-text-secondary text-base ml-3">hour fast</Text>
+                  <Text className="text-text-secondary text-base ml-3">{t('fastingProtocol.hourFast', { defaultValue: 'hour fast' })}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -216,7 +218,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
           activeOpacity={0.7}
           className="flex-row items-center justify-between py-3 mt-1"
         >
-          <Text className="text-base text-text-primary">Start time</Text>
+          <Text className="text-base text-text-primary">{t('fastingProtocol.startTime', { defaultValue: 'Start time' })}</Text>
           <View className="flex-row items-center">
             <Text className="text-sm" style={{ color: accentPrimary }}>
               {startLabel}
@@ -267,7 +269,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
           disabled={isPending || !customValid}
           className="mt-4"
         >
-          {isPending ? 'Starting...' : 'Start Fasting'}
+          {isPending ? t('fastingProtocol.starting', { defaultValue: 'Starting...' }) : t('fastingProtocol.startAction', { defaultValue: 'Start Fasting' })}
         </Button>
       </BottomSheetScrollView>
     </BottomSheetModal>
