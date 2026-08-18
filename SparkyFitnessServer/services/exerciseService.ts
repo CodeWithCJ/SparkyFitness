@@ -1393,8 +1393,8 @@ async function addFreeExerciseDBExerciseToUserExercises(
       equipment: normalizeToStringArray(exerciseDetails.equipment),
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       primary_muscles: normalizeToStringArray(exerciseDetails.primaryMuscles),
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
       secondary_muscles: normalizeToStringArray(
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
         exerciseDetails.secondaryMuscles
       ),
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
