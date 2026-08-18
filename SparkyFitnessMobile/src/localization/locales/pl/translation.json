@@ -758,7 +758,8 @@
       "unskipped": "Cofnięto pominięcie: {{name}}",
       "removed": "Usunięto dawkę: {{name}}",
       "tapUndo": "Dotknij, aby cofnąć",
-      "failed": "Nie udało się wykonać operacji dla {{name}}: {{action}}"
+      "failed": "Nie udało się wykonać operacji dla {{name}}: {{action}}",
+      "failedRemoveDose": "Nie udało się usunąć dawki leku {{name}}"
     },
     "card": {
       "title": "Leki",

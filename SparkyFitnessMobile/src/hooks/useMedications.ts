@@ -309,7 +309,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
                   Toast.hide();
                   deleteEntryMutation.mutate(created.id, {
                     onSuccess: () => Toast.show({ type: 'info', text1: t('medications.dose.removed', { defaultValue: '{{name}} dose removed', name: med.name }) }),
-                    onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'remove', name: med.name }), error),
+                    onError: (error) => showEntryError(t('medications.dose.failedRemoveDose', { defaultValue: 'Failed to remove {{name}} dose', name: med.name }), error),
                   });
                 },
               },

@@ -752,7 +752,8 @@
       "unskipped": "{{name}} unskipped",
       "removed": "{{name}} dose removed",
       "tapUndo": "Tap to undo",
-      "failed": "Failed to {{action}} {{name}}"
+      "failed": "Failed to {{action}} {{name}}",
+      "failedRemoveDose": "Failed to remove {{name}} dose"
     },
     "card": {
       "title": "Medications",
