@@ -256,26 +256,26 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
       try {
         const granted = await requestHealthPermissions(metric.permissions);
         if (!granted) {
-          Alert.alert('Permission Denied', `Please grant ${metric.label.toLowerCase()} permission in ${healthSettingsName}.`);
+          Alert.alert('Permission Denied', `Please grant ${metric.defaultLabel.toLowerCase()} permission in ${healthSettingsName}.`);
           setHealthMetricStates(prevStates => ({
             ...prevStates,
             [metric.stateKey]: false,
           }));
           await saveHealthPreference(metric.preferenceKey, false);
-          addLog(`Permission Denied: ${metric.label} permission not granted.`, 'WARNING');
+          addLog(`Permission Denied: ${metric.defaultLabel} permission not granted.`, 'WARNING');
         } else {
-          addLog(`${metric.label} sync enabled and permissions granted.`, 'INFO');
+          addLog(`${metric.defaultLabel} sync enabled and permissions granted.`, 'INFO');
           enableBackgroundDeliveryForMetric(metric.recordType).catch(() => {});
         }
       } catch (permissionError) {
         const errorMessage = permissionError instanceof Error ? permissionError.message : String(permissionError);
-        Alert.alert('Permission Error', `Failed to request ${metric.label.toLowerCase()} permissions: ${errorMessage}`);
+        Alert.alert('Permission Error', `Failed to request ${metric.defaultLabel.toLowerCase()} permissions: ${errorMessage}`);
         setHealthMetricStates(prevStates => ({
           ...prevStates,
           [metric.stateKey]: false,
         }));
         await saveHealthPreference(metric.preferenceKey, false);
-        addLog(`Permission Request Error for ${metric.label}: ${errorMessage}`, 'ERROR');
+        addLog(`Permission Request Error for ${metric.defaultLabel}: ${errorMessage}`, 'ERROR');
       }
     }
     refreshSubscriptions();
@@ -297,24 +297,24 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
       if (!granted) {
         Alert.alert(
           'Permission Denied',
-          `Please grant ${metric.label.toLowerCase()} write permission in ${healthSettingsName}.`
+          `Please grant ${metric.defaultLabel.toLowerCase()} write permission in ${healthSettingsName}.`
         );
         setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
         await saveHealthPreference(metric.preferenceKey, false);
-        addLog(`Writeback permission denied: ${metric.label}.`, 'WARNING');
+        addLog(`Writeback permission denied: ${metric.defaultLabel}.`, 'WARNING');
       } else {
-        addLog(`${metric.label} writeback enabled and write permission granted.`, 'INFO');
+        addLog(`${metric.defaultLabel} writeback enabled and write permission granted.`, 'INFO');
       }
     } catch (permissionError) {
       const errorMessage =
         permissionError instanceof Error ? permissionError.message : String(permissionError);
       Alert.alert(
         'Permission Error',
-        `Failed to request ${metric.label.toLowerCase()} write permission: ${errorMessage}`
+        `Failed to request ${metric.defaultLabel.toLowerCase()} write permission: ${errorMessage}`
       );
       setWritebackStates(prev => ({ ...prev, [metric.id]: false }));
       await saveHealthPreference(metric.preferenceKey, false);
-      addLog(`Writeback permission request error for ${metric.label}: ${errorMessage}`, 'ERROR');
+      addLog(`Writeback permission request error for ${metric.defaultLabel}: ${errorMessage}`, 'ERROR');
     }
   };
 
@@ -418,7 +418,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
         await saveHealthPreference(metric.preferenceKey, newHealthMetricStates[metric.stateKey]);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        saveErrors.push(`${metric.label}: ${errorMessage}`);
+        saveErrors.push(`${metric.defaultLabel}: ${errorMessage}`);
       }
     }
 

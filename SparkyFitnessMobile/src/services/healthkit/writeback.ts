@@ -329,7 +329,7 @@ const writableMetrics = (metrics: WritebackMetric[]): WritebackMetric[] =>
     const gate: QuantityTypeIdentifierWriteable =
       m.id === 'hydration' ? DIETARY_WATER_IDENTIFIER : DIETARY_ENERGY_IDENTIFIER;
     const ok = isAuthorized(gate);
-    if (!ok) addLog(`[Writeback] Skipping ${m.label}: write permission not granted`, 'WARNING');
+    if (!ok) addLog(`[Writeback] Skipping ${m.defaultLabel}: write permission not granted`, 'WARNING');
     return ok;
   });
 
@@ -374,7 +374,7 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
           await writeHydrationForDate(date, summary, version);
         }
       } catch (error) {
-        addLog(`[Writeback] Failed ${metric.label} for ${date}: ${message(error)}`, 'ERROR');
+        addLog(`[Writeback] Failed ${metric.defaultLabel} for ${date}: ${message(error)}`, 'ERROR');
       }
     }
   };

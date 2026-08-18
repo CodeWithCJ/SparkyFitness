@@ -371,7 +371,7 @@ export async function fetchHealthDisplayData(
         : `${records.length} record${records.length !== 1 ? 's' : ''}`;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog(`[healthDataDisplay] Error fetching ${metric.label}: ${errorMessage}`, 'ERROR');
+      addLog(`[healthDataDisplay] Error fetching ${metric.defaultLabel}: ${errorMessage}`, 'ERROR');
       result[metric.id] = 'Error';
     }
   }

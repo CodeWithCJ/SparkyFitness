@@ -98,7 +98,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {t(`healthMetrics.${metric.id}`, { defaultValue: metric.label })}
+            {t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel })}
           </Text>
         </View>
         {showLoading && (

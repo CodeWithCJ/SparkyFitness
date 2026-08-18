@@ -70,7 +70,7 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
       <View className="flex-row items-center flex-1 mr-2">
         <Image source={metric.icon} className="w-6 h-6" />
         <Text className="ml-2 text-base text-text-primary flex-shrink" numberOfLines={1}>
-          {t(`healthMetrics.${metric.id}`, { defaultValue: metric.label })}
+          {t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel })}
         </Text>
       </View>
       <Switch
