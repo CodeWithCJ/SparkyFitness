@@ -1,7 +1,8 @@
 {
   "common": {
     "save": "Zapisz",
-    "saving": "Zapisywanie…"
+    "saving": "Zapisywanie…",
+    "back": "Wstecz"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -41,5 +42,20 @@
       "set": "Seria",
       "setOf": "z"
     }
+  },
+  "addSheet": {
+    "food": "Jedzenie",
+    "exercise": "Ćwiczenie",
+    "measurements": "Pomiary",
+    "scanFood": "Skanuj jedzenie",
+    "workout": "Trening",
+    "liveSets": "Serie i powtórzenia na żywo",
+    "activity": "Aktywność",
+    "durationDistance": "Czas trwania i dystans",
+    "logWorkout": "Zapisz trening",
+    "pastSets": "Wcześniejsze serie i powtórzenia",
+    "wellness": "Zdrowie",
+    "askSparky": "Zapytaj Sparky’ego",
+    "syncHealth": "Synchronizuj dane zdrowotne"
   }
 }

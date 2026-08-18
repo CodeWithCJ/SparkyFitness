@@ -1,7 +1,8 @@
 {
   "common": {
     "save": "Save",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "back": "Back"
   },
   "settings": {
     "app": "App Settings",
@@ -41,5 +42,20 @@
       "set": "Set",
       "setOf": "of"
     }
+  },
+  "addSheet": {
+    "food": "Food",
+    "exercise": "Exercise",
+    "measurements": "Measurements",
+    "scanFood": "Scan Food",
+    "workout": "Workout",
+    "liveSets": "Live sets & reps",
+    "activity": "Activity",
+    "durationDistance": "Duration & distance",
+    "logWorkout": "Log Workout",
+    "pastSets": "Past sets & reps",
+    "wellness": "Wellness",
+    "askSparky": "Ask Sparky",
+    "syncHealth": "Sync Health Data"
   }
 }
