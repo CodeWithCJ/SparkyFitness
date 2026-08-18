@@ -1430,5 +1430,18 @@
     "readErrors_other": "{{count}} metrics could not be read. They will retry next sync.",
     "uploadErrors_one": "{{count}} record was rejected by the server. See logs.",
     "uploadErrors_other": "{{count}} records were rejected by the server. See logs."
+  },
+  "fastingCard": {
+    "title": "Fasting",
+    "openDetails": "Open fasting details",
+    "viewHistory": "View fasting history",
+    "history": "History",
+    "viewDetails": "View details",
+    "goalProgress": "{{remaining}} to your {{goal}}h goal",
+    "goalReached": "Goal reached · {{goal}}h",
+    "elapsed": "{{elapsed}} elapsed",
+    "startFast": "Start a fast",
+    "readyToStart": "Ready to start",
+    "startFastAction": "Start Fast"
   }
 }

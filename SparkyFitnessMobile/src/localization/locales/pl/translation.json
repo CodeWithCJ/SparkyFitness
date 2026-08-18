@@ -1454,5 +1454,18 @@
     "uploadErrors_few": "Serwer odrzucił {{count}} rekordy. Sprawdź dzienniki.",
     "uploadErrors_many": "Serwer odrzucił {{count}} rekordów. Sprawdź dzienniki.",
     "uploadErrors_other": "Serwer odrzucił {{count}} rekordów. Sprawdź dzienniki."
+  },
+  "fastingCard": {
+    "title": "Post",
+    "openDetails": "Otwórz szczegóły postu",
+    "viewHistory": "Wyświetl historię postów",
+    "history": "Historia",
+    "viewDetails": "Wyświetl szczegóły",
+    "goalProgress": "{{remaining}} do celu {{goal}} h",
+    "goalReached": "Cel osiągnięty · {{goal}} h",
+    "elapsed": "Minęło {{elapsed}}",
+    "startFast": "Rozpocznij post",
+    "readyToStart": "Gotowy do rozpoczęcia",
+    "startFastAction": "Rozpocznij post"
   }
 }

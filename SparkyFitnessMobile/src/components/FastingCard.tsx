@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -36,6 +37,7 @@ function presetIdForType(type: string | null | undefined): string {
 }
 
 const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const protocolSheetRef = useRef<FastingProtocolSheetRef>(null);
   const historyRef = useRef<FastingHistorySheetRef>(null);
 
@@ -68,7 +70,7 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
     return (
       <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
         <View className="flex-row items-center justify-between">
-          <Text className="text-md font-bold text-text-secondary">Fasting</Text>
+          <Text className="text-md font-bold text-text-secondary">{t('fastingCard.title', { defaultValue: 'Fasting' })}</Text>
           <ActivityIndicator size="small" color={accentPrimary} />
         </View>
       </View>
@@ -84,19 +86,19 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
           className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
           onPress={() => navigation.navigate('FastingDetail')}
           accessibilityRole="button"
-          accessibilityLabel="Open fasting details"
+          accessibilityLabel={t('fastingCard.openDetails', { defaultValue: 'Open fasting details' })}
         >
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-md font-bold text-text-secondary">Fasting</Text>
+            <Text className="text-md font-bold text-text-secondary">{t('fastingCard.title', { defaultValue: 'Fasting' })}</Text>
             <View className="flex-row items-center">
               <TouchableOpacity
                 onPress={() => historyRef.current?.present()}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityRole="button"
-                accessibilityLabel="View fasting history"
+                accessibilityLabel={t('fastingCard.viewHistory', { defaultValue: 'View fasting history' })}
                 className="flex-row items-center mr-4"
               >
-                <Text className="text-md text-accent-primary font-medium">History</Text>
+                <Text className="text-md text-accent-primary font-medium">{t('fastingCard.history', { defaultValue: 'History' })}</Text>
                 <Icon
                   name="chevron-forward"
                   size={14}
@@ -104,7 +106,7 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
                   style={{ marginLeft: 2 }}
                 />
               </TouchableOpacity>
-              <Text className="text-md text-accent-primary font-medium">View details</Text>
+              <Text className="text-md text-accent-primary font-medium">{t('fastingCard.viewDetails', { defaultValue: 'View details' })}</Text>
               <Icon
                 name="chevron-forward"
                 size={14}
@@ -131,8 +133,8 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
               <View className="flex-row items-center justify-between mt-1">
                 <Text className="text-sm text-text-secondary">
                   {timer.remainingMs != null && timer.remainingMs > 0
-                    ? `${timer.remainingLabel} to your ${Math.round(timer.goalHours)}h goal`
-                    : `Goal reached · ${Math.round(timer.goalHours)}h`}
+                    ? t('fastingCard.goalProgress', { defaultValue: '{{remaining}} to your {{goal}}h goal', remaining: timer.remainingLabel, goal: Math.round(timer.goalHours) })
+                    : t('fastingCard.goalReached', { defaultValue: 'Goal reached · {{goal}}h', goal: Math.round(timer.goalHours) })}
                 </Text>
                 <Text className="text-sm font-semibold text-text-secondary">{badge}</Text>
               </View>
@@ -157,7 +159,7 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
             </>
           ) : (
             <View className="flex-row items-center justify-between mt-1">
-              <Text className="text-sm text-text-secondary">{timer.elapsedLabel} elapsed</Text>
+              <Text className="text-sm text-text-secondary">{t('fastingCard.elapsed', { defaultValue: '{{elapsed}} elapsed', elapsed: timer.elapsedLabel })}</Text>
               <Text className="text-sm font-semibold text-text-secondary">{badge}</Text>
             </View>
           )}
@@ -178,18 +180,18 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
         className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
         onPress={openProtocolSheet}
         accessibilityRole="button"
-        accessibilityLabel="Start a fast"
+        accessibilityLabel={t('fastingCard.startFast', { defaultValue: 'Start a fast' })}
       >
         <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-md font-bold text-text-secondary">Fasting</Text>
+          <Text className="text-md font-bold text-text-secondary">{t('fastingCard.title', { defaultValue: 'Fasting' })}</Text>
           <TouchableOpacity
             onPress={() => historyRef.current?.present()}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
-            accessibilityLabel="View fasting history"
+            accessibilityLabel={t('fastingCard.viewHistory', { defaultValue: 'View fasting history' })}
             className="flex-row items-center"
           >
-            <Text className="text-md text-accent-primary font-medium">History</Text>
+            <Text className="text-md text-accent-primary font-medium">{t('fastingCard.history', { defaultValue: 'History' })}</Text>
             <Icon
               name="chevron-forward"
               size={14}
@@ -201,13 +203,13 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
 
         <View className="flex-row items-center justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-base font-semibold text-text-primary">Ready to start</Text>
+            <Text className="text-base font-semibold text-text-primary">{t('fastingCard.readyToStart', { defaultValue: 'Ready to start' })}</Text>
             {lastFastLine && (
               <Text className="text-sm text-text-muted mt-0.5">{lastFastLine}</Text>
             )}
           </View>
           <View className="flex-row items-center">
-            <Text className="text-base text-accent-primary font-semibold">Start Fast</Text>
+            <Text className="text-base text-accent-primary font-semibold">{t('fastingCard.startFastAction', { defaultValue: 'Start Fast' })}</Text>
             <Icon
               name="chevron-forward"
               size={16}
