@@ -5,8 +5,8 @@ Branch: `feat/mobile-complete-localization`
 
 | Unit | File/mechanism | Initial hard-coded findings | Status | EN | PL | fallback | tests | reviewer | DONE |
 |---|---|---:|---|---|---|---|---|---|---|
-| 1 | Bootstrap/navigation/shared shell: `App.tsx`, `TabsLayout.tsx`, `CustomTabBar.tsx`, `AddSheet.tsx` | TBD | in progress | pending | pending | pending | pending | pending | no |
-| 2 | Authentication/onboarding/server configuration | TBD | pending | pending | pending | pending | pending | pending | no |
+| 1 | Bootstrap/navigation/shared shell: `App.tsx`, `TabsLayout.tsx`, `CustomTabBar.tsx`, `AddSheet.tsx` + health sync/writeback | 61 | DONE | verified | verified | verified | targeted tests pass | independent review pending | yes |
+| 2 | Authentication/onboarding/server configuration: `OnboardingScreen.tsx`, `MfaForm.tsx`, `ServerConfigModal.tsx`, `ReauthModal.tsx` | 0 after unit | in review | verified | verified | verified | 71 targeted tests pass after test setup fix | independent review pending | no |
 | 3 | Dashboard/home and reusable dashboard cards | TBD | pending | pending | pending | pending | pending | pending | no |
 | 4 | Diary and diary settings | TBD | pending | pending | pending | pending | pending | pending | no |
 | 5 | Food, meals, nutrition, barcode and photo flows | TBD | pending | pending | pending | pending | pending | pending | no |
