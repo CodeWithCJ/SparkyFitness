@@ -1702,7 +1702,11 @@
       "neckWithUnit": "Neck ({{unit}})",
       "waistWithUnit": "Waist ({{unit}})",
       "hipsWithUnit": "Hips ({{unit}})",
-      "weightWithUnit": "Weight ({{unit}})"
+      "weightWithUnit": "Weight ({{unit}})",
+      "weightStones": "Weight in stones",
+      "weightPounds": "Weight in pounds",
+      "heightFeet": "Height in feet",
+      "heightInches": "Height in inches"
     },
     "validation": {
       "invalid": "Invalid {{label}}",

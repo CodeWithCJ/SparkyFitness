@@ -769,6 +769,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 onChangeText={(v) => setSingleCustomValue(cat.id, v)}
                 keyboardType={isNumeric ? 'decimal-pad' : 'default'}
                 placeholder={isNumeric ? '0' : ''}
+                accessibilityLabel={label}
                 returnKeyType="done"
                 testID={`custom-input-${cat.id}`}
               />
@@ -841,6 +842,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       onChangeText={(v) => updateField('weightStones', v)}
                       keyboardType="number-pad"
                       placeholder={t('measurements.units.st', { defaultValue: 'st' })}
+                      accessibilityLabel={t('measurements.fields.weightStones', { defaultValue: 'Weight in stones' })}
                       returnKeyType="done"
                     />
                   </View>
@@ -850,6 +852,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       onChangeText={(v) => updateField('weight', v)}
                       keyboardType="decimal-pad"
                       placeholder={t('measurements.units.lb', { defaultValue: 'lb' })}
+                      accessibilityLabel={t('measurements.fields.weightPounds', { defaultValue: 'Weight in pounds' })}
                       returnKeyType="done"
                     />
                   </View>
@@ -860,7 +863,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   onChangeText={(v) => updateField('weight', v)}
                   keyboardType="decimal-pad"
                   placeholder="0"
-                  accessibilityLabel={t('measurements.fields.heightWithUnit', { defaultValue: 'Height ({{unit}})', unit: heightSuffix })}
+                  accessibilityLabel={t('measurements.fields.weightWithUnit', { defaultValue: 'Weight ({{unit}})', unit: weightMode })}
                   returnKeyType="done"
                 />
               )}
@@ -890,6 +893,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       onChangeText={(v) => updateField('heightFeet', v)}
                       keyboardType="number-pad"
                       placeholder={t('measurements.units.ft', { defaultValue: 'ft' })}
+                      accessibilityLabel={t('measurements.fields.heightFeet', { defaultValue: 'Height in feet' })}
                       returnKeyType="done"
                     />
                   </View>
@@ -899,6 +903,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       onChangeText={(v) => updateField('height', v)}
                       keyboardType="decimal-pad"
                       placeholder={t('measurements.units.in', { defaultValue: 'in' })}
+                      accessibilityLabel={t('measurements.fields.heightInches', { defaultValue: 'Height in inches' })}
                       returnKeyType="done"
                     />
                   </View>
@@ -909,7 +914,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   onChangeText={(v) => updateField('height', v)}
                   keyboardType="decimal-pad"
                   placeholder="0"
-                  accessibilityLabel={t('measurements.fields.neckWithUnit', { defaultValue: 'Neck ({{unit}})', unit: bodySuffix })}
+                  accessibilityLabel={t('measurements.fields.heightWithUnit', { defaultValue: 'Height ({{unit}})', unit: heightSuffix })}
                   returnKeyType="done"
                 />
               )}
@@ -923,6 +928,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 onChangeText={(v) => updateField('neck', v)}
                 keyboardType="decimal-pad"
                 placeholder="0"
+                accessibilityLabel={t('measurements.fields.neckWithUnit', { defaultValue: 'Neck ({{unit}})', unit: bodySuffix })}
                 returnKeyType="done"
               />
               {renderClearHint('neck')}

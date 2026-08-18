@@ -1726,7 +1726,11 @@
       "neckWithUnit": "Szyja ({{unit}})",
       "waistWithUnit": "Talia ({{unit}})",
       "hipsWithUnit": "Biodra ({{unit}})",
-      "weightWithUnit": "Masa ciała ({{unit}})"
+      "weightWithUnit": "Masa ciała ({{unit}})",
+      "weightStones": "Masa ciała w kamieniach",
+      "weightPounds": "Masa ciała w funtach",
+      "heightFeet": "Wzrost w stopach",
+      "heightInches": "Wzrost w calach"
     },
     "validation": {
       "invalid": "Nieprawidłowe: {{label}}",
