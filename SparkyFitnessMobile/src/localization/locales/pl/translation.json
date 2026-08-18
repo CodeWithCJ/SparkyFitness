@@ -285,7 +285,33 @@
     "logDailyEntry": "Zapisz wpis dzienny",
     "pregnancySetup": "Konfiguracja ciąży",
     "medications": "Leki",
-    "medication": "Lek"
+    "medication": "Lek",
+    "library": {
+      "noServerConfigured": "Brak skonfigurowanego serwera",
+      "configureServer": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić bibliotekę.",
+      "goToSettings": "Przejdź do Ustawień",
+      "loading": "Ładowanie biblioteki...",
+      "title": "Biblioteka",
+      "create": "Utwórz",
+      "food": "Produkt spożywczy",
+      "manualEntry": "Wpis ręczny",
+      "meal": "Posiłek",
+      "groupFoods": "Grupuj produkty",
+      "exercise": "Ćwiczenie",
+      "workoutPreset": "Preset treningu",
+      "exerciseRoutine": "Rutyna ćwiczeń",
+      "browse": "Przeglądaj",
+      "foods": "Produkty spożywcze",
+      "meals": "Posiłki",
+      "exercises": "Ćwiczenia",
+      "workoutPresets": "Presety treningów",
+      "medications": "Leki",
+      "recentlyLogged": "Ostatnio zapisane",
+      "loadingRecentItems": "Ładowanie ostatnich elementów...",
+      "failedRecentItems": "Nie udało się załadować ostatnich elementów.",
+      "noRecentItems": "Brak ostatnich elementów",
+      "recentItemsHint": "Zapisane produkty, posiłki i ćwiczenia pojawią się tutaj, aby ułatwić dostęp."
+    }
   },
   "healthMetrics": {
     "steps": "Kroki",
@@ -388,7 +414,13 @@
     "writeMetricLabel": "Zapisuj {{metric}} w {{store}}",
     "writeMetricHint": "Włącza lub wyłącza zapis tego parametru w magazynie danych zdrowotnych.",
     "noData": "Brak danych",
-    "loading": "Ładowanie danych zdrowotnych"
+    "loading": "Ładowanie danych zdrowotnych",
+    "alerts": {
+      "healthAppUnavailableTitle": "Aplikacja Zdrowie niedostępna",
+      "healthAppUnavailableMessage": "Zainstaluj aplikację Apple Health, aby synchronizować dane zdrowotne.",
+      "permissionErrorTitle": "Błąd uprawnień",
+      "permissionErrorMessage": "Wystąpił nieoczekiwany błąd podczas żądania uprawnień do danych zdrowotnych: {{error}}"
+    }
   },
   "auth": {
     "frontendUrl": "Adres URL frontendu",

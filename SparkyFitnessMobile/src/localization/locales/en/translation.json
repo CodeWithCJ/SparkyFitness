@@ -279,7 +279,33 @@
     "logDailyEntry": "Log Daily Entry",
     "pregnancySetup": "Pregnancy Setup",
     "medications": "Medications",
-    "medication": "Medication"
+    "medication": "Medication",
+    "library": {
+      "noServerConfigured": "No server configured",
+      "configureServer": "Configure your server connection in Settings to view your library.",
+      "goToSettings": "Go to Settings",
+      "loading": "Loading library...",
+      "title": "Library",
+      "create": "Create",
+      "food": "Food",
+      "manualEntry": "Manual entry",
+      "meal": "Meal",
+      "groupFoods": "Group foods",
+      "exercise": "Exercise",
+      "workoutPreset": "Workout preset",
+      "exerciseRoutine": "Exercise routine",
+      "browse": "Browse",
+      "foods": "Foods",
+      "meals": "Meals",
+      "exercises": "Exercises",
+      "workoutPresets": "Workout presets",
+      "medications": "Medications",
+      "recentlyLogged": "Recently Logged",
+      "loadingRecentItems": "Loading recent items...",
+      "failedRecentItems": "Failed to load recent items.",
+      "noRecentItems": "No recent items yet",
+      "recentItemsHint": "Foods, meals, and exercises you log will appear here for quick access."
+    }
   },
   "healthMetrics": {
     "steps": "Steps",
@@ -382,7 +408,13 @@
     "writeMetricLabel": "Write {{metric}} to {{store}}",
     "writeMetricHint": "Toggles writing this metric to the health store.",
     "noData": "No data",
-    "loading": "Loading health data"
+    "loading": "Loading health data",
+    "alerts": {
+      "healthAppUnavailableTitle": "Health App Not Available",
+      "healthAppUnavailableMessage": "Please install the Apple Health app to sync your health data.",
+      "permissionErrorTitle": "Permission Error",
+      "permissionErrorMessage": "An unexpected error occurred while trying to request Health permissions: {{error}}"
+    }
   },
   "auth": {
     "frontendUrl": "Frontend URL",

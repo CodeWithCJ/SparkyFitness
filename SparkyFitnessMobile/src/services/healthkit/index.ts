@@ -11,6 +11,7 @@ import {
 } from '@kingstinct/react-native-healthkit';
 import { Platform, Alert } from 'react-native';
 import { addLog } from '../LogService';
+import i18n from '../../localization/i18n';
 import {
   AggregatedHealthRecord,
   MetricConfig,
@@ -260,8 +261,8 @@ export const requestHealthPermissions = async (
 ): Promise<boolean> => {
   if (!isHealthKitAvailable) {
     Alert.alert(
-      'Health App Not Available',
-      'Please install the Apple Health app to sync your health data.'
+      i18n.t('healthSync.alerts.healthAppUnavailableTitle', { defaultValue: 'Health App Not Available' }),
+      i18n.t('healthSync.alerts.healthAppUnavailableMessage', { defaultValue: 'Please install the Apple Health app to sync your health data.' })
     );
     return false;
   }
@@ -362,8 +363,8 @@ export const requestHealthPermissions = async (
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthKitService] Failed to request permissions: ${message}`, 'ERROR');
     Alert.alert(
-      'Permission Error',
-      `An unexpected error occurred while trying to request Health permissions: ${message}`
+      i18n.t('healthSync.alerts.permissionErrorTitle', { defaultValue: 'Permission Error' }),
+      i18n.t('healthSync.alerts.permissionErrorMessage', { defaultValue: 'An unexpected error occurred while trying to request Health permissions: {{error}}', error: message })
     );
     return false;
   }
