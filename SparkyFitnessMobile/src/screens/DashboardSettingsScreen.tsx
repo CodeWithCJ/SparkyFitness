@@ -146,6 +146,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             subtitle={cn.unit}
             rightAccessory={
               <Switch
+                accessibilityLabel={cn.name}
                 value={base.includes(cn.name)}
                 onValueChange={(value) => handleToggle(cn.name, value)}
               />
@@ -178,6 +179,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             subtitle={t('dashboardSettings.askSparkySubtitle', { defaultValue: 'Show the Ask Sparky chat launcher on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.askSparky', { defaultValue: 'Ask Sparky' })}
                 value={askSparkyVisible}
                 onValueChange={setAskSparkyVisible}
               />
@@ -188,6 +190,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             subtitle={t('dashboardSettings.hydrationSubtitle', { defaultValue: 'Show the hydration card on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.hydration', { defaultValue: 'Hydration' })}
                 value={hydrationCardVisible}
                 onValueChange={setHydrationCardVisible}
               />
@@ -198,6 +201,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             subtitle={t('dashboardSettings.fastingSubtitle', { defaultValue: 'Show the fasting card on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.fasting', { defaultValue: 'Fasting' })}
                 value={fastingCardVisible}
                 onValueChange={setFastingCardVisible}
               />
@@ -208,6 +212,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             subtitle={t('dashboardSettings.cyclePregnancySubtitle', { defaultValue: 'Show the wellness card on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.cyclePregnancy', { defaultValue: 'Cycle & Pregnancy' })}
                 value={cycleCardVisible}
                 onValueChange={setCycleCardVisible}
               />
@@ -218,6 +223,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             subtitle={t('dashboardSettings.medicationsSubtitle', { defaultValue: 'Show the medications card on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.medications', { defaultValue: 'Medications' })}
                 value={medicationsCardVisible}
                 onValueChange={setMedicationsCardVisible}
               />

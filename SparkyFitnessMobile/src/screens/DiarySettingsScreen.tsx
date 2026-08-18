@@ -137,6 +137,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
             subtitle={cn.unit}
             rightAccessory={
               <Switch
+                accessibilityLabel={cn.name}
                 value={base.includes(cn.name)}
                 onValueChange={(value) => handleToggle(cn.name, value)}
               />
@@ -169,6 +170,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
             subtitle={t('diarySettings.summarySubtitle', { defaultValue: 'Show calories and macronutrients' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('diarySettings.summary', { defaultValue: 'Diary Summary' })}
                 value={diarySummaryVisible}
                 onValueChange={setDiarySummaryVisible}
               />

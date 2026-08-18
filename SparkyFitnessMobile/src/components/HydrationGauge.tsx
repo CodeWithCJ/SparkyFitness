@@ -133,6 +133,8 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
               onPress={onDecrement}
               disabled={disableDecrement || noContainer}
               className="p-2"
+              accessibilityRole="button"
+              accessibilityLabel={t('dashboard.removeWater', { defaultValue: 'Remove water' })}
               style={disableDecrement || noContainer ? { opacity: 0.3 } : undefined}
             >
               <Icon name="remove-circle" size={28} color={hydrationColor} />
@@ -153,6 +155,8 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
               onPress={onIncrement}
               disabled={noContainer}
               className="p-2"
+              accessibilityRole="button"
+              accessibilityLabel={t('dashboard.addWater', { defaultValue: 'Add water' })}
               style={noContainer ? { opacity: 0.3 } : undefined}
             >
               <Icon name="add-circle" size={28} color={hydrationColor} />
@@ -174,6 +178,9 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
                   <Pressable
                     key={c.id}
                     onPress={() => onSelectContainer?.(c.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('dashboard.selectContainer', { defaultValue: 'Select {{container}}', container: c.name })}
+                    accessibilityState={{ selected: active }}
                     className={`rounded-full px-3 py-1 border ${active ? 'bg-accent-primary border-accent-primary' : 'bg-raised border-border-subtle'}`}
                   >
                     <Text className={`text-xs font-medium ${active ? 'text-white' : 'text-text-primary'}`}>
@@ -188,7 +195,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
       </View>
       {showButtons && containerVolume != null && !showChips && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          {t('dashboard.perBottle', { defaultValue: '{{value}} {{unit}} per bottle', value: convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: unitLabel })}
+          {t('dashboard.perContainer', { defaultValue: '{{value}} {{unit}} per container', value: convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: unitLabel })}
         </Text>
       )}
       {showButtons && containerVolume == null && (

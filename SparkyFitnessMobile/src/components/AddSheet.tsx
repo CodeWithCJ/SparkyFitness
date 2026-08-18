@@ -252,6 +252,8 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
             <>
               <Pressable
                 className="flex-row items-center mb-3 px-1.5"
+                accessibilityRole="button"
+                accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
                 onPress={() => {
                   LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                   setShowExerciseMenu(false);

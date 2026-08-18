@@ -88,6 +88,9 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   const renderMetricItem = (metric: HealthMetric) => {
     const metricLabel = t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel });
     const value = healthData?.[metric.id];
+    const displayValue = value === NO_DATA_DISPLAY
+      ? t('healthSync.noData', { defaultValue: 'No data' })
+      : value;
     const showLoading = isLoadingHealthData && !value;
 
     return (
@@ -110,7 +113,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
             className={`text-sm mr-2 flex-shrink-0 ${value === NO_DATA_DISPLAY ? 'text-text-muted italic' : 'text-text-muted'}`}
             numberOfLines={1}
           >
-            {value}
+            {displayValue}
           </Text>
         )}
         <Switch
@@ -142,6 +145,11 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           onPress={handleLearnMoreToggle}
           className="self-start py-0 px-0 mt-1"
           textClassName="text-sm"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: learnMoreExpanded }}
+          accessibilityLabel={learnMoreExpanded
+            ? t('common.showLess', { defaultValue: 'Show less' })
+            : t('common.learnMore', { defaultValue: 'Learn more' })}
         >
           {learnMoreExpanded ? t('common.showLess', { defaultValue: 'Show less' }) : t('common.learnMore', { defaultValue: 'Learn more' })}
         </Button>

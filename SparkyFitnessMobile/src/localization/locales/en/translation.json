@@ -258,7 +258,8 @@
     "syncMetricHint": "Toggles synchronization for this health metric.",
     "enableAllHint": "Toggles synchronization for all health metrics.",
     "writeMetricLabel": "Write {{metric}} to {{store}}",
-    "writeMetricHint": "Toggles writing this metric to the health store."
+    "writeMetricHint": "Toggles writing this metric to the health store.",
+    "noData": "No data"
   },
   "auth": {
     "frontendUrl": "Frontend URL",
@@ -362,7 +363,11 @@
     "exercise": "Exercise",
     "minutes": "Minutes",
     "calories": "Calories",
-    "noExerciseEntries": "No exercise entries yet"
+    "noExerciseEntries": "No exercise entries yet",
+    "removeWater": "Remove water",
+    "addWater": "Add water",
+    "selectContainer": "Select {{container}}",
+    "perContainer": "{{value}} {{unit}} per container"
   },
   "syncScreen": {
     "healthConnectSettings": "Health Connect settings",
@@ -549,6 +554,14 @@
     "description": "SparkyFitness is an open-source nutrition, exercise, and health-data tracker that syncs to your own server. This app is the mobile companion for logging meals, workouts, and measurements on the go.",
     "github": "Project on GitHub",
     "documentation": "Documentation",
-    "privacyPolicy": "Privacy Policy"
+    "privacyPolicy": "Privacy Policy",
+    "openExternalLink": "Opens in your browser"
+  },
+  "errorBoundary": {
+    "somethingWentWrong": "Something went wrong",
+    "serverMayNeedUpdate": "An unexpected error occurred. Your server may need to be updated.",
+    "tryAgain": "Try Again",
+    "goBack": "Go Back",
+    "sectionFailed": "This section failed to load."
   }
 }

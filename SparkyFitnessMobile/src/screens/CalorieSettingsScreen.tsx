@@ -223,6 +223,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                 keyboardType="number-pad"
                 maxLength={3}
                 returnKeyType="done"
+                accessibilityLabel={t('calorieSettings.exerciseCaloriesApplied', { defaultValue: 'Exercise Calories Applied' })}
               />
               <Text className="text-text-secondary text-sm mt-3">
                 {t('calorieSettings.exerciseCaloriesDescription', { defaultValue: 'How much of your exercise calories are added back to your daily goal.' })}
@@ -264,6 +265,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                 <Switch
                   onValueChange={handleNegativeAdjustmentToggle}
                   value={normalized.tdeeAllowNegativeAdjustment}
+                  accessibilityLabel={t('calorieSettings.allowNegative', { defaultValue: 'Allow Negative Adjustment' })}
                 />
               </View>
               <Text className="text-text-secondary text-sm mt-3">
@@ -280,6 +282,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               <Switch
                 onValueChange={handleBmrToggle}
                 value={normalized.includeBmrInNetCalories}
+                accessibilityLabel={t('calorieSettings.includeResting', { defaultValue: 'Include Resting Calories' })}
               />
             </View>
             <Text className="text-text-secondary text-sm mt-3">
@@ -352,6 +355,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             <Switch
               onValueChange={handleExternalBmrToggle}
               value={normalized.useExternalBmr}
+              accessibilityLabel={t('calorieSettings.useExternal', { defaultValue: 'Use {{metric}} from {{source}}', metric: bmrMetricName, source: healthSourceName })}
             />
           </View>
           <Text className="text-text-secondary text-sm mt-3">
@@ -363,7 +367,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               {Platform.OS === 'ios' && (
                 <Text className="text-text-secondary text-xs mt-3">
                   {t('calorieSettings.iosNote', { defaultValue: 'The synced value already includes light daily activity, so you may want to set' })}
-                  {t('calorieSettings.iosNoteContinuation', { defaultValue: 'your Activity Level to None (×1.0) to avoid counting it twice.' })}
+                  {' '}{t('calorieSettings.iosNoteContinuation', { defaultValue: 'your Activity Level to None (×1.0) to avoid counting it twice.' })}
                 </Text>
               )}
             </View>

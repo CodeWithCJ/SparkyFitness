@@ -260,7 +260,8 @@
     "syncMetricHint": "Włącza lub wyłącza synchronizację tego parametru zdrowotnego.",
     "enableAllHint": "Włącza lub wyłącza synchronizację wszystkich parametrów zdrowotnych.",
     "writeMetricLabel": "Zapisuj {{metric}} w {{store}}",
-    "writeMetricHint": "Włącza lub wyłącza zapis tego parametru w magazynie danych zdrowotnych."
+    "writeMetricHint": "Włącza lub wyłącza zapis tego parametru w magazynie danych zdrowotnych.",
+    "noData": "Brak danych"
   },
   "auth": {
     "frontendUrl": "Adres URL frontendu",
@@ -364,7 +365,11 @@
     "exercise": "Ćwiczenia",
     "minutes": "Minuty",
     "calories": "Kalorie",
-    "noExerciseEntries": "Brak zapisanych ćwiczeń"
+    "noExerciseEntries": "Brak zapisanych ćwiczeń",
+    "removeWater": "Usuń wodę",
+    "addWater": "Dodaj wodę",
+    "selectContainer": "Wybierz {{container}}",
+    "perContainer": "{{value}} {{unit}} na pojemnik"
   },
   "syncScreen": {
     "healthConnectSettings": "ustawieniach Health Connect",
@@ -552,9 +557,17 @@
     "title": "Informacje",
     "version": "Wersja {{version}} ({{build}})",
     "descriptionTitle": "O tej aplikacji",
-    "description": "SparkyFitness to open-source’owy rejestrator żywienia, ćwiczeń i danych zdrowotnych, który synchronizuje dane z własnym serwerem. Ta aplikacja mobilna ułatwia rejestrowanie posiłków, treningów i pomiarów w dowolnym miejscu.",
-    "github": "Projekt na GitHubie",
+    "description": "SparkyFitness to aplikacja open source do śledzenia odżywiania, ćwiczeń i danych zdrowotnych, która synchronizuje dane z własnym serwerem. Aplikacja mobilna pozwala rejestrować posiłki, treningi i pomiary w dowolnym miejscu.",
+    "github": "Projekt w serwisie GitHub",
     "documentation": "Dokumentacja",
-    "privacyPolicy": "Polityka prywatności"
+    "privacyPolicy": "Polityka prywatności",
+    "openExternalLink": "Otwiera stronę w przeglądarce"
+  },
+  "errorBoundary": {
+    "somethingWentWrong": "Coś poszło nie tak",
+    "serverMayNeedUpdate": "Wystąpił nieoczekiwany błąd. Serwer może wymagać aktualizacji.",
+    "tryAgain": "Spróbuj ponownie",
+    "goBack": "Wróć",
+    "sectionFailed": "Nie udało się załadować tej sekcji."
   }
 }

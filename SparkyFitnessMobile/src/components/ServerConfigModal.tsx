@@ -163,7 +163,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     const url = normalizeUrl(serverUrl);
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.startsWith('http://') || lowerUrl.startsWith('https://')) {
-      const validationError = getInsecureUrlError(url);
+      const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required to securely register passkeys, access your camera, and sync health data.' }));
       if (validationError) {
         setError(validationError);
         setAuthSettings(null);
@@ -259,7 +259,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     if (!email.trim()) { setError(t('auth.errors.emailRequired', { defaultValue: 'Please enter your email.' })); return; }
     if (!password) { setError(t('auth.errors.passwordRequired', { defaultValue: 'Please enter your password.' })); return; }
     
-    const validationError = getInsecureUrlError(url);
+    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required to securely register passkeys, access your camera, and sync health data.' }));
     if (validationError) {
       setError(validationError);
       return;
@@ -313,7 +313,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       return;
     }
 
-    const validationError = getInsecureUrlError(url);
+    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required to securely register passkeys, access your camera, and sync health data.' }));
     if (validationError) {
       setError(validationError);
       return;
@@ -352,7 +352,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       return;
     }
     
-    const validationError = getInsecureUrlError(url);
+    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required to securely register passkeys, access your camera, and sync health data.' }));
     if (validationError) {
       setError(validationError);
       return;
@@ -473,7 +473,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     if (!url) { setError(t('onboarding.errors.validFrontendUrl', { defaultValue: 'Enter a valid Frontend URL' })); return; }
     if (!apiKey.trim()) { setError(t('auth.errors.apiKeyRequired', { defaultValue: 'Please enter an API key.' })); return; }
     
-    const validationError = getInsecureUrlError(url);
+    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required to securely register passkeys, access your camera, and sync health data.' }));
     if (validationError) {
       setError(validationError);
       return;
@@ -523,7 +523,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     const url = normalizeUrl(serverUrl);
     if (!url) { setError(t('onboarding.errors.validFrontendUrl', { defaultValue: 'Enter a valid Frontend URL' })); return; }
     
-    const validationError = getInsecureUrlError(url);
+    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required to securely register passkeys, access your camera, and sync health data.' }));
     if (validationError) {
       setError(validationError);
       return;

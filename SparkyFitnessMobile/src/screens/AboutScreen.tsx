@@ -42,7 +42,7 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
           <Image source={require('../../assets/images/logo.png')} className="w-20 h-20 mb-4" resizeMode="contain" />
           <Text className="text-xl font-bold text-text-primary mb-1">SparkyFitness</Text>
           <Text className="text-text-secondary text-sm">
-            {t('about.version', { defaultValue: 'Version {{version}} ({{build}})', version: Application.nativeApplicationVersion, build: Application.nativeBuildVersion })}
+            {t('about.version', { defaultValue: 'Version {{version}} ({{build}})', version: Application.nativeApplicationVersion ?? '—', build: Application.nativeBuildVersion ?? '—' })}
           </Text>
         </View>
 
@@ -58,6 +58,9 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
             className="p-4 flex-row items-center justify-between border-b border-border-subtle"
             onPress={() => openUrl(PROJECT_URL)}
             activeOpacity={0.7}
+            accessibilityRole="link"
+            accessibilityLabel={t('about.github', { defaultValue: 'Project on GitHub' })}
+            accessibilityHint={t('about.openExternalLink', { defaultValue: 'Opens in your browser' })}
           >
             <Text className="text-base font-semibold text-text-primary">{t('about.github', { defaultValue: 'Project on GitHub' })}</Text>
             <Icon name="chevron-forward" size={20} color="#999" />
@@ -67,6 +70,9 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
             className="p-4 flex-row items-center justify-between border-b border-border-subtle"
             onPress={() => openUrl(DOCUMENTATION_URL)}
             activeOpacity={0.7}
+            accessibilityRole="link"
+            accessibilityLabel={t('about.documentation', { defaultValue: 'Documentation' })}
+            accessibilityHint={t('about.openExternalLink', { defaultValue: 'Opens in your browser' })}
           >
             <Text className="text-base font-semibold text-text-primary">{t('about.documentation', { defaultValue: 'Documentation' })}</Text>
             <Icon name="chevron-forward" size={20} color="#999" />
@@ -76,6 +82,9 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
             className="p-4 flex-row items-center justify-between"
             onPress={() => openUrl(PRIVACY_POLICY_URL)}
             activeOpacity={0.7}
+            accessibilityRole="link"
+            accessibilityLabel={t('about.privacyPolicy', { defaultValue: 'Privacy Policy' })}
+            accessibilityHint={t('about.openExternalLink', { defaultValue: 'Opens in your browser' })}
           >
             <Text className="text-base font-semibold text-text-primary">{t('about.privacyPolicy', { defaultValue: 'Privacy Policy' })}</Text>
             <Icon name="chevron-forward" size={20} color="#999" />

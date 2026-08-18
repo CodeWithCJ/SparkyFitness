@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import Icon from './Icon';
 import Button from './ui/Button';
 import { addLog } from '../services/LogService';
+import i18n from '../localization/i18n';
 import { queryClient } from '../hooks/queryClient';
 
 interface ScreenErrorBoundaryProps {
@@ -42,17 +43,17 @@ class ScreenErrorBoundary extends React.Component<ScreenErrorBoundaryProps, Scre
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="alert-circle" size={64} color="#EF4444" />
           <Text className="text-text-secondary text-base mt-4 text-center">
-            Something went wrong
+            {i18n.t('errorBoundary.somethingWentWrong', { defaultValue: 'Something went wrong' })}
           </Text>
           <Text className="text-text-secondary text-sm mt-2 text-center">
-            An unexpected error occurred. Your server may need to be updated.
+            {i18n.t('errorBoundary.serverMayNeedUpdate', { defaultValue: 'An unexpected error occurred. Your server may need to be updated.' })}
           </Text>
           <Button variant="primary" onPress={this.handleRetry} className="mt-4 px-6">
-            Try Again
+            {i18n.t('errorBoundary.tryAgain', { defaultValue: 'Try Again' })}
           </Button>
           {this.props.onGoBack && (
             <Button variant="ghost" onPress={this.props.onGoBack} className="mt-2 px-6">
-              Go Back
+              {i18n.t('errorBoundary.goBack', { defaultValue: 'Go Back' })}
             </Button>
           )}
         </View>
@@ -103,10 +104,10 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
         <View className="items-center py-6 px-4">
           <Icon name="alert-circle" size={32} color="#EF4444" />
           <Text className="text-text-secondary text-sm mt-2 text-center">
-            This section failed to load.
+            {i18n.t('errorBoundary.sectionFailed', { defaultValue: 'This section failed to load.' })}
           </Text>
           <Button variant="ghost" onPress={this.handleRetry} className="mt-2 px-4">
-            Try Again
+            {i18n.t('errorBoundary.tryAgain', { defaultValue: 'Try Again' })}
           </Button>
         </View>
       );
