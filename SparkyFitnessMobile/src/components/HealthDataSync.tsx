@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, Image, Platform, ActivityIndicator } from 'react-native';
-import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER } from '../HealthMetrics';
+import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER, getHealthMetricLabel } from '../HealthMetrics';
 import Button from './ui/Button';
 import Switch from './ui/Switch';
 import CollapsibleSection from './CollapsibleSection';
@@ -86,7 +86,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   const groupedMetrics = groupMetricsByCategory(HEALTH_METRICS);
 
   const renderMetricItem = (metric: HealthMetric) => {
-    const metricLabel = t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel });
+    const metricLabel = getHealthMetricLabel(t, metric);
     const value = healthData?.[metric.id];
     const displayValue = value === NO_DATA_DISPLAY
       ? t('healthSync.noData', { defaultValue: 'No data' })

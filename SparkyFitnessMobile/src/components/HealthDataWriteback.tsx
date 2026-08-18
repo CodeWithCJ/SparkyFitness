@@ -5,6 +5,7 @@ import Button from './ui/Button';
 import BottomSheetPicker from './BottomSheetPicker';
 import Switch from './ui/Switch';
 import { useTranslation } from 'react-i18next';
+import { getHealthMetricLabel } from '../HealthMetrics';
 import {
   WRITEBACK_METRICS,
   WRITEBACK_CATEGORY_ORDER,
@@ -66,7 +67,7 @@ const HealthDataWriteback: React.FC<HealthDataWritebackProps> = ({
   };
 
   const renderMetricItem = (metric: WritebackMetric) => {
-    const metricLabel = t(`healthMetrics.${metric.id}`, { defaultValue: metric.defaultLabel });
+    const metricLabel = getHealthMetricLabel(t, metric);
     return (
     <View key={metric.id} className="flex-row justify-between items-center mb-2">
       <View className="flex-row items-center flex-1 mr-2">
