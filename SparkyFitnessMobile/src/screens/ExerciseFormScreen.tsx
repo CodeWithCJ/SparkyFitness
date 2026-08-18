@@ -18,7 +18,6 @@ import type {
   RootStackScreenProps,
 } from '../types/navigation';
 import type { CreateExercisePayload, UpdateExercisePayload } from '../services/api/exerciseApi';
-import { SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
 
 const CATEGORY_OPTIONS = [
   { value: 'general' },
@@ -124,12 +123,13 @@ const SectionHeader: React.FC<{ children: string }> = ({ children }) => (
 );
 
 const labelForOption = (
-  options: readonly { value: string }[],
+  options: readonly { label: string; value: string }[],
   value: string | null,
+  placeholder: string,
 ): string => {
-  if (!value) return 'Select…';
+  if (!value) return placeholder;
   const match = options.find((opt) => opt.value === value);
-  return match ? titleCase(match.value) : titleCase(value);
+  return match?.label ?? value;
 };
 
 const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
@@ -176,11 +176,11 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
     ) {
       return [
         ...CATEGORY_OPTIONS.map((opt) => ({ label: localizeOption('category', opt.value, titleCase(opt.value)), value: opt.value })),
-        { label: titleCase(state.category), value: state.category },
+        { label: state.category, value: state.category },
       ];
     }
     return CATEGORY_OPTIONS.map((opt) => ({ label: localizeOption('category', opt.value, titleCase(opt.value)), value: opt.value }));
-  }, [state.category]);
+  }, [state.category, t]);
 
   const modalityOptions = useMemo(() => {
     if (
@@ -189,11 +189,11 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
     ) {
       return [
         ...MODALITY_OPTIONS.map((opt) => ({ label: localizeOption('modality', opt.value, titleCase(opt.value)), value: opt.value })),
-        { label: titleCase(state.modality), value: state.modality },
+        { label: state.modality, value: state.modality },
       ];
     }
     return MODALITY_OPTIONS.map((opt) => ({ label: localizeOption('modality', opt.value, titleCase(opt.value)), value: opt.value }));
-  }, [state.modality]);
+  }, [state.modality, t]);
 
   const renderPicker = (
     label: string,
@@ -216,7 +216,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
             style={{ height: 44 }}
           >
             <Text className="text-text-primary" style={{ fontSize: 16 }}>
-              {labelForOption(options, value)}
+              {labelForOption(options, value, t('workout.selectValue', { defaultValue: 'Select…' }))}
             </Text>
             <Icon name="chevron-down" size={16} color={textMuted} />
           </TouchableOpacity>
@@ -261,7 +261,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
           {t('workout.caloriesPerHour', { defaultValue: 'Calories per Hour' })}
         </Text>
         <FormInput
-          placeholder={t('workout.calories', { defaultValue: '0' })}
+          placeholder="0"
           value={state.caloriesPerHourText}
           onChangeText={(v) => {
             if (DECIMAL_INPUT_REGEX.test(v)) {
@@ -488,8 +488,8 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
   return (
     <FormScreenChrome
       title={t('screens.newExercise', { defaultValue: 'New Exercise' })}
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
+      saveLabel={t('common.save', { defaultValue: 'Save' })}
+      savingLabel={t('common.saving', { defaultValue: 'Saving…' })}
       isSaving={isPending}
       onSave={() => {
         void handleSave();
@@ -643,8 +643,8 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
   return (
     <FormScreenChrome
       title={t('screens.editExercise', { defaultValue: 'Edit Exercise' })}
-      saveLabel={SAVE_LABEL}
-      savingLabel={SAVING_LABEL}
+      saveLabel={t('common.save', { defaultValue: 'Save' })}
+      savingLabel={t('common.saving', { defaultValue: 'Saving…' })}
       isSaving={isPending}
       onSave={() => {
         void handleSave();
