@@ -802,6 +802,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
               {scanMode === 'barcode' ? (
                 <TouchableOpacity
                   onPress={handleShowManualEntry}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('foodScan.barcode.typeInstead', { defaultValue: 'Type Barcode Instead' })}
                   className="bg-raised px-6 py-3 rounded-xl"
                 >
                   <Text className="text-text-primary text-sm font-semibold">{t('foodScan.barcode.typeInstead', { defaultValue: 'Type Barcode Instead' })}</Text>
