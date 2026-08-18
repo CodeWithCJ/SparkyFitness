@@ -95,7 +95,9 @@ services:
   sparkyfitness-frontend:
     image: codewithcj/sparkyfitness:latest # Use pre-built image
     ports:
-      - "3004:80" # Map host port 8080 to container port 80 (Nginx)
+      # Container port must track NGINX_LISTEN_PORT, or nginx listens on an
+      # unpublished port and the app becomes unreachable.
+      - "${SPARKY_FITNESS_FRONTEND_PORT:-3004}:${NGINX_LISTEN_PORT:-80}"
     environment:
       SPARKY_FITNESS_FRONTEND_URL: ${SPARKY_FITNESS_FRONTEND_URL}
       SPARKY_FITNESS_SERVER_HOST: sparkyfitness-server # Internal Docker service name for the backend
