@@ -1485,5 +1485,11 @@
     "saveChanges": "Save changes",
     "deleting": "Deleting...",
     "deleteAction": "Delete fast"
+  },
+  "privacyPolicy": {
+    "title": "Privacy Policy",
+    "noData": "This app does not collect, store, or sell your personal data.",
+    "healthData": "All HealthKit data stays on your device and is transmitted only to your own server.",
+    "learnMore": "Learn more in our Privacy Policy."
   }
 }

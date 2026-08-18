@@ -1509,5 +1509,11 @@
     "saveChanges": "Zapisz zmiany",
     "deleting": "Usuwanie…",
     "deleteAction": "Usuń post"
+  },
+  "privacyPolicy": {
+    "title": "Polityka prywatności",
+    "noData": "Ta aplikacja nie gromadzi, nie przechowuje ani nie sprzedaje Twoich danych osobowych.",
+    "healthData": "Wszystkie dane HealthKit pozostają na Twoim urządzeniu i są przesyłane wyłącznie na Twój własny serwer.",
+    "learnMore": "Dowiedz się więcej w naszej polityce prywatności."
   }
 }
