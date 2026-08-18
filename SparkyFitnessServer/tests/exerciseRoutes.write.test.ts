@@ -2,8 +2,22 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'supertest'
 import request from 'supertest';
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import exerciseService from '../services/exerciseService.js';
 import exerciseRoutes from '../routes/exerciseRoutes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// Matches exerciseRoutes.ts's own baseUploadsDir resolution (no
+// SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY set in this test environment) and
+// its destination() sanitization, which turns the fallback name's hyphen
+// into an underscore (exerciseName.replace(/[^a-zA-Z0-9]/g, '_')).
+const unknownExerciseUploadDir = path.join(
+  __dirname,
+  '../uploads/exercises/unknown_exercise'
+);
 
 vi.mock('../middleware/authMiddleware.js', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -140,6 +154,28 @@ describe('exercise create/update array-field normalization', () => {
       expect(exerciseService.createExercise).not.toHaveBeenCalled();
     });
 
+    it('does not crash and cleans up the upload when malformed JSON arrives alongside an attached file', async () => {
+      // multer's storage.destination JSON.parses exerciseData itself, before
+      // the route handler's own validation ever runs, and only runs at all
+      // when a file is actually attached — the earlier malformed-JSON tests
+      // never exercised that path.
+      const res = await request(app)
+        .post('/exercises')
+        .field('exerciseData', '{not valid json')
+        .attach('images', Buffer.from('fake image bytes'), 'test.jpg');
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.error).toBe('Invalid exercise payload.');
+      expect(exerciseService.createExercise).not.toHaveBeenCalled();
+
+      // The rejected upload must not be left behind under the fallback
+      // 'unknown-exercise' folder multer used before validation ran.
+      const leftoverFiles = fs.existsSync(unknownExerciseUploadDir)
+        ? fs.readdirSync(unknownExerciseUploadDir)
+        : [];
+      expect(leftoverFiles).toEqual([]);
+    });
+
     it('keeps unrelated fields untouched via passthrough', async () => {
       const res = await request(app)
         .post('/exercises')
@@ -206,6 +242,22 @@ describe('exercise create/update array-field normalization', () => {
       expect(res.statusCode).toBe(400);
       expect(res.body.error).toBe('Invalid exercise payload.');
       expect(exerciseService.updateExercise).not.toHaveBeenCalled();
+    });
+
+    it('does not crash and cleans up the upload when malformed JSON arrives alongside an attached file', async () => {
+      const res = await request(app)
+        .put(`/exercises/${VALID_UUID}`)
+        .field('exerciseData', '{not valid json')
+        .attach('images', Buffer.from('fake image bytes'), 'test.jpg');
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.error).toBe('Invalid exercise payload.');
+      expect(exerciseService.updateExercise).not.toHaveBeenCalled();
+
+      const leftoverFiles = fs.existsSync(unknownExerciseUploadDir)
+        ? fs.readdirSync(unknownExerciseUploadDir)
+        : [];
+      expect(leftoverFiles).toEqual([]);
     });
   });
 });

@@ -13,6 +13,7 @@ import {
   exerciseWriteArrayFieldsSchema,
   type ExerciseWriteArrayFields,
 } from '@workspace/shared';
+import { log } from '../config/logging.js';
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -27,9 +28,25 @@ const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
 const storage = multer.diskStorage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   destination: (req: any, file: any, cb: any) => {
-    const exerciseName = req.body.exerciseData
-      ? JSON.parse(req.body.exerciseData).name
-      : 'unknown-exercise';
+    // Runs per-file, before the route handler (and its exerciseData
+    // validation) ever executes — malformed/wrongly-shaped exerciseData must
+    // not throw here, or the request fails uncontrolled instead of getting
+    // the route handler's clean 400. Same 'unknown-exercise' fallback
+    // already used when exerciseData is absent; parseExerciseData in the
+    // route handler is what actually rejects the request, regardless of
+    // which folder this file landed in.
+    let exerciseName = 'unknown-exercise';
+    try {
+      if (req.body.exerciseData) {
+        const name = JSON.parse(req.body.exerciseData).name;
+        if (typeof name === 'string' && name.length > 0) {
+          exerciseName = name;
+        }
+      }
+    } catch {
+      // Malformed JSON, or .name isn't the shape expected, keep the
+      // fallback name.
+    }
     const uploadPath = path.join(
       baseUploadsDir,
       'exercises',
@@ -72,6 +89,31 @@ function parseExerciseData(
     return null;
   }
   return result.data;
+}
+
+/**
+ * multer has already written any uploaded files to disk by the time
+ * parseExerciseData can reject the request (validation runs in the route
+ * handler, after the upload middleware). Delete them so a rejected request
+ * doesn't leave orphaned files under uploads/exercises/. Awaited by callers,
+ * but doesn't delay the client's response: parseExerciseData has already
+ * sent it before cleanup runs. Best-effort: a failed delete is logged, not
+ * surfaced to the client.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function cleanupUploadedFiles(files: any): Promise<void> {
+  if (!Array.isArray(files)) return;
+  await Promise.all(
+    files.map(async (file) => {
+      const filePath = file?.path;
+      if (typeof filePath !== 'string') return;
+      try {
+        await fs.promises.unlink(filePath);
+      } catch (err) {
+        log('warn', `Failed to clean up rejected upload ${filePath}:`, err);
+      }
+    })
+  );
 }
 
 /**
@@ -961,7 +1003,11 @@ router.post(
   async (req, res, next) => {
     try {
       const exerciseData = parseExerciseData(req.body?.exerciseData, res);
-      if (!exerciseData) return;
+      if (!exerciseData) {
+        // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
+        await cleanupUploadedFiles(req.files);
+        return;
+      }
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const imagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
@@ -1180,7 +1226,11 @@ router.put(
     }
     try {
       const exerciseData = parseExerciseData(req.body?.exerciseData, res);
-      if (!exerciseData) return;
+      if (!exerciseData) {
+        // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
+        await cleanupUploadedFiles(req.files);
+        return;
+      }
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const newImagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
