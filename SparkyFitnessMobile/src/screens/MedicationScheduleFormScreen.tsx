@@ -14,19 +14,20 @@ import {
   useDeleteMedicationSchedule,
 } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import FormInput from '../components/FormInput';
 import StepperInput from '../components/StepperInput';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import WeekdaySheet, { type WeekdaySheetRef } from '../components/medications/WeekdaySheet';
 import Switch from '../components/ui/Switch';
-import { DAY_LABELS, formatTimeOfDay } from '@workspace/shared';
+import { formatTimeOfDay } from '@workspace/shared';
 import type { CreateScheduleInput, MedicationSchedule, MedicationWithMeal } from '@workspace/shared';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
-import { scheduleTypeLabel, mealTimingLabel } from '../utils/medicationLocalization';
+import { scheduleTypeLabel } from '../utils/medicationLocalization';
+import { localizedMealTimingLabel, localizedWeekdayLabels } from '../utils/medicationScheduleLocalization';
 import { SCHEDULE_TYPES } from '../types/medications';
 
 type MedicationScheduleFormScreenProps = RootStackScreenProps<'MedicationScheduleForm'>;
@@ -356,9 +357,9 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
+      label: t('common.save', { defaultValue: 'Save' }),
       busy: createScheduleMutation.isPending || updateScheduleMutation.isPending,
-      busyLabel: SAVING_LABEL,
+      busyLabel: t('common.saving', { defaultValue: 'Saving…' }),
       disabled: isEditing && !existing,
       onPress: handleSave,
     },
@@ -366,34 +367,35 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
 
   const typeOptions = useMemo(() => {
     const options: { label: string; value: string }[] = SCHEDULE_TYPES.map((id) => ({
-      label: scheduleTypeLabel(id),
+      label: scheduleTypeLabel(id, t),
       value: id,
     }));
     if (form.scheduleTypeId && !options.some((o) => o.value === form.scheduleTypeId)) {
       options.push({ label: humanizeTypeId(form.scheduleTypeId), value: form.scheduleTypeId });
     }
     return options;
-  }, [form.scheduleTypeId]);
+  }, [form.scheduleTypeId, t]);
 
   const withMealOptions = useMemo(
     () => [
       { label: t('medications.schedule.none', { defaultValue: 'None' }), value: '' },
-      { label: mealTimingLabel('before'), value: 'before' },
-      { label: mealTimingLabel('with'), value: 'with' },
-      { label: mealTimingLabel('after'), value: 'after' },
+      { label: localizedMealTimingLabel(t, 'before'), value: 'before' },
+      { label: localizedMealTimingLabel(t, 'with'), value: 'with' },
+      { label: localizedMealTimingLabel(t, 'after'), value: 'after' },
     ],
-    [],
+    [t],
   );
 
   const type = form.scheduleTypeId;
   const startRequired = requiresStartDate(type);
 
+  const weekdayLabels = localizedWeekdayLabels(t);
   const daysSummary =
     form.daysOfWeek.length === 7
-      ? 'Every day'
+      ? t('medications.schedule.everyDay', { defaultValue: 'Every day' })
       : form.daysOfWeek.length > 0
-        ? form.daysOfWeek.map((d) => DAY_LABELS[d]).join(', ')
-        : 'None';
+        ? form.daysOfWeek.map((d) => weekdayLabels[d]).join(', ')
+        : t('medications.schedule.none', { defaultValue: 'None' });
 
   if (isEditing && !existing) {
     return (
@@ -445,7 +447,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                     </TouchableOpacity>
                   )}
                   <Text className="text-base text-text-secondary">
-                    {form.timeOfDay ? formatTimeOfDay(form.timeOfDay) : 'None'}
+                    {form.timeOfDay ? formatTimeOfDay(form.timeOfDay) : t('medications.schedule.none', { defaultValue: 'None' })}
                   </Text>
                 </View>
               }
@@ -631,7 +633,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                   </TouchableOpacity>
                 )}
                 <Text className="text-base text-text-secondary">
-                  {form.startDate ? formatDateLabel(form.startDate) : 'None'}
+                  {form.startDate ? formatDateLabel(form.startDate) : t('medications.schedule.none', { defaultValue: 'None' })}
                 </Text>
               </View>
             }
@@ -653,7 +655,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                   </TouchableOpacity>
                 )}
                 <Text className="text-base text-text-secondary">
-                  {form.endDate ? formatDateLabel(form.endDate) : 'None'}
+                  {form.endDate ? formatDateLabel(form.endDate) : t('medications.schedule.none', { defaultValue: 'None' })}
                 </Text>
               </View>
             }

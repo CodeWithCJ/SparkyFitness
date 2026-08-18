@@ -20,7 +20,8 @@
     "itemCount_few": "{{count}} elementy",
     "itemCount_many": "{{count}} elementów",
     "itemCount_other": "{{count}} elementów",
-    "off": "Wyłączone"
+    "off": "Wyłączone",
+    "openSelectionMenu": "Otwiera menu wyboru"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -606,8 +607,10 @@
     "keepAwakeAccessibility": "Nie wyłączaj ekranu"
   },
   "restPeriod": {
-    "rest": "Odpoczynek: {{duration}}",
-    "off": "Wyłączone"
+    "title": "Czas przerwy",
+    "rest": "Przerwa: {{duration}}",
+    "off": "Wyłączone",
+    "custom": "Niestandardowe"
   },
   "diary": {
     "emptyDay": "Brak wpisów z tego dnia"
@@ -739,7 +742,8 @@
       "delete": "Usuń harmonogram",
       "loading": "Ładowanie…",
       "notFound": "Nie znaleziono harmonogramu",
-      "daysTitle": "Dni tygodnia"
+      "daysTitle": "Dni tygodnia",
+      "everyDay": "Codziennie"
     },
     "dose": {
       "log": "Zapisz",
@@ -764,7 +768,8 @@
     "card": {
       "title": "Leki",
       "viewAll": "Zobacz wszystkie",
-      "viewAllA11y": "Zobacz wszystkie leki"
+      "viewAllA11y": "Zobacz wszystkie leki",
+      "medicationA11y": "{{name}}{{summary}}"
     },
     "types": {
       "daily": "Codziennie",
@@ -790,8 +795,42 @@
       "afterMeal": "Po posiłku"
     },
     "weekdays": {
-      "title": "Dni tygodnia"
+      "title": "Dni tygodnia",
+      "sun": "Niedziela",
+      "mon": "Poniedziałek",
+      "tue": "Wtorek",
+      "wed": "Środa",
+      "thu": "Czwartek",
+      "fri": "Piątek",
+      "sat": "Sobota",
+      "itemA11y": "{{day}}, {{state}}",
+      "selected": "wybrano",
+      "notSelected": "nie wybrano"
     },
-    "notificationTitle": "Przypomnienie o leku"
+    "notificationTitle": "Przypomnienie o leku",
+    "scheduleSummary": {
+      "daily": "Codziennie",
+      "weekly": "Co tydzień",
+      "everyNDays": "Co {{count}} dni",
+      "monthlyOnDay": "Co miesiąc, {{day}}. dnia",
+      "monthly": "Co miesiąc",
+      "cycle": "{{on}} dni stosowania, {{off}} dni przerwy",
+      "asNeeded": "W razie potrzeby",
+      "taper": "Stopniowe zmniejszanie dawki",
+      "at": "{{frequency}} o {{time}}"
+    },
+    "notificationScheduledDose": "Zaplanowano przyjęcie dawki",
+    "notificationScheduledDoseNamed": "Zaplanowana dawka: {{name}}{{dose}}"
+  },
+  "scheduleSummary": {
+    "daily": "Codziennie",
+    "weekly": "Co tydzień",
+    "everyNDays": "Co {{count}} dni",
+    "monthlyOnDay": "Co miesiąc, {{day}}. dnia",
+    "monthly": "Co miesiąc",
+    "cycle": "{{on}} dni stosowania, {{off}} dni przerwy",
+    "asNeeded": "W razie potrzeby",
+    "taper": "Stopniowe zmniejszanie dawki",
+    "at": "{{frequency}} o {{time}}"
   }
 }

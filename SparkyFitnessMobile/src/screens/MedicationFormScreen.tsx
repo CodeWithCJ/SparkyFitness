@@ -8,7 +8,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import { useMedicationDetail, useCreateMedication, useUpdateMedication } from '../hooks/useMedications';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
 import Switch from '../components/ui/Switch';
@@ -153,14 +153,14 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
+      label: t('common.save', { defaultValue: 'Save' }),
       busy: createMedication.isPending || updateMedication.isPending,
-      busyLabel: SAVING_LABEL,
+      busyLabel: t('common.saving', { defaultValue: 'Saving…' }),
       onPress: handleSave,
     },
   });
 
-  const typeOptions = useMemo(() => MEDICATION_TYPES.map((id) => ({ label: medicationTypeLabel(id), value: id })), []);
+  const typeOptions = useMemo(() => MEDICATION_TYPES.map((id) => ({ label: medicationTypeLabel(id, t), value: id })), [t]);
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>

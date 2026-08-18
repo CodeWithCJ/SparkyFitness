@@ -1,6 +1,7 @@
+import type { TFunction } from 'i18next';
 import i18n from '../localization/i18n';
 
-export function medicationTypeLabel(typeId: string | null | undefined): string {
+export function medicationTypeLabel(typeId: string | null | undefined, t: TFunction = i18n.t.bind(i18n)): string {
   switch (typeId) {
     case 'pill': return i18n.t('medications.types.pill', { defaultValue: 'Pill' });
     case 'tablet': return i18n.t('medications.types.tablet', { defaultValue: 'Tablet' });
@@ -16,6 +17,7 @@ export function medicationTypeLabel(typeId: string | null | undefined): string {
     case 'other': return i18n.t('medications.types.other', { defaultValue: 'Other' });
     case 'daily': return i18n.t('medications.types.daily', { defaultValue: 'Daily' });
     case 'weekly': return i18n.t('medications.types.weekly', { defaultValue: 'Specific days' });
+    case 'specific_days': return i18n.t('medications.types.weekly', { defaultValue: 'Specific days' });
     case 'every_n_days': return i18n.t('medications.types.every_n_days', { defaultValue: 'Every N days' });
     case 'monthly': return i18n.t('medications.types.monthly', { defaultValue: 'Monthly' });
     case 'cyclic': return i18n.t('medications.types.cyclic', { defaultValue: 'Cycle (on/off)' });
@@ -24,11 +26,11 @@ export function medicationTypeLabel(typeId: string | null | undefined): string {
   }
 }
 
-export function scheduleTypeLabel(typeId: string): string {
-  return medicationTypeLabel(typeId);
+export function scheduleTypeLabel(typeId: string, t: TFunction = i18n.t.bind(i18n)): string {
+  return medicationTypeLabel(typeId, t);
 }
 
-export function mealTimingLabel(value: string): string {
+export function mealTimingLabel(value: string, t: TFunction = i18n.t.bind(i18n)): string {
   switch (value) {
     case 'before': return i18n.t('medications.types.beforeMeal', { defaultValue: 'Before meal' });
     case 'with': return i18n.t('medications.types.withMeal', { defaultValue: 'With meal' });

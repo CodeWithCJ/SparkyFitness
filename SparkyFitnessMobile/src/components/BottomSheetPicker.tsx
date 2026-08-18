@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -38,9 +39,10 @@ export function PickerTrigger({
   label,
   onPress,
   accessibilityLabel,
-  accessibilityHint = 'Opens selection menu',
+  accessibilityHint = undefined,
   containerStyle,
 }: PickerTriggerProps) {
+  const { t } = useTranslation();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
   return (
     <TouchableOpacity
@@ -50,7 +52,7 @@ export function PickerTrigger({
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
+      accessibilityHint={accessibilityHint ?? t('common.openSelectionMenu', { defaultValue: 'Opens selection menu' })}
     >
       <Text className="text-base flex-1 text-text-primary">{label}</Text>
       <Icon name="chevron-down" size={16} color={textMuted} />

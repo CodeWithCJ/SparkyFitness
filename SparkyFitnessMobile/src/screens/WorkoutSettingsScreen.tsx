@@ -47,9 +47,9 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
           subtitleNumberOfLines={0}
           rightAccessory={
             <PickerTrigger
-              label={formatRestLabel(defaultRestSec)}
+              label={formatRestLabel(defaultRestSec, t('restPeriod.off', { defaultValue: 'Off' }))}
               onPress={() => restSheetRef.current?.present(defaultRestSec)}
-              accessibilityLabel={t('workoutSettings.defaultRestAccessibility', { defaultValue: 'Default rest period, {{duration}}', duration: formatRestLabel(defaultRestSec) })}
+              accessibilityLabel={t('workoutSettings.defaultRestAccessibility', { defaultValue: 'Default rest period, {{duration}}', duration: formatRestLabel(defaultRestSec, t('restPeriod.off', { defaultValue: 'Off' })) })}
               containerStyle={{ width: 110 }}
             />
           }

@@ -18,7 +18,8 @@
     "expandSection": "Expand this section",
     "itemCount_one": "{{count}} item",
     "itemCount_other": "{{count}} items",
-    "off": "Off"
+    "off": "Off",
+    "openSelectionMenu": "Opens selection menu"
   },
   "settings": {
     "app": "App Settings",
@@ -600,8 +601,10 @@
     "keepAwakeAccessibility": "Keep screen awake"
   },
   "restPeriod": {
+    "title": "Rest period",
     "rest": "Rest {{duration}}",
-    "off": "Off"
+    "off": "Off",
+    "custom": "Custom"
   },
   "diary": {
     "emptyDay": "No entries recorded for this day"
@@ -733,7 +736,8 @@
       "delete": "Delete Schedule",
       "loading": "Loading...",
       "notFound": "Schedule not found",
-      "daysTitle": "Days of Week"
+      "daysTitle": "Days of Week",
+      "everyDay": "Every day"
     },
     "dose": {
       "log": "Log",
@@ -758,7 +762,8 @@
     "card": {
       "title": "Medications",
       "viewAll": "View all",
-      "viewAllA11y": "View all medications"
+      "viewAllA11y": "View all medications",
+      "medicationA11y": "{{name}}{{summary}}"
     },
     "types": {
       "daily": "Daily",
@@ -784,8 +789,42 @@
       "afterMeal": "After meal"
     },
     "weekdays": {
-      "title": "Days of Week"
+      "title": "Days of Week",
+      "sun": "Sunday",
+      "mon": "Monday",
+      "tue": "Tuesday",
+      "wed": "Wednesday",
+      "thu": "Thursday",
+      "fri": "Friday",
+      "sat": "Saturday",
+      "itemA11y": "{{day}}, {{state}}",
+      "selected": "selected",
+      "notSelected": "not selected"
     },
-    "notificationTitle": "Medication reminder"
+    "notificationTitle": "Medication reminder",
+    "scheduleSummary": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "everyNDays": "Every {{count}} days",
+      "monthlyOnDay": "Monthly on day {{day}}",
+      "monthly": "Monthly",
+      "cycle": "{{on}} days on, {{off}} days off",
+      "asNeeded": "As needed",
+      "taper": "Taper",
+      "at": "{{frequency}} at {{time}}"
+    },
+    "notificationScheduledDose": "You have a scheduled dose",
+    "notificationScheduledDoseNamed": "Scheduled dose: {{name}}{{dose}}"
+  },
+  "scheduleSummary": {
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "everyNDays": "Every {{count}} days",
+    "monthlyOnDay": "Monthly on day {{day}}",
+    "monthly": "Monthly",
+    "cycle": "{{on}} days on, {{off}} days off",
+    "asNeeded": "As needed",
+    "taper": "Taper",
+    "at": "{{frequency}} at {{time}}"
   }
 }

@@ -25,7 +25,7 @@ interface MedicationsCardProps {
   navigation: MedicationsCardNavigation;
 }
 
-const typeLabelFor = (typeId: string | null): string => medicationTypeLabel(typeId);
+const typeLabelFor = (typeId: string | null, t: Parameters<typeof medicationTypeLabel>[1]): string => medicationTypeLabel(typeId, t);
 
 const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
   const { t } = useTranslation();
@@ -83,7 +83,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
       {dueDoses.map((due) => {
         const med = due.medication;
         const subtitle = [
-          typeLabelFor(med.type_id),
+          typeLabelFor(med.type_id, t),
           formatDose(med, due.schedule),
         ].filter(Boolean).join(' · ');
         return (
@@ -106,7 +106,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         const prnCount = entries?.filter(
           (e) => e.medication_id === med.id && e.status === 'prn_taken' && e.entry_date === selectedDate,
         ).length ?? 0;
-        const subtitle = [typeLabelFor(med.type_id), formatDose(med)].filter(Boolean).join(' · ');
+        const subtitle = [typeLabelFor(med.type_id, t), formatDose(med)].filter(Boolean).join(' · ');
         return (
           <DoseRow
             key={med.id}

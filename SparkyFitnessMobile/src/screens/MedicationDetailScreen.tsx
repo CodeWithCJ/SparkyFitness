@@ -22,8 +22,8 @@ import {
   formatDose,
   formatStrengthPerUnit,
   formatTimeOfDay,
-  describeSchedule,
 } from '@workspace/shared';
+import { localizedDescribeSchedule } from '../utils/medicationScheduleLocalization';
 import { getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 import { medicationTypeLabel, mealTimingLabel } from '../utils/medicationLocalization';
@@ -125,7 +125,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
     },
   });
 
-  const typeLabel = med ? medicationTypeLabel(med.type_id) : '';
+  const typeLabel = med ? medicationTypeLabel(med.type_id, t) : '';
   const doseLabel = med ? formatDose(med) : null;
   const strengthLabel = med ? formatStrengthPerUnit(med) : null;
   const contextLine = [typeLabel, med?.reason_text].filter(Boolean).join(' · ');
@@ -173,7 +173,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                 onToggle={() => toggleTaken(due)}
                 onTake={() => logDose(due, 'taken')}
                 onSkip={() => logDose(due, 'skipped')}
-                title={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : describeSchedule(due.schedule)}
+                title={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : localizedDescribeSchedule(t, due.schedule)}
                 subtitle={formatDose(due.medication, due.schedule) ?? undefined}
               />
             ))}
@@ -237,7 +237,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
               const scheduleDose = formatDose(med, sched);
               if (scheduleDose != null) parts.push(scheduleDose);
             }
-            if (sched.with_meal) parts.push(mealTimingLabel(sched.with_meal));
+            if (sched.with_meal) parts.push(mealTimingLabel(sched.with_meal, t));
             if (sched.active === false) parts.push(t('medications.detail.inactive', { defaultValue: 'Inactive' }));
             const subtitle = parts.join(' · ');
             return (
@@ -252,7 +252,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                   className="flex-row items-center"
                 >
                   <View className="flex-1">
-                    <Text className="text-base text-text-primary">{describeSchedule(sched)}</Text>
+                    <Text className="text-base text-text-primary">{localizedDescribeSchedule(t, sched)}</Text>
                     {subtitle !== '' && (
                       <Text className="text-sm text-text-muted mt-0.5">{subtitle}</Text>
                     )}

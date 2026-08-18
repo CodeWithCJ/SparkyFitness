@@ -171,9 +171,18 @@ export async function reconcileMedicationReminders(
       const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);
 
       const [hours, minutes] = timeOfDay.split(':').map(Number);
+      const doseSuffix = due.medication.dose_amount != null
+        ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})`
+        : '';
       const body = hideNames
-        ? 'You have a scheduled dose'
-        : `Scheduled dose: ${due.medication.name}${due.medication.dose_amount != null ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})` : ''}`;
+        ? i18n.t('medications.notificationScheduledDose', {
+            defaultValue: 'You have a scheduled dose',
+          })
+        : i18n.t('medications.notificationScheduledDoseNamed', {
+            defaultValue: 'Scheduled dose: {{name}}{{dose}}',
+            name: due.medication.name,
+            dose: doseSuffix,
+          });
       const data = {
         medicationId: due.medication.id,
         scheduleId: due.schedule.id,

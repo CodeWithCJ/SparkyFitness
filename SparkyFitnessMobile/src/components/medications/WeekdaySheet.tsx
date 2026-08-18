@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
-import { DAY_LABELS } from '@workspace/shared';
+import { localizedWeekdayLabels } from '../../utils/medicationScheduleLocalization';
 import Icon from '../Icon';
 import { sheetContainer, useSheetBackdrop } from '../ui/sheetChrome';
 
@@ -42,6 +42,8 @@ const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, on
     onChange(next.sort((a, b) => a - b));
   };
 
+  const weekdayLabels = localizedWeekdayLabels(t);
+
   return (
     <BottomSheetModal
       ref={bottomSheetRef}
@@ -56,7 +58,7 @@ const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, on
         <View className="px-4 py-4 border-b border-border-subtle">
           <Text className="text-lg font-semibold text-center text-text-primary">{t('medications.weekdays.title', { defaultValue: 'Days of Week' })}</Text>
         </View>
-        {DAY_LABELS.map((label, day) => {
+        {weekdayLabels.map((label, day) => {
           const selected = value.includes(day);
           return (
             <TouchableOpacity
@@ -66,7 +68,13 @@ const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, on
               onPress={() => toggle(day)}
               activeOpacity={0.7}
               accessibilityRole="button"
-              accessibilityLabel={label}
+              accessibilityLabel={t('medications.weekdays.itemA11y', {
+                defaultValue: '{{day}}, {{state}}',
+                day: label,
+                state: selected
+                  ? t('medications.weekdays.selected', { defaultValue: 'selected' })
+                  : t('medications.weekdays.notSelected', { defaultValue: 'not selected' }),
+              })}
               accessibilityState={{ selected }}
             >
               <Text className={`text-base text-text-primary ${selected ? 'font-semibold' : ''}`}>
