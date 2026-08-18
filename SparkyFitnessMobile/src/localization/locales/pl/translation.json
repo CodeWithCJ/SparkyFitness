@@ -1614,7 +1614,8 @@
   "foodRow": {
     "unknownFood": "Nieznany produkt",
     "adjustServing": "Dostosuj porcję",
-    "caloriesShort": "kcal"
+    "caloriesShort": "kcal",
+    "deleteFood": "Usuń produkt"
   },
   "exerciseRow": {
     "deleteExercise": "Usuń ćwiczenie"

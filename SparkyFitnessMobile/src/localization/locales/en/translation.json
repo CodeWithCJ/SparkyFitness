@@ -1590,7 +1590,8 @@
   "foodRow": {
     "unknownFood": "Unknown food",
     "adjustServing": "Adjust serving",
-    "caloriesShort": "Cal"
+    "caloriesShort": "Cal",
+    "deleteFood": "Delete food"
   },
   "exerciseRow": {
     "deleteExercise": "Delete exercise"

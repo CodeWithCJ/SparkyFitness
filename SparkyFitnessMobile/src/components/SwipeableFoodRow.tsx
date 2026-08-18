@@ -66,7 +66,11 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
   }, [isMealComponent, mealDelete.invalidateCache, foodEntryDelete.invalidateCache]);
 
   const renderRightActions = () => (
-    <DeleteRowAction onPress={confirmAndDelete} className="ml-4" />
+    <DeleteRowAction
+      onPress={confirmAndDelete}
+      className="ml-4"
+      accessibilityLabel={t('foodRow.deleteFood', { defaultValue: 'Delete food' })}
+    />
   );
 
   const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
