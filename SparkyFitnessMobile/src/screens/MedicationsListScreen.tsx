@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, SectionList, RefreshControl, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -15,6 +16,7 @@ import type { Medication } from '@workspace/shared';
 type MedicationsListScreenProps = RootStackScreenProps<'MedicationsList'>;
 
 const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -39,7 +41,7 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
   }, [refetch]);
 
   const header = useScreenHeader({
-    title: 'Medications',
+    title: t('medications.title', { defaultValue: 'Medications' }),
     left: { kind: 'back' },
     right: {
       kind: 'icon',
@@ -47,7 +49,7 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
       ionicon: 'add-outline',
       role: 'primary',
       onPress: () => navigation.navigate('MedicationForm', {}),
-      accessibilityLabel: 'Add medication',
+      accessibilityLabel: t('medications.addMedication', { defaultValue: 'Add medication' }),
       identifier: 'medications-list-add',
     },
   });
@@ -73,27 +75,27 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
       {header}
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-text-muted text-base">Loading medications...</Text>
+          <Text className="text-text-muted text-base">{t('medications.loading', { defaultValue: 'Loading medications...' })}</Text>
         </View>
       ) : isError ? (
         <View className="flex-1 items-center justify-center p-8">
-          <Text className="text-text-muted text-base text-center">Failed to load medications.</Text>
+          <Text className="text-text-muted text-base text-center">{t('medications.loadFailed', { defaultValue: 'Failed to load medications.' })}</Text>
           <TouchableOpacity onPress={() => void refetch()} className="mt-4">
-            <Text className="text-accent-primary text-base font-medium">Retry</Text>
+            <Text className="text-accent-primary text-base font-medium">{t('medications.retry', { defaultValue: 'Retry' })}</Text>
           </TouchableOpacity>
         </View>
       ) : active.length === 0 && inactive.length === 0 ? (
         <View className="flex-1 items-center justify-center p-8">
           <Icon name="medication" size={48} color={iconDecorative} />
-          <Text className="text-text-muted text-lg mt-4 text-center">No medications yet</Text>
+          <Text className="text-text-muted text-lg mt-4 text-center">{t('medications.noMedications', { defaultValue: 'No medications yet' })}</Text>
           <Text className="text-text-muted text-sm mt-2 text-center">
-            Add your first medication to start tracking.
+            {t('medications.emptyDescription', { defaultValue: 'Add your first medication to start tracking.' })}
           </Text>
           <TouchableOpacity
             className="mt-4 bg-accent-primary px-6 py-3 rounded-xl"
             onPress={() => navigation.navigate('MedicationForm', {})}
           >
-            <Text className="text-white font-semibold">Add Medication</Text>
+            <Text className="text-white font-semibold">{t('medications.addMedicationTitle', { defaultValue: 'Add Medication' })}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -109,10 +111,10 @@ const MedicationsListScreen: React.FC<MedicationsListScreenProps> = ({ navigatio
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityState={{ expanded: showInactive }}
-                accessibilityLabel={`Inactive medications (${inactive.length})`}
+                accessibilityLabel={t('medications.inactiveA11y', { defaultValue: 'Inactive medications ({{count}})', count: inactive.length })}
               >
                 <Text className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-                  Inactive ({inactive.length})
+                  {t('medications.inactiveCount', { defaultValue: 'Inactive ({{count}})', count: inactive.length })}
                 </Text>
                 <Icon
                   name={showInactive ? 'chevron-down' : 'chevron-forward'}

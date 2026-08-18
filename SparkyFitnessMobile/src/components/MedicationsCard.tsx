@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -12,7 +13,7 @@ import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { getDueDosesForDate, formatDose, formatTimeOfDay } from '@workspace/shared';
 import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
-import { MEDICATION_TYPES } from '../types/medications';
+import { medicationTypeLabel } from '../utils/medicationLocalization';
 import { doseSlotStatus } from '../utils/medications';
 
 type MedicationsCardNavigation = CompositeNavigationProp<
@@ -24,10 +25,10 @@ interface MedicationsCardProps {
   navigation: MedicationsCardNavigation;
 }
 
-const typeLabelFor = (typeId: string | null): string =>
-  MEDICATION_TYPES.find((t) => t.id === typeId)?.label ?? '';
+const typeLabelFor = (typeId: string | null): string => medicationTypeLabel(typeId);
 
 const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
 
   const { data: medications, isLoading: isLoadingMeds } = useMedications({ activeOnly: true });
@@ -54,7 +55,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     return (
       <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
         <View className="flex-row items-center justify-between">
-          <Text className="font-bold text-text-secondary">Medications</Text>
+          <Text className="font-bold text-text-secondary">{t('medications.card.title', { defaultValue: 'Medications' })}</Text>
           <ActivityIndicator size="small" color={accentPrimary} />
         </View>
       </View>
@@ -69,12 +70,12 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         onPress={() => navigation.navigate('MedicationsList')}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
-        accessibilityLabel="View all medications"
+        accessibilityLabel={t('medications.card.viewAllA11y', { defaultValue: 'View all medications' })}
         className="flex-row items-center justify-between mb-2"
       >
-        <Text className="font-bold text-text-secondary">Medications</Text>
+        <Text className="font-bold text-text-secondary">{t('medications.card.title', { defaultValue: 'Medications' })}</Text>
         <View className="flex-row items-center">
-          <Text className="text-accent-primary font-medium">View all</Text>
+          <Text className="text-accent-primary font-medium">{t('medications.card.viewAll', { defaultValue: 'View all' })}</Text>
           <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
         </View>
       </TouchableOpacity>

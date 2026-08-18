@@ -1,4 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -20,6 +21,7 @@ interface WeekdaySheetProps {
 /** Multi-select bottom sheet for a schedule's days_of_week. Selecting a day
  * toggles it without dismissing, so several days can be picked in one visit. */
 const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, onChange }, ref) => {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   const [surfaceBg, textMuted, accentPrimary] = useCSSVariable([
@@ -52,7 +54,7 @@ const WeekdaySheet = forwardRef<WeekdaySheetRef, WeekdaySheetProps>(({ value, on
     >
       <BottomSheetView className="pb-safe-or-5">
         <View className="px-4 py-4 border-b border-border-subtle">
-          <Text className="text-lg font-semibold text-center text-text-primary">Days of Week</Text>
+          <Text className="text-lg font-semibold text-center text-text-primary">{t('medications.weekdays.title', { defaultValue: 'Days of Week' })}</Text>
         </View>
         {DAY_LABELS.map((label, day) => {
           const selected = value.includes(day);

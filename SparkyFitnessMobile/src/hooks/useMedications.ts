@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
@@ -191,6 +192,7 @@ export function useDeleteMedicationEntry() {
  * `entries` must cover `selectedDate` for the medications being acted on.
  */
 export function useLogDose(selectedDate: string, entries: MedicationEntry[] | undefined) {
+  const { t } = useTranslation();
   const createEntryMutation = useCreateMedicationEntry();
   const updateEntryMutation = useUpdateMedicationEntry();
   const deleteEntryMutation = useDeleteMedicationEntry();
@@ -203,7 +205,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
   const showEntryError = useCallback((message: string, error: Error) => {
     addLog(`${message}: ${error.message}`, 'ERROR');
     Toast.show({ type: 'error', text1: message });
-  }, []);
+  }, [t]);
 
   const logDose = useCallback(
     (due: DueDose, status: 'taken' | 'skipped') => {
@@ -214,19 +216,25 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
       const undone = isTaken
         ? existing?.status === 'taken' || existing?.status === 'prn_taken'
         : existing?.status === 'skipped';
+      const undoneMessage = isTaken
+        ? t('medications.dose.unmarked', { defaultValue: '{{name}} unmarked', name: due.medication.name })
+        : t('medications.dose.unskipped', { defaultValue: '{{name}} unskipped', name: due.medication.name });
       if (existing && undone) {
         deleteEntryMutation.mutate(existing.id, {
           onSuccess: () =>
-            Toast.show({ type: 'info', text1: `${due.medication.name} ${isTaken ? 'unmarked' : 'unskipped'}` }),
-          onError: (error) => showEntryError(`Failed to unmark ${due.medication.name}`, error),
+            Toast.show({ type: 'info', text1: undoneMessage }),
+          onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'unmark', name: due.medication.name }), error),
         });
         return;
       }
 
+      const loggedMessage = isTaken
+        ? t('medications.dose.takenToast', { defaultValue: '{{name}} taken', name: due.medication.name })
+        : t('medications.dose.skippedToast', { defaultValue: '{{name}} skipped', name: due.medication.name });
       const showLoggedToast = () =>
         Toast.show({
           type: isTaken ? 'success' : 'info',
-          text1: `${due.medication.name} ${isTaken ? 'taken' : 'skipped'}`,
+          text1: loggedMessage,
         });
 
       if (existing) {
@@ -243,7 +251,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
           },
           {
             onSuccess: showLoggedToast,
-            onError: (error) => showEntryError(`Failed to update ${due.medication.name}`, error),
+            onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'update', name: due.medication.name }), error),
           },
         );
       } else {
@@ -257,12 +265,12 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
           },
           {
             onSuccess: showLoggedToast,
-            onError: (error) => showEntryError(`Failed to log ${due.medication.name}`, error),
+            onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'log', name: due.medication.name }), error),
           },
         );
       }
     },
-    [entryForDue, createEntryMutation, updateEntryMutation, deleteEntryMutation, selectedDate, showEntryError],
+    [entryForDue, createEntryMutation, updateEntryMutation, deleteEntryMutation, selectedDate, showEntryError, t],
   );
 
   const toggleTaken = useCallback(
@@ -270,13 +278,13 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
       const existing = entryForDue(due);
       if (existing) {
         deleteEntryMutation.mutate(existing.id, {
-          onError: (error) => showEntryError(`Failed to update ${due.medication.name}`, error),
+          onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'update', name: due.medication.name }), error),
         });
         return;
       }
       logDose(due, 'taken');
     },
-    [entryForDue, deleteEntryMutation, logDose, showEntryError],
+    [entryForDue, deleteEntryMutation, logDose, showEntryError, t],
   );
 
   // Unlike scheduled slots, a PRN log has no toggle surface to undo a
@@ -294,23 +302,23 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
           onSuccess: (created) =>
             Toast.show({
               type: 'success',
-              text1: `${med.name} logged`,
-              text2: 'Tap to undo',
+              text1: t('medications.dose.logged', { defaultValue: '{{name}} logged', name: med.name }),
+              text2: t('medications.dose.tapUndo', { defaultValue: 'Tap to undo' }),
               props: {
                 onPress: () => {
                   Toast.hide();
                   deleteEntryMutation.mutate(created.id, {
-                    onSuccess: () => Toast.show({ type: 'info', text1: `${med.name} dose removed` }),
-                    onError: (error) => showEntryError(`Failed to remove ${med.name} dose`, error),
+                    onSuccess: () => Toast.show({ type: 'info', text1: t('medications.dose.removed', { defaultValue: '{{name}} dose removed', name: med.name }) }),
+                    onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'remove', name: med.name }), error),
                   });
                 },
               },
             }),
-          onError: (error) => showEntryError(`Failed to log ${med.name}`, error),
+          onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'log', name: med.name }), error),
         },
       );
     },
-    [createEntryMutation, deleteEntryMutation, selectedDate, showEntryError],
+    [createEntryMutation, deleteEntryMutation, selectedDate, showEntryError, t],
   );
 
   return { entryForDue, logDose, toggleTaken, logPrn };

@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import i18n from '../localization/i18n';
 
 import { addDays, getDeviceTimezone, getTodayDate } from '../utils/dateUtils';
 import { getDueDosesForDate } from '@workspace/shared';
@@ -45,7 +46,7 @@ async function scheduleReminder(
   try {
     return await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Medication reminder',
+        title: i18n.t('medications.notificationTitle', { defaultValue: 'Medication reminder' }),
         body,
         sound: true,
         categoryIdentifier: MEDICATION_REMINDER_CATEGORY,

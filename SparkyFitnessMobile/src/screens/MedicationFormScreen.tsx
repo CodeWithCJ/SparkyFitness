@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Alert, TouchableOpacity } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +13,7 @@ import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
 import Switch from '../components/ui/Switch';
 import type { RootStackScreenProps } from '../types/navigation';
+import { medicationTypeLabel } from '../utils/medicationLocalization';
 import { MEDICATION_TYPES } from '../types/medications';
 
 type MedicationFormScreenProps = RootStackScreenProps<'MedicationForm'>;
@@ -67,6 +69,7 @@ function baseFromMed(
 }
 
 const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navigation }) => {
+  const { t } = useTranslation();
   const medicationId = route.params?.medicationId;
   const isEditing = !!medicationId;
   const insets = useSafeAreaInsets();
@@ -98,7 +101,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     if (createMedication.isPending || updateMedication.isPending) return;
 
     if (!form.name.trim()) {
-      Alert.alert('Required', 'Please enter a medication name.');
+      Alert.alert(t('medications.form.required', { defaultValue: 'Required' }), t('medications.form.nameRequired', { defaultValue: 'Please enter a medication name.' }));
       return;
     }
 
@@ -106,7 +109,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     const doseNum = form.doseAmount ? parseFloat(form.doseAmount) : null;
 
     if ((form.strengthValue && !Number.isFinite(strengthNum)) || (form.doseAmount && !Number.isFinite(doseNum))) {
-      Alert.alert('Invalid number', 'Please enter valid numeric values for strength and dose.');
+      Alert.alert(t('medications.form.invalidNumber', { defaultValue: 'Invalid number' }), t('medications.form.invalidNumberMessage', { defaultValue: 'Please enter valid numeric values for strength and dose.' }));
       return;
     }
 
@@ -128,7 +131,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
         { id: medicationId, body: { ...base, is_active: form.isActive } },
         {
           onSuccess: () => navigation.goBack(),
-          onError: (error) => Alert.alert('Error', `Failed to update medication: ${error.message}`),
+          onError: (error) => Alert.alert(t('common.error', { defaultValue: 'Error' }), t('medications.form.updateFailed', { defaultValue: 'Failed to update medication: {{error}}', error: error.message })),
         },
       );
     } else {
@@ -138,15 +141,15 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
           onSuccess: (med) => {
             navigation.replace('MedicationDetail', { medicationId: med.id });
           },
-          onError: (error) => Alert.alert('Error', `Failed to create medication: ${error.message}`),
+          onError: (error) => Alert.alert(t('common.error', { defaultValue: 'Error' }), t('medications.form.createFailed', { defaultValue: 'Failed to create medication: {{error}}', error: error.message })),
         },
       );
     }
   }, [form, isEditing, medicationId, createMedication, updateMedication, navigation]);
 
   const header = useScreenHeader({
-    title: isEditing ? 'Edit Medication' : 'New Medication',
-    nativeTitle: isEditing ? 'Edit Medication' : 'New Medication',
+    title: isEditing ? t('medications.form.editTitle', { defaultValue: 'Edit Medication' }) : t('medications.form.newTitle', { defaultValue: 'New Medication' }),
+    nativeTitle: isEditing ? t('medications.form.editTitle', { defaultValue: 'Edit Medication' }) : t('medications.form.newTitle', { defaultValue: 'New Medication' }),
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
     right: {
       kind: 'primary',
@@ -157,7 +160,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
     },
   });
 
-  const typeOptions = useMemo(() => MEDICATION_TYPES.map((t) => ({ label: t.label, value: t.id })), []);
+  const typeOptions = useMemo(() => MEDICATION_TYPES.map((id) => ({ label: medicationTypeLabel(id), value: id })), []);
 
   return (
     <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
@@ -174,9 +177,9 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
       >
         <View className="gap-4">
           <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Name *</Text>
+            <Text className="text-text-secondary text-sm font-medium">{t('medications.form.name', { defaultValue: 'Name *' })}</Text>
             <FormInput
-              placeholder="Ipsumol"
+              placeholder={t('medications.form.namePlaceholder', { defaultValue: 'Ipsumol' })}
               value={form.name}
               onChangeText={(v) => updateField('name', v)}
               autoCapitalize="words"
@@ -184,18 +187,18 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">Type</Text>
+            <Text className="text-text-secondary text-sm font-medium">{t('medications.form.type', { defaultValue: 'Type' })}</Text>
             <BottomSheetPicker
               value={form.typeId}
               options={typeOptions}
               onSelect={(val) => updateField('typeId', val)}
-              title="Medication Type"
+              title={t('medications.form.typeTitle', { defaultValue: 'Medication Type' })}
             />
           </View>
 
           <View className="flex-row gap-4">
             <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Strength</Text>
+              <Text className="text-text-secondary text-sm font-medium">{t('medications.form.strength', { defaultValue: 'Strength' })}</Text>
               <FormInput
                 placeholder="10"
                 value={form.strengthValue}
@@ -204,9 +207,9 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
               />
             </View>
             <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Unit</Text>
+              <Text className="text-text-secondary text-sm font-medium">{t('medications.form.unit', { defaultValue: 'Unit' })}</Text>
               <FormInput
-                placeholder="mg"
+                placeholder={t('medications.form.strengthUnitPlaceholder', { defaultValue: 'mg' })}
                 value={form.strengthUnit}
                 onChangeText={(v) => updateField('strengthUnit', v)}
               />
@@ -215,7 +218,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
 
           <View className="flex-row gap-4">
             <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Dose</Text>
+              <Text className="text-text-secondary text-sm font-medium">{t('medications.form.dose', { defaultValue: 'Dose' })}</Text>
               <FormInput
                 placeholder="1"
                 value={form.doseAmount}
@@ -224,9 +227,9 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
               />
             </View>
             <View className="flex-1 gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Unit</Text>
+              <Text className="text-text-secondary text-sm font-medium">{t('medications.form.unit', { defaultValue: 'Unit' })}</Text>
               <FormInput
-                placeholder="tablet"
+                placeholder={t('medications.form.doseUnitPlaceholder', { defaultValue: 'tablet' })}
                 value={form.doseUnit}
                 onChangeText={(v) => updateField('doseUnit', v)}
               />
@@ -242,7 +245,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
           className="flex-row items-center gap-1 py-2 self-start"
         >
           <Text className="text-text-primary font-medium" style={{ fontSize: 16 }}>
-            Details
+            {t('medications.form.details', { defaultValue: 'Details' })}
           </Text>
           <Icon name={showDetails ? 'chevron-down' : 'chevron-forward'} size={12} color={textMuted} />
         </TouchableOpacity>
@@ -250,34 +253,34 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
         {showDetails && (
           <View className="gap-4">
             <View className="gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Reason</Text>
+              <Text className="text-text-secondary text-sm font-medium">{t('medications.form.reason', { defaultValue: 'Reason' })}</Text>
               <FormInput
-                placeholder="Blood pressure"
+                placeholder={t('medications.form.reasonPlaceholder', { defaultValue: 'Blood pressure' })}
                 value={form.reason}
                 onChangeText={(v) => updateField('reason', v)}
               />
             </View>
 
             <View className="gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Prescriber</Text>
+              <Text className="text-text-secondary text-sm font-medium">{t('medications.form.prescriber', { defaultValue: 'Prescriber' })}</Text>
               <FormInput
-                placeholder="Dr. Ipsum"
+                placeholder={t('medications.form.prescriberPlaceholder', { defaultValue: 'Dr. Ipsum' })}
                 value={form.prescriber}
                 onChangeText={(v) => updateField('prescriber', v)}
               />
             </View>
 
             <View className="gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Pharmacy</Text>
+              <Text className="text-text-secondary text-sm font-medium">{t('medications.form.pharmacy', { defaultValue: 'Pharmacy' })}</Text>
               <FormInput
-                placeholder="Sunny Pharmacy"
+                placeholder={t('medications.form.pharmacyPlaceholder', { defaultValue: 'Sunny Pharmacy' })}
                 value={form.pharmacy}
                 onChangeText={(v) => updateField('pharmacy', v)}
               />
             </View>
 
             <View className="gap-1.5">
-              <Text className="text-text-secondary text-sm font-medium">Notes</Text>
+              <Text className="text-text-secondary text-sm font-medium">{t('medications.form.notes', { defaultValue: 'Notes' })}</Text>
               <FormInput
                 value={form.notes}
                 onChangeText={(v) => updateField('notes', v)}
@@ -291,7 +294,7 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({ route, navi
         )}
 
         <View className="flex-row justify-between items-center">
-          <Text className="text-base text-text-primary">Active</Text>
+          <Text className="text-base text-text-primary">{t('medications.form.active', { defaultValue: 'Active' })}</Text>
           <Switch
             value={form.isActive}
             onValueChange={(v) => updateField('isActive', v)}
