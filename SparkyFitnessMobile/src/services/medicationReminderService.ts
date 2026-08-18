@@ -172,7 +172,7 @@ export async function reconcileMedicationReminders(
 
       const [hours, minutes] = timeOfDay.split(':').map(Number);
       const doseSuffix = due.medication.dose_amount != null
-        ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})`
+        ? ` (${due.medication.dose_amount}${due.medication.dose_unit ? ` ${due.medication.dose_unit}` : ''})`
         : '';
       const body = hideNames
         ? i18n.t('medications.notificationScheduledDose', {

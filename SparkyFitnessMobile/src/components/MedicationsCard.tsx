@@ -10,9 +10,10 @@ import Icon from './Icon';
 import DoseRow from './medications/DoseRow';
 import { useMedications, useMedicationEntries, useLogDose } from '../hooks/useMedications';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { getDueDosesForDate, formatDose, formatTimeOfDay } from '@workspace/shared';
+import { getDueDosesForDate, formatDose } from '@workspace/shared';
 import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { formatLocalizedTimeOfDay } from '../utils/medicationScheduleLocalization';
 import { medicationTypeLabel } from '../utils/medicationLocalization';
 import { doseSlotStatus } from '../utils/medications';
 
@@ -95,7 +96,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
             onTake={() => logDose(due, 'taken')}
             onSkip={() => logDose(due, 'skipped')}
             title={med.name}
-            time={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : undefined}
+            time={due.schedule.time_of_day ? formatLocalizedTimeOfDay(due.schedule.time_of_day) : undefined}
             subtitle={subtitle}
             onPress={() => navigation.navigate('MedicationDetail', { medicationId: med.id })}
           />

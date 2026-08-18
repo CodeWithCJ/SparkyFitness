@@ -21,7 +21,7 @@ import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import WeekdaySheet, { type WeekdaySheetRef } from '../components/medications/WeekdaySheet';
 import Switch from '../components/ui/Switch';
-import { formatTimeOfDay } from '@workspace/shared';
+import { formatLocalizedTimeOfDay } from '../utils/medicationScheduleLocalization';
 import type { CreateScheduleInput, MedicationSchedule, MedicationWithMeal } from '@workspace/shared';
 import { getTodayDate, formatDateLabel } from '../utils/dateUtils';
 import { addLog } from '../services/LogService';
@@ -447,7 +447,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                     </TouchableOpacity>
                   )}
                   <Text className="text-base text-text-secondary">
-                    {form.timeOfDay ? formatTimeOfDay(form.timeOfDay) : t('medications.schedule.none', { defaultValue: 'None' })}
+                    {form.timeOfDay ? formatLocalizedTimeOfDay(form.timeOfDay) : t('medications.schedule.none', { defaultValue: 'None' })}
                   </Text>
                 </View>
               }

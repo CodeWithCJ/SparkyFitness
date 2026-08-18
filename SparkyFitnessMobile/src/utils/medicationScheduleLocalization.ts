@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
-import { formatTimeOfDay, type SharedScheduleRule } from '@workspace/shared';
+import { getAppLocale } from '../localization';
+import type { SharedScheduleRule } from '@workspace/shared';
 
 type ScheduleFields = Pick<
   SharedScheduleRule,
@@ -83,8 +84,7 @@ function localizedFrequency(t: TFunction, schedule: ScheduleFields): string {
   if (type === 'taper') {
     return t('medications.scheduleSummary.taper', { defaultValue: 'Taper' });
   }
-  const words = type.replace(/_/g, ' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  return t('medications.scheduleSummary.unknown', { defaultValue: 'Schedule' });
 }
 
 export function localizedDescribeSchedule(t: TFunction, schedule: ScheduleFields): string {
@@ -93,18 +93,62 @@ export function localizedDescribeSchedule(t: TFunction, schedule: ScheduleFields
     return t('medications.scheduleSummary.at', {
       defaultValue: '{{frequency}} at {{time}}',
       frequency,
-      time: formatTimeOfDay(schedule.time_of_day),
+      time: formatLocalizedTimeOfDay(schedule.time_of_day),
     });
   }
   return frequency;
+}
+
+function scheduleFrequencyIdentity(schedule: ScheduleFields): string {
+  const type = schedule.schedule_type_id;
+  if (type === 'weekly' || type === 'specific_days') {
+    return `${type}:${[...(schedule.days_of_week ?? [])].sort((a, b) => a - b).join(',')}`;
+  }
+  if (type === 'every_n_days') return `${type}:${schedule.interval_days ?? ''}`;
+  if (type === 'monthly') return `${type}:${schedule.day_of_month ?? ''}`;
+  if (type === 'cyclic') return `${type}:${schedule.cycle_on_days ?? ''}:${schedule.cycle_off_days ?? 0}`;
+  return type;
 }
 
 export function localizedDescribeSchedules(
   t: TFunction,
   schedules: Array<ScheduleFields & { active?: boolean | null }>,
 ): string {
+  if (schedules.length === 0) {
+    return t('medications.scheduleSummary.asNeeded', { defaultValue: 'As needed' });
+  }
   const active = schedules.filter((schedule) => schedule.active !== false);
   if (active.length === 0) return '';
-  if (active.length === 1) return localizedDescribeSchedule(t, active[0]);
-  return active.map((schedule) => localizedDescribeSchedule(t, schedule)).join('; ');
+
+  const grouped = new Map<string, { schedule: ScheduleFields; times: string[] }>();
+  for (const schedule of active) {
+    const key = scheduleFrequencyIdentity(schedule);
+    const group = grouped.get(key) ?? { schedule, times: [] };
+    if (schedule.schedule_type_id !== 'prn' && schedule.time_of_day) {
+      group.times.push(schedule.time_of_day);
+    }
+    grouped.set(key, group);
+  }
+
+  return [...grouped.values()]
+    .map(({ schedule, times }) => {
+      const frequency = localizedFrequency(t, schedule);
+      if (times.length === 0 || schedule.schedule_type_id === 'prn') return frequency;
+      const formattedTimes = [...new Set(times)].sort().map((time) => formatLocalizedTimeOfDay(time));
+      return t('medications.scheduleSummary.at', {
+        defaultValue: '{{frequency}} at {{time}}',
+        frequency,
+        time: formattedTimes.join(' & '),
+      });
+    })
+    .join('; ');
+}
+
+export function formatLocalizedTimeOfDay(timeOfDay: string, locale = getAppLocale()): string {
+  const [hours, minutes] = timeOfDay.split(':').map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return timeOfDay;
+  return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }

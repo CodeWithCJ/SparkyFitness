@@ -19,7 +19,8 @@
     "itemCount_one": "{{count}} item",
     "itemCount_other": "{{count}} items",
     "off": "Off",
-    "openSelectionMenu": "Opens selection menu"
+    "openSelectionMenu": "Opens selection menu",
+    "selectOptionHint": "Double tap to select this option"
   },
   "settings": {
     "app": "App Settings",
@@ -604,7 +605,10 @@
     "title": "Rest period",
     "rest": "Rest {{duration}}",
     "off": "Off",
-    "custom": "Custom"
+    "custom": "Custom",
+    "accessibilityLabel": "Rest {{duration}}",
+    "buttonLabel": "Rest {{duration}}",
+    "buttonHint": "Opens rest period selection"
   },
   "diary": {
     "emptyDay": "No entries recorded for this day"
@@ -811,7 +815,8 @@
       "cycle": "{{on}} days on, {{off}} days off",
       "asNeeded": "As needed",
       "taper": "Taper",
-      "at": "{{frequency}} at {{time}}"
+      "at": "{{frequency}} at {{time}}",
+      "unknown": "Schedule"
     },
     "notificationScheduledDose": "You have a scheduled dose",
     "notificationScheduledDoseNamed": "Scheduled dose: {{name}}{{dose}}"

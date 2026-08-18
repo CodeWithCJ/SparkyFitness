@@ -3,25 +3,25 @@ import i18n from '../localization/i18n';
 
 export function medicationTypeLabel(typeId: string | null | undefined, t: TFunction = i18n.t.bind(i18n)): string {
   switch (typeId) {
-    case 'pill': return i18n.t('medications.types.pill', { defaultValue: 'Pill' });
-    case 'tablet': return i18n.t('medications.types.tablet', { defaultValue: 'Tablet' });
-    case 'capsule': return i18n.t('medications.types.capsule', { defaultValue: 'Capsule' });
-    case 'liquid': return i18n.t('medications.types.liquid', { defaultValue: 'Liquid' });
-    case 'injection': return i18n.t('medications.types.injection', { defaultValue: 'Injection' });
-    case 'patch': return i18n.t('medications.types.patch', { defaultValue: 'Patch' });
-    case 'inhaler': return i18n.t('medications.types.inhaler', { defaultValue: 'Inhaler' });
-    case 'drops': return i18n.t('medications.types.drops', { defaultValue: 'Drops' });
-    case 'nasal_spray': return i18n.t('medications.types.nasal_spray', { defaultValue: 'Nasal Spray' });
-    case 'cream': return i18n.t('medications.types.cream', { defaultValue: 'Cream' });
-    case 'suppository': return i18n.t('medications.types.suppository', { defaultValue: 'Suppository' });
-    case 'other': return i18n.t('medications.types.other', { defaultValue: 'Other' });
-    case 'daily': return i18n.t('medications.types.daily', { defaultValue: 'Daily' });
-    case 'weekly': return i18n.t('medications.types.weekly', { defaultValue: 'Specific days' });
-    case 'specific_days': return i18n.t('medications.types.weekly', { defaultValue: 'Specific days' });
-    case 'every_n_days': return i18n.t('medications.types.every_n_days', { defaultValue: 'Every N days' });
-    case 'monthly': return i18n.t('medications.types.monthly', { defaultValue: 'Monthly' });
-    case 'cyclic': return i18n.t('medications.types.cyclic', { defaultValue: 'Cycle (on/off)' });
-    case 'prn': return i18n.t('medications.types.prn', { defaultValue: 'As needed' });
+    case 'pill': return t('medications.types.pill', { defaultValue: 'Pill' });
+    case 'tablet': return t('medications.types.tablet', { defaultValue: 'Tablet' });
+    case 'capsule': return t('medications.types.capsule', { defaultValue: 'Capsule' });
+    case 'liquid': return t('medications.types.liquid', { defaultValue: 'Liquid' });
+    case 'injection': return t('medications.types.injection', { defaultValue: 'Injection' });
+    case 'patch': return t('medications.types.patch', { defaultValue: 'Patch' });
+    case 'inhaler': return t('medications.types.inhaler', { defaultValue: 'Inhaler' });
+    case 'drops': return t('medications.types.drops', { defaultValue: 'Drops' });
+    case 'nasal_spray': return t('medications.types.nasal_spray', { defaultValue: 'Nasal Spray' });
+    case 'cream': return t('medications.types.cream', { defaultValue: 'Cream' });
+    case 'suppository': return t('medications.types.suppository', { defaultValue: 'Suppository' });
+    case 'other': return t('medications.types.other', { defaultValue: 'Other' });
+    case 'daily': return t('medications.types.daily', { defaultValue: 'Daily' });
+    case 'weekly': return t('medications.types.weekly', { defaultValue: 'Specific days' });
+    case 'specific_days': return t('medications.types.weekly', { defaultValue: 'Specific days' });
+    case 'every_n_days': return t('medications.types.every_n_days', { defaultValue: 'Every N days' });
+    case 'monthly': return t('medications.types.monthly', { defaultValue: 'Monthly' });
+    case 'cyclic': return t('medications.types.cyclic', { defaultValue: 'Cycle (on/off)' });
+    case 'prn': return t('medications.types.prn', { defaultValue: 'As needed' });
     default: return typeId ?? '';
   }
 }
@@ -32,9 +32,9 @@ export function scheduleTypeLabel(typeId: string, t: TFunction = i18n.t.bind(i18
 
 export function mealTimingLabel(value: string, t: TFunction = i18n.t.bind(i18n)): string {
   switch (value) {
-    case 'before': return i18n.t('medications.types.beforeMeal', { defaultValue: 'Before meal' });
-    case 'with': return i18n.t('medications.types.withMeal', { defaultValue: 'With meal' });
-    case 'after': return i18n.t('medications.types.afterMeal', { defaultValue: 'After meal' });
+    case 'before': return t('medications.types.beforeMeal', { defaultValue: 'Before meal' });
+    case 'with': return t('medications.types.withMeal', { defaultValue: 'With meal' });
+    case 'after': return t('medications.types.afterMeal', { defaultValue: 'After meal' });
     default: return value;
   }
 }

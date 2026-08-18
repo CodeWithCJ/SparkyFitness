@@ -88,6 +88,7 @@ function BottomSheetPicker<T extends string | number>({
   containerStyle,
   renderTrigger,
 }: BottomSheetPickerProps<T>) {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [primary, textMuted, surfaceBg] = useCSSVariable([
     '--color-accent-primary',
@@ -148,6 +149,12 @@ function BottomSheetPicker<T extends string | number>({
         style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
         onPress={() => handleSelect(item)}
         activeOpacity={0.7}
+        accessibilityRole="radio"
+        accessibilityLabel={item.label}
+        accessibilityState={{ selected: isSelected }}
+        accessibilityHint={t('common.selectOptionHint', {
+          defaultValue: 'Double tap to select this option',
+        })}
       >
         <Text
           className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}

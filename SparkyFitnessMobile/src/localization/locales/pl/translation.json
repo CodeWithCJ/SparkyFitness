@@ -21,7 +21,8 @@
     "itemCount_many": "{{count}} elementów",
     "itemCount_other": "{{count}} elementów",
     "off": "Wyłączone",
-    "openSelectionMenu": "Otwiera menu wyboru"
+    "openSelectionMenu": "Otwiera menu wyboru",
+    "selectOptionHint": "Stuknij dwukrotnie, aby wybrać tę opcję"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -610,7 +611,10 @@
     "title": "Czas przerwy",
     "rest": "Przerwa: {{duration}}",
     "off": "Wyłączone",
-    "custom": "Niestandardowe"
+    "custom": "Niestandardowe",
+    "accessibilityLabel": "Przerwa: {{duration}}",
+    "buttonLabel": "Przerwa: {{duration}}",
+    "buttonHint": "Otwiera wybór czasu przerwy"
   },
   "diary": {
     "emptyDay": "Brak wpisów z tego dnia"
@@ -817,7 +821,8 @@
       "cycle": "{{on}} dni stosowania, {{off}} dni przerwy",
       "asNeeded": "W razie potrzeby",
       "taper": "Stopniowe zmniejszanie dawki",
-      "at": "{{frequency}} o {{time}}"
+      "at": "{{frequency}} o {{time}}",
+      "unknown": "Harmonogram"
     },
     "notificationScheduledDose": "Zaplanowano przyjęcie dawki",
     "notificationScheduledDoseNamed": "Zaplanowana dawka: {{name}}{{dose}}"

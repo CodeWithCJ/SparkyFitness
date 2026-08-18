@@ -21,9 +21,8 @@ import {
   getDueDosesForDate,
   formatDose,
   formatStrengthPerUnit,
-  formatTimeOfDay,
 } from '@workspace/shared';
-import { localizedDescribeSchedule } from '../utils/medicationScheduleLocalization';
+import { localizedDescribeSchedule, formatLocalizedTimeOfDay } from '../utils/medicationScheduleLocalization';
 import { getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 import { medicationTypeLabel, mealTimingLabel } from '../utils/medicationLocalization';
@@ -173,7 +172,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                 onToggle={() => toggleTaken(due)}
                 onTake={() => logDose(due, 'taken')}
                 onSkip={() => logDose(due, 'skipped')}
-                title={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : localizedDescribeSchedule(t, due.schedule)}
+                title={due.schedule.time_of_day ? formatLocalizedTimeOfDay(due.schedule.time_of_day) : localizedDescribeSchedule(t, due.schedule)}
                 subtitle={formatDose(due.medication, due.schedule) ?? undefined}
               />
             ))}

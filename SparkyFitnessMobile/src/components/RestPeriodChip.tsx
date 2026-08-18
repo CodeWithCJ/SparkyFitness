@@ -62,7 +62,13 @@ function RestPeriodChip({ value, values, onPress, readOnly = false }: RestPeriod
 
   if (readOnly) {
     return (
-      <View className="flex-row items-center" accessibilityLabel={`Rest ${label}`}>
+      <View
+        className="flex-row items-center"
+        accessibilityLabel={t('restPeriod.accessibilityLabel', {
+          defaultValue: 'Rest {{duration}}',
+          duration: label,
+        })}
+      >
         <Icon name="timer" size={14} color={textMuted} />
         <Text className="text-sm text-text-secondary ml-1">{t('restPeriod.rest', { defaultValue: 'Rest {{duration}}', duration: label })}</Text>
       </View>
@@ -74,6 +80,14 @@ function RestPeriodChip({ value, values, onPress, readOnly = false }: RestPeriod
       onPress={onPress}
       className="flex-row items-center gap-1"
       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+      accessibilityRole="button"
+      accessibilityLabel={t('restPeriod.buttonLabel', {
+        defaultValue: 'Rest {{duration}}',
+        duration: label,
+      })}
+      accessibilityHint={t('restPeriod.buttonHint', {
+        defaultValue: 'Opens rest period selection',
+      })}
     >
       <Icon name="timer" size={14} color={accentPrimary} />
       <Text className="text-sm" style={{ color: accentPrimary }}>
