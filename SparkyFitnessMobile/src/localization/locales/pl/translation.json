@@ -1515,5 +1515,25 @@
     "noData": "Ta aplikacja nie gromadzi, nie przechowuje ani nie sprzedaje Twoich danych osobowych.",
     "healthData": "Wszystkie dane HealthKit pozostają na Twoim urządzeniu i są przesyłane wyłącznie na Twój własny serwer.",
     "learnMore": "Dowiedz się więcej w naszej polityce prywatności."
+  },
+  "cycleCalendar": {
+    "previousMonth": "Poprzedni miesiąc",
+    "nextMonth": "Następny miesiąc",
+    "weekdays": {
+      "sunday": "N",
+      "monday": "P",
+      "tuesday": "W",
+      "wednesday": "Ś",
+      "thursday": "C",
+      "friday": "P",
+      "saturday": "S"
+    },
+    "legend": {
+      "period": "Miesiączka",
+      "predictedPeriod": "Przewidywana miesiączka",
+      "fertileWindow": "Okno płodności",
+      "estimatedOvulation": "Szacowana owulacja",
+      "logged": "Zapisano"
+    }
   }
 }

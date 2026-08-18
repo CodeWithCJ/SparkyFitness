@@ -1491,5 +1491,25 @@
     "noData": "This app does not collect, store, or sell your personal data.",
     "healthData": "All HealthKit data stays on your device and is transmitted only to your own server.",
     "learnMore": "Learn more in our Privacy Policy."
+  },
+  "cycleCalendar": {
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month",
+    "weekdays": {
+      "sunday": "S",
+      "monday": "M",
+      "tuesday": "T",
+      "wednesday": "W",
+      "thursday": "T",
+      "friday": "F",
+      "saturday": "S"
+    },
+    "legend": {
+      "period": "Period",
+      "predictedPeriod": "Predicted Period",
+      "fertileWindow": "Fertile Window",
+      "estimatedOvulation": "Est. Ovulation",
+      "logged": "Logged"
+    }
   }
 }
