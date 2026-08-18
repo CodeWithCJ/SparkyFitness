@@ -28,7 +28,9 @@
     "edit": "Edit",
     "connectionRetry": "Please check your connection and try again.",
     "deleteItemTitle": "Delete {{title}}?",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "yes": "Yes",
+    "no": "No"
   },
   "settings": {
     "app": "App Settings",
@@ -646,7 +648,9 @@
     "hoursAgo_one": "{{count}} hour ago",
     "hoursAgo_other": "{{count}} hours ago",
     "yesterdayAt": "Yesterday at {{time}}",
-    "onDateAt": "{{date}} at {{time}}"
+    "onDateAt": "{{date}} at {{time}}",
+    "today": "Today",
+    "yesterday": "Yesterday"
   },
   "calorieSettings": {
     "restingEnergy": "Resting Energy",
@@ -1695,7 +1699,8 @@
       "heightWithUnit": "Height ({{unit}})",
       "neckWithUnit": "Neck ({{unit}})",
       "waistWithUnit": "Waist ({{unit}})",
-      "hipsWithUnit": "Hips ({{unit}})"
+      "hipsWithUnit": "Hips ({{unit}})",
+      "weightWithUnit": "Weight ({{unit}})"
     },
     "validation": {
       "invalid": "Invalid {{label}}",
@@ -1706,7 +1711,8 @@
       "stonesLbsNumber": "Enter a number for stones and lbs.",
       "nonNegative": "Values must be 0 or greater.",
       "invalidHeight": "Invalid height",
-      "feetInchesNumber": "Enter a number for feet and inches."
+      "feetInchesNumber": "Enter a number for feet and inches.",
+      "bodyFatRange": "Body fat % must be between 0 and 100."
     },
     "nothingToSave": "Nothing to save",
     "enterValue": "Enter or clear at least one value.",
@@ -1726,6 +1732,12 @@
       "measurements": "measurements",
       "title": "Clear {{count}} {{noun}}?",
       "message": "{{labels}} will be cleared."
+    },
+    "units": {
+      "st": "st",
+      "lb": "lb",
+      "ft": "ft",
+      "in": "in"
     }
   }
 }

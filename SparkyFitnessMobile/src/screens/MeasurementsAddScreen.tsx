@@ -21,7 +21,7 @@ import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useUpsertCheckIn } from '../hooks/useUpsertCheckIn';
 import { usePreferences } from '../hooks/usePreferences';
-import { formatDateLabel } from '../utils/dateUtils';
+import { getTodayDate, addDays, formatDate } from '../utils/dateUtils';
 import {
   weightToKg,
   weightFromKg,
@@ -523,7 +523,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         'bodyFatPercentage',
         evaluateField('bodyFatPercentage', fieldLabel('bodyFatPercentage', 'Body fat %'), {
           max: 100,
-          maxMessage: 'Body fat % must be between 0 and 100.',
+          maxMessage: t('measurements.validation.bodyFatRange', { defaultValue: 'Body fat % must be between 0 and 100.' }),
         }),
         (v) => v,
       )
@@ -690,8 +690,10 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const isDismissDisabled = isMutationPending;
   const isSaving = isMutationPending;
 
-  const weightLabel =
-    weightMode === 'st_lbs' ? 'Weight (st, lb)' : `Weight (${weightMode})`;
+  const weightLabel = t('measurements.fields.weightWithUnit', {
+    defaultValue: 'Weight ({{unit}})',
+    unit: weightMode === 'st_lbs' ? 'st, lb' : weightMode,
+  });
   const bodySuffix = bodyUnit === 'cm' ? 'cm' : 'in';
   const heightSuffix = heightMode === 'cm' ? 'cm' : heightMode === 'inches' ? 'in' : 'ft, in';
 
@@ -734,9 +736,9 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   const booleanLabels = {
-    yes: 'Yes',
-    no: 'No',
-    clear: 'Clear',
+    yes: t('common.yes', { defaultValue: 'Yes' }),
+    no: t('common.no', { defaultValue: 'No' }),
+    clear: t('common.clear', { defaultValue: 'Clear' }),
   };
 
   // Daily manual editor: exactly one editable row per category. Health-sync
@@ -815,7 +817,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           <Text className="text-text-primary text-base">{t('measurements.date', { defaultValue: 'Date' })}</Text>
           <Text className="text-accent-primary text-base font-medium mx-1.5">
-            {formatDateLabel(selectedDate)}
+            {selectedDate === getTodayDate()
+              ? t('date.today', { defaultValue: 'Today' })
+              : selectedDate === addDays(getTodayDate(), -1)
+                ? t('date.yesterday', { defaultValue: 'Yesterday' })
+                : formatDate(selectedDate)}
           </Text>
           <Icon name="chevron-down" size={12} color={accentPrimary} weight="medium" />
         </TouchableOpacity>
@@ -835,7 +841,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.weightStones}
                       onChangeText={(v) => updateField('weightStones', v)}
                       keyboardType="number-pad"
-                      placeholder="st"
+                      placeholder={t('measurements.units.st', { defaultValue: 'st' })}
                       returnKeyType="done"
                     />
                   </View>
@@ -844,7 +850,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.weight}
                       onChangeText={(v) => updateField('weight', v)}
                       keyboardType="decimal-pad"
-                      placeholder="lb"
+                      placeholder={t('measurements.units.lb', { defaultValue: 'lb' })}
                       returnKeyType="done"
                     />
                   </View>
@@ -882,7 +888,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.heightFeet}
                       onChangeText={(v) => updateField('heightFeet', v)}
                       keyboardType="number-pad"
-                      placeholder="ft"
+                      placeholder={t('measurements.units.ft', { defaultValue: 'ft' })}
                       returnKeyType="done"
                     />
                   </View>
@@ -891,7 +897,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.height}
                       onChangeText={(v) => updateField('height', v)}
                       keyboardType="decimal-pad"
-                      placeholder="in"
+                      placeholder={t('measurements.units.in', { defaultValue: 'in' })}
                       returnKeyType="done"
                     />
                   </View>
@@ -988,7 +994,9 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         textClassName="text-sm"
                         accessibilityRole="button"
                         accessibilityState={{ expanded: showMoreCategories }}
-                        accessibilityLabel={t('measurements.custom.moreCategories', { defaultValue: 'More categories' })}
+                        accessibilityLabel={showMoreCategories
+                          ? t('measurements.custom.hideCategories', { defaultValue: 'Hide categories' })
+                          : t('measurements.custom.moreCategories', { defaultValue: 'More categories' })}
                       >
                         <Text style={{ color: accentPrimary }} className="text-sm font-medium">
                           {showMoreCategories

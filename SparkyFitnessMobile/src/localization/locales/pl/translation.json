@@ -30,7 +30,9 @@
     "edit": "Edytuj",
     "connectionRetry": "Sprawdź połączenie i spróbuj ponownie.",
     "deleteItemTitle": "Usunąć „{{title}}”?",
-    "tryAgain": "Spróbuj ponownie"
+    "tryAgain": "Spróbuj ponownie",
+    "yes": "Tak",
+    "no": "Nie"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -656,7 +658,9 @@
     "hoursAgo_many": "{{count}} godzin temu",
     "hoursAgo_other": "{{count}} godzin temu",
     "yesterdayAt": "Wczoraj o {{time}}",
-    "onDateAt": "{{date}} o {{time}}"
+    "onDateAt": "{{date}} o {{time}}",
+    "today": "Dzisiaj",
+    "yesterday": "Wczoraj"
   },
   "calorieSettings": {
     "restingEnergy": "Energia spoczynkowa",
@@ -1719,7 +1723,8 @@
       "heightWithUnit": "Wzrost ({{unit}})",
       "neckWithUnit": "Szyja ({{unit}})",
       "waistWithUnit": "Talia ({{unit}})",
-      "hipsWithUnit": "Biodra ({{unit}})"
+      "hipsWithUnit": "Biodra ({{unit}})",
+      "weightWithUnit": "Masa ciała ({{unit}})"
     },
     "validation": {
       "invalid": "Nieprawidłowe: {{label}}",
@@ -1730,7 +1735,8 @@
       "stonesLbsNumber": "Wpisz liczbę kamieni i funtów.",
       "nonNegative": "Wartość musi być większa lub równa 0.",
       "invalidHeight": "Nieprawidłowy wzrost",
-      "feetInchesNumber": "Wpisz liczbę stóp i cali."
+      "feetInchesNumber": "Wpisz liczbę stóp i cali.",
+      "bodyFatRange": "Zawartość tkanki tłuszczowej (%) musi wynosić od 0 do 100."
     },
     "nothingToSave": "Brak danych do zapisania",
     "enterValue": "Wpisz wartość lub wyczyść co najmniej jedno pole.",
@@ -1750,6 +1756,12 @@
       "measurements": "pomiary",
       "title": "Wyczyścić {{count}} {{noun}}?",
       "message": "{{labels}} zostaną wyczyszczone."
+    },
+    "units": {
+      "st": "st",
+      "lb": "lb",
+      "ft": "ft",
+      "in": "cal"
     }
   }
 }
