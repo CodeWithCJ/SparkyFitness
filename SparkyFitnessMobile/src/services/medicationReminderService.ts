@@ -157,7 +157,7 @@ export async function reconcileMedicationReminders(
         // Notification copy is language-sensitive as well as privacy-sensitive:
         // changing EN ↔ PL must replace pending notifications created earlier.
         return (n.content.data.hideNames === 'true') !== hideNames
-          || n.content.data.locale !== reminderLocale;
+          || (n.content.data.locale ?? 'en') !== reminderLocale;
 
       })
       .map((n) => n.identifier);

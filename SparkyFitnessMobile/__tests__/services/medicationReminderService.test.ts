@@ -216,6 +216,7 @@ describe('reconcileMedicationReminders', () => {
             key: BASE_KEY,
             baseKey: BASE_KEY,
             hideNames: 'false',
+            locale: 'en',
           },
         },
         trigger: {
