@@ -21,6 +21,7 @@ import Switch from '../components/ui/Switch';
 import { CYCLE_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 
 import {
+  BIRTH_CONTROL_METHODS,
   CYCLE_CONDITIONS,
   CYCLE_DEFAULTS,
   type CycleMode,
@@ -48,18 +49,35 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
     { value: 'postpartum' as const, label: t('cycleSettings.mode.postpartum', { defaultValue: 'Postpartum' }) },
     { value: 'menopause' as const, label: t('cycleSettings.mode.menopause', { defaultValue: 'Menopause-aware' }) },
   ];
-  const bcOptions = [
-    { value: 'none', label: t('cycleSettings.birthControl.none', { defaultValue: 'None' }) },
-    { value: 'pill', label: t('cycleSettings.birthControl.pill', { defaultValue: 'Pill' }) },
-    { value: 'iud_hormonal', label: t('cycleSettings.birthControl.iudHormonal', { defaultValue: 'Hormonal IUD' }) },
-    { value: 'iud_copper', label: t('cycleSettings.birthControl.iudCopper', { defaultValue: 'Copper IUD' }) },
-    { value: 'implant', label: t('cycleSettings.birthControl.implant', { defaultValue: 'Implant' }) },
-    { value: 'ring', label: t('cycleSettings.birthControl.ring', { defaultValue: 'Ring' }) },
-    { value: 'patch', label: t('cycleSettings.birthControl.patch', { defaultValue: 'Patch' }) },
-    { value: 'shot', label: t('cycleSettings.birthControl.shot', { defaultValue: 'Shot' }) },
-    { value: 'condoms', label: t('cycleSettings.birthControl.condoms', { defaultValue: 'Condoms / barrier' }) },
-    { value: 'other', label: t('cycleSettings.birthControl.other', { defaultValue: 'Other' }) },
-  ];
+  const getBirthControlLabel = (value: (typeof BIRTH_CONTROL_METHODS)[number]['value'], fallback: string) => {
+    switch (value) {
+      case 'none': return t('cycleSettings.birthControl.none', { defaultValue: 'None' });
+      case 'pill': return t('cycleSettings.birthControl.pill', { defaultValue: 'Pill' });
+      case 'iud_hormonal': return t('cycleSettings.birthControl.iudHormonal', { defaultValue: 'Hormonal IUD' });
+      case 'iud_copper': return t('cycleSettings.birthControl.iudCopper', { defaultValue: 'Copper IUD' });
+      case 'implant': return t('cycleSettings.birthControl.implant', { defaultValue: 'Implant' });
+      case 'ring': return t('cycleSettings.birthControl.ring', { defaultValue: 'Ring' });
+      case 'patch': return t('cycleSettings.birthControl.patch', { defaultValue: 'Patch' });
+      case 'shot': return t('cycleSettings.birthControl.shot', { defaultValue: 'Shot' });
+      case 'condoms': return t('cycleSettings.birthControl.condoms', { defaultValue: 'Condoms / barrier' });
+      case 'other': return t('cycleSettings.birthControl.other', { defaultValue: 'Other' });
+      default: return fallback;
+    }
+  };
+  const bcOptions = BIRTH_CONTROL_METHODS.map((method) => ({
+    value: method.value,
+    label: getBirthControlLabel(method.value, method.displayName),
+  }));
+  const getConditionLabel = (value: string, fallback: string) => {
+    switch (value) {
+      case 'pcos': return t('cycleSettings.condition.pcos', { defaultValue: 'PCOS' });
+      case 'endometriosis': return t('cycleSettings.condition.endometriosis', { defaultValue: 'Endometriosis' });
+      case 'fibroids': return t('cycleSettings.condition.fibroids', { defaultValue: 'Fibroids' });
+      case 'thyroid': return t('cycleSettings.condition.thyroid', { defaultValue: 'Thyroid condition' });
+      case 'other': return t('cycleSettings.condition.other', { defaultValue: 'Other' });
+      default: return fallback;
+    }
+  };
   const terminologyOptions = [
     { value: 'default' as const, label: t('cycleSettings.terminology.default', { defaultValue: 'Default' }) },
     { value: 'neutral' as const, label: t('cycleSettings.terminology.neutral', { defaultValue: 'Gender-Neutral' }) },
@@ -271,15 +289,7 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({ navigation })
               {CYCLE_CONDITIONS.map((cond) => (
                 <SettingsRow
                   key={cond.value}
-                  title={cond.value === 'pcos'
-                    ? t('cycleSettings.condition.pcos', { defaultValue: 'PCOS' })
-                    : cond.value === 'endometriosis'
-                      ? t('cycleSettings.condition.endometriosis', { defaultValue: 'Endometriosis' })
-                      : cond.value === 'fibroids'
-                        ? t('cycleSettings.condition.fibroids', { defaultValue: 'Fibroids' })
-                        : cond.value === 'thyroid'
-                          ? t('cycleSettings.condition.thyroid', { defaultValue: 'Thyroid condition' })
-                          : t('cycleSettings.condition.other', { defaultValue: 'Other' })}
+                  title={getConditionLabel(cond.value, cond.displayName)}
                   rightAccessory={
                     <Switch
                       value={settings.conditions?.includes(cond.value) || false}

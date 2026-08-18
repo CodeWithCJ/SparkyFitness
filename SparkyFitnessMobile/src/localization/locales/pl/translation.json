@@ -1635,7 +1635,7 @@
       "conditions": "Choroby i dolegliwości",
       "conditionsSubtitle": "Wybierz dolegliwości, aby dopasować śledzenie do swoich potrzeb.",
       "display": "Opcje wyświetlania",
-      "actions": "Działania"
+      "actions": "Akcje"
     },
     "fields": {
       "trackingMode": "Tryb śledzenia",
@@ -1656,7 +1656,7 @@
     },
     "values": {
       "custom": "Własne ustawienie",
-      "defaultHistory": "Domyślne/z historii",
+      "defaultHistory": "Domyślne / na podstawie historii",
       "lutealSubtitle": "Dni po owulacji (domyślnie 14)",
       "fertileSubtitle": "Wyróżnia dni płodne w kalendarzu",
       "discreetSubtitle": "Ukrywa etykiety „Cykl” i „Ciąża” w aplikacji",
@@ -1672,15 +1672,15 @@
     "export": {
       "preparing": "Przygotowywanie eksportu",
       "generating": "Tworzenie pliku eksportu JSON…",
-      "failed": "Eksport nieudany",
+      "failed": "Eksportowanie danych nie powiodło się",
       "failedMessage": "Nie udało się wyeksportować danych cyklu."
     },
     "mode": {
       "standard": "Standardowy cykl",
-      "ttc": "Staranie się o ciążę",
+      "ttc": "Starania o ciążę",
       "pregnant": "Śledzenie ciąży",
       "postpartum": "Połóg",
-      "menopause": "Uwzględnianie menopauzy"
+      "menopause": "Z uwzględnieniem menopauzy"
     },
     "birthControl": {
       "none": "Brak",
@@ -1688,7 +1688,7 @@
       "iudHormonal": "Hormonalna wkładka wewnątrzmaciczna",
       "iudCopper": "Miedziana wkładka wewnątrzmaciczna",
       "implant": "Implant",
-      "ring": "Krążek",
+      "ring": "Krążek dopochwowy",
       "patch": "Plaster",
       "shot": "Zastrzyk",
       "condoms": "Prezerwatywy / metoda barierowa",

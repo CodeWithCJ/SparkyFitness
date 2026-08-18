@@ -128,3 +128,33 @@ describe('CycleSettingsScreen', () => {
     });
   });
 });
+
+describe('CycleSettingsScreen localization contracts', () => {
+  it('keeps shared birth-control and condition values covered by both catalogs', () => {
+    const en = require('../../src/localization/locales/en/translation.json');
+    const pl = require('../../src/localization/locales/pl/translation.json');
+    const { BIRTH_CONTROL_METHODS, CYCLE_CONDITIONS } = require('@workspace/shared');
+
+    for (const method of BIRTH_CONTROL_METHODS) {
+      const key = method.value === 'iud_hormonal'
+        ? 'iudHormonal'
+        : method.value === 'iud_copper'
+          ? 'iudCopper'
+          : method.value;
+      expect(en.cycleSettings.birthControl[key]).toBeTruthy();
+      expect(pl.cycleSettings.birthControl[key]).toBeTruthy();
+    }
+    for (const condition of CYCLE_CONDITIONS) {
+      expect(en.cycleSettings.condition[condition.value]).toBeTruthy();
+      expect(pl.cycleSettings.condition[condition.value]).toBeTruthy();
+    }
+  });
+
+  it('keeps Polish cycle settings wording distinct from English', () => {
+    const en = require('../../src/localization/locales/en/translation.json');
+    const pl = require('../../src/localization/locales/pl/translation.json');
+    expect(pl.cycleSettings.mode.ttc).toBe('Starania o ciążę');
+    expect(pl.cycleSettings.birthControl.ring).toBe('Krążek dopochwowy');
+    expect(pl.cycleSettings.mode.ttc).not.toBe(en.cycleSettings.mode.ttc);
+  });
+});
