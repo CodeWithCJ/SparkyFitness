@@ -886,7 +886,7 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(screen.getByTestId('custom-input-sync-1')).toBeTruthy();
     expect(screen.getByTestId('custom-input-sync-2')).toBeTruthy();
     expect(screen.getByTestId('custom-input-sync-3')).toBeTruthy();
-    expect(screen.getByLabelText('More categories').props.accessibilityState?.expanded).toBe(true);
+    expect(screen.getByLabelText('Hide categories').props.accessibilityState?.expanded).toBe(true);
     // Hourly / All / Unlimited are not exposed anywhere — even after expanding.
     expect(screen.queryByTestId('custom-input-hourly-1')).toBeNull();
     expect(screen.queryByTestId('custom-input-all-1')).toBeNull();
@@ -1025,7 +1025,7 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.press(moreButton);
     expect(screen.getByTestId('custom-input-health-0')).toBeTruthy(); // steps
     expect(screen.getByTestId('custom-input-health-3')).toBeTruthy(); // Active Calories
-    expect(screen.getByLabelText('More categories').props.accessibilityState?.expanded).toBe(true);
+    expect(screen.getByLabelText('Hide categories').props.accessibilityState?.expanded).toBe(true);
     // Hourly is hidden even after expanding More.
     expect(screen.queryByTestId('custom-input-hourly-1')).toBeNull();
     // Standard built-ins remain present and usable.
@@ -1159,8 +1159,8 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(button.props.accessibilityRole).toBe('button');
     expect(button.props.accessibilityState?.expanded).toBe(false);
     fireEvent.press(button);
-    expect(screen.getByLabelText('More categories').props.accessibilityState?.expanded).toBe(true);
-    fireEvent.press(screen.getByLabelText('More categories'));
+    expect(screen.getByLabelText('Hide categories').props.accessibilityState?.expanded).toBe(true);
+    fireEvent.press(screen.getByLabelText('Hide categories'));
     expect(screen.getByLabelText('More categories').props.accessibilityState?.expanded).toBe(false);
   });
 

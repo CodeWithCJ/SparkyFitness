@@ -30,7 +30,9 @@
     "deleteItemTitle": "Delete {{title}}?",
     "tryAgain": "Try again",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "and": "and",
+    "listFinalSeparator": ", and "
   },
   "settings": {
     "app": "App Settings",

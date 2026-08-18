@@ -32,7 +32,9 @@
     "deleteItemTitle": "Usunąć „{{title}}”?",
     "tryAgain": "Spróbuj ponownie",
     "yes": "Tak",
-    "no": "Nie"
+    "no": "Nie",
+    "and": "i",
+    "listFinalSeparator": " i "
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -1753,7 +1755,7 @@
     },
     "confirm": {
       "measurement": "pomiar",
-      "measurements": "pomiary",
+      "measurements": "pomiarów",
       "title": "Wyczyścić {{count}} {{noun}}?",
       "message": "{{labels}} zostaną wyczyszczone."
     },

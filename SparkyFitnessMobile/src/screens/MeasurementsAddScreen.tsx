@@ -108,11 +108,11 @@ const formatNumberForInput = (value: number): string => {
   return String(Math.round(value * 10) / 10);
 };
 
-const joinWithAnd = (items: string[]): string => {
+const joinWithAnd = (items: string[], conjunction: string, finalSeparator: string): string => {
   if (items.length === 0) return '';
   if (items.length === 1) return items[0];
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+  if (items.length === 2) return `${items[0]} ${conjunction} ${items[1]}`;
+  return `${items.slice(0, -1).join(', ')}${finalSeparator}${items[items.length - 1]}`;
 };
 
 /**
@@ -660,7 +660,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         : t('measurements.confirm.measurements', { defaultValue: 'measurements' });
       Alert.alert(
         t('measurements.confirm.title', { defaultValue: 'Clear {{count}} {{noun}}?', count: clearingLabels.length, noun }),
-        t('measurements.confirm.message', { defaultValue: '{{labels}} will be cleared.', labels: joinWithAnd(clearingLabels) }),
+        t('measurements.confirm.message', { defaultValue: '{{labels}} will be cleared.', labels: joinWithAnd(clearingLabels, t('common.and', { defaultValue: 'and' }), t('common.listFinalSeparator', { defaultValue: ', and ' })) }),
         [
           { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
           { text: t('common.save', { defaultValue: 'Save' }), style: 'destructive', onPress: doSave },
