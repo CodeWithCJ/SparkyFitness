@@ -982,6 +982,21 @@ interface FreeExerciseDBResult {
 }
 
 /**
+ * free-exercise-db's raw JSON stores equipment/muscles/instructions as
+ * either a string array or a single bare string (never an empty string for
+ * "none" — that's `null`/absent). Anything reaching `createExercise` un-
+ * normalized gets JSON.stringify'd as-is, so a bare string round-trips as a
+ * JSON-encoded string instead of a one-item array, and every downstream
+ * `.join()`/`.map()` consumer of the parsed field then crashes.
+ */
+function normalizeToStringArray(
+  value: string | string[] | null | undefined
+): string[] {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}
+
+/**
  * wger descriptions are HTML (often a <ol>/<li> list). Normalize to the same
  * plain-text step array free-exercise-db exercises use.
  */
@@ -1121,26 +1136,10 @@ async function searchExternalExercises(
         force: exercise.force,
         level: exercise.level,
         mechanic: exercise.mechanic,
-        equipment: Array.isArray(exercise.equipment)
-          ? exercise.equipment
-          : exercise.equipment
-            ? [exercise.equipment]
-            : [],
-        primary_muscles: Array.isArray(exercise.primaryMuscles)
-          ? exercise.primaryMuscles
-          : exercise.primaryMuscles
-            ? [exercise.primaryMuscles]
-            : [],
-        secondary_muscles: Array.isArray(exercise.secondaryMuscles)
-          ? exercise.secondaryMuscles
-          : exercise.secondaryMuscles
-            ? [exercise.secondaryMuscles]
-            : [],
-        instructions: Array.isArray(exercise.instructions)
-          ? exercise.instructions
-          : exercise.instructions
-            ? [exercise.instructions]
-            : [],
+        equipment: normalizeToStringArray(exercise.equipment),
+        primary_muscles: normalizeToStringArray(exercise.primaryMuscles),
+        secondary_muscles: normalizeToStringArray(exercise.secondaryMuscles),
+        instructions: normalizeToStringArray(exercise.instructions),
         images: exercise.images.map((img: string) =>
           freeExerciseDBService.getExerciseImageUrl(img)
         ),
@@ -1391,13 +1390,15 @@ async function addFreeExerciseDBExerciseToUserExercises(
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       mechanic: exerciseDetails.mechanic,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      equipment: exerciseDetails.equipment,
+      equipment: normalizeToStringArray(exerciseDetails.equipment),
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      primary_muscles: exerciseDetails.primaryMuscles,
+      primary_muscles: normalizeToStringArray(exerciseDetails.primaryMuscles),
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      secondary_muscles: exerciseDetails.secondaryMuscles,
+      secondary_muscles: normalizeToStringArray(
+        exerciseDetails.secondaryMuscles
+      ),
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      instructions: exerciseDetails.instructions,
+      instructions: normalizeToStringArray(exerciseDetails.instructions),
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       category: exerciseDetails.category,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.

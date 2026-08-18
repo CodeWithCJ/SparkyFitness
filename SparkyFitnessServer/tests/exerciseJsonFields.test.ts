@@ -1,0 +1,48 @@
+import { vi, describe, expect, it } from 'vitest';
+
+vi.mock('../config/logging', () => ({
+  log: vi.fn(),
+}));
+
+import { parseJsonArrayField } from '../utils/exerciseJsonFields.js';
+import { log } from '../config/logging.js';
+
+describe('parseJsonArrayField', () => {
+  it('returns [] for null, undefined, and empty string', () => {
+    expect(parseJsonArrayField(null)).toEqual([]);
+    expect(parseJsonArrayField(undefined)).toEqual([]);
+    expect(parseJsonArrayField('')).toEqual([]);
+  });
+
+  it('parses a proper JSON array as-is', () => {
+    expect(parseJsonArrayField('["Barbell","Dumbbell"]')).toEqual([
+      'Barbell',
+      'Dumbbell',
+    ]);
+  });
+
+  it('wraps a bare JSON-encoded string into a single-item array', () => {
+    // The exact shape that crashed the CSV export: a legacy row stored a
+    // single equipment value as a JSON string instead of a one-item array,
+    // so JSON.parse succeeded but returned a string, and .join() downstream
+    // threw "equipment.join is not a function".
+    expect(parseJsonArrayField('"Barbell"')).toEqual(['Barbell']);
+  });
+
+  it('wraps a bare JSON number or object the same way', () => {
+    expect(parseJsonArrayField('5')).toEqual([5]);
+    expect(parseJsonArrayField('{"a":1}')).toEqual([{ a: 1 }]);
+  });
+
+  it('returns [] and logs with the given context for invalid JSON', () => {
+    expect(
+      parseJsonArrayField('Barbell', 'equipment for exercise ex-1')
+    ).toEqual([]);
+    expect(parseJsonArrayField('[Barbell, Dumbbell]')).toEqual([]);
+    expect(log).toHaveBeenCalledWith(
+      'error',
+      expect.stringContaining('(equipment for exercise ex-1)'),
+      expect.any(Error)
+    );
+  });
+});

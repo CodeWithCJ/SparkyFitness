@@ -8,6 +8,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { ExternalProviderType } from 'types/externalProvider.ts';
+import { exerciseWriteArrayFieldsSchema } from '@workspace/shared';
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -925,13 +926,23 @@ router.post(
   upload.array('images', 10),
   async (req, res, next) => {
     try {
-      const exerciseData = JSON.parse(req.body.exerciseData);
+      const parsedExerciseData = exerciseWriteArrayFieldsSchema.safeParse(
+        JSON.parse(req.body.exerciseData)
+      );
+      if (!parsedExerciseData.success) {
+        return res.status(400).json({
+          error: 'Invalid exercise payload.',
+          details: parsedExerciseData.error.flatten(),
+        });
+      }
+      const exerciseData = parsedExerciseData.data;
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const imagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
           req.files.map(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (file: any) =>
+              // @ts-expect-error TS(18046): 'exerciseData.name' is of type 'unknown' (passthrough field, not part of exerciseWriteArrayFieldsSchema).
               `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
           )
         : [];
@@ -1142,18 +1153,29 @@ router.put(
         .json({ error: 'Exercise ID is required and must be a valid UUID.' });
     }
     try {
-      const exerciseData = JSON.parse(req.body.exerciseData);
+      const parsedExerciseData = exerciseWriteArrayFieldsSchema.safeParse(
+        JSON.parse(req.body.exerciseData)
+      );
+      if (!parsedExerciseData.success) {
+        return res.status(400).json({
+          error: 'Invalid exercise payload.',
+          details: parsedExerciseData.error.flatten(),
+        });
+      }
+      const exerciseData = parsedExerciseData.data;
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const newImagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
           req.files.map(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (file: any) =>
+              // @ts-expect-error TS(18046): 'exerciseData.name' is of type 'unknown' (passthrough field, not part of exerciseWriteArrayFieldsSchema).
               `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
           )
         : [];
       // Combine existing images with new images
-      const allImages = [...(exerciseData.images || []), ...newImagePaths];
+      const existingImages = (exerciseData.images ?? []) as string[];
+      const allImages = [...existingImages, ...newImagePaths];
       const updatedExercise = await exerciseService.updateExercise(
         req.userId,
         id,

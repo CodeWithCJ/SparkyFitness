@@ -25,6 +25,39 @@ export const exerciseSearchQuerySchema = z
   })
   .strict();
 
+// --- Request contracts ---
+
+/**
+ * equipment/primary_muscles/secondary_muscles/instructions are stored as a
+ * JSON array of strings (db/migrations/20250927180257_alter_exercises_table.sql).
+ * free-exercise-db's raw JSON (and some legacy imports) uses a bare string
+ * for a single value, so accept either shape and normalize to an array
+ * rather than rejecting — rejecting would break imports over upstream
+ * formatting this app doesn't control. Mirrors the read-side
+ * parseJsonArrayField normalization in utils/exerciseJsonFields.ts.
+ */
+const exerciseStringArrayFieldSchema = z
+  .union([z.array(z.string()), z.string()])
+  .nullable()
+  .optional()
+  .transform((value) => (value == null || Array.isArray(value) ? value : [value]));
+
+/**
+ * The subset of the create/update exercise payload (`POST /exercises`,
+ * `PUT /exercises/:id`) that needs shape normalization before it reaches
+ * the database. `.passthrough()` so the rest of the payload (name, category,
+ * modality, force, level, mechanic, description, is_public, ...) rides
+ * through untouched. This schema only owns the array-shaped fields.
+ */
+export const exerciseWriteArrayFieldsSchema = z
+  .object({
+    equipment: exerciseStringArrayFieldSchema,
+    primary_muscles: exerciseStringArrayFieldSchema,
+    secondary_muscles: exerciseStringArrayFieldSchema,
+    instructions: exerciseStringArrayFieldSchema,
+  })
+  .passthrough();
+
 // --- Response contracts ---
 
 /**
@@ -104,6 +137,9 @@ export const paginatedExternalExerciseSearchResultSchema = z
 // --- Types ---
 
 export type ExerciseSearchQuery = z.infer<typeof exerciseSearchQuerySchema>;
+export type ExerciseWriteArrayFields = z.infer<
+  typeof exerciseWriteArrayFieldsSchema
+>;
 export type ExerciseLibraryItem = z.infer<typeof exerciseLibraryItemSchema>;
 export type PaginatedExercisesResponse = z.infer<
   typeof paginatedExercisesResponseSchema

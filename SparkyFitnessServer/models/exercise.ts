@@ -10,6 +10,7 @@ import {
   buildSqlSearch,
   buildSqlExactMatchOrder,
 } from '../utils/dbSearchHelper.js';
+import { parseJsonArrayField } from '../utils/exerciseJsonFields.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getExerciseById(id: any, userId: any) {
   const client = await getClient(userId);
@@ -413,25 +414,26 @@ async function searchExercises(
     const result = await client.query(finalQuery, selectQueryParams);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return result.rows.map((row: any) => {
-      // Helper function to safely parse JSONB fields into arrays
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parseJsonbField = (field: any) => {
-        if (row[field]) {
-          try {
-            const parsed = JSON.parse(row[field]);
-            return Array.isArray(parsed) ? parsed : [parsed]; // Ensure it's an array
-          } catch (e) {
-            log('error', `Error parsing ${field} for exercise ${row.id}:`, e);
-            return [];
-          }
-        }
-        return [];
-      };
-      row.equipment = parseJsonbField('equipment');
-      row.primary_muscles = parseJsonbField('primary_muscles');
-      row.secondary_muscles = parseJsonbField('secondary_muscles');
-      row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.equipment = parseJsonArrayField(
+        row.equipment,
+        `equipment for exercise ${row.id}`
+      );
+      row.primary_muscles = parseJsonArrayField(
+        row.primary_muscles,
+        `primary_muscles for exercise ${row.id}`
+      );
+      row.secondary_muscles = parseJsonArrayField(
+        row.secondary_muscles,
+        `secondary_muscles for exercise ${row.id}`
+      );
+      row.instructions = parseJsonArrayField(
+        row.instructions,
+        `instructions for exercise ${row.id}`
+      );
+      row.images = parseJsonArrayField(
+        row.images,
+        `images for exercise ${row.id}`
+      );
       return row;
     });
   } finally {
@@ -516,24 +518,26 @@ async function searchExercisesPaginated(
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exercises = result.rows.map((row: any) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parseJsonbField = (field: any) => {
-        if (row[field]) {
-          try {
-            const parsed = JSON.parse(row[field]);
-            return Array.isArray(parsed) ? parsed : [parsed];
-          } catch (e) {
-            log('error', `Error parsing ${field} for exercise ${row.id}:`, e);
-            return [];
-          }
-        }
-        return [];
-      };
-      row.equipment = parseJsonbField('equipment');
-      row.primary_muscles = parseJsonbField('primary_muscles');
-      row.secondary_muscles = parseJsonbField('secondary_muscles');
-      row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.equipment = parseJsonArrayField(
+        row.equipment,
+        `equipment for exercise ${row.id}`
+      );
+      row.primary_muscles = parseJsonArrayField(
+        row.primary_muscles,
+        `primary_muscles for exercise ${row.id}`
+      );
+      row.secondary_muscles = parseJsonArrayField(
+        row.secondary_muscles,
+        `secondary_muscles for exercise ${row.id}`
+      );
+      row.instructions = parseJsonArrayField(
+        row.instructions,
+        `instructions for exercise ${row.id}`
+      );
+      row.images = parseJsonArrayField(
+        row.images,
+        `images for exercise ${row.id}`
+      );
       return row;
     });
     return { exercises, totalCount };
@@ -689,25 +693,26 @@ async function getRecentExercises(userId: any, limit: any) {
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return result.rows.map((row: any) => {
-      // Helper function to safely parse JSONB fields into arrays
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parseJsonbField = (field: any) => {
-        if (row[field]) {
-          try {
-            const parsed = JSON.parse(row[field]);
-            return Array.isArray(parsed) ? parsed : [parsed]; // Ensure it's an array
-          } catch (e) {
-            log('error', `Error parsing ${field} for exercise ${row.id}:`, e);
-            return [];
-          }
-        }
-        return [];
-      };
-      row.equipment = parseJsonbField('equipment');
-      row.primary_muscles = parseJsonbField('primary_muscles');
-      row.secondary_muscles = parseJsonbField('secondary_muscles');
-      row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.equipment = parseJsonArrayField(
+        row.equipment,
+        `equipment for exercise ${row.id}`
+      );
+      row.primary_muscles = parseJsonArrayField(
+        row.primary_muscles,
+        `primary_muscles for exercise ${row.id}`
+      );
+      row.secondary_muscles = parseJsonArrayField(
+        row.secondary_muscles,
+        `secondary_muscles for exercise ${row.id}`
+      );
+      row.instructions = parseJsonArrayField(
+        row.instructions,
+        `instructions for exercise ${row.id}`
+      );
+      row.images = parseJsonArrayField(
+        row.images,
+        `images for exercise ${row.id}`
+      );
       return row;
     });
   } finally {
@@ -739,25 +744,26 @@ async function getTopExercises(userId: any, limit: any) {
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return result.rows.map((row: any) => {
-      // Helper function to safely parse JSONB fields into arrays
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parseJsonbField = (field: any) => {
-        if (row[field]) {
-          try {
-            const parsed = JSON.parse(row[field]);
-            return Array.isArray(parsed) ? parsed : [parsed]; // Ensure it's an array
-          } catch (e) {
-            log('error', `Error parsing ${field} for exercise ${row.id}:`, e);
-            return [];
-          }
-        }
-        return [];
-      };
-      row.equipment = parseJsonbField('equipment');
-      row.primary_muscles = parseJsonbField('primary_muscles');
-      row.secondary_muscles = parseJsonbField('secondary_muscles');
-      row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.equipment = parseJsonArrayField(
+        row.equipment,
+        `equipment for exercise ${row.id}`
+      );
+      row.primary_muscles = parseJsonArrayField(
+        row.primary_muscles,
+        `primary_muscles for exercise ${row.id}`
+      );
+      row.secondary_muscles = parseJsonArrayField(
+        row.secondary_muscles,
+        `secondary_muscles for exercise ${row.id}`
+      );
+      row.instructions = parseJsonArrayField(
+        row.instructions,
+        `instructions for exercise ${row.id}`
+      );
+      row.images = parseJsonArrayField(
+        row.images,
+        `images for exercise ${row.id}`
+      );
       return row;
     });
   } finally {
