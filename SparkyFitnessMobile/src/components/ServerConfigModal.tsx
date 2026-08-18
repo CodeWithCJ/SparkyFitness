@@ -511,7 +511,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       onSuccess();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(t('auth.errors.connectionWithMessage', { defaultValue: 'Could not connect to server: {{message}}', message }));
+      setError(t('auth.errors.connectionWithMessage', { defaultValue: 'Could not connect to server: {{message}}', message: message || t('auth.errors.unknown', { defaultValue: 'Unknown error' }) }));
     } finally {
       setLoading(false);
     }
