@@ -371,7 +371,7 @@ describe('reconcileMedicationReminders', () => {
     it('replaces pending reminders when the effective app language changes', async () => {
       useAppPreferencesStore.setState({ medicationReminderRepeats: false });
       mockGetAllScheduled.mockResolvedValue([
-        pendingRequest('english', { medicationId: 'med-1', key: BASE_KEY, hideNames: 'false', locale: 'en' }),
+        pendingRequest('english', { medicationId: 'med-1', key: BASE_KEY, hideNames: 'false', locale: 'pl' }),
       ]);
 
       await reconcileMedicationReminders([buildMedication()], []);
