@@ -439,5 +439,63 @@
     "hoursAgo_other": "{{count}} godzin temu",
     "yesterdayAt": "Wczoraj o {{time}}",
     "onDateAt": "{{date}} o {{time}}"
+  },
+  "calorieSettings": {
+    "restingEnergy": "Energia spoczynkowa",
+    "bmr": "PPM",
+    "title": "Ustawienia kalorii i PPM",
+    "modeLabel": "Tryb kalorii",
+    "adjustmentMode": "Tryb korekty",
+    "modeDescription": "Określa, jak dzienny cel kalorii zmienia się w zależności od aktywności.",
+    "exerciseCaloriesApplied": "Uwzględniane kalorie z ćwiczeń",
+    "exerciseCaloriesDescription": "Określa, jaka część kalorii z ćwiczeń jest dodawana do dziennego celu.",
+    "activityLevel": "Poziom aktywności",
+    "activityBaseline": "Używany jako wartość bazowa dla TDEE.",
+    "adaptiveFallback": "Działa jako wartość zastępcza, dopóki nie zbierzesz wystarczającej ilości danych.",
+    "allowNegative": "Zezwalaj na ujemną korektę",
+    "negativeDescription": "Obniżaj dzienny cel, gdy spalasz mniej kalorii niż oczekiwano.",
+    "includeResting": "Uwzględniaj kalorie spoczynkowe",
+    "includeRestingDescription": "Uwzględniaj podstawową energię (PPM) w obliczeniach bilansu.",
+    "howThisWorks": "Jak to działa",
+    "burnedCalories": "Spalone kalorie",
+    "netEnergy": "Energia netto",
+    "remainingCalories": "Pozostałe kalorie",
+    "useExternal": "Używaj wartości {{metric}} z {{source}}",
+    "externalDescription": "Jeśli dostępne, używaj wartości {{metric}} z {{source}}. W przeciwnym razie zostanie użyty wybrany wzór.",
+    "iosNote": "Zsynchronizowana wartość obejmuje już lekką codzienną aktywność, dlatego możesz ustawić",
+    "iosNoteContinuation": "poziom aktywności na Brak (×1,0), aby uniknąć podwójnego naliczania.",
+    "updateFailed": "Nie udało się zaktualizować ustawienia.",
+    "modes": {
+      "adaptive": "Cel adaptacyjny",
+      "dynamic": "Cel dynamiczny",
+      "fixed": "Cel stały",
+      "percentage": "Procentowy zwrot kalorii",
+      "tdee": "Projekcja urządzenia"
+    },
+    "activity": {
+      "none": "Brak (×1,0)",
+      "sedentary": "Siedzący (×1,2)",
+      "light": "Lekko aktywny (×1,375)",
+      "moderate": "Umiarkowanie aktywny (×1,55)",
+      "heavy": "Bardzo aktywny (×1,725)"
+    },
+    "formulas": {
+      "activityWithBmr": "Aktywność + PPM",
+      "activityOnly": "Tylko aktywność (ćwiczenia + kroki)",
+      "eatenBurned": "Zjedzone − spalone",
+      "dynamic": "Cel − energia netto",
+      "percentageWithBmr": "Cel − zjedzone + PPM + {{percentage}}% ćwiczeń",
+      "percentage": "Cel − zjedzone + {{percentage}}% ćwiczeń",
+      "tdee": "Cel − zjedzone + (projekcja − TDEE)",
+      "adaptive": "Cel − zjedzone",
+      "fixed": "Cel − zjedzone"
+    },
+    "notes": {
+      "dynamic": "Cel rośnie wraz z aktywnością",
+      "tdee": "Projekcja zbiega się o północy",
+      "adaptive": "Cel = adaptacyjne TDEE",
+      "fixed": "Aktywność nie zmienia budżetu"
+    },
+    "externalFormula": "wzór"
   }
 }

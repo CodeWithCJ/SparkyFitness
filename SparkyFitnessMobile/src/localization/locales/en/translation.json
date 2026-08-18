@@ -433,5 +433,63 @@
     "hoursAgo_other": "{{count}} hours ago",
     "yesterdayAt": "Yesterday at {{time}}",
     "onDateAt": "{{date}} at {{time}}"
+  },
+  "calorieSettings": {
+    "restingEnergy": "Resting Energy",
+    "bmr": "BMR",
+    "title": "Calorie & BMR Settings",
+    "modeLabel": "Calorie Mode",
+    "adjustmentMode": "Adjustment Mode",
+    "modeDescription": "Controls how your daily calorie goal adjusts based on activity.",
+    "exerciseCaloriesApplied": "Exercise Calories Applied",
+    "exerciseCaloriesDescription": "How much of your exercise calories are added back to your daily goal.",
+    "activityLevel": "Activity Level",
+    "activityBaseline": "Used as a baseline for TDEE.",
+    "adaptiveFallback": "Acts as a fallback until you have enough tracking data.",
+    "allowNegative": "Allow Negative Adjustment",
+    "negativeDescription": "Lower your daily goal when you burn less than expected.",
+    "includeResting": "Include Resting Calories",
+    "includeRestingDescription": "Include your baseline energy (BMR) in net calculations.",
+    "howThisWorks": "How this works",
+    "burnedCalories": "Burned Calories",
+    "netEnergy": "Net Energy",
+    "remainingCalories": "Remaining Calories",
+    "useExternal": "Use {{metric}} from {{source}}",
+    "externalDescription": "Uses {{source}} {{metric}} when available. Otherwise, the selected formula will be used.",
+    "iosNote": "The synced value already includes light daily activity, so you may want to set",
+    "iosNoteContinuation": "your Activity Level to None (×1.0) to avoid counting it twice.",
+    "updateFailed": "Failed to update setting.",
+    "modes": {
+      "adaptive": "Adaptive Goal",
+      "dynamic": "Dynamic Goal",
+      "fixed": "Fixed Goal",
+      "percentage": "Percentage Earn-Back",
+      "tdee": "Device Projection"
+    },
+    "activity": {
+      "none": "None (x1.0)",
+      "sedentary": "Sedentary (x1.2)",
+      "light": "Lightly Active (x1.375)",
+      "moderate": "Moderately Active (x1.55)",
+      "heavy": "Very Active (x1.725)"
+    },
+    "formulas": {
+      "activityWithBmr": "Activity + BMR",
+      "activityOnly": "Activity only (exercise + steps)",
+      "eatenBurned": "Eaten − Burned",
+      "dynamic": "Goal − Net Energy",
+      "percentageWithBmr": "Goal − Eaten + BMR + {{percentage}}% of Exercise",
+      "percentage": "Goal − Eaten + {{percentage}}% of Exercise",
+      "tdee": "Goal − Eaten + (Projection − TDEE)",
+      "adaptive": "Goal − Eaten",
+      "fixed": "Goal − Eaten"
+    },
+    "notes": {
+      "dynamic": "Goal grows as you move",
+      "tdee": "Projection converges at midnight",
+      "adaptive": "Goal = Adaptive TDEE",
+      "fixed": "Activity does not change your budget"
+    },
+    "externalFormula": "formula"
   }
 }
