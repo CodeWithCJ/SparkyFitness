@@ -1,6 +1,10 @@
 import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import {
+  LATEST_PROTOCOL_VERSION,
+  SUPPORTED_PROTOCOL_VERSIONS,
+} from '@modelcontextprotocol/sdk/types.js';
 import { log } from '../config/logging.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
@@ -13,6 +17,50 @@ import chatService from '../services/chatService.js';
 import { TtlCache } from '../utils/ttlCache.js';
 
 const router = express.Router();
+
+/**
+ * Clamp an unrecognised `MCP-Protocol-Version` header down to the newest version
+ * this SDK understands.
+ *
+ * `initialize` already negotiates correctly — a client asking for a future
+ * version is answered with ours. But some clients (Claude.ai's connector at the
+ * time of writing) then send *their* newest version in the header on every
+ * subsequent request rather than the negotiated one, and the transport rejects
+ * the whole request:
+ *
+ *   Bad Request: Unsupported protocol version: 2026-07-28
+ *   (supported versions: 2025-11-25, 2025-06-18, ...)
+ *
+ * The spec says the client MUST send the negotiated version, so that is a
+ * client-side fault — but 400ing every call is a poor way to meet it, and the
+ * request is otherwise perfectly serviceable at our version. Only *newer*
+ * versions are clamped: an unrecognised *older* one is left alone so it still
+ * fails loudly rather than being silently upgraded.
+ */
+export function clampFutureProtocolVersion(req: express.Request): void {
+  const raw = req.headers['mcp-protocol-version'];
+  const version = Array.isArray(raw) ? raw[0] : raw;
+  if (!version || SUPPORTED_PROTOCOL_VERSIONS.includes(version)) return;
+  // Versions are ISO dates, so a lexicographic compare is a date compare.
+  if (version <= LATEST_PROTOCOL_VERSION) return;
+  log(
+    'warn',
+    `[MCP] Client sent protocol version ${version}, which post-dates this SDK; treating it as ${LATEST_PROTOCOL_VERSION}.`
+  );
+  req.headers['mcp-protocol-version'] = LATEST_PROTOCOL_VERSION;
+  // `req.headers` alone is not enough. The Node transport hands the request to
+  // Hono's getRequestListener, which rebuilds a Web Request from `rawHeaders`,
+  // so a clamp applied only to the parsed headers is silently discarded and the
+  // transport still sees the original version.
+  const rawHeaders = (req as unknown as { rawHeaders?: string[] }).rawHeaders;
+  if (Array.isArray(rawHeaders)) {
+    for (let i = 0; i < rawHeaders.length; i += 2) {
+      if (rawHeaders[i]?.toLowerCase() === 'mcp-protocol-version') {
+        rawHeaders[i + 1] = LATEST_PROTOCOL_VERSION;
+      }
+    }
+  }
+}
 
 // Per-user cache of the two DB lookups at the top of every MCP request (each
 // request builds a fresh McpServer, so tools/list + tools/call each paid a
@@ -66,6 +114,7 @@ function stripNulls(val: unknown): unknown {
  */
 router.post('/', async (req, res) => {
   try {
+    clampFutureProtocolVersion(req);
     const userId = req.authenticatedUserId;
     // The profile is honored verbatim for every service type (unlike chat,
     // which only honors 'core' for self-hosted backends): a user who trimmed
