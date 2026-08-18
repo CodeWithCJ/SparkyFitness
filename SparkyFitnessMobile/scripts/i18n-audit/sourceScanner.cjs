@@ -3,6 +3,20 @@ const path = require('node:path');
 const ts = require('typescript');
 
 const EXCLUDE_DIRS = new Set(['__tests__', '__mocks__', 'node_modules', 'coverage', 'android', 'ios', 'scripts', '.tooling']);
+const CONTROLLED_DYNAMIC_I18N_RULES = new Set([
+  'healthMetrics',
+  'healthCategories',
+]);
+
+function isApprovedControlledDynamicKey(node) {
+  if (!ts.isTemplateExpression(node)) return false;
+  const head = node.head.text;
+  const prefixMatch = head.match(/^([A-Za-z0-9_.-]+)\.$/);
+  if (!prefixMatch || !CONTROLLED_DYNAMIC_I18N_RULES.has(prefixMatch[1])) return false;
+  return node.templateSpans.length === 1;
+}
+
+
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
 /** Blocking rule name for a source file that could not be scanned (fail-closed). */
@@ -82,6 +96,7 @@ function isDynamicTranslationKey(node) {
   const arg = node.arguments[0];
   if (!arg) return false;
   if (resolveStaticTranslationKeyArg(arg) !== null) return false;
+  if (isApprovedControlledDynamicKey(arg)) return false;
 
   return true;
 }
