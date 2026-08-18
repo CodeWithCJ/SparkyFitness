@@ -1,5 +1,8 @@
 import type { SupplementTotals } from '@workspace/shared';
-import { resolveSupplementTotals } from '@workspace/shared';
+import {
+  resolveSupplementTotals,
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+} from '@workspace/shared';
 import { getDietTemplate } from '@/constants/dietTemplates';
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
 import i18n from '@/i18n';
@@ -313,28 +316,33 @@ export const calculateNutrition = (
 /**
  * Folds a day's logged supplement doses into its food totals.
  *
- * Limited to the five fields the server rolls up for supplements everywhere else
- * (`supplementFixed` in foodMisc). A supplement's sodium is not summed by the nutrition
- * summary or the chatbot either, so adding it here alone would trade one inconsistency for
- * a subtler one: the Diary would be the only surface that counted it.
+ * Covers every field in `FOOD_VARIANT_NUTRIENT_FIELDS`, not just the macros. It added only
+ * the five macro fields until #2145: a supplement carrying 10000mg of calcium showed its
+ * calcium in Reports, which sums all seventeen, and nothing in the Diary summary card
+ * beside it, which is the surface the user was actually looking at.
+ *
+ * The older reasoning for the narrow version was that no other surface summed a
+ * supplement's sodium either, so widening here alone would make the Diary the odd one out.
+ * That was already untrue of the range query in `reportRepository`, and the inconsistency
+ * it was avoiding is the one users hit.
  *
  * Returns the food totals unchanged when there is no supplement arm, so a day with no
  * supplements is byte-for-byte what it was before supplements existed.
  */
 export const addSupplementTotals = <T extends MealTotals>(
   foodTotals: T,
-  supplementTotals: SupplementTotals | undefined | null
+  supplementTotals: Partial<SupplementTotals> | undefined | null
 ): T => {
   if (!supplementTotals) return foodTotals;
+  // Merges against a full-width zero object, so an older server answering with only the
+  // five macro keys yields 0 for the rest rather than `number + undefined` = NaN.
   const supplements = resolveSupplementTotals(supplementTotals);
-  return {
-    ...foodTotals,
-    calories: foodTotals.calories + supplements.calories,
-    protein: foodTotals.protein + supplements.protein,
-    carbs: foodTotals.carbs + supplements.carbs,
-    fat: foodTotals.fat + supplements.fat,
-    dietary_fiber: foodTotals.dietary_fiber + supplements.dietary_fiber,
-  };
+  const combined = { ...foodTotals };
+  for (const field of FOOD_VARIANT_NUTRIENT_FIELDS) {
+    const food = Number(foodTotals[field]) || 0;
+    (combined as MealTotals)[field] = food + supplements[field];
+  }
+  return combined;
 };
 
 export const calculateDayTotals = (

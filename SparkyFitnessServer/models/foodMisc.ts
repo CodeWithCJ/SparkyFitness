@@ -1,4 +1,6 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
+import type { FoodVariantNutrientField } from '@workspace/shared';
 import type { FoodEntrySnapshot } from '../types/nutrition.js';
 
 const DEFAULT_VARIANT_JSON_SQL = `
@@ -249,29 +251,29 @@ function supplementCustomUnion(userExpr: string, dateExpr: string): string {
  * and once to show as its own line, so what is displayed still reconciles against the
  * food rows the user can see.
  *
- * Fields are exactly the set `supplementFixed` is applied to elsewhere. Returns zeros
+ * Fields are `FOOD_VARIANT_NUTRIENT_FIELDS`, the same list `reportRepository` applies
+ * `supplementFixed` to for the range query and the same fixed fields the Diary's summary
+ * card can render. This selected only the five macro fields until #2145, which is how a
+ * supplement's calcium reached Reports but not the Diary card beside it. Returns zeros
  * rather than nulls on a day with no supplements, so callers can add unconditionally.
  */
 async function getDailySupplementTotals(userId: string, date: string) {
   const client = await getClient(userId);
   try {
-    const result = await client.query(
-      `SELECT
-        ${supplementFixed('calories', '$1', '$2')} AS calories,
-        ${supplementFixed('protein', '$1', '$2')} AS protein,
-        ${supplementFixed('carbs', '$1', '$2')} AS carbs,
-        ${supplementFixed('fat', '$1', '$2')} AS fat,
-        ${supplementFixed('dietary_fiber', '$1', '$2')} AS dietary_fiber`,
-      [userId, date]
-    );
+    const selects = FOOD_VARIANT_NUTRIENT_FIELDS.map(
+      (field) => `${supplementFixed(field, '$1', '$2')} AS ${field}`
+    ).join(',\n        ');
+    const result = await client.query(`SELECT\n        ${selects}`, [
+      userId,
+      date,
+    ]);
     const row = result.rows[0] ?? {};
-    return {
-      calories: Number(row.calories) || 0,
-      protein: Number(row.protein) || 0,
-      carbs: Number(row.carbs) || 0,
-      fat: Number(row.fat) || 0,
-      dietary_fiber: Number(row.dietary_fiber) || 0,
-    };
+    return Object.fromEntries(
+      FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => [
+        field,
+        Number(row[field]) || 0,
+      ])
+    ) as Record<FoodVariantNutrientField, number>;
   } finally {
     client.release();
   }

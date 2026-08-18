@@ -20,6 +20,7 @@ import {
   computeCaloriesRemaining,
   computeCalorieProgress,
   computeTdeeAdjustment,
+  EMPTY_SUPPLEMENT_TOTALS,
 } from '@workspace/shared';
 import type { CalorieGoalAdjustmentMode } from '@workspace/shared';
 
@@ -301,7 +302,10 @@ export async function getDailySummary({
           `Supplement totals fetch failed for user ${targetUserId} on ${date}, defaulting to zeros:`,
           error
         );
-        return { calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 };
+        // Must stay the same width as the query's own result. A hardcoded five-key
+        // literal here would reintroduce #2145 on the degraded path alone, which is
+        // the hardest version to notice.
+        return EMPTY_SUPPLEMENT_TOTALS;
       }),
   ]);
 

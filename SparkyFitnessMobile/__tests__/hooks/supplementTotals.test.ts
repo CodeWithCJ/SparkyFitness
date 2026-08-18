@@ -2,13 +2,17 @@ import {
   resolveSupplementTotals,
   hasSupplementNutrition,
   EMPTY_SUPPLEMENT_TOTALS,
+  FOOD_VARIANT_NUTRIENT_FIELDS,
 } from '@workspace/shared';
 
 // Mobile derives its macro pills from food entries while the calorie ring comes from the
 // server's calorieBalance, which counts supplements. Without the supplement arm here the
 // ring disagreed with the pills beneath it, and with the nutrition details screen.
 describe('resolveSupplementTotals', () => {
-  it('passes a real arm through untouched', () => {
+  it('preserves the values a real arm carries', () => {
+    // No longer identity-preserving: since #2145 this fills the fixed nutrients an older
+    // server omits, so it must build a new object. What matters is that supplied values
+    // survive and absent ones read as zero rather than undefined.
     const totals = {
       calories: 15,
       protein: 0,
@@ -16,7 +20,18 @@ describe('resolveSupplementTotals', () => {
       fat: 1.5,
       dietary_fiber: 0,
     };
-    expect(resolveSupplementTotals(totals)).toBe(totals);
+    const resolved = resolveSupplementTotals(totals);
+
+    expect(resolved.calories).toBe(15);
+    expect(resolved.fat).toBe(1.5);
+    expect(resolved.calcium).toBe(0);
+    expect(resolved.sodium).toBe(0);
+  });
+
+  it('keeps a full-width arm intact', () => {
+    const totals = { ...EMPTY_SUPPLEMENT_TOTALS, calcium: 10000, iron: 18 };
+
+    expect(resolveSupplementTotals(totals)).toEqual(totals);
   });
 
   it('returns zeros when the server predates supplement totals', () => {
@@ -27,13 +42,13 @@ describe('resolveSupplementTotals', () => {
   });
 
   it('covers exactly the fields both clients add', () => {
-    expect(Object.keys(EMPTY_SUPPLEMENT_TOTALS).sort()).toEqual([
-      'calories',
-      'carbs',
-      'dietary_fiber',
-      'fat',
-      'protein',
-    ]);
+    // Tied to the shared column list rather than restated, so this cannot drift from the
+    // set `reportRepository` sums and the Diary card renders. It listed only the five
+    // macro fields until #2145.
+    expect(Object.keys(EMPTY_SUPPLEMENT_TOTALS).sort()).toEqual(
+      [...FOOD_VARIANT_NUTRIENT_FIELDS].sort()
+    );
+    expect(Object.keys(EMPTY_SUPPLEMENT_TOTALS)).toHaveLength(17);
   });
 
   it('is arithmetically inert for a day with no supplements', () => {

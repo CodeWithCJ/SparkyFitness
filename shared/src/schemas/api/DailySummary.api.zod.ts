@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+  type FoodVariantNutrientField,
+} from "../../constants/foodVariantNutrients.ts";
 import { dailyGoalsResponseSchema } from "./DailyGoals.api.zod.ts";
 import { foodEntryResponseSchema } from "./FoodEntries.api.zod.ts";
 import { exerciseSessionResponseSchema } from "./ExerciseEntries.api.zod.ts";
@@ -38,14 +42,18 @@ export type AdjustedGoals = z.infer<typeof adjustedGoalsSchema>;
  * dose snapshot. Folded into `calorieBalance.eaten`, and returned separately so the Diary
  * can account for it on screen rather than showing a total the food rows cannot explain.
  * Always present; zeros on a day with no supplements.
+ *
+ * Keyed off `FOOD_VARIANT_NUTRIENT_FIELDS` rather than listing fields, because this arm has
+ * to stay the same width as two things that already use that list: the columns
+ * `reportRepository` sums for the range query, and the fixed fields the Diary's
+ * `NutritionSummaryCard` can render. It carried only the five macro fields until #2145,
+ * which is exactly how a supplement's calcium could reach Reports and not the Diary.
  */
-export const supplementTotalsSchema = z.object({
-  calories: z.number(),
-  protein: z.number(),
-  carbs: z.number(),
-  fat: z.number(),
-  dietary_fiber: z.number(),
-});
+const supplementTotalsShape = Object.fromEntries(
+  FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => [field, z.number()]),
+) as Record<FoodVariantNutrientField, z.ZodNumber>;
+
+export const supplementTotalsSchema = z.object(supplementTotalsShape);
 
 export type SupplementTotals = z.infer<typeof supplementTotalsSchema>;
 
@@ -63,28 +71,37 @@ export const dailySummaryResponseSchema = z.object({
 export type DailySummaryResponse = z.infer<typeof dailySummaryResponseSchema>;
 
 /** Zeros, for a day with no supplements or a server too old to report them. */
-export const EMPTY_SUPPLEMENT_TOTALS: SupplementTotals = {
-  calories: 0,
-  protein: 0,
-  carbs: 0,
-  fat: 0,
-  dietary_fiber: 0,
-};
+export const EMPTY_SUPPLEMENT_TOTALS: SupplementTotals = Object.fromEntries(
+  FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => [field, 0]),
+) as SupplementTotals;
 
 /**
- * Normalises a possibly-absent supplement arm so callers can add it unconditionally.
+ * Normalises a possibly-absent or partial supplement arm so callers can add it
+ * unconditionally.
  *
  * Absent has two causes worth keeping distinct in the mind but not in the code: a day on
  * which nothing was logged, and a client talking to a server that predates supplement
  * totals. Both mean "add nothing", and neither should make a client branch.
+ *
+ * PARTIAL is a third case and the reason this merges rather than returning the argument
+ * unchanged. A server older than #2145 answers with only the five macro fields, so a
+ * caller adding `food[key] + supplements[key]` across all seventeen would land on
+ * `number + undefined` and write NaN into twelve of them. Filling the gaps with zeros
+ * makes an old server read as "contributed nothing to those twelve", which is the honest
+ * reading: it did not report them because it could not.
  *
  * Shared because web and mobile each derive their own day totals. That duplication is why
  * supplement energy reached the mobile calorie ring, which comes from the server, while the
  * macro pills beside it kept counting food alone.
  */
 export const resolveSupplementTotals = (
-  totals: SupplementTotals | null | undefined,
-): SupplementTotals => totals ?? EMPTY_SUPPLEMENT_TOTALS;
+  totals: Partial<SupplementTotals> | null | undefined,
+): SupplementTotals => {
+  if (!totals) return EMPTY_SUPPLEMENT_TOTALS;
+  return Object.fromEntries(
+    FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => [field, totals[field] ?? 0]),
+  ) as SupplementTotals;
+};
 
 /**
  * Whether the day's supplements contributed any nutrition at all.
@@ -95,7 +112,7 @@ export const resolveSupplementTotals = (
  * figure that is not zero. A dose the user logged is not nothing.
  */
 export const hasSupplementNutrition = (
-  totals: SupplementTotals | null | undefined,
+  totals: Partial<SupplementTotals> | null | undefined,
 ): boolean =>
   Object.values(resolveSupplementTotals(totals)).some(
     (value) => (value ?? 0) > 0,

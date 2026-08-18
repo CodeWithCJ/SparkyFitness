@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ExerciseSessionResponse } from '@workspace/shared';
+import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
 import { getDailySummary } from '../services/dailySummaryService.js';
 import goalService from '../services/goalService.js';
 import foodEntryService from '../services/foodEntryService.js';
@@ -125,6 +126,7 @@ describe('dailySummaryService', () => {
       },
     ]);
     vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 0,
       protein: 0,
       carbs: 0,
@@ -527,6 +529,7 @@ describe('dailySummaryService supplement calories', () => {
     vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(null);
     vi.mocked(bmrService.calculateBmr).mockReturnValue(0);
     vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 0,
       protein: 0,
       carbs: 0,
@@ -549,6 +552,7 @@ describe('dailySummaryService supplement calories', () => {
 
   test('adds logged supplement calories to eaten', async () => {
     vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 15,
       protein: 0,
       carbs: 0,
@@ -571,6 +575,7 @@ describe('dailySummaryService supplement calories', () => {
     const withoutSupplements = (await run()).calorieBalance.remaining;
 
     vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 15,
       protein: 0,
       carbs: 0,
@@ -584,6 +589,7 @@ describe('dailySummaryService supplement calories', () => {
 
   test('returns the supplement totals separately, so the Diary can show what they were', async () => {
     const totals = {
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 15,
       protein: 0,
       carbs: 0,

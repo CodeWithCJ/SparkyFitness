@@ -1,4 +1,5 @@
 import { addSupplementTotals } from '@/utils/nutritionCalculations';
+import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
 import type { MealTotals } from '@/types/meal';
 
 const foodTotals = {
@@ -11,19 +12,18 @@ const foodTotals = {
   sodium: 2000,
   cholesterol: 100,
   saturated_fat: 10,
+  calcium: 256.3,
   custom_nutrients: {},
 } as unknown as MealTotals;
 
 const supplementTotals = {
+  ...EMPTY_SUPPLEMENT_TOTALS,
   calories: 15,
-  protein: 0,
-  carbs: 0,
   fat: 1.5,
-  dietary_fiber: 0,
 };
 
 describe('addSupplementTotals', () => {
-  it('adds the supplement arm to the five rolled-up fields', () => {
+  it('adds the supplement arm to the macro fields', () => {
     const totals = addSupplementTotals(foodTotals, supplementTotals);
 
     expect(totals.calories).toBe(1547);
@@ -31,14 +31,49 @@ describe('addSupplementTotals', () => {
     expect(totals.protein).toBe(120);
   });
 
-  it('leaves fields the server does not roll up for supplements alone', () => {
-    // Sodium is not summed for supplements by the nutrition summary or the chatbot, so
-    // adding it here would make the Diary the only surface that counted it.
+  // The #2145 case: a supplement's calcium reached Reports, which sums all seventeen
+  // fixed columns, but not the Diary card, which summed five. The reporter saw the
+  // food-only 256.3mg against a dose supplying 10000mg.
+  it('adds micronutrients the supplement carries, not just macros', () => {
+    const totals = addSupplementTotals(foodTotals, {
+      ...EMPTY_SUPPLEMENT_TOTALS,
+      calcium: 10000,
+      sodium: 150,
+      iron: 18,
+    });
+
+    expect(totals.calcium).toBe(10256.3);
+    expect(totals.sodium).toBe(2150);
+    expect(totals.iron).toBe(18);
+  });
+
+  it('leaves a fixed field alone when the supplement contributes nothing to it', () => {
     const totals = addSupplementTotals(foodTotals, supplementTotals);
 
     expect(totals.sodium).toBe(2000);
     expect(totals.sugars).toBe(30);
     expect(totals.cholesterol).toBe(100);
+  });
+
+  // A client newer than its server gets only the five macro keys back. Adding
+  // `food[key] + supplements[key]` across all seventeen would write NaN into the other
+  // twelve, which renders as "NaN mg" rather than failing loudly.
+  it('does not produce NaN against a server that reports only the macro fields', () => {
+    const legacyServerResponse = {
+      calories: 15,
+      protein: 0,
+      carbs: 0,
+      fat: 1.5,
+      dietary_fiber: 0,
+    };
+
+    const totals = addSupplementTotals(foodTotals, legacyServerResponse);
+
+    expect(totals.calories).toBe(1547);
+    expect(totals.calcium).toBe(256.3);
+    expect(totals.sodium).toBe(2000);
+    expect(Number.isNaN(totals.calcium as number)).toBe(false);
+    expect(Number.isNaN(totals.potassium as number)).toBe(false);
   });
 
   it('returns the food totals untouched when there is no supplement arm', () => {
@@ -47,15 +82,10 @@ describe('addSupplementTotals', () => {
   });
 
   it('is a no-op for a day with supplements that carry no nutrition', () => {
-    const totals = addSupplementTotals(foodTotals, {
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      dietary_fiber: 0,
-    });
+    const totals = addSupplementTotals(foodTotals, EMPTY_SUPPLEMENT_TOTALS);
 
     expect(totals.calories).toBe(1532);
     expect(totals.fat).toBe(50);
+    expect(totals.calcium).toBe(256.3);
   });
 });

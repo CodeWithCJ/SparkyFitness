@@ -1,5 +1,9 @@
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  EMPTY_SUPPLEMENT_TOTALS,
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+} from '@workspace/shared';
+import {
   createMockDbClient,
   type MockDbClient,
 } from './helpers/mockDbClient.js';
@@ -118,13 +122,12 @@ describe('getDailySupplementTotals', () => {
 
     const totals = await getDailySupplementTotals(userId, '2026-08-06');
 
-    expect(totals).toEqual({
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      dietary_fiber: 0,
-    });
+    expect(totals).toEqual(EMPTY_SUPPLEMENT_TOTALS);
+    // Full width, not just the macros: the Diary card renders whichever fixed nutrients
+    // the user has enabled, so a narrow zero object reintroduces #2145 on an empty day.
+    expect(Object.keys(totals).sort()).toEqual(
+      [...FOOD_VARIANT_NUTRIENT_FIELDS].sort()
+    );
   });
 
   it('coerces numeric strings, which is what pg returns for numeric columns', async () => {
