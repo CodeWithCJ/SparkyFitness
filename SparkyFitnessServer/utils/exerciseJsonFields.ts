@@ -28,3 +28,21 @@ export function parseJsonArrayField(
     return [];
   }
 }
+
+/**
+ * Same "always an array" guarantee as parseJsonArrayField, but for a value
+ * that's already been JSON-decoded (e.g. an external API response body)
+ * rather than a raw TEXT column needing JSON.parse. free-exercise-db's raw
+ * JSON stores equipment/muscles/instructions as either a string array or a
+ * single bare string (never an empty string for "none" — that's
+ * `null`/absent). Anything reaching a persistence call un-normalized gets
+ * JSON.stringify'd as-is, so a bare string round-trips as a JSON-encoded
+ * string instead of a one-item array, and every downstream `.join()`/`.map()`
+ * consumer of the parsed field then crashes.
+ */
+export function normalizeToStringArray(
+  value: string | string[] | null | undefined
+): string[] {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}

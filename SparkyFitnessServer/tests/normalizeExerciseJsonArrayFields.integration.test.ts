@@ -10,9 +10,14 @@
  * left them, then asserts the backfilled shape and that a second run of the
  * same file is a true no-op (idempotency the migration comment promises).
  *
- * It seeds and deletes only its own synthetic `@example.test` rows. The gate
- * does a short-timeout connection probe, so it SKIPS cleanly when no
- * database is reachable (mirrors exerciseEntryStats.integration.test.ts).
+ * It seeds and deletes only its own synthetic `@example.test` rows, but the
+ * migration SQL itself runs unscoped UPDATEs across every matching row in
+ * exercises/exercise_entries (a real backfill, not a test fixture) — so
+ * unlike exerciseEntryStats.integration.test.ts, a reachability probe alone
+ * isn't a safe enough gate. The database name must also look disposable
+ * (contain "test", matching CI's sparky_test) before this runs at all, so a
+ * developer's local `.env` pointed at their normal working database can
+ * never have this silently rewrite real exercise data via `pnpm test`.
  */
 import fs from 'fs';
 import path from 'path';
@@ -40,6 +45,18 @@ async function dbReachable(): Promise<boolean> {
   ) {
     return false;
   }
+  // Unlike exerciseEntryStats.integration.test.ts (only ever touches its own
+  // synthetic rows, safe regardless of which database it's pointed at), this
+  // test executes the real migration SQL, which runs unscoped UPDATEs across
+  // every matching row in exercises/exercise_entries — by design, since it's
+  // a real backfill, not a test fixture. A reachability probe alone isn't
+  // enough of a gate: a developer's local `.env` commonly points `pnpm test`
+  // at their normal working database. Require the database to be clearly
+  // disposable (CI's is named sparky_test) before ever running it, as an
+  // explicit opt-in — a developer has to deliberately point at a database
+  // named like a test database for this to run at all.
+  const dbName = process.env.SPARKY_FITNESS_DB_NAME ?? '';
+  if (!/test/i.test(dbName)) return false;
   const probe = new pg.Client({
     host: process.env.SPARKY_FITNESS_DB_HOST,
     port: Number(process.env.SPARKY_FITNESS_DB_PORT) || 5432,
@@ -101,9 +118,16 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
       );
       await sys.query(
         `INSERT INTO public.exercise_entries
-           (id, user_id, exercise_id, duration_minutes, calories_burned, entry_date, exercise_name, equipment)
-         VALUES ($1, $2, $3, 0, 0, '2026-08-16', 'Migration Test Exercise', $4)`,
-        [ENTRY_MALFORMED, U, EX_MALFORMED, '"Dumbbell"']
+           (id, user_id, exercise_id, duration_minutes, calories_burned, entry_date, exercise_name, equipment, primary_muscles, secondary_muscles)
+         VALUES ($1, $2, $3, 0, 0, '2026-08-16', 'Migration Test Exercise', $4, $5, $6)`,
+        [
+          ENTRY_MALFORMED,
+          U,
+          EX_MALFORMED,
+          '"Dumbbell"',
+          '', // empty string -> should become '[]', not stay ''
+          '   ', // whitespace-only -> should also become '[]'
+        ]
       );
     } finally {
       sys.release();
@@ -138,7 +162,7 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
       ).rows[0];
       const entry = (
         await sys.query(
-          'SELECT equipment FROM public.exercise_entries WHERE id = $1',
+          'SELECT equipment, primary_muscles, secondary_muscles FROM public.exercise_entries WHERE id = $1',
           [ENTRY_MALFORMED]
         )
       ).rows[0];
@@ -167,6 +191,10 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
     expect(exercise.instructions).toBeNull();
     expect(JSON.parse(exercise.images)).toEqual([]);
     expect(JSON.parse(entry.equipment)).toEqual(['Dumbbell']);
+    // Empty string and whitespace-only are non-NULL but still not valid
+    // JSON; both must become the literal '[]', not stay as-is.
+    expect(entry.primary_muscles).toBe('[]');
+    expect(entry.secondary_muscles).toBe('[]');
   });
 
   it('is idempotent: a second run changes nothing', async () => {

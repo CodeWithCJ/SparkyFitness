@@ -122,6 +122,24 @@ describe('exercise create/update array-field normalization', () => {
       expect(exerciseService.createExercise).not.toHaveBeenCalled();
     });
 
+    it('returns the standard 400 for malformed JSON instead of a generic 500', async () => {
+      const res = await request(app)
+        .post('/exercises')
+        .field('exerciseData', '{not valid json');
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.error).toBe('Invalid exercise payload.');
+      expect(exerciseService.createExercise).not.toHaveBeenCalled();
+    });
+
+    it('returns the standard 400 when the exerciseData field is missing', async () => {
+      const res = await request(app).post('/exercises');
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.error).toBe('Invalid exercise payload.');
+      expect(exerciseService.createExercise).not.toHaveBeenCalled();
+    });
+
     it('keeps unrelated fields untouched via passthrough', async () => {
       const res = await request(app)
         .post('/exercises')
@@ -174,6 +192,16 @@ describe('exercise create/update array-field normalization', () => {
           'exerciseData',
           JSON.stringify({ name: 'Bench Press', equipment: true })
         );
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.error).toBe('Invalid exercise payload.');
+      expect(exerciseService.updateExercise).not.toHaveBeenCalled();
+    });
+
+    it('returns the standard 400 for malformed JSON instead of a generic 500', async () => {
+      const res = await request(app)
+        .put(`/exercises/${VALID_UUID}`)
+        .field('exerciseData', '{not valid json');
 
       expect(res.statusCode).toBe(400);
       expect(res.body.error).toBe('Invalid exercise payload.');

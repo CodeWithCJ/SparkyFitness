@@ -13,6 +13,13 @@
 -- Idempotent: normalize_exercise_json_array() is a pure function of the
 -- input value, and each UPDATE only touches rows where the function's output
 -- actually differs from the stored value, so a re-run updates zero rows.
+--
+-- Explicit transaction: the migration runner sends this whole file as one
+-- unwrapped query, so an explicit BEGIN/COMMIT isn't load-bearing today, but
+-- it makes the all-or-nothing guarantee obvious without relying on knowing
+-- that detail — if any UPDATE below fails, every table stays consistent
+-- with every other (and the helper function never lingers half-applied).
+BEGIN;
 
 CREATE OR REPLACE FUNCTION normalize_exercise_json_array(value text)
 RETURNS text
@@ -21,8 +28,15 @@ AS $func$
 DECLARE
     parsed jsonb;
 BEGIN
-    IF value IS NULL OR btrim(value) = '' THEN
+    IF value IS NULL THEN
         RETURN value;
+    END IF;
+
+    IF btrim(value) = '' THEN
+        -- Non-NULL but empty/whitespace-only isn't valid JSON either; make it
+        -- the same "no values" shape as everything else instead of leaving a
+        -- row whose column still doesn't parse as JSON.
+        RETURN '[]';
     END IF;
 
     BEGIN
@@ -78,3 +92,5 @@ WHERE images IS NOT NULL AND normalize_exercise_json_array(images) IS DISTINCT F
 
 -- Migration-only helper; not part of the application's function catalog.
 DROP FUNCTION normalize_exercise_json_array(text);
+
+COMMIT;

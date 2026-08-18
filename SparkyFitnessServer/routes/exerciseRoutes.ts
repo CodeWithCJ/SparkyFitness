@@ -1,4 +1,5 @@
 import express from 'express';
+import type { Response } from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import exerciseService from '../services/exerciseService.js';
 import reportRepository from '../models/reportRepository.js';
@@ -8,7 +9,10 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { ExternalProviderType } from 'types/externalProvider.ts';
-import { exerciseWriteArrayFieldsSchema } from '@workspace/shared';
+import {
+  exerciseWriteArrayFieldsSchema,
+  type ExerciseWriteArrayFields,
+} from '@workspace/shared';
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +44,36 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage: storage });
+
+/**
+ * Parses the multipart `exerciseData` JSON field and validates it against
+ * exerciseWriteArrayFieldsSchema, or writes the standard 400 response and
+ * returns null. Malformed/missing JSON gets the same clean 400 a shape
+ * validation failure does, instead of falling through to the generic error
+ * handler.
+ */
+function parseExerciseData(
+  raw: unknown,
+  res: Response
+): ExerciseWriteArrayFields | null {
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(String(raw));
+  } catch {
+    res.status(400).json({ error: 'Invalid exercise payload.' });
+    return null;
+  }
+  const result = exerciseWriteArrayFieldsSchema.safeParse(parsedJson);
+  if (!result.success) {
+    res.status(400).json({
+      error: 'Invalid exercise payload.',
+      details: result.error.flatten(),
+    });
+    return null;
+  }
+  return result.data;
+}
+
 /**
  * @swagger
  * tags:
@@ -926,16 +960,8 @@ router.post(
   upload.array('images', 10),
   async (req, res, next) => {
     try {
-      const parsedExerciseData = exerciseWriteArrayFieldsSchema.safeParse(
-        JSON.parse(req.body.exerciseData)
-      );
-      if (!parsedExerciseData.success) {
-        return res.status(400).json({
-          error: 'Invalid exercise payload.',
-          details: parsedExerciseData.error.flatten(),
-        });
-      }
-      const exerciseData = parsedExerciseData.data;
+      const exerciseData = parseExerciseData(req.body?.exerciseData, res);
+      if (!exerciseData) return;
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const imagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
@@ -1153,16 +1179,8 @@ router.put(
         .json({ error: 'Exercise ID is required and must be a valid UUID.' });
     }
     try {
-      const parsedExerciseData = exerciseWriteArrayFieldsSchema.safeParse(
-        JSON.parse(req.body.exerciseData)
-      );
-      if (!parsedExerciseData.success) {
-        return res.status(400).json({
-          error: 'Invalid exercise payload.',
-          details: parsedExerciseData.error.flatten(),
-        });
-      }
-      const exerciseData = parsedExerciseData.data;
+      const exerciseData = parseExerciseData(req.body?.exerciseData, res);
+      if (!exerciseData) return;
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const newImagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message

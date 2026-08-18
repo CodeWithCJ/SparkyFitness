@@ -179,6 +179,10 @@ describe('external exercise import dedup', () => {
           equipment: [],
           secondary_muscles: [],
           instructions: ['Lie flat on the floor.'],
+          // Must be the whole first instruction, not
+          // exerciseDetails.instructions[0] indexing the raw bare string
+          // (which would silently give just its first character, 'L').
+          description: 'Lie flat on the floor.',
         })
       );
     });

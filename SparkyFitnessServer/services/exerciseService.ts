@@ -18,6 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
+import { normalizeToStringArray } from '../utils/exerciseJsonFields.js';
 import {
   deriveExerciseModality,
   canEditGroupedWorkout,
@@ -982,21 +983,6 @@ interface FreeExerciseDBResult {
 }
 
 /**
- * free-exercise-db's raw JSON stores equipment/muscles/instructions as
- * either a string array or a single bare string (never an empty string for
- * "none" — that's `null`/absent). Anything reaching `createExercise` un-
- * normalized gets JSON.stringify'd as-is, so a bare string round-trips as a
- * JSON-encoded string instead of a one-item array, and every downstream
- * `.join()`/`.map()` consumer of the parsed field then crashes.
- */
-function normalizeToStringArray(
-  value: string | string[] | null | undefined
-): string[] {
-  if (Array.isArray(value)) return value;
-  return value ? [value] : [];
-}
-
-/**
  * wger descriptions are HTML (often a <ol>/<li> list). Normalize to the same
  * plain-text step array free-exercise-db exercises use.
  */
@@ -1375,6 +1361,10 @@ async function addFreeExerciseDBExerciseToUserExercises(
       })
     );
     // Map free-exercise-db data to our generic Exercise model
+    const instructions = normalizeToStringArray(
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      exerciseDetails.instructions
+    );
     const exerciseData = {
       id: uuidv4(), // Generate a new UUID for the local exercise
       source: 'free-exercise-db',
@@ -1397,8 +1387,7 @@ async function addFreeExerciseDBExerciseToUserExercises(
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         exerciseDetails.secondaryMuscles
       ),
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      instructions: normalizeToStringArray(exerciseDetails.instructions),
+      instructions,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       category: exerciseDetails.category,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -1409,8 +1398,11 @@ async function addFreeExerciseDBExerciseToUserExercises(
           exerciseDetails,
           authenticatedUserId
         ), // Calculate calories
+      // Same normalized array the instructions field uses, not the raw
+      // (possibly bare-string) value — indexing a bare string here would
+      // silently take its first character instead of the first instruction.
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      description: exerciseDetails.instructions[0] || exerciseDetails.name, // Use first instruction as description or name
+      description: instructions[0] ?? exerciseDetails.name,
       user_id: authenticatedUserId,
       is_custom: true, // Imported exercises are custom to the user
       shared_with_public: false, // Imported exercises are private by default
