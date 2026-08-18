@@ -36,10 +36,10 @@ export const addDays = (dateString: string, days: number): string => {
 export const normalizeDate = (dateString: string): string => dateString.split('T')[0];
 
 // Format a YYYY-MM-DD date for display ("Mon, Jan 6")
-export const formatDate = (dateString: string): string => {
+export const formatDate = (dateString: string, locale = 'en-US'): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
 // Format a YYYY-MM-DD date for short display ("Jun 30")

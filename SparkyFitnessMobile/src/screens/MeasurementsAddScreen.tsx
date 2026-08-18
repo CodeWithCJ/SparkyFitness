@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import i18n from '../localization/i18n';
 import {
   View,
   Text,
@@ -655,11 +656,9 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ];
 
     if (clearingLabels.length > 0) {
-      const noun = clearingLabels.length === 1
-        ? t('measurements.confirm.measurement', { defaultValue: 'measurement' })
-        : t('measurements.confirm.measurements', { defaultValue: 'measurements' });
+      const noun = t('measurements.confirm.measurements', { defaultValue: 'measurements' });
       Alert.alert(
-        t('measurements.confirm.title', { defaultValue: 'Clear {{count}} {{noun}}?', count: clearingLabels.length, noun }),
+        t('measurements.confirm.title', { defaultValue: 'Clear {{count}} measurements?', count: clearingLabels.length, noun }),
         t('measurements.confirm.message', { defaultValue: '{{labels}} will be cleared.', labels: joinWithAnd(clearingLabels, t('common.and', { defaultValue: 'and' }), t('common.listFinalSeparator', { defaultValue: ', and ' })) }),
         [
           { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
@@ -821,7 +820,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
               ? t('date.today', { defaultValue: 'Today' })
               : selectedDate === addDays(getTodayDate(), -1)
                 ? t('date.yesterday', { defaultValue: 'Yesterday' })
-                : formatDate(selectedDate)}
+                : formatDate(selectedDate, i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US')}
           </Text>
           <Icon name="chevron-down" size={12} color={accentPrimary} weight="medium" />
         </TouchableOpacity>
@@ -861,6 +860,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   onChangeText={(v) => updateField('weight', v)}
                   keyboardType="decimal-pad"
                   placeholder="0"
+                  accessibilityLabel={t('measurements.fields.heightWithUnit', { defaultValue: 'Height ({{unit}})', unit: heightSuffix })}
                   returnKeyType="done"
                 />
               )}
@@ -874,6 +874,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 onChangeText={(v) => updateField('bodyFatPercentage', v)}
                 keyboardType="decimal-pad"
                 placeholder="0"
+                accessibilityLabel={t('measurements.fields.bodyFatPercentage', { defaultValue: 'Body fat %' })}
                 returnKeyType="done"
               />
               {renderClearHint('bodyFatPercentage')}
@@ -908,6 +909,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   onChangeText={(v) => updateField('height', v)}
                   keyboardType="decimal-pad"
                   placeholder="0"
+                  accessibilityLabel={t('measurements.fields.neckWithUnit', { defaultValue: 'Neck ({{unit}})', unit: bodySuffix })}
                   returnKeyType="done"
                 />
               )}
@@ -933,6 +935,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 onChangeText={(v) => updateField('waist', v)}
                 keyboardType="decimal-pad"
                 placeholder="0"
+                accessibilityLabel={t('measurements.fields.waistWithUnit', { defaultValue: 'Waist ({{unit}})', unit: bodySuffix })}
                 returnKeyType="done"
               />
               {renderClearHint('waist')}
@@ -945,6 +948,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 onChangeText={(v) => updateField('hips', v)}
                 keyboardType="decimal-pad"
                 placeholder="0"
+                accessibilityLabel={t('measurements.fields.hipsWithUnit', { defaultValue: 'Hips ({{unit}})', unit: bodySuffix })}
                 returnKeyType="done"
               />
               {renderClearHint('hips')}
@@ -957,6 +961,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 onChangeText={(v) => updateField('steps', v)}
                 keyboardType="number-pad"
                 placeholder="0"
+                accessibilityLabel={t('measurements.fields.steps', { defaultValue: 'Steps' })}
                 returnKeyType="done"
               />
               {renderClearHint('steps')}

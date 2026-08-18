@@ -1732,8 +1732,9 @@
     "confirm": {
       "measurement": "measurement",
       "measurements": "measurements",
-      "title": "Clear {{count}} {{noun}}?",
-      "message": "{{labels}} will be cleared."
+      "message": "{{labels}} will be cleared.",
+      "title_one": "Clear {{count}} measurement?",
+      "title_other": "Clear {{count}} measurements?"
     },
     "units": {
       "st": "st",

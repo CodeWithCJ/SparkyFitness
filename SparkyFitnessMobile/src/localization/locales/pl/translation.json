@@ -1756,8 +1756,11 @@
     "confirm": {
       "measurement": "pomiar",
       "measurements": "pomiarów",
-      "title": "Wyczyścić {{count}} {{noun}}?",
-      "message": "{{labels}} zostaną wyczyszczone."
+      "message": "{{labels}} zostaną wyczyszczone.",
+      "title_one": "Wyczyścić {{count}} pomiar?",
+      "title_few": "Wyczyścić {{count}} pomiary?",
+      "title_many": "Wyczyścić {{count}} pomiarów?",
+      "title_other": "Wyczyścić {{count}} pomiarów?"
     },
     "units": {
       "st": "st",
