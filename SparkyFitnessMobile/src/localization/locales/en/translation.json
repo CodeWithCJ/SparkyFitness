@@ -541,5 +541,14 @@
     "summary": "Diary Summary",
     "summarySubtitle": "Show calories and macronutrients",
     "customNutrientDisplay": "Custom Nutrient Display"
+  },
+  "about": {
+    "title": "About",
+    "version": "Version {{version}} ({{build}})",
+    "descriptionTitle": "About this app",
+    "description": "SparkyFitness is an open-source nutrition, exercise, and health-data tracker that syncs to your own server. This app is the mobile companion for logging meals, workouts, and measurements on the go.",
+    "github": "Project on GitHub",
+    "documentation": "Documentation",
+    "privacyPolicy": "Privacy Policy"
   }
 }

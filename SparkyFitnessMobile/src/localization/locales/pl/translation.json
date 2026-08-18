@@ -547,5 +547,14 @@
     "summary": "Podsumowanie dziennika",
     "summarySubtitle": "Pokaż kalorie i makroskładniki",
     "customNutrientDisplay": "Wyświetlanie własnych składników odżywczych"
+  },
+  "about": {
+    "title": "Informacje",
+    "version": "Wersja {{version}} ({{build}})",
+    "descriptionTitle": "O tej aplikacji",
+    "description": "SparkyFitness to open-source’owy rejestrator żywienia, ćwiczeń i danych zdrowotnych, który synchronizuje dane z własnym serwerem. Ta aplikacja mobilna ułatwia rejestrowanie posiłków, treningów i pomiarów w dowolnym miejscu.",
+    "github": "Projekt na GitHubie",
+    "documentation": "Dokumentacja",
+    "privacyPolicy": "Polityka prywatności"
   }
 }
