@@ -1633,7 +1633,10 @@
     "protein": "białko",
     "carbs": "węglowodany",
     "fat": "tłuszcz",
-    "caloriesShort": "kcal"
+    "caloriesShort": "kcal",
+    "proteinAmount": "białka",
+    "carbsAmount": "węglowodanów",
+    "fatAmount": "tłuszczu"
   },
   "foodSummary": {
     "tapToAddFood": "Dotknij, aby dodać produkt",

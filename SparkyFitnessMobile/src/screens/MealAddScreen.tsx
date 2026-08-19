@@ -202,9 +202,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const totals = useMemo(() => toMealTotals(ingredients), [ingredients]);
   const totalServingsCount = parseDecimalInput(totalServingsText) ?? 0;
   const showPerServing = totalServingsCount > 1;
-  const proteinLabel = `g ${t('nutrition.protein', { defaultValue: 'protein' })}`;
-  const carbsLabel = `g ${t('nutrition.carbs', { defaultValue: 'carbs' })}`;
-  const fatLabel = `g ${t('nutrition.fat', { defaultValue: 'fat' })}`;
+  const proteinLabel = ` g ${t('nutrition.proteinAmount', { defaultValue: 'protein' })}`;
+  const carbsLabel = ` g ${t('nutrition.carbsAmount', { defaultValue: 'carbs' })}`;
+  const fatLabel = ` g ${t('nutrition.fatAmount', { defaultValue: 'fat' })}`;
 
   const updateServingSize = (value: string) => {
     if (DECIMAL_INPUT_REGEX.test(value)) {
@@ -778,6 +778,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           }}
           disabled={isSaving}
           busy={isSaving}
+          label={isSaving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.save', { defaultValue: 'Save' })}
         />
       )}
     </View>

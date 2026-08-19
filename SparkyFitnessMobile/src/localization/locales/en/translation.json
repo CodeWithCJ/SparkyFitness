@@ -1609,7 +1609,10 @@
     "protein": "protein",
     "carbs": "carbs",
     "fat": "fat",
-    "caloriesShort": "cal"
+    "caloriesShort": "cal",
+    "proteinAmount": "protein",
+    "carbsAmount": "carbs",
+    "fatAmount": "fat"
   },
   "foodSummary": {
     "tapToAddFood": "Tap to add food",
