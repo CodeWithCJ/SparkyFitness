@@ -144,7 +144,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
         targetDate,
         targetMealType: targetType.name,
       });
-    }, [source, targetDate, targetMealTypeId, mealTypes, onCopy]);
+    }, [source, targetDate, targetMealTypeId, mealTypes, onCopy, t]);
 
     return (
       <BottomSheetModal
