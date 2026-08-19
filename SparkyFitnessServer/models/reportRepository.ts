@@ -1,4 +1,5 @@
 import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
+import type { FoodVariantNutrientField } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 async function getNutritionData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -612,6 +613,22 @@ async function getExerciseNames(userId: any, muscle: any, equipment: any) {
     client.release();
   }
 }
+// The range query's output names differ from the column names for exactly two fields, and
+// its consumers read the aliases (foodTools reads row.fiber and row.sugar). Anything without
+// an entry here is aliased to itself.
+const RANGE_COL_ALIASES: Partial<Record<FoodVariantNutrientField, string>> = {
+  dietary_fiber: 'fiber',
+  sugars: 'sugar',
+};
+// Derived rather than hand-listed: this was a second copy of the seventeen fields with
+// nothing enforcing that it stayed in step, so a field added to the shared list would have
+// silently dropped out of trends and the chatbot's nutrition rows.
+const RANGE_COLS: [FoodVariantNutrientField, string][] =
+  FOOD_VARIANT_NUTRIENT_FIELDS.map((col) => [
+    col,
+    RANGE_COL_ALIASES[col] ?? col,
+  ]);
+
 // Per-day nutrition totals (macros + micros) over a date range, scaled by
 // quantity / serving_size since food_entries snapshots store unscaled
 // per-serving values. Backs the chatbot get_nutritional_summary action and
@@ -623,38 +640,16 @@ async function getDailyNutritionTotalsRange(
 ) {
   const client = await getClient(userId);
   try {
-    // Same fixed nutrient columns the query already reports, paired with the output alias
-    // (dietary_fiber -> fiber, sugars -> sugar). Each food SUM gets its dose-scaled
-    // supplement contribution for that date added, so trends include supplements too.
-    // The date set is the UNION of food and taken-supplement dates, so a day with only
-    // supplements logged still yields a row rather than disappearing from the range.
-    const rangeCols: [string, string][] = [
-      ['calories', 'calories'],
-      ['protein', 'protein'],
-      ['carbs', 'carbs'],
-      ['fat', 'fat'],
-      ['saturated_fat', 'saturated_fat'],
-      ['polyunsaturated_fat', 'polyunsaturated_fat'],
-      ['monounsaturated_fat', 'monounsaturated_fat'],
-      ['trans_fat', 'trans_fat'],
-      ['cholesterol', 'cholesterol'],
-      ['sodium', 'sodium'],
-      ['potassium', 'potassium'],
-      ['dietary_fiber', 'fiber'],
-      ['sugars', 'sugar'],
-      ['vitamin_a', 'vitamin_a'],
-      ['vitamin_c', 'vitamin_c'],
-      ['calcium', 'calcium'],
-      ['iron', 'iron'],
-    ];
+    // Each food SUM gets its dose-scaled supplement contribution for that date added, so
+    // trends include supplements too. The date set is the UNION of food and taken-supplement
+    // dates, so a day with only supplements logged still yields a row rather than
+    // disappearing from the range.
     const supplementFixed = (key: string) =>
       `COALESCE((SELECT SUM(public.sf_try_numeric(me.nutrients_snapshot->>'${key}') * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) FROM medication_entries me WHERE me.user_id = $1 AND me.entry_date = d.entry_date AND me.status IN ('taken', 'prn_taken') AND me.nutrients_snapshot IS NOT NULL), 0)`;
-    const rangeSelects = rangeCols
-      .map(
-        ([col, alias]) =>
-          `COALESCE(SUM(fe.${col} * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed(col)} as ${alias}`
-      )
-      .join(',\n              ');
+    const rangeSelects = RANGE_COLS.map(
+      ([col, alias]) =>
+        `COALESCE(SUM(fe.${col} * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed(col)} as ${alias}`
+    ).join(',\n              ');
     const result = await client.query(
       `SELECT d.entry_date,
               ${rangeSelects}
