@@ -3813,5 +3813,10 @@
     "drag": "Drag to reorder",
     "title": "Reorder exercises",
     "doneHint": "Done reordering"
+  },
+  "ranges": {
+    "7d": "7d",
+    "30d": "30d",
+    "90d": "90d"
   }
 }

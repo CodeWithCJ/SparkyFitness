@@ -51,10 +51,10 @@ import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
-const RANGE_SEGMENTS: Segment<StepsRange>[] = [
-  { key: '7d', label: '7d' },
-  { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
+const RANGE_SEGMENTS = (t: (key: string, options: { defaultValue: string }) => string): Segment<StepsRange>[] => [
+  { key: '7d', label: t('ranges.7d', { defaultValue: '7d' }) },
+  { key: '30d', label: t('ranges.30d', { defaultValue: '30d' }) },
+  { key: '90d', label: t('ranges.90d', { defaultValue: '90d' }) },
 ];
 
 type DashboardScreenProps = CompositeScreenProps<
@@ -442,7 +442,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         {medicationsCardVisible && <MedicationsCard navigation={navigation} />}
 
         <Text className="text-text-primary text-xl font-bold mb-2">{t('dashboard.healthTrends', { defaultValue: 'Health Trends' })}</Text>
-        <SegmentedControl segments={RANGE_SEGMENTS} activeKey={stepsRange} onSelect={setStepsRange} />
+        <SegmentedControl segments={RANGE_SEGMENTS(t)} activeKey={stepsRange} onSelect={setStepsRange} />
 
         <HealthTrendsPager
           stepsData={stepsData}

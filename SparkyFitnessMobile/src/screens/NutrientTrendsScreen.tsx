@@ -15,10 +15,10 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type NutrientTrendsScreenProps = RootStackScreenProps<'NutrientTrends'>;
 
-const RANGE_SEGMENTS: Segment<TrendRange>[] = [
-  { key: '7d', label: '7d' },
-  { key: '30d', label: '30d' },
-  { key: '90d', label: '90d' },
+const RANGE_SEGMENTS = (t: (key: string, options: { defaultValue: string }) => string): Segment<TrendRange>[] => [
+  { key: '7d', label: t('ranges.7d', { defaultValue: '7d' }) },
+  { key: '30d', label: t('ranges.30d', { defaultValue: '30d' }) },
+  { key: '90d', label: t('ranges.90d', { defaultValue: '90d' }) },
 ];
 
 const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) => {
@@ -107,7 +107,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
         {/* Segmented Range Control */}
         <View className="mb-4">
           <SegmentedControl
-            segments={RANGE_SEGMENTS}
+            segments={RANGE_SEGMENTS(t)}
             activeKey={range}
             onSelect={setRange}
           />

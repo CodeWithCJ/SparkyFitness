@@ -3813,5 +3813,10 @@
     "drag": "Przeciągnij, aby zmienić kolejność",
     "title": "Zmień kolejność ćwiczeń",
     "doneHint": "Zakończono zmianę kolejności"
+  },
+  "ranges": {
+    "7d": "7 dni",
+    "30d": "30 dni",
+    "90d": "90 dni"
   }
 }
