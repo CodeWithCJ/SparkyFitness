@@ -2061,7 +2061,29 @@
     "selectUnit": "Select Unit",
     "unit": "unit",
     "removeEquivalent": "Remove equivalent",
-    "addEquivalent": "+ Add equivalent"
+    "addEquivalent": "+ Add equivalent",
+    "foodName": "Food Name",
+    "foodNamePlaceholder": "e.g. Chicken Breast",
+    "brand": "Brand",
+    "optional": "Optional",
+    "servingSize": "Serving Size",
+    "servingUnit": "Serving Unit",
+    "autoScaleNutrition": "Auto Scale Nutrition",
+    "caloriesRequired": "Calories (kcal) *",
+    "ai": {
+      "couldNotEstimate": "Couldn't estimate",
+      "noTrustedDefault": "The food has no trusted default to scale from.",
+      "servingSizeRequired": "Set a serving size first",
+      "estimating": "Estimating…",
+      "convertWithAI": "Convert with AI",
+      "estimateSuffix": "estimate"
+    },
+    "manualUpdate": {
+      "title": "Manual Nutrition Update",
+      "message": "Can't convert between units. Update nutrition values manually before saving.",
+      "saveAnyway": "Save Anyway",
+      "banner": "Can't convert between units. Update nutrition values manually."
+    }
   },
   "exerciseHistory": {
     "noSetData": "No set data",

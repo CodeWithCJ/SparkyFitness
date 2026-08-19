@@ -2087,7 +2087,29 @@
     "selectUnit": "Wybierz jednostkę",
     "unit": "jednostka",
     "removeEquivalent": "Usuń odpowiednik",
-    "addEquivalent": "+ Dodaj odpowiednik"
+    "addEquivalent": "+ Dodaj odpowiednik",
+    "foodName": "Nazwa produktu",
+    "foodNamePlaceholder": "np. pierś z kurczaka",
+    "brand": "Marka",
+    "optional": "Opcjonalnie",
+    "servingSize": "Wielkość porcji",
+    "servingUnit": "Jednostka porcji",
+    "autoScaleNutrition": "Automatycznie przelicz wartości odżywcze",
+    "caloriesRequired": "Kalorie (kcal) *",
+    "ai": {
+      "couldNotEstimate": "Nie udało się oszacować",
+      "noTrustedDefault": "Produkt nie ma zaufanej wartości domyślnej, na której można oprzeć przeliczenie.",
+      "servingSizeRequired": "Najpierw ustaw wielkość porcji",
+      "estimating": "Szacowanie…",
+      "convertWithAI": "Przelicz za pomocą AI",
+      "estimateSuffix": "szacunek"
+    },
+    "manualUpdate": {
+      "title": "Ręczna aktualizacja wartości odżywczych",
+      "message": "Nie można przeliczyć między jednostkami. Przed zapisaniem zaktualizuj wartości odżywcze ręcznie.",
+      "saveAnyway": "Zapisz mimo to",
+      "banner": "Nie można przeliczyć między jednostkami. Zaktualizuj wartości odżywcze ręcznie."
+    }
   },
   "exerciseHistory": {
     "noSetData": "Brak danych o seriach",
