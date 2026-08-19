@@ -297,6 +297,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     discardDraft,
     navigation,
     popCount,
+    t,
   ]);
 
   const saveItem: HeaderItem = {

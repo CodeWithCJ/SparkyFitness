@@ -150,7 +150,7 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const selectedMealLabel = useMemo(() => {
     const found = mealTypes.find((mt) => mt.id === selectedMealTypeId);
     return found ? getMealTypeDisplayLabel(found) : t('foodPhotoLogEntry.selectMeal', { defaultValue: 'Select Meal' });
-  }, [mealTypes, selectedMealTypeId]);
+  }, [mealTypes, selectedMealTypeId, t]);
 
   const handleSave = async () => {
     if (isPending) return;

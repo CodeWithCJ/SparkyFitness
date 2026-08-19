@@ -195,7 +195,7 @@ export function useActiveWorkoutAutosave(): {
       });
     }
     return ok;
-  }, [queryClient, runSave]);
+  }, [queryClient, runSave, t]);
 
   return { flush };
 }

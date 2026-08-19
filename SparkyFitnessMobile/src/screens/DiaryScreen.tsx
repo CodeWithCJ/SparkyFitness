@@ -109,6 +109,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     openCalendar,
     selectedDate,
     usesNativeTabs,
+    t,
   ]);
 
   useLayoutEffect(() => {

@@ -178,13 +178,16 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const scaleFactor = originalQuantity > 0 ? quantity / originalQuantity : 0;
 
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
-  const mealTypeLabel = (mealType: (typeof mealTypes)[number]) =>
-    mealType.user_id == null
-      ? getLocalizedMealLabel(t, mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase())
-      : mealType.name;
+  const mealTypeLabel = useCallback(
+    (mealType: (typeof mealTypes)[number]) =>
+      mealType.user_id == null
+        ? getLocalizedMealLabel(t, mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase())
+        : mealType.name,
+    [t],
+  );
   const mealPickerOptions = useMemo(
     () => mealTypes.map((mt) => ({ label: mealTypeLabel(mt), value: mt.id })),
-    [mealTypes, t],
+    [mealTypes, mealTypeLabel],
   );
   const entryMealTypeLabel = selectedMealType
     ? mealTypeLabel(selectedMealType)

@@ -336,7 +336,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       });
     }
     return items;
-  }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout]);
+  }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout, t]);
 
   // "Save as preset": review-and-save through the preset create form,
   // prefilled from this session. Not gated on canEdit — templating a synced
@@ -414,7 +414,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       addLog(`Failed to save workout: ${error}`, 'ERROR');
       Toast.show({ type: 'error', text1: t('workoutDetail.errors.saveFailed', { defaultValue: 'Failed to save workout' }), text2: t('common.tryAgain', { defaultValue: 'Please try again.' }) });
     }
-  }, [submission, normalizedDate, editNotes, updateSession, session, invalidateSessionCache, deactivateSet, exercisesModifiedRef]);
+  }, [submission, normalizedDate, editNotes, updateSession, session, invalidateSessionCache, deactivateSet, exercisesModifiedRef, t]);
 
   // --- Read-only render helpers ---
 

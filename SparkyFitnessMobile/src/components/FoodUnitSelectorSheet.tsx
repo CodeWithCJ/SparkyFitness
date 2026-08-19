@@ -220,7 +220,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         setIsSubmitting(false);
       }
     },
-    [dismissSheet, onSelect],
+    [dismissSheet, onSelect, t],
   );
 
   /**
@@ -259,7 +259,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         setIsSubmitting(false);
       }
     },
-    [buildManualVariant, dismissSheet, onSelect],
+    [buildManualVariant, dismissSheet, onSelect, t],
   );
 
   const handleUnitPress = useCallback(
@@ -307,6 +307,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       onSelect,
       submitManualDraft,
       variants,
+      t,
     ],
   );
 

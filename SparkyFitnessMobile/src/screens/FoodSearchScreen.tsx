@@ -462,6 +462,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     accentColor,
     headerActionColor,
     isOwnershipFiltered,
+    localizedFilterLabels,
     nativeMenuItems,
     navigation,
     ownershipFilter,
