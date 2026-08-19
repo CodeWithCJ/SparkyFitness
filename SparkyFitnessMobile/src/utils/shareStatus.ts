@@ -42,7 +42,9 @@ export function ownershipFilterHeaderMenu({
     ionicon: 'filter',
     showsBadge: filter !== 'all',
     badgeValue: filter !== 'all' ? '•' : undefined,
-    accessibilityLabel: (() => {
+    accessibilityLabel: filterAccessibilityLabel.replace('{{noun}}', noun),
+    customAccessibilityLabel: filterAccessibilityLabel.replace('{{noun}}', noun),
+    nativeAccessibilityLabel: (() => {
       const base = filterAccessibilityLabel.replace('{{noun}}', noun);
       if (filter === 'all') return base;
       return base.includes('{{filter}}')

@@ -138,6 +138,10 @@ export type HeaderItem =
       showsBadge?: boolean;
       badgeValue?: string;
       accessibilityLabel: string;
+      /** Optional custom-bar label when native and custom paths need different context. */
+      customAccessibilityLabel?: string;
+      /** Optional native label when native and custom paths need different context. */
+      nativeAccessibilityLabel?: string;
       identifier?: string;
     };
 
@@ -201,7 +205,7 @@ function itemAccessibilityLabel(item: HeaderItem, t: TFunction): string | undefi
       return item.accessibilityLabel ?? 'Close';
     case 'icon':
     case 'menu':
-      return item.accessibilityLabel;
+      return item.customAccessibilityLabel ?? item.accessibilityLabel;
     case 'text':
     case 'primary':
       // Explicit caller accessibilityLabel wins; otherwise mirror the visible
