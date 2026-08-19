@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,6 +31,7 @@ import { useCyclePredictionData } from '../hooks/useCyclePredictionData';
 type CycleHubScreenProps = RootStackScreenProps<'CycleHub'>;
 
 const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
@@ -55,8 +57,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'trends' | 'tools' | 'history'>('overview');
   const middleTab =
     mode === 'pregnant'
-      ? ({ key: 'tools', label: 'Tools' } as const)
-      : ({ key: 'trends', label: 'Trends' } as const);
+      ? ({ key: 'tools', label: t('cycleHub.tools', { defaultValue: 'Tools' }) } as const)
+      : ({ key: 'trends', label: t('cycleHub.trends', { defaultValue: 'Trends' }) } as const);
   const currentTab =
     (activeTab === 'trends' || activeTab === 'tools') && activeTab !== middleTab.key
       ? 'overview'
@@ -109,7 +111,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
     return getPhaseDisplayName(dayStats.phase, discreetMode);
   }, [dayStats, discreetMode]);
 
-  const hubTitle = discreetMode ? 'Wellness' : mode === 'pregnant' ? 'Pregnancy Hub' : 'Cycle Hub';
+  const hubTitle = discreetMode ? t('cycleHub.wellness', { defaultValue: 'Wellness' }) : mode === 'pregnant' ? t('cycleHub.pregnancyHub', { defaultValue: 'Pregnancy Hub' }) : t('cycleHub.cycleHub', { defaultValue: 'Cycle Hub' });
 
   const header = useScreenHeader({
     title: hubTitle,
@@ -120,7 +122,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       ionicon: 'add-outline',
       sfSymbol: 'plus',
       role: 'primary',
-      accessibilityLabel: 'Log Entry',
+      accessibilityLabel: t('cycleHub.logEntry', { defaultValue: 'Log Entry' }),
       onPress: () => navigation.navigate('CycleLogModal', { date: selectedDate }),
     },
   });
@@ -140,9 +142,9 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       <View className="px-4 py-2 bg-background z-10 border-b border-border-subtle">
         <SegmentedControl
           segments={[
-            { key: 'overview', label: 'Overview' },
+            { key: 'overview', label: t('cycleHub.overview', { defaultValue: 'Overview' }) },
             middleTab,
-            { key: 'history', label: 'History' },
+            { key: 'history', label: t('cycleHub.history', { defaultValue: 'History' }) },
           ]}
           activeKey={currentTab}
           onSelect={setActiveTab}

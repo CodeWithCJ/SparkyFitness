@@ -3902,5 +3902,29 @@
   },
   "workoutDraft": {
     "saveFailed": "Failed to save draft"
+  },
+  "foodPhotoIntro": {
+    "title": "Estimate nutrition from a photo",
+    "subtitle": "Turn a meal photo into an editable nutrition estimate.",
+    "weight": "Add weight when you know it",
+    "description": "Add a short description",
+    "review": "Review before saving",
+    "logManually": "Log manually instead"
+  },
+  "barcode": {
+    "title": "Barcode",
+    "invalid": "Barcode must be 8-14 digits.",
+    "help": "Optional. Standard barcodes are 8 to 14 digits.",
+    "scan": "Scan with camera"
+  },
+  "cycleHub": {
+    "tools": "Tools",
+    "trends": "Trends",
+    "wellness": "Wellness",
+    "pregnancyHub": "Pregnancy Hub",
+    "cycleHub": "Cycle Hub",
+    "logEntry": "Log Entry",
+    "overview": "Overview",
+    "history": "History"
   }
 }

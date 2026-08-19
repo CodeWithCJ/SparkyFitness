@@ -3902,5 +3902,29 @@
   },
   "workoutDraft": {
     "saveFailed": "Nie udało się zapisać szkicu"
+  },
+  "foodPhotoIntro": {
+    "title": "Oszacuj wartości odżywcze ze zdjęcia",
+    "subtitle": "Zamień zdjęcie posiłku w edytowalne oszacowanie wartości odżywczych.",
+    "weight": "Dodaj wagę, jeśli ją znasz",
+    "description": "Dodaj krótki opis",
+    "review": "Sprawdź przed zapisaniem",
+    "logManually": "Dodaj ręcznie"
+  },
+  "barcode": {
+    "title": "Kod kreskowy",
+    "invalid": "Kod kreskowy musi mieć 8–14 cyfr.",
+    "help": "Opcjonalne. Standardowe kody kreskowe mają od 8 do 14 cyfr.",
+    "scan": "Skanuj aparatem"
+  },
+  "cycleHub": {
+    "tools": "Narzędzia",
+    "trends": "Trendy",
+    "wellness": "Zdrowie",
+    "pregnancyHub": "Panel ciąży",
+    "cycleHub": "Panel cyklu",
+    "logEntry": "Dodaj wpis",
+    "overview": "Przegląd",
+    "history": "Historia"
   }
 }
