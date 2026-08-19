@@ -204,6 +204,7 @@ function itemAccessibilityLabel(item: HeaderItem, t: TFunction): string | undefi
     case 'dismiss':
       return item.accessibilityLabel ?? 'Close';
     case 'icon':
+      return item.accessibilityLabel;
     case 'menu':
       return item.customAccessibilityLabel ?? item.accessibilityLabel;
     case 'text':
