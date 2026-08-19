@@ -678,7 +678,7 @@ const WorkoutFormExerciseList = forwardRef<
         >
           <Icon name="add-circle" size={20} color={accentPrimary} />
           <Text className="text-lg font-medium ml-2" style={{ color: accentPrimary }}>
-            Add Exercise
+            {t('workoutForm.addExercise', { defaultValue: 'Add Exercise' })}
           </Text>
         </TouchableOpacity>
       </Animated.View>

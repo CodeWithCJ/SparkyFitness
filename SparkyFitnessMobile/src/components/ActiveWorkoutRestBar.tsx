@@ -105,7 +105,7 @@ function ActiveWorkoutRestBar({
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            Target {nextSetText}
+            {t('activeWorkout.rest.targetValue', { defaultValue: 'Target {{value}}', value: nextSetText })}
           </Text>
         )}
       </View>

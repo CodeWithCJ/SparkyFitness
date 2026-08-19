@@ -54,7 +54,8 @@
     "remove": "Remove",
     "overwrite": "Overwrite",
     "previousDay": ": previous day",
-    "nextDay": ": next day"
+    "nextDay": ": next day",
+    "dismissMenu": "Dismiss menu"
   },
   "settings": {
     "app": "App Settings",
@@ -299,7 +300,8 @@
       "addSet": "Add set to {{name}}",
       "caloriesUnit": "Cal",
       "addSetLabel": "Add set"
-    }
+    },
+    "nextSet": "Next Set"
   },
   "addSheet": {
     "food": "Food",
@@ -3260,7 +3262,8 @@
       "checkin": "Check-in",
       "goals": "Goals",
       "lookedUp": "Looked up {{name}}"
-    }
+    },
+    "typing": "Sparky is typing"
   },
   "foodImagePicker": {
     "photos": "Photos",
