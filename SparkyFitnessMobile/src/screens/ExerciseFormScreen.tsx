@@ -141,7 +141,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
   const textMuted = useCSSVariable('--color-text-muted') as string;
   const [showAdvanced, setShowAdvanced] = useState(() => hasAdvancedContent(state));
 
-  const localizeOption = (kind: string, value: string, fallback: string): string => {
+  const localizeOption = React.useCallback((kind: string, value: string, fallback: string): string => {
     switch (`${kind}:${value}`) {
       case 'category:general': return t('workout.categoryGeneral', { defaultValue: 'General' });
       case 'category:strength': return t('workout.categoryStrength', { defaultValue: 'Strength' });
@@ -167,7 +167,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       case 'mechanic:isolation': return t('workout.mechanicIsolation', { defaultValue: 'Isolation' });
       default: return fallback;
     }
-  };
+  }, [t]);
 
   const categoryOptions = useMemo(() => {
     if (
@@ -180,7 +180,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       ];
     }
     return CATEGORY_OPTIONS.map((opt) => ({ label: localizeOption('category', opt.value, titleCase(opt.value)), value: opt.value }));
-  }, [state.category, t]);
+  }, [state.category, localizeOption]);
 
   const modalityOptions = useMemo(() => {
     if (
@@ -193,7 +193,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       ];
     }
     return MODALITY_OPTIONS.map((opt) => ({ label: localizeOption('modality', opt.value, titleCase(opt.value)), value: opt.value }));
-  }, [state.modality, t]);
+  }, [state.modality, localizeOption]);
 
   const renderPicker = (
     label: string,

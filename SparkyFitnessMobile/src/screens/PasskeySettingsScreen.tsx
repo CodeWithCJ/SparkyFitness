@@ -92,7 +92,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeConfig]);
+  }, [activeConfig, t]);
 
   useEffect(() => {
     fetchList();

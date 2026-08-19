@@ -135,7 +135,7 @@ function isDailyCustomCategory(category: {
 
 const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
-  const fieldLabel = (key: FieldKey, fallback: string) => {
+  const fieldLabel = React.useCallback((key: FieldKey, fallback: string) => {
     switch (key) {
       case 'weight': return t('measurements.fields.weight', { defaultValue: 'Weight' });
       case 'bodyFatPercentage': return t('measurements.fields.bodyFatPercentage', { defaultValue: 'Body fat %' });
@@ -146,7 +146,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       case 'steps': return t('measurements.fields.steps', { defaultValue: 'Steps' });
       default: return fallback;
     }
-  };
+  }, [t]);
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
@@ -669,7 +669,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     doSave();
-  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, dailyCustomCategories, customForm, refetchMeasurements, refetchCustomCategories, refetchCustomEntries, t]);
+  }, [form, prefilledKeys, selectedDate, weightMode, bodyUnit, heightMode, upsertMutation, saveCustomMutation, deleteCustomMutation, navigation, dailyCustomCategories, customForm, refetchMeasurements, refetchCustomCategories, refetchCustomEntries, fieldLabel, t]);
 
   const isCustomDataLoading = isCustomCategoriesLoading || isCustomMeasurementsLoading;
   const isCustomDataError = isCustomCategoriesError || isCustomMeasurementsError;

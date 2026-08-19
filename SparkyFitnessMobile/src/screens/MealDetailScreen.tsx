@@ -149,7 +149,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
     } else {
       updateMeal({ is_public: false });
     }
-  }, [meal, updateMeal]);
+  }, [meal, updateMeal, t]);
 
   // Favorites: a saved meal can be starred from its detail screen, so the
   // library is no longer edit-only via search. Access is verified server-side

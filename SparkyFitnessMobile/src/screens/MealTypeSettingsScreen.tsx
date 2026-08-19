@@ -889,7 +889,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       pendingDragResetRef.current = true;
       enqueuePersist();
     },
-    [unifiedRows, enqueuePersist, activeDragIndex, panY, committingTranslate],
+    [unifiedRows, enqueuePersist, activeDragIndex, panY, committingTranslate, t],
   );
 
   // Post-render commit handoff: after the new unifiedRows render (gapOverride
