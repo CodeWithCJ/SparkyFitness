@@ -165,7 +165,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         setIsStarting(false);
       }
     },
-    [createSession, invalidateCache, navigation],
+    [createSession, invalidateCache, navigation, t],
   );
 
   const startLiveWorkout = useCallback(
@@ -184,7 +184,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
       if (prompted) return;
       await runStart(args);
     },
-    [queryClient, navigation, runStart],
+    [queryClient, navigation, runStart, t],
   );
 
   return { startLiveWorkout, isStarting };

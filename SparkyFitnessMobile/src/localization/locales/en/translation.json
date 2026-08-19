@@ -48,7 +48,9 @@
     "done": "Done",
     "none": "None",
     "food": "Food",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "itemCount_few": "{{count}} items",
+    "itemCount_many": "{{count}} items"
   },
   "settings": {
     "app": "App Settings",
@@ -208,7 +210,9 @@
       "renameWorkout": "Rename workout",
       "reorderExercises": "Reorder exercises",
       "menu": "Workout menu",
-      "settings": "Workout settings"
+      "settings": "Workout settings",
+      "exerciseProgress_few": "{{completed}} / {{count}} exercises",
+      "exerciseProgress_many": "{{completed}} / {{count}} exercises"
     },
     "exerciseCard": {
       "addNote": "Add a note for this exercise…",
@@ -233,7 +237,9 @@
       "notesFallback": "Exercise notes",
       "setSummary_one": "{{count}} set{{detail}}",
       "setSummary_other": "{{count}} sets{{detail}}",
-      "notesForSet": "Notes for set {{setNumber}}"
+      "notesForSet": "Notes for set {{setNumber}}",
+      "setSummary_few": "{{count}} sets{{detail}}",
+      "setSummary_many": "{{count}} sets{{detail}}"
     },
     "rail": {
       "add": "Add",
@@ -697,7 +703,11 @@
     "yesterdayAt": "Yesterday at {{time}}",
     "onDateAt": "{{date}} at {{time}}",
     "today": "Today",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "minutesAgo_few": "{{count}} minutes ago",
+    "minutesAgo_many": "{{count}} minutes ago",
+    "hoursAgo_few": "{{count}} hours ago",
+    "hoursAgo_many": "{{count}} hours ago"
   },
   "calorieSettings": {
     "restingEnergy": "Resting Energy",
@@ -1160,7 +1170,13 @@
       "richWorkoutFailed": "Failed to seed rich workout.",
       "richWorkoutFailedWithMessage": "Failed to seed rich workout: {{message}}",
       "richStrengthFailed": "Failed to seed rich strength workout.",
-      "richStrengthFailedWithMessage": "Failed to seed rich strength workout: {{message}}"
+      "richStrengthFailedWithMessage": "Failed to seed rich strength workout: {{message}}",
+      "healthSeeded_few": "Seeded {{count}} health records for the past {{days}} days.",
+      "healthSeeded_many": "Seeded {{count}} health records for the past {{days}} days.",
+      "historicalSeeded_few": "Seeded {{count}} historical step records across the past year.",
+      "historicalSeeded_many": "Seeded {{count}} historical step records across the past year.",
+      "seedOldSeeded_few": "Seeded {{count}} records in clusters 1-3 years back.",
+      "seedOldSeeded_many": "Seeded {{count}} records in clusters 1-3 years back."
     },
     "gallery": {
       "title": "Cycle Card Gallery",
@@ -1467,7 +1483,11 @@
     "prev": "Prev",
     "mi": "Mi",
     "km": "Km",
-    "reps": "Reps"
+    "reps": "Reps",
+    "exerciseCount_few": "{{formattedCount}} exercises",
+    "exerciseCount_many": "{{formattedCount}} exercises",
+    "workoutPresetCount_few": "{{formattedCount}} exercises",
+    "workoutPresetCount_many": "{{formattedCount}} exercises"
   },
   "cycleCard": {
     "mode": {
@@ -1521,7 +1541,11 @@
     "readErrors_one": "{{count}} metric could not be read. It will retry next sync.",
     "readErrors_other": "{{count}} metrics could not be read. They will retry next sync.",
     "uploadErrors_one": "{{count}} record was rejected by the server. See logs.",
-    "uploadErrors_other": "{{count}} records were rejected by the server. See logs."
+    "uploadErrors_other": "{{count}} records were rejected by the server. See logs.",
+    "readErrors_few": "{{count}} metrics could not be read. They will retry next sync.",
+    "readErrors_many": "{{count}} metrics could not be read. They will retry next sync.",
+    "uploadErrors_few": "{{count}} records were rejected by the server. See logs.",
+    "uploadErrors_many": "{{count}} records were rejected by the server. See logs."
   },
   "fastingCard": {
     "title": "Fasting",
@@ -1849,7 +1873,9 @@
       "measurements": "measurements",
       "message": "{{labels}} will be cleared.",
       "title_one": "Clear {{count}} measurement?",
-      "title_other": "Clear {{count}} measurements?"
+      "title_other": "Clear {{count}} measurements?",
+      "title_few": "Clear {{count}} measurements?",
+      "title_many": "Clear {{count}} measurements?"
     },
     "units": {
       "st": "st",
@@ -2475,7 +2501,9 @@
       "timeRemaining": "Time remaining",
       "around": "Around {{date}}",
       "ofDays_one": "of {{formattedCount}} day",
-      "ofDays_other": "of {{formattedCount}} days"
+      "ofDays_other": "of {{formattedCount}} days",
+      "ofDays_few": "of {{formattedCount}} days",
+      "ofDays_many": "of {{formattedCount}} days"
     },
     "actions": {
       "start": "Start Import",
@@ -2505,7 +2533,9 @@
       "completed": "Completed",
       "nextSync": "New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics.",
       "daysImported_one": "{{formattedCount}} day imported",
-      "daysImported_other": "{{formattedCount}} days imported"
+      "daysImported_other": "{{formattedCount}} days imported",
+      "daysImported_few": "{{formattedCount}} days imported",
+      "daysImported_many": "{{formattedCount}} days imported"
     }
   },
   "fastingDetail": {
@@ -2691,7 +2721,11 @@
       "serving_one": "serving",
       "serving_other": "servings",
       "mealMakes_one": "meal makes {{count}} serving",
-      "mealMakes_other": "meal makes {{count}} servings"
+      "mealMakes_other": "meal makes {{count}} servings",
+      "serving_few": "servings",
+      "serving_many": "servings",
+      "mealMakes_few": "meal makes {{count}} servings",
+      "mealMakes_many": "meal makes {{count}} servings"
     },
     "pickers": {
       "selectServing": "Select Serving",
@@ -2863,7 +2897,9 @@
       "exercise_other": "Exercises",
       "sets": "Sets",
       "volume": "Volume",
-      "calories": "Calories"
+      "calories": "Calories",
+      "exercise_few": "Exercises",
+      "exercise_many": "Exercises"
     },
     "errors": {
       "needsExercise": "Workout needs an exercise",
@@ -3140,7 +3176,9 @@
       "message": "Message",
       "details": "Details",
       "timestamp": "Timestamp"
-    }
+    },
+    "showingLogs_few": "Showing {{count}} logs",
+    "showingLogs_many": "Showing {{count}} logs"
   },
   "testQuickLog": {
     "title": "Log a Test",
@@ -3429,7 +3467,9 @@
       "logPast": "Log past workout",
       "delete": "Delete preset"
     },
-    "exerciseCount_one": "{{count}} exercise"
+    "exerciseCount_one": "{{count}} exercise",
+    "exerciseCount_few": "{{count}} exercises",
+    "exerciseCount_many": "{{count}} exercises"
   },
   "workoutPresetMutations": {
     "errors": {
@@ -3519,7 +3559,9 @@
     "deleteFailed": "Failed to delete meal",
     "deleteTitle": "Delete Meal",
     "deleteWithUsage": "Delete this meal from your library? Logged diary entries will stay unchanged, but related meal plans may be affected.",
-    "deleteWithoutUsage": "Delete this meal from your library? Logged diary entries will stay unchanged."
+    "deleteWithoutUsage": "Delete this meal from your library? Logged diary entries will stay unchanged.",
+    "deleteVerificationFailedTitle": "Unable to verify deletion",
+    "deleteVerificationFailedMessage": "We could not verify whether this meal is used elsewhere. Try again before deleting it."
   },
   "liveWorkout": {
     "inProgressTitle": "Workout in progress",
@@ -3638,5 +3680,7 @@
     "cleared": "Daily log cleared.",
     "deleteFailed": "Delete failed",
     "deleteError": "Could not clear log entry. Please try again."
-  }
+  },
+  "workoutPresetCount_few": "{{formattedCount}} exercises",
+  "workoutPresetCount_many": "{{formattedCount}} exercises"
 }

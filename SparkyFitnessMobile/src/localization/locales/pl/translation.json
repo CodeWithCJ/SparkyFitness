@@ -3561,7 +3561,9 @@
     "deleteFailed": "Nie udało się usunąć posiłku",
     "deleteTitle": "Usuń posiłek",
     "deleteWithUsage": "Usunąć ten posiłek z biblioteki? Zapisane wpisy w dzienniku pozostaną bez zmian, ale powiązane plany posiłków mogą zostać zmienione.",
-    "deleteWithoutUsage": "Usunąć ten posiłek z biblioteki? Zapisane wpisy w dzienniku pozostaną bez zmian."
+    "deleteWithoutUsage": "Usunąć ten posiłek z biblioteki? Zapisane wpisy w dzienniku pozostaną bez zmian.",
+    "deleteVerificationFailedTitle": "Nie można zweryfikować usunięcia",
+    "deleteVerificationFailedMessage": "Nie udało się sprawdzić, czy ten posiłek jest używany w innym miejscu. Spróbuj ponownie przed usunięciem."
   },
   "liveWorkout": {
     "inProgressTitle": "Trening w toku",

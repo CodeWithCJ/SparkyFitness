@@ -236,13 +236,19 @@ export function useDeleteMeal(options: { mealId?: string; onSuccess?: () => void
   const confirmAndDelete = async () => {
     if (!mealId) return;
 
-    let hasUsage = false;
+    let usage: { usedByCurrentUser: boolean; usedByOtherUsers: boolean } | null = null;
     try {
-      const impact = await fetchMealDeletionImpact(mealId);
-      hasUsage = impact.usedByCurrentUser || impact.usedByOtherUsers;
+      usage = await fetchMealDeletionImpact(mealId);
     } catch {
-      hasUsage = false;
+      Alert.alert(
+        t('mealMutations.deleteVerificationFailedTitle', { defaultValue: 'Unable to verify deletion' }),
+        t('mealMutations.deleteVerificationFailedMessage', { defaultValue: 'We could not verify whether this meal is used elsewhere. Try again before deleting it.' }),
+        [{ text: t('common.ok', { defaultValue: 'OK' }), style: 'cancel' }],
+      );
+      return;
     }
+
+    const hasUsage = usage.usedByCurrentUser || usage.usedByOtherUsers;
 
     Alert.alert(
       t('mealMutations.deleteTitle', { defaultValue: 'Delete Meal' }),
