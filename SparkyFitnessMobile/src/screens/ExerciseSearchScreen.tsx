@@ -657,7 +657,7 @@ useEffect(() => {
             public: t('exerciseSearch.filter.public', { defaultValue: 'Public' }),
           },
           showLabel: t('exerciseSearch.filter.show', { defaultValue: 'Show' }),
-          filterAccessibilityLabel: t('exerciseSearch.filter.accessibility', { defaultValue: 'Filter {{noun}}, filtered to {{filter}}' }),
+          filterAccessibilityLabel: t('exerciseSearch.filter.accessibility', { defaultValue: 'Filter {{noun}}' }),
           filter: ownershipFilter,
           onSelect: setOwnershipFilter,
         })

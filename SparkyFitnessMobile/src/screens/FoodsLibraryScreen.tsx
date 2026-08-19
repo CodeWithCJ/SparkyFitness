@@ -170,7 +170,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         public: t('ownership.public', { defaultValue: 'Public' }),
       },
       showLabel: t('ownership.show', { defaultValue: 'Show' }),
-      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}, filtered to {{filter}}' }),
+      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}' }),
       onSelect: setOwnershipFilter,
     }),
   });

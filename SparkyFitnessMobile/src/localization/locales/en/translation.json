@@ -3161,7 +3161,7 @@
     "family": "Family",
     "public": "Public",
     "show": "Show",
-    "filter": "Filter {{noun}}, filtered to {{filter}}",
+    "filter": "Filter {{noun}}",
     "showAll": "Show All"
   },
   "workoutPresetCount_one": "{{formattedCount}} exercise",

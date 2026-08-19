@@ -77,7 +77,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       noun: t('presetSearch.noun', { defaultValue: 'presets' }),
       labels: { all: t('ownership.all', { defaultValue: 'All' }), mine: t('ownership.mine', { defaultValue: 'Mine' }), family: t('ownership.family', { defaultValue: 'Family' }), public: t('ownership.public', { defaultValue: 'Public' }) },
       showLabel: t('ownership.show', { defaultValue: 'Show' }),
-      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}, filtered to {{filter}}' }),
+      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}' }),
       identifier: 'preset-search-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,
