@@ -1994,5 +1994,38 @@
     "dayCycle": "{{count}}-dniowy cykl",
     "currentCycle": "Bieżący cykl",
     "dayPeriod": "{{count}} dni miesiączki"
+  },
+  "nutrients": {
+    "calories": "Kalorie",
+    "protein": "Białko",
+    "carbs": "Węglowodany",
+    "fat": "Tłuszcz",
+    "fiber": "Błonnik",
+    "saturatedFatShort": "Tł. nasycone",
+    "polyunsaturatedFatShort": "Tł. wielonienasycone",
+    "monounsaturatedFatShort": "Tł. jednonienasycone",
+    "transFat": "Tł. trans",
+    "cholesterol": "Cholesterol",
+    "sodium": "Sód",
+    "potassium": "Potas",
+    "sugars": "Cukry",
+    "vitaminA": "Witamina A",
+    "vitaminC": "Witamina C",
+    "calcium": "Wapń",
+    "iron": "Żelazo",
+    "glycemicIndex": "Indeks glikemiczny",
+    "totalCarbs": "Węglowodany ogółem",
+    "netCarbs": "Węglowodany netto"
+  },
+  "foodNutrition": {
+    "hideExtra": "Ukryj dodatkowe składniki odżywcze ▴",
+    "showMore": "Pokaż więcej składników odżywczych ▾"
+  },
+  "diarySummary": {
+    "remaining": "pozostało",
+    "over": "powyżej celu",
+    "title": "Podsumowanie",
+    "collapse": "Zwiń tę sekcję",
+    "expand": "Rozwiń tę sekcję"
   }
 }

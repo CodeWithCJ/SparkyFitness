@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
@@ -89,7 +90,13 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
+  const { t } = useTranslation();
   const scale = (value: number) => value * servings;
+  const localizedNutrientLabel = (label: string) => {
+    const labels: Record<string, string> = {
+      Calories: t('nutrients.calories', { defaultValue: 'Calories' }), Protein: t('nutrients.protein', { defaultValue: 'Protein' }), Carbs: t('nutrients.carbs', { defaultValue: 'Carbs' }), Fat: t('nutrients.fat', { defaultValue: 'Fat' }), Fiber: t('nutrients.fiber', { defaultValue: 'Fiber' }), 'Sat. Fat': t('nutrients.saturatedFatShort', { defaultValue: 'Sat. Fat' }), 'Poly. Fat': t('nutrients.polyunsaturatedFatShort', { defaultValue: 'Poly. Fat' }), 'Mono. Fat': t('nutrients.monounsaturatedFatShort', { defaultValue: 'Mono. Fat' }), 'Trans Fat': t('nutrients.transFat', { defaultValue: 'Trans Fat' }), Cholesterol: t('nutrients.cholesterol', { defaultValue: 'Cholesterol' }), Sodium: t('nutrients.sodium', { defaultValue: 'Sodium' }), Potassium: t('nutrients.potassium', { defaultValue: 'Potassium' }), Sugars: t('nutrients.sugars', { defaultValue: 'Sugars' }), 'Vitamin A': t('nutrients.vitaminA', { defaultValue: 'Vitamin A' }), 'Vitamin C': t('nutrients.vitaminC', { defaultValue: 'Vitamin C' }), Calcium: t('nutrients.calcium', { defaultValue: 'Calcium' }), Iron: t('nutrients.iron', { defaultValue: 'Iron' }), 'Glycemic Index': t('nutrients.glycemicIndex', { defaultValue: 'Glycemic Index' }), 'Total Carbs': t('nutrients.totalCarbs', { defaultValue: 'Total Carbs' }) };
+    return labels[label] ?? label;
+  };
   // Gate the Total Carbs row injection on the same condition NutritionMacroCard
   // uses to swap the macro bar to "Net Carbs" — if fiber is unavailable the
   // bar falls back to total carbs and the row would otherwise duplicate it.
@@ -137,7 +144,7 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
       key={nutrient.label}
       className={`flex-row justify-between py-1 ${showBorder ? 'border-b border-border-subtle' : ''}`}
     >
-      <Text className="text-text-secondary text-sm">{nutrient.label}</Text>
+      <Text className="text-text-secondary text-sm">{localizedNutrientLabel(nutrient.label)}</Text>
       <Text className="text-text-primary text-sm">
         {Math.round(scale(nutrient.value))}
         {nutrient.unit}
@@ -184,7 +191,7 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
             className="self-start py-0 px-0"
           >
             <Text style={{ color: accentColor }} className="text-sm font-medium">
-              {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}
+              {showMoreNutrients ? t('foodNutrition.hideExtra', { defaultValue: 'Hide extra nutrients ▴' }) : t('foodNutrition.showMore', { defaultValue: 'Show more nutrients ▾' })}
             </Text>
           </Button>
         </Animated.View>

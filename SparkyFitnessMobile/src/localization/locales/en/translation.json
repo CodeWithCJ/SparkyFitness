@@ -1968,5 +1968,38 @@
     "dayCycle": "{{count}} day cycle",
     "currentCycle": "Current cycle",
     "dayPeriod": "{{count}} day period"
+  },
+  "nutrients": {
+    "calories": "Calories",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "fiber": "Fiber",
+    "saturatedFatShort": "Sat. Fat",
+    "polyunsaturatedFatShort": "Poly. Fat",
+    "monounsaturatedFatShort": "Mono. Fat",
+    "transFat": "Trans Fat",
+    "cholesterol": "Cholesterol",
+    "sodium": "Sodium",
+    "potassium": "Potassium",
+    "sugars": "Sugars",
+    "vitaminA": "Vitamin A",
+    "vitaminC": "Vitamin C",
+    "calcium": "Calcium",
+    "iron": "Iron",
+    "glycemicIndex": "Glycemic Index",
+    "totalCarbs": "Total Carbs",
+    "netCarbs": "Net Carbs"
+  },
+  "foodNutrition": {
+    "hideExtra": "Hide extra nutrients ▴",
+    "showMore": "Show more nutrients ▾"
+  },
+  "diarySummary": {
+    "remaining": "remaining",
+    "over": "over",
+    "title": "Summary",
+    "collapse": "Collapse this section",
+    "expand": "Expand this section"
   }
 }
