@@ -42,10 +42,13 @@ export function ownershipFilterHeaderMenu({
     ionicon: 'filter',
     showsBadge: filter !== 'all',
     badgeValue: filter !== 'all' ? '•' : undefined,
-    accessibilityLabel:
-      filter !== 'all'
-        ? `${filterAccessibilityLabel.replace('{{noun}}', noun)}, ${labels[filter]}`
-        : filterAccessibilityLabel.replace('{{noun}}', noun),
+    accessibilityLabel: (() => {
+      const base = filterAccessibilityLabel.replace('{{noun}}', noun);
+      if (filter === 'all') return base;
+      return base.includes('{{filter}}')
+        ? base.replace('{{filter}}', labels[filter])
+        : `${base}, ${labels[filter]}`;
+    })(),
     identifier,
     items: [
       {
