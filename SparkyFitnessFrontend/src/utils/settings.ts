@@ -211,9 +211,18 @@ export const getProviderCategory = (
 };
 
 /**
- * Resolve the food-search provider to select. Precedence: an explicit manual
- * choice, then the user's persisted default, then the first available option.
- * Every returned id is validated against the rendered option list (active
+ * Sentinel provider id for the aggregated "All Providers" food search. It is
+ * not a real provider, so it must be defined alongside the resolver below that
+ * has to let it through; a second copy in the consuming component is how the
+ * two drifted apart in the first place.
+ */
+export const ALL_PROVIDERS_VALUE = '__all__';
+
+/**
+ * Resolve the food-search provider to select. Precedence: the aggregated
+ * "All Providers" sentinel, then an explicit manual choice, then the user's
+ * persisted default, then the first available option.
+ * Every returned real id is validated against the rendered option list (active
  * food-category providers); a manual pick or persisted default that points at a
  * now-inactive/non-food provider is ignored rather than returned, since an id
  * with no matching SelectItem makes the dropdown render blank.
@@ -224,6 +233,12 @@ export const resolveFoodProviderId = (
   foodProviderOptions: { id: string }[]
 ): string | null => {
   const optionIds = foodProviderOptions.map((o) => o.id);
+  // The sentinel has a rendered SelectItem but no matching provider id, so it
+  // has to bypass the option-list validation below or the dropdown snaps back
+  // to a single provider and the aggregated search never runs.
+  if (manualProviderId === ALL_PROVIDERS_VALUE) {
+    return manualProviderId;
+  }
   if (manualProviderId && optionIds.includes(manualProviderId)) {
     return manualProviderId;
   }
