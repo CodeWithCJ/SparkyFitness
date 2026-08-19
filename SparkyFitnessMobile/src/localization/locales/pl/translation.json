@@ -1728,7 +1728,8 @@
     "calories": "kalorii",
     "remaining": "{{value}} g pozostało",
     "over": "{{value}} g powyżej celu",
-    "met": "cel osiągnięty"
+    "met": "cel osiągnięty",
+    "goalSeparator": " / {{value}}"
   },
   "foodSummary": {
     "tapToAddFood": "Dotknij, aby dodać produkt",

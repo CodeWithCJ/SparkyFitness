@@ -680,6 +680,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                     <View className="mb-3">
                       <Text className="text-sm mb-2 text-text-secondary">{t('auth.email', { defaultValue: 'Email' })}</Text>
                       <FormInput
+                        // i18n-audit-ignore-next-line hardcoded-ui-text -- email format example is language-neutral technical input guidance.
                         placeholder="email@example.com"
                         value={email}
                         onChangeText={setEmail}
@@ -774,6 +775,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   <FormInput
                     ref={apiKeyInputRef}
                     className="flex-1 rounded-lg"
+                    // i18n-audit-ignore-next-line hardcoded-ui-text -- API key example is an opaque technical format, not translatable UI.
                     placeholder="Uds3d8i..."
                     value={apiKey}
                     onChangeText={setApiKey}

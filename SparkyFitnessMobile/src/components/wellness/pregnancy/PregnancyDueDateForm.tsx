@@ -10,9 +10,13 @@ import CalendarSheet, { type CalendarSheetRef } from '../../CalendarSheet';
 import SettingsRow, { SettingsRowGroup } from '../../SettingsRow';
 
 const BASIS_OPTIONS: { value: PregnancyDueDateBasis; label: string }[] = [
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- internal translation selector key, not visible text.
   { value: 'manual', label: 'dueDate' },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- internal translation selector key, not visible text.
   { value: 'scan', label: 'ultrasoundScan' },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- internal translation selector key, not visible text.
   { value: 'lmp', label: 'lastPeriod' },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- internal translation selector key, not visible text.
   { value: 'conception', label: 'conceptionDate' },
 ];
 

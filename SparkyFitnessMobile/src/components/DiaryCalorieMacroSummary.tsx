@@ -79,7 +79,8 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
           {Math.round(eaten).toLocaleString()}
           {hasGoal && (
             <Text className="text-lg font-semibold text-text-muted">
-              {` / ${Math.round(goal).toLocaleString()}`}
+{/* i18n-audit-ignore-next-line hardcoded-ui-text -- slash and spacing are numeric presentation punctuation. */}
+              {t('nutrition.goalSeparator', { defaultValue: ' / {{value}}', value: Math.round(goal).toLocaleString() })}
             </Text>
           )}
           <Text className="text-sm font-normal text-text-muted"> {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}</Text>

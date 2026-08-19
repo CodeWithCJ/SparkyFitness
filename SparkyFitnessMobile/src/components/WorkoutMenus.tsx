@@ -102,6 +102,7 @@ export function SetTypeMenu({
   const current = currentType ?? 'normal';
   const items: AnchoredMenuItem[] = SET_TYPE_OPTIONS.map((type) => ({
     key: type,
+    // i18n-audit-ignore-next-line hardcoded-ui-text -- checkmark is a UI glyph; translated semantic label follows.
     label: `${type === current ? '✓ ' : ''}${typeLabels[type] ?? type}`,
     onPress: () => onSelect(type),
   }));

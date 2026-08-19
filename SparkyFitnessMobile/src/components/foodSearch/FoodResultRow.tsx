@@ -82,7 +82,8 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
             {item.default_variant.calories} {t('foodSearch.labels.caloriesShort', { defaultValue: 'cal' })}
           </Text>
           <Text className="text-text-secondary text-xs">
-            {`${item.default_variant.serving_size} ${formatServingUnit(item.default_variant.serving_unit)}`}
+{/* i18n-audit-ignore-next-line hardcoded-ui-text -- quantity and unit are literal data values. */}
+            <>{item.default_variant.serving_size} {formatServingUnit(item.default_variant.serving_unit)}</>
           </Text>
         </View>
       </TouchableOpacity>

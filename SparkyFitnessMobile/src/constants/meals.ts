@@ -10,10 +10,15 @@ export interface MealConfig {
 }
 
 export const MEAL_CONFIG: Record<string, MealConfig> = {
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata fallback; visible callers localize known meal keys.
   breakfast: { label: 'Breakfast', icon: 'meal-breakfast' },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata fallback; visible callers localize known meal keys.
   lunch: { label: 'Lunch', icon: 'meal-lunch' },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata fallback; visible callers localize known meal keys.
   snacks: { label: 'Snacks', icon: 'meal-snack' },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata fallback; visible callers localize known meal keys.
   dinner: { label: 'Dinner', icon: 'meal-dinner' },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata fallback; visible callers localize known meal keys.
   other: { label: 'Other', icon: 'meal-snack' },
 };
 

@@ -14,16 +14,19 @@ interface ToastTapProps {
 const variantTokens: Record<ToastVariant, { bg: string; text: string; border: string }> = {
   success: {
     bg: '--color-bg-success',
+    // i18n-audit-ignore-next-line hardcoded-ui-text -- CSS variable identifier, not user-visible text.
     text: '--color-text-success',
     border: '--color-bg-success',
   },
   error: {
     bg: '--color-bg-danger',
+    // i18n-audit-ignore-next-line hardcoded-ui-text -- CSS variable identifier, not user-visible text.
     text: '--color-text-danger',
     border: '--color-bg-danger',
   },
   info: {
     bg: '--color-surface',
+    // i18n-audit-ignore-next-line hardcoded-ui-text -- CSS variable identifier, not user-visible text.
     text: '--color-text-primary',
     border: '--color-accent-primary',
   },

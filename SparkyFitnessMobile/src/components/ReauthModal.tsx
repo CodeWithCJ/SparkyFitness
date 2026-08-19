@@ -414,6 +414,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                     <View className="mb-3">
                       <Text className="text-sm mb-2 text-text-secondary">{t('auth.email', { defaultValue: 'Email' })}</Text>
                       <FormInput
+                        // i18n-audit-ignore-next-line hardcoded-ui-text -- email format example is language-neutral technical input guidance.
                         placeholder="email@example.com"
                         value={email}
                         onChangeText={setEmail}

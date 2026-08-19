@@ -47,6 +47,7 @@ export function createNativeHeaderDatePickerItems({
       icon: { type: 'sfSymbol', name: 'chevron.left' },
       onPress: onPreviousDate,
       tintColor,
+      // i18n-audit-ignore-next-line hardcoded-ui-text -- legacy API fallback; production callers pass localized previousDayLabel.
       accessibilityLabel: `${accessibilityLabel}${previousDayLabel ?? ': previous day'}`,
       identifier: 'date-picker-previous',
       sharesBackground: true,
@@ -68,6 +69,7 @@ export function createNativeHeaderDatePickerItems({
       icon: { type: 'sfSymbol', name: 'chevron.right' },
       onPress: onNextDate,
       tintColor,
+      // i18n-audit-ignore-next-line hardcoded-ui-text -- legacy API fallback; production callers pass localized nextDayLabel.
       accessibilityLabel: `${accessibilityLabel}${nextDayLabel ?? ': next day'}`,
       identifier: 'date-picker-next',
       sharesBackground: true,
