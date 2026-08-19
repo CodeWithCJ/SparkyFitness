@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useState, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +24,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 type WorkoutPresetsLibraryScreenProps = RootStackScreenProps<'WorkoutPresetsLibrary'>;
 
 const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -73,10 +75,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     return (
       <StatusView
         inline
-        title={searchText.trim().length > 0 ? 'No matching presets found' : 'No workout presets yet'}
+        title={searchText.trim().length > 0 ? t('presetLibrary.noMatch', { defaultValue: 'No matching presets found' }) : t('presetLibrary.noItems', { defaultValue: 'No workout presets yet' })}
         subtitle={searchText.trim().length > 0
-          ? 'Try a different search term to find a workout preset.'
-          : 'Workout presets you create will appear here.'}
+          ? t('presetLibrary.trySearch', { defaultValue: 'Try a different search term to find a workout preset.' })
+          : t('presetLibrary.empty', { defaultValue: 'Workout presets you create will appear here.' })}
       />
     );
   };
@@ -110,10 +112,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title="No server configured"
+          title={t('presetLibrary.noServer', { defaultValue: 'No server configured' })}
           subtitle="Configure your server connection in Settings to view your workout presets."
           action={{
-            label: 'Go to Settings',
+            label: t('presetLibrary.go', { defaultValue: 'Go to Settings' }),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
             variant: 'primary',
           }}
@@ -122,7 +124,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading workout presets..." />;
+      return <StatusView loading title={t('presetLibrary.loading', { defaultValue: 'Loading workout presets...' })} />;
     }
 
     if (isError) {
@@ -131,10 +133,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title="Failed to load workout presets"
-          subtitle="Please check your connection and try again."
+          title={t('presetLibrary.failed', { defaultValue: 'Failed to load workout presets' })}
+          subtitle={t('presetLibrary.check', { defaultValue: 'Please check your connection and try again.' })}
           action={{
-            label: 'Retry',
+            label: t('presetLibrary.retry', { defaultValue: 'Retry' }),
             onPress: () => {
               void refetch();
             },
@@ -174,7 +176,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
   };
 
   const header = useScreenHeader({
-    title: 'Workout presets',
+    title: t('presetLibrary.title', { defaultValue: 'Workout presets' }),
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
       noun: 'workout presets',
@@ -191,7 +193,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search workout presets..."
+          placeholder={t('presetLibrary.search', { defaultValue: 'Search workout presets...' })}
           isSearching={isSearching}
         />
       ) : null}

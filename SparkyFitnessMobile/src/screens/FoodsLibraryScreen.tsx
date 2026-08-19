@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +24,7 @@ import type { FoodItem } from '../types/foods';
 type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
 
 const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -79,10 +81,10 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     return (
       <StatusView
         inline
-        title={searchText.trim().length > 0 ? 'No matching foods found' : 'No foods found'}
+        title={searchText.trim().length > 0 ? t('foodLibrary.noMatch', { defaultValue: 'No matching foods found' }) : t('foodLibrary.noItems', { defaultValue: 'No foods found' })}
         subtitle={searchText.trim().length > 0
-          ? 'Try a different search term to find saved foods.'
-          : 'Foods you save or log will appear here.'}
+          ? t('foodLibrary.trySearch', { defaultValue: 'Try a different search term to find saved foods.' })
+          : t('foodLibrary.empty', { defaultValue: 'Foods you save or log will appear here.' })}
       />
     );
   };
@@ -94,15 +96,15 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title="No server configured"
+          title={t('foodLibrary.noServer', { defaultValue: 'No server configured' })}
           subtitle="Configure your server connection in Settings to view your food library."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          action={{ label: t('foodLibrary.go', { defaultValue: 'Go to Settings' }), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading foods..." />;
+      return <StatusView loading title={t('foodLibrary.loading', { defaultValue: 'Loading foods...' })} />;
     }
 
     if (isError) {
@@ -111,9 +113,9 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title="Failed to load foods"
-          subtitle="Please check your connection and try again."
-          action={{ label: 'Retry', onPress: () => refetch(), variant: 'primary' }}
+          title={t('foodLibrary.failed', { defaultValue: 'Failed to load foods' })}
+          subtitle={t('foodLibrary.check', { defaultValue: 'Please check your connection and try again.' })}
+          action={{ label: t('foodLibrary.retry', { defaultValue: 'Retry' }), onPress: () => refetch(), variant: 'primary' }}
         />
       );
     }
@@ -155,7 +157,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   };
 
   const header = useScreenHeader({
-    title: 'Foods',
+    title: t('foodLibrary.title', { defaultValue: 'Foods' }),
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
       noun: 'foods',
@@ -172,7 +174,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           <LibrarySearchBar
             value={searchText}
             onChangeText={setSearchText}
-            placeholder="Search foods..."
+            placeholder={t('foodLibrary.search', { defaultValue: 'Search foods...' })}
             isSearching={isSearching}
           />
         ) : null}

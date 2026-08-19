@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useState, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +24,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 
 const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -74,10 +76,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     return (
       <StatusView
         inline
-        title={searchText.trim().length > 0 ? 'No matching exercises found' : 'No exercises found'}
+        title={searchText.trim().length > 0 ? t('exerciseLibrary.noMatch', { defaultValue: 'No matching exercises found' }) : t('exerciseLibrary.noItems', { defaultValue: 'No exercises found' })}
         subtitle={searchText.trim().length > 0
-          ? 'Try a different search term to find saved exercises.'
-          : 'Exercises you save or log will appear here.'}
+          ? t('exerciseLibrary.trySearch', { defaultValue: 'Try a different search term to find saved exercises.' })
+          : t('exerciseLibrary.empty', { defaultValue: 'Exercises you save or log will appear here.' })}
       />
     );
   };
@@ -112,10 +114,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title="No server configured"
+          title={t('exerciseLibrary.noServer', { defaultValue: 'No server configured' })}
           subtitle="Configure your server connection in Settings to view your exercise library."
           action={{
-            label: 'Go to Settings',
+            label: t('exerciseLibrary.go', { defaultValue: 'Go to Settings' }),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
             variant: 'primary',
           }}
@@ -124,7 +126,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title="Loading exercises..." />;
+      return <StatusView loading title={t('exerciseLibrary.loading', { defaultValue: 'Loading exercises...' })} />;
     }
 
     if (isError) {
@@ -133,10 +135,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title="Failed to load exercises"
-          subtitle="Please check your connection and try again."
+          title={t('exerciseLibrary.failed', { defaultValue: 'Failed to load exercises' })}
+          subtitle={t('exerciseLibrary.check', { defaultValue: 'Please check your connection and try again.' })}
           action={{
-            label: 'Retry',
+            label: t('exerciseLibrary.retry', { defaultValue: 'Retry' }),
             onPress: () => {
               void refetch();
             },
@@ -180,7 +182,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   };
 
   const header = useScreenHeader({
-    title: 'Exercises',
+    title: t('exerciseLibrary.title', { defaultValue: 'Exercises' }),
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
       noun: 'exercises',
@@ -197,7 +199,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder="Search exercises..."
+          placeholder={t('exerciseLibrary.search', { defaultValue: 'Search exercises...' })}
           isSearching={isSearching}
         />
       ) : null}
