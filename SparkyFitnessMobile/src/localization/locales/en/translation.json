@@ -3273,7 +3273,14 @@
     "accessibility": {
       "activityName": "Activity name",
       "useYesterday": "Use yesterday",
-      "useToday": "Use today"
+      "useToday": "Use today",
+      "editActivityName": "Edit activity name",
+      "selectExercise": "Select exercise",
+      "duration": "Duration in minutes",
+      "distance": "Distance in {{unit}}",
+      "calories": "Calories",
+      "avgHeartRate": "Average heart rate in beats per minute",
+      "notes": "Activity notes"
     },
     "errors": {
       "saveFailed": "Failed to save activity"

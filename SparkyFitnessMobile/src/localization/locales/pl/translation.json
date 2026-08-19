@@ -3313,7 +3313,14 @@
     "accessibility": {
       "activityName": "Nazwa aktywności",
       "useYesterday": "Użyj wczorajszej daty",
-      "useToday": "Użyj dzisiejszej daty"
+      "useToday": "Użyj dzisiejszej daty",
+      "editActivityName": "Edytuj nazwę aktywności",
+      "selectExercise": "Wybierz ćwiczenie",
+      "duration": "Czas trwania w minutach",
+      "distance": "Dystans w {{unit}}",
+      "calories": "Kalorie",
+      "avgHeartRate": "Średnie tętno w uderzeniach na minutę",
+      "notes": "Notatki do aktywności"
     },
     "errors": {
       "saveFailed": "Nie udało się zapisać aktywności"

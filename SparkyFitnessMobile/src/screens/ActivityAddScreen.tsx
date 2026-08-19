@@ -243,6 +243,8 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     className="flex-row items-center self-start gap-2"
                     onPress={() => setIsNameEditing(true)}
                     activeOpacity={0.6}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('activityAdd.accessibility.editActivityName', { defaultValue: 'Edit activity name' })}
                   >
                     <Text className="text-xl font-bold text-text-primary">
                       {state.name || state.exerciseName || t('activityAdd.fields.activity', { defaultValue: 'Activity' })}
@@ -287,6 +289,8 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
               style={{ backgroundColor: raisedBg }}
               onPress={() => navigation.navigate('ExerciseSearch', { returnKey: route.key })}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t('activityAdd.accessibility.selectExercise', { defaultValue: 'Select exercise' })}
             >
               {state.exerciseId ? (
                 <FadeView key="exercise-selected">
@@ -326,6 +330,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
               <FormInput
                 value={state.duration}
                 onChangeText={setDuration}
+                accessibilityLabel={t('activityAdd.accessibility.duration', { defaultValue: 'Duration in minutes' })}
                 placeholder="0"
                 keyboardType="decimal-pad"
                 returnKeyType="done"
@@ -340,6 +345,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
               <FormInput
                 value={state.distance}
                 onChangeText={setDistance}
+                accessibilityLabel={t('activityAdd.accessibility.distance', { defaultValue: 'Distance in {{unit}}', unit: distanceUnit === 'miles' ? 'miles' : 'kilometers' })}
                 placeholder="0"
                 keyboardType="decimal-pad"
                 returnKeyType="done"
@@ -352,6 +358,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
               <FormInput
                 value={state.calories}
                 onChangeText={setCalories}
+                accessibilityLabel={t('activityAdd.accessibility.calories', { defaultValue: 'Calories' })}
                 placeholder="0"
                 keyboardType="decimal-pad"
                 returnKeyType="done"
@@ -367,6 +374,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
               <FormInput
                 value={state.avgHeartRate}
                 onChangeText={setAvgHeartRate}
+                accessibilityLabel={t('activityAdd.accessibility.avgHeartRate', { defaultValue: 'Average heart rate in beats per minute' })}
                 placeholder="0"
                 keyboardType="number-pad"
                 returnKeyType="done"
@@ -379,6 +387,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
               <FormInput
                 value={state.notes}
                 onChangeText={setNotes}
+                accessibilityLabel={t('activityAdd.accessibility.notes', { defaultValue: 'Activity notes' })}
                 placeholder={t('activityAdd.fields.notesPlaceholder', { defaultValue: 'Optional notes...' })}
                 multiline
                 textAlignVertical="top"
@@ -398,6 +407,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={() => void handleSave()}
           disabled={isPending || !canSave}
           busy={isPending}
+          label={t('common.save', { defaultValue: 'Save' })}
         />
       )}
 
