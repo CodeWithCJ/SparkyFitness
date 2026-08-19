@@ -3807,5 +3807,11 @@
     "defaultTitle": "Domyślna godzina",
     "clearHint": "Wyczyść domyślną godzinę",
     "saveHint": "Zapisz domyślną godzinę"
+  },
+  "workoutReorder": {
+    "sets": "serii",
+    "drag": "Przeciągnij, aby zmienić kolejność",
+    "title": "Zmień kolejność ćwiczeń",
+    "doneHint": "Zakończono zmianę kolejności"
   }
 }

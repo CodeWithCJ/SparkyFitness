@@ -3807,5 +3807,11 @@
     "defaultTitle": "Default Time",
     "clearHint": "Clear default time",
     "saveHint": "Save default time"
+  },
+  "workoutReorder": {
+    "sets": "set",
+    "drag": "Drag to reorder",
+    "title": "Reorder exercises",
+    "doneHint": "Done reordering"
   }
 }
