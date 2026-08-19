@@ -1104,12 +1104,36 @@ async function createFoodsInBulk(
         }
         if (existingVariant) {
           await client.query(
+            // COALESCE, not bare assignment: a nutrient the CSV never carried
+            // arrives here as undefined (the importer omits unmapped columns
+            // rather than asserting zero for them), and sanitizeNumeric turns
+            // that into a null parameter. Assigning it directly would wipe the
+            // stored value on an overwrite import, replacing a real number with
+            // NULL for every column the file happened not to include. A mapped
+            // but blank cell parses to 0 on the way in, which is not null and
+            // so still overwrites -- clearing a value on purpose keeps working.
             `UPDATE food_variants SET
-                is_default = $2, calories = $3, protein = $4, carbs = $5, fat = $6,
-                saturated_fat = $7, polyunsaturated_fat = $8, monounsaturated_fat = $9, trans_fat = $10,
-                cholesterol = $11, sodium = $12, potassium = $13, dietary_fiber = $14, sugars = $15,
-                vitamin_a = $16, vitamin_c = $17, calcium = $18, iron = $19,
-                glycemic_index = $20, custom_nutrients = $21, updated_at = now()
+                is_default = $2,
+                calories = COALESCE($3, calories),
+                protein = COALESCE($4, protein),
+                carbs = COALESCE($5, carbs),
+                fat = COALESCE($6, fat),
+                saturated_fat = COALESCE($7, saturated_fat),
+                polyunsaturated_fat = COALESCE($8, polyunsaturated_fat),
+                monounsaturated_fat = COALESCE($9, monounsaturated_fat),
+                trans_fat = COALESCE($10, trans_fat),
+                cholesterol = COALESCE($11, cholesterol),
+                sodium = COALESCE($12, sodium),
+                potassium = COALESCE($13, potassium),
+                dietary_fiber = COALESCE($14, dietary_fiber),
+                sugars = COALESCE($15, sugars),
+                vitamin_a = COALESCE($16, vitamin_a),
+                vitamin_c = COALESCE($17, vitamin_c),
+                calcium = COALESCE($18, calcium),
+                iron = COALESCE($19, iron),
+                glycemic_index = COALESCE($20, glycemic_index),
+                custom_nutrients = COALESCE($21, custom_nutrients),
+                updated_at = now()
               WHERE id = $1`,
             [
               existingVariant.id,
@@ -1132,7 +1156,9 @@ async function createFoodsInBulk(
               sanitizeNumeric(variant.calcium),
               sanitizeNumeric(variant.iron),
               sanitizeGlycemicIndex(variant.glycemic_index),
-              variant.custom_nutrients ?? {},
+              // null (not {}) so the COALESCE above keeps the stored map when
+              // the import carried no custom nutrients at all.
+              variant.custom_nutrients ?? null,
             ]
           );
         } else {
