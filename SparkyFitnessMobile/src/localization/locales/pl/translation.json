@@ -52,7 +52,9 @@
     "food": "Produkt",
     "dismiss": "Zamknij",
     "remove": "Usuń",
-    "overwrite": "Nadpisz"
+    "overwrite": "Nadpisz",
+    "previousDay": ": poprzedni dzień",
+    "nextDay": ": następny dzień"
   },
   "settings": {
     "app": "Ustawienia aplikacji",

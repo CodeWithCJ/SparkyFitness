@@ -33,6 +33,7 @@ import {
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { weightFromKg } from '../utils/unitConversions';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
+import { formatDateLabel } from '../utils/dateUtils';
 import HydrationGauge from '../components/HydrationGauge';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import HealthTrendsPager from '../components/HealthTrendsPager';
@@ -109,6 +110,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
         accessibilityLabel: t('dashboard.chooseDate', { defaultValue: 'Choose dashboard date' }),
+        previousDayLabel: t('common.previousDay', { defaultValue: ': previous day' }),
+        nextDayLabel: t('common.nextDay', { defaultValue: ': next day' }),
+        dateLabel: `${formatDateLabel(selectedDate)} ▾`,
       },
     );
   }, [

@@ -32,6 +32,7 @@ import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { getHistoricalMealTypeLabel, getMealTypeDisplayLabel } from '../utils/mealNutrition';
+import { formatDateLabel } from '../utils/dateUtils';
 import type { FoodEntry } from '../types/foodEntries';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -95,6 +96,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
         accessibilityLabel: t('diary.chooseDate', { defaultValue: 'Choose diary date' }),
+        previousDayLabel: t('common.previousDay', { defaultValue: ': previous day' }),
+        nextDayLabel: t('common.nextDay', { defaultValue: ': next day' }),
+        dateLabel: `${formatDateLabel(selectedDate)} ▾`,
       },
     );
   }, [

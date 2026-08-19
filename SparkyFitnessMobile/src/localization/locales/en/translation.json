@@ -52,7 +52,9 @@
     "itemCount_few": "{{count}} items",
     "itemCount_many": "{{count}} items",
     "remove": "Remove",
-    "overwrite": "Overwrite"
+    "overwrite": "Overwrite",
+    "previousDay": ": previous day",
+    "nextDay": ": next day"
   },
   "settings": {
     "app": "App Settings",
