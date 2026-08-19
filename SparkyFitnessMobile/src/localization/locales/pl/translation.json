@@ -1885,7 +1885,7 @@
       "sticky": "Lepki",
       "creamy": "Kremowy",
       "watery": "Wodnisty",
-      "eggWhite": "Jak białko jaja"
+      "eggWhite": "Jak białko jajka"
     },
     "intercourse": "Współżycie",
     "intercourseOption": {
@@ -1895,8 +1895,8 @@
     },
     "protection": "Zabezpieczenie",
     "protectionOption": {
-      "protected": "Z zabezpieczeniem",
-      "unprotected": "Bez zabezpieczenia"
+      "protected": "Zabezpieczone",
+      "unprotected": "Niezabezpieczone"
     },
     "cervicalPosition": "Położenie szyjki macicy",
     "selectCervicalPosition": "Wybierz położenie szyjki macicy",
