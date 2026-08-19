@@ -2058,7 +2058,17 @@
     "started": "Rozpoczęto {{date}}",
     "dayCycle": "{{count}}-dniowy cykl",
     "currentCycle": "Bieżący cykl",
-    "dayPeriod": "{{count}} dni miesiączki"
+    "dayPeriod": "{{count}} dni miesiączki",
+    "toast": {
+      "success": "Sukces",
+      "error": "Błąd",
+      "manualAdded": "Dodano cykl ręczny.",
+      "manualAddFailed": "Nie udało się dodać ręcznego wpisu cyklu.",
+      "updated": "Zaktualizowano wpis cyklu.",
+      "updateFailed": "Nie udało się zaktualizować wpisu cyklu.",
+      "deleted": "Usunięto wpis cyklu.",
+      "deleteFailed": "Nie udało się usunąć wpisu cyklu."
+    }
   },
   "nutrients": {
     "calories": "Kalorie",

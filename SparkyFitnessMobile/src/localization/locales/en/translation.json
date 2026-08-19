@@ -2032,7 +2032,17 @@
     "started": "Started {{date}}",
     "dayCycle": "{{count}} day cycle",
     "currentCycle": "Current cycle",
-    "dayPeriod": "{{count}} day period"
+    "dayPeriod": "{{count}} day period",
+    "toast": {
+      "success": "Success",
+      "error": "Error",
+      "manualAdded": "Manual cycle added successfully.",
+      "manualAddFailed": "Could not add manual cycle entry.",
+      "updated": "Cycle entry updated successfully.",
+      "updateFailed": "Could not update cycle entry.",
+      "deleted": "Cycle entry deleted successfully.",
+      "deleteFailed": "Could not delete cycle entry."
+    }
   },
   "nutrients": {
     "calories": "Calories",
