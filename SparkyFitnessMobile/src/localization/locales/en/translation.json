@@ -2808,5 +2808,51 @@
       "retryTitle": "Retry with Open Food Facts",
       "retryDescription": "If no result is found, try Open Food Facts automatically."
     }
+  },
+  "workoutComplete": {
+    "title": "Workout Complete",
+    "stats": {
+      "duration": "Duration",
+      "volume": "Volume",
+      "sets": "Sets",
+      "calories": "Calories",
+      "distance": "Distance",
+      "averageRpe": "Average RPE"
+    },
+    "labels": {
+      "todayAt": " · Today at ",
+      "skipped": "skipped",
+      "sets": "{{count}} sets",
+      "all": "All",
+      "of": "of",
+      "top": "top"
+    },
+    "accessibility": {
+      "calculating": "Calculating"
+    },
+    "actions": {
+      "saveAsPreset": "Save as Preset",
+      "viewWorkout": "View Workout",
+      "done": "Done",
+      "keepPreset": "Keep Preset",
+      "update": "Update"
+    },
+    "success": {
+      "presetUpdated": "Preset updated"
+    },
+    "confirm": {
+      "updatePresetTitle": "Update preset?",
+      "updatePresetMessage": "Today's workout differs from \"{{preset}}\". Update the preset to match?"
+    },
+    "rpe": {
+      "easy": "Easy",
+      "moderate": "Moderate",
+      "hard": "Hard",
+      "max": "Max effort"
+    },
+    "sections": {
+      "exercises": "Exercises",
+      "volume": "Volume"
+    }
   }
 }

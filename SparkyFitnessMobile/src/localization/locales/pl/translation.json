@@ -2844,5 +2844,51 @@
       "retryTitle": "Spróbuj ponownie z Open Food Facts",
       "retryDescription": "Jeśli nie znaleziono wyniku, automatycznie spróbuj Open Food Facts."
     }
+  },
+  "workoutComplete": {
+    "title": "Trening ukończony",
+    "stats": {
+      "duration": "Czas trwania",
+      "volume": "Objętość",
+      "sets": "Serie",
+      "calories": "Kalorie",
+      "distance": "Dystans",
+      "averageRpe": "Średnie RPE"
+    },
+    "labels": {
+      "todayAt": " · Dzisiaj o ",
+      "skipped": "pominięto",
+      "sets": "{{count}} serii",
+      "all": "Wszystkie",
+      "of": "z",
+      "top": "najlepszy wynik"
+    },
+    "accessibility": {
+      "calculating": "Obliczanie"
+    },
+    "actions": {
+      "saveAsPreset": "Zapisz jako zestaw",
+      "viewWorkout": "Wyświetl trening",
+      "done": "Gotowe",
+      "keepPreset": "Zachowaj zestaw",
+      "update": "Aktualizuj"
+    },
+    "success": {
+      "presetUpdated": "Zaktualizowano zestaw"
+    },
+    "confirm": {
+      "updatePresetTitle": "Zaktualizować zestaw?",
+      "updatePresetMessage": "Dzisiejszy trening różni się od „{{preset}}”. Czy zaktualizować zestaw?"
+    },
+    "rpe": {
+      "easy": "Łatwy",
+      "moderate": "Umiarkowany",
+      "hard": "Trudny",
+      "max": "Maksymalny wysiłek"
+    },
+    "sections": {
+      "exercises": "Ćwiczenia",
+      "volume": "Objętość"
+    }
   }
 }
