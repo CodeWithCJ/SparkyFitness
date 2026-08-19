@@ -104,7 +104,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
         // custom types keep their literal name. values.name stays the raw
         // backend name so persistence is never altered.
         setDisplayName(
-          mealType.user_id == null
+          isSystem
             ? getLocalizedMealLabel(t, mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase())
             : mealType.name,
         );

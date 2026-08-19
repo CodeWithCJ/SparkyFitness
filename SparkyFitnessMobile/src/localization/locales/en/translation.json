@@ -3250,5 +3250,33 @@
       "save": "Save meal type",
       "delete": "Delete Meal Type"
     }
+  },
+  "activityAdd": {
+    "fields": {
+      "activity": "Activity",
+      "duration": "Duration (min)",
+      "distance": "Distance ({{unit}})",
+      "calories": "Calories",
+      "avgHeartRate": "Avg Heart Rate (bpm)",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional notes..."
+    },
+    "actions": {
+      "useYesterday": "Use Yesterday",
+      "useToday": "Use Today",
+      "selectActivity": "Select Activity"
+    },
+    "labels": {
+      "custom": "Custom",
+      "autoCalculated": "Auto-calculated"
+    },
+    "accessibility": {
+      "activityName": "Activity name",
+      "useYesterday": "Use yesterday",
+      "useToday": "Use today"
+    },
+    "errors": {
+      "saveFailed": "Failed to save activity"
+    }
   }
 }

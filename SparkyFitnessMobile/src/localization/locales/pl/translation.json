@@ -3290,5 +3290,33 @@
       "save": "Zapisz typ posiłku",
       "delete": "Usuń typ posiłku"
     }
+  },
+  "activityAdd": {
+    "fields": {
+      "activity": "Aktywność",
+      "duration": "Czas trwania (min)",
+      "distance": "Dystans ({{unit}})",
+      "calories": "Kalorie",
+      "avgHeartRate": "Średnie tętno (uderzenia/min)",
+      "notes": "Notatki",
+      "notesPlaceholder": "Opcjonalne notatki…"
+    },
+    "actions": {
+      "useYesterday": "Użyj wczoraj",
+      "useToday": "Użyj dzisiaj",
+      "selectActivity": "Wybierz aktywność"
+    },
+    "labels": {
+      "custom": "Niestandardowe",
+      "autoCalculated": "Obliczone automatycznie"
+    },
+    "accessibility": {
+      "activityName": "Nazwa aktywności",
+      "useYesterday": "Użyj wczorajszej daty",
+      "useToday": "Użyj dzisiejszej daty"
+    },
+    "errors": {
+      "saveFailed": "Nie udało się zapisać aktywności"
+    }
   }
 }
