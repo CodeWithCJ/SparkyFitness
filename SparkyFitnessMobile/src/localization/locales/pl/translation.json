@@ -3413,5 +3413,22 @@
     "length": "Długość",
     "weight": "Masa",
     "forYou": "Dla Ciebie"
+  },
+  "addSheetActions": {
+    "noServerTitle": "Brak połączenia z serwerem",
+    "configureForExercise": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby dodać ćwiczenie.",
+    "configureForWorkout": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby rozpocząć trening.",
+    "draft": {
+      "title": "Niezapisany szkic",
+      "message": "Masz niezapisany szkic typu: {{type}}. Co chcesz zrobić?",
+      "workout": "trening",
+      "activity": "aktywność",
+      "resume": "Wznów szkic",
+      "discard": "Odrzuć i kontynuuj"
+    },
+    "healthUnavailable": {
+      "title": "Dane zdrowotne niedostępne",
+      "message": "Nie udało się uruchomić dostępu do danych zdrowotnych. Sprawdź uprawnienia w Ustawieniach."
+    }
   }
 }

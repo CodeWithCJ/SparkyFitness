@@ -3329,12 +3329,12 @@
       "confirm": "Make public"
     },
     "draft": {
-      "title": "Draft in progress",
+      "title": "Draft in Progress",
       "message": "You have an unsaved {{type}} draft. What would you like to do?",
       "workout": "workout",
       "activity": "activity",
-      "resume": "Resume draft",
-      "discard": "Discard & continue"
+      "resume": "Resume Draft",
+      "discard": "Discard & Continue"
     },
     "accessibility": {
       "makePrivate": "Make private",
@@ -3371,5 +3371,22 @@
     "length": "Length",
     "weight": "Weight",
     "forYou": "For you"
+  },
+  "addSheetActions": {
+    "noServerTitle": "No Server Connected",
+    "configureForExercise": "Configure your server connection in Settings to add an exercise.",
+    "configureForWorkout": "Configure your server connection in Settings to start a workout.",
+    "draft": {
+      "title": "Draft in Progress",
+      "message": "You have an unsaved {{type}} draft. What would you like to do?",
+      "workout": "workout",
+      "activity": "activity",
+      "resume": "Resume Draft",
+      "discard": "Discard & Continue"
+    },
+    "healthUnavailable": {
+      "title": "Health Data Unavailable",
+      "message": "Could not initialize health data access. Check your permissions in Settings."
+    }
   }
 }

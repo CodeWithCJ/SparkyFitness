@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import i18n from '../localization/i18n';
 import { Alert } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { queryClient } from './queryClient';
@@ -14,6 +15,15 @@ import { loadActiveDraft, clearDraft } from '../services/workoutDraftService';
 import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutBar';
 import { NON_ADD_TABS, type NonAddTabName } from '../components/TabsLayout';
 import type { RootStackParamList } from '../types/navigation';
+
+
+function getServerConnectionMessage(key: string, fallback: string): string {
+  switch (key) {
+    case 'addSheetActions.configureForExercise': return i18n.t('addSheetActions.configureForExercise', { defaultValue: 'Configure your server connection in Settings to add an exercise.' });
+    case 'addSheetActions.configureForWorkout': return i18n.t('addSheetActions.configureForWorkout', { defaultValue: 'Configure your server connection in Settings to start a workout.' });
+    default: return fallback;
+  }
+}
 
 type TabStateSnapshot = {
   index?: number;
@@ -133,13 +143,13 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     navigateFromSheet('FoodScan', { date });
   }, [getActiveDiaryDate, navigateFromSheet]);
 
-  const checkServerConnected = useCallback((message: string): boolean => {
+  const checkServerConnected = useCallback((message: string, defaultMessage: string): boolean => {
     const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
     if (!isConnected) {
-      Alert.alert('No Server Connected', message, [
-        { text: 'Cancel', style: 'cancel' },
+      Alert.alert(i18n.t('addSheetActions.noServerTitle', { defaultValue: 'No Server Connected' }), getServerConnectionMessage(message, defaultMessage), [
+        { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
         {
-          text: 'Go to Settings',
+          text: i18n.t('common.goToSettings', { defaultValue: 'Go to Settings' }),
           onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
         },
       ]);
@@ -150,7 +160,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
 
   const handleStartExerciseForm = useCallback(
     async (screen: 'WorkoutAdd' | 'ActivityAdd') => {
-      if (!checkServerConnected('Configure your server connection in Settings to add an exercise.')) {
+      if (!checkServerConnected('addSheetActions.configureForExercise', 'Configure your server connection in Settings to add an exercise.')) {
         return;
       }
 
@@ -158,12 +168,12 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
       const draft = await loadActiveDraft();
       if (draft) {
         Alert.alert(
-          'Draft in Progress',
-          `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+          i18n.t('addSheetActions.draft.title', { defaultValue: 'Draft in Progress' }),
+          i18n.t('addSheetActions.draft.message', { defaultValue: 'You have an unsaved {{type}} draft. What would you like to do?', type: draft.type === 'workout' ? i18n.t('addSheetActions.draft.workout', { defaultValue: 'workout' }) : i18n.t('addSheetActions.draft.activity', { defaultValue: 'activity' }) }),
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
             {
-              text: 'Resume Draft',
+              text: i18n.t('addSheetActions.draft.resume', { defaultValue: 'Resume Draft' }),
               onPress: () => {
                 if (draft.type === 'workout') {
                   navigateFromSheet('WorkoutAdd');
@@ -173,7 +183,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
               },
             },
             {
-              text: 'Discard & Continue',
+              text: i18n.t('addSheetActions.draft.discard', { defaultValue: 'Discard & Continue' }),
               style: 'destructive',
               onPress: async () => {
                 await clearDraft();
@@ -194,7 +204,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
   // no diary date (a live workout is logged to today). Tapping while a workout
   // is already running prompts to go back to it or clear it and start over.
   const handleStartWorkout = useCallback(() => {
-    if (!checkServerConnected('Configure your server connection in Settings to start a workout.')) {
+    if (!checkServerConnected('addSheetActions.configureForWorkout', 'Configure your server connection in Settings to start a workout.')) {
       return;
     }
     const prompted = promptForActiveWorkoutConflict(queryClient, {
@@ -226,7 +236,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
 
     const initialized = await initHealthConnect();
     if (!initialized) {
-      Alert.alert('Health Data Unavailable', 'Could not initialize health data access. Check your permissions in Settings.');
+      Alert.alert(i18n.t('addSheetActions.healthUnavailable.title', { defaultValue: 'Health Data Unavailable' }), i18n.t('addSheetActions.healthUnavailable.message', { defaultValue: 'Could not initialize health data access. Check your permissions in Settings.' }));
       return;
     }
 
