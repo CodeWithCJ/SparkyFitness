@@ -2285,5 +2285,61 @@
         "cta": "Wypróbuj"
       }
     }
+  },
+  "cycleOnboarding": {
+    "checkDates": "Sprawdź daty",
+    "setupComplete": "Konfiguracja zakończona!",
+    "profileInitialized": "Twój profil zdrowotny został zainicjalizowany.",
+    "setupFailed": "Konfiguracja nie powiodła się",
+    "setupFailedMessage": "Nie udało się ukończyć konfiguracji. Spróbuj ponownie.",
+    "stepTitle": "Konfiguracja: krok {{step}} z 4",
+    "goalTitle": "Jaki jest Twój cel śledzenia?",
+    "goalDescription": "Wybierz tryb najlepiej odpowiadający Twojemu obecnemu celowi zdrowotnemu. Możesz zmienić go w dowolnym momencie w ustawieniach.",
+    "datesTitle": "Daty i średnie",
+    "dueDateDescription": "Wybierz sposób oszacowania terminu porodu. Możesz zmienić to później w ustawieniach.",
+    "noConfiguration": "Konfiguracja nie jest potrzebna",
+    "recoveryDescription": "Dopasujemy wskazówki do objawów związanych z regeneracją hormonalną lub menopauzą. Przejdźmy do kolejnego kroku.",
+    "predictionsDescription": "Pomóż nam przygotować prognozy dla Twojego cyklu.",
+    "lastPeriodStart": "Data rozpoczęcia ostatniej miesiączki",
+    "averageCycleLength": "Średnia długość cyklu",
+    "averagePeriodLength": "Średnia długość miesiączki",
+    "profileTitle": "Profil i dolegliwości",
+    "profileDescription": "Wybierz odpowiednie dolegliwości lub metody antykoncepcji, aby spersonalizować śledzenie.",
+    "birthControlMethod": "Metoda antykoncepcji",
+    "selectMethod": "Wybierz metodę",
+    "conditions": "Dolegliwości",
+    "disclaimerTitle": "Zastrzeżenia i zakończenie",
+    "medicalDisclaimer": "Zastrzeżenie medyczne",
+    "disclaimerBody": "Aplikacja SparkyFitness do śledzenia zdrowia i zdrowia reprodukcyjnego pomaga monitorować prognozy, objawy i parametry fizjologiczne. NIE jest przeznaczona do stosowania jako metoda antykoncepcji ani jako narzędzie diagnostyczne lub lecznicze.",
+    "consultProfessional": "W sprawach dotyczących zdrowia zawsze skonsultuj się z wykwalifikowanym personelem medycznym.",
+    "acceptInitialize": "Zaakceptuj i utwórz profil",
+    "mode": {
+      "standard": "Standardowy cykl menstruacyjny",
+      "ttc": "Staranie się o ciążę (TTC)",
+      "pregnant": "Śledzenie ciąży",
+      "postpartum": "Połóg i powrót do zdrowia",
+      "menopause": "Okres menopauzy"
+    },
+    "birthControl": {
+      "none": "Brak",
+      "pill": "Tabletka",
+      "iud": "Wkładka domaciczna",
+      "implant": "Implant",
+      "patch": "Plaster",
+      "ring": "Krążek",
+      "injection": "Zastrzyk",
+      "other": "Inna",
+      "iudHormonal": "Wkładka hormonalna",
+      "iudCopper": "Wkładka miedziana",
+      "condoms": "Prezerwatywy / barierowe",
+      "shot": "Zastrzyk"
+    },
+    "condition": {
+      "pcos": "PCOS",
+      "endometriosis": "Endometrioza",
+      "fibroids": "Mięśniaki",
+      "thyroid": "Choroba tarczycy",
+      "other": "Inne"
+    }
   }
 }

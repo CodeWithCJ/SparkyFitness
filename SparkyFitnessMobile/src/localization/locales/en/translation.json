@@ -2259,5 +2259,61 @@
         "cta": "Try it out"
       }
     }
+  },
+  "cycleOnboarding": {
+    "checkDates": "Check the dates",
+    "setupComplete": "Setup complete!",
+    "profileInitialized": "Your wellness profile has been initialized.",
+    "setupFailed": "Setup failed",
+    "setupFailedMessage": "Could not complete onboarding. Please try again.",
+    "stepTitle": "Setup: Step {{step}} of 4",
+    "goalTitle": "What is your tracking goal?",
+    "goalDescription": "Select the mode that best fits your current health focus. You can change this anytime in settings.",
+    "datesTitle": "Dates & Averages",
+    "dueDateDescription": "Tell us how to estimate your due date. You can change this later in settings.",
+    "noConfiguration": "No configuration needed",
+    "recoveryDescription": "We will tailor your insights to hormonal recovery or menopause transition symptoms. Let's move on to the next step.",
+    "predictionsDescription": "Help us build predictions for your cycle.",
+    "lastPeriodStart": "Last Period Start Date",
+    "averageCycleLength": "Average Cycle Length",
+    "averagePeriodLength": "Average Period Length",
+    "profileTitle": "Profile & Conditions",
+    "profileDescription": "Select any relevant conditions or birth control methods to personalize your tracking.",
+    "birthControlMethod": "Birth Control Method",
+    "selectMethod": "Select Method",
+    "conditions": "Conditions",
+    "disclaimerTitle": "Disclaimer & Complete",
+    "medicalDisclaimer": "Medical Disclaimer",
+    "disclaimerBody": "The SparkyFitness Wellness and Reproductive Health Tracker is designed to help you track predictions, symptoms, and physiological parameters. It is NOT intended to be used as a contraceptive method or as a diagnostic/treatment tool.",
+    "consultProfessional": "Always consult with a qualified medical professional for health concerns.",
+    "acceptInitialize": "Accept & Initialize Profile",
+    "mode": {
+      "standard": "Standard Menstrual Cycle",
+      "ttc": "Trying to Conceive (TTC)",
+      "pregnant": "Pregnancy Tracking",
+      "postpartum": "Postpartum / Recovery",
+      "menopause": "Menopause Transition"
+    },
+    "birthControl": {
+      "none": "None",
+      "pill": "Pill",
+      "iud": "IUD",
+      "implant": "Implant",
+      "patch": "Patch",
+      "ring": "Ring",
+      "injection": "Injection",
+      "other": "Other",
+      "iudHormonal": "Hormonal IUD",
+      "iudCopper": "Copper IUD",
+      "condoms": "Condoms / barrier",
+      "shot": "Shot"
+    },
+    "condition": {
+      "pcos": "PCOS",
+      "endometriosis": "Endometriosis",
+      "fibroids": "Fibroids",
+      "thyroid": "Thyroid condition",
+      "other": "Other"
+    }
   }
 }
