@@ -3091,6 +3091,19 @@
     "noServer": "No active server config. Set one up in Settings first.",
     "noProvider": "No active AI provider. Configure one in the web app first.",
     "copied": "Copied",
-    "copy": "Copy"
+    "copy": "Copy",
+    "suggestions": {
+      "breakfast": "Log two eggs and a banana for breakfast",
+      "run": "Log a 30 minute run today",
+      "calories": "How many calories do I have left today?",
+      "snack": "Suggest a high-protein snack"
+    },
+    "tools": {
+      "food": "Food",
+      "exercise": "Exercise",
+      "checkin": "Check-in",
+      "goals": "Goals",
+      "lookedUp": "Looked up {{name}}"
+    }
   }
 }

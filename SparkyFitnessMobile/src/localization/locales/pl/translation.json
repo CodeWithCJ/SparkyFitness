@@ -3131,6 +3131,19 @@
     "noServer": "Brak aktywnej konfiguracji serwera. Najpierw skonfiguruj ją w Ustawieniach.",
     "noProvider": "Brak aktywnego dostawcy AI. Najpierw skonfiguruj go w aplikacji webowej.",
     "copied": "Skopiowano",
-    "copy": "Kopiuj"
+    "copy": "Kopiuj",
+    "suggestions": {
+      "breakfast": "Zapisz dwa jajka i banana na śniadanie",
+      "run": "Zapisz dzisiejszy 30-minutowy bieg",
+      "calories": "Ile kalorii zostało mi dziś do spożycia?",
+      "snack": "Zaproponuj wysokobiałkową przekąskę"
+    },
+    "tools": {
+      "food": "Jedzenie",
+      "exercise": "Ćwiczenie",
+      "checkin": "Kontrola",
+      "goals": "Cele",
+      "lookedUp": "Wyszukano: {{name}}"
+    }
   }
 }
