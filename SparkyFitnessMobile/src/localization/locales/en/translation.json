@@ -1498,7 +1498,13 @@
     "exerciseCount_few": "{{formattedCount}} exercises",
     "exerciseCount_many": "{{formattedCount}} exercises",
     "workoutPresetCount_few": "{{formattedCount}} exercises",
-    "workoutPresetCount_many": "{{formattedCount}} exercises"
+    "workoutPresetCount_many": "{{formattedCount}} exercises",
+    "setCount_one": "{{formattedCount}} set",
+    "setCount_few": "{{formattedCount}} sets",
+    "setCount_many": "{{formattedCount}} sets",
+    "setCount_other": "{{formattedCount}} sets",
+    "caloriesShort": "Cal",
+    "unknownExercise": "Unknown exercise"
   },
   "cycleCard": {
     "mode": {

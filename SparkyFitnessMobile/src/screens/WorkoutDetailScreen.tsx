@@ -522,7 +522,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const summaryItems: { value: string; label: string }[] = [];
     summaryItems.push({
       value: String(exerciseCount),
-      label: exerciseCount === 1 ? 'Exercise' : 'Exercises',
+      label: t('workoutDetail.summary.exercise', {
+        count: exerciseCount,
+        defaultValue: 'Exercises',
+        defaultValue_one: 'Exercise',
+        defaultValue_few: 'Exercises',
+        defaultValue_many: 'Exercises',
+        defaultValue_other: 'Exercises',
+      }),
     });
     if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: t('workoutDetail.summary.sets', { defaultValue: 'Sets' }) });
     if (totalVolume > 0) {

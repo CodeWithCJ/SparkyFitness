@@ -30,6 +30,7 @@ import type { CreateExerciseEntryPayload } from '../services/api/exerciseApi';
 import { weightToKg, weightFromKg, distanceFromKm, distanceToKm } from './unitConversions';
 import { parseDecimalInput } from './numericInput';
 import { getDefaultRestSec } from './workoutSupersets';
+import i18n from '../localization/i18n';
 
 // The superset/reorder algebra lives in its own module; re-exported here so
 // the many existing import sites keep working.
@@ -227,7 +228,7 @@ export function getWorkoutSummary(session: ExerciseSessionResponse): {
     };
   }
   return {
-    name: session.name ?? session.exercise_snapshot?.name ?? 'Unknown exercise',
+    name: session.name ?? session.exercise_snapshot?.name ?? i18n.t('workout.unknownExercise', { defaultValue: 'Unknown exercise' }),
     duration: session.duration_minutes,
     calories: session.calories_burned,
   };
@@ -259,8 +260,24 @@ export function buildSessionSubtitle(
     }
 
     const parts: string[] = [];
-    parts.push(`${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}`);
-    if (totalSets > 0) parts.push(`${totalSets} sets`);
+    parts.push(i18n.t('workout.exerciseCount', {
+      count: exerciseCount,
+      formattedCount: String(exerciseCount),
+      defaultValue: '{{formattedCount}} exercises',
+      defaultValue_one: '{{formattedCount}} exercise',
+      defaultValue_few: '{{formattedCount}} exercises',
+      defaultValue_many: '{{formattedCount}} exercises',
+      defaultValue_other: '{{formattedCount}} exercises',
+    }));
+    if (totalSets > 0) parts.push(i18n.t('workout.setCount', {
+      count: totalSets,
+      formattedCount: String(totalSets),
+      defaultValue: '{{formattedCount}} sets',
+      defaultValue_one: '{{formattedCount}} set',
+      defaultValue_few: '{{formattedCount}} sets',
+      defaultValue_many: '{{formattedCount}} sets',
+      defaultValue_other: '{{formattedCount}} sets',
+    }));
     if (totalVolumeKg > 0) {
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
       parts.push(`${vol.toLocaleString()} ${weightUnit}`);
@@ -269,7 +286,7 @@ export function buildSessionSubtitle(
       const dist = distanceFromKm(totalDistanceKm, distanceUnit);
       parts.push(`${dist.toFixed(1)} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
     }
-    if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
+    if (calories > 0) parts.push(`${Math.round(calories)} ${i18n.t('workout.caloriesShort', { defaultValue: 'Cal' })}`);
     return parts.join(' \u00b7 ');
   }
 
@@ -289,7 +306,7 @@ export function buildSessionSubtitle(
       parts.push(`${vol.toLocaleString()} ${weightUnit}`);
     }
     if (duration > 0) parts.push(formatDuration(duration));
-    if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
+    if (calories > 0) parts.push(`${Math.round(calories)} ${i18n.t('workout.caloriesShort', { defaultValue: 'Cal' })}`);
     return parts.join(' \u00b7 ');
   }
 
@@ -301,7 +318,7 @@ export function buildSessionSubtitle(
     const label = distanceUnit === 'miles' ? 'mi' : 'km';
     parts.push(`${dist.toFixed(1)} ${label}`);
   }
-  if (calories > 0) parts.push(`${Math.round(calories)} Cal`);
+  if (calories > 0) parts.push(`${Math.round(calories)} ${i18n.t('workout.caloriesShort', { defaultValue: 'Cal' })}`);
   return parts.join(' \u00b7 ');
 }
 
@@ -1285,7 +1302,7 @@ export function buildWorkoutCompletionSummary(
   const exercises: WorkoutCompletionExercise[] = [];
 
   for (const exercise of session.exercises) {
-    const name = exercise.exercise_snapshot?.name ?? 'Exercise';
+    const name = exercise.exercise_snapshot?.name ?? i18n.t('workout.exercise', { defaultValue: 'Exercise' });
     const modality = resolveSnapshotModality(exercise.exercise_snapshot);
     let exerciseCompleted = 0;
     let exerciseVolumeKg = 0;
@@ -1495,7 +1512,7 @@ export function exerciseFromSnapshot(
 ): Exercise {
   return {
     id: snapshot?.id ?? exerciseId,
-    name: snapshot?.name ?? 'Exercise',
+    name: snapshot?.name ?? i18n.t('workout.exercise', { defaultValue: 'Exercise' }),
     category: snapshot?.category ?? null,
     modality: snapshot?.modality ?? null,
     equipment: snapshot?.equipment ?? [],
@@ -1530,7 +1547,7 @@ export function makeSparseExercise(params: {
 }): Exercise {
   return {
     id: params.id,
-    name: params.name ?? 'Exercise',
+    name: params.name ?? i18n.t('workout.exercise', { defaultValue: 'Exercise' }),
     category: params.category ?? null,
     modality: isExerciseModality(params.modality) ? params.modality : null,
     equipment: [],

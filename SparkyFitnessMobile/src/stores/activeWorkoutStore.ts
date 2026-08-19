@@ -440,7 +440,7 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
     steps.push({
       exerciseId: exercise.id,
       setId: String(set.id),
-      exerciseName: exercise.exercise_snapshot?.name ?? 'Exercise',
+      exerciseName: exercise.exercise_snapshot?.name ?? i18n.t('workout.exercise', { defaultValue: 'Exercise' }),
       exerciseImage: exercise.exercise_snapshot?.images?.[0] ?? null,
       restSec: isDropSetType(set.set_type) ? 0 : restSec,
     });

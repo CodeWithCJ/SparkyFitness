@@ -1498,7 +1498,13 @@
     "prev": "Poprz.",
     "mi": "Mile",
     "km": "Km",
-    "reps": "Powt."
+    "reps": "Powt.",
+    "setCount_one": "{{formattedCount}} seria",
+    "setCount_few": "{{formattedCount}} serie",
+    "setCount_many": "{{formattedCount}} serii",
+    "setCount_other": "{{formattedCount}} serii",
+    "caloriesShort": "kcal",
+    "unknownExercise": "Nieznane ćwiczenie"
   },
   "cycleCard": {
     "mode": {
