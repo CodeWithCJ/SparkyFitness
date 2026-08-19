@@ -49,7 +49,8 @@
     "deleting": "Usuwanie…",
     "done": "Gotowe",
     "none": "Brak",
-    "food": "Produkt"
+    "food": "Produkt",
+    "dismiss": "Zamknij"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -2232,7 +2233,9 @@
     "equivalentsFailed": "Nie udało się zapisać niektórych jednostek zamiennych",
     "saveVariantFailed": "Nie udało się zapisać nowego wariantu",
     "saveNutritionFailed": "Nie udało się zapisać wartości odżywczych do przyszłego użycia",
-    "editFoodTitle": "Edytuj produkt"
+    "editFoodTitle": "Edytuj produkt",
+    "adjustNutritionTitle": "Dostosuj wartości odżywcze",
+    "saveNutritionFuture": "Zapisz wartości odżywcze do przyszłego użycia"
   },
   "foodPhotoImprove": {
     "grams": "gramy",
@@ -3662,5 +3665,20 @@
     "removeExercise": "Usuń ćwiczenie",
     "addExercise": "Dodaj ćwiczenie",
     "exercise": "Ćwiczenie"
+  },
+  "whatsNew": {
+    "seeUpdate": "Zobacz nowości w tej aktualizacji",
+    "title": "Co nowego",
+    "subtitle": "Zobacz, co ulepszono w tej aktualizacji"
+  },
+  "cycleLog": {
+    "saved": "Zapisano",
+    "updated": "Zaktualizowano dzienny wpis.",
+    "saveFailed": "Nie udało się zapisać",
+    "saveError": "Nie udało się zapisać wpisu. Spróbuj ponownie.",
+    "deleted": "Usunięto",
+    "cleared": "Wyczyszczono dzienny wpis.",
+    "deleteFailed": "Nie udało się usunąć",
+    "deleteError": "Nie udało się wyczyścić wpisu. Spróbuj ponownie."
   }
 }

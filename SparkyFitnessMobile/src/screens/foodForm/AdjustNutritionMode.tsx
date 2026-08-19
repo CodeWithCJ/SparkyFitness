@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Platform, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -58,6 +59,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
     availableUnitVariants,
     selectedUnitSelection,
   } = params;
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
@@ -514,7 +516,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
-    title: 'Adjust Nutrition',
+    title: t('foodFormPersistence.adjustNutritionTitle', { defaultValue: 'Adjust Nutrition' }),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -567,10 +569,10 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           <View className="bg-surface rounded-xl p-4 shadow-sm">
             <View className="flex-row items-center justify-between">
               <Text className="text-text-secondary text-base">
-                Save nutrition for future use
+                {t('foodFormPersistence.saveNutritionFuture', { defaultValue: 'Save nutrition for future use' })}
               </Text>
               <Switch
-                accessibilityLabel="Save nutrition for future use"
+                accessibilityLabel="{t('foodFormPersistence.saveNutritionFuture', { defaultValue: 'Save nutrition for future use' })}"
                 value={updateFoodToggle}
                 onValueChange={setUpdateFoodToggle}
               />

@@ -47,7 +47,8 @@
     "deleting": "Deleting...",
     "done": "Done",
     "none": "None",
-    "food": "Food"
+    "food": "Food",
+    "dismiss": "Dismiss"
   },
   "settings": {
     "app": "App Settings",
@@ -2206,7 +2207,9 @@
     "equivalentsFailed": "Some equivalent units could not be saved",
     "saveVariantFailed": "Could not save new variant",
     "saveNutritionFailed": "Could not save nutrition for future use",
-    "editFoodTitle": "Edit Food"
+    "editFoodTitle": "Edit Food",
+    "adjustNutritionTitle": "Adjust Nutrition",
+    "saveNutritionFuture": "Save nutrition for future use"
   },
   "foodPhotoImprove": {
     "grams": "grams",
@@ -3620,5 +3623,20 @@
     "removeExercise": "Remove exercise",
     "addExercise": "Add Exercise",
     "exercise": "Exercise"
+  },
+  "whatsNew": {
+    "seeUpdate": "See what's new in this update",
+    "title": "What's new",
+    "subtitle": "See what's improved in this update"
+  },
+  "cycleLog": {
+    "saved": "Saved",
+    "updated": "Daily log updated successfully.",
+    "saveFailed": "Save failed",
+    "saveError": "Could not save log entry. Please try again.",
+    "deleted": "Deleted",
+    "cleared": "Daily log cleared.",
+    "deleteFailed": "Delete failed",
+    "deleteError": "Could not clear log entry. Please try again."
   }
 }
