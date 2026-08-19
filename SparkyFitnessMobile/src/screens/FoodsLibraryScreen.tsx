@@ -160,9 +160,17 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     title: t('foodLibrary.title', { defaultValue: 'Foods' }),
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
-      noun: 'foods',
+      noun: t('foodLibrary.noun', { defaultValue: 'foods' }),
       identifier: 'foods-library-filter',
       filter: ownershipFilter,
+      labels: {
+        all: t('ownership.all', { defaultValue: 'All' }),
+        mine: t('ownership.mine', { defaultValue: 'Mine' }),
+        family: t('ownership.family', { defaultValue: 'Family' }),
+        public: t('ownership.public', { defaultValue: 'Public' }),
+      },
+      showLabel: t('ownership.show', { defaultValue: 'Show' }),
+      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}' }),
       onSelect: setOwnershipFilter,
     }),
   });
