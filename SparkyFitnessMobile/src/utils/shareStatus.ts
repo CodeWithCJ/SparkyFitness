@@ -41,6 +41,7 @@ export function ownershipFilterHeaderMenu({
     sfSymbol: 'line.3.horizontal.decrease',
     ionicon: 'filter',
     showsBadge: filter !== 'all',
+    badgeValue: filter !== 'all' ? '•' : undefined,
     accessibilityLabel:
       filter !== 'all'
         ? `${filterAccessibilityLabel.replace('{{noun}}', noun)}, ${labels[filter]}`

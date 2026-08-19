@@ -3033,7 +3033,9 @@
       "all": "Wszystkie",
       "of": "z",
       "top": "najlepszy wynik",
-      "logged": "zapisano"
+      "logged": "zapisano",
+      "allSets": "{{count}} serii",
+      "partialSets": "{{completed}} z {{total}} serii"
     },
     "accessibility": {
       "calculating": "Obliczanie"

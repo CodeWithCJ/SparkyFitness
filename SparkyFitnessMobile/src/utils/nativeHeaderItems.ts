@@ -73,9 +73,10 @@ export function createNativeHeaderTextButtonItem({
  */
 export function createNativeHeaderAccentBadge(
   accentColor: string,
+  value = '•',
 ): NativeStackHeaderItemMenu['badge'] {
   return {
-    value: '•',
+    value,
     style: {
       backgroundColor: accentColor,
       color: accentColor,

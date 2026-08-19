@@ -445,23 +445,15 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             {session.name}
           </Text>
           <Text className="text-sm font-medium text-text-muted mt-1">
-            {allSetsLogged ? (
-              <>
-                {t('workoutComplete.labels.all', { defaultValue: 'All' })}{' '}
-                <Text className="font-semibold text-text-secondary">
-                  {summary.totalSetCount} {t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', defaultValue_one: '{{count}} set', defaultValue_other: '{{count}} sets', count: summary.totalSetCount })}
-                </Text>{' '}
-                {t('workoutComplete.labels.logged', { defaultValue: 'logged' })}
-              </>
-            ) : (
-              <>
-                <Text className="font-semibold text-text-secondary">
-                  {summary.completedSetCount} {t('workoutComplete.labels.of', { defaultValue: 'of' })} {summary.totalSetCount}{' '}
-                  {t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', defaultValue_one: '{{count}} set', defaultValue_other: '{{count}} sets', count: summary.totalSetCount })}
-                </Text>{' '}
-                {t('workoutComplete.labels.logged', { defaultValue: 'logged' })}
-              </>
-            )}
+            {allSetsLogged
+              ? t('workoutComplete.labels.allSets', { defaultValue: '{{count}} sets', count: summary.totalSetCount })
+              : t('workoutComplete.labels.partialSets', {
+                  defaultValue: '{{completed}} of {{total}} sets',
+                  completed: summary.completedSetCount,
+                  total: summary.totalSetCount,
+                })}
+          </Text>
+          <Text className="text-sm font-medium text-text-muted">
             {t('workoutComplete.labels.todayAt', { defaultValue: ' · Today at ' })}
             {finishedTimeText}
           </Text>
@@ -634,14 +626,9 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                     className="text-xs font-medium text-text-secondary mt-0.5"
                     style={{ fontVariant: ['tabular-nums'] }}
                   >
-                    {row.completedSetCount === row.totalSetCount ? (
-                      `${row.totalSetCount} ${t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', defaultValue_one: '{{count}} set', defaultValue_other: '{{count}} sets', count: row.totalSetCount })}`
-                    ) : (
-                      <Text className="font-semibold">
-                        {row.completedSetCount} {t('workoutComplete.labels.of', { defaultValue: 'of' })} {row.totalSetCount}{' '}
-                        {t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', defaultValue_one: '{{count}} set', defaultValue_other: '{{count}} sets', count: row.totalSetCount })}
-                      </Text>
-                    )}
+                    {row.completedSetCount === row.totalSetCount
+                      ? t('workoutComplete.labels.allSets', { defaultValue: '{{count}} sets', count: row.totalSetCount })
+                      : t('workoutComplete.labels.partialSets', { defaultValue: '{{completed}} of {{total}} sets', completed: row.completedSetCount, total: row.totalSetCount })}
                     {topText != null && ` · ${t('workoutComplete.labels.top', { defaultValue: 'top' })} ${topText}`}
                   </Text>
                   {row.notes != null && (

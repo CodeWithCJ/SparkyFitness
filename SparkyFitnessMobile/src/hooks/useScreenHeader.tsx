@@ -136,6 +136,7 @@ export type HeaderItem =
       items: HeaderMenuEntry[];
       /** Accent dot on the trigger marking a non-default selection. */
       showsBadge?: boolean;
+      badgeValue?: string;
       accessibilityLabel: string;
       identifier?: string;
     };
@@ -341,7 +342,7 @@ function buildNativeMenuItem(
     identifier,
     tintColor: colors.defaultColor,
     accessibilityLabel: item.accessibilityLabel,
-    badge: item.showsBadge ? createNativeHeaderAccentBadge(accentColor) : undefined,
+    badge: item.showsBadge ? createNativeHeaderAccentBadge(accentColor, item.badgeValue) : undefined,
     menuItems,
   });
 }
@@ -576,6 +577,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       ? {
           sfSymbol: item.sfSymbol,
           showsBadge: !!item.showsBadge,
+          badgeValue: item.kind === 'menu' ? item.badgeValue : undefined,
           accessibilityLabel: item.accessibilityLabel,
           entries: item.items.map((entry) =>
             isMenuSection(entry)
