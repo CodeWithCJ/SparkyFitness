@@ -855,6 +855,16 @@
     "buttonHint": "Otwiera wybór czasu przerwy"
   },
   "diary": {
+    "chooseDate": "Wybierz datę dziennika",
+    "noServer": "Nie skonfigurowano serwera",
+    "configureServer": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić dziennik.",
+    "goToSettings": "Przejdź do ustawień",
+    "loading": "Wczytywanie dziennika…",
+    "loadFailed": "Nie udało się wczytać dziennika",
+    "checkConnection": "Sprawdź połączenie i spróbuj ponownie.",
+    "retry": "Ponów",
+    "title": "Dziennik",
+    "addFood": "Dodaj produkt",
     "emptyDay": "Brak wpisów z tego dnia"
   },
   "medications": {
@@ -3503,5 +3513,32 @@
     "searchHint": "Wyszukaj produkt lub lek, aby zobaczyć jego typową klasyfikację w ciąży.",
     "noMatch": "Brak wyników. Ta lista nie jest kompletna — w razie wątpliwości zapytaj lekarza.",
     "disclaimer": "To tylko ogólne wskazówki, nie porada medyczna. Zawsze potwierdź informacje u lekarza."
+  },
+  "foodPhotoLogEntry": {
+    "estimateSaved": "Zapisano oszacowanie",
+    "selectMealType": "Wybierz typ posiłku",
+    "invalidServings": "Nieprawidłowa liczba porcji",
+    "positiveServings": "Liczba porcji musi być większa od zera.",
+    "back": "Wstecz",
+    "title": "Dodaj wpis",
+    "meal": "Posiłek",
+    "selectMeal": "Wybierz posiłek",
+    "date": "Data",
+    "servings": "Liczba porcji"
+  },
+  "workoutAdd": {
+    "addExercise": "Dodaj ćwiczenie",
+    "addExerciseMessage": "Przed zapisaniem dodaj co najmniej jedno ćwiczenie z serią.",
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "saveChangesTitle": "Zapisać zmiany?",
+    "saveWorkoutTitle": "Zapisać trening?",
+    "saveMessage": "Zapisać „{{name}}” z liczbą ćwiczeń: {{count}}?",
+    "saveFailed": "Nie udało się zapisać treningu",
+    "tryAgain": "Spróbuj ponownie.",
+    "reorderExercises": "Zmień kolejność ćwiczeń",
+    "workoutPlaceholder": "Trening",
+    "useYesterday": "Użyj wczoraj",
+    "useToday": "Użyj dzisiaj"
   }
 }

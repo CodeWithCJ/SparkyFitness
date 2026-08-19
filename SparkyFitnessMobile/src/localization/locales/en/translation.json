@@ -845,6 +845,16 @@
     "buttonHint": "Opens rest period selection"
   },
   "diary": {
+    "chooseDate": "Choose diary date",
+    "noServer": "No server configured",
+    "configureServer": "Configure your server connection in Settings to view your diary.",
+    "goToSettings": "Go to Settings",
+    "loading": "Loading diary...",
+    "loadFailed": "Failed to load diary",
+    "checkConnection": "Please check your connection and try again.",
+    "retry": "Retry",
+    "title": "Diary",
+    "addFood": "Add Food",
     "emptyDay": "No entries recorded for this day"
   },
   "medications": {
@@ -3461,5 +3471,32 @@
     "searchHint": "Search to see how a food or medication is commonly categorized during pregnancy.",
     "noMatch": "No match found. This list is not exhaustive, so ask your provider if unsure.",
     "disclaimer": "General guidance only, not medical advice. Always confirm with your provider."
+  },
+  "foodPhotoLogEntry": {
+    "estimateSaved": "Estimate saved",
+    "selectMealType": "Select a meal type",
+    "invalidServings": "Invalid servings",
+    "positiveServings": "Servings must be a positive number.",
+    "back": "Back",
+    "title": "Log entry",
+    "meal": "Meal",
+    "selectMeal": "Select Meal",
+    "date": "Date",
+    "servings": "Servings"
+  },
+  "workoutAdd": {
+    "addExercise": "Add an Exercise",
+    "addExerciseMessage": "Add at least one exercise with a set before saving.",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saveChangesTitle": "Save Changes?",
+    "saveWorkoutTitle": "Save Workout?",
+    "saveMessage": "Save \"{{name}}\" with {{count}} exercise(s)?",
+    "saveFailed": "Failed to save workout",
+    "tryAgain": "Please try again.",
+    "reorderExercises": "Reorder exercises",
+    "workoutPlaceholder": "Workout",
+    "useYesterday": "Use Yesterday",
+    "useToday": "Use Today"
   }
 }
