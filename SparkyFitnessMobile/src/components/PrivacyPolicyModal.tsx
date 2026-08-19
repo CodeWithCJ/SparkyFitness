@@ -79,7 +79,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             onPress={onClose}
             textClassName="text-[17px]"
           >
-            Close
+            {t('common.close', { defaultValue: 'Close' })}
           </Button>
         </View>
       </View>
