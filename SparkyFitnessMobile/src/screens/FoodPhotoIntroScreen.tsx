@@ -87,7 +87,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
           iconBackground={`${accentPrimary}1F`}
           title={t('foodPhotoIntro.weight', { defaultValue: 'Add weight when you know it' })}
         >
-          A total meal weight helps with portions, calories, and macros.
+          {t('foodPhotoIntro.weightHelp', { defaultValue: 'A total meal weight helps with portions, calories, and macros.' })}
         </Bullet>
         <Bullet
           icon="document-text"
@@ -95,7 +95,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
           iconBackground={`${catViolet}1F`}
           title={t('foodPhotoIntro.description', { defaultValue: 'Add a short description' })}
         >
-          Mention sauces, oils, toppings, restaurant names, or anything hidden.
+          {t('foodPhotoIntro.descriptionHelp', { defaultValue: 'Mention sauces, oils, toppings, restaurant names, or anything hidden.' })}
         </Bullet>
         <Bullet
           icon="pencil"
@@ -103,8 +103,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
           iconBackground={`${catOrange}1F`}
           title={t('foodPhotoIntro.review', { defaultValue: 'Review before saving' })}
         >
-          Photo estimates are a starting point. You&apos;ll be able to edit
-          everything before it&apos;s logged.
+          {t('foodPhotoIntro.reviewHelp', { defaultValue: "Photo estimates are a starting point. You'll be able to edit everything before it's logged." })}
         </Bullet>
 
       </View>

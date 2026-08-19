@@ -3909,7 +3909,10 @@
     "weight": "Add weight when you know it",
     "description": "Add a short description",
     "review": "Review before saving",
-    "logManually": "Log manually instead"
+    "logManually": "Log manually instead",
+    "weightHelp": "A total meal weight helps with portions, calories, and macros.",
+    "descriptionHelp": "Mention sauces, oils, toppings, restaurant names, or anything hidden.",
+    "reviewHelp": "Photo estimates are a starting point. You'll be able to edit everything before it's logged."
   },
   "barcode": {
     "title": "Barcode",

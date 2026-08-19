@@ -234,7 +234,7 @@ export async function maybePromptForExactAlarmPermission(): Promise<void> {
     await AsyncStorage.setItem(EXACT_ALARM_PROMPT_KEY, 'true');
     Alert.alert(
       notificationCopy('notifications.exactAlarm.title', 'On-time alerts'),
-      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers and medication reminders ring on time.',
+      notificationCopy('notifications.exactAlarm.message', 'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.'),
       [
         { text: notificationCopy('notifications.exactAlarm.notNow', 'Not Now'), style: 'cancel' },
         {

@@ -3909,7 +3909,10 @@
     "weight": "Dodaj wagę, jeśli ją znasz",
     "description": "Dodaj krótki opis",
     "review": "Sprawdź przed zapisaniem",
-    "logManually": "Dodaj ręcznie"
+    "logManually": "Dodaj ręcznie",
+    "weightHelp": "Całkowita waga posiłku ułatwia określenie porcji, kalorii i makroskładników.",
+    "descriptionHelp": "Wspomnij o sosach, olejach, dodatkach, nazwie restauracji lub innych ukrytych składnikach.",
+    "reviewHelp": "Oszacowanie ze zdjęcia to punkt wyjścia. Przed zapisaniem możesz wszystko edytować."
   },
   "barcode": {
     "title": "Kod kreskowy",

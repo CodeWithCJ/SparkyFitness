@@ -115,7 +115,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           iconTone="muted"
           iconSize={64}
           title={t('exerciseLibrary.noServer', { defaultValue: 'No server configured' })}
-          subtitle="{t('exerciseLibrary.configure', { defaultValue: 'Configure your server connection in Settings to view your exercise library.' })}"
+          subtitle={t('exerciseLibrary.configure', { defaultValue: 'Configure your server connection in Settings to view your exercise library.' })}
           action={{
             label: t('exerciseLibrary.go', { defaultValue: 'Go to Settings' }),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),

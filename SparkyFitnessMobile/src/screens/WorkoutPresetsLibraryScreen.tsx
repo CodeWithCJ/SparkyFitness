@@ -113,7 +113,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           iconTone="muted"
           iconSize={64}
           title={t('presetLibrary.noServer', { defaultValue: 'No server configured' })}
-          subtitle="{t('workoutPresetLibrary.configure', { defaultValue: 'Configure your server connection in Settings to view your workout presets.' })}"
+          subtitle={t('workoutPresetLibrary.configure', { defaultValue: 'Configure your server connection in Settings to view your workout presets.' })}
           action={{
             label: t('presetLibrary.go', { defaultValue: 'Go to Settings' }),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
