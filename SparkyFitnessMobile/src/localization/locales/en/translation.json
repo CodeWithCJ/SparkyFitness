@@ -51,7 +51,8 @@
     "dismiss": "Dismiss",
     "itemCount_few": "{{count}} items",
     "itemCount_many": "{{count}} items",
-    "remove": "Remove"
+    "remove": "Remove",
+    "overwrite": "Overwrite"
   },
   "settings": {
     "app": "App Settings",
@@ -3713,5 +3714,10 @@
     "distance": "Distance ({{unit}})",
     "durationHint": "Duration in minutes for {{name}}",
     "distanceHint": "Distance in {{unit}} for {{name}}"
+  },
+  "exerciseSetRest": {
+    "overwriteTitle": "Overwrite rest times?",
+    "overwriteMessage": "These sets have different rest times. Set all to {{rest}}?",
+    "all": "All"
   }
 }

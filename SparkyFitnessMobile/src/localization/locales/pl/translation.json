@@ -51,7 +51,8 @@
     "none": "Brak",
     "food": "Produkt",
     "dismiss": "Zamknij",
-    "remove": "Usuń"
+    "remove": "Usuń",
+    "overwrite": "Nadpisz"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -3713,5 +3714,10 @@
     "distance": "Dystans ({{unit}})",
     "durationHint": "Czas w minutach dla {{name}}",
     "distanceHint": "Dystans w {{unit}} dla {{name}}"
+  },
+  "exerciseSetRest": {
+    "overwriteTitle": "Nadpisać czasy odpoczynku?",
+    "overwriteMessage": "Te serie mają różne czasy odpoczynku. Ustawić wszystkim {{rest}}?",
+    "all": "Wszystkie"
   }
 }

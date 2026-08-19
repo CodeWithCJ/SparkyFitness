@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -45,6 +46,7 @@ function clampRestSeconds(seconds: number): number {
 
 const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRestSheetProps>(
   ({ onApply }, ref) => {
+    const { t } = useTranslation();
     const sheetRef = useRef<BottomSheetModal>(null);
     const [surfaceBg, textMuted, accentPrimary] = useCSSVariable([
       '--color-surface',
@@ -121,11 +123,11 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
         // If changing all sets from a currently-mixed state, confirm once.
         if (selectedKey === ALL_KEY && restTimesMixed && !allOverwriteConfirmed) {
           Alert.alert(
-            'Overwrite rest times?',
-            `These sets have different rest times. Set all to ${formatRestLabel(next)}?`,
+            t('exerciseSetRest.overwriteTitle', { defaultValue: 'Overwrite rest times?' }),
+            t('exerciseSetRest.overwriteMessage', { defaultValue: 'These sets have different rest times. Set all to {{rest}}?', rest: formatRestLabel(next) }),
             [
               {
-                text: 'Cancel',
+                text: t('common.cancel', { defaultValue: 'Cancel' }),
                 style: 'cancel',
                 onPress: () => {
                   // Reset wheel position to the current selected value.
@@ -133,7 +135,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                 },
               },
               {
-                text: 'Overwrite',
+                text: t('common.overwrite', { defaultValue: 'Overwrite' }),
                 onPress: () => {
                   setAllOverwriteConfirmed(true);
                   applyChange();
@@ -194,7 +196,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                 }
                 style={selectedKey === ALL_KEY ? { color: accentPrimary } : undefined}
               >
-                All
+                {t('exerciseSetRest.all', { defaultValue: 'All' })}
               </Text>
               <Text
                 className={
