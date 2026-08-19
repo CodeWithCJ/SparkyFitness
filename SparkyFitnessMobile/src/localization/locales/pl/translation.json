@@ -2085,5 +2085,25 @@
     "noSetData": "Brak danych o seriach",
     "loadError": "Nie udało się wczytać historii.",
     "empty": "Nie zarejestrowano jeszcze sesji."
+  },
+  "foodFormPersistence": {
+    "discardTitle": "Odrzucić niezapisane odpowiedniki?",
+    "discardMessage": "Masz niezapisane rozmiary odpowiedników. Odrzucić je i kontynuować?",
+    "discard": "Odrzuć",
+    "updateTitle": "Zaktualizować wcześniejsze wpisy?",
+    "updateMessage": "Jedzenie w bibliotece zostało zapisane. Czy chcesz również zaktualizować wcześniejsze wpisy w dzienniku nowymi wartościami odżywczymi? Niezaktualizowane wpisy zachowają swoje pierwotne wartości.",
+    "dontUpdate": "Nie aktualizuj",
+    "update": "Aktualizuj",
+    "updatePhotosMessage": "Jedzenie w bibliotece zostało zapisane. Jakich wartości mają używać wcześniejsze wpisy w dzienniku?",
+    "updateNutrition": "Aktualizuj tylko wartości odżywcze",
+    "updateNutritionPhotos": "Aktualizuj wartości odżywcze i zdjęcia",
+    "saveNutritionTitle": "Zapisz wartości odżywcze",
+    "overwriteMessage": "Wariant „{{unitLabel}}” jest już zapisany. Czy chcesz zaktualizować go tymi wartościami, czy zapisać nowy wariant?",
+    "saveAsNew": "Zapisz jako nowy",
+    "updateExisting": "Zaktualizuj istniejący",
+    "missingName": "Brak nazwy",
+    "nameRequired": "Wpisz nazwę jedzenia.",
+    "invalidServingSize": "Nieprawidłowa wielkość porcji",
+    "servingSizeRequired": "Wielkość porcji musi być większa od zera."
   }
 }

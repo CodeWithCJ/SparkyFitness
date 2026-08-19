@@ -2059,5 +2059,25 @@
     "noSetData": "No set data",
     "loadError": "Couldn't load history.",
     "empty": "No sessions logged yet."
+  },
+  "foodFormPersistence": {
+    "discardTitle": "Discard unsaved equivalents?",
+    "discardMessage": "You have unsaved equivalent sizes. Discard them to continue?",
+    "discard": "Discard",
+    "updateTitle": "Update past entries?",
+    "updateMessage": "Your library food is saved. Do you also want to update past diary entries for this food with the new nutrition? Entries you don't update keep their original values.",
+    "dontUpdate": "Don't Update",
+    "update": "Update",
+    "updatePhotosMessage": "Your library food is saved. What should past diary entries for this food use?",
+    "updateNutrition": "Update nutrition only",
+    "updateNutritionPhotos": "Update nutrition & photos",
+    "saveNutritionTitle": "Save nutrition",
+    "overwriteMessage": "\"{{unitLabel}}\" is already a saved variant. Do you want to update it with these values, or save as a new variant?",
+    "saveAsNew": "Save as new",
+    "updateExisting": "Update existing",
+    "missingName": "Missing name",
+    "nameRequired": "Please enter a food name.",
+    "invalidServingSize": "Invalid serving size",
+    "servingSizeRequired": "Serving size must be greater than zero."
   }
 }
