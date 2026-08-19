@@ -39,7 +39,12 @@
     "pleaseTryAgain": "Please try again.",
     "ok": "OK",
     "collapse": "Collapse",
-    "expand": "Expand"
+    "expand": "Expand",
+    "removeFromFavorites": "Remove from favorites",
+    "addToFavorites": "Add to favorites",
+    "goToSettings": "Go to Settings",
+    "notSet": "Not set",
+    "deleting": "Deleting..."
   },
   "settings": {
     "app": "App Settings",
@@ -2902,5 +2907,26 @@
       "noMealType": "No meal type",
       "noMealTypesAvailable": "No meal types are available. Please check your account settings."
     }
+  },
+  "foodDetail": {
+    "sharedPublicly": "Food shared publicly",
+    "madePrivate": "Food made private",
+    "shareFailed": "Failed to update sharing",
+    "makePublicTitle": "Make public?",
+    "makePublicMessage": "This food will become visible to all users on this server.",
+    "makePublic": "Make Public",
+    "makePrivate": "Make private",
+    "sharePublic": "Share with public",
+    "editFood": "Edit food",
+    "noServer": "No server configured",
+    "configureServer": "Configure your server connection in Settings to view food details.",
+    "serving": "Serving",
+    "selectServing": "Select Serving",
+    "servingOptions": "Serving options",
+    "loadingServingOptions": "Loading serving options...",
+    "servingOptionsError": "Some serving options could not be loaded right now.",
+    "barcode": "Barcode",
+    "logFood": "Log Food",
+    "deleteFood": "Delete Food"
   }
 }

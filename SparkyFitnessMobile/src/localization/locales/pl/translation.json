@@ -41,7 +41,12 @@
     "pleaseTryAgain": "Spróbuj ponownie.",
     "ok": "OK",
     "collapse": "Zwiń",
-    "expand": "Rozwiń"
+    "expand": "Rozwiń",
+    "removeFromFavorites": "Usuń z ulubionych",
+    "addToFavorites": "Dodaj do ulubionych",
+    "goToSettings": "Przejdź do Ustawień",
+    "notSet": "Nie ustawiono",
+    "deleting": "Usuwanie…"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -2938,5 +2943,26 @@
       "noMealType": "Brak typu posiłku",
       "noMealTypesAvailable": "Brak dostępnych typów posiłków. Sprawdź ustawienia konta."
     }
+  },
+  "foodDetail": {
+    "sharedPublicly": "Produkt udostępniony publicznie",
+    "madePrivate": "Produkt ustawiony jako prywatny",
+    "shareFailed": "Nie udało się zmienić ustawień udostępniania",
+    "makePublicTitle": "Udostępnić publicznie?",
+    "makePublicMessage": "Ten produkt będzie widoczny dla wszystkich użytkowników tego serwera.",
+    "makePublic": "Udostępnij publicznie",
+    "makePrivate": "Ustaw jako prywatny",
+    "sharePublic": "Udostępnij publicznie",
+    "editFood": "Edytuj produkt",
+    "noServer": "Nie skonfigurowano serwera",
+    "configureServer": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić szczegóły produktu.",
+    "serving": "Porcja",
+    "selectServing": "Wybierz porcję",
+    "servingOptions": "Opcje porcji",
+    "loadingServingOptions": "Wczytywanie opcji porcji...",
+    "servingOptionsError": "Nie udało się teraz wczytać niektórych opcji porcji.",
+    "barcode": "Kod kreskowy",
+    "logFood": "Zapisz produkt",
+    "deleteFood": "Usuń produkt"
   }
 }
