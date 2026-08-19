@@ -739,8 +739,12 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const editDisplayCarbs = editUseNetCarbs
     ? getNetCarbsValue(displayValues.carbs, displayValues.fiber)
     : displayValues.carbs;
-  const viewCarbsLabel = viewUseNetCarbs ? 'Net Carbs' : 'Carbs';
-  const editCarbsLabel = editUseNetCarbs ? 'Net Carbs' : 'Carbs';
+  const viewCarbsLabel = viewUseNetCarbs
+    ? t('nutrients.netCarbs', { defaultValue: 'Net Carbs' })
+    : t('nutrients.carbs', { defaultValue: 'Carbs' });
+  const editCarbsLabel = editUseNetCarbs
+    ? t('nutrients.netCarbs', { defaultValue: 'Net Carbs' })
+    : t('nutrients.carbs', { defaultValue: 'Carbs' });
 
   const viewProteinCals = viewProtein * 4;
   const viewCarbsCals = viewDisplayCarbs * 4;
@@ -783,6 +787,23 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     isEditing
       ? `${Math.round(scaled(value))}${unit}`
       : `${Math.round(scaledValue(value, entry))}${unit}`;
+  const getLocalizedNutrientLabel = (label: string): string => {
+    switch (label) {
+      case 'Fiber': return t('nutrients.fiber', { defaultValue: 'Fiber' });
+      case 'Sugars': return t('nutrients.sugars', { defaultValue: 'Sugars' });
+      case 'Saturated Fat': return t('nutrients.saturatedFatShort', { defaultValue: 'Sat. Fat' });
+      case 'Trans Fat': return t('nutrients.transFat', { defaultValue: 'Trans Fat' });
+      case 'Cholesterol': return t('nutrients.cholesterol', { defaultValue: 'Cholesterol' });
+      case 'Sodium': return t('nutrients.sodium', { defaultValue: 'Sodium' });
+      case 'Potassium': return t('nutrients.potassium', { defaultValue: 'Potassium' });
+      case 'Calcium': return t('nutrients.calcium', { defaultValue: 'Calcium' });
+      case 'Iron': return t('nutrients.iron', { defaultValue: 'Iron' });
+      case 'Vitamin A': return t('nutrients.vitaminA', { defaultValue: 'Vitamin A' });
+      case 'Vitamin C': return t('nutrients.vitaminC', { defaultValue: 'Vitamin C' });
+      case 'Total Carbs': return t('nutrients.totalCarbs', { defaultValue: 'Total Carbs' });
+      default: return label;
+    }
+  };
 
   // View mode: back + owner-gated Edit. Edit mode: 'Done' (not 'Save') commits
   // the changes — the entry stays on screen, so Done reads as "finish editing".
@@ -825,7 +846,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         <Animated.View layout={LinearTransition.duration(300)}>
           <View className="flex-row items-start gap-2">
             <Text className="text-text-primary text-3xl font-bold flex-shrink">
-              {(isEditing && adjustedValues?.name) || entry.food_name || 'Unknown food'}
+              {(isEditing && adjustedValues?.name) || entry.food_name || t('foodEntryView.unknownFood', { defaultValue: 'Unknown food' })}
             </Text>
             {entry.provider_verified ? <VerifiedBadge size="md" style={{ marginTop: 7 }} /> : null}
           </View>
@@ -865,7 +886,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     {editServings % 1 === 0
                       ? editServings
                       : parseFloat(editServings.toFixed(2))}{' '}
-                    {editServings === 1 ? 'serving' : 'servings'}
+                    {t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: editServings })}
                   </Text>
                   {variantPickerOptions.length > 1 ? (
                     <BottomSheetPicker
@@ -881,6 +902,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                           onPress={onPress}
                           activeOpacity={0.7}
                           className="flex-row items-center ml-1"
+                          accessibilityRole="button"
+                          accessibilityLabel={t('foodEntryView.servingOptionsHint', { defaultValue: 'Opens serving options' })}
                         >
                           <Text className="text-text-secondary text-sm">
                             {' - '}
@@ -918,7 +941,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           layout={LinearTransition.duration(300)}
           className="bg-surface rounded-xl p-4 shadow-sm"
         >
-          <Pressable onPress={isEditing ? navigateToNutritionForm : undefined} disabled={!isEditing}>
+          <Pressable onPress={isEditing ? navigateToNutritionForm : undefined} disabled={!isEditing} accessibilityRole={isEditing ? 'button' : undefined} accessibilityLabel={isEditing ? t('foodEntryView.nutritionEditHint', { defaultValue: 'Opens nutrition editing' }) : undefined}>
             <Animated.View
               layout={LinearTransition.duration(300)}
               className="flex-row items-center"
@@ -1050,7 +1073,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                       }`}
                     >
                       <Text className="text-text-secondary text-sm">
-                        {nutrient.label}
+                        {getLocalizedNutrientLabel(nutrient.label)}
                       </Text>
                       <Text className="text-text-primary text-sm">
                         {renderNutrientValue(nutrient.value, nutrient.unit)}
@@ -1075,7 +1098,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         }`}
                       >
                         <Text className="text-text-secondary text-sm">
-                          {nutrient.label}
+                          {getLocalizedNutrientLabel(nutrient.label)}
                         </Text>
                         <Text className="text-text-primary text-sm">
                           {renderNutrientValue(nutrient.value, nutrient.unit)}
@@ -1092,7 +1115,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                         }`}
                       >
                         <Text className="text-text-secondary text-sm">
-                          {nutrient.label}
+                          {getLocalizedNutrientLabel(nutrient.label)}
                         </Text>
                         <Text className="text-text-primary text-sm">
                           {renderNutrientValue(nutrient.value, nutrient.unit)}
@@ -1133,6 +1156,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 onPress={() => calendarRef.current?.present()}
                 activeOpacity={0.7}
                 className="flex-row items-center"
+                accessibilityRole="button"
+                accessibilityLabel={t('foodEntryView.dateSelectorHint', { defaultValue: 'Opens date selection' })}
               >
                 <Text className="text-text-primary text-base font-medium">
                   {formatDateLabel(selectedDate)}
@@ -1165,6 +1190,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     onPress={onPress}
                     activeOpacity={0.7}
                     className="flex-row items-center"
+                    accessibilityRole="button"
+                    accessibilityLabel={t('foodEntryView.mealSelectorHint', { defaultValue: 'Opens meal selection' })}
                   >
                     <Text className="text-text-primary text-base font-medium">
                       {mealTypeLabel(selectedMealType)}
@@ -1198,6 +1225,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 onPress={() => timeSheetRef.current?.present()}
                 activeOpacity={0.7}
                 className="flex-row items-center"
+                accessibilityRole="button"
+                accessibilityLabel={t('foodEntryView.timeSelectorHint', { defaultValue: 'Opens time selection' })}
               >
                 <Text className="text-text-primary text-base font-medium">
                   {formatTimeLabel(entryTime) ?? t('common.none', { defaultValue: 'None' })}
@@ -1216,7 +1245,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   className="flex-row items-center ml-4"
                   onPress={() => updateEdit({ entryTime: '' })}
                 >
-                  <Text className="text-text-link text-sm font-medium">{t('common.clear', { defaultValue: 'Clear' })}</Text>
+                  <Text className="text-text-link text-sm font-medium">{t('foodEntryView.clearTime', { defaultValue: 'Clear time' })}</Text>
                 </TouchableOpacity>
               )}
             </>
@@ -1232,9 +1261,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
             variant="destructive"
             onPress={confirmAndDelete}
             disabled={isDeletePending}
+            accessibilityRole="button"
+            accessibilityLabel={t('foodEntryView.deleteEntry', { defaultValue: 'Delete Entry' })}
             className="mt-2"
           >
-            {isDeletePending ? 'Deleting...' : 'Delete Entry'}
+            {isDeletePending ? t('common.deleting', { defaultValue: 'Deleting...' }) : t('foodEntryView.deleteEntry', { defaultValue: 'Delete Entry' })}
           </Button>
         </Animated.View>
       </ScrollView>

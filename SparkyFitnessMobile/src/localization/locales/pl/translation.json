@@ -2974,6 +2974,14 @@
     "tapToEditNutrition": "Dotknij, aby edytować wartości odżywcze",
     "meal": "Posiłek",
     "selectMeal": "Wybierz posiłek",
-    "time": "Godzina"
+    "time": "Godzina",
+    "unknownFood": "Nieznany produkt",
+    "deleteEntry": "Usuń wpis",
+    "servingOptionsHint": "Otwiera opcje porcji",
+    "mealSelectorHint": "Otwiera wybór posiłku",
+    "dateSelectorHint": "Otwiera wybór daty",
+    "timeSelectorHint": "Otwiera wybór godziny",
+    "clearTime": "Wyczyść godzinę",
+    "nutritionEditHint": "Otwiera edycję wartości odżywczych"
   }
 }

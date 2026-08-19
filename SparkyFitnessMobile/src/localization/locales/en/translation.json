@@ -2938,6 +2938,14 @@
     "tapToEditNutrition": "Tap to edit nutrition",
     "meal": "Meal",
     "selectMeal": "Select Meal",
-    "time": "Time"
+    "time": "Time",
+    "unknownFood": "Unknown food",
+    "deleteEntry": "Delete Entry",
+    "servingOptionsHint": "Opens serving options",
+    "mealSelectorHint": "Opens meal selection",
+    "dateSelectorHint": "Opens date selection",
+    "timeSelectorHint": "Opens time selection",
+    "clearTime": "Clear time",
+    "nutritionEditHint": "Opens nutrition editing"
   }
 }
