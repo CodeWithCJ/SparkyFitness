@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
@@ -44,6 +45,7 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
   maxImages = MAX_IMAGES,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const getImageSource = useFoodImageSourceContext();
   const [textMuted, borderSubtle] = useCSSVariable([
     '--color-text-muted',
@@ -60,6 +62,8 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
   // images meanwhile would be overwritten. Append against the latest list.
   const itemsRef = useRef(items);
   itemsRef.current = items;
+
+  const resolvedLabel = label === 'Photos' ? t('foodImagePicker.photos', { defaultValue: 'Photos' }) : label;
 
   const remaining = Math.max(0, maxImages - items.length);
   const canAdd = !disabled && remaining > 0;
@@ -81,7 +85,7 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Food Image Picker] Picking failed: ${message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Could not add photo' });
+      Toast.show({ type: 'error', text1: t('foodImagePicker.errors.addFailed', { defaultValue: 'Could not add photo' }) });
     } finally {
       pickerLock.current = false;
       setBusy(false);
@@ -96,8 +100,8 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
         // rather than letting the tap look like it did nothing.
         Toast.show({
           type: 'error',
-          text1: 'Camera permission needed',
-          text2: 'Enable camera access to add a photo.',
+          text1: t('foodImagePicker.errors.cameraPermission', { defaultValue: 'Camera permission needed' }),
+          text2: t('foodImagePicker.errors.cameraPermissionBody', { defaultValue: 'Enable camera access to add a photo.' }),
         });
         return [];
       }
@@ -107,10 +111,10 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
   const addFromLibrary = () => runPick(() => pickImagesFromLibrary(remaining));
 
   const promptAdd = () => {
-    Alert.alert('Add photo', undefined, [
-      { text: 'Take Photo', onPress: () => void addFromCamera() },
-      { text: 'Choose from Library', onPress: () => void addFromLibrary() },
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('foodImagePicker.actions.addPhoto', { defaultValue: 'Add photo' }), undefined, [
+      { text: t('foodImagePicker.actions.takePhoto', { defaultValue: 'Take Photo' }), onPress: () => void addFromCamera() },
+      { text: t('foodImagePicker.actions.chooseFromLibrary', { defaultValue: 'Choose from Library' }), onPress: () => void addFromLibrary() },
+      { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
     ]);
   };
 
@@ -123,23 +127,23 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
     }[] = [];
     if (index > 0) {
       buttons.push({
-        text: 'Set as main',
+        text: t('foodImagePicker.actions.setAsMain', { defaultValue: 'Set as main' }),
         onPress: () => onItemsChange(setAsMain(items, index)),
       });
     }
     buttons.push({
-      text: 'Remove',
+      text: t('foodImagePicker.actions.remove', { defaultValue: 'Remove' }),
       style: 'destructive',
       onPress: () => onItemsChange(removeImageAt(items, index)),
     });
-    buttons.push({ text: 'Cancel', style: 'cancel' });
-    Alert.alert('Photo', undefined, buttons);
+    buttons.push({ text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' });
+    Alert.alert(t('foodImagePicker.actions.photo', { defaultValue: 'Photo' }), undefined, buttons);
   };
 
   return (
     <View>
       <Text className="text-text-secondary text-sm font-medium mb-2">
-        {label}
+        {resolvedLabel}
       </Text>
       <ScrollView
         horizontal
@@ -154,7 +158,9 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
             disabled={disabled}
             testID={`food-image-tile-${index}`}
             accessibilityLabel={
-              index === 0 ? 'Main photo, edit' : `Photo ${index + 1}, edit`
+              index === 0
+                ? t('foodImagePicker.accessibility.mainPhotoEdit', { defaultValue: 'Main photo, edit' })
+                : t('foodImagePicker.accessibility.photoEdit', { defaultValue: 'Photo {{number}}, edit', number: index + 1 })
             }
             style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
           >
@@ -170,7 +176,7 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
             {index === 0 && items.length > 1 ? (
               <View className="absolute bottom-0 left-0 right-0 bg-black/60 rounded-b-lg py-0.5">
                 <Text className="text-white text-[10px] text-center font-medium">
-                  Main
+                  {t('foodImagePicker.labels.main', { defaultValue: 'Main' })}
                 </Text>
               </View>
             ) : null}
@@ -182,7 +188,7 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
             onPress={promptAdd}
             disabled={busy}
             testID="food-image-add"
-            accessibilityLabel="Add photo"
+            accessibilityLabel={t('foodImagePicker.accessibility.addPhoto', { defaultValue: 'Add photo' })}
             className="items-center justify-center bg-raised"
             style={{
               width: TILE,

@@ -3154,5 +3154,29 @@
       "goals": "Cele",
       "lookedUp": "Wyszukano: {{name}}"
     }
+  },
+  "foodImagePicker": {
+    "photos": "Zdjęcia",
+    "errors": {
+      "addFailed": "Nie udało się dodać zdjęcia",
+      "cameraPermission": "Wymagany dostęp do aparatu",
+      "cameraPermissionBody": "Włącz dostęp do aparatu, aby dodać zdjęcie."
+    },
+    "actions": {
+      "addPhoto": "Dodaj zdjęcie",
+      "takePhoto": "Zrób zdjęcie",
+      "chooseFromLibrary": "Wybierz z biblioteki",
+      "setAsMain": "Ustaw jako główne",
+      "remove": "Usuń",
+      "photo": "Zdjęcie"
+    },
+    "labels": {
+      "main": "Główne"
+    },
+    "accessibility": {
+      "mainPhotoEdit": "Główne zdjęcie, edytuj",
+      "photoEdit": "Zdjęcie {{number}}, edytuj",
+      "addPhoto": "Dodaj zdjęcie"
+    }
   }
 }

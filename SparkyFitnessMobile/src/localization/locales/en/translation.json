@@ -3114,5 +3114,29 @@
       "goals": "Goals",
       "lookedUp": "Looked up {{name}}"
     }
+  },
+  "foodImagePicker": {
+    "photos": "Photos",
+    "errors": {
+      "addFailed": "Could not add photo",
+      "cameraPermission": "Camera permission needed",
+      "cameraPermissionBody": "Enable camera access to add a photo."
+    },
+    "actions": {
+      "addPhoto": "Add photo",
+      "takePhoto": "Take Photo",
+      "chooseFromLibrary": "Choose from Library",
+      "setAsMain": "Set as main",
+      "remove": "Remove",
+      "photo": "Photo"
+    },
+    "labels": {
+      "main": "Main"
+    },
+    "accessibility": {
+      "mainPhotoEdit": "Main photo, edit",
+      "photoEdit": "Photo {{number}}, edit",
+      "addPhoto": "Add photo"
+    }
   }
 }
