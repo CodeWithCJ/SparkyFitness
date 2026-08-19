@@ -28,7 +28,7 @@ export function localizeFastingStage(
     },
   };
   const translated = copy[stage.key];
-  return translated ? { ...translated, rangeLabel: stage.rangeLabel } : stage;
+    return translated ? { ...translated, rangeLabel: stage.rangeLabel } : { ...stage, description: stage.description };
 }
 
 /** Translate a known fasting protocol; arbitrary server/user values stay literal. */
