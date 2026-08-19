@@ -3786,5 +3786,14 @@
     "title": "Konfiguracja ciąży",
     "description": "Powiedz nam, jak oszacować termin porodu. Możesz zmienić to później.",
     "numberOfBabies": "Liczba dzieci"
+  },
+  "foodEntryCopy": {
+    "success": "Posiłek skopiowany",
+    "failed": "Nie udało się skopiować posiłku"
+  },
+  "foodDelete": {
+    "failed": "Nie udało się usunąć jedzenia",
+    "title": "Usuń jedzenie",
+    "message": "Czy na pewno chcesz usunąć to jedzenie? Istniejące wpisy pozostaną bez zmian."
   }
 }

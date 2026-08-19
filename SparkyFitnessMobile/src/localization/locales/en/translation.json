@@ -3786,5 +3786,14 @@
     "title": "Pregnancy Setup",
     "description": "Tell us how to estimate your due date. You can change this later.",
     "numberOfBabies": "Number of babies"
+  },
+  "foodEntryCopy": {
+    "success": "Meal copied",
+    "failed": "Failed to copy meal"
+  },
+  "foodDelete": {
+    "failed": "Failed to delete food",
+    "title": "Delete Food",
+    "message": "Are you sure you want to delete this food? Existing logged entries will stay unchanged."
   }
 }
