@@ -2990,5 +2990,31 @@
       "addExercise": "Add an exercise",
       "addExerciseSet": "Add at least one exercise with a set before saving."
     }
+  },
+  "logScreen": {
+    "title": "Logs",
+    "all": "All",
+    "clearLogs": "Clear logs",
+    "filterSaveFailed": "Failed to save log filter.",
+    "clearTitle": "Clear Logs",
+    "clearMessage": "Are you sure you want to clear all logs?",
+    "copied": "Copied",
+    "copiedMessage": "Log entry copied to clipboard",
+    "noLogs": "No logs yet.",
+    "noMatchingLogs": "No logs match the current filter.",
+    "showingLogs_one": "Showing {{count}} log",
+    "showingLogs_other": "Showing {{count}} logs",
+    "status": {
+      "error": "Error",
+      "warning": "Warning",
+      "info": "Info",
+      "debug": "Debug"
+    },
+    "clipboard": {
+      "status": "Status",
+      "message": "Message",
+      "details": "Details",
+      "timestamp": "Timestamp"
+    }
   }
 }

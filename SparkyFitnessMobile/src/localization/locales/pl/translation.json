@@ -3028,5 +3028,33 @@
       "addExercise": "Dodaj ćwiczenie",
       "addExerciseSet": "Przed zapisaniem dodaj co najmniej jedno ćwiczenie z serią."
     }
+  },
+  "logScreen": {
+    "title": "Dzienniki",
+    "all": "Wszystkie",
+    "clearLogs": "Wyczyść dzienniki",
+    "filterSaveFailed": "Nie udało się zapisać filtra dzienników.",
+    "clearTitle": "Wyczyścić dzienniki",
+    "clearMessage": "Czy na pewno chcesz wyczyścić wszystkie dzienniki?",
+    "copied": "Skopiowano",
+    "copiedMessage": "Wpis dziennika skopiowano do schowka",
+    "noLogs": "Brak dzienników.",
+    "noMatchingLogs": "Brak dzienników pasujących do bieżącego filtra.",
+    "showingLogs_one": "Wyświetlanie {{count}} wpisu",
+    "showingLogs_few": "Wyświetlanie {{count}} wpisów",
+    "showingLogs_many": "Wyświetlanie {{count}} wpisów",
+    "showingLogs_other": "Wyświetlanie {{count}} wpisu",
+    "status": {
+      "error": "Błąd",
+      "warning": "Ostrzeżenie",
+      "info": "Informacja",
+      "debug": "Debugowanie"
+    },
+    "clipboard": {
+      "status": "Status",
+      "message": "Wiadomość",
+      "details": "Szczegóły",
+      "timestamp": "Znacznik czasu"
+    }
   }
 }
