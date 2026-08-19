@@ -3040,5 +3040,25 @@
       "details": "Details",
       "timestamp": "Timestamp"
     }
+  },
+  "testQuickLog": {
+    "title": "Log a Test",
+    "ovulation": "Ovulation (OPK)",
+    "pregnancy": "Pregnancy (HPT)",
+    "recent": "Recent Logged Tests",
+    "testLogged": "Test logged",
+    "logFailed": "Could not log test",
+    "removeFailed": "Could not remove test",
+    "results": {
+      "negative": "Negative",
+      "low": "Low",
+      "high": "High",
+      "peak": "Peak",
+      "faint": "Faint",
+      "positive": "Positive"
+    },
+    "ovulationShort": "Ovulation",
+    "pregnancyShort": "Pregnancy",
+    "entryTitle": "{{type}} · {{result}}"
   }
 }

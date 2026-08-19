@@ -3080,5 +3080,25 @@
       "details": "Szczegóły",
       "timestamp": "Znacznik czasu"
     }
+  },
+  "testQuickLog": {
+    "title": "Zapisz wynik testu",
+    "ovulation": "Owulacja (OPK)",
+    "pregnancy": "Ciąża (HPT)",
+    "recent": "Ostatnio zapisane testy",
+    "testLogged": "Wynik testu zapisany",
+    "logFailed": "Nie udało się zapisać wyniku testu",
+    "removeFailed": "Nie udało się usunąć wyniku testu",
+    "results": {
+      "negative": "Negatywny",
+      "low": "Niski",
+      "high": "Wysoki",
+      "peak": "Szczyt",
+      "faint": "Blada kreska",
+      "positive": "Pozytywny"
+    },
+    "ovulationShort": "Owulacja",
+    "pregnancyShort": "Ciąża",
+    "entryTitle": "{{type}} · {{result}}"
   }
 }
