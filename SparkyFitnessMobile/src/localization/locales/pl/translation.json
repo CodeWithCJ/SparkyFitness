@@ -3210,5 +3210,27 @@
       "deleteFailed": "Nie udało się usunąć posiłku"
     },
     "deleteConfirm": "Usunąć ten posiłek?"
+  },
+  "exerciseMutations": {
+    "errors": {
+      "deleteFailed": "Nie udało się usunąć",
+      "saveWorkout": "Nie udało się zapisać treningu",
+      "updateWorkout": "Nie udało się zaktualizować treningu",
+      "saveActivity": "Nie udało się zapisać aktywności",
+      "updateActivity": "Nie udało się zaktualizować aktywności",
+      "createExercise": "Nie udało się utworzyć ćwiczenia",
+      "updateExercise": "Nie udało się zaktualizować ćwiczenia",
+      "deleteExercise": "Nie udało się usunąć ćwiczenia",
+      "editPermission": "Nie masz uprawnień do edycji tego ćwiczenia.",
+      "deletePermission": "Nie masz uprawnień do usunięcia tego ćwiczenia."
+    },
+    "confirm": {
+      "deleteWorkoutTitle": "Usunąć trening?",
+      "deleteWorkoutMessage": "Ten trening i wszystkie jego ćwiczenia zostaną trwale usunięte.",
+      "deleteActivityTitle": "Usunąć aktywność?",
+      "deleteActivityMessage": "Ta aktywność zostanie trwale usunięta.",
+      "deleteExerciseTitle": "Usunąć ćwiczenie?",
+      "deleteExerciseMessage": "To ćwiczenie zostanie usunięte z biblioteki. Zapisane wcześniej sesje pozostaną zachowane."
+    }
   }
 }

@@ -3170,5 +3170,27 @@
       "deleteFailed": "Failed to delete meal"
     },
     "deleteConfirm": "Delete this meal?"
+  },
+  "exerciseMutations": {
+    "errors": {
+      "deleteFailed": "Failed to delete",
+      "saveWorkout": "Failed to save workout",
+      "updateWorkout": "Failed to update workout",
+      "saveActivity": "Failed to save activity",
+      "updateActivity": "Failed to update activity",
+      "createExercise": "Could not create exercise",
+      "updateExercise": "Failed to update exercise",
+      "deleteExercise": "Failed to delete exercise",
+      "editPermission": "You don't have permission to edit this exercise.",
+      "deletePermission": "You don't have permission to delete this exercise."
+    },
+    "confirm": {
+      "deleteWorkoutTitle": "Delete Workout?",
+      "deleteWorkoutMessage": "This workout and all its exercises will be permanently removed.",
+      "deleteActivityTitle": "Delete Activity?",
+      "deleteActivityMessage": "This activity will be permanently removed.",
+      "deleteExerciseTitle": "Delete Exercise?",
+      "deleteExerciseMessage": "This exercise will be removed from your library. Past logged sessions are preserved."
+    }
   }
 }
