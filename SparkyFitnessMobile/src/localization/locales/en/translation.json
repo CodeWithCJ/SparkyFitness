@@ -161,7 +161,8 @@
       "openSettings": "Open Settings"
     },
     "rest": {
-      "title": "Rest complete"
+      "title": "Rest complete",
+      "nextSetTitle": "Rest complete: next set up"
     },
     "fasting": {
       "title": "Fasting goal reached",
@@ -578,7 +579,8 @@
     "headerValuePlaceholder": "Value",
     "removeHeader": "Remove header {{number}}",
     "hideHeaderValue": "Hide header value",
-    "showHeaderValue": "Show header value"
+    "showHeaderValue": "Show header value",
+    "noStandardMethods": "No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator."
   },
   "onboarding": {
     "subtitle": "Your self-hosted fitness tracker",
@@ -2721,7 +2723,8 @@
       "mealsNotSupported": "Meals not supported here",
       "selectFoodInstead": "Select a food instead of another meal.",
       "savedFoodUnitFailed": "Saved food, but not the new unit",
-      "savedFoodUnitFailedDetails": "You can still add the food, then try saving that unit again."
+      "savedFoodUnitFailedDetails": "You can still add the food, then try saving that unit again.",
+      "chooseDifferentServing": "Choose a different serving."
     },
     "actions": {
       "adjustNutrition": "Adjust nutrition",
@@ -3896,5 +3899,8 @@
       "title": "This Week's To-Do",
       "empty": "Nothing on your checklist for this week."
     }
+  },
+  "workoutDraft": {
+    "saveFailed": "Failed to save draft"
   }
 }

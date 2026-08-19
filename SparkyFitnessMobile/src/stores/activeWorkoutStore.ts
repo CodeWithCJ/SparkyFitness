@@ -1,3 +1,4 @@
+import i18n from '../localization/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { create } from 'zustand';
@@ -832,9 +833,9 @@ function buildRestNotificationContent(
     } else if (desc.reps != null) {
       body += ` · ${desc.reps} rep${desc.reps === 1 ? '' : 's'} target`;
     }
-    return { title: 'Rest complete: next set up', body };
+    return { title: i18n.t('notifications.rest.nextSetTitle', { defaultValue: 'Rest complete: next set up' }), body };
   }
-  return { title: 'Rest complete', body: fallbackExerciseName };
+  return { title: i18n.t('notifications.rest.title', { defaultValue: 'Rest complete' }), body: fallbackExerciseName };
 }
 
 /**

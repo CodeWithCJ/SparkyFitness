@@ -156,12 +156,13 @@
     },
     "exactAlarm": {
       "title": "Alerty na czas",
-      "message": "Android opóźnia zaplanowane alerty, jeśli SparkyFitness nie może ustawiać dokładnych alarmów. Włącz „Alarmy i przypomnienia”, aby timery odpoczynku i przypomnienia o lekach działały na czas.",
+      "message": "Android opóźnia zaplanowane alerty, jeśli SparkyFitness nie może ustawiać alarmów dokładnych. Włącz „Alarmy i przypomnienia”, aby timery odpoczynku i przypomnienia o lekach działały na czas.",
       "notNow": "Nie teraz",
       "openSettings": "Otwórz ustawienia"
     },
     "rest": {
-      "title": "Odpoczynek zakończony"
+      "title": "Odpoczynek zakończony",
+      "nextSetTitle": "Odpoczynek zakończony: następna seria"
     },
     "fasting": {
       "title": "Osiągnięto cel postu",
@@ -578,7 +579,8 @@
     "headerValuePlaceholder": "Wartość",
     "removeHeader": "Usuń nagłówek {{number}}",
     "hideHeaderValue": "Ukryj wartość nagłówka",
-    "showHeaderValue": "Pokaż wartość nagłówka"
+    "showHeaderValue": "Pokaż wartość nagłówka",
+    "noStandardMethods": "Na tym serwerze nie włączono standardowych metod logowania. Użyj klucza API lub skontaktuj się z administratorem."
   },
   "onboarding": {
     "subtitle": "Twój własny tracker fitness",
@@ -2721,7 +2723,8 @@
       "mealsNotSupported": "Posiłki nie są tu obsługiwane",
       "selectFoodInstead": "Wybierz produkt zamiast innego posiłku.",
       "savedFoodUnitFailed": "Zapisano produkt, ale nie nową jednostkę",
-      "savedFoodUnitFailedDetails": "Możesz nadal dodać produkt, a następnie ponownie spróbować zapisać tę jednostkę."
+      "savedFoodUnitFailedDetails": "Możesz nadal dodać produkt, a następnie ponownie spróbować zapisać tę jednostkę.",
+      "chooseDifferentServing": "Wybierz inną porcję."
     },
     "actions": {
       "adjustNutrition": "Dostosuj wartości odżywcze",
@@ -3896,5 +3899,8 @@
       "title": "Zadania na ten tydzień",
       "empty": "Brak zadań na ten tydzień."
     }
+  },
+  "workoutDraft": {
+    "saveFailed": "Nie udało się zapisać szkicu"
   }
 }

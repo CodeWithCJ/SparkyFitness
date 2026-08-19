@@ -759,7 +759,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 {!hasEmail && !hasOidc && (
                   <View className="py-6 px-4 items-center bg-raised rounded-lg border border-border-subtle mb-4">
                     <Text className="text-center text-sm text-text-secondary">
-                      No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.
+                      {t('auth.noStandardMethods', { defaultValue: 'No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.' })}
                     </Text>
                   </View>
                 )}
