@@ -2711,5 +2711,39 @@
       "meal": "Posiłek",
       "itemCount": "{{count}} element"
     }
+  },
+  "editBarcode": {
+    "title": "Kod kreskowy",
+    "errors": {
+      "invalid": "Nieprawidłowy kod kreskowy",
+      "invalidFormat": "Kod kreskowy musi zawierać od 8 do 14 cyfr.",
+      "saveFailed": "Nie udało się zapisać kodu kreskowego",
+      "removeFailed": "Nie udało się usunąć kodu kreskowego"
+    },
+    "confirm": {
+      "inUseTitle": "Kod kreskowy jest już używany",
+      "inUseMessage": "Ten kod jest już przypisany do „{{otherName}}”. Czy mimo to przypisać go do „{{foodName}}”?",
+      "removeTitle": "Usuń kod kreskowy",
+      "removeMessage": "Usunąć kod kreskowy z „{{foodName}}”?"
+    },
+    "actions": {
+      "attach": "Przypisz",
+      "remove": "Usuń",
+      "scanWithCamera": "Skanuj aparatem",
+      "removeBarcode": "Usuń kod kreskowy"
+    },
+    "success": {
+      "saved": "Zapisano kod kreskowy",
+      "removed": "Usunięto kod kreskowy"
+    },
+    "accessibility": {
+      "save": "Zapisz kod kreskowy"
+    },
+    "labels": {
+      "forFood": "Dla: {{foodName}}"
+    },
+    "help": {
+      "standardFormat": "Standardowe kody kreskowe mają od 8 do 14 cyfr."
+    }
   }
 }

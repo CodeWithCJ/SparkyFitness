@@ -382,3 +382,16 @@ describe('FoodSearch localization', () => {
     });
   });
 });
+
+describe('EditBarcode localization', () => {
+  it('resolves barcode confirmation, validation, and action copy in Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('pl');
+      expect(i18n.t('editBarcode.title', { defaultValue: 'Barcode' })).toBe('Kod kreskowy');
+      expect(i18n.t('editBarcode.confirm.inUseMessage', { defaultValue: 'This barcode is already attached to "{{otherName}}". Attach it to "{{foodName}}" anyway?', otherName: 'A', foodName: 'B' })).toBe('Ten kod jest już przypisany do „A”. Czy mimo to przypisać go do „B”?');
+      expect(i18n.t('editBarcode.errors.invalidFormat', { defaultValue: 'Barcode must be 8-14 digits.' })).toContain('8');
+      expect(i18n.t('editBarcode.actions.attach', { defaultValue: 'Attach' })).toBe('Przypisz');
+    });
+  });
+});

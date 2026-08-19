@@ -2677,5 +2677,39 @@
       "meal": "Meal",
       "itemCount": "{{count}} item"
     }
+  },
+  "editBarcode": {
+    "title": "Barcode",
+    "errors": {
+      "invalid": "Invalid barcode",
+      "invalidFormat": "Barcode must be 8-14 digits.",
+      "saveFailed": "Could not save barcode",
+      "removeFailed": "Could not remove barcode"
+    },
+    "confirm": {
+      "inUseTitle": "Barcode already in use",
+      "inUseMessage": "This barcode is already attached to \"{{otherName}}\". Attach it to \"{{foodName}}\" anyway?",
+      "removeTitle": "Remove barcode",
+      "removeMessage": "Remove the barcode from \"{{foodName}}\"?"
+    },
+    "actions": {
+      "attach": "Attach",
+      "remove": "Remove",
+      "scanWithCamera": "Scan with camera",
+      "removeBarcode": "Remove barcode"
+    },
+    "success": {
+      "saved": "Barcode saved",
+      "removed": "Barcode removed"
+    },
+    "accessibility": {
+      "save": "Save barcode"
+    },
+    "labels": {
+      "forFood": "For {{foodName}}"
+    },
+    "help": {
+      "standardFormat": "Standard barcodes are 8 to 14 digits."
+    }
   }
 }
