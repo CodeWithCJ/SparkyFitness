@@ -42,8 +42,8 @@ export function ownershipFilterHeaderMenu({
     ionicon: 'filter',
     showsBadge: filter !== 'all',
     badgeValue: filter !== 'all' ? '•' : undefined,
-    accessibilityLabel: filterAccessibilityLabel.replace('{{noun}}', noun),
-    customAccessibilityLabel: filterAccessibilityLabel.replace('{{noun}}', noun),
+    accessibilityLabel: filterAccessibilityLabel.replace('{{noun}}', noun).replace(/,?\s*filtered to \{\{filter\}\}/, '').replace(/,?\s*wybrano: \{\{filter\}\}/, ''),
+    customAccessibilityLabel: filterAccessibilityLabel.replace('{{noun}}', noun).replace(/,?\s*filtered to \{\{filter\}\}/, '').replace(/,?\s*wybrano: \{\{filter\}\}/, ''),
     nativeAccessibilityLabel: (() => {
       const base = filterAccessibilityLabel.replace('{{noun}}', noun);
       if (filter === 'all') return base;
