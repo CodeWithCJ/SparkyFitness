@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -43,6 +44,7 @@ interface TimeSheetProps {
 }
 
 const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(({ value, onSelectTime }, ref) => {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   const [surfaceBg, textMuted, accentPrimary, textPrimary, borderSubtle] = useCSSVariable([
@@ -122,7 +124,7 @@ const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(({ value, onSelectTim
         />
         <View className="px-2 pt-2">
           <Button variant="primary" onPress={handleDone}>
-            Done
+            {t('common.done', { defaultValue: 'Done' })}
           </Button>
         </View>
       </BottomSheetView>
