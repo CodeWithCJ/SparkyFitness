@@ -3837,5 +3837,17 @@
   "symptoms": {
     "saveFailed": "Failed to save symptom",
     "removeFailed": "Failed to remove symptom"
+  },
+  "waterIntake": {
+    "updateFailed": "Error",
+    "updateMessage": "Failed to update water intake. Please try again.",
+    "noPrimary": "No Primary Container",
+    "noContainers": "No Water Containers",
+    "multipleNoPrimary": "You have multiple water containers but none is marked as primary. Please set one as primary on the server.",
+    "configure": "Please configure a water container on the server to track hydration."
+  },
+  "activeWorkoutAutosave": {
+    "failedTitle": "Workout not saved",
+    "failedMessage": "Changes are kept on this device and will retry."
   }
 }

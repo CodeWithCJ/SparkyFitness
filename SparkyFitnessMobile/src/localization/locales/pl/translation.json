@@ -3837,5 +3837,17 @@
   "symptoms": {
     "saveFailed": "Nie udało się zapisać objawu",
     "removeFailed": "Nie udało się usunąć objawu"
+  },
+  "waterIntake": {
+    "updateFailed": "Błąd",
+    "updateMessage": "Nie udało się zaktualizować ilości wody. Spróbuj ponownie.",
+    "noPrimary": "Brak głównego pojemnika",
+    "noContainers": "Brak pojemników na wodę",
+    "multipleNoPrimary": "Masz kilka pojemników na wodę, ale żaden nie jest oznaczony jako główny. Ustaw główny pojemnik na serwerze.",
+    "configure": "Skonfiguruj pojemnik na wodę na serwerze, aby śledzić nawodnienie."
+  },
+  "activeWorkoutAutosave": {
+    "failedTitle": "Nie zapisano treningu",
+    "failedMessage": "Zmiany są przechowywane na tym urządzeniu i zostaną ponownie wysłane."
   }
 }

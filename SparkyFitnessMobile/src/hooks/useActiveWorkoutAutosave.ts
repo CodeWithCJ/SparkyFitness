@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { updateWorkout } from '../services/api/exerciseApi';
@@ -110,6 +111,7 @@ export async function flushActiveWorkoutBeforeClear(
 export function useActiveWorkoutAutosave(): {
   flush: () => Promise<boolean>;
 } {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const sessionRevision = useActiveWorkoutStore((s) => s.sessionRevision);
   const hasUnsavedChanges = useActiveWorkoutStore((s) => s.hasUnsavedChanges);
@@ -188,8 +190,8 @@ export function useActiveWorkoutAutosave(): {
       failureToastShownRef.current = true;
       Toast.show({
         type: 'error',
-        text1: 'Workout not saved',
-        text2: 'Changes are kept on this device and will retry.',
+        text1: t('activeWorkoutAutosave.failedTitle', { defaultValue: 'Workout not saved' }),
+        text2: t('activeWorkoutAutosave.failedMessage', { defaultValue: 'Changes are kept on this device and will retry.' }),
       });
     }
     return ok;

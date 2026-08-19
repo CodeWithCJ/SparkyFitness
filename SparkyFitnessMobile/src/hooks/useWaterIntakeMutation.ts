@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
@@ -15,6 +16,7 @@ interface UseWaterIntakeMutationOptions {
 }
 
 export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeMutationOptions) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [selectedContainerId, setSelectedContainerId] = useState<number | null>(null);
 
@@ -81,7 +83,7 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
       });
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update water intake. Please try again.' });
+      Toast.show({ type: 'error', text1: t('waterIntake.updateFailed', { defaultValue: 'Error' }), text2: t('waterIntake.updateMessage', { defaultValue: 'Failed to update water intake. Please try again.' }) });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(date) });
@@ -92,10 +94,10 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
     const hasMultiple = containers && containers.length > 1;
     Toast.show({
       type: 'info',
-      text1: hasMultiple ? 'No Primary Container' : 'No Water Containers',
+      text1: hasMultiple ? t('waterIntake.noPrimary', { defaultValue: 'No Primary Container' }) : t('waterIntake.noContainers', { defaultValue: 'No Water Containers' }),
       text2: hasMultiple
-        ? 'You have multiple water containers but none is marked as primary. Please set one as primary on the server.'
-        : 'Please configure a water container on the server to track hydration.',
+        ? t('waterIntake.multipleNoPrimary', { defaultValue: 'You have multiple water containers but none is marked as primary. Please set one as primary on the server.' })
+        : t('waterIntake.configure', { defaultValue: 'Please configure a water container on the server to track hydration.' }),
       visibilityTime: 4000,
     });
   };
