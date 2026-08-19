@@ -58,7 +58,8 @@
     "dismissMenu": "Zamknij menu",
     "units": {
       "cm": "cm"
-    }
+    },
+    "unknownDate": "Nieznana data"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -1504,7 +1505,8 @@
     "setCount_many": "{{formattedCount}} serii",
     "setCount_other": "{{formattedCount}} serii",
     "caloriesShort": "kcal",
-    "unknownExercise": "Nieznane ćwiczenie"
+    "unknownExercise": "Nieznane ćwiczenie",
+    "addNotePlaceholder": "Dodaj notatkę…"
   },
   "cycleCard": {
     "mode": {
@@ -2228,7 +2230,8 @@
     "pastEntriesFailed": "Nie udało się zaktualizować wcześniejszych wpisów",
     "foodSaved": "Produkt został zapisany.",
     "updateFailed": "Nie udało się zaktualizować produktu",
-    "editTitle": "Edytuj produkt"
+    "editTitle": "Edytuj produkt",
+    "addFood": "Dodaj produkt"
   },
   "exerciseHistory": {
     "noSetData": "Brak danych o seriach",

@@ -107,7 +107,7 @@ const SessionCard: React.FC<{
     <View className="bg-surface rounded-xl p-4">
       <View className="flex-row items-center justify-between">
         <Text className="text-text-primary text-base font-semibold">
-          {session.entry_date ? formatDateLabel(session.entry_date) : 'Unknown date'}
+          {session.entry_date ? formatDateLabel(session.entry_date) : t('common.unknownDate', { defaultValue: 'Unknown date' })}
         </Text>
         {presetName ? (
           <Text className="text-text-muted text-sm flex-shrink ml-3" numberOfLines={1}>

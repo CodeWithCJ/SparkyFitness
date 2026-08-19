@@ -13,7 +13,7 @@ import { addLog } from './LogService';
 import type { HealthDataDisplayState } from '../types/healthRecords';
 import type { TimeRange } from './storage';
 
-export const NO_DATA_DISPLAY = 'No data';
+export const NO_DATA_DISPLAY = '__NO_DATA__';
 
 // --- Shared helpers for extracting values from polymorphic health records ---
 

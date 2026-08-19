@@ -113,7 +113,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   onSubmit,
   submitRequestRef,
   onServingChange,
-  submitLabel = 'Add Food',
+  submitLabel,
   isSubmitting = false,
   hideSubmitButton = false,
   showAutoScaleNutrition = false,
@@ -127,6 +127,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   onCustomNutrientsChange,
 }) => {
   const { t } = useTranslation();
+  const resolvedSubmitLabel = submitLabel ?? t('foodForm.addFood', { defaultValue: 'Add Food' });
   const [form, setForm] = useState<FoodFormData>(() =>
     buildDisplayFormState(initialValues),
   );
@@ -1160,7 +1161,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           loading={isSubmitting}
           onPress={handleSubmitPress}
         >
-          {submitLabel}
+          {resolvedSubmitLabel}
         </Button>
         )}
       </ScrollView>

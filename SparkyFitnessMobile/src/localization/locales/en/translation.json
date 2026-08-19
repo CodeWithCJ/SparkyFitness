@@ -58,7 +58,8 @@
     "dismissMenu": "Dismiss menu",
     "units": {
       "cm": "cm"
-    }
+    },
+    "unknownDate": "Unknown date"
   },
   "settings": {
     "app": "App Settings",
@@ -1504,7 +1505,8 @@
     "setCount_many": "{{formattedCount}} sets",
     "setCount_other": "{{formattedCount}} sets",
     "caloriesShort": "Cal",
-    "unknownExercise": "Unknown exercise"
+    "unknownExercise": "Unknown exercise",
+    "addNotePlaceholder": "Add a note…"
   },
   "cycleCard": {
     "mode": {
@@ -2228,7 +2230,8 @@
     "pastEntriesFailed": "Could not update past entries",
     "foodSaved": "Your food was saved.",
     "updateFailed": "Could not update food",
-    "editTitle": "Edit Food"
+    "editTitle": "Edit Food",
+    "addFood": "Add Food"
   },
   "exerciseHistory": {
     "noSetData": "No set data",

@@ -116,7 +116,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
             {/* Header */}
             <View className="items-center mb-5">
               <Text className="text-text-primary text-lg font-semibold text-center" numberOfLines={2}>
-                {entry.food_name || 'Unknown food'}
+                {entry.food_name || t('foodRow.unknownFood', { defaultValue: 'Unknown food' })}
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
                 {entry.serving_size} {formatServingUnit(entry.unit)} = {entry.calories} {t('nutrition.caloriesShort', { defaultValue: 'Cal' })}
@@ -165,7 +165,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
               onPress={handleDone}
               disabled={isPending || quantity <= 0}
             >
-              {isPending ? 'Saving...' : 'Done'}
+              {isPending ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.done', { defaultValue: 'Done' })}
             </Button>
           </>
         )}
