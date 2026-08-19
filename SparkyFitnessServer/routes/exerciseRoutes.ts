@@ -1,5 +1,4 @@
 import express from 'express';
-import type { Response } from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import exerciseService from '../services/exerciseService.js';
 import reportRepository from '../models/reportRepository.js';
@@ -62,43 +61,46 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+type ParsedExerciseData =
+  | { ok: true; data: ExerciseWriteArrayFields }
+  | { ok: false; body: { error: string; details?: unknown } };
+
 /**
  * Parses the multipart `exerciseData` JSON field and validates it against
- * exerciseWriteArrayFieldsSchema, or writes the standard 400 response and
- * returns null. Malformed/missing JSON gets the same clean 400 a shape
- * validation failure does, instead of falling through to the generic error
- * handler.
+ * exerciseWriteArrayFieldsSchema. Returns the standard 400 body instead of
+ * writing the response itself, so callers can finish cleaning up rejected
+ * uploads before the client is told the request failed. Malformed/missing
+ * JSON gets the same clean 400 a shape validation failure does, instead of
+ * falling through to the generic error handler.
  */
-function parseExerciseData(
-  raw: unknown,
-  res: Response
-): ExerciseWriteArrayFields | null {
+function parseExerciseData(raw: unknown): ParsedExerciseData {
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(String(raw));
   } catch {
-    res.status(400).json({ error: 'Invalid exercise payload.' });
-    return null;
+    return { ok: false, body: { error: 'Invalid exercise payload.' } };
   }
   const result = exerciseWriteArrayFieldsSchema.safeParse(parsedJson);
   if (!result.success) {
-    res.status(400).json({
-      error: 'Invalid exercise payload.',
-      details: result.error.flatten(),
-    });
-    return null;
+    return {
+      ok: false,
+      body: {
+        error: 'Invalid exercise payload.',
+        details: result.error.flatten(),
+      },
+    };
   }
-  return result.data;
+  return { ok: true, data: result.data };
 }
 
 /**
  * multer has already written any uploaded files to disk by the time
  * parseExerciseData can reject the request (validation runs in the route
  * handler, after the upload middleware). Delete them so a rejected request
- * doesn't leave orphaned files under uploads/exercises/. Awaited by callers,
- * but doesn't delay the client's response: parseExerciseData has already
- * sent it before cleanup runs. Best-effort: a failed delete is logged, not
- * surfaced to the client.
+ * doesn't leave orphaned files under uploads/exercises/. Awaited by callers
+ * before they send the 400, so a client that has seen the response can rely
+ * on the orphans already being gone. Best-effort: a failed delete is logged,
+ * not surfaced to the client.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function cleanupUploadedFiles(files: any): Promise<void> {
@@ -1002,12 +1004,13 @@ router.post(
   upload.array('images', 10),
   async (req, res, next) => {
     try {
-      const exerciseData = parseExerciseData(req.body?.exerciseData, res);
-      if (!exerciseData) {
+      const parsed = parseExerciseData(req.body?.exerciseData);
+      if (!parsed.ok) {
         // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
         await cleanupUploadedFiles(req.files);
-        return;
+        return res.status(400).json(parsed.body);
       }
+      const exerciseData = parsed.data;
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const imagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
@@ -1225,12 +1228,13 @@ router.put(
         .json({ error: 'Exercise ID is required and must be a valid UUID.' });
     }
     try {
-      const exerciseData = parseExerciseData(req.body?.exerciseData, res);
-      if (!exerciseData) {
+      const parsed = parseExerciseData(req.body?.exerciseData);
+      if (!parsed.ok) {
         // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
         await cleanupUploadedFiles(req.files);
-        return;
+        return res.status(400).json(parsed.body);
       }
+      const exerciseData = parsed.data;
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const newImagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
