@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n from '../localization/i18n';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useQueryClient } from '@tanstack/react-query';
@@ -54,13 +56,13 @@ export function promptForActiveWorkoutConflict(
 ): boolean {
   if (useActiveWorkoutStore.getState().sessionId === null) return false;
   Alert.alert(
-    'Workout in progress',
-    'You already have a workout in progress. Starting another clears it here. Any sets already saved stay in your diary.',
+    i18n.t('liveWorkout.inProgressTitle', { defaultValue: 'Workout in progress' }),
+    i18n.t('liveWorkout.inProgressMessage', { defaultValue: 'You already have a workout in progress. Starting another clears it here. Any sets already saved stay in your diary.' }),
     [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Go to Workout', onPress: options.onGoToWorkout },
+      { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+      { text: i18n.t('liveWorkout.goToWorkout', { defaultValue: 'Go to Workout' }), onPress: options.onGoToWorkout },
       {
-        text: 'Clear & Start',
+        text: i18n.t('liveWorkout.clearAndStart', { defaultValue: 'Clear & Start' }),
         style: 'destructive',
         onPress: () => {
           void (async () => {
@@ -90,6 +92,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
   startLiveWorkout: (args: StartLiveWorkoutArgs) => Promise<void>;
   isStarting: boolean;
 } {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { createSession, invalidateCache } = useCreateWorkout();
   const inFlightRef = useRef(false);
@@ -103,8 +106,8 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
       if (exercises.length === 0) {
         Toast.show({
           type: 'error',
-          text1: 'Nothing to start',
-          text2: 'This preset has no exercises.',
+          text1: t('liveWorkout.nothingToStart', { defaultValue: 'Nothing to start' }),
+          text2: t('liveWorkout.noExercises', { defaultValue: 'This preset has no exercises.' }),
         });
         return;
       }
@@ -169,8 +172,8 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
     async (args: StartLiveWorkoutArgs) => {
       if (!queryClient.getQueryData(serverConnectionQueryKey)) {
         Alert.alert(
-          'No Server Connected',
-          'Configure your server connection in Settings to start a workout.',
+          t('liveWorkout.noServerTitle', { defaultValue: 'No Server Connected' }),
+          t('liveWorkout.noServerMessage', { defaultValue: 'Configure your server connection in Settings to start a workout.' }),
         );
         return;
       }

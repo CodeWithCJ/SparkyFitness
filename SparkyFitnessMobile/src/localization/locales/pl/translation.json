@@ -2221,7 +2221,18 @@
     "missingName": "Brak nazwy",
     "nameRequired": "Wpisz nazwę jedzenia.",
     "invalidServingSize": "Nieprawidłowa wielkość porcji",
-    "servingSizeRequired": "Wielkość porcji musi być większa od zera."
+    "servingSizeRequired": "Wielkość porcji musi być większa od zera.",
+    "loadingDetails": "Szczegóły produktu są jeszcze wczytywane. Spróbuj ponownie za chwilę.",
+    "savedNewVariant": "Zapisano jako nowy wariant",
+    "pastUpdated": "Zaktualizowano wcześniejsze wpisy",
+    "pastUpdateFailed": "Nie udało się zaktualizować wcześniejszych wpisów",
+    "foodSaved": "Produkt został zapisany.",
+    "updateFoodFailed": "Nie udało się zaktualizować produktu",
+    "saveUnitFailed": "Nie udało się zapisać nowej jednostki",
+    "equivalentsFailed": "Nie udało się zapisać niektórych jednostek zamiennych",
+    "saveVariantFailed": "Nie udało się zapisać nowego wariantu",
+    "saveNutritionFailed": "Nie udało się zapisać wartości odżywczych do przyszłego użycia",
+    "editFoodTitle": "Edytuj produkt"
   },
   "foodPhotoImprove": {
     "grams": "gramy",
@@ -3540,5 +3551,23 @@
     "workoutPlaceholder": "Trening",
     "useYesterday": "Użyj wczoraj",
     "useToday": "Użyj dzisiaj"
+  },
+  "mealMutations": {
+    "createFailed": "Nie udało się utworzyć posiłku",
+    "updateFailed": "Nie udało się zaktualizować posiłku",
+    "deleteFailed": "Nie udało się usunąć posiłku",
+    "deleteTitle": "Usuń posiłek",
+    "deleteWithUsage": "Usunąć ten posiłek z biblioteki? Zapisane wpisy w dzienniku pozostaną bez zmian, ale powiązane plany posiłków mogą zostać zmienione.",
+    "deleteWithoutUsage": "Usunąć ten posiłek z biblioteki? Zapisane wpisy w dzienniku pozostaną bez zmian."
+  },
+  "liveWorkout": {
+    "inProgressTitle": "Trening w toku",
+    "inProgressMessage": "Trening jest już rozpoczęty. Rozpoczęcie kolejnego wyczyści bieżący trening. Zapisane serie pozostaną w dzienniku.",
+    "goToWorkout": "Przejdź do treningu",
+    "clearAndStart": "Wyczyść i rozpocznij",
+    "nothingToStart": "Nie można rozpocząć",
+    "noExercises": "Ten szablon nie zawiera ćwiczeń.",
+    "noServerTitle": "Brak połączenia z serwerem",
+    "noServerMessage": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby rozpocząć trening."
   }
 }

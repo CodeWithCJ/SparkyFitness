@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import type { ImageUploadArgs } from '../utils/pickerImages';
 import {
@@ -144,6 +145,7 @@ type UpdateMealVariables = {
 };
 
 export function useCreateMeal() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -155,8 +157,8 @@ export function useCreateMeal() {
     onError: () => {
       Toast.show({
         type: 'error',
-        text1: 'Failed to create meal',
-        text2: 'Please try again.',
+        text1: t('mealMutations.createFailed', { defaultValue: 'Failed to create meal' }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     },
   });
@@ -173,6 +175,7 @@ export function useCreateMeal() {
 }
 
 export function useUpdateMeal(options?: { mealId?: string; onSuccess?: (meal: Meal) => void }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { mealId, onSuccess } = options ?? {};
 
@@ -190,8 +193,8 @@ export function useUpdateMeal(options?: { mealId?: string; onSuccess?: (meal: Me
     onError: () => {
       Toast.show({
         type: 'error',
-        text1: 'Failed to update meal',
-        text2: 'Please try again.',
+        text1: t('mealMutations.updateFailed', { defaultValue: 'Failed to update meal' }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     },
   });
@@ -206,6 +209,7 @@ export function useUpdateMeal(options?: { mealId?: string; onSuccess?: (meal: Me
 }
 
 export function useDeleteMeal(options: { mealId?: string; onSuccess?: () => void }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { mealId, onSuccess } = options;
 
@@ -223,8 +227,8 @@ export function useDeleteMeal(options: { mealId?: string; onSuccess?: () => void
     onError: () => {
       Toast.show({
         type: 'error',
-        text1: 'Failed to delete meal',
-        text2: 'Please try again.',
+        text1: t('mealMutations.deleteFailed', { defaultValue: 'Failed to delete meal' }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     },
   });
@@ -241,13 +245,13 @@ export function useDeleteMeal(options: { mealId?: string; onSuccess?: () => void
     }
 
     Alert.alert(
-      'Delete Meal',
+      t('mealMutations.deleteTitle', { defaultValue: 'Delete Meal' }),
       hasUsage
-        ? 'Delete this meal from your library? Logged diary entries will stay unchanged, but related meal plans may be affected.'
-        : 'Delete this meal from your library? Logged diary entries will stay unchanged.',
+        ? t('mealMutations.deleteWithUsage', { defaultValue: 'Delete this meal from your library? Logged diary entries will stay unchanged, but related meal plans may be affected.' })
+        : t('mealMutations.deleteWithoutUsage', { defaultValue: 'Delete this meal from your library? Logged diary entries will stay unchanged.' }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => mutation.mutate() },
+        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+        { text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: () => mutation.mutate() },
       ],
     );
   };

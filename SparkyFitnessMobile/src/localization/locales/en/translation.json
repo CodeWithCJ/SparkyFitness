@@ -2195,7 +2195,18 @@
     "missingName": "Missing name",
     "nameRequired": "Please enter a food name.",
     "invalidServingSize": "Invalid serving size",
-    "servingSizeRequired": "Serving size must be greater than zero."
+    "servingSizeRequired": "Serving size must be greater than zero.",
+    "loadingDetails": "Still loading food details. Try again in a moment.",
+    "savedNewVariant": "Saved as new variant",
+    "pastUpdated": "Past entries updated",
+    "pastUpdateFailed": "Could not update past entries",
+    "foodSaved": "Your food was saved.",
+    "updateFoodFailed": "Could not update food",
+    "saveUnitFailed": "Could not save new unit",
+    "equivalentsFailed": "Some equivalent units could not be saved",
+    "saveVariantFailed": "Could not save new variant",
+    "saveNutritionFailed": "Could not save nutrition for future use",
+    "editFoodTitle": "Edit Food"
   },
   "foodPhotoImprove": {
     "grams": "grams",
@@ -3498,5 +3509,23 @@
     "workoutPlaceholder": "Workout",
     "useYesterday": "Use Yesterday",
     "useToday": "Use Today"
+  },
+  "mealMutations": {
+    "createFailed": "Failed to create meal",
+    "updateFailed": "Failed to update meal",
+    "deleteFailed": "Failed to delete meal",
+    "deleteTitle": "Delete Meal",
+    "deleteWithUsage": "Delete this meal from your library? Logged diary entries will stay unchanged, but related meal plans may be affected.",
+    "deleteWithoutUsage": "Delete this meal from your library? Logged diary entries will stay unchanged."
+  },
+  "liveWorkout": {
+    "inProgressTitle": "Workout in progress",
+    "inProgressMessage": "You already have a workout in progress. Starting another clears it here. Any sets already saved stay in your diary.",
+    "goToWorkout": "Go to Workout",
+    "clearAndStart": "Clear & Start",
+    "nothingToStart": "Nothing to start",
+    "noExercises": "This preset has no exercises.",
+    "noServerTitle": "No Server Connected",
+    "noServerMessage": "Configure your server connection in Settings to start a workout."
   }
 }
