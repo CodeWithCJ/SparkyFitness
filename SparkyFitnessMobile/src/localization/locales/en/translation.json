@@ -3717,7 +3717,7 @@
     "elevationGain": "Elevation Gain",
     "avgCadence": "Avg Cadence",
     "zone": "Zone {{zone}}",
-    "heartRateZone": "HR {{zone}}"
+    "heartRateZone": "Heart rate zone {{zone}}"
   },
   "copyMeal": {
     "title": "Copy meal: {{meal}}",
@@ -3727,7 +3727,7 @@
     "copy": "Copy",
     "copying": "Copying...",
     "duplicateTitle": "Can't copy meal",
-    "duplicateMessage": "Duplicate meal-type names cannot currently be used for Copy Meal."
+    "duplicateMessage": "Copying is not currently possible because meal types have duplicate names."
   },
   "ingredientRow": {
     "lastWarning": "This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.",

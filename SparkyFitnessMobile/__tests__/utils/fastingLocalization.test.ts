@@ -12,10 +12,8 @@ describe('localizeProtocolBadge', () => {
   });
 
   it.each([
-    ['16:8 Leangains', '16:8'],
-    ['18:6 Warrior', '18:6'],
-    ['20:4 Warrior', '20:4'],
-    ['  16 : 8 protocol ', '16:8'],
+    ['16:8', '16:8'],
+    ['18 : 6', '18:6'],
   ])('preserves compact ratios from application presets: %s → %s', (input, expected) => {
     expect(localizeProtocolBadge(en as never, input)).toBe(expected);
   });
@@ -27,6 +25,8 @@ describe('localizeProtocolBadge', () => {
 
   it('keeps arbitrary server or user-created protocol names literal', () => {
     expect(localizeProtocolBadge(pl as never, 'Mój post 14 godzin')).toBe('Mój post 14 godzin');
+    expect(localizeProtocolBadge(pl as never, 'Custom 16:8 plan')).toBe('Custom 16:8 plan');
+    expect(localizeProtocolBadge(pl as never, '16:8 Leangains')).toBe('16:8 Leangains');
   });
 
   it('uses the localized fasting title for empty values', () => {

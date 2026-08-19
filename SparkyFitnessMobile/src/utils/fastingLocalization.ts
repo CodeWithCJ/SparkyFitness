@@ -34,7 +34,7 @@ export function localizeFastingStage(
 export function localizeProtocolBadge(t: TFunction, value: string | null | undefined): string {
   const raw = value?.trim();
   if (!raw) return t('fastingDetail.title', { defaultValue: 'Fasting' });
-  const ratio = raw.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
+  const ratio = raw.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/);
   if (ratio) return `${ratio[1]}:${ratio[2]}`;
   switch (raw) {
     case 'Circadian Rhythm': return t('fastingProtocol.presets.circadian.name', { defaultValue: 'Circadian Rhythm' });

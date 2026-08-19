@@ -46,7 +46,7 @@ describe('extractActivitySummary', () => {
       'activitySummary.elevationGain': 'Przewyższenie',
       'activitySummary.avgCadence': 'Śr. kadencja',
       'activitySummary.zone': 'Strefa {{zone}}',
-      'activitySummary.heartRateZone': 'Tętno {{zone}}',
+      'activitySummary.heartRateZone': 'Strefa tętna {{zone}}',
     };
     const t = ((key: string, options: { defaultValue: string; zone?: string | number }) =>
       (polish[key] ?? options.defaultValue).replace('{{zone}}', String(options.zone ?? '')));
@@ -142,8 +142,8 @@ describe('extractActivitySummary', () => {
 
   test('extracts Withings HR zones', () => {
     const items = extractActivitySummary([activityDetail({ detail_type: 'hr_zones', detail_data: JSON.stringify({ hr_zones: { 'Zone 1': 180, 'Zone 2': 360, 'Zone 3': 0 } }), provider_name: 'withings' })]);
-    expect(items).toContainEqual({ label: 'HR Zone 1', value: '3m 0s' });
-    expect(items).toContainEqual({ label: 'HR Zone 2', value: '6m 0s' });
+    expect(items).toContainEqual({ label: 'Heart rate zone 1', value: '3m 0s' });
+    expect(items).toContainEqual({ label: 'Heart rate zone 2', value: '6m 0s' });
     expect(items).toHaveLength(2);
   });
 
@@ -168,6 +168,6 @@ describe('extractActivitySummary', () => {
   test('handles Withings HR zones with non-number values', () => {
     const items = extractActivitySummary([activityDetail({ detail_type: 'hr_zones', detail_data: JSON.stringify({ hr_zones: { 'Zone 1': 'not-a-number', 'Zone 2': 300 } }), provider_name: 'withings' })]);
     expect(items).toHaveLength(1);
-    expect(items[0]).toEqual({ label: 'HR Zone 2', value: '5m 0s' });
+    expect(items[0]).toEqual({ label: 'Heart rate zone 2', value: '5m 0s' });
   });
 });

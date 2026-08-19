@@ -19,7 +19,7 @@ const activityLabel = (
     case 'activitySummary.elevationGain': return t('activitySummary.elevationGain', { defaultValue: 'Elevation Gain' });
     case 'activitySummary.avgCadence': return t('activitySummary.avgCadence', { defaultValue: 'Avg Cadence' });
     case 'activitySummary.zone': return t('activitySummary.zone', { defaultValue: 'Zone {{zone}}', ...interpolation });
-    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'HR {{zone}}', ...interpolation });
+    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'Heart rate zone {{zone}}', ...interpolation });
     default: return defaultValue;
   }
 };
@@ -145,7 +145,8 @@ export function extractActivitySummary(
 
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        items.push({ label: activityLabel(t, 'activitySummary.heartRateZone', `HR ${zone}`, { zone }).replace('{{zone}}', String(zone)), value: `${mins}m ${secs}s` });
+        const zoneNumber = zone.replace(/^Zone\s+/i, '');
+        items.push({ label: activityLabel(t, 'activitySummary.heartRateZone', `Heart rate zone ${zoneNumber}`, { zone: zoneNumber }).replace('{{zone}}', zoneNumber), value: `${mins}m ${secs}s` });
       }
       continue;
     }

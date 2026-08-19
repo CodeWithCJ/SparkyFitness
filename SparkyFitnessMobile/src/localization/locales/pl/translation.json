@@ -2562,13 +2562,13 @@
     "remaining": "{{percent}}% · pozostało {{time}}",
     "goalReached": "Cel osiągnięty",
     "elapsed": "{{time}} minęło",
-    "avgFast": "Średni post",
+    "avgFast": "Średni czas postu",
     "fasts": "Liczba postów",
     "total": "Łącznie",
     "protocol": "Protokół",
     "started": "Rozpoczęto",
     "endFast": "Zakończ post",
-    "protocolWithGoal": "{{protocol}} · post {{hours}} godz.",
+    "protocolWithGoal": "{{protocol}} · {{hours}} godz. postu",
     "noActiveFast": "Brak aktywnego postu",
     "startDescription": "Rozpocznij post, aby śledzić jego czas i etapy metaboliczne.",
     "startFast": "Rozpocznij post",
@@ -3717,7 +3717,7 @@
     "elevationGain": "Przewyższenie",
     "avgCadence": "Śr. kadencja",
     "zone": "Strefa {{zone}}",
-    "heartRateZone": "Tętno {{zone}}"
+    "heartRateZone": "Strefa tętna {{zone}}"
   },
   "copyMeal": {
     "title": "Kopiuj posiłek: {{meal}}",
@@ -3727,7 +3727,7 @@
     "copy": "Kopiuj",
     "copying": "Kopiowanie…",
     "duplicateTitle": "Nie można skopiować posiłku",
-    "duplicateMessage": "Nie można obecnie użyć powtarzających się nazw typów posiłków podczas kopiowania."
+    "duplicateMessage": "Kopiowanie nie jest obecnie możliwe, ponieważ typy posiłków mają zduplikowane nazwy."
   },
   "ingredientRow": {
     "lastWarning": "To ostatni składnik. Dodaj kolejny, aby móc zapisać, albo użyj opcji usunięcia całego posiłku.",
@@ -3740,8 +3740,8 @@
     "distance": "Dystans ({{unit}})",
     "durationHint": "Czas w minutach dla {{name}}",
     "distanceHint": "Dystans w {{unit}} dla {{name}}",
-    "markIncomplete": "Oznacz {{name}} jako nieukończone",
-    "complete": "Ukończ {{name}}"
+    "markIncomplete": "Cofnij ukończenie ćwiczenia „{{name}}”",
+    "complete": "Oznacz ćwiczenie „{{name}}” jako ukończone"
   },
   "exerciseSetRest": {
     "overwriteTitle": "Nadpisać czasy odpoczynku?",
