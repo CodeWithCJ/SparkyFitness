@@ -3404,5 +3404,14 @@
       "title": "Usunąć preset treningu?",
       "message": "Ten preset zostanie trwale usunięty z biblioteki."
     }
+  },
+  "babyGrowth": {
+    "weeklyMilestone": "Tygodniowy etap",
+    "weekActive": "Aktywny tydzień śledzenia: {{week}}.",
+    "title": "Dziecko w tym tygodniu",
+    "sizeOf": "Rozmiar jak {{comparison}}",
+    "length": "Długość",
+    "weight": "Masa",
+    "forYou": "Dla Ciebie"
   }
 }

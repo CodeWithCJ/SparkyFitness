@@ -3362,5 +3362,14 @@
       "title": "Delete Workout Preset?",
       "message": "This preset will be permanently removed from your library."
     }
+  },
+  "babyGrowth": {
+    "weeklyMilestone": "Weekly Milestone",
+    "weekActive": "Week {{week}} active tracking.",
+    "title": "Baby this week",
+    "sizeOf": "Size of {{comparison}}",
+    "length": "Length",
+    "weight": "Weight",
+    "forYou": "For you"
   }
 }
