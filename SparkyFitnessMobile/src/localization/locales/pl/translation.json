@@ -2912,5 +2912,31 @@
       "exercises": "Ćwiczenia",
       "volume": "Objętość"
     }
+  },
+  "createFood": {
+    "title": "Nowy produkt",
+    "meal": "Posiłek",
+    "selectMeal": "Wybierz posiłek",
+    "perServing": "na porcję",
+    "saveToDatabase": "Zapisz w bazie danych",
+    "actions": {
+      "addFood": "Dodaj produkt"
+    },
+    "success": {
+      "foodSaved": "Produkt zapisany"
+    },
+    "errors": {
+      "missingName": "Brak nazwy",
+      "nameRequired": "Wprowadź nazwę produktu.",
+      "invalidServingSize": "Nieprawidłowa wielkość porcji",
+      "servingSizeRequired": "Wielkość porcji musi być większa od zera.",
+      "invalidBarcode": "Nieprawidłowy kod kreskowy",
+      "barcodeRequired": "Kod kreskowy musi zawierać od 8 do 14 cyfr.",
+      "equivalentsSaveFailed": "Nie udało się zapisać niektórych równoważnych jednostek",
+      "invalidAmount": "Nieprawidłowa ilość",
+      "amountRequired": "Ilość musi być większa od zera.",
+      "noMealType": "Brak typu posiłku",
+      "noMealTypesAvailable": "Brak dostępnych typów posiłków. Sprawdź ustawienia konta."
+    }
   }
 }

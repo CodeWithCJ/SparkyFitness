@@ -2876,5 +2876,31 @@
       "exercises": "Exercises",
       "volume": "Volume"
     }
+  },
+  "createFood": {
+    "title": "New Food",
+    "meal": "Meal",
+    "selectMeal": "Select Meal",
+    "perServing": "per serving",
+    "saveToDatabase": "Save to Database",
+    "actions": {
+      "addFood": "Add Food"
+    },
+    "success": {
+      "foodSaved": "Food saved"
+    },
+    "errors": {
+      "missingName": "Missing name",
+      "nameRequired": "Please enter a food name.",
+      "invalidServingSize": "Invalid serving size",
+      "servingSizeRequired": "Serving size must be greater than zero.",
+      "invalidBarcode": "Invalid barcode",
+      "barcodeRequired": "Barcode must be 8-14 digits.",
+      "equivalentsSaveFailed": "Some equivalent units could not be saved",
+      "invalidAmount": "Invalid amount",
+      "amountRequired": "Amount must be greater than zero.",
+      "noMealType": "No meal type",
+      "noMealTypesAvailable": "No meal types are available. Please check your account settings."
+    }
   }
 }
