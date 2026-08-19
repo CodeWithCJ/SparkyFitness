@@ -22,6 +22,8 @@ const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 /** Blocking rule name for a source file that could not be scanned (fail-closed). */
 const SOURCE_SCAN_ERROR_RULE = 'source-scan-error';
 
+const CUSTOM_UI_ATTRIBUTE_NAMES = new Set(['errorMessage', 'successMessage', 'emptyMessage']);
+
 const LOCALIZED_ATTRIBUTE_NAMES = new Set([
   'accessibilityHint',
   'accessibilityLabel',
@@ -175,9 +177,8 @@ function resolveStaticTranslationKeyArg(arg) {
 function isTextLikeElement(node) {
   if (!ts.isJsxElement(node)) return false;
   const tag = node.openingElement.tagName;
-  if (ts.isIdentifier(tag) && tag.text === 'Text') return true;
-
-  return false;
+  if (!ts.isIdentifier(tag)) return false;
+  return tag.text === 'Text' || tag.text === 'Button';
 }
 
 function isLikelyRoute(value) {
@@ -387,7 +388,7 @@ function visitSourceFile(filePath, rootDir) {
 
     if (ts.isJsxAttribute(node)) {
       const attrName = node.name.getText(sourceFile);
-      if (LOCALIZED_ATTRIBUTE_NAMES.has(attrName) && node.initializer) {
+      if ((LOCALIZED_ATTRIBUTE_NAMES.has(attrName) || CUSTOM_UI_ATTRIBUTE_NAMES.has(attrName)) && node.initializer) {
         const line = getLinePosition(node, sourceFile);
         if (ts.isStringLiteral(node.initializer)) {
           const value = normalizeText(node.initializer.text);
@@ -558,6 +559,7 @@ module.exports = {
   literalText,
   isLikelyFalsePositive,
   LOCALIZED_ATTRIBUTE_NAMES,
+  CUSTOM_UI_ATTRIBUTE_NAMES,
   EXCLUDE_DIRS,
   SOURCE_EXTENSIONS,
   getAllSuppressionIssues,
