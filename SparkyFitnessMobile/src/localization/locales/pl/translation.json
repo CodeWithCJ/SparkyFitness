@@ -46,7 +46,9 @@
     "addToFavorites": "Dodaj do ulubionych",
     "goToSettings": "Przejdź do Ustawień",
     "notSet": "Nie ustawiono",
-    "deleting": "Usuwanie…"
+    "deleting": "Usuwanie…",
+    "done": "Gotowe",
+    "none": "Brak"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -2964,5 +2966,14 @@
     "barcode": "Kod kreskowy",
     "logFood": "Zapisz produkt",
     "deleteFood": "Usuń produkt"
+  },
+  "foodEntryView": {
+    "saveChanges": "Zapisz zmiany wpisu produktu",
+    "editEntry": "Edytuj wpis produktu",
+    "selectServing": "Wybierz porcję",
+    "tapToEditNutrition": "Dotknij, aby edytować wartości odżywcze",
+    "meal": "Posiłek",
+    "selectMeal": "Wybierz posiłek",
+    "time": "Godzina"
   }
 }

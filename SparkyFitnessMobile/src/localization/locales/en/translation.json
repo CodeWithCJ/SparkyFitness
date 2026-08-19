@@ -44,7 +44,9 @@
     "addToFavorites": "Add to favorites",
     "goToSettings": "Go to Settings",
     "notSet": "Not set",
-    "deleting": "Deleting..."
+    "deleting": "Deleting...",
+    "done": "Done",
+    "none": "None"
   },
   "settings": {
     "app": "App Settings",
@@ -2928,5 +2930,14 @@
     "barcode": "Barcode",
     "logFood": "Log Food",
     "deleteFood": "Delete Food"
+  },
+  "foodEntryView": {
+    "saveChanges": "Save food entry changes",
+    "editEntry": "Edit food entry",
+    "selectServing": "Select Serving",
+    "tapToEditNutrition": "Tap to edit nutrition",
+    "meal": "Meal",
+    "selectMeal": "Select Meal",
+    "time": "Time"
   }
 }
