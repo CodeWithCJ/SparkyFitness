@@ -3704,7 +3704,9 @@
     "empty": "Utworzone szablony treningów pojawią się tutaj.",
     "moreFailed": "Nie udało się wczytać kolejnych szablonów treningów.",
     "exercise": "ćwiczenie",
-    "exercises": "ćwiczenia"
+    "exercises": "ćwiczenia",
+    "exerciseCount_one": "{{count}} ćwiczenie",
+    "exerciseCount_other": "{{count}} ćwiczeń"
   },
   "workoutForm": {
     "viewExercise": "Wyświetl ćwiczenie",
