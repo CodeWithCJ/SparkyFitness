@@ -130,7 +130,7 @@ function ActiveWorkoutRail({
       contentContainerClassName="px-3 py-2 gap-2"
     >
       {exercises.map((exercise) => {
-        const name = exercise.exercise_snapshot?.name ?? 'Exercise';
+        const name = exercise.exercise_snapshot?.name ?? t('workout.exercise', { defaultValue: 'Exercise' });
         const image = exercise.exercise_snapshot?.images?.[0] ?? null;
         const fallbackIcon =
           (exercise.exercise_snapshot?.category &&

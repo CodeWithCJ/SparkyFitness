@@ -3702,7 +3702,9 @@
     "empty": "Workout presets you create will appear here.",
     "moreFailed": "Failed to load more presets.",
     "exercise": "exercise",
-    "exercises": "exercises"
+    "exercises": "exercises",
+    "exerciseCount_one": "{{count}} exercise",
+    "exerciseCount_other": "{{count}} exercises"
   },
   "workoutForm": {
     "viewExercise": "View exercise",

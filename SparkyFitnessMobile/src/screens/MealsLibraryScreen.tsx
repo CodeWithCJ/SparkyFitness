@@ -136,7 +136,9 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title={isSearchActive ? 'Failed to search meals' : 'Failed to load meals'}
+          title={isSearchActive
+            ? t('mealLibrary.searchFailed', { defaultValue: 'Failed to search meals' })
+            : t('mealLibrary.failed', { defaultValue: 'Failed to load meals' })}
           subtitle={t('mealLibrary.check', { defaultValue: 'Please check your connection and try again.' })}
           action={{ label: t('mealLibrary.retry', { defaultValue: 'Retry' }), onPress: () => void (isSearchActive ? refetchSearch() : refetchMeals()), variant: 'primary' }}
         />

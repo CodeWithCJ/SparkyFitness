@@ -158,7 +158,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more exercises."
+            errorMessage={t('exerciseLibrary.moreFailed', { defaultValue: 'Failed to load more exercises.' })}
             onRetry={loadMore}
           />
         }

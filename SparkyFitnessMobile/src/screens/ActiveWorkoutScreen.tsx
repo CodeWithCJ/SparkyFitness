@@ -476,7 +476,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const exercise = useActiveWorkoutStore
       .getState()
       .session?.exercises.find((e) => e.id === entryId);
-    const name = exercise?.exercise_snapshot?.name ?? 'this exercise';
+    const name = exercise?.exercise_snapshot?.name ?? t('workout.thisExercise', { defaultValue: 'this exercise' });
     Alert.alert(t('workout.removeExerciseTitle', { defaultValue: 'Remove exercise?' }), t('workout.removeExerciseMessage', { defaultValue: '{{name}} will be removed from this workout.', name }), [
       { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
       {
@@ -842,7 +842,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       e.sets.some((s) => String(s.id) === setId),
     );
     if (exercise != null && exercise.sets.length <= 1) {
-      const name = exercise.exercise_snapshot?.name ?? 'this exercise';
+      const name = exercise.exercise_snapshot?.name ?? t('workout.thisExercise', { defaultValue: 'this exercise' });
       Alert.alert(
         t('workout.removeExerciseTitle', { defaultValue: 'Remove exercise?' }),
         t('workout.deleteOnlySetMessage', { defaultValue: 'Deleting the only set removes {{name}} from this workout.', name }),

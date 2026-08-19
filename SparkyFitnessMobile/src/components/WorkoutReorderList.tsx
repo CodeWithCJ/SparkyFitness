@@ -248,7 +248,7 @@ function ReorderItemRow({
 
   const rows = item.entryIds.map((entryId) => {
     const exercise = exercisesById.get(entryId);
-    const name = exercise?.exercise_snapshot?.name ?? 'Exercise';
+    const name = exercise?.exercise_snapshot?.name ?? t('workout.exercise', { defaultValue: 'Exercise' });
     const setCount = exercise?.sets.length ?? 0;
     return (
       <View

@@ -99,7 +99,12 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <ShareStatusBadge status={status} />
         </View>
         <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-          {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+          {t('presetLibrary.exerciseCount', {
+            defaultValue: '{{count}} exercises',
+            defaultValue_one: '{{count}} exercise',
+            defaultValue_other: '{{count}} exercises',
+            count: exerciseCount,
+          })}
         </Text>
       </TouchableOpacity>
     );
@@ -156,7 +161,7 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more presets."
+            errorMessage={t('presetLibrary.moreFailed', { defaultValue: 'Failed to load more presets.' })}
             onRetry={loadMore}
           />
         }
