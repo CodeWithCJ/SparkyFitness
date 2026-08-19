@@ -61,7 +61,8 @@
       "changeFailed": "Nie udało się zmienić języka",
       "managedByIOS": "Zarządzane przez iOS",
       "iosSettingsHint": "Zmień język tej aplikacji w Ustawieniach iOS",
-      "openSettingsFailed": "Nie udało się otworzyć Ustawień iOS"
+      "openSettingsFailed": "Nie udało się otworzyć Ustawień iOS",
+      "iosSubtitle": "{{language}} · {{managedBy}}"
     },
     "lastSynced": "Ostatnia synchronizacja: {{time}}",
     "addServer": "Dotknij, aby dodać serwer",
@@ -86,6 +87,29 @@
       "logs": "Wyświetl logi",
       "about": "Informacje",
       "shareReport": "Udostępnij raport diagnostyczny"
+    },
+    "theme": {
+      "title": "Motyw",
+      "light": "Jasny",
+      "dark": "Ciemny",
+      "amoled": "AMOLED",
+      "system": "Systemowy"
+    },
+    "liquidGlass": {
+      "title": "Nawigacja Liquid Glass",
+      "subtitle": "Używaj szklanego paska kart i nagłówków ekranów w iOS 26."
+    },
+    "notifications": {
+      "title": "Powiadomienia",
+      "subtitle": "Timery odpoczynku, cele postu i przypomnienia o lekach."
+    },
+    "haptics": {
+      "title": "Wibracje dotykowe",
+      "subtitle": "Delikatne wibracje dla timerów i potwierdzeń."
+    },
+    "cameraShutter": {
+      "title": "Dźwięk migawki",
+      "subtitle": "Odtwarzaj dźwięk podczas robienia zdjęć."
     }
   },
   "languageSettings": {

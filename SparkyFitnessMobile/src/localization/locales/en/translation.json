@@ -59,7 +59,8 @@
       "changeFailed": "Couldn't change the language",
       "managedByIOS": "Managed by iOS",
       "iosSettingsHint": "Change this app's language in iOS Settings",
-      "openSettingsFailed": "Could not open iOS Settings"
+      "openSettingsFailed": "Could not open iOS Settings",
+      "iosSubtitle": "{{language}} · {{managedBy}}"
     },
     "lastSynced": "Last synced {{time}}",
     "addServer": "Tap to add a server",
@@ -84,6 +85,29 @@
       "logs": "View Logs",
       "about": "About",
       "shareReport": "Share Diagnostic Report"
+    },
+    "theme": {
+      "title": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "amoled": "AMOLED",
+      "system": "System"
+    },
+    "liquidGlass": {
+      "title": "Liquid Glass navigation",
+      "subtitle": "Use the iOS 26 glass tab bar and screen headers."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "subtitle": "Rest timers, fasting goals, and medication reminders."
+    },
+    "haptics": {
+      "title": "Haptic Feedback",
+      "subtitle": "Light vibrations for timers and confirmations."
+    },
+    "cameraShutter": {
+      "title": "Camera shutter",
+      "subtitle": "Play a sound when capturing photos."
     }
   },
   "languageSettings": {
