@@ -3161,7 +3161,7 @@
     "family": "Rodzinne",
     "public": "Publiczne",
     "show": "Pokaż",
-    "filter": "Filtruj: {{noun}}",
+    "filter": "Filtruj {{noun}}",
     "showAll": "Pokaż wszystkie"
   },
   "workoutPresetCount_one": "{{formattedCount}} ćwiczenie",
