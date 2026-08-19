@@ -188,13 +188,13 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
       [
         { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
         {
-          text: t('workoutPresetDetail.draft.resume', { defaultValue: 'Resume draft' }),
+          text: t('workoutPresetDetail.draft.resume', { defaultValue: 'Resume Draft' }),
           onPress: () => {
             navigation.navigate(draft.type === 'workout' ? 'WorkoutAdd' : 'ActivityAdd');
           },
         },
         {
-          text: t('workoutPresetDetail.draft.discard', { defaultValue: 'Discard & continue' }),
+          text: t('workoutPresetDetail.draft.discard', { defaultValue: 'Discard & Continue' }),
           style: 'destructive',
           onPress: async () => {
             await clearDraft();
