@@ -2511,5 +2511,44 @@
     "snacks": "Snacks",
     "dinner": "Dinner",
     "other": "Other"
+  },
+  "foodEntryAdd": {
+    "errors": {
+      "equivalentsNotSaved": "Some equivalent units could not be saved",
+      "invalidAmount": "Invalid amount",
+      "amountGreaterThanZero": "Amount must be greater than zero.",
+      "failedToAddFood": "Failed to add food",
+      "tryAgain": "Please try again.",
+      "mealsNotSupported": "Meals not supported here",
+      "selectFoodInstead": "Select a food instead of another meal.",
+      "savedFoodUnitFailed": "Saved food, but not the new unit",
+      "savedFoodUnitFailedDetails": "You can still add the food, then try saving that unit again."
+    },
+    "actions": {
+      "adjustNutrition": "Adjust nutrition",
+      "saveFood": "Save Food",
+      "useYesterday": "Use Yesterday",
+      "useToday": "Use Today",
+      "now": "Now",
+      "clear": "Clear",
+      "addFood": "Add Food",
+      "addMeal": "Add Meal",
+      "removeFavorite": "Remove from favorites",
+      "addFavorite": "Add to favorites"
+    },
+    "labels": {
+      "perServing": "per serving",
+      "time": "Time",
+      "none": "None",
+      "meal": "Meal",
+      "serving_one": "serving",
+      "serving_other": "servings",
+      "mealMakes_one": "meal makes {{count}} serving",
+      "mealMakes_other": "meal makes {{count}} servings"
+    },
+    "pickers": {
+      "selectServing": "Select Serving",
+      "selectMeal": "Select Meal"
+    }
   }
 }

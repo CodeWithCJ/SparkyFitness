@@ -2541,5 +2541,48 @@
     "snacks": "Przekąski",
     "dinner": "Kolacja",
     "other": "Inne"
+  },
+  "foodEntryAdd": {
+    "errors": {
+      "equivalentsNotSaved": "Nie udało się zapisać niektórych jednostek zamiennych",
+      "invalidAmount": "Nieprawidłowa ilość",
+      "amountGreaterThanZero": "Ilość musi być większa od zera.",
+      "failedToAddFood": "Nie udało się dodać produktu",
+      "tryAgain": "Spróbuj ponownie.",
+      "mealsNotSupported": "Posiłki nie są tu obsługiwane",
+      "selectFoodInstead": "Wybierz produkt zamiast innego posiłku.",
+      "savedFoodUnitFailed": "Zapisano produkt, ale nie nową jednostkę",
+      "savedFoodUnitFailedDetails": "Możesz nadal dodać produkt, a następnie ponownie spróbować zapisać tę jednostkę."
+    },
+    "actions": {
+      "adjustNutrition": "Dostosuj wartości odżywcze",
+      "saveFood": "Zapisz produkt",
+      "useYesterday": "Użyj wczoraj",
+      "useToday": "Użyj dzisiaj",
+      "now": "Teraz",
+      "clear": "Wyczyść",
+      "addFood": "Dodaj produkt",
+      "addMeal": "Dodaj posiłek",
+      "removeFavorite": "Usuń z ulubionych",
+      "addFavorite": "Dodaj do ulubionych"
+    },
+    "labels": {
+      "perServing": "na porcję",
+      "time": "Godzina",
+      "none": "Brak",
+      "meal": "Posiłek",
+      "serving_one": "porcja",
+      "serving_few": "porcje",
+      "serving_many": "porcji",
+      "serving_other": "porcji",
+      "mealMakes_one": "posiłek daje {{count}} porcję",
+      "mealMakes_few": "posiłek daje {{count}} porcje",
+      "mealMakes_many": "posiłek daje {{count}} porcji",
+      "mealMakes_other": "posiłek daje {{count}} porcji"
+    },
+    "pickers": {
+      "selectServing": "Wybierz porcję",
+      "selectMeal": "Wybierz posiłek"
+    }
   }
 }

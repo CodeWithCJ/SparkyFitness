@@ -328,3 +328,23 @@ describe('ImportHistory pluralization matrix', () => {
     });
   });
 });
+
+describe('FoodEntryAdd localization', () => {
+  it('resolves serving and meal yield plurals in English and Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('en');
+      expect(i18n.t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: 1 })).toBe('serving');
+      expect(i18n.t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: 2 })).toBe('servings');
+      expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} serving', count: 1 })).toBe('meal makes 1 serving');
+      expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} serving', count: 2 })).toBe('meal makes 2 servings');
+      await i18n.changeLanguage('pl');
+      expect(i18n.t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: 1 })).toBe('porcja');
+      expect(i18n.t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: 2 })).toBe('porcje');
+      expect(i18n.t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: 5 })).toBe('porcji');
+      expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} serving', count: 1 })).toBe('posiłek daje 1 porcję');
+      expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} serving', count: 2 })).toBe('posiłek daje 2 porcje');
+      expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} serving', count: 5 })).toBe('posiłek daje 5 porcji');
+    });
+  });
+});
