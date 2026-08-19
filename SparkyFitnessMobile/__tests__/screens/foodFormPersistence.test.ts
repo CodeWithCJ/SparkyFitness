@@ -261,3 +261,34 @@ describe('validateFoodForm localization', () => {
     });
   });
 });
+
+describe('foodFormPersistence catalog coverage', () => {
+  it('provides readable English and Polish text for every persistence key', async () => {
+    await initializeI18n('en');
+    const keys = [
+      'discardTitle', 'discardMessage', 'discard', 'updateTitle', 'updateMessage',
+      'dontUpdate', 'update', 'updatePhotosMessage', 'updateNutrition',
+      'updateNutritionPhotos', 'saveNutritionTitle', 'overwriteMessage', 'saveAsNew',
+      'updateExisting', 'missingName', 'nameRequired', 'invalidServingSize',
+      'servingSizeRequired',
+    ];
+
+    for (const key of keys) {
+      const english = i18n.t(`foodFormPersistence.${key}`, { defaultValue: `fallback:${key}` });
+      expect(english).not.toBe(`fallback:${key}`);
+      expect(english).not.toMatch(/^foodFormPersistence\./);
+    }
+
+    await i18n.changeLanguage('pl');
+    for (const key of keys) {
+      const polish = i18n.t(`foodFormPersistence.${key}`, { defaultValue: `fallback:${key}` });
+      expect(polish).not.toBe(`fallback:${key}`);
+      expect(polish).not.toMatch(/^foodFormPersistence\./);
+    }
+
+    expect(i18n.t('foodFormPersistence.overwriteMessage', {
+      unitLabel: 'kubek użytkownika',
+      defaultValue: '"{{unitLabel}}" is already a saved variant.',
+    })).toContain('kubek użytkownika');
+  });
+});
