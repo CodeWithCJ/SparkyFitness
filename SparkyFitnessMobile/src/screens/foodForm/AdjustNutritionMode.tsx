@@ -572,7 +572,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                 {t('foodFormPersistence.saveNutritionFuture', { defaultValue: 'Save nutrition for future use' })}
               </Text>
               <Switch
-                accessibilityLabel="{t('foodFormPersistence.saveNutritionFuture', { defaultValue: 'Save nutrition for future use' })}"
+                accessibilityLabel={t('foodFormPersistence.saveNutritionFuture', { defaultValue: 'Save nutrition for future use' })}
                 value={updateFoodToggle}
                 onValueChange={setUpdateFoodToggle}
               />
