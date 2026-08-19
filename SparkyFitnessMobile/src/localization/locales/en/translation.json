@@ -2947,5 +2947,31 @@
     "timeSelectorHint": "Opens time selection",
     "clearTime": "Clear time",
     "nutritionEditHint": "Opens nutrition editing"
-  }
+  },
+  "presetSearch": {
+    "title": "Start Workout",
+    "noun": "presets",
+    "viewDetails": "View preset details",
+    "searchFailed": "Failed to search presets",
+    "noMatches": "No matching presets found",
+    "loadFailed": "Failed to load presets",
+    "noPresetsYet": "No presets yet",
+    "noPresetsYetMessage": "Start an empty workout, or save a workout as a preset to see it here",
+    "searchPlaceholder": "Search presets...",
+    "emptyWorkout": "Empty workout",
+    "pickFirstExercise": "Pick your first exercise",
+    "noPresetsIn": "No {{noun}} in {{filter}}",
+    "changeFilter": "Change the filter to see your other presets."
+  },
+  "ownership": {
+    "all": "All",
+    "mine": "Mine",
+    "family": "Family",
+    "public": "Public",
+    "show": "Show",
+    "filter": "Filter {{noun}}",
+    "showAll": "Show All"
+  },
+  "workoutPresetCount_one": "{{formattedCount}} exercise",
+  "workoutPresetCount_other": "{{formattedCount}} exercises"
 }

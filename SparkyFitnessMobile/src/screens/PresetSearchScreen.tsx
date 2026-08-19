@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, View, Text, TouchableOpacity, TextInput, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -12,7 +13,7 @@ import {
   deriveShareStatus,
   filterByOwnership,
   ownershipFilterHeaderMenu,
-  OWNERSHIP_FILTER_LABELS,
+  ownershipFilterEmptyState,
 } from '../utils/shareStatus';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import ShareStatusBadge from '../components/ShareStatusBadge';
@@ -37,6 +38,7 @@ type PresetSearchScreenProps = RootStackScreenProps<'PresetSearch'>;
 const EMPTY_START_ID = 'empty-workout';
 
 const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textMuted, textSecondary, borderSubtle] = useCSSVariable([
@@ -69,10 +71,13 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
   }, [navigation]);
 
   const header = useScreenHeader({
-    title: 'Start Workout',
+    title: t('presetSearch.title', { defaultValue: 'Start Workout' }),
     left: { kind: 'dismiss', onPress: handleCancel, identifier: 'preset-search-cancel' },
     right: ownershipFilterHeaderMenu({
-      noun: 'presets',
+      noun: t('presetSearch.noun', { defaultValue: 'presets' }),
+      labels: { all: t('ownership.all', { defaultValue: 'All' }), mine: t('ownership.mine', { defaultValue: 'Mine' }), family: t('ownership.family', { defaultValue: 'Family' }), public: t('ownership.public', { defaultValue: 'Public' }) },
+      showLabel: t('ownership.show', { defaultValue: 'Show' }),
+      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}' }),
       identifier: 'preset-search-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,
@@ -158,7 +163,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
               <ShareStatusBadge status={status} />
             </View>
             <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-              {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
+              {t('workoutPresetCount', { defaultValue: '{{formattedCount}} exercise', count: item.exercises.length, formattedCount: item.exercises.length.toLocaleString() })}
             </Text>
           </View>
         </TouchableOpacity>
@@ -167,7 +172,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
           activeOpacity={0.7}
           hitSlop={8}
           disabled={isNavigationLocked || isStarting}
-          accessibilityLabel="View preset details"
+          accessibilityLabel={t('presetSearch.viewDetails', { defaultValue: 'View preset details' })}
           onPress={() => handlePreviewPreset(item)}
         >
           {isStarting && startingId === item.id ? (
@@ -196,19 +201,17 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       return <StatusView loading />;
     }
     if (isSearchError) {
-      return <StatusView icon="alert-circle" title="Failed to search presets" />;
+      return <StatusView icon="alert-circle" title={t('presetSearch.searchFailed', { defaultValue: 'Failed to search presets' })} />;
     }
     if (filteredSearchResults.length === 0) {
       if (searchResults.length > 0) {
         return (
           <StatusView
-            title={`No presets in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`}
-            subtitle="Change the filter to see your other presets."
-            action={{ label: 'Show All', onPress: () => setOwnershipFilter('all') }}
+            {...ownershipFilterEmptyState({ noun: t('presetSearch.noun', { defaultValue: 'presets' }), filter: ownershipFilter as Exclude<typeof ownershipFilter, 'all'>, onReset: () => setOwnershipFilter('all'), labels: { all: t('ownership.all', { defaultValue: 'All' }), mine: t('ownership.mine', { defaultValue: 'Mine' }), family: t('ownership.family', { defaultValue: 'Family' }), public: t('ownership.public', { defaultValue: 'Public' }) }, emptyTitle: t('presetSearch.noPresetsIn', { defaultValue: 'No {{noun}} in {{filter}}' }), emptySubtitle: t('presetSearch.changeFilter', { defaultValue: 'Change the filter to see your other presets.' }), showAllLabel: t('ownership.showAll', { defaultValue: 'Show All' }) })}
           />
         );
       }
-      return <StatusView title="No matching presets found" />;
+      return <StatusView title={t('presetSearch.noMatches', { defaultValue: 'No matching presets found' })} />;
     }
     return (
       <FlatList
@@ -232,20 +235,18 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       return (
         <StatusView
           icon="alert-circle"
-          title="Failed to load presets"
-          action={{ label: 'Retry', onPress: () => refetch() }}
+          title={t('presetSearch.loadFailed', { defaultValue: 'Failed to load presets' })}
+          action={{ label: t('common.retry', { defaultValue: 'Retry' }), onPress: () => refetch() }}
         />
       );
     }
     if (presets.length === 0) {
-      return <StatusView title="No presets yet" subtitle="Start an empty workout, or save a workout as a preset to see it here" />;
+      return <StatusView title={t('presetSearch.noPresetsYet', { defaultValue: 'No presets yet' })} subtitle={t('presetSearch.noPresetsYetMessage', { defaultValue: 'Start an empty workout, or save a workout as a preset to see it here' })} />;
     }
     if (filteredPresets.length === 0) {
       return (
         <StatusView
-          title={`No presets in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`}
-          subtitle="Change the filter to see your other presets."
-          action={{ label: 'Show All', onPress: () => setOwnershipFilter('all') }}
+          {...ownershipFilterEmptyState({ noun: t('presetSearch.noun', { defaultValue: 'presets' }), filter: ownershipFilter as Exclude<typeof ownershipFilter, 'all'>, onReset: () => setOwnershipFilter('all'), labels: { all: t('ownership.all', { defaultValue: 'All' }), mine: t('ownership.mine', { defaultValue: 'Mine' }), family: t('ownership.family', { defaultValue: 'Family' }), public: t('ownership.public', { defaultValue: 'Public' }) }, emptyTitle: t('presetSearch.noPresetsIn', { defaultValue: 'No {{noun}} in {{filter}}' }), emptySubtitle: t('presetSearch.changeFilter', { defaultValue: 'Change the filter to see your other presets.' }), showAllLabel: t('ownership.showAll', { defaultValue: 'Show All' }) })}
         />
       );
     }
@@ -275,7 +276,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
             <TextInput
               className="text-text-primary"
               style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-              placeholder="Search presets..."
+              placeholder={t('presetSearch.searchPlaceholder', { defaultValue: 'Search presets...' })}
               placeholderTextColor={textMuted}
               value={searchText}
               onChangeText={setSearchText}
@@ -303,9 +304,9 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
       >
         <Icon name="add-circle" size={22} color={accentColor} />
         <View className="flex-1 ml-3">
-          <Text className="text-text-primary text-base font-medium">Empty workout</Text>
+          <Text className="text-text-primary text-base font-medium">{t('presetSearch.emptyWorkout', { defaultValue: 'Empty workout' })}</Text>
           <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-            Pick your first exercise
+            {t('presetSearch.pickFirstExercise', { defaultValue: 'Pick your first exercise' })}
           </Text>
         </View>
         {isStarting && startingId === EMPTY_START_ID && (

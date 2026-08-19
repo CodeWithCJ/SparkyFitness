@@ -2983,5 +2983,33 @@
     "timeSelectorHint": "Otwiera wybór godziny",
     "clearTime": "Wyczyść godzinę",
     "nutritionEditHint": "Otwiera edycję wartości odżywczych"
-  }
+  },
+  "presetSearch": {
+    "title": "Rozpocznij trening",
+    "noun": "plany treningowe",
+    "viewDetails": "Wyświetl szczegóły planu",
+    "searchFailed": "Nie udało się wyszukać planów",
+    "noMatches": "Nie znaleziono pasujących planów",
+    "loadFailed": "Nie udało się wczytać planów",
+    "noPresetsYet": "Brak planów treningowych",
+    "noPresetsYetMessage": "Rozpocznij pusty trening albo zapisz trening jako plan, aby pojawił się tutaj",
+    "searchPlaceholder": "Szukaj planów...",
+    "emptyWorkout": "Pusty trening",
+    "pickFirstExercise": "Wybierz pierwsze ćwiczenie",
+    "noPresetsIn": "Brak {{noun}}: {{filter}}",
+    "changeFilter": "Zmień filtr, aby zobaczyć inne plany."
+  },
+  "ownership": {
+    "all": "Wszystkie",
+    "mine": "Moje",
+    "family": "Rodzinne",
+    "public": "Publiczne",
+    "show": "Pokaż",
+    "filter": "Filtruj: {{noun}}",
+    "showAll": "Pokaż wszystkie"
+  },
+  "workoutPresetCount_one": "{{formattedCount}} ćwiczenie",
+  "workoutPresetCount_few": "{{formattedCount}} ćwiczenia",
+  "workoutPresetCount_many": "{{formattedCount}} ćwiczeń",
+  "workoutPresetCount_other": "{{formattedCount}} ćwiczenia"
 }
