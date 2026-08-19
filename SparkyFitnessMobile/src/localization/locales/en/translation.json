@@ -1532,7 +1532,35 @@
     "hourFast": "hour fast",
     "startTime": "Start time",
     "starting": "Starting...",
-    "startAction": "Start Fasting"
+    "startAction": "Start Fasting",
+    "accessibility": {
+      "startTime": "Start time: {{time}}",
+      "decreaseHours": "Decrease fasting duration",
+      "durationHours": "Fasting duration in hours",
+      "increaseHours": "Increase fasting duration"
+    },
+    "presets": {
+      "leangains": {
+        "name": "16:8 Leangains",
+        "description": "Skip breakfast and eat during an 8-hour window."
+      },
+      "warrior18": {
+        "name": "18:6 Warrior",
+        "description": "More aggressive fast with a 6-hour eating window."
+      },
+      "warrior20": {
+        "name": "20:4 Warrior",
+        "description": "Eat one large meal or spread calories over 4 hours."
+      },
+      "circadian": {
+        "name": "Circadian Rhythm",
+        "description": "Fast from sunset to morning."
+      },
+      "custom": {
+        "name": "Custom Fast",
+        "description": "Set your own fasting duration."
+      }
+    }
   },
   "fastingHistory": {
     "deleteTitle": "Delete fast?",

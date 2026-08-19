@@ -1556,7 +1556,35 @@
     "hourFast": "godzin postu",
     "startTime": "Czas rozpoczęcia",
     "starting": "Rozpoczynanie…",
-    "startAction": "Rozpocznij post"
+    "startAction": "Rozpocznij post",
+    "accessibility": {
+      "startTime": "Godzina rozpoczęcia: {{time}}",
+      "decreaseHours": "Skróć czas postu",
+      "durationHours": "Czas postu w godzinach",
+      "increaseHours": "Wydłuż czas postu"
+    },
+    "presets": {
+      "leangains": {
+        "name": "16:8 Leangains",
+        "description": "Pomiń śniadanie i jedz w ciągu 8-godzinnego okna."
+      },
+      "warrior18": {
+        "name": "18:6 Warrior",
+        "description": "Bardziej wymagający post z 6-godzinnym oknem jedzenia."
+      },
+      "warrior20": {
+        "name": "20:4 Warrior",
+        "description": "Zjedz jeden duży posiłek lub rozłóż kalorie na 4 godziny."
+      },
+      "circadian": {
+        "name": "Rytm dobowy",
+        "description": "Poszcząc od zachodu słońca do rana."
+      },
+      "custom": {
+        "name": "Post niestandardowy",
+        "description": "Ustaw własny czas postu."
+      }
+    }
   },
   "fastingHistory": {
     "deleteTitle": "Usunąć post?",
