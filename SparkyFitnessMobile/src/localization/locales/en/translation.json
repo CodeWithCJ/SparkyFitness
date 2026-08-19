@@ -3035,7 +3035,8 @@
       "top": "top",
       "logged": "logged",
       "allSets": "{{count}} sets",
-      "partialSets": "{{completed}} of {{total}} sets"
+      "partialSets": "{{completed}} of {{total}} sets",
+      "allSetsOne": "1 set"
     },
     "accessibility": {
       "calculating": "Calculating"

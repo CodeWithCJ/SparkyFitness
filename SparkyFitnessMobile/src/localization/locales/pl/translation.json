@@ -3035,7 +3035,8 @@
       "top": "najlepszy wynik",
       "logged": "zapisano",
       "allSets": "{{count}} serii",
-      "partialSets": "{{completed}} z {{total}} serii"
+      "partialSets": "{{completed}} z {{total}} serii",
+      "allSetsOne": "1 seria"
     },
     "accessibility": {
       "calculating": "Obliczanie"

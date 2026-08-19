@@ -342,7 +342,7 @@ function buildNativeMenuItem(
     identifier,
     tintColor: colors.defaultColor,
     accessibilityLabel: item.accessibilityLabel,
-    badge: item.showsBadge ? createNativeHeaderAccentBadge(accentColor, item.badgeValue) : undefined,
+    badge: item.showsBadge ? createNativeHeaderAccentBadge(accentColor, item.badgeValue ?? '•') : undefined,
     menuItems,
   });
 }

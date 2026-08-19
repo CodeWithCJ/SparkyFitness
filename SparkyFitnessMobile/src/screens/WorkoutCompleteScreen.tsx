@@ -626,9 +626,11 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                     className="text-xs font-medium text-text-secondary mt-0.5"
                     style={{ fontVariant: ['tabular-nums'] }}
                   >
-                    {row.completedSetCount === row.totalSetCount
-                      ? t('workoutComplete.labels.allSets', { defaultValue: '{{count}} sets', count: row.totalSetCount })
-                      : t('workoutComplete.labels.partialSets', { defaultValue: '{{completed}} of {{total}} sets', completed: row.completedSetCount, total: row.totalSetCount })}
+                    <Text className="font-semibold">
+                      {row.completedSetCount === row.totalSetCount
+                        ? row.totalSetCount === 1 ? t('workoutComplete.labels.allSetsOne', { defaultValue: '1 set' }) : t('workoutComplete.labels.allSets', { defaultValue: '{{count}} sets', count: row.totalSetCount })
+                        : t('workoutComplete.labels.partialSets', { defaultValue: '{{completed}} of {{total}} sets', completed: row.completedSetCount, total: row.totalSetCount })}
+                    </Text>
                     {topText != null && ` · ${t('workoutComplete.labels.top', { defaultValue: 'top' })} ${topText}`}
                   </Text>
                   {row.notes != null && (
