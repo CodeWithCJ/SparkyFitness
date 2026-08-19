@@ -1741,33 +1741,77 @@
     "deleteExercise": "Usuń ćwiczenie"
   },
   "cycleSettings": {
+    "updateFailed": "Aktualizacja nie powiodła się",
+    "saveFailed": "Nie udało się zapisać ustawień cyklu. Spróbuj ponownie.",
+    "mode": {
+      "standard": "Standardowy cykl",
+      "ttc": "Staranie się o ciążę",
+      "pregnant": "Monitorowanie ciąży",
+      "postpartum": "Połóg",
+      "menopause": "Uwzględnianie menopauzy"
+    },
+    "birthControl": {
+      "none": "Brak",
+      "pill": "Tabletka",
+      "iudHormonal": "Wkładka hormonalna",
+      "iudCopper": "Wkładka miedziana",
+      "implant": "Implant",
+      "ring": "Krążek",
+      "patch": "Plaster",
+      "shot": "Zastrzyk",
+      "condoms": "Prezerwatywy / bariera",
+      "other": "Inne"
+    },
+    "condition": {
+      "pcos": "PCOS",
+      "endometriosis": "Endometrioza",
+      "fibroids": "Włókniaki",
+      "thyroid": "Choroby tarczycy",
+      "other": "Inne"
+    },
+    "terminology": {
+      "default": "Domyślne",
+      "neutral": "Neutralne płciowo"
+    },
+    "reset": {
+      "title": "Zresetować konfigurację?",
+      "message": "Czy na pewno chcesz zresetować konfigurację cyklu? Postęp konfiguracji zostanie usunięty, ale zapisane dni cyklu pozostaną.",
+      "action": "Zresetuj",
+      "success": "Konfiguracja została zresetowana."
+    },
+    "export": {
+      "preparing": "Przygotowywanie eksportu",
+      "generating": "Generowanie pliku JSON…",
+      "failed": "Eksport nie powiódł się",
+      "failedMessage": "Nie udało się wyeksportować danych cyklu."
+    },
     "title": {
-      "wellness": "Ustawienia zdrowia",
+      "wellness": "Ustawienia dobrego samopoczucia",
       "cyclePregnancy": "Cykl i ciąża"
     },
     "enable": {
-      "title": "Włącz śledzenie cyklu i ciąży",
+      "title": "Włącz monitorowanie cyklu i ciąży",
       "subtitle": "Włącz zapisywanie, prognozy i historię"
     },
     "groups": {
       "features": "Konfiguracja funkcji",
-      "calculations": "Ustawienia obliczeń cyklu",
-      "conditions": "Choroby i dolegliwości",
-      "conditionsSubtitle": "Wybierz dolegliwości, aby dopasować śledzenie do swoich potrzeb.",
-      "display": "Opcje wyświetlania",
+      "calculations": "Korekty obliczeń cyklu",
+      "conditions": "Choroby",
+      "conditionsSubtitle": "Wybierz choroby, aby dopasować monitorowanie.",
+      "display": "Wyświetlanie",
       "actions": "Akcje"
     },
     "fields": {
-      "trackingMode": "Tryb śledzenia",
+      "trackingMode": "Tryb monitorowania",
       "birthControl": "Metoda antykoncepcji",
       "averageCycleLength": "Średnia długość cyklu",
       "averagePeriodLength": "Średnia długość miesiączki",
       "lutealLength": "Długość fazy lutealnej",
-      "showFertileWindow": "Pokaż okno płodności",
+      "showFertileWindow": "Pokaż dni płodne",
       "discreetMode": "Tryb dyskretny",
       "terminology": "Terminologia",
-      "export": "Eksportuj dane cyklu i ciąży",
-      "reset": "Uruchom ponownie konfigurację"
+      "export": "Eksportuj dane",
+      "reset": "Zresetuj konfigurację"
     },
     "pickers": {
       "mode": "Wybierz tryb",
@@ -1775,55 +1819,13 @@
       "terminology": "Wybierz terminologię"
     },
     "values": {
-      "custom": "Własne ustawienie",
-      "defaultHistory": "Domyślne / na podstawie historii",
+      "custom": "Własna wartość",
+      "defaultHistory": "Domyślna/historia",
       "lutealSubtitle": "Dni po owulacji (domyślnie 14)",
-      "fertileSubtitle": "Wyróżnia dni płodne w kalendarzu",
-      "discreetSubtitle": "Ukrywa etykiety „Cykl” i „Ciąża” w aplikacji",
-      "exportSubtitle": "Pobierz eksport danych JSON",
-      "resetSubtitle": "Uruchom ponownie konfigurację"
-    },
-    "reset": {
-      "title": "Resetowanie konfiguracji",
-      "message": "Czy na pewno chcesz zresetować konfigurację cyklu? Postęp konfiguracji zostanie wyczyszczony, ale zapisane dni cyklu pozostaną bez zmian.",
-      "action": "Resetuj",
-      "success": "Konfigurację zresetowano."
-    },
-    "export": {
-      "preparing": "Przygotowywanie eksportu",
-      "generating": "Tworzenie pliku eksportu JSON…",
-      "failed": "Eksportowanie danych nie powiodło się",
-      "failedMessage": "Nie udało się wyeksportować danych cyklu."
-    },
-    "mode": {
-      "standard": "Standardowy cykl",
-      "ttc": "Starania o ciążę",
-      "pregnant": "Śledzenie ciąży",
-      "postpartum": "Połóg",
-      "menopause": "Z uwzględnieniem menopauzy"
-    },
-    "birthControl": {
-      "none": "Brak",
-      "pill": "Tabletka",
-      "iudHormonal": "Hormonalna wkładka wewnątrzmaciczna",
-      "iudCopper": "Miedziana wkładka wewnątrzmaciczna",
-      "implant": "Implant",
-      "ring": "Krążek dopochwowy",
-      "patch": "Plaster",
-      "shot": "Zastrzyk",
-      "condoms": "Prezerwatywy / metoda barierowa",
-      "other": "Inna"
-    },
-    "terminology": {
-      "default": "Domyślna",
-      "neutral": "Neutralna płciowo"
-    },
-    "condition": {
-      "pcos": "PCOS",
-      "endometriosis": "Endometrioza",
-      "fibroids": "Mięśniaki",
-      "thyroid": "Choroby tarczycy",
-      "other": "Inna"
+      "fertileSubtitle": "Pokaż dni płodne w kalendarzu",
+      "discreetSubtitle": "Używaj neutralnych nazw i ikon",
+      "exportSubtitle": "Pobierz dane cyklu i dobrego samopoczucia",
+      "resetSubtitle": "Usuń postęp konfiguracji, zachowując zapisane dni"
     }
   },
   "measurements": {
@@ -3818,5 +3820,22 @@
     "7d": "7 dni",
     "30d": "30 dni",
     "90d": "90 dni"
+  },
+  "foodEntryMeal": {
+    "failed": "Nie udało się dodać posiłku"
+  },
+  "foodSave": {
+    "failed": "Nie udało się zapisać jedzenia"
+  },
+  "favorites": {
+    "updateFailed": "Nie udało się zaktualizować ulubionych"
+  },
+  "checkIn": {
+    "saveFailed": "Nie udało się zapisać",
+    "saveMessage": "Nie udało się zapisać pomiarów. Spróbuj ponownie."
+  },
+  "symptoms": {
+    "saveFailed": "Nie udało się zapisać objawu",
+    "removeFailed": "Nie udało się usunąć objawu"
   }
 }

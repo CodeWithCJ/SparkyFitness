@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { createFoodEntryMeal } from '../services/api/foodEntryMealsApi';
 import type {
@@ -13,6 +14,7 @@ interface UseAddFoodEntryMealOptions {
 }
 
 export function useAddFoodEntryMeal(options?: UseAddFoodEntryMealOptions) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -22,7 +24,7 @@ export function useAddFoodEntryMeal(options?: UseAddFoodEntryMealOptions) {
       options?.onSuccess?.(meal);
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: 'Failed to add meal', text2: 'Please try again.' });
+      Toast.show({ type: 'error', text1: t('foodEntryMeal.failed', { defaultValue: 'Failed to add meal' }), text2: t('common.tryAgain', { defaultValue: 'Please try again.' }) });
     },
   });
 

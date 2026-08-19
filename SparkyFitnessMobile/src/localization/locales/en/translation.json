@@ -1741,60 +1741,8 @@
     "deleteExercise": "Delete exercise"
   },
   "cycleSettings": {
-    "title": {
-      "wellness": "Wellness Settings",
-      "cyclePregnancy": "Cycle & Pregnancy"
-    },
-    "enable": {
-      "title": "Enable Cycle & Pregnancy Tracking",
-      "subtitle": "Turn on logging, predictions, and history"
-    },
-    "groups": {
-      "features": "Feature Configuration",
-      "calculations": "Cycle Calculations Overrides",
-      "conditions": "Conditions",
-      "conditionsSubtitle": "Select applicable conditions to personalize your tracking.",
-      "display": "Display Options",
-      "actions": "Actions"
-    },
-    "fields": {
-      "trackingMode": "Tracking Mode",
-      "birthControl": "Birth Control Method",
-      "averageCycleLength": "Average Cycle Length",
-      "averagePeriodLength": "Average Period Length",
-      "lutealLength": "Luteal Phase Length",
-      "showFertileWindow": "Show Fertile Window",
-      "discreetMode": "Discreet Mode",
-      "terminology": "Terminology",
-      "export": "Export Cycle & Pregnancy Data",
-      "reset": "Reset Onboarding Wizard"
-    },
-    "pickers": {
-      "mode": "Select Mode",
-      "method": "Select Method",
-      "terminology": "Select Terminology"
-    },
-    "values": {
-      "custom": "Custom override",
-      "defaultHistory": "Default/History",
-      "lutealSubtitle": "Days post-ovulation (default 14)",
-      "fertileSubtitle": "Highlight fertile days on calendar",
-      "discreetSubtitle": "Hides \"Cycle\" or \"Pregnancy\" labels in UI",
-      "exportSubtitle": "Download JSON data export",
-      "resetSubtitle": "Restart setup walkthrough"
-    },
-    "reset": {
-      "title": "Reset Onboarding",
-      "message": "Are you sure you want to reset your cycle onboarding? This will clear your setup progress, but your logged cycle days will remain intact.",
-      "action": "Reset",
-      "success": "Onboarding reset completed."
-    },
-    "export": {
-      "preparing": "Preparing Export",
-      "generating": "Generating JSON export file...",
-      "failed": "Export Failed",
-      "failedMessage": "Could not export cycle data."
-    },
+    "updateFailed": "Update failed",
+    "saveFailed": "Could not save cycle settings. Please try again.",
     "mode": {
       "standard": "Standard Cycle",
       "ttc": "Trying to Conceive",
@@ -1814,16 +1762,70 @@
       "condoms": "Condoms / barrier",
       "other": "Other"
     },
-    "terminology": {
-      "default": "Default",
-      "neutral": "Gender-Neutral"
-    },
     "condition": {
       "pcos": "PCOS",
       "endometriosis": "Endometriosis",
       "fibroids": "Fibroids",
       "thyroid": "Thyroid condition",
       "other": "Other"
+    },
+    "terminology": {
+      "default": "Default",
+      "neutral": "Gender-Neutral"
+    },
+    "reset": {
+      "title": "Reset Onboarding",
+      "message": "Are you sure you want to reset your cycle onboarding? This will clear your setup progress, but your logged cycle days will remain intact.",
+      "action": "Reset",
+      "success": "Onboarding reset completed."
+    },
+    "export": {
+      "preparing": "Preparing Export",
+      "generating": "Generating JSON export file...",
+      "failed": "Export Failed",
+      "failedMessage": "Could not export cycle data."
+    },
+    "title": {
+      "wellness": "Wellness Settings",
+      "cyclePregnancy": "Cycle & Pregnancy"
+    },
+    "enable": {
+      "title": "Enable Cycle & Pregnancy Tracking",
+      "subtitle": "Turn on logging, predictions, and history"
+    },
+    "groups": {
+      "features": "Feature Configuration",
+      "calculations": "Cycle Calculations Overrides",
+      "conditions": "Conditions",
+      "conditionsSubtitle": "Select applicable conditions to personalize your tracking.",
+      "display": "Display",
+      "actions": "Actions"
+    },
+    "fields": {
+      "trackingMode": "Tracking Mode",
+      "birthControl": "Birth Control Method",
+      "averageCycleLength": "Average Cycle Length",
+      "averagePeriodLength": "Average Period Length",
+      "lutealLength": "Luteal Phase Length",
+      "showFertileWindow": "Show Fertile Window",
+      "discreetMode": "Discreet Mode",
+      "terminology": "Terminology",
+      "export": "Export Data",
+      "reset": "Reset Onboarding"
+    },
+    "pickers": {
+      "mode": "Select Mode",
+      "method": "Select Method",
+      "terminology": "Select Terminology"
+    },
+    "values": {
+      "custom": "Custom override",
+      "defaultHistory": "Default/History",
+      "lutealSubtitle": "Days post-ovulation (default 14)",
+      "fertileSubtitle": "Show fertile window on the calendar",
+      "discreetSubtitle": "Use neutral labels and icons",
+      "exportSubtitle": "Download your cycle and wellness data",
+      "resetSubtitle": "Clear setup progress while keeping logged days"
     }
   },
   "measurements": {
@@ -3818,5 +3820,22 @@
     "7d": "7d",
     "30d": "30d",
     "90d": "90d"
+  },
+  "foodEntryMeal": {
+    "failed": "Failed to add meal"
+  },
+  "foodSave": {
+    "failed": "Failed to save food"
+  },
+  "favorites": {
+    "updateFailed": "Failed to update favorites"
+  },
+  "checkIn": {
+    "saveFailed": "Save failed",
+    "saveMessage": "Could not save measurements. Please try again."
+  },
+  "symptoms": {
+    "saveFailed": "Failed to save symptom",
+    "removeFailed": "Failed to remove symptom"
   }
 }
