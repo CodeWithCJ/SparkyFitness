@@ -3802,5 +3802,10 @@
   },
   "editableSet": {
     "removeTitle": "Seria {{number}}"
+  },
+  "mealTypeTime": {
+    "defaultTitle": "Domyślna godzina",
+    "clearHint": "Wyczyść domyślną godzinę",
+    "saveHint": "Zapisz domyślną godzinę"
   }
 }

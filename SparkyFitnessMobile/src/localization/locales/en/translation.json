@@ -3802,5 +3802,10 @@
   },
   "editableSet": {
     "removeTitle": "Set {{number}}"
+  },
+  "mealTypeTime": {
+    "defaultTitle": "Default Time",
+    "clearHint": "Clear default time",
+    "saveHint": "Save default time"
   }
 }
