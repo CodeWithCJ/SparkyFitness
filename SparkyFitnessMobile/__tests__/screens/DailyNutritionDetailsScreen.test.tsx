@@ -124,3 +124,17 @@ describe('DailyNutritionDetailsScreen fiber row', () => {
     expect(screen.queryByText(`${FOOD_FIBER}g / 30g`)).toBeNull();
   });
 });
+
+describe('DailyNutritionDetailsScreen glycemic index labels', () => {
+  it('maps controlled API classifications without mutating their values', () => {
+    const { getGlycemicIndexLabel } = require('../../src/screens/DailyNutritionDetailsScreen');
+    const t = (key: string, options: { defaultValue: string }) => options.defaultValue;
+    expect(getGlycemicIndexLabel(t, 'None')).toBe('None');
+    expect(getGlycemicIndexLabel(t, 'Very Low')).toBe('Very Low');
+    expect(getGlycemicIndexLabel(t, 'Low')).toBe('Low');
+    expect(getGlycemicIndexLabel(t, 'Medium')).toBe('Medium');
+    expect(getGlycemicIndexLabel(t, 'High')).toBe('High');
+    expect(getGlycemicIndexLabel(t, 'Very High')).toBe('Very High');
+    expect(getGlycemicIndexLabel(t, 'Future Value')).toBe('Future Value');
+  });
+});

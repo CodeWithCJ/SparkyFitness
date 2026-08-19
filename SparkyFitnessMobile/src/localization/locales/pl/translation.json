@@ -2046,7 +2046,13 @@
     "iron": "Żelazo",
     "glycemicIndex": "Indeks glikemiczny",
     "totalCarbs": "Węglowodany ogółem",
-    "netCarbs": "Węglowodany netto"
+    "netCarbs": "Węglowodany netto",
+    "glycemicIndexNone": "Brak",
+    "glycemicIndexVeryLow": "Bardzo niski",
+    "glycemicIndexLow": "Niski",
+    "glycemicIndexMedium": "Średni",
+    "glycemicIndexHigh": "Wysoki",
+    "glycemicIndexVeryHigh": "Bardzo wysoki"
   },
   "foodNutrition": {
     "hideExtra": "Ukryj dodatkowe składniki odżywcze ▴",
@@ -2366,10 +2372,13 @@
       "hours": "{{formattedHours}} godz."
     },
     "progress": {
-      "ofDays": "{{formattedCount}} dni",
       "recordsWritten": "Zapisane rekordy",
       "timeRemaining": "Pozostały czas",
-      "around": "Około {{date}}"
+      "around": "Około {{date}}",
+      "ofDays_one": "z {{formattedCount}} dnia",
+      "ofDays_few": "z {{formattedCount}} dni",
+      "ofDays_many": "z {{formattedCount}} dni",
+      "ofDays_other": "z {{formattedCount}} dni"
     },
     "actions": {
       "start": "Rozpocznij import",
@@ -2395,10 +2404,13 @@
       "savedDays": "Zaimportowane dni zostały zapisane. Rozpoczęcie od nowa usunie ten postęp i ponownie zaimportuje dane od pierwszego dnia."
     },
     "done": {
-      "daysImported": "{{formattedCount}} zaimportowanych dni",
       "complete": "Import zakończony",
       "completed": "Ukończono",
-      "nextSync": "Nowe dane zostaną automatycznie pobrane podczas zwykłej synchronizacji. Uruchom kolejny import tylko po włączeniu dodatkowych metryk zdrowotnych."
+      "nextSync": "Nowe dane zostaną automatycznie pobrane podczas zwykłej synchronizacji. Uruchom kolejny import tylko po włączeniu dodatkowych metryk zdrowotnych.",
+      "daysImported_one": "Zaimportowano {{formattedCount}} dzień",
+      "daysImported_few": "Zaimportowano {{formattedCount}} dni",
+      "daysImported_many": "Zaimportowano {{formattedCount}} dni",
+      "daysImported_other": "Zaimportowano {{formattedCount}} dni"
     }
   },
   "fastingDetail": {

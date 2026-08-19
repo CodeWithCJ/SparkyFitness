@@ -19,6 +19,35 @@ import type { FoodEntry } from '../types/foodEntries';
 
 type DailyNutritionDetailsScreenProps = RootStackScreenProps<'DailyNutritionDetails'>;
 
+type GlycemicIndexValue = 'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
+
+/**
+ * The API/database constrains glycemic_index to a controlled classification enum.
+ * Keep the persisted value unchanged and localize only its presentation label.
+ * Unknown future values remain readable rather than leaking an i18n key.
+ */
+export function getGlycemicIndexLabel(
+  t: (key: string, options: { defaultValue: string }) => string,
+  value: string,
+): string {
+  switch (value as GlycemicIndexValue) {
+    case 'None':
+      return t('nutrients.glycemicIndexNone', { defaultValue: 'None' });
+    case 'Very Low':
+      return t('nutrients.glycemicIndexVeryLow', { defaultValue: 'Very Low' });
+    case 'Low':
+      return t('nutrients.glycemicIndexLow', { defaultValue: 'Low' });
+    case 'Medium':
+      return t('nutrients.glycemicIndexMedium', { defaultValue: 'Medium' });
+    case 'High':
+      return t('nutrients.glycemicIndexHigh', { defaultValue: 'High' });
+    case 'Very High':
+      return t('nutrients.glycemicIndexVeryHigh', { defaultValue: 'Very High' });
+    default:
+      return value;
+  }
+}
+
 const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = ({ route, navigation }) => {
   const { t } = useTranslation();
   const { date } = route.params;
@@ -213,13 +242,14 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
       const giValues = summary.foodEntries
         .map((e) => e.glycemic_index)
         .filter((gi) => gi && gi !== 'None');
-      const giValue = giValues.length > 0 ? giValues[0] : 'None';
+      const giValue = giValues[0] ?? 'None';
+      const giDisplayValue = getGlycemicIndexLabel(t, giValue);
 
       return (
         <View key={item.key} className="py-3 border-b border-border-subtle">
           <View className="flex-row justify-between items-center">
             <Text className="text-text-secondary text-sm font-medium">{item.label}</Text>
-            <Text className="text-text-primary text-sm font-semibold">{giValue}</Text>
+            <Text className="text-text-primary text-sm font-semibold">{giDisplayValue}</Text>
           </View>
         </View>
       );

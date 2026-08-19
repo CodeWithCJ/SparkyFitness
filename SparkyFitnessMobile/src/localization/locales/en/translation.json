@@ -2020,7 +2020,13 @@
     "iron": "Iron",
     "glycemicIndex": "Glycemic Index",
     "totalCarbs": "Total Carbs",
-    "netCarbs": "Net Carbs"
+    "netCarbs": "Net Carbs",
+    "glycemicIndexNone": "None",
+    "glycemicIndexVeryLow": "Very Low",
+    "glycemicIndexLow": "Low",
+    "glycemicIndexMedium": "Medium",
+    "glycemicIndexHigh": "High",
+    "glycemicIndexVeryHigh": "Very High"
   },
   "foodNutrition": {
     "hideExtra": "Hide extra nutrients ▴",
@@ -2340,10 +2346,11 @@
       "hours": "{{formattedHours}}h"
     },
     "progress": {
-      "ofDays": "of {{formattedCount}} days",
       "recordsWritten": "Records written",
       "timeRemaining": "Time remaining",
-      "around": "Around {{date}}"
+      "around": "Around {{date}}",
+      "ofDays_one": "of {{formattedCount}} day",
+      "ofDays_other": "of {{formattedCount}} days"
     },
     "actions": {
       "start": "Start Import",
@@ -2369,10 +2376,11 @@
       "savedDays": "Days already imported are saved. Starting over discards them and re-imports from day 1."
     },
     "done": {
-      "daysImported": "{{formattedCount}} days imported",
       "complete": "Import complete",
       "completed": "Completed",
-      "nextSync": "New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics."
+      "nextSync": "New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics.",
+      "daysImported_one": "{{formattedCount}} day imported",
+      "daysImported_other": "{{formattedCount}} days imported"
     }
   },
   "fastingDetail": {

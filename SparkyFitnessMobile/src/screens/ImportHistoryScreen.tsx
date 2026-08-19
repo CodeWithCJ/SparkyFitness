@@ -402,7 +402,7 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
                 <Text className="text-5xl font-extrabold text-text-primary">
                   {importStats.totalDays.toLocaleString(locale)}
                 </Text>
-                <Text className="text-xl text-text-muted">{t('importHistory.done.daysImported', { defaultValue: 'days imported: {{formattedCount}}', count: importStats.totalDays, formattedCount: importStats.totalDays.toLocaleString(locale) })}</Text>
+                <Text className="text-xl text-text-muted">{t('importHistory.done.daysImported', { defaultValue: '{{formattedCount}} days imported', count: importStats.totalDays, formattedCount: importStats.totalDays.toLocaleString(locale) })}</Text>
               </View>
             ) : (
               <Text className="text-text-primary text-xl py-4 font-semibold">{t('importHistory.done.complete', { defaultValue: 'Import complete' })}</Text>

@@ -234,3 +234,97 @@ describe('initializeI18n idempotency', () => {
     });
   });
 });
+
+describe('ImportHistory pluralization', () => {
+  it('uses singular and plural English forms for day counters', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('en');
+      const progress = (count: number) => i18n.t('importHistory.progress.ofDays', {
+        defaultValue: 'of {{formattedCount}} days',
+        count,
+        formattedCount: String(count),
+      });
+      const imported = (count: number) => i18n.t('importHistory.done.daysImported', {
+        defaultValue: '{{formattedCount}} days imported',
+        count,
+        formattedCount: String(count),
+      });
+      expect(progress(1)).toBe('of 1 day');
+      expect(progress(2)).toBe('of 2 days');
+      expect(imported(1)).toBe('1 day imported');
+      expect(imported(12)).toBe('12 days imported');
+    });
+  });
+
+  it('uses Polish one/few/many forms for representative day counts', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('pl');
+      const progress = (count: number) => i18n.t('importHistory.progress.ofDays', {
+        defaultValue: 'of {{formattedCount}} days',
+        count,
+        formattedCount: String(count),
+      });
+      const imported = (count: number) => i18n.t('importHistory.done.daysImported', {
+        defaultValue: '{{formattedCount}} days imported',
+        count,
+        formattedCount: String(count),
+      });
+      expect(progress(0)).toBe('z 0 dni');
+      expect(progress(1)).toBe('z 1 dnia');
+      expect(progress(2)).toBe('z 2 dni');
+      expect(progress(5)).toBe('z 5 dni');
+      expect(progress(12)).toBe('z 12 dni');
+      expect(progress(22)).toBe('z 22 dni');
+      expect(progress(25)).toBe('z 25 dni');
+      expect(imported(1)).toBe('Zaimportowano 1 dzień');
+      expect(imported(2)).toBe('Zaimportowano 2 dni');
+      expect(imported(5)).toBe('Zaimportowano 5 dni');
+      expect(imported(12)).toBe('Zaimportowano 12 dni');
+      expect(imported(22)).toBe('Zaimportowano 22 dni');
+      expect(imported(25)).toBe('Zaimportowano 25 dni');
+    });
+  });
+});
+
+describe('controlled glycemic index translations', () => {
+  it('resolves all GI enum labels in English and Polish from the catalogs', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('en');
+      const keys = [
+        ['nutrients.glycemicIndexNone', 'None'],
+        ['nutrients.glycemicIndexVeryLow', 'Very Low'],
+        ['nutrients.glycemicIndexLow', 'Low'],
+        ['nutrients.glycemicIndexMedium', 'Medium'],
+        ['nutrients.glycemicIndexHigh', 'High'],
+        ['nutrients.glycemicIndexVeryHigh', 'Very High'],
+      ] as const;
+      for (const [key, fallback] of keys) {
+        expect(i18n.t(key, { defaultValue: fallback })).toBe(fallback);
+      }
+      await i18n.changeLanguage('pl');
+      const polish = ['Brak', 'Bardzo niski', 'Niski', 'Średni', 'Wysoki', 'Bardzo wysoki'];
+      keys.forEach(([key], index) => {
+        expect(i18n.t(key, { defaultValue: keys[index][1] })).toBe(polish[index]);
+      });
+    });
+  });
+});
+
+describe('ImportHistory pluralization matrix', () => {
+  it.each([0, 1, 2, 5, 12, 22, 25])('resolves Polish daysImported for count %s', async (count) => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('pl');
+      const result = i18n.t('importHistory.done.daysImported', {
+        defaultValue: '{{formattedCount}} days imported',
+        count,
+        formattedCount: String(count),
+      });
+      const expected = count === 1 ? `Zaimportowano ${count} dzień` : `Zaimportowano ${count} dni`;
+      expect(result).toBe(expected);
+    });
+  });
+});
