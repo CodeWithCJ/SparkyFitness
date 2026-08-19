@@ -148,7 +148,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
 
         applyChange();
       },
-      [selectedKey, sets, restTimesMixed, allOverwriteConfirmed],
+      [selectedKey, sets, restTimesMixed, allOverwriteConfirmed, t],
     );
 
     const handleDone = useCallback(() => {
