@@ -3278,5 +3278,22 @@
     "errors": {
       "saveFailed": "Failed to save activity"
     }
+  },
+  "mealTypeDetail": {
+    "states": {
+      "noServer": "No server configured",
+      "noServerHint": "Configure your server connection in Settings to view meal nutrition.",
+      "loading": "Loading meal…",
+      "loadFailed": "Failed to load meal",
+      "noFoods": "No {{meal}} foods",
+      "noFoodsHint": "{{date}} has no foods logged for this meal."
+    },
+    "labels": {
+      "foods": "Foods"
+    },
+    "accessibility": {
+      "addFood": "Add Food",
+      "copyMeal": "Copy meal to another day"
+    }
   }
 }

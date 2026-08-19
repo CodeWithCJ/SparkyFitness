@@ -3318,5 +3318,22 @@
     "errors": {
       "saveFailed": "Nie udało się zapisać aktywności"
     }
+  },
+  "mealTypeDetail": {
+    "states": {
+      "noServer": "Nie skonfigurowano serwera",
+      "noServerHint": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić wartości odżywcze posiłku.",
+      "loading": "Wczytywanie posiłku…",
+      "loadFailed": "Nie udało się wczytać posiłku",
+      "noFoods": "Brak produktów w kategorii „{{meal}}”",
+      "noFoodsHint": "{{date}} — brak zapisanych produktów dla tego posiłku."
+    },
+    "labels": {
+      "foods": "Produkty"
+    },
+    "accessibility": {
+      "addFood": "Dodaj produkt",
+      "copyMeal": "Kopiuj posiłek na inny dzień"
+    }
   }
 }
