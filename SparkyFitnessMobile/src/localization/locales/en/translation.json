@@ -1677,7 +1677,12 @@
     "caloriesShort": "cal",
     "proteinAmount": "protein",
     "carbsAmount": "carbs",
-    "fatAmount": "fat"
+    "fatAmount": "fat",
+    "left": "left",
+    "calories": "calories",
+    "remaining": "{{value}}g left",
+    "over": "{{value}}g over",
+    "met": "met"
   },
   "foodSummary": {
     "tapToAddFood": "Tap to add food",
@@ -1840,7 +1845,9 @@
       "lb": "lb",
       "ft": "ft",
       "in": "in"
-    }
+    },
+    "title": "Measurements",
+    "edit": "Edit measurements"
   },
   "foodScan": {
     "segment": {
@@ -2493,7 +2500,29 @@
     "protocolWithGoal": "{{protocol}} · {{hours}}h fast",
     "noActiveFast": "No active fast",
     "startDescription": "Start a fast to track your fasting window and metabolic stages.",
-    "startFast": "Start Fast"
+    "startFast": "Start Fast",
+    "stages": {
+      "anabolic": {
+        "name": "Anabolic",
+        "description": "Fed state · insulin elevated"
+      },
+      "catabolic": {
+        "name": "Catabolic",
+        "description": "Glycogen depleting · fat metabolism ramping up"
+      },
+      "fatBurning": {
+        "name": "Fat burning",
+        "description": "Fat burning ramps up"
+      },
+      "ketosis": {
+        "name": "Ketosis",
+        "description": "Ketone production rises"
+      },
+      "deepKetosis": {
+        "name": "Deep ketosis",
+        "description": "Autophagy peak"
+      }
+    }
   },
   "exerciseDetail": {
     "sharedPublicly": "Exercise shared publicly",
@@ -3421,5 +3450,16 @@
     "title": "Announcement",
     "close": "Close announcement",
     "dismiss": "Got it, don't show again"
+  },
+  "pregnancySafety": {
+    "title": "Food & Medication Safety",
+    "food": "Food",
+    "medications": "Medications",
+    "safe": "Safe",
+    "caution": "Caution",
+    "avoid": "Avoid",
+    "searchHint": "Search to see how a food or medication is commonly categorized during pregnancy.",
+    "noMatch": "No match found. This list is not exhaustive, so ask your provider if unsure.",
+    "disclaimer": "General guidance only, not medical advice. Always confirm with your provider."
   }
 }

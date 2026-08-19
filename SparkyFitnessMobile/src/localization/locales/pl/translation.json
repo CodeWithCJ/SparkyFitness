@@ -1701,7 +1701,12 @@
     "caloriesShort": "kcal",
     "proteinAmount": "białka",
     "carbsAmount": "węglowodanów",
-    "fatAmount": "tłuszczu"
+    "fatAmount": "tłuszczu",
+    "left": "pozostało",
+    "calories": "kalorii",
+    "remaining": "{{value}} g pozostało",
+    "over": "{{value}} g powyżej celu",
+    "met": "cel osiągnięty"
   },
   "foodSummary": {
     "tapToAddFood": "Dotknij, aby dodać produkt",
@@ -1866,7 +1871,9 @@
       "lb": "lb",
       "ft": "ft",
       "in": "cal"
-    }
+    },
+    "title": "Pomiary",
+    "edit": "Edytuj pomiary"
   },
   "foodScan": {
     "segment": {
@@ -2523,7 +2530,29 @@
     "protocolWithGoal": "{{protocol}} · post {{hours}} godz.",
     "noActiveFast": "Brak aktywnego postu",
     "startDescription": "Rozpocznij post, aby śledzić jego czas i etapy metaboliczne.",
-    "startFast": "Rozpocznij post"
+    "startFast": "Rozpocznij post",
+    "stages": {
+      "anabolic": {
+        "name": "Anaboliczna",
+        "description": "Stan po posiłku · podwyższona insulina"
+      },
+      "catabolic": {
+        "name": "Kataboliczna",
+        "description": "Zużywanie glikogenu · nasilanie metabolizmu tłuszczów"
+      },
+      "fatBurning": {
+        "name": "Spalanie tłuszczu",
+        "description": "Spalanie tłuszczu przyspiesza"
+      },
+      "ketosis": {
+        "name": "Ketoza",
+        "description": "Produkcja ciał ketonowych wzrasta"
+      },
+      "deepKetosis": {
+        "name": "Głęboka ketoza",
+        "description": "Szczyt autofagii"
+      }
+    }
   },
   "exerciseDetail": {
     "sharedPublicly": "Ćwiczenie udostępniono publicznie",
@@ -3463,5 +3492,16 @@
     "title": "Ogłoszenie",
     "close": "Zamknij ogłoszenie",
     "dismiss": "Rozumiem, nie pokazuj ponownie"
+  },
+  "pregnancySafety": {
+    "title": "Bezpieczeństwo żywności i leków",
+    "food": "Żywność",
+    "medications": "Leki",
+    "safe": "Bezpieczne",
+    "caution": "Ostrożnie",
+    "avoid": "Unikaj",
+    "searchHint": "Wyszukaj produkt lub lek, aby zobaczyć jego typową klasyfikację w ciąży.",
+    "noMatch": "Brak wyników. Ta lista nie jest kompletna — w razie wątpliwości zapytaj lekarza.",
+    "disclaimer": "To tylko ogólne wskazówki, nie porada medyczna. Zawsze potwierdź informacje u lekarza."
   }
 }

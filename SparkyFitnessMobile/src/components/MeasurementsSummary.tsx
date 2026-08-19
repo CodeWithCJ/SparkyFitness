@@ -1,4 +1,4 @@
-import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -76,32 +76,27 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
 
   if (!measurements && (!customMeasurements || customMeasurements.length === 0)) return null;
 
+  const { t } = useTranslation();
+
+  const localizedMeasurement = (key: 'weight' | 'bodyFatPercentage' | 'height' | 'neck' | 'waist' | 'hips' | 'steps') => {
+    switch (key) {
+      case 'weight': return t('measurements.fields.weight', { defaultValue: 'Weight' });
+      case 'bodyFatPercentage': return t('measurements.fields.bodyFatPercentage', { defaultValue: 'Body fat %' });
+      case 'height': return t('measurements.fields.height', { defaultValue: 'Height' });
+      case 'neck': return t('measurements.fields.neck', { defaultValue: 'Neck' });
+      case 'waist': return t('measurements.fields.waist', { defaultValue: 'Waist' });
+      case 'hips': return t('measurements.fields.hips', { defaultValue: 'Hips' });
+      case 'steps': return t('measurements.fields.steps', { defaultValue: 'Steps' });
+    }
+  };
   const rows: { kind: MeasurementKind | 'custom'; label: string; value: string }[] = [];
-  if (measurements?.weight != null) {
-    rows.push({ kind: 'weight', label: 'Weight', value: formatWeight(measurements.weight, weightMode) });
-  }
-  if (measurements?.body_fat_percentage != null) {
-    rows.push({
-      kind: 'body_fat_percentage',
-      label: 'Body fat',
-      value: `${formatNumber(measurements.body_fat_percentage)}%`,
-    });
-  }
-  if (measurements?.height != null) {
-    rows.push({ kind: 'height', label: 'Height', value: formatHeight(measurements.height, heightMode) });
-  }
-  if (measurements?.neck != null) {
-    rows.push({ kind: 'neck', label: 'Neck', value: formatBodyLength(measurements.neck, bodyUnit) });
-  }
-  if (measurements?.waist != null) {
-    rows.push({ kind: 'waist', label: 'Waist', value: formatBodyLength(measurements.waist, bodyUnit) });
-  }
-  if (measurements?.hips != null) {
-    rows.push({ kind: 'hips', label: 'Hips', value: formatBodyLength(measurements.hips, bodyUnit) });
-  }
-  if (measurements?.steps != null) {
-    rows.push({ kind: 'steps', label: 'Steps', value: String(measurements.steps) });
-  }
+  if (measurements?.weight != null) rows.push({ kind: 'weight', label: localizedMeasurement('weight'), value: formatWeight(measurements.weight, weightMode) });
+  if (measurements?.body_fat_percentage != null) rows.push({ kind: 'body_fat_percentage', label: localizedMeasurement('bodyFatPercentage'), value: `${formatNumber(measurements.body_fat_percentage)}%` });
+  if (measurements?.height != null) rows.push({ kind: 'height', label: localizedMeasurement('height'), value: formatHeight(measurements.height, heightMode) });
+  if (measurements?.neck != null) rows.push({ kind: 'neck', label: localizedMeasurement('neck'), value: formatBodyLength(measurements.neck, bodyUnit) });
+  if (measurements?.waist != null) rows.push({ kind: 'waist', label: localizedMeasurement('waist'), value: formatBodyLength(measurements.waist, bodyUnit) });
+  if (measurements?.hips != null) rows.push({ kind: 'hips', label: localizedMeasurement('hips'), value: formatBodyLength(measurements.hips, bodyUnit) });
+  if (measurements?.steps != null) rows.push({ kind: 'steps', label: localizedMeasurement('steps'), value: String(measurements.steps) });
 
   if (customMeasurements) {
     // Diary tiles only show MANUAL custom entries (strict source contract).
@@ -126,7 +121,7 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
 
   const header = (
     <View className="flex-row items-center gap-2 mb-2 px-1">
-      <Text className="text-base font-bold text-text-secondary flex-1">Measurements</Text>
+      <Text className="text-base font-bold text-text-secondary flex-1">{t('measurements.title', { defaultValue: 'Measurements' })}</Text>
       {onPress && <Icon name="add" size={14} color={accentPrimary} />}
     </View>
   );
@@ -167,7 +162,7 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
         <Pressable
           onPress={onPress}
           accessibilityRole="button"
-          accessibilityLabel="Edit measurements"
+          accessibilityLabel={t('measurements.edit', { defaultValue: 'Edit measurements' })}
         >
           {content}
         </Pressable>

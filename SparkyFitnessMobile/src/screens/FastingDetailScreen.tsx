@@ -21,10 +21,10 @@ import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
 import {
   METABOLIC_STAGES,
   getMetabolicStageIndex,
-  protocolBadgeLabel,
 } from '../constants/fasting';
 import { FastingStatCard, FastingProtocolBadge } from '../components/FastingSharedComponents';
 import type { RootStackScreenProps } from '../types/navigation';
+import { localizeFastingStage, localizeProtocolBadge } from '../utils/fastingLocalization';
 
 type Props = RootStackScreenProps<'FastingDetail'>;
 
@@ -139,14 +139,14 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                   className="text-base font-semibold"
                   style={{ color: current ? color : textPrimary }}
                 >
-                  {stage.name}
+                  {localizeFastingStage(t, stage).name}
                 </Text>
                 <Text className="text-xs text-text-secondary">
                   {stage.rangeLabel}
                   {current ? ` · ${t('fastingDetail.now', { defaultValue: 'now' })}` : ''}
                 </Text>
               </View>
-              <Text className="text-sm text-text-secondary mt-0.5">{stage.description}</Text>
+              <Text className="text-sm text-text-secondary mt-0.5">{localizeFastingStage(t, stage).description}</Text>
             </View>
           </View>
         );
@@ -195,7 +195,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                   className="text-sm font-bold uppercase tracking-wide"
                   style={{ color: stageColor }}
                 >
-                  {timer.stage.name}
+                  {localizeFastingStage(t, timer.stage).name}
                 </Text>
                 <Text
                   className="text-4xl font-bold text-text-primary mt-1"
@@ -228,8 +228,8 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                 label={t('fastingDetail.protocol', { defaultValue: 'Protocol' })}
                 value={
                   timer.goalHours != null
-                    ? t('fastingDetail.protocolWithGoal', { defaultValue: '{{protocol}} · {{hours}}h fast', protocol: protocolBadgeLabel(currentFast.fasting_type), hours: Math.round(timer.goalHours) })
-                    : protocolBadgeLabel(currentFast.fasting_type)
+                    ? t('fastingDetail.protocolWithGoal', { defaultValue: '{{protocol}} · {{hours}}h fast', protocol: localizeProtocolBadge(t, currentFast.fasting_type), hours: Math.round(timer.goalHours) })
+                    : localizeProtocolBadge(t, currentFast.fasting_type)
                 }
               />
               <DetailRow

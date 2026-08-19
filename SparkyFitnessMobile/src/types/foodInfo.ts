@@ -25,24 +25,26 @@ function toTrimmedString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+
 /** Ordered list of extra nutrient fields for display and form conversion. */
 export const EXTRA_NUTRIENT_FIELDS = [
-  { key: 'fiber', label: 'Fiber', unit: 'g' },
-  { key: 'sugars', label: 'Sugars', unit: 'g' },
-  { key: 'saturatedFat', label: 'Saturated Fat', unit: 'g' },
-  { key: 'transFat', label: 'Trans Fat', unit: 'g' },
-  { key: 'cholesterol', label: 'Cholesterol', unit: 'mg' },
-  { key: 'sodium', label: 'Sodium', unit: 'mg' },
-  { key: 'potassium', label: 'Potassium', unit: 'mg', additional: true },
-  { key: 'calcium', label: 'Calcium', unit: 'mg', additional: true },
-  { key: 'iron', label: 'Iron', unit: 'mg', additional: true },
-  { key: 'vitaminA', label: 'Vitamin A', unit: 'mcg', additional: true },
-  { key: 'vitaminC', label: 'Vitamin C', unit: 'mg', additional: true },
+  { key: 'fiber', label: 'fiber', unit: 'g' },
+  { key: 'sugars', label: 'sugars', unit: 'g' },
+  { key: 'saturatedFat', label: 'saturatedFat', unit: 'g' },
+  { key: 'transFat', label: 'transFat', unit: 'g' },
+  { key: 'cholesterol', label: 'cholesterol', unit: 'mg' },
+  { key: 'sodium', label: 'sodium', unit: 'mg' },
+  { key: 'potassium', label: 'potassium', unit: 'mg', additional: true },
+  { key: 'calcium', label: 'calcium', unit: 'mg', additional: true },
+  { key: 'iron', label: 'iron', unit: 'mg', additional: true },
+  { key: 'vitaminA', label: 'vitaminA', unit: 'mcg', additional: true },
+  { key: 'vitaminC', label: 'vitaminC', unit: 'mg', additional: true },
 ] as const;
 
 type ExtraNutrientKey = typeof EXTRA_NUTRIENT_FIELDS[number]['key'];
 
 export interface NutrientDisplayItem {
+  /** Application-owned key; custom nutrient names may remain literal. */
   label: string;
   value: number;
   unit: string;
@@ -76,15 +78,15 @@ export function buildNutrientDisplayList(
   }
 
   if (options.showNetCarbs && options.carbs !== undefined) {
-    const carbClusterLabels = new Set(['Fiber', 'Sugars']);
+    const carbClusterKeys = new Set(['fiber', 'sugars']);
     let insertIdx = 0;
     for (let i = 0; i < primary.length; i++) {
-      if (carbClusterLabels.has(primary[i].label)) {
+      if (carbClusterKeys.has(primary[i].label)) {
         insertIdx = i + 1;
       }
     }
     primary.splice(insertIdx, 0, {
-      label: 'Total Carbs',
+      label: 'totalCarbs',
       value: options.carbs,
       unit: 'g',
     });

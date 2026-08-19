@@ -17,9 +17,9 @@ import {
   DEFAULT_PRESET_ID,
   METABOLIC_STAGES,
   getMetabolicStageIndex,
-  protocolBadgeLabel,
 } from '../constants/fasting';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { localizeFastingStage, localizeProtocolBadge } from '../utils/fastingLocalization';
 
 type FastingCardNavigation = CompositeNavigationProp<
   BottomTabNavigationProp<TabParamList, 'Dashboard'>,
@@ -79,7 +79,7 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
 
   // ----- Active state -----
   if (isActive && currentFast) {
-    const badge = protocolBadgeLabel(currentFast.fasting_type);
+    const badge = localizeProtocolBadge(t, currentFast.fasting_type);
     return (
       <>
         <Pressable
@@ -124,7 +124,7 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
               {timer.hhmmss}
             </Text>
             <Text className="text-base font-semibold mb-1" style={{ color: stageColor }}>
-              {timer.stage.name}
+              {localizeFastingStage(t, timer.stage).name}
             </Text>
           </View>
 

@@ -6,6 +6,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import VerifiedBadge from './VerifiedBadge';
 import { buildNutrientDisplayList, type NutrientDisplayItem } from '../types/foodInfo';
+import { localizeNutrientKey } from '../utils/nutrientLocalization';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import NutritionMacroCard, { type NutritionGoalPercentages } from './NutritionMacroCard';
 import { useCustomNutrients, useServerConnection } from '../hooks';
@@ -92,11 +93,7 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
 
   const { t } = useTranslation();
   const scale = (value: number) => value * servings;
-  const localizedNutrientLabel = (label: string) => {
-    const labels: Record<string, string> = {
-      Calories: t('nutrients.calories', { defaultValue: 'Calories' }), Protein: t('nutrients.protein', { defaultValue: 'Protein' }), Carbs: t('nutrients.carbs', { defaultValue: 'Carbs' }), Fat: t('nutrients.fat', { defaultValue: 'Fat' }), Fiber: t('nutrients.fiber', { defaultValue: 'Fiber' }), 'Sat. Fat': t('nutrients.saturatedFatShort', { defaultValue: 'Sat. Fat' }), 'Poly. Fat': t('nutrients.polyunsaturatedFatShort', { defaultValue: 'Poly. Fat' }), 'Mono. Fat': t('nutrients.monounsaturatedFatShort', { defaultValue: 'Mono. Fat' }), 'Trans Fat': t('nutrients.transFat', { defaultValue: 'Trans Fat' }), Cholesterol: t('nutrients.cholesterol', { defaultValue: 'Cholesterol' }), Sodium: t('nutrients.sodium', { defaultValue: 'Sodium' }), Potassium: t('nutrients.potassium', { defaultValue: 'Potassium' }), Sugars: t('nutrients.sugars', { defaultValue: 'Sugars' }), 'Vitamin A': t('nutrients.vitaminA', { defaultValue: 'Vitamin A' }), 'Vitamin C': t('nutrients.vitaminC', { defaultValue: 'Vitamin C' }), Calcium: t('nutrients.calcium', { defaultValue: 'Calcium' }), Iron: t('nutrients.iron', { defaultValue: 'Iron' }), 'Glycemic Index': t('nutrients.glycemicIndex', { defaultValue: 'Glycemic Index' }), 'Total Carbs': t('nutrients.totalCarbs', { defaultValue: 'Total Carbs' }) };
-    return labels[label] ?? label;
-  };
+  const localizedNutrientLabel = (label: string) => localizeNutrientKey(t, label);
   // Gate the Total Carbs row injection on the same condition NutritionMacroCard
   // uses to swap the macro bar to "Net Carbs" — if fiber is unavailable the
   // bar falls back to total carbs and the row would otherwise duplicate it.
