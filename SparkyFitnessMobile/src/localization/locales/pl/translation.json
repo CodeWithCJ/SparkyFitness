@@ -3706,5 +3706,12 @@
     "lastWarning": "To ostatni składnik. Dodaj kolejny, aby móc zapisać, albo użyj opcji usunięcia całego posiłku.",
     "removeTitle": "Usunąć {{name}}?",
     "edit": "Edytuj {{name}}"
+  },
+  "cardioEffort": {
+    "effort": "{{name}} — wysiłek",
+    "duration": "Czas (min)",
+    "distance": "Dystans ({{unit}})",
+    "durationHint": "Czas w minutach dla {{name}}",
+    "distanceHint": "Dystans w {{unit}} dla {{name}}"
   }
 }

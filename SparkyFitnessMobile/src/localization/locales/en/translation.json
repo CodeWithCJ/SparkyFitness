@@ -3706,5 +3706,12 @@
     "lastWarning": "This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.",
     "removeTitle": "Remove {{name}}?",
     "edit": "Edit {{name}}"
+  },
+  "cardioEffort": {
+    "effort": "{{name}} effort",
+    "duration": "Duration (min)",
+    "distance": "Distance ({{unit}})",
+    "durationHint": "Duration in minutes for {{name}}",
+    "distanceHint": "Distance in {{unit}} for {{name}}"
   }
 }
