@@ -3388,5 +3388,10 @@
       "title": "Health Data Unavailable",
       "message": "Could not initialize health data access. Check your permissions in Settings."
     }
+  },
+  "announcementModal": {
+    "title": "Announcement",
+    "close": "Close announcement",
+    "dismiss": "Got it, don't show again"
   }
 }

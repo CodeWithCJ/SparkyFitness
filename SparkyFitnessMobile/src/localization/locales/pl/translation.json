@@ -3430,5 +3430,10 @@
       "title": "Dane zdrowotne niedostępne",
       "message": "Nie udało się uruchomić dostępu do danych zdrowotnych. Sprawdź uprawnienia w Ustawieniach."
     }
+  },
+  "announcementModal": {
+    "title": "Ogłoszenie",
+    "close": "Zamknij ogłoszenie",
+    "dismiss": "Rozumiem, nie pokazuj ponownie"
   }
 }
