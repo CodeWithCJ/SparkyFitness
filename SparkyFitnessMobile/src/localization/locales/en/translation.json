@@ -3076,5 +3076,21 @@
     "photoAdded": "Photo added",
     "uploadFailed": "Could not upload photo",
     "removeFailed": "Could not remove photo"
+  },
+  "chat": {
+    "title": "Sparky",
+    "error": "Chat error",
+    "errorRetry": "Something went wrong. Tap retry to try again.",
+    "retry": "Retry",
+    "placeholder": "Message Sparky…",
+    "emptyPrompt": "Ask Sparky anything about your nutrition, exercise, or goals.",
+    "clearTitle": "Clear chat",
+    "clearMessage": "This permanently deletes your Sparky chat history. This cannot be undone.",
+    "clearFailed": "Could not clear chat",
+    "clearAccessibility": "Clear chat",
+    "noServer": "No active server config. Set one up in Settings first.",
+    "noProvider": "No active AI provider. Configure one in the web app first.",
+    "copied": "Copied",
+    "copy": "Copy"
   }
 }

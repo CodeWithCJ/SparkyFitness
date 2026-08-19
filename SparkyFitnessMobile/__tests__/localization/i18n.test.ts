@@ -329,6 +329,28 @@ describe('ImportHistory pluralization matrix', () => {
   });
 });
 
+describe('ImportHistory plural fallback contract', () => {
+  it('keeps English fallback grammatically correct when plural resources are missing', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('en');
+      expect(i18n.t('missing.importHistory.ofDays', { defaultValue: 'of {{formattedCount}} days', defaultValue_one: 'of {{formattedCount}} day', defaultValue_other: 'of {{formattedCount}} days', count: 1, formattedCount: '1' })).toBe('of 1 day');
+      expect(i18n.t('missing.importHistory.ofDays', { defaultValue: 'of {{formattedCount}} days', defaultValue_one: 'of {{formattedCount}} day', defaultValue_other: 'of {{formattedCount}} days', count: 2, formattedCount: '2' })).toBe('of 2 days');
+      expect(i18n.t('missing.importHistory.daysImported', { defaultValue: '{{formattedCount}} days imported', defaultValue_one: '{{formattedCount}} day imported', defaultValue_other: '{{formattedCount}} days imported', count: 1, formattedCount: '1' })).toBe('1 day imported');
+      expect(i18n.t('missing.importHistory.daysImported', { defaultValue: '{{formattedCount}} days imported', defaultValue_one: '{{formattedCount}} day imported', defaultValue_other: '{{formattedCount}} days imported', count: 12, formattedCount: '12' })).toBe('12 days imported');
+    });
+  });
+
+  it('resolves the Polish other category for decimal day counts', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('pl');
+      expect(i18n.t('importHistory.progress.ofDays', { defaultValue: 'of {{formattedCount}} days', defaultValue_one: 'of {{formattedCount}} day', defaultValue_few: 'z {{formattedCount}} dni', defaultValue_many: 'z {{formattedCount}} dni', defaultValue_other: 'z {{formattedCount}} dnia', count: 1.2, formattedCount: '1,2' })).toBe('z 1,2 dni');
+      expect(i18n.t('importHistory.done.daysImported', { defaultValue: '{{formattedCount}} days imported', defaultValue_one: '{{formattedCount}} day imported', defaultValue_few: 'Zaimportowano {{formattedCount}} dni', defaultValue_many: 'Zaimportowano {{formattedCount}} dni', defaultValue_other: 'Zaimportowano {{formattedCount}} dnia', count: 1.2, formattedCount: '1,2' })).toBe('Zaimportowano 1,2 dni');
+    });
+  });
+});
+
 describe('FoodEntryAdd localization', () => {
   it('resolves serving and meal yield plurals in English and Polish', async () => {
     await jest.isolateModulesAsync(async () => {

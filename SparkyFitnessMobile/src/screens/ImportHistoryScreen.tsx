@@ -126,7 +126,13 @@ const ProgressSummary: React.FC<ProgressSummaryProps> = ({
         <Text className="text-5xl font-extrabold text-text-primary">
           {importedDays.toLocaleString(locale)}
         </Text>
-        <Text className="text-xl text-text-muted">{t('importHistory.progress.ofDays', { defaultValue: 'of {{formattedCount}} days', count: totalDays, formattedCount: totalDays.toLocaleString(locale) })}</Text>
+        <Text className="text-xl text-text-muted">{t('importHistory.progress.ofDays', {
+            defaultValue: 'of {{formattedCount}} days',
+            defaultValue_one: 'of {{formattedCount}} day',
+            defaultValue_other: 'of {{formattedCount}} days',
+            count: totalDays,
+            formattedCount: totalDays.toLocaleString(locale),
+          })}</Text>
       </View>
       <View className="flex-row items-center justify-between mt-6">
         <Text className="text-base text-text-primary">
@@ -402,7 +408,13 @@ const ImportHistoryScreen: React.FC<ImportHistoryScreenProps> = () => {
                 <Text className="text-5xl font-extrabold text-text-primary">
                   {importStats.totalDays.toLocaleString(locale)}
                 </Text>
-                <Text className="text-xl text-text-muted">{t('importHistory.done.daysImported', { defaultValue: '{{formattedCount}} days imported', count: importStats.totalDays, formattedCount: importStats.totalDays.toLocaleString(locale) })}</Text>
+                <Text className="text-xl text-text-muted">{t('importHistory.done.daysImported', {
+                  defaultValue: '{{formattedCount}} days imported',
+                  defaultValue_one: '{{formattedCount}} day imported',
+                  defaultValue_other: '{{formattedCount}} days imported',
+                  count: importStats.totalDays,
+                  formattedCount: importStats.totalDays.toLocaleString(locale),
+                })}</Text>
               </View>
             ) : (
               <Text className="text-text-primary text-xl py-4 font-semibold">{t('importHistory.done.complete', { defaultValue: 'Import complete' })}</Text>

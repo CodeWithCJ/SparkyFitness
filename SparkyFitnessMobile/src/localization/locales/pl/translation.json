@@ -3116,5 +3116,21 @@
     "photoAdded": "Zdjęcie dodane",
     "uploadFailed": "Nie udało się przesłać zdjęcia",
     "removeFailed": "Nie udało się usunąć zdjęcia"
+  },
+  "chat": {
+    "title": "Sparky",
+    "error": "Błąd czatu",
+    "errorRetry": "Coś poszło nie tak. Dotknij „Spróbuj ponownie”, aby ponowić próbę.",
+    "retry": "Spróbuj ponownie",
+    "placeholder": "Napisz do Sparky…",
+    "emptyPrompt": "Zapytaj Sparky o odżywianie, ćwiczenia lub swoje cele.",
+    "clearTitle": "Wyczyścić czat",
+    "clearMessage": "Ta operacja trwale usunie historię czatu Sparky. Nie można jej cofnąć.",
+    "clearFailed": "Nie udało się wyczyścić czatu",
+    "clearAccessibility": "Wyczyść czat",
+    "noServer": "Brak aktywnej konfiguracji serwera. Najpierw skonfiguruj ją w Ustawieniach.",
+    "noProvider": "Brak aktywnego dostawcy AI. Najpierw skonfiguruj go w aplikacji webowej.",
+    "copied": "Skopiowano",
+    "copy": "Kopiuj"
   }
 }
