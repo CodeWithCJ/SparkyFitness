@@ -11,30 +11,30 @@
 export interface NutrientMeta {
   /** i18n key for the label */
   labelKey: string;
-  /** English label fallback */
-  label: string;
+  /** English label fallback retained for non-UI metadata consumers */
+  defaultLabel: string;
   unit: string;
 }
 
 export const NUTRIENT_META: Record<string, NutrientMeta> = {
-  calories: { labelKey: 'nutrients.calories', label: 'Calories', unit: 'kcal' },
-  protein: { labelKey: 'nutrients.protein', label: 'Protein', unit: 'g' },
-  carbs: { labelKey: 'nutrients.carbs', label: 'Carbs', unit: 'g' },
-  fat: { labelKey: 'nutrients.fat', label: 'Fat', unit: 'g' },
-  dietary_fiber: { labelKey: 'nutrients.fiber', label: 'Fiber', unit: 'g' },
-  saturated_fat: { labelKey: 'nutrients.saturatedFatShort', label: 'Sat. Fat', unit: 'g' },
-  polyunsaturated_fat: { labelKey: 'nutrients.polyunsaturatedFatShort', label: 'Poly. Fat', unit: 'g' },
-  monounsaturated_fat: { labelKey: 'nutrients.monounsaturatedFatShort', label: 'Mono. Fat', unit: 'g' },
-  trans_fat: { labelKey: 'nutrients.transFat', label: 'Trans Fat', unit: 'g' },
-  cholesterol: { labelKey: 'nutrients.cholesterol', label: 'Cholesterol', unit: 'mg' },
-  sodium: { labelKey: 'nutrients.sodium', label: 'Sodium', unit: 'mg' },
-  potassium: { labelKey: 'nutrients.potassium', label: 'Potassium', unit: 'mg' },
-  sugars: { labelKey: 'nutrients.sugars', label: 'Sugars', unit: 'g' },
-  vitamin_a: { labelKey: 'nutrients.vitaminA', label: 'Vitamin A', unit: 'µg' },
-  vitamin_c: { labelKey: 'nutrients.vitaminC', label: 'Vitamin C', unit: 'mg' },
-  calcium: { labelKey: 'nutrients.calcium', label: 'Calcium', unit: 'mg' },
-  iron: { labelKey: 'nutrients.iron', label: 'Iron', unit: 'mg' },
-  glycemic_index: { labelKey: 'nutrients.glycemicIndex', label: 'Glycemic Index', unit: '' },
+  calories: { labelKey: 'nutrients.calories', defaultLabel: 'Calories', unit: 'kcal' },
+  protein: { labelKey: 'nutrients.protein', defaultLabel: 'Protein', unit: 'g' },
+  carbs: { labelKey: 'nutrients.carbs', defaultLabel: 'Carbs', unit: 'g' },
+  fat: { labelKey: 'nutrients.fat', defaultLabel: 'Fat', unit: 'g' },
+  dietary_fiber: { labelKey: 'nutrients.fiber', defaultLabel: 'Fiber', unit: 'g' },
+  saturated_fat: { labelKey: 'nutrients.saturatedFatShort', defaultLabel: 'Sat. Fat', unit: 'g' },
+  polyunsaturated_fat: { labelKey: 'nutrients.polyunsaturatedFatShort', defaultLabel: 'Poly. Fat', unit: 'g' },
+  monounsaturated_fat: { labelKey: 'nutrients.monounsaturatedFatShort', defaultLabel: 'Mono. Fat', unit: 'g' },
+  trans_fat: { labelKey: 'nutrients.transFat', defaultLabel: 'Trans Fat', unit: 'g' },
+  cholesterol: { labelKey: 'nutrients.cholesterol', defaultLabel: 'Cholesterol', unit: 'mg' },
+  sodium: { labelKey: 'nutrients.sodium', defaultLabel: 'Sodium', unit: 'mg' },
+  potassium: { labelKey: 'nutrients.potassium', defaultLabel: 'Potassium', unit: 'mg' },
+  sugars: { labelKey: 'nutrients.sugars', defaultLabel: 'Sugars', unit: 'g' },
+  vitamin_a: { labelKey: 'nutrients.vitaminA', defaultLabel: 'Vitamin A', unit: 'µg' },
+  vitamin_c: { labelKey: 'nutrients.vitaminC', defaultLabel: 'Vitamin C', unit: 'mg' },
+  calcium: { labelKey: 'nutrients.calcium', defaultLabel: 'Calcium', unit: 'mg' },
+  iron: { labelKey: 'nutrients.iron', defaultLabel: 'Iron', unit: 'mg' },
+  glycemic_index: { labelKey: 'nutrients.glycemicIndex', defaultLabel: 'Glycemic Index', unit: '' },
 };
 
 /**
@@ -64,6 +64,6 @@ export function getNutrientLabel(t: (key: string, options: { defaultValue: strin
     case 'calcium': return t('nutrients.calcium', { defaultValue: 'Calcium' });
     case 'iron': return t('nutrients.iron', { defaultValue: 'Iron' });
     case 'glycemic_index': return t('nutrients.glycemicIndex', { defaultValue: 'Glycemic Index' });
-    default: return NUTRIENT_META[key]?.label ?? key;
+    default: return NUTRIENT_META[key]?.defaultLabel ?? key;
   }
 }
