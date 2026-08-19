@@ -1883,7 +1883,7 @@
     "passkey": {
       "add": "Add Passkey",
       "addedOn": "Added on",
-      "description": "Passkeys provide a secure, passwordless way to sign in using your device",
+      "description": "Passkeys provide a secure, passwordless way to sign in using your device's biometrics or a security key.",
       "namePlaceholder": "e.g. My MacBook, Work Phone",
       "newName": "Passkey Name (Optional)",
       "noPasskeys": "No passkeys registered yet.",
@@ -4274,7 +4274,7 @@
       "testLogged": "Test Logged",
       "testLoggedDesc": "Successfully logged your test result.",
       "testLoggingTitle": "Ovulation & Pregnancy Tests",
-      "testLogsHistory": "This Cycle",
+      "testLogsHistory": "This Cycle's Test Logs",
       "testReady": "You have reached {{dpo}} DPO! A pregnancy test logged now is highly accurate. Use first morning urine for the best concentration.",
       "twoWeekWaitTitle": "Two-Week Wait (TWW)"
     }
@@ -4562,7 +4562,7 @@
       "week": "Week {{n}}"
     },
     "checklist": {
-      "title": "This week",
+      "title": "This week's checklist",
       "week": "Week {{n}}"
     },
     "contractions": {
