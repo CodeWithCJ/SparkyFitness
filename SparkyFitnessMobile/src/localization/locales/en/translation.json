@@ -28,7 +28,7 @@
     "edit": "Edit",
     "connectionRetry": "Please check your connection and try again.",
     "deleteItemTitle": "Delete {{title}}?",
-    "tryAgain": "Try again",
+    "tryAgain": "Please try again.",
     "yes": "Yes",
     "no": "No",
     "and": "and",
@@ -2710,6 +2710,41 @@
     },
     "help": {
       "standardFormat": "Standard barcodes are 8 to 14 digits."
+    }
+  },
+  "workoutDetail": {
+    "summary": {
+      "exercise_one": "Exercise",
+      "exercise_other": "Exercises",
+      "sets": "Sets",
+      "volume": "Volume",
+      "calories": "Calories"
+    },
+    "errors": {
+      "needsExercise": "Workout needs an exercise",
+      "addExerciseOrDelete": "Add at least one exercise with a set or delete the workout.",
+      "saveFailed": "Failed to save workout"
+    },
+    "labels": {
+      "details": "Details",
+      "name": "Name",
+      "notes": "Notes"
+    },
+    "placeholders": {
+      "workoutName": "Workout Name",
+      "notes": "Add notes..."
+    },
+    "accessibility": {
+      "save": "Save",
+      "reorder": "Reorder exercises",
+      "saveAsPreset": "Save as preset",
+      "editWorkout": "Edit workout"
+    },
+    "title": {
+      "edit": "Edit Workout"
+    },
+    "actions": {
+      "startHere": "Start workout here"
     }
   }
 }

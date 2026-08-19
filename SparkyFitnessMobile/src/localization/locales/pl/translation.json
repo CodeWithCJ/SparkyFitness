@@ -30,7 +30,7 @@
     "edit": "Edytuj",
     "connectionRetry": "Sprawdź połączenie i spróbuj ponownie.",
     "deleteItemTitle": "Usunąć „{{title}}”?",
-    "tryAgain": "Spróbuj ponownie",
+    "tryAgain": "Spróbuj ponownie.",
     "yes": "Tak",
     "no": "Nie",
     "and": "i",
@@ -2744,6 +2744,43 @@
     },
     "help": {
       "standardFormat": "Standardowe kody kreskowe mają od 8 do 14 cyfr."
+    }
+  },
+  "workoutDetail": {
+    "summary": {
+      "exercise_one": "Ćwiczenie",
+      "exercise_few": "Ćwiczenia",
+      "exercise_many": "Ćwiczeń",
+      "exercise_other": "Ćwiczenia",
+      "sets": "Serie",
+      "volume": "Objętość",
+      "calories": "Kalorie"
+    },
+    "errors": {
+      "needsExercise": "Trening musi zawierać ćwiczenie",
+      "addExerciseOrDelete": "Dodaj co najmniej jedno ćwiczenie z serią albo usuń trening.",
+      "saveFailed": "Nie udało się zapisać treningu"
+    },
+    "labels": {
+      "details": "Szczegóły",
+      "name": "Nazwa",
+      "notes": "Notatki"
+    },
+    "placeholders": {
+      "workoutName": "Nazwa treningu",
+      "notes": "Dodaj notatki..."
+    },
+    "accessibility": {
+      "save": "Zapisz",
+      "reorder": "Zmień kolejność ćwiczeń",
+      "saveAsPreset": "Zapisz jako zestaw",
+      "editWorkout": "Edytuj trening"
+    },
+    "title": {
+      "edit": "Edytuj trening"
+    },
+    "actions": {
+      "startHere": "Rozpocznij trening od tego miejsca"
     }
   }
 }

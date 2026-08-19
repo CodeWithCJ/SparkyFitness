@@ -395,3 +395,17 @@ describe('EditBarcode localization', () => {
     });
   });
 });
+
+describe('WorkoutDetail localization', () => {
+  it('resolves workout summary and editing copy in Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('pl');
+      expect(i18n.t('workoutDetail.summary.exercise_one', { defaultValue: 'Exercise' })).toBe('Ćwiczenie');
+      expect(i18n.t('workoutDetail.summary.exercise_few', { defaultValue: 'Exercises' })).toBe('Ćwiczenia');
+      expect(i18n.t('workoutDetail.summary.exercise_many', { defaultValue: 'Exercises' })).toBe('Ćwiczeń');
+      expect(i18n.t('workoutDetail.labels.details', { defaultValue: 'Details' })).toBe('Szczegóły');
+      expect(i18n.t('workoutDetail.title.edit', { defaultValue: 'Edit Workout' })).toBe('Edytuj trening');
+    });
+  });
+});
