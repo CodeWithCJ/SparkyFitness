@@ -1,9 +1,14 @@
 import type { ActivityDetailResponse } from '@workspace/shared';
+import type { TFunction } from 'i18next';
 
 export interface ActivitySummaryItem {
   label: string;
   value: string;
 }
+
+const activityLabel = (t: TFunction | undefined, key: string, defaultValue: string): string =>
+  t ? t(key, { defaultValue }) : defaultValue;
+
 
 function parseDetailData(detailData: unknown): unknown {
   let data = detailData;
@@ -36,7 +41,10 @@ function readNumber(record: Record<string, unknown>, keys: string[]): number | n
   return null;
 }
 
-export function extractActivitySummary(details: ActivityDetailResponse[]): ActivitySummaryItem[] {
+export function extractActivitySummary(
+  details: ActivityDetailResponse[],
+  t?: TFunction,
+): ActivitySummaryItem[] {
   const items: ActivitySummaryItem[] = [];
 
   for (const detail of details) {
@@ -66,7 +74,7 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
           'averageHR',
         ]);
         if (averageHeartRate != null) {
-          items.push({ label: 'Avg HR', value: `${averageHeartRate} bpm` });
+          items.push({ label: activityLabel(t, 'activitySummary.avgHeartRate', 'Avg HR'), value: `${averageHeartRate} bpm` });
         }
 
         const maxHeartRate = readNumber(garminActivity, [
@@ -74,7 +82,7 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
           'maxHR',
         ]);
         if (maxHeartRate != null) {
-          items.push({ label: 'Max HR', value: `${maxHeartRate} bpm` });
+          items.push({ label: activityLabel(t, 'activitySummary.maxHeartRate', 'Max HR'), value: `${maxHeartRate} bpm` });
         }
 
         const elevationGain = readNumber(garminActivity, [
@@ -82,7 +90,7 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
           'totalAscent',
         ]);
         if (elevationGain != null) {
-          items.push({ label: 'Elevation Gain', value: `${elevationGain} m` });
+          items.push({ label: activityLabel(t, 'activitySummary.elevationGain', 'Elevation Gain'), value: `${elevationGain} m` });
         }
 
         const averageCadence = readNumber(garminActivity, [
@@ -90,7 +98,7 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
           'averageRunCadence',
         ]);
         if (averageCadence != null) {
-          items.push({ label: 'Avg Cadence', value: `${averageCadence} spm` });
+          items.push({ label: activityLabel(t, 'activitySummary.avgCadence', 'Avg Cadence'), value: `${averageCadence} spm` });
         }
       }
 
@@ -108,7 +116,7 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
 
           const mins = Math.floor(secondsInZone / 60);
           const secs = secondsInZone % 60;
-          items.push({ label: `Zone ${zoneNumber}`, value: `${mins}m ${secs}s` });
+          items.push({ label: activityLabel(t, 'activitySummary.zone', 'Zone {{zone}}').replace('{{zone}}', String(zoneNumber)), value: `${mins}m ${secs}s` });
         }
       }
 
@@ -122,7 +130,7 @@ export function extractActivitySummary(details: ActivityDetailResponse[]): Activ
 
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        items.push({ label: `HR ${zone}`, value: `${mins}m ${secs}s` });
+        items.push({ label: activityLabel(t, 'activitySummary.heartRateZone', 'HR {{zone}}').replace('{{zone}}', String(zone)), value: `${mins}m ${secs}s` });
       }
       continue;
     }

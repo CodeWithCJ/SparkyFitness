@@ -3682,5 +3682,13 @@
     "cleared": "Wyczyszczono dzienny wpis.",
     "deleteFailed": "Nie udało się usunąć",
     "deleteError": "Nie udało się wyczyścić wpisu. Spróbuj ponownie."
+  },
+  "activitySummary": {
+    "avgHeartRate": "Śr. tętno",
+    "maxHeartRate": "Maks. tętno",
+    "elevationGain": "Przewyższenie",
+    "avgCadence": "Śr. kadencja",
+    "zone": "Strefa {{zone}}",
+    "heartRateZone": "Tętno {{zone}}"
   }
 }

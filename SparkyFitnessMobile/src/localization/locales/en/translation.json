@@ -3682,5 +3682,13 @@
     "deleteError": "Could not clear log entry. Please try again."
   },
   "workoutPresetCount_few": "{{formattedCount}} exercises",
-  "workoutPresetCount_many": "{{formattedCount}} exercises"
+  "workoutPresetCount_many": "{{formattedCount}} exercises",
+  "activitySummary": {
+    "avgHeartRate": "Avg HR",
+    "maxHeartRate": "Max HR",
+    "elevationGain": "Elevation Gain",
+    "avgCadence": "Avg Cadence",
+    "zone": "Zone {{zone}}",
+    "heartRateZone": "HR {{zone}}"
+  }
 }

@@ -480,7 +480,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const details = session.activity_details;
     if (!details || details.length === 0) return null;
 
-    const items = extractActivitySummary(details);
+    const items = extractActivitySummary(details, t);
     if (items.length === 0) return null;
 
     return (
