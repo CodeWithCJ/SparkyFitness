@@ -3011,5 +3011,22 @@
   "workoutPresetCount_one": "{{formattedCount}} ćwiczenie",
   "workoutPresetCount_few": "{{formattedCount}} ćwiczenia",
   "workoutPresetCount_many": "{{formattedCount}} ćwiczeń",
-  "workoutPresetCount_other": "{{formattedCount}} ćwiczenia"
+  "workoutPresetCount_other": "{{formattedCount}} ćwiczenia",
+  "workoutPresetForm": {
+    "nameRequired": "Nazwa *",
+    "namePlaceholder": "np. Dzień push",
+    "description": "Opis",
+    "descriptionPlaceholder": "Opcjonalne notatki dotyczące tego planu",
+    "reorderExercises": "Zmień kolejność ćwiczeń",
+    "newTitle": "Nowy plan",
+    "editTitle": "Edytuj plan",
+    "created": "Plan treningowy został utworzony",
+    "updated": "Plan treningowy został zaktualizowany",
+    "errors": {
+      "missingName": "Brak nazwy",
+      "nameRequired": "Wprowadź nazwę tego planu.",
+      "addExercise": "Dodaj ćwiczenie",
+      "addExerciseSet": "Przed zapisaniem dodaj co najmniej jedno ćwiczenie z serią."
+    }
+  }
 }

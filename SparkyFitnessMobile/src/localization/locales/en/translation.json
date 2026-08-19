@@ -2973,5 +2973,22 @@
     "showAll": "Show All"
   },
   "workoutPresetCount_one": "{{formattedCount}} exercise",
-  "workoutPresetCount_other": "{{formattedCount}} exercises"
+  "workoutPresetCount_other": "{{formattedCount}} exercises",
+  "workoutPresetForm": {
+    "nameRequired": "Name *",
+    "namePlaceholder": "e.g. Push Day",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional notes about this routine",
+    "reorderExercises": "Reorder exercises",
+    "newTitle": "New Preset",
+    "editTitle": "Edit Preset",
+    "created": "Workout preset created",
+    "updated": "Workout preset updated",
+    "errors": {
+      "missingName": "Missing name",
+      "nameRequired": "Please enter a name for this preset.",
+      "addExercise": "Add an exercise",
+      "addExerciseSet": "Add at least one exercise with a set before saving."
+    }
+  }
 }
