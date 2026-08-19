@@ -3926,5 +3926,8 @@
     "logEntry": "Log Entry",
     "overview": "Overview",
     "history": "History"
+  },
+  "workoutPresetLibrary": {
+    "configure": "Configure your server connection in Settings to view your workout presets."
   }
 }

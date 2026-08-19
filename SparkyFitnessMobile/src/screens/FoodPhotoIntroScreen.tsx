@@ -85,7 +85,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
           icon="scale"
           iconColor={accentPrimary}
           iconBackground={`${accentPrimary}1F`}
-          title="{t('foodPhotoIntro.weight', { defaultValue: 'Add weight when you know it' })}"
+          title={t('foodPhotoIntro.weight', { defaultValue: 'Add weight when you know it' })}
         >
           A total meal weight helps with portions, calories, and macros.
         </Bullet>
@@ -93,7 +93,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
           icon="document-text"
           iconColor={catViolet}
           iconBackground={`${catViolet}1F`}
-          title="{t('foodPhotoIntro.description', { defaultValue: 'Add a short description' })}"
+          title={t('foodPhotoIntro.description', { defaultValue: 'Add a short description' })}
         >
           Mention sauces, oils, toppings, restaurant names, or anything hidden.
         </Bullet>
@@ -101,7 +101,7 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
           icon="pencil"
           iconColor={catOrange}
           iconBackground={`${catOrange}1F`}
-          title="{t('foodPhotoIntro.review', { defaultValue: 'Review before saving' })}"
+          title={t('foodPhotoIntro.review', { defaultValue: 'Review before saving' })}
         >
           Photo estimates are a starting point. You&apos;ll be able to edit
           everything before it&apos;s logged.

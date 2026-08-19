@@ -97,7 +97,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           iconTone="muted"
           iconSize={64}
           title={t('foodLibrary.noServer', { defaultValue: 'No server configured' })}
-          subtitle="Configure your server connection in Settings to view your food library."
+          subtitle="{t('foodLibrary.configure', { defaultValue: 'Configure your server connection in Settings to view your food library.' })}"
           action={{ label: t('foodLibrary.go', { defaultValue: 'Go to Settings' }), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );

@@ -3636,7 +3636,7 @@
     "title": "Ćwiczenia",
     "search": "Szukaj ćwiczeń…",
     "noServer": "Nie skonfigurowano serwera",
-    "configure": "Configure your server connection in Settings to view your exercise library.",
+    "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić bibliotekę ćwiczeń.",
     "go": "Przejdź do ustawień",
     "loading": "Wczytywanie ćwiczeń…",
     "failed": "Nie udało się wczytać ćwiczeń",
@@ -3653,7 +3653,7 @@
     "title": "Produkty",
     "search": "Szukaj produktów…",
     "noServer": "Nie skonfigurowano serwera",
-    "configure": "Configure your server connection in Settings to view your food library.",
+    "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić bibliotekę produktów.",
     "go": "Przejdź do ustawień",
     "loading": "Wczytywanie produktów…",
     "failed": "Nie udało się wczytać produktów",
@@ -3669,7 +3669,7 @@
     "title": "Posiłki",
     "search": "Szukaj posiłków…",
     "noServer": "Nie skonfigurowano serwera",
-    "configure": "Configure your server connection in Settings to view your meal library.",
+    "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić bibliotekę posiłków.",
     "go": "Przejdź do ustawień",
     "loading": "Wczytywanie posiłków…",
     "failed": "Nie udało się wczytać posiłków",
@@ -3926,5 +3926,8 @@
     "logEntry": "Dodaj wpis",
     "overview": "Przegląd",
     "history": "Historia"
+  },
+  "workoutPresetLibrary": {
+    "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić presety treningów."
   }
 }
