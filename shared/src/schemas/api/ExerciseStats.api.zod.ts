@@ -186,11 +186,17 @@ export type ExerciseActivityQueryResponse = z.infer<
 export const exercisePersonalRecordItemSchema = z.object({
   id: z.string(),
   category: z.string(),
+  // Optional because a self-hosted deployment can pair a new frontend image
+  // with an older server that predates these fields. Nothing validates this
+  // schema at runtime -- it is a type source -- so an older response arrives
+  // with them simply missing rather than failing a parse, and the widget's
+  // single-section fallback needs the type to admit that. The current server
+  // always populates all three.
   /** Canonical sport this record was set in. */
-  sport: activitySportSchema,
+  sport: activitySportSchema.optional(),
   /** Display bucket; records are only ever compared within one group. */
-  sportGroup: prSportGroupSchema,
-  sportConfidence: sportConfidenceSchema,
+  sportGroup: prSportGroupSchema.optional(),
+  sportConfidence: sportConfidenceSchema.optional(),
   distanceStandard: z.enum([
     "1k",
     "1mi",
@@ -242,7 +248,8 @@ export const matchedCourseGroupSchema = z.object({
   courseId: z.string(),
   courseName: z.string(),
   category: z.string(),
-  sport: activitySportSchema,
+  /** Optional for the same mixed-version reason as the PR item fields above. */
+  sport: activitySportSchema.optional(),
   totalDistanceMeters: z.number(),
   avgDistanceFormatted: z.number(),
   activityCount: z.number(),

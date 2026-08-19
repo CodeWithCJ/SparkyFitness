@@ -51,6 +51,8 @@ interface PrCandidate {
   row: PrCandidateRow;
   sport: ActivitySport;
   confidence: SportConfidence;
+  /** Seconds per km, unrounded — used to pick the winner within a band. */
+  paceSeconds: number;
 }
 
 /** Converts kilometers to km or miles based on unit system preference */
@@ -680,10 +682,21 @@ async function getPersonalRecordMatrix(
       ]),
     ]);
 
-    // Rows arrive sorted by pace, so the first row seen for a (sport, band)
-    // pair is that pair's record — one pass, no re-sort.
+    // Reduce to the fastest row per (sport group, standard) by comparing paces
+    // rather than trusting arrival order. The ORDER BY inside the LATERAL only
+    // decides which rows that invocation returns; the outer query has no
+    // ORDER BY, so Postgres may emit them in any order under a parallel or
+    // materialized plan. Taking "first row seen" would then record a slower
+    // effort as the PR — the exact class of wrong record this endpoint exists
+    // to stop.
     const bestBySportAndStandard = new Map<string, PrCandidate>();
     for (const row of prResult.rows as PrCandidateRow[]) {
+      const distKm = parseFloat(String(row.distance));
+      const durMins = parseFloat(String(row.duration_minutes));
+      // The SQL already excludes non-positive values; this also drops any row
+      // whose numerics fail to parse, so a NaN pace can never win a band.
+      if (!(distKm > 0) || !(durMins > 0)) continue;
+      const paceSeconds = (durMins * 60) / distKm;
       const { sport, confidence } = classifyActivitySport({
         exerciseName: row.exercise_name,
         category: row.category,
@@ -693,8 +706,14 @@ async function getPersonalRecordMatrix(
         exerciseSourceId: row.exercise_source_id,
       });
       const key = `${toPrSportGroup(sport)}:${String(row.std_key)}`;
-      if (!bestBySportAndStandard.has(key)) {
-        bestBySportAndStandard.set(key, { row, sport, confidence });
+      const current = bestBySportAndStandard.get(key);
+      if (!current || paceSeconds < current.paceSeconds) {
+        bestBySportAndStandard.set(key, {
+          row,
+          sport,
+          confidence,
+          paceSeconds,
+        });
       }
     }
 

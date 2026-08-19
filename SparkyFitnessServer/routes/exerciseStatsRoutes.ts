@@ -157,9 +157,33 @@ router.get('/query', authenticate, async (req, res, next) => {
  * /exercise-stats/prs:
  *   get:
  *     summary: Get personal records (PRs) matrix across distance milestones and 1RMs
+ *     description: >
+ *       Returns one cardio record per (sport, distance standard) pair. Records are
+ *       only comparable within a sportGroup — a 1 km walk is slower than a 1 mile
+ *       run — so clients should group by sportGroup rather than render a flat list.
  *     tags: [Exercise Stats]
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string, format: uuid }
+ *         description: Target user; defaults to the authenticated user. Requires reports permission for anyone else.
+ *       - in: query
+ *         name: unitSystem
+ *         schema: { type: string, enum: [metric, imperial], default: metric }
+ *         description: Controls distance and pace formatting in the response.
+ *     responses:
+ *       200:
+ *         description: Personal records matrix.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ExercisePRMatrixResponse'
+ *       400:
+ *         description: Target User ID is required.
+ *       403:
+ *         description: Forbidden — no reports permission for the requested user.
  */
 router.get('/prs', authenticate, async (req, res, next) => {
   try {
@@ -203,6 +227,26 @@ router.get('/prs', authenticate, async (req, res, next) => {
  *     tags: [Exercise Stats]
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string, format: uuid }
+ *         description: Target user; defaults to the authenticated user. Requires reports permission for anyone else.
+ *       - in: query
+ *         name: unitSystem
+ *         schema: { type: string, enum: [metric, imperial], default: metric }
+ *         description: Controls distance and pace formatting in the response.
+ *     responses:
+ *       200:
+ *         description: Repeated courses with their recent activities.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MatchedCoursesResponse'
+ *       400:
+ *         description: Target User ID is required.
+ *       403:
+ *         description: Forbidden — no reports permission for the requested user.
  */
 router.get('/matched-courses', authenticate, async (req, res, next) => {
   try {

@@ -1327,6 +1327,166 @@ const options = {
             },
           },
         },
+        ExercisePersonalRecordItem: {
+          type: 'object',
+          description:
+            'One best effort, scoped to a single sport. Records are only comparable within the same sportGroup.',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Stable id in the form pr-<sportGroup>-<standard>.',
+            },
+            category: {
+              type: 'string',
+              description: 'Legacy alias of sport, retained for older clients.',
+            },
+            sport: {
+              type: 'string',
+              enum: [
+                'running',
+                'cycling',
+                'walking',
+                'hiking',
+                'swimming',
+                'rowing',
+                'fitness_equipment',
+                'strength',
+                'other',
+              ],
+              description:
+                'Canonical sport, named after the ANT+/FIT SDK sport enum. Absent on servers predating per-sport records.',
+            },
+            sportGroup: {
+              type: 'string',
+              enum: ['run', 'ride', 'walk', 'swim', 'other'],
+              description:
+                'Coarser display bucket; hiking folds into walk. Group by this field to render the matrix.',
+            },
+            sportConfidence: {
+              type: 'string',
+              enum: ['declared', 'inferred'],
+              description:
+                "declared when the sport came from the provider's own enum, inferred when it was derived from notes or the activity name.",
+            },
+            distanceStandard: {
+              type: 'string',
+              enum: [
+                '1k',
+                '1mi',
+                '5k',
+                '10k',
+                '15k',
+                'half_marathon',
+                'marathon',
+                'custom',
+              ],
+              description: 'Milestone distance band this record belongs to.',
+            },
+            label: {
+              type: 'string',
+              description: 'Display label, e.g. "Half Marathon (21.1 km)".',
+            },
+            bestTimeSeconds: { type: 'number' },
+            formattedTime: {
+              type: 'string',
+              description: 'e.g. "1:42:15".',
+            },
+            avgPaceSecondsPerKm: { type: 'number' },
+            formattedPace: {
+              type: 'string',
+              description: 'e.g. "4:50 /km" or "7:47 /mi".',
+            },
+            activityId: { type: 'string' },
+            activityName: { type: 'string' },
+            achievedAt: {
+              type: 'string',
+              description: 'Calendar day the record was set (YYYY-MM-DD).',
+            },
+          },
+        },
+        ExercisePRMatrixResponse: {
+          type: 'object',
+          properties: {
+            cardioPRs: {
+              type: 'array',
+              description:
+                'One entry per (sportGroup, distance standard) pair, ordered by sport group then distance.',
+              items: {
+                $ref: '#/components/schemas/ExercisePersonalRecordItem',
+              },
+            },
+            strength1RMs: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  exerciseName: { type: 'string' },
+                  estimatedOneRMKg: { type: 'number' },
+                  weightKg: { type: 'number' },
+                  reps: { type: 'number' },
+                  achievedAt: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        MatchedCourseGroup: {
+          type: 'object',
+          description:
+            'A repeated route, grouped by activity name, with its recent runs of that course.',
+          properties: {
+            courseId: { type: 'string' },
+            courseName: { type: 'string' },
+            category: {
+              type: 'string',
+              description: 'Raw entry category as stored.',
+            },
+            sport: {
+              type: 'string',
+              enum: [
+                'running',
+                'cycling',
+                'walking',
+                'hiking',
+                'swimming',
+                'rowing',
+                'fitness_equipment',
+                'strength',
+                'other',
+              ],
+              description:
+                'Sport derived from the course name and category. Absent on servers predating per-sport records.',
+            },
+            totalDistanceMeters: { type: 'number' },
+            avgDistanceFormatted: { type: 'number' },
+            activityCount: { type: 'number' },
+            bestTimeSeconds: { type: 'number' },
+            bestPaceFormatted: { type: 'string' },
+            recentActivities: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  activityId: { type: 'string' },
+                  activityName: { type: 'string' },
+                  entryDate: { type: 'string' },
+                  durationMinutes: { type: 'number' },
+                  avgPaceFormatted: { type: 'string' },
+                  avgHeartRate: { type: 'number', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        MatchedCoursesResponse: {
+          type: 'object',
+          properties: {
+            courses: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/MatchedCourseGroup' },
+            },
+          },
+        },
       },
     },
     paths: {

@@ -484,6 +484,51 @@ describe('exerciseStatsService', () => {
       expect(oneK!.bestTimeSeconds).toBeLessThan(oneMile!.bestTimeSeconds);
     });
 
+    // The PR query's ORDER BY lives inside a LATERAL; the outer query has none,
+    // so Postgres may hand back rows in any order. Selection must not care.
+    it('picks the fastest entry in a band regardless of row order', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            std_key: '5k',
+            id: 'slow-run',
+            exercise_name: 'Slow Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-07-01'),
+            duration_minutes: 40,
+            distance: 5.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+          {
+            std_key: '5k',
+            id: 'fast-run',
+            exercise_name: 'Fast Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-07-15'),
+            duration_minutes: 22,
+            distance: 5.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      const runPr = res.cardioPRs.find(
+        (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '5k'
+      );
+      expect(runPr?.activityName).toBe('Fast Run');
+      expect(runPr?.bestTimeSeconds).toBe(22 * 60);
+    });
+
     it('labels the no-banded-records fallback with the entry sport', async () => {
       mockClient.query.mockResolvedValueOnce({ rows: [] });
       mockClient.query.mockResolvedValueOnce({
