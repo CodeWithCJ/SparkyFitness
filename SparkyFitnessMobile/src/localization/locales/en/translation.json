@@ -3060,5 +3060,21 @@
     "ovulationShort": "Ovulation",
     "pregnancyShort": "Pregnancy",
     "entryTitle": "{{type}} · {{result}}"
+  },
+  "bumpPhotos": {
+    "title": "Bump Photos",
+    "add": "Add Photo",
+    "empty": "Capture your first bump photo to start a weekly journal.",
+    "week": "Week {{week}}",
+    "remove": "Remove",
+    "taken": "Taken {{date}}",
+    "addTitle": "Add Bump Photo",
+    "takePhoto": "Take Photo",
+    "chooseLibrary": "Choose from Library",
+    "cameraPermission": "Camera permission required",
+    "noPhoto": "No photo returned by picker.",
+    "photoAdded": "Photo added",
+    "uploadFailed": "Could not upload photo",
+    "removeFailed": "Could not remove photo"
   }
 }

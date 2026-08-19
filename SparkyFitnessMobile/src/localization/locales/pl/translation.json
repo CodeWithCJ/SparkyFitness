@@ -3100,5 +3100,21 @@
     "ovulationShort": "Owulacja",
     "pregnancyShort": "Ciąża",
     "entryTitle": "{{type}} · {{result}}"
+  },
+  "bumpPhotos": {
+    "title": "Zdjęcia brzucha",
+    "add": "Dodaj zdjęcie",
+    "empty": "Zrób pierwsze zdjęcie brzucha, aby rozpocząć cotygodniowy dziennik.",
+    "week": "Tydzień {{week}}",
+    "remove": "Usuń",
+    "taken": "Zrobiono {{date}}",
+    "addTitle": "Dodaj zdjęcie brzucha",
+    "takePhoto": "Zrób zdjęcie",
+    "chooseLibrary": "Wybierz z biblioteki",
+    "cameraPermission": "Wymagana zgoda na aparat",
+    "noPhoto": "Picker nie zwrócił zdjęcia.",
+    "photoAdded": "Zdjęcie dodane",
+    "uploadFailed": "Nie udało się przesłać zdjęcia",
+    "removeFailed": "Nie udało się usunąć zdjęcia"
   }
 }
