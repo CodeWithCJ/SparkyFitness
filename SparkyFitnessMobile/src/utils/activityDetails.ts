@@ -13,8 +13,8 @@ const activityLabel = (t: TFunction | undefined, key: string, defaultValue: stri
     case 'activitySummary.maxHeartRate': return t('activitySummary.maxHeartRate', { defaultValue: 'Max HR' });
     case 'activitySummary.elevationGain': return t('activitySummary.elevationGain', { defaultValue: 'Elevation Gain' });
     case 'activitySummary.avgCadence': return t('activitySummary.avgCadence', { defaultValue: 'Avg Cadence' });
-    case 'activitySummary.zone': return t('activitySummary.zone', { defaultValue: 'Zone {{zone}}' });
-    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'HR {{zone}}' });
+    case 'activitySummary.zone': return t('activitySummary.zone', { defaultValue: 'Zone {{zone}}', zone: '' });
+    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'HR {{zone}}', zone: '' });
     default: return defaultValue;
   }
 };
@@ -126,7 +126,7 @@ export function extractActivitySummary(
 
           const mins = Math.floor(secondsInZone / 60);
           const secs = secondsInZone % 60;
-          items.push({ label: activityLabel(t, 'activitySummary.zone', 'Zone {{zone}}').replace('{{zone}}', String(zoneNumber)), value: `${mins}m ${secs}s` });
+          items.push({ label: t ? t('activitySummary.zone', { defaultValue: 'Zone {{zone}}', zone: zoneNumber }) : `Zone ${zoneNumber}`, value: `${mins}m ${secs}s` });
         }
       }
 
@@ -140,7 +140,7 @@ export function extractActivitySummary(
 
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        items.push({ label: activityLabel(t, 'activitySummary.heartRateZone', 'HR {{zone}}').replace('{{zone}}', String(zone)), value: `${mins}m ${secs}s` });
+        items.push({ label: t ? t('activitySummary.heartRateZone', { defaultValue: 'HR {{zone}}', zone }) : `HR ${zone}`, value: `${mins}m ${secs}s` });
       }
       continue;
     }

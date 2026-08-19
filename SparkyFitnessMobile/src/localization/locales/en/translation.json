@@ -3739,7 +3739,9 @@
     "duration": "Duration (min)",
     "distance": "Distance ({{unit}})",
     "durationHint": "Duration in minutes for {{name}}",
-    "distanceHint": "Distance in {{unit}} for {{name}}"
+    "distanceHint": "Distance in {{unit}} for {{name}}",
+    "markIncomplete": "Mark {{name}} incomplete",
+    "complete": "Complete {{name}}"
   },
   "exerciseSetRest": {
     "overwriteTitle": "Overwrite rest times?",

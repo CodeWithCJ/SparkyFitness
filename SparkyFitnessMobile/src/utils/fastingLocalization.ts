@@ -34,8 +34,8 @@ export function localizeFastingStage(
 /** Translate a known fasting protocol; arbitrary server/user values stay literal. */
 export function localizeProtocolBadge(t: TFunction, value: string | null | undefined): string {
   const raw = value?.trim();
-  if (!raw) return t('fastingDetail.title', { defaultValue: 'Fasting' });
-  if (/^\d{1,2}\s*:\s*\d{1,2}$/.test(raw)) return raw;
+  const ratio = raw.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
+  if (ratio) return `${ratio[1]}:${ratio[2]}`;
   switch (raw) {
     case 'Circadian Rhythm': return t('fastingProtocol.presets.circadian.name', { defaultValue: 'Circadian Rhythm' });
     case 'Custom Fast': return t('fastingProtocol.presets.custom.name', { defaultValue: 'Custom Fast' });

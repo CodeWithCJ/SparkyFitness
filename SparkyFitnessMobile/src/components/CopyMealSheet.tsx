@@ -16,10 +16,8 @@ import Button from './ui/Button';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import Icon from './Icon';
 import { useMealTypes } from '../hooks/useMealTypes';
-import {
-  getMealTypeDisplayLabel,
-  getHistoricalMealTypeLabel,
-} from '../utils/mealNutrition';
+import { getLocalizedMealLabel } from '../constants/meals';
+import { getHistoricalMealTypeLabel } from '../utils/mealNutrition';
 import { formatDateLabel } from '../utils/dateUtils';
 import { dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
@@ -100,19 +98,23 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       [targetDate],
     );
 
-    // Resolve the SOURCE title by canonical meal type ID first: an active
-    // definition wins (ownership-aware label); an unknown/historical source id
-    // keeps its literal snapshotted name. Never picks the first same-named
-    // item — a custom "breakfast" stays literal instead of becoming the
-    // system "Breakfast".
+    const displayMealType = useCallback(
+      (mealType: { name: string; user_id: string | null }) => {
+        if (mealType.user_id != null) return mealType.name;
+        const key = mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase();
+        return getLocalizedMealLabel(t, key);
+      },
+      [t],
+    );
+
     const sourceTitle = useMemo(() => {
       if (!source) return '';
       if (source.mealTypeId) {
         const mt = mealTypes.find((m) => m.id === source.mealTypeId);
-        if (mt) return getMealTypeDisplayLabel(mt);
+        if (mt) return displayMealType(mt);
       }
       return getHistoricalMealTypeLabel(source.mealTypeName);
-    }, [source, mealTypes]);
+    }, [source, mealTypes, displayMealType]);
 
     const handleCopy = useCallback(() => {
       if (!source || !targetDate || !targetMealTypeId) return;
@@ -208,6 +210,9 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                   return (
                     <TouchableOpacity
                       key={mt.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={displayMealType(mt)}
+                      accessibilityState={{ selected: isSelected }}
                       onPress={() => setTargetMealTypeId(mt.id)}
                       activeOpacity={0.7}
                       className={`px-4 py-2 rounded-full border ${
@@ -221,7 +226,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                           isSelected ? 'text-white font-semibold' : 'text-text-primary'
                         }`}
                       >
-                        {getMealTypeDisplayLabel(mt)}
+                        {displayMealType(mt)}
                       </Text>
                     </TouchableOpacity>
                   );

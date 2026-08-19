@@ -3739,7 +3739,9 @@
     "duration": "Czas (min)",
     "distance": "Dystans ({{unit}})",
     "durationHint": "Czas w minutach dla {{name}}",
-    "distanceHint": "Dystans w {{unit}} dla {{name}}"
+    "distanceHint": "Dystans w {{unit}} dla {{name}}",
+    "markIncomplete": "Oznacz {{name}} jako nieukończone",
+    "complete": "Ukończ {{name}}"
   },
   "exerciseSetRest": {
     "overwriteTitle": "Nadpisać czasy odpoczynku?",

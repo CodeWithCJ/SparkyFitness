@@ -333,7 +333,9 @@ export default function CardioEffortForm({
           accessibilityRole="button"
           accessibilityState={{ checked: completed }}
           accessibilityLabel={
-            completed ? `Mark ${exerciseName} incomplete` : `Complete ${exerciseName}`
+            completed
+              ? t('cardioEffort.markIncomplete', { defaultValue: 'Mark {{name}} incomplete', name: exerciseName })
+              : t('cardioEffort.complete', { defaultValue: 'Complete {{name}}', name: exerciseName })
           }
           className="pb-1"
         >
