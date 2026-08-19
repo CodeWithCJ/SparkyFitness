@@ -2315,5 +2315,69 @@
       "thyroid": "Thyroid condition",
       "other": "Other"
     }
+  },
+  "importHistory": {
+    "paused": {
+      "quota": "{{source}}'s daily history limit was reached. Your progress has been saved. Resume tomorrow to continue where you left off.",
+      "deviceLocked": "Your device locked during the import, so health data became unreadable. Unlock your device and resume.",
+      "appInactive": "The app went to the background during the import. Keep it open and unlocked, then resume.",
+      "serverChanged": "The active server changed during the import. Switch back to that server to resume, or start over to import into this one.",
+      "uploadFailed": "Uploading to your server failed{{details}}. Check your connection and resume to retry.",
+      "windowFailed": "Reading health data failed{{details}}. Resume to retry from where it stopped.",
+      "alreadyRunningResume": "Another sync is running right now. Wait a moment for it to finish, then resume."
+    },
+    "idle": {
+      "noHistory": "No historical data was found in {{source}} for your enabled metrics.",
+      "noMetrics": "No metrics are enabled. Turn on the metrics you want under Health Sync first.",
+      "noServer": "No active server is configured.",
+      "serverChanged": "The active server changed during the import, so it stopped. Start again to import into the current server.",
+      "alreadyRunning": "Another sync is running right now. Wait a moment for it to finish, then start the import.",
+      "title": "Import your health history",
+      "description": "Import all of your past {{source}} data into SparkyFitness with a one-time backfill of every enabled metric, from your earliest recorded data up to today.",
+      "source": "Source",
+      "dataTypes": "Data types enabled",
+      "timing": "Takes a few minutes. You can pause any time and pick up where you left off."
+    },
+    "time": {
+      "underMinute": "Under a minute",
+      "minutes": "{{formattedCount}} min",
+      "hoursMinutes": "{{formattedHours}}h {{formattedMinutes}}m",
+      "hours": "{{formattedHours}}h"
+    },
+    "progress": {
+      "ofDays": "of {{formattedCount}} days",
+      "recordsWritten": "Records written",
+      "timeRemaining": "Time remaining",
+      "around": "Around {{date}}"
+    },
+    "actions": {
+      "start": "Start Import",
+      "pausing": "Pausing…",
+      "pause": "Pause Import",
+      "resume": "Resume",
+      "startOver": "Start Over"
+    },
+    "syncFinishing": "A sync is still finishing up. This will enable in a moment.",
+    "syncFinishingPlural": "A sync is still finishing up. These will enable in a moment.",
+    "healthConnectUnavailable": "Health Connect is not available. Please make sure it is installed and enabled.",
+    "healthKitUnavailable": "Health data (HealthKit) is not available. Please enable Health access in the iOS Health app.",
+    "androidLimit": "Health Connect limits how much historical data apps can read each day. If that limit is reached, the import automatically resumes later where it left off.",
+    "running": {
+      "scanning": "Scanning your history…",
+      "finding": "Finding your earliest recorded data",
+      "limitedAccess": "Access to all past data was not granted, so the import can only reach about 30 days back. Grant it from Health Connect settings and start over to go further.",
+      "keepOpen": "Keep the app open and your device unlocked while the import runs.",
+      "finishingPause": "Finishing up, then pausing."
+    },
+    "interrupted": {
+      "selectionChanged": "Your metric selection has changed since this import started. Resume continues with the original selection and Start Over uses the current one.",
+      "savedDays": "Days already imported are saved. Starting over discards them and re-imports from day 1."
+    },
+    "done": {
+      "daysImported": "{{formattedCount}} days imported",
+      "complete": "Import complete",
+      "completed": "Completed",
+      "nextSync": "New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics."
+    }
   }
 }

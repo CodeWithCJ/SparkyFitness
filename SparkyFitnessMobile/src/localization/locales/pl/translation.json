@@ -2341,5 +2341,69 @@
       "thyroid": "Choroba tarczycy",
       "other": "Inne"
     }
+  },
+  "importHistory": {
+    "paused": {
+      "quota": "Osiągnięto dzienny limit historii {{source}}. Postęp został zapisany. Wznów jutro, aby kontynuować od tego miejsca.",
+      "deviceLocked": "Urządzenie zostało zablokowane podczas importu, dlatego dane zdrowotne stały się niedostępne. Odblokuj urządzenie i wznów import.",
+      "appInactive": "Aplikacja przeszła do tła podczas importu. Pozostaw ją otwartą i odblokuj urządzenie, a następnie wznów import.",
+      "serverChanged": "Aktywny serwer zmienił się podczas importu. Wróć do poprzedniego serwera, aby wznowić, albo rozpocznij import od nowa dla bieżącego serwera.",
+      "uploadFailed": "Przesyłanie na serwer nie powiodło się{{details}}. Sprawdź połączenie i wznów import, aby spróbować ponownie.",
+      "windowFailed": "Odczyt danych zdrowotnych nie powiódł się{{details}}. Wznów import, aby spróbować ponownie od miejsca przerwania.",
+      "alreadyRunningResume": "Inna synchronizacja jest obecnie uruchomiona. Poczekaj na jej zakończenie, a następnie wznów import."
+    },
+    "idle": {
+      "noHistory": "Nie znaleziono historycznych danych w {{source}} dla włączonych metryk.",
+      "noMetrics": "Nie włączono żadnych metryk. Najpierw włącz wybrane metryki w sekcji Synchronizacja danych zdrowotnych.",
+      "noServer": "Nie skonfigurowano aktywnego serwera.",
+      "serverChanged": "Aktywny serwer zmienił się podczas importu, dlatego został on zatrzymany. Rozpocznij ponownie, aby zaimportować dane do bieżącego serwera.",
+      "alreadyRunning": "Inna synchronizacja jest obecnie uruchomiona. Poczekaj na jej zakończenie, a następnie rozpocznij import.",
+      "title": "Import historii danych zdrowotnych",
+      "description": "Zaimportuj wszystkie wcześniejsze dane z {{source}} do SparkyFitness, jednorazowo pobierając każdą włączoną metrykę — od najstarszych zapisów do dziś.",
+      "source": "Źródło",
+      "dataTypes": "Włączone typy danych",
+      "timing": "Import potrwa kilka minut. Możesz go w dowolnym momencie wstrzymać i wznowić od miejsca przerwania."
+    },
+    "time": {
+      "underMinute": "Mniej niż minuta",
+      "minutes": "{{formattedCount}} min",
+      "hoursMinutes": "{{formattedHours}} godz. {{formattedMinutes}} min",
+      "hours": "{{formattedHours}} godz."
+    },
+    "progress": {
+      "ofDays": "{{formattedCount}} dni",
+      "recordsWritten": "Zapisane rekordy",
+      "timeRemaining": "Pozostały czas",
+      "around": "Około {{date}}"
+    },
+    "actions": {
+      "start": "Rozpocznij import",
+      "pausing": "Wstrzymywanie…",
+      "pause": "Wstrzymaj import",
+      "resume": "Wznów",
+      "startOver": "Rozpocznij od nowa"
+    },
+    "syncFinishing": "Synchronizacja jest jeszcze kończona. Ta opcja będzie dostępna za chwilę.",
+    "syncFinishingPlural": "Synchronizacja jest jeszcze kończona. Te opcje będą dostępne za chwilę.",
+    "healthConnectUnavailable": "Health Connect jest niedostępny. Upewnij się, że jest zainstalowany i włączony.",
+    "healthKitUnavailable": "Dane zdrowotne (HealthKit) są niedostępne. Włącz dostęp do zdrowia w aplikacji Zdrowie na iOS.",
+    "androidLimit": "Health Connect ogranicza ilość historii, którą aplikacje mogą odczytać każdego dnia. Po osiągnięciu limitu import wznowi się później od miejsca przerwania.",
+    "running": {
+      "scanning": "Skanowanie historii…",
+      "finding": "Wyszukiwanie najstarszych zapisanych danych",
+      "limitedAccess": "Nie przyznano dostępu do wszystkich wcześniejszych danych, dlatego import może sięgać tylko około 30 dni wstecz. Przyznaj dostęp w ustawieniach Health Connect i rozpocznij import od nowa, aby sięgnąć dalej.",
+      "keepOpen": "Pozostaw aplikację otwartą i odblokuj urządzenie podczas importu.",
+      "finishingPause": "Kończenie bieżącego zakresu, a następnie wstrzymywanie."
+    },
+    "interrupted": {
+      "selectionChanged": "Wybór metryk zmienił się od rozpoczęcia importu. Wznowienie użyje pierwotnego wyboru, a rozpoczęcie od nowa — bieżącego.",
+      "savedDays": "Zaimportowane dni zostały zapisane. Rozpoczęcie od nowa usunie ten postęp i ponownie zaimportuje dane od pierwszego dnia."
+    },
+    "done": {
+      "daysImported": "{{formattedCount}} zaimportowanych dni",
+      "complete": "Import zakończony",
+      "completed": "Ukończono",
+      "nextSync": "Nowe dane zostaną automatycznie pobrane podczas zwykłej synchronizacji. Uruchom kolejny import tylko po włączeniu dodatkowych metryk zdrowotnych."
+    }
   }
 }

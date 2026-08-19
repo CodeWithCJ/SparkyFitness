@@ -384,7 +384,7 @@ describe('ImportHistoryScreen', () => {
 
     // floor→endEdge = 44 days; record count is locale-formatted.
     expect(getByText('44')).toBeTruthy();
-    expect(getByText('days imported')).toBeTruthy();
+    expect(getByText('days imported: 44')).toBeTruthy();
     expect(getByText('1,234')).toBeTruthy();
     fireEvent.press(getByText('Start Over'));
     expect(state.startOver).toHaveBeenCalledTimes(1);
