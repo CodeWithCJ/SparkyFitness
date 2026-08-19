@@ -31,9 +31,9 @@ export function localizeFastingStage(
     return translated ? { ...translated, rangeLabel: stage.rangeLabel } : { ...stage, description: stage.description };
 }
 
-/** Translate a known fasting protocol; arbitrary server/user values stay literal. */
 export function localizeProtocolBadge(t: TFunction, value: string | null | undefined): string {
   const raw = value?.trim();
+  if (!raw) return t('fastingDetail.title', { defaultValue: 'Fasting' });
   const ratio = raw.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
   if (ratio) return `${ratio[1]}:${ratio[2]}`;
   switch (raw) {

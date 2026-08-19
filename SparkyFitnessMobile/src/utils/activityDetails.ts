@@ -6,15 +6,20 @@ export interface ActivitySummaryItem {
   value: string;
 }
 
-const activityLabel = (t: TFunction | undefined, key: string, defaultValue: string): string => {
+const activityLabel = (
+  t: TFunction | undefined,
+  key: string,
+  defaultValue: string,
+  interpolation?: Record<string, string | number>,
+): string => {
   if (!t) return defaultValue;
   switch (key) {
     case 'activitySummary.avgHeartRate': return t('activitySummary.avgHeartRate', { defaultValue: 'Avg HR' });
     case 'activitySummary.maxHeartRate': return t('activitySummary.maxHeartRate', { defaultValue: 'Max HR' });
     case 'activitySummary.elevationGain': return t('activitySummary.elevationGain', { defaultValue: 'Elevation Gain' });
     case 'activitySummary.avgCadence': return t('activitySummary.avgCadence', { defaultValue: 'Avg Cadence' });
-    case 'activitySummary.zone': return t('activitySummary.zone', { defaultValue: 'Zone {{zone}}', zone: '' });
-    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'HR {{zone}}', zone: '' });
+    case 'activitySummary.zone': return t('activitySummary.zone', { defaultValue: 'Zone {{zone}}', ...interpolation });
+    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'HR {{zone}}', ...interpolation });
     default: return defaultValue;
   }
 };
@@ -126,7 +131,7 @@ export function extractActivitySummary(
 
           const mins = Math.floor(secondsInZone / 60);
           const secs = secondsInZone % 60;
-          items.push({ label: t ? t('activitySummary.zone', { defaultValue: 'Zone {{zone}}', zone: zoneNumber }) : `Zone ${zoneNumber}`, value: `${mins}m ${secs}s` });
+        items.push({ label: activityLabel(t, 'activitySummary.zone', `Zone ${zoneNumber}`, { zone: zoneNumber }).replace('{{zone}}', String(zoneNumber)), value: `${mins}m ${secs}s` });
         }
       }
 
@@ -140,7 +145,7 @@ export function extractActivitySummary(
 
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        items.push({ label: t ? t('activitySummary.heartRateZone', { defaultValue: 'HR {{zone}}', zone }) : `HR ${zone}`, value: `${mins}m ${secs}s` });
+        items.push({ label: activityLabel(t, 'activitySummary.heartRateZone', `HR ${zone}`, { zone }).replace('{{zone}}', String(zone)), value: `${mins}m ${secs}s` });
       }
       continue;
     }
