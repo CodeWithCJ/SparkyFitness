@@ -38,7 +38,8 @@
     "date": "Data",
     "add": "Dodaj",
     "loading": "Ładowanie…",
-    "pleaseTryAgain": "Spróbuj ponownie."
+    "pleaseTryAgain": "Spróbuj ponownie.",
+    "ok": "OK"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -500,7 +501,8 @@
       "frontendUrlRequired": "Najpierw wprowadź adres URL frontendu.",
       "saveFailed": "Nie udało się zapisać: {{message}}",
       "generic": "Uwierzytelnianie nie powiodło się. Spróbuj ponownie.",
-      "connectionRetry": "Nie można połączyć się z serwerem. Spróbuj ponownie."
+      "connectionRetry": "Nie można połączyć się z serwerem. Spróbuj ponownie.",
+      "httpsRequiredEdit": "Połączenia z serwerem wymagają HTTPS. Edytuj tę konfigurację, aby używać HTTPS."
     },
     "authenticatorApp": "Aplikacja uwierzytelniająca",
     "emailCode": "Kod e-mail",
@@ -2159,5 +2161,28 @@
     "providerNotAllowedMessage": "Ten dostawca AI wskazuje prywatny adres sieciowy. Poproś administratora o skonfigurowanie go globalnie.",
     "providerUnreachableTitle": "Nie udało się połączyć z dostawcą AI",
     "providerUnreachableMessage": "Spróbuj ponownie lub dodaj produkt ręcznie."
+  },
+  "serverSettingsUi": {
+    "activeServerChanged": "Zmieniono aktywny serwer",
+    "setActiveFailed": "Nie udało się ustawić aktywnej konfiguracji serwera: {{error}}",
+    "configurationDeleted": "Konfiguracja serwera została usunięta.",
+    "configurationDeletedToast": "Usunięto konfigurację serwera",
+    "deleteFailed": "Nie udało się usunąć konfiguracji serwera: {{error}}",
+    "noServerConfiguredTitle": "Brak skonfigurowanego serwera",
+    "noServerConfiguredMessage": "Najpierw dodaj serwer.",
+    "openDashboardFailed": "Nie udało się otworzyć panelu WWW: {{error}}",
+    "connected": "Połączono",
+    "connectionFailed": "Połączenie nie powiodło się",
+    "selectAction": "Wybierz działanie",
+    "setActive": "Ustaw jako aktywny",
+    "configure": "Skonfiguruj",
+    "activeConfiguration": "Aktywna konfiguracja",
+    "activeServer": "Aktywny serwer",
+    "optionsFor": "Opcje dla {{url}}",
+    "openWeb": "Otwórz WWW",
+    "testConnection": "Sprawdź połączenie",
+    "otherServers": "Inne serwery",
+    "noServersConfigured": "Nie skonfigurowano jeszcze żadnych serwerów.",
+    "addConfiguration": "Dodaj nową konfigurację"
   }
 }

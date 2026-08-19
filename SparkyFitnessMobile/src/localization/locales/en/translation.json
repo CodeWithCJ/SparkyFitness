@@ -36,7 +36,8 @@
     "date": "Date",
     "add": "Add",
     "loading": "Loading…",
-    "pleaseTryAgain": "Please try again."
+    "pleaseTryAgain": "Please try again.",
+    "ok": "OK"
   },
   "settings": {
     "app": "App Settings",
@@ -494,7 +495,8 @@
       "frontendUrlRequired": "Please enter your Frontend URL first.",
       "saveFailed": "Failed to save: {{message}}",
       "generic": "Authentication failed. Please try again.",
-      "connectionRetry": "Could not connect to server. Please try again."
+      "connectionRetry": "Could not connect to server. Please try again.",
+      "httpsRequiredEdit": "HTTPS is required for server connections. Please edit this configuration to use HTTPS."
     },
     "authenticatorApp": "Authenticator App",
     "emailCode": "Email Code",
@@ -2133,5 +2135,28 @@
     "providerNotAllowedMessage": "This AI provider points to a private network address. Ask an admin to configure it globally.",
     "providerUnreachableTitle": "Couldn't reach AI provider",
     "providerUnreachableMessage": "Try again, or log this food manually."
+  },
+  "serverSettingsUi": {
+    "activeServerChanged": "Active server changed",
+    "setActiveFailed": "Failed to set active server configuration: {{error}}",
+    "configurationDeleted": "Server configuration deleted.",
+    "configurationDeletedToast": "Server configuration deleted",
+    "deleteFailed": "Failed to delete server configuration: {{error}}",
+    "noServerConfiguredTitle": "No Server Configured",
+    "noServerConfiguredMessage": "Please add a server first.",
+    "openDashboardFailed": "Could not open web dashboard: {{error}}",
+    "connected": "Connected",
+    "connectionFailed": "Connection failed",
+    "selectAction": "Select an action",
+    "setActive": "Set Active",
+    "configure": "Configure",
+    "activeConfiguration": "Active configuration",
+    "activeServer": "Active Server",
+    "optionsFor": "Options for {{url}}",
+    "openWeb": "Open Web",
+    "testConnection": "Test Connection",
+    "otherServers": "Other Servers",
+    "noServersConfigured": "No servers configured yet.",
+    "addConfiguration": "Add new configuration"
   }
 }

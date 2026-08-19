@@ -4,6 +4,7 @@ import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import ServerSettingsScreen from '../../src/screens/ServerSettingsScreen';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import {
   deleteServerConfig,
   getAllServerConfigs,
@@ -221,4 +222,22 @@ describe('ServerSettingsScreen', () => {
       );
     });
   });
+  test('provides Polish server translations and interpolates server errors', async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('pl');
+
+    expect(i18n.t('serverSettingsUi.activeServer')).toBe('Aktywny serwer');
+    expect(i18n.t('serverSettingsUi.openWeb')).toBe('Otwórz WWW');
+    expect(i18n.t('serverSettingsUi.testConnection')).toBe('Sprawdź połączenie');
+    expect(i18n.t('auth.addServer')).toBe('Dodaj serwer');
+    expect(
+      i18n.t('serverSettingsUi.setActiveFailed', {
+        error: 'timeout',
+        defaultValue: 'Failed to set active server configuration: {{error}}',
+      }),
+    ).toBe('Nie udało się ustawić aktywnej konfiguracji serwera: timeout');
+
+    await i18n.changeLanguage('en');
+  });
+
 });
