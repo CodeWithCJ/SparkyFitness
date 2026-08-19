@@ -14,8 +14,8 @@ import {
 import { Separator } from '@/components/ui/separator';
 
 // English fallbacks kept inline (2nd arg) so the control is readable before the
-// translation keys land in every locale, matching the repo's t('key', 'text')
-// convention.
+// translation keys land in every locale, matching the repo's inline-fallback
+// convention for translated strings.
 const CATEGORY_LABELS: Record<ChatToolCategorySlug, [string, string]> = {
   food: ['chat.toolCategories.food', 'Food & Water'],
   exercise: ['chat.toolCategories.exercise', 'Exercise'],
