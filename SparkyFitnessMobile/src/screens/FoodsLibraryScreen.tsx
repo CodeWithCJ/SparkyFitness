@@ -137,7 +137,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage="Failed to load more foods."
+            errorMessage={t('foodLibrary.moreFailed', { defaultValue: 'Failed to load more foods.' })}
             onRetry={loadMore}
           />
         }
