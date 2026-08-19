@@ -113,6 +113,8 @@ export const AnnouncementModal: React.FC = () => {
           <View style={[styles.footer, { borderTopColor: borderSubtle || 'rgba(255, 255, 255, 0.1)' }]}>
             <Pressable
               onPress={handleDismiss}
+              accessibilityRole="button"
+              accessibilityLabel={t('announcementModal.dismiss', { defaultValue: "Got it, don't show again" })}
               style={[styles.dismissButton, { backgroundColor: accentPrimary || '#3b82f6' }]}
             >
               <Text style={styles.dismissButtonText}>{t('announcementModal.dismiss', { defaultValue: "Got it, don't show again" })}</Text>
