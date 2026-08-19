@@ -3192,5 +3192,33 @@
       "deleteExerciseTitle": "Delete Exercise?",
       "deleteExerciseMessage": "This exercise will be removed from your library. Past logged sessions are preserved."
     }
+  },
+  "foodPhotoEstimate": {
+    "title": "Review estimate",
+    "confidence": {
+      "good": "Good",
+      "fair": "Fair",
+      "rough": "Rough",
+      "likely": "Likely",
+      "possible": "Possible",
+      "uncertain": "Uncertain"
+    },
+    "labels": {
+      "overallEstimate": "{{confidence}} estimate",
+      "totalEstimatedWeight": "Total estimated weight: {{weight}}"
+    },
+    "actions": {
+      "hideIngredients": "Hide detected ingredients ▴",
+      "showIngredients": "Show detected ingredients ▾"
+    },
+    "errors": {
+      "nameRequired": "Name required",
+      "nameRequiredMessage": "Give this food a name.",
+      "invalidNutrition": "Invalid nutrition",
+      "invalidRequiredNutrition": "Calories, protein, carbs, and fat must be non-negative numbers.",
+      "invalidOptionalNutrition": "All nutrition values must be non-negative numbers.",
+      "invalidServingSize": "Invalid serving size",
+      "invalidServingSizeMessage": "Serving size must be a positive number."
+    }
   }
 }

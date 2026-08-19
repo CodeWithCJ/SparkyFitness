@@ -3232,5 +3232,33 @@
       "deleteExerciseTitle": "Usunąć ćwiczenie?",
       "deleteExerciseMessage": "To ćwiczenie zostanie usunięte z biblioteki. Zapisane wcześniej sesje pozostaną zachowane."
     }
+  },
+  "foodPhotoEstimate": {
+    "title": "Sprawdź wycenę",
+    "confidence": {
+      "good": "Dobra",
+      "fair": "Średnia",
+      "rough": "Przybliżona",
+      "likely": "Prawdopodobne",
+      "possible": "Możliwe",
+      "uncertain": "Niepewne"
+    },
+    "labels": {
+      "overallEstimate": "{{confidence}} wycena",
+      "totalEstimatedWeight": "Łączna szacowana masa: {{weight}}"
+    },
+    "actions": {
+      "hideIngredients": "Ukryj wykryte składniki ▴",
+      "showIngredients": "Pokaż wykryte składniki ▾"
+    },
+    "errors": {
+      "nameRequired": "Wymagana nazwa",
+      "nameRequiredMessage": "Nadaj temu produktowi nazwę.",
+      "invalidNutrition": "Nieprawidłowe wartości odżywcze",
+      "invalidRequiredNutrition": "Kalorie, białko, węglowodany i tłuszcz muszą być liczbami nieujemnymi.",
+      "invalidOptionalNutrition": "Wszystkie wartości odżywcze muszą być liczbami nieujemnymi.",
+      "invalidServingSize": "Nieprawidłowa wielkość porcji",
+      "invalidServingSizeMessage": "Wielkość porcji musi być liczbą większą od zera."
+    }
   }
 }
