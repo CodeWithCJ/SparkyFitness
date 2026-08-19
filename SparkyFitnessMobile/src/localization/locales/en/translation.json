@@ -3666,7 +3666,8 @@
     "noItems": "No foods found",
     "trySearch": "Try a different search term to find saved foods.",
     "empty": "Foods you save or log will appear here.",
-    "moreFailed": "Failed to load more foods."
+    "moreFailed": "Failed to load more foods.",
+    "noun": "foods"
   },
   "mealLibrary": {
     "title": "Meals",

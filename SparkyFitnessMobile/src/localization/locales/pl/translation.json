@@ -3668,7 +3668,8 @@
     "noItems": "Nie znaleziono produktów",
     "trySearch": "Spróbuj innego hasła, aby znaleźć zapisane produkty.",
     "empty": "Zapisane lub zarejestrowane produkty pojawią się tutaj.",
-    "moreFailed": "Failed to load more foods."
+    "moreFailed": "Failed to load more foods.",
+    "noun": "produkty"
   },
   "mealLibrary": {
     "title": "Posiłki",
