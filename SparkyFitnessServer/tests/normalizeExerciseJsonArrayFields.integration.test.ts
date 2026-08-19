@@ -112,14 +112,17 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
           '"Barbell"', // bare JSON string -> should wrap to ["Barbell"]
           '["chest"]', // already correct -> must round-trip unchanged
           'triceps, shoulders', // not valid JSON -> comma-split fallback
-          null, // NULL -> must stay NULL
+          // Not valid JSON, but prose, not a list: a comma AND an apostrophe
+          // inside. Must become ONE element with the text untouched, not two
+          // fake steps with the apostrophe stripped.
+          "Lie on the bench, then press. Don't lock your elbows.",
           '[]', // already an empty array -> must round-trip unchanged
         ]
       );
       await sys.query(
         `INSERT INTO public.exercise_entries
-           (id, user_id, exercise_id, duration_minutes, calories_burned, entry_date, exercise_name, equipment, primary_muscles, secondary_muscles)
-         VALUES ($1, $2, $3, 0, 0, '2026-08-16', 'Migration Test Exercise', $4, $5, $6)`,
+           (id, user_id, exercise_id, duration_minutes, calories_burned, entry_date, exercise_name, equipment, primary_muscles, secondary_muscles, instructions, images)
+         VALUES ($1, $2, $3, 0, 0, '2026-08-16', 'Migration Test Exercise', $4, $5, $6, $7, $8)`,
         [
           ENTRY_MALFORMED,
           U,
@@ -127,6 +130,8 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
           '"Dumbbell"',
           '', // empty string -> should become '[]', not stay ''
           '   ', // whitespace-only -> should also become '[]'
+          'Lie flat, then curl up.', // prose with a comma -> one element, not two
+          'exercises/dumbbell-curl, 0.jpg', // path-like text with a comma -> one element, not split
         ]
       );
     } finally {
@@ -162,7 +167,7 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
       ).rows[0];
       const entry = (
         await sys.query(
-          'SELECT equipment, primary_muscles, secondary_muscles FROM public.exercise_entries WHERE id = $1',
+          'SELECT equipment, primary_muscles, secondary_muscles, instructions, images FROM public.exercise_entries WHERE id = $1',
           [ENTRY_MALFORMED]
         )
       ).rows[0];
@@ -188,13 +193,21 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
       'triceps',
       'shoulders',
     ]);
-    expect(exercise.instructions).toBeNull();
+    expect(JSON.parse(exercise.instructions)).toEqual([
+      "Lie on the bench, then press. Don't lock your elbows.",
+    ]);
     expect(JSON.parse(exercise.images)).toEqual([]);
     expect(JSON.parse(entry.equipment)).toEqual(['Dumbbell']);
     // Empty string and whitespace-only are non-NULL but still not valid
     // JSON; both must become the literal '[]', not stay as-is.
     expect(entry.primary_muscles).toBe('[]');
     expect(entry.secondary_muscles).toBe('[]');
+    // Prose and a path, each with an embedded comma: one element, verbatim,
+    // not comma-split into fake extra entries.
+    expect(JSON.parse(entry.instructions)).toEqual(['Lie flat, then curl up.']);
+    expect(JSON.parse(entry.images)).toEqual([
+      'exercises/dumbbell-curl, 0.jpg',
+    ]);
   });
 
   it('is idempotent: a second run changes nothing', async () => {

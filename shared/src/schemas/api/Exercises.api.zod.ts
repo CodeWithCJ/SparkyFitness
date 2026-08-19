@@ -28,8 +28,8 @@ export const exerciseSearchQuerySchema = z
 // --- Request contracts ---
 
 /**
- * equipment/primary_muscles/secondary_muscles/instructions are stored as a
- * JSON array of strings (db/migrations/20250927180257_alter_exercises_table.sql).
+ * equipment/primary_muscles/secondary_muscles/instructions/images are stored
+ * as a JSON array of strings (db/migrations/20250927180257_alter_exercises_table.sql).
  * free-exercise-db's raw JSON (and some legacy imports) uses a bare string
  * for a single value, so accept either shape and normalize to an array
  * rather than rejecting — rejecting would break imports over upstream
@@ -48,6 +48,11 @@ const exerciseStringArrayFieldSchema = z
  * the database. `.passthrough()` so the rest of the payload (name, category,
  * modality, force, level, mechanic, description, is_public, ...) rides
  * through untouched. This schema only owns the array-shaped fields.
+ *
+ * The PUT handler merges this field's *existing*
+ * images with new uploads (`[...(exerciseData.images ?? []), ...newPaths]`).
+ * Left unnormalized, a client-sent bare string would silently spread into
+ * one "image path" per character instead of one path.
  */
 export const exerciseWriteArrayFieldsSchema = z
   .object({
@@ -55,6 +60,7 @@ export const exerciseWriteArrayFieldsSchema = z
     primary_muscles: exerciseStringArrayFieldSchema,
     secondary_muscles: exerciseStringArrayFieldSchema,
     instructions: exerciseStringArrayFieldSchema,
+    images: exerciseStringArrayFieldSchema,
   })
   .passthrough();
 

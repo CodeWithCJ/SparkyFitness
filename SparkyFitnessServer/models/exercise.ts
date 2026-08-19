@@ -10,7 +10,10 @@ import {
   buildSqlSearch,
   buildSqlExactMatchOrder,
 } from '../utils/dbSearchHelper.js';
-import { parseJsonArrayField } from '../utils/exerciseJsonFields.js';
+import {
+  parseJsonArrayField,
+  normalizeToStringArray,
+} from '../utils/exerciseJsonFields.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getExerciseById(id: any, userId: any) {
   const client = await getClient(userId);
@@ -569,18 +572,28 @@ async function createExercise(exerciseData: any) {
         exerciseData.force,
         exerciseData.level,
         exerciseData.mechanic,
-        exerciseData.equipment ? JSON.stringify(exerciseData.equipment) : null,
+        // normalizeToStringArray is applied here, right before encoding,
+        // so every write path (route JSON body, CSV import, external
+        // provider import) lands on the same JSON-array-of-strings shape
+        // regardless of whether the caller already normalized it.
+        exerciseData.equipment
+          ? JSON.stringify(normalizeToStringArray(exerciseData.equipment))
+          : null,
         exerciseData.primary_muscles
-          ? JSON.stringify(exerciseData.primary_muscles)
+          ? JSON.stringify(normalizeToStringArray(exerciseData.primary_muscles))
           : null,
         exerciseData.secondary_muscles
-          ? JSON.stringify(exerciseData.secondary_muscles)
+          ? JSON.stringify(
+              normalizeToStringArray(exerciseData.secondary_muscles)
+            )
           : null,
         exerciseData.instructions
-          ? JSON.stringify(exerciseData.instructions)
+          ? JSON.stringify(normalizeToStringArray(exerciseData.instructions))
           : null,
         exerciseData.category,
-        exerciseData.images ? JSON.stringify(exerciseData.images) : null,
+        exerciseData.images
+          ? JSON.stringify(normalizeToStringArray(exerciseData.images))
+          : null,
         exerciseData.calories_per_hour || 0, // Ensure calories_per_hour is a number, default to 0
         exerciseData.description,
         exerciseData.is_custom,
@@ -631,17 +644,23 @@ async function updateExercise(id: any, userId: any, updateData: any) {
         updateData.force,
         updateData.level,
         updateData.mechanic,
-        updateData.equipment ? JSON.stringify(updateData.equipment) : null,
+        // See createExercise: normalize right before encoding so this
+        // chokepoint holds the invariant regardless of caller.
+        updateData.equipment
+          ? JSON.stringify(normalizeToStringArray(updateData.equipment))
+          : null,
         updateData.primary_muscles
-          ? JSON.stringify(updateData.primary_muscles)
+          ? JSON.stringify(normalizeToStringArray(updateData.primary_muscles))
           : null,
         updateData.secondary_muscles
-          ? JSON.stringify(updateData.secondary_muscles)
+          ? JSON.stringify(normalizeToStringArray(updateData.secondary_muscles))
           : null,
         updateData.instructions
-          ? JSON.stringify(updateData.instructions)
+          ? JSON.stringify(normalizeToStringArray(updateData.instructions))
           : null,
-        updateData.images ? JSON.stringify(updateData.images) : null,
+        updateData.images
+          ? JSON.stringify(normalizeToStringArray(updateData.images))
+          : null,
         typeof updateData.is_quick_exercise === 'boolean'
           ? updateData.is_quick_exercise
           : null,

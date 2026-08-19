@@ -1241,8 +1241,12 @@ router.put(
               `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
           )
         : [];
-      // Combine existing images with new images
-      const existingImages = (exerciseData.images ?? []) as string[];
+      // Combine existing images with new images. exerciseData.images is a
+      // real string[] here (exerciseWriteArrayFieldsSchema normalizes it),
+      // not a cast-away lie — a client-sent bare string is coerced to a
+      // one-item array before this point instead of spreading into one
+      // "image path" per character.
+      const existingImages = exerciseData.images ?? [];
       const allImages = [...existingImages, ...newImagePaths];
       const updatedExercise = await exerciseService.updateExercise(
         req.userId,

@@ -10,9 +10,35 @@
 -- (application code prior to this fix) or, if guarded, silently drops the
 -- value. This backfills existing rows into the one true shape: a JSON array.
 --
--- Idempotent: normalize_exercise_json_array() is a pure function of the
--- input value, and each UPDATE only touches rows where the function's output
--- actually differs from the stored value, so a re-run updates zero rows.
+-- Two recovery strategies for non-JSON legacy text, chosen per column:
+--   equipment/primary_muscles/secondary_muscles are comma-separated lists
+--   ("Barbell, Dumbbell") — split on comma, same as the application's own
+--   getDistinctEquipment fallback.
+--   instructions/images are prose/paths, not lists. Comma-splitting a
+--   sentence like "Lie on the bench, then press." would fabricate two fake
+--   steps, and stripping characters would silently delete apostrophes and
+--   quotes from real instructional text. These two are instead wrapped
+--   verbatim into a single-item array — destructive text mangling is worse
+--   than a rarely-needed second array element, and this migration has no
+--   down migration.
+--
+-- Idempotent: normalize_exercise_json_array() is a pure function of its
+-- input, and each UPDATE only computes and writes rows that need it, so a
+-- re-run updates zero rows.
+--
+-- Performance: exercise_entries is a per-workout log table that can carry
+-- years of import history (Garmin, etc.), and this runs synchronously during
+-- server startup before the app accepts requests. Two things keep the cost
+-- down: a cheap prefix prefilter (`left(btrim(col), 1) <> '['`) skips the
+-- already-correct majority without ever calling the function — every
+-- malformed shape this migration actually targets (a bare JSON string, or
+-- plain non-JSON text) fails this check, so the only theoretical miss is a
+-- value that already starts with '[' but isn't valid JSON, which no known
+-- write path in this codebase produces; and each UPDATE computes the
+-- normalized value once per candidate row via a subquery, instead of calling
+-- the function twice (once in WHERE, once in SET) — worth avoiding here
+-- since the function's internal EXCEPTION block is a subtransaction per
+-- call.
 --
 -- Explicit transaction: the migration runner sends this whole file as one
 -- unwrapped query, so an explicit BEGIN/COMMIT isn't load-bearing today, but
@@ -21,7 +47,10 @@
 -- with every other (and the helper function never lingers half-applied).
 BEGIN;
 
-CREATE OR REPLACE FUNCTION normalize_exercise_json_array(value text)
+CREATE OR REPLACE FUNCTION normalize_exercise_json_array(
+    value text,
+    split_on_comma boolean DEFAULT true
+)
 RETURNS text
 LANGUAGE plpgsql
 AS $func$
@@ -42,20 +71,27 @@ BEGIN
     BEGIN
         parsed := value::jsonb;
     EXCEPTION WHEN OTHERS THEN
-        -- Not valid JSON at all (legacy plain/comma-separated text, e.g.
-        -- "Barbell, Dumbbell"). Recover it the same way the application's
-        -- own getDistinctEquipment fallback does: strip brackets/quotes/
-        -- backticks, split on comma, trim, drop empties. ORDER BY ord keeps
-        -- the original comma order, since aggregation order is otherwise
-        -- unspecified.
-        RETURN (
-            SELECT COALESCE(jsonb_agg(item ORDER BY ord), '[]'::jsonb)::text
-            FROM (
-                SELECT btrim(piece) AS item, ord
-                FROM unnest(string_to_array(translate(value, '[]''"`', ''), ',')) WITH ORDINALITY AS u(piece, ord)
-                WHERE btrim(piece) <> ''
-            ) AS pieces
-        );
+        IF split_on_comma THEN
+            -- Legacy comma-separated list text (equipment/muscles). Recover
+            -- it the same way the application's own getDistinctEquipment
+            -- fallback does: strip brackets/quotes/backticks, split on
+            -- comma, trim, drop empties. ORDER BY ord keeps the original
+            -- comma order, since aggregation order is otherwise unspecified.
+            RETURN (
+                SELECT COALESCE(jsonb_agg(item ORDER BY ord), '[]'::jsonb)::text
+                FROM (
+                    SELECT btrim(piece) AS item, ord
+                    FROM unnest(string_to_array(translate(value, '[]''"`', ''), ',')) WITH ORDINALITY AS u(piece, ord)
+                    WHERE btrim(piece) <> ''
+                ) AS pieces
+            );
+        ELSE
+            -- Free-text prose (instructions) or a file path (images) — never
+            -- comma-split or strip characters out of it. Preserve it
+            -- verbatim as a single-item array; to_jsonb() JSON-encodes it
+            -- correctly regardless of embedded quotes/apostrophes/backslashes.
+            RETURN jsonb_build_array(to_jsonb(btrim(value)))::text;
+        END IF;
     END;
 
     IF jsonb_typeof(parsed) = 'array' THEN
@@ -63,34 +99,93 @@ BEGIN
     END IF;
 
     -- A bare JSON scalar/object (most commonly a single string like
-    -- "Barbell") — wrap it into a one-item array.
+    -- "Barbell") — wrap it into a one-item array. Applies to every column;
+    -- split_on_comma only affects the not-valid-JSON-at-all fallback above.
     RETURN jsonb_build_array(parsed)::text;
 END;
 $func$;
 
-UPDATE exercises SET equipment = normalize_exercise_json_array(equipment)
-WHERE equipment IS NOT NULL AND normalize_exercise_json_array(equipment) IS DISTINCT FROM equipment;
-UPDATE exercises SET primary_muscles = normalize_exercise_json_array(primary_muscles)
-WHERE primary_muscles IS NOT NULL AND normalize_exercise_json_array(primary_muscles) IS DISTINCT FROM primary_muscles;
-UPDATE exercises SET secondary_muscles = normalize_exercise_json_array(secondary_muscles)
-WHERE secondary_muscles IS NOT NULL AND normalize_exercise_json_array(secondary_muscles) IS DISTINCT FROM secondary_muscles;
-UPDATE exercises SET instructions = normalize_exercise_json_array(instructions)
-WHERE instructions IS NOT NULL AND normalize_exercise_json_array(instructions) IS DISTINCT FROM instructions;
-UPDATE exercises SET images = normalize_exercise_json_array(images)
-WHERE images IS NOT NULL AND normalize_exercise_json_array(images) IS DISTINCT FROM images;
+UPDATE exercises e SET equipment = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(equipment) AS value
+    FROM exercises
+    WHERE equipment IS NOT NULL AND left(btrim(equipment), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.equipment;
 
-UPDATE exercise_entries SET equipment = normalize_exercise_json_array(equipment)
-WHERE equipment IS NOT NULL AND normalize_exercise_json_array(equipment) IS DISTINCT FROM equipment;
-UPDATE exercise_entries SET primary_muscles = normalize_exercise_json_array(primary_muscles)
-WHERE primary_muscles IS NOT NULL AND normalize_exercise_json_array(primary_muscles) IS DISTINCT FROM primary_muscles;
-UPDATE exercise_entries SET secondary_muscles = normalize_exercise_json_array(secondary_muscles)
-WHERE secondary_muscles IS NOT NULL AND normalize_exercise_json_array(secondary_muscles) IS DISTINCT FROM secondary_muscles;
-UPDATE exercise_entries SET instructions = normalize_exercise_json_array(instructions)
-WHERE instructions IS NOT NULL AND normalize_exercise_json_array(instructions) IS DISTINCT FROM instructions;
-UPDATE exercise_entries SET images = normalize_exercise_json_array(images)
-WHERE images IS NOT NULL AND normalize_exercise_json_array(images) IS DISTINCT FROM images;
+UPDATE exercises e SET primary_muscles = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(primary_muscles) AS value
+    FROM exercises
+    WHERE primary_muscles IS NOT NULL AND left(btrim(primary_muscles), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.primary_muscles;
+
+UPDATE exercises e SET secondary_muscles = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(secondary_muscles) AS value
+    FROM exercises
+    WHERE secondary_muscles IS NOT NULL AND left(btrim(secondary_muscles), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.secondary_muscles;
+
+UPDATE exercises e SET instructions = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(instructions, false) AS value
+    FROM exercises
+    WHERE instructions IS NOT NULL AND left(btrim(instructions), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.instructions;
+
+UPDATE exercises e SET images = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(images, false) AS value
+    FROM exercises
+    WHERE images IS NOT NULL AND left(btrim(images), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.images;
+
+UPDATE exercise_entries e SET equipment = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(equipment) AS value
+    FROM exercise_entries
+    WHERE equipment IS NOT NULL AND left(btrim(equipment), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.equipment;
+
+UPDATE exercise_entries e SET primary_muscles = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(primary_muscles) AS value
+    FROM exercise_entries
+    WHERE primary_muscles IS NOT NULL AND left(btrim(primary_muscles), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.primary_muscles;
+
+UPDATE exercise_entries e SET secondary_muscles = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(secondary_muscles) AS value
+    FROM exercise_entries
+    WHERE secondary_muscles IS NOT NULL AND left(btrim(secondary_muscles), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.secondary_muscles;
+
+UPDATE exercise_entries e SET instructions = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(instructions, false) AS value
+    FROM exercise_entries
+    WHERE instructions IS NOT NULL AND left(btrim(instructions), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.instructions;
+
+UPDATE exercise_entries e SET images = normalized.value
+FROM (
+    SELECT id, normalize_exercise_json_array(images, false) AS value
+    FROM exercise_entries
+    WHERE images IS NOT NULL AND left(btrim(images), 1) <> '['
+) AS normalized
+WHERE e.id = normalized.id AND normalized.value IS DISTINCT FROM e.images;
 
 -- Migration-only helper; not part of the application's function catalog.
-DROP FUNCTION normalize_exercise_json_array(text);
+DROP FUNCTION normalize_exercise_json_array(text, boolean);
 
 COMMIT;
