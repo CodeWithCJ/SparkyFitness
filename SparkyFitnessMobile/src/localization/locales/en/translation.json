@@ -2746,5 +2746,34 @@
     "actions": {
       "startHere": "Start workout here"
     }
+  },
+  "activityDetail": {
+    "errors": {
+      "saveFailed": "Failed to save activity"
+    },
+    "stats": {
+      "duration": "Duration",
+      "calories": "Calories",
+      "distance": "Distance",
+      "avgHeartRate": "Avg Heart Rate",
+      "steps": "Steps",
+      "pace": "Pace"
+    },
+    "labels": {
+      "sets": "Sets",
+      "set": "Set",
+      "secondsShort": "Sec",
+      "weight": "Weight",
+      "reps": "Reps",
+      "notes": "Notes"
+    },
+    "placeholders": {
+      "activityName": "Activity Name",
+      "notes": "Add notes..."
+    },
+    "accessibility": {
+      "save": "Save",
+      "edit": "Edit activity"
+    }
   }
 }

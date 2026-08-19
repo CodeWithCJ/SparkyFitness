@@ -2782,5 +2782,34 @@
     "actions": {
       "startHere": "Rozpocznij trening od tego miejsca"
     }
+  },
+  "activityDetail": {
+    "errors": {
+      "saveFailed": "Nie udało się zapisać aktywności"
+    },
+    "stats": {
+      "duration": "Czas trwania",
+      "calories": "Kalorie",
+      "distance": "Dystans",
+      "avgHeartRate": "Średnie tętno",
+      "steps": "Kroki",
+      "pace": "Tempo"
+    },
+    "labels": {
+      "sets": "Serie",
+      "set": "Seria",
+      "secondsShort": "Sek.",
+      "weight": "Ciężar",
+      "reps": "Powtórzenia",
+      "notes": "Notatki"
+    },
+    "placeholders": {
+      "activityName": "Nazwa aktywności",
+      "notes": "Dodaj notatki..."
+    },
+    "accessibility": {
+      "save": "Zapisz",
+      "edit": "Edytuj aktywność"
+    }
   }
 }

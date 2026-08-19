@@ -409,3 +409,16 @@ describe('WorkoutDetail localization', () => {
     });
   });
 });
+
+describe('ActivityDetail localization', () => {
+  it('resolves activity detail statistics and editing copy in Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('pl');
+      expect(i18n.t('activityDetail.stats.duration', { defaultValue: 'Duration' })).toBe('Czas trwania');
+      expect(i18n.t('activityDetail.stats.avgHeartRate', { defaultValue: 'Avg Heart Rate' })).toBe('Średnie tętno');
+      expect(i18n.t('activityDetail.labels.secondsShort', { defaultValue: 'Sec' })).toBe('Sek.');
+      expect(i18n.t('activityDetail.accessibility.edit', { defaultValue: 'Edit activity' })).toBe('Edytuj aktywność');
+    });
+  });
+});

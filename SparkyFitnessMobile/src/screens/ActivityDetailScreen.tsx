@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity } from 'react-native';
 import FadeView from '../components/FadeView';
 import EditableSetList from '../components/EditableSetList';
@@ -45,6 +46,7 @@ type Props = RootStackScreenProps<'ActivityDetail'>;
 type EditableField = 'name' | 'duration' | 'calories' | 'distance' | 'avgHeartRate' | 'notes';
 
 const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const [session, setSession] = useState(route.params.session);
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
@@ -263,7 +265,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       originalSetsRef.current.clear();
     } catch (error) {
       addLog(`Failed to save activity: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
+      Toast.show({ type: 'error', text1: t('activityDetail.errors.saveFailed', { defaultValue: 'Failed to save activity' }), text2: t('common.tryAgain', { defaultValue: 'Please try again.' }) });
     }
   };
 
@@ -302,7 +304,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           : (duration > 0
               ? String(Number(duration.toFixed(2)))
               : '-'),
-        label: 'Duration',
+        label: t('activityDetail.stats.duration', { defaultValue: 'Duration' }),
         editKey: 'duration',
         editSuffix: 'min',
         keyboardType: 'decimal-pad',
@@ -315,7 +317,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           : (calories > 0
               ? (calories % 1 === 0 ? String(calories) : calories.toFixed(1))
               : '-'),
-        label: 'Calories',
+        label: t('activityDetail.stats.calories', { defaultValue: 'Calories' }),
         editKey: 'calories',
         editSuffix: 'cal',
         keyboardType: 'decimal-pad',
@@ -328,7 +330,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           : (session.distance != null && session.distance > 0
               ? String(distanceFromKm(session.distance, distanceUnit).toFixed(1))
               : '-'),
-        label: 'Distance',
+        label: t('activityDetail.stats.distance', { defaultValue: 'Distance' }),
         editKey: 'distance',
         editSuffix: distLabel,
         keyboardType: 'decimal-pad',
@@ -339,18 +341,18 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         value: isEditing
           ? (formState.avgHeartRate || '-')
           : (session.avg_heart_rate != null ? String(session.avg_heart_rate) : '-'),
-        label: 'Avg Heart Rate',
+        label: t('activityDetail.stats.avgHeartRate', { defaultValue: 'Avg Heart Rate' }),
         editKey: 'avgHeartRate',
         editSuffix: 'bpm',
         keyboardType: 'numeric',
       });
     }
     if (session.steps != null && session.steps > 0) {
-      stats.push({ value: session.steps.toLocaleString(), label: 'Steps' });
+      stats.push({ value: session.steps.toLocaleString(), label: t('activityDetail.stats.steps', { defaultValue: 'Steps' }) });
     }
     if (paceDistanceKm != null && paceDistanceKm > 0 && paceDuration > 0) {
       const pace = formatPace(paceDuration, paceDistanceKm);
-      if (pace) stats.push({ value: pace, label: 'Pace' });
+      if (pace) stats.push({ value: pace, label: t('activityDetail.stats.pace', { defaultValue: 'Pace' }) });
     }
     return stats;
   };
@@ -489,7 +491,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           kind: 'dismiss',
           onPress: cancelEditing,
           disabled: isSaving,
-          accessibilityLabel: 'Cancel',
+          accessibilityLabel: t('common.cancel', { defaultValue: 'Cancel' }),
           identifier: 'activity-detail-cancel',
         }
       : { kind: 'back' },
@@ -501,16 +503,16 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           busy: isSaving,
           disabled: isSaving,
           onPress: handleSave,
-          accessibilityLabel: 'Save',
+          accessibilityLabel: t('activityDetail.accessibility.save', { defaultValue: 'Save' }),
           identifier: 'activity-detail-save',
         }
       : canEditSource
         ? {
             kind: 'text',
-            label: 'Edit',
+            label: t('common.edit', { defaultValue: 'Edit' }),
             role: 'secondary',
             onPress: startEditing,
-            accessibilityLabel: 'Edit activity',
+            accessibilityLabel: t('activityDetail.accessibility.edit', { defaultValue: 'Edit activity' }),
             identifier: 'activity-detail-edit',
           }
         : null,
@@ -543,7 +545,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={formState.name}
                       onChangeText={setName}
                       onBlur={() => setActiveField(null)}
-                      placeholder="Activity Name"
+                      placeholder={t('activityDetail.placeholders.activityName', { defaultValue: 'Activity Name' })}
                       autoFocus
                       style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 8, paddingBottom: 8, fontSize: 20, fontWeight: '700' }}
                     />
@@ -588,7 +590,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing ? (
           !cardioEffort && (draftSets.length > 0 || hasSets) ? (
             <View className="py-4">
-              <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-2">{t('activityDetail.labels.sets', { defaultValue: 'Sets' })}</Text>
               <EditableSetList
                 exerciseClientId={SET_CLIENT_ID_PREFIX}
                 sets={draftSets}
@@ -607,17 +609,17 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         ) : hasSets ? (
           <>
             <View className="py-4">
-              <Text className="text-sm font-medium text-text-secondary mb-2">Sets</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-2">{t('activityDetail.labels.sets', { defaultValue: 'Sets' })}</Text>
               <View className="flex-row py-1 mb-1">
-                <Text className="text-xs font-semibold text-text-muted w-10 text-center">Set</Text>
+                <Text className="text-xs font-semibold text-text-muted w-10 text-center">{t('activityDetail.labels.set', { defaultValue: 'Set' })}</Text>
                 {durationLike ? (
-                  <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Sec</Text>
+                  <Text className="text-xs font-semibold text-text-muted flex-1 text-center">{t('activityDetail.labels.secondsShort', { defaultValue: 'Sec' })}</Text>
                 ) : (
                   <>
                     {modality !== 'reps_only' && (
-                      <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Weight</Text>
+                      <Text className="text-xs font-semibold text-text-muted flex-1 text-center">{t('activityDetail.labels.weight', { defaultValue: 'Weight' })}</Text>
                     )}
-                    <Text className="text-xs font-semibold text-text-muted flex-1 text-center">Reps</Text>
+                    <Text className="text-xs font-semibold text-text-muted flex-1 text-center">{t('activityDetail.labels.reps', { defaultValue: 'Reps' })}</Text>
                   </>
                 )}
               </View>
@@ -652,14 +654,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {(isEditing || session.notes) && (
           <>
             <View className="py-4">
-              <Text className="text-sm font-medium text-text-secondary mb-2">Notes</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-2">{t('activityDetail.labels.notes', { defaultValue: 'Notes' })}</Text>
               {isEditing ? (
                 activeField === 'notes' ? (
                   <FormInput
                     value={formState.notes}
                     onChangeText={setNotes}
                     onBlur={() => setActiveField(null)}
-                    placeholder="Add notes..."
+                    placeholder={t('activityDetail.placeholders.notes', { defaultValue: 'Add notes...' })}
                     multiline
                     autoFocus
                     style={{ minHeight: 60 }}
