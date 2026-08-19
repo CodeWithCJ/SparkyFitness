@@ -3717,7 +3717,11 @@
     "elevationGain": "Elevation Gain",
     "avgCadence": "Avg Cadence",
     "zone": "Zone {{zone}}",
-    "heartRateZone": "Heart rate zone {{zone}}"
+    "heartRateZone": "Heart-rate zone: {{zone}}",
+    "heartRateZoneLight": "Light",
+    "heartRateZoneModerate": "Moderate",
+    "heartRateZoneIntense": "Intense",
+    "heartRateZonePeak": "Peak"
   },
   "copyMeal": {
     "title": "Copy meal: {{meal}}",

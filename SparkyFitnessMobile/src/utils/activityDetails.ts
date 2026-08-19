@@ -19,7 +19,11 @@ const activityLabel = (
     case 'activitySummary.elevationGain': return t('activitySummary.elevationGain', { defaultValue: 'Elevation Gain' });
     case 'activitySummary.avgCadence': return t('activitySummary.avgCadence', { defaultValue: 'Avg Cadence' });
     case 'activitySummary.zone': return t('activitySummary.zone', { defaultValue: 'Zone {{zone}}', ...interpolation });
-    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'Heart rate zone {{zone}}', ...interpolation });
+    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'Heart-rate zone: {{zone}}', ...interpolation });
+    case 'activitySummary.heartRateZoneLight': return t('activitySummary.heartRateZoneLight', { defaultValue: 'Light' });
+    case 'activitySummary.heartRateZoneModerate': return t('activitySummary.heartRateZoneModerate', { defaultValue: 'Moderate' });
+    case 'activitySummary.heartRateZoneIntense': return t('activitySummary.heartRateZoneIntense', { defaultValue: 'Intense' });
+    case 'activitySummary.heartRateZonePeak': return t('activitySummary.heartRateZonePeak', { defaultValue: 'Peak' });
     default: return defaultValue;
   }
 };
@@ -145,8 +149,17 @@ export function extractActivitySummary(
 
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        const zoneNumber = zone.replace(/^Zone\s+/i, '');
-        items.push({ label: activityLabel(t, 'activitySummary.heartRateZone', `Heart rate zone ${zoneNumber}`, { zone: zoneNumber }).replace('{{zone}}', zoneNumber), value: `${mins}m ${secs}s` });
+        const zoneLabels: Record<string, string> = {
+          light: activityLabel(t, 'activitySummary.heartRateZoneLight', 'Light'),
+          moderate: activityLabel(t, 'activitySummary.heartRateZoneModerate', 'Moderate'),
+          intense: activityLabel(t, 'activitySummary.heartRateZoneIntense', 'Intense'),
+          peak: activityLabel(t, 'activitySummary.heartRateZonePeak', 'Peak'),
+        };
+        const rawZoneLabel = zone.replace(/^Zone\s+/i, '');
+        const semanticZoneLabel = zoneLabels[rawZoneLabel.toLowerCase()];
+        const displayZone = semanticZoneLabel ?? rawZoneLabel;
+        const label = activityLabel(t, 'activitySummary.heartRateZone', 'Heart-rate zone: {{zone}}', { zone: displayZone }).replace('{{zone}}', displayZone);
+        items.push({ label, value: `${mins}m ${secs}s` });
       }
       continue;
     }

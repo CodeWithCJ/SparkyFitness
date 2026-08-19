@@ -3717,7 +3717,11 @@
     "elevationGain": "Przewyższenie",
     "avgCadence": "Śr. kadencja",
     "zone": "Strefa {{zone}}",
-    "heartRateZone": "Strefa tętna {{zone}}"
+    "heartRateZone": "Strefa tętna: {{zone}}",
+    "heartRateZoneLight": "Lekka",
+    "heartRateZoneModerate": "Umiarkowana",
+    "heartRateZoneIntense": "Intensywna",
+    "heartRateZonePeak": "Szczytowa"
   },
   "copyMeal": {
     "title": "Kopiuj posiłek: {{meal}}",

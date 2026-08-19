@@ -141,10 +141,38 @@ describe('extractActivitySummary', () => {
   });
 
   test('extracts Withings HR zones', () => {
-    const items = extractActivitySummary([activityDetail({ detail_type: 'hr_zones', detail_data: JSON.stringify({ hr_zones: { 'Zone 1': 180, 'Zone 2': 360, 'Zone 3': 0 } }), provider_name: 'withings' })]);
-    expect(items).toContainEqual({ label: 'Heart rate zone 1', value: '3m 0s' });
-    expect(items).toContainEqual({ label: 'Heart rate zone 2', value: '6m 0s' });
-    expect(items).toHaveLength(2);
+    const items = extractActivitySummary([activityDetail({ detail_type: 'hr_zones', detail_data: JSON.stringify({ hr_zones: { light: 180, moderate: 360, intense: 60, peak: 0 } }), provider_name: 'withings' })]);
+    expect(items).toContainEqual({ label: 'Heart-rate zone: Light', value: '3m 0s' });
+    expect(items).toContainEqual({ label: 'Heart-rate zone: Moderate', value: '6m 0s' });
+    expect(items).toHaveLength(3);
+  });
+
+  test('renders production Withings semantic zone names in Polish', () => {
+    const polish: Record<string, string> = {
+      'activitySummary.heartRateZone': 'Strefa tętna: {{zone}}',
+      'activitySummary.heartRateZoneLight': 'Lekka',
+      'activitySummary.heartRateZoneModerate': 'Umiarkowana',
+      'activitySummary.heartRateZoneIntense': 'Intensywna',
+      'activitySummary.heartRateZonePeak': 'Szczytowa',
+    };
+    const t = ((key: string, options: { defaultValue: string; zone?: string | number }) =>
+      (polish[key] ?? options.defaultValue).replace('{{zone}}', String(options.zone ?? '')));
+
+    expect(extractActivitySummary([
+      activityDetail({ detail_data: { hr_zones: { light: 60, peak: 120 } }, provider_name: 'withings' }),
+    ], t as never)).toEqual([
+      { label: 'Strefa tętna: Lekka', value: '1m 0s' },
+      { label: 'Strefa tętna: Szczytowa', value: '2m 0s' },
+    ]);
+  });
+
+  test('renders unknown Withings zone keys without losing their literal value', () => {
+    const items = extractActivitySummary([activityDetail({
+      detail_type: 'hr_zones',
+      detail_data: JSON.stringify({ hr_zones: { 'Zone 5': 60 } }),
+      provider_name: 'withings',
+    })]);
+    expect(items).toEqual([{ label: 'Heart-rate zone: 5', value: '1m 0s' }]);
   });
 
   test('handles non-object parsed data as primitive', () => {
@@ -166,8 +194,8 @@ describe('extractActivitySummary', () => {
   });
 
   test('handles Withings HR zones with non-number values', () => {
-    const items = extractActivitySummary([activityDetail({ detail_type: 'hr_zones', detail_data: JSON.stringify({ hr_zones: { 'Zone 1': 'not-a-number', 'Zone 2': 300 } }), provider_name: 'withings' })]);
+    const items = extractActivitySummary([activityDetail({ detail_type: 'hr_zones', detail_data: JSON.stringify({ hr_zones: { light: 'not-a-number', moderate: 300 } }), provider_name: 'withings' })]);
     expect(items).toHaveLength(1);
-    expect(items[0]).toEqual({ label: 'Heart rate zone 2', value: '5m 0s' });
+    expect(items[0]).toEqual({ label: 'Heart-rate zone: Moderate', value: '5m 0s' });
   });
 });
