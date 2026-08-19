@@ -373,7 +373,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   else if (nutrientKey === 'dietary_fiber') goal = summary.fiber.goal || undefined;
                   else goal = summary.customNutrientGoals[nutrientKey] || undefined;
 
-                  const displayLabel = nutrientKey === 'carbs' && showNetCarbs ? 'Net Carbs' : label;
+                  const displayLabel = nutrientKey === 'carbs' && showNetCarbs ? t('nutrients.netCarbs', { defaultValue: 'Net Carbs' }) : label;
 
                   return (
                     <MacroCard

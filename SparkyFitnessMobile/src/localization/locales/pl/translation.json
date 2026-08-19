@@ -1644,13 +1644,7 @@
   "foodSummary": {
     "tapToAddFood": "Dotknij, aby dodać produkt",
     "caloriesShort": "kcal",
-    "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{label}}",
-    "mealTypes": {
-      "breakfast": "Śniadanie",
-      "lunch": "Obiad",
-      "dinner": "Kolacja",
-      "snacks": "Przekąski"
-    }
+    "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{label}}"
   },
   "exerciseSummary": {
     "tapToAdd": "Dotknij, aby dodać ćwiczenie",
@@ -2531,7 +2525,7 @@
   },
   "mealTypes": {
     "breakfast": "Śniadanie",
-    "lunch": "Lunch",
+    "lunch": "Obiad",
     "snacks": "Przekąski",
     "dinner": "Kolacja",
     "other": "Inne"

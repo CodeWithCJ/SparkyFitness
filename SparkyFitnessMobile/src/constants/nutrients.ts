@@ -67,6 +67,3 @@ export function getNutrientLabel(t: (key: string, options: { defaultValue: strin
     default: return NUTRIENT_META[key]?.label ?? key;
   }
 }
-export function getNutrientEnglishLabel(key: string): string {
-  return NUTRIENT_META[key]?.label ?? key;
-}

@@ -1620,13 +1620,7 @@
   "foodSummary": {
     "tapToAddFood": "Tap to add food",
     "caloriesShort": "Cal",
-    "nutritionBreakdown": "{{label}} nutrition breakdown",
-    "mealTypes": {
-      "breakfast": "Breakfast",
-      "lunch": "Lunch",
-      "dinner": "Dinner",
-      "snacks": "Snacks"
-    }
+    "nutritionBreakdown": "{{label}} nutrition breakdown"
   },
   "exerciseSummary": {
     "tapToAdd": "Tap to add exercise",

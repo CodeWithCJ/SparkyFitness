@@ -176,7 +176,7 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
     }
 
     return { standardItems, customItems };
-  }, [summary, preferences, customDefs]);
+  }, [summary, preferences, customDefs, t]);
 
   if (isLoading) {
     return <StatusView loading className="bg-background" />;
