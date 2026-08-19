@@ -46,7 +46,8 @@
     "notSet": "Not set",
     "deleting": "Deleting...",
     "done": "Done",
-    "none": "None"
+    "none": "None",
+    "food": "Food"
   },
   "settings": {
     "app": "App Settings",
@@ -3138,5 +3139,36 @@
       "photoEdit": "Photo {{number}}, edit",
       "addPhoto": "Add photo"
     }
+  },
+  "editLoggedMeal": {
+    "fields": {
+      "mealName": "Meal name",
+      "servings": "Servings",
+      "meal": "Meal",
+      "selectMeal": "Select Meal",
+      "time": "Time",
+      "foodsInMeal": "Foods in this meal"
+    },
+    "states": {
+      "noFoods": "No foods in this meal yet."
+    },
+    "actions": {
+      "addFood": "Add Food",
+      "deleteMeal": "Delete Meal"
+    },
+    "accessibility": {
+      "saveMeal": "Save meal",
+      "mealName": "Meal name",
+      "date": "Select date: {{date}}",
+      "meal": "Select meal: {{meal}}",
+      "time": "Select time: {{time}}",
+      "clearTime": "Clear entry time"
+    },
+    "errors": {
+      "saveFailed": "Failed to save meal",
+      "permission": "You don't have permission to edit this meal.",
+      "deleteFailed": "Failed to delete meal"
+    },
+    "deleteConfirm": "Delete this meal?"
   }
 }

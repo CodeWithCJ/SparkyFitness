@@ -48,7 +48,8 @@
     "notSet": "Nie ustawiono",
     "deleting": "Usuwanie…",
     "done": "Gotowe",
-    "none": "Brak"
+    "none": "Brak",
+    "food": "Produkt"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -3178,5 +3179,36 @@
       "photoEdit": "Zdjęcie {{number}}, edytuj",
       "addPhoto": "Dodaj zdjęcie"
     }
+  },
+  "editLoggedMeal": {
+    "fields": {
+      "mealName": "Nazwa posiłku",
+      "servings": "Liczba porcji",
+      "meal": "Posiłek",
+      "selectMeal": "Wybierz posiłek",
+      "time": "Godzina",
+      "foodsInMeal": "Produkty w tym posiłku"
+    },
+    "states": {
+      "noFoods": "Brak produktów w tym posiłku."
+    },
+    "actions": {
+      "addFood": "Dodaj produkt",
+      "deleteMeal": "Usuń posiłek"
+    },
+    "accessibility": {
+      "saveMeal": "Zapisz posiłek",
+      "mealName": "Nazwa posiłku",
+      "date": "Wybierz datę: {{date}}",
+      "meal": "Wybierz posiłek: {{meal}}",
+      "time": "Wybierz godzinę: {{time}}",
+      "clearTime": "Wyczyść godzinę wpisu"
+    },
+    "errors": {
+      "saveFailed": "Nie udało się zapisać posiłku",
+      "permission": "Nie masz uprawnień do edycji tego posiłku.",
+      "deleteFailed": "Nie udało się usunąć posiłku"
+    },
+    "deleteConfirm": "Usunąć ten posiłek?"
   }
 }
