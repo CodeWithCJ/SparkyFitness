@@ -2202,16 +2202,20 @@
     "deletedTitle": "Usunięto",
     "deletedMessage": "Klucz dostępu został usunięty.",
     "deleteFailed": "Nie udało się usunąć klucza dostępu: {{error}}",
-    "sessionOnly": "Klucze dostępu są obsługiwane tylko przez serwery korzystające z uwierzytelniania sesyjnego.",
+    "sessionOnly": "Klucze dostępu są obsługiwane tylko przez serwery korzystające z uwierzytelniania opartego na sesji.",
     "apiKeyUnsupported": "Jeśli łączysz się za pomocą klucza API, nie możesz używać kluczy dostępu.",
     "noneRegistered": "Brak zarejestrowanych kluczy dostępu",
-    "noneHint": "Dodaj to urządzenie lub dane biometryczne, aby następnym razem logować się szybciej.",
+    "noneHint": "Dodaj klucz dostępu z tego urządzenia lub używaj uwierzytelniania biometrycznego, aby następnym razem logować się szybciej.",
     "registeredOn": "Zarejestrowano: {{date}}",
     "deleteAccessibility": "Usuń klucz dostępu",
     "add": "Dodaj klucz dostępu",
-    "securityHint": "Klucze dostępu umożliwiają bezpieczne logowanie za pomocą: {{methods}} — bez wpisywania hasła.",
+    "securityHint": "Klucze dostępu umożliwiają bezpieczne logowanie za pomocą {{methods}}, bez wpisywania hasła.",
     "registerTitle": "Zarejestruj klucz dostępu",
     "nameHint": "Nadaj kluczowi dostępu przyjazną nazwę, aby później go rozpoznać (np. {{example}}).",
-    "namePlaceholder": "np. {{example}}"
+    "namePlaceholder": "np. {{example}}",
+    "iosAuthMethods": "Face ID, Touch ID lub kod urządzenia",
+    "androidAuthMethods": "odcisk palca, odblokowanie twarzą lub kod urządzenia",
+    "iosNameExample": "Mój iPhone",
+    "androidNameExample": "Mój telefon z Androidem"
   }
 }

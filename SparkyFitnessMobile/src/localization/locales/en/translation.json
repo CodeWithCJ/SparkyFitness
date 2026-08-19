@@ -2186,6 +2186,10 @@
     "securityHint": "Passkeys allow you to sign in securely using {{methods}} without entering your password.",
     "registerTitle": "Register Passkey",
     "nameHint": "Give this passkey a friendly name to identify it later (e.g. {{example}}).",
-    "namePlaceholder": "e.g. {{example}}"
+    "namePlaceholder": "e.g. {{example}}",
+    "iosAuthMethods": "Face ID, Touch ID, or your device PIN",
+    "androidAuthMethods": "your fingerprint, face unlock, or device PIN",
+    "iosNameExample": "My iPhone",
+    "androidNameExample": "My Android Phone"
   }
 }

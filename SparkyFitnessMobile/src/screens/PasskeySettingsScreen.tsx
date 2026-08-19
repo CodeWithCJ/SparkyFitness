@@ -38,14 +38,15 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type PasskeySettingsScreenProps = RootStackScreenProps<'PasskeySettings'>;
 
-const passkeyAuthMethods =
-  Platform.OS === 'ios'
-    ? 'Face ID, Touch ID, or your device PIN'
-    : 'your fingerprint, face unlock, or device PIN';
-const passkeyNameExample = Platform.OS === 'ios' ? 'My iPhone' : 'My Android Phone';
 
 const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   const { t } = useTranslation();
+  const passkeyAuthMethods = Platform.OS === 'ios'
+    ? t('passkeySettings.iosAuthMethods', { defaultValue: 'Face ID, Touch ID, or your device PIN' })
+    : t('passkeySettings.androidAuthMethods', { defaultValue: 'your fingerprint, face unlock, or device PIN' });
+  const passkeyNameExample = Platform.OS === 'ios'
+    ? t('passkeySettings.iosNameExample', { defaultValue: 'My iPhone' })
+    : t('passkeySettings.androidNameExample', { defaultValue: 'My Android Phone' });
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
