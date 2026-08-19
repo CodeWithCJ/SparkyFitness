@@ -3220,5 +3220,25 @@
       "invalidServingSize": "Invalid serving size",
       "invalidServingSizeMessage": "Serving size must be a positive number."
     }
+  },
+  "mealTypeForm": {
+    "createTitle": "Add Meal Type",
+    "editTitle": "Edit Meal Type",
+    "name": "Name",
+    "namePlaceholder": "e.g. Lunch 2.0",
+    "quickLog": "Quick log",
+    "defaultTime": "Default time",
+    "notSet": "Not set",
+    "create": "Create",
+    "delete": "Delete Meal Type",
+    "accessibility": {
+      "name": "Meal type name",
+      "quickLog": "Quick log {{name}}",
+      "defaultTime": "Default time for {{name}}{{time}}",
+      "cancelCreate": "Cancel create meal type",
+      "create": "Create meal type",
+      "save": "Save meal type",
+      "delete": "Delete Meal Type"
+    }
   }
 }

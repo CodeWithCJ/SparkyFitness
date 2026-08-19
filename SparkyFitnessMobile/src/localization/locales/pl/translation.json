@@ -3260,5 +3260,25 @@
       "invalidServingSize": "Nieprawidłowa wielkość porcji",
       "invalidServingSizeMessage": "Wielkość porcji musi być liczbą większą od zera."
     }
+  },
+  "mealTypeForm": {
+    "createTitle": "Dodaj typ posiłku",
+    "editTitle": "Edytuj typ posiłku",
+    "name": "Nazwa",
+    "namePlaceholder": "np. Obiad 2.0",
+    "quickLog": "Szybkie zapisywanie",
+    "defaultTime": "Domyślna godzina",
+    "notSet": "Nie ustawiono",
+    "create": "Utwórz",
+    "delete": "Usuń typ posiłku",
+    "accessibility": {
+      "name": "Nazwa typu posiłku",
+      "quickLog": "Szybkie zapisywanie: {{name}}",
+      "defaultTime": "Domyślna godzina dla {{name}}{{time}}",
+      "cancelCreate": "Anuluj tworzenie typu posiłku",
+      "create": "Utwórz typ posiłku",
+      "save": "Zapisz typ posiłku",
+      "delete": "Usuń typ posiłku"
+    }
   }
 }
