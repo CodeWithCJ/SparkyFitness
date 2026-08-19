@@ -108,7 +108,9 @@ const WidgetMockup: React.FC = () => {
           className="text-2xl font-bold text-text-primary"
           style={{ color: calorieColor }}
         >
-          1,515
+          {t('whatsNewPage.mockup.caloriesLeftValue', {
+            defaultValue: '1,515',
+          })}
         </Text>
         <Text className="text-xs text-text-secondary mb-2">
           {t('whatsNewPage.mockup.kcalLeft', { defaultValue: 'kcal left' })}
