@@ -1585,14 +1585,14 @@
       },
       "warrior20": {
         "name": "20:4 Warrior",
-        "description": "Zjedz jeden duży posiłek lub rozłóż kalorie na 4 godziny."
+        "description": "Zjedz jeden większy posiłek lub rozłóż kalorie na 4 godziny."
       },
       "circadian": {
         "name": "Rytm dobowy",
-        "description": "Poszcząc od zachodu słońca do rana."
+        "description": "Pość od zachodu słońca do rana."
       },
       "custom": {
-        "name": "Post niestandardowy",
+        "name": "Własny post",
         "description": "Ustaw własny czas postu."
       }
     }
