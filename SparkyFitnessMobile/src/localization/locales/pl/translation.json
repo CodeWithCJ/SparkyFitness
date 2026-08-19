@@ -2217,5 +2217,73 @@
     "androidAuthMethods": "odcisk palca, odblokowanie twarzą lub kod urządzenia",
     "iosNameExample": "Mój iPhone",
     "androidNameExample": "Mój telefon z Androidem"
+  },
+  "whatsNewPage": {
+    "title": "Co nowego",
+    "mockup": {
+      "today": "DZISIAJ",
+      "kcalLeft": "pozostało kcal",
+      "in": "Przyjęte",
+      "out": "Spalone",
+      "chatQuestion": "Co mogę zjeść na kolację, jeśli zostało mi 500 kcal?",
+      "chatAnswer": "Grillowany łosoś z sałatką dostarczy około 480 kcal.",
+      "estimatedCalories": "~412 kcal",
+      "lutealPhase": "Faza lutealna",
+      "day18": "Dzień 18",
+      "symptomFlowLog": "Dziennik objawów i krwawienia",
+      "mildNormal": "Łagodne • Normalne",
+      "benchPress": "Wyciskanie sztangi leżąc",
+      "threeSets": "3 serie",
+      "setOneReps": "Seria 1: 10 powt.",
+      "doneWeight": "80 kg • Wykonano",
+      "fauxprofen": "Fauxprofen",
+      "dailyDose": "200 mg • Codziennie",
+      "taken": "Przyjęto",
+      "caloriesLeftValue": "1 515",
+      "caloriesInValue": "1 540",
+      "caloriesOutValue": "255",
+      "eightAm": "08:00"
+    },
+    "features": {
+      "medications": {
+        "eyebrow": "LEKI",
+        "headline": "Monitoruj przyjmowanie leków",
+        "body": "Dodawaj leki, ustawiaj harmonogramy dawek i zapisuj każdą dawkę z pulpitu, korzystając z opcjonalnych przypomnień.",
+        "cta": "Skonfiguruj leki"
+      },
+      "cycle": {
+        "eyebrow": "CYKL I CIĄŻA",
+        "headline": "Monitoruj cykl i ciążę",
+        "body": "Kompleksowe śledzenie faz cyklu, objawów, krwawienia i przebiegu ciąży, z dopasowanymi wskazówkami oraz korektą celów."
+      },
+      "workout": {
+        "eyebrow": "TRENING I ĆWICZENIA",
+        "headline": "Odświeżony przebieg treningów",
+        "body": "Usprawnione zapisywanie ćwiczeń, zaktualizowane zarządzanie biblioteką ćwiczeń i lepsze śledzenie wielu serii."
+      },
+      "ios": {
+        "eyebrow": "IOS 26",
+        "headline": "Wygląd Liquid Glass",
+        "body": "Włącz nawigację Liquid Glass z półprzezroczystymi kartami i nagłówkami, które przejmują kolor tła. Możesz zmienić to w dowolnym momencie w ustawieniach aplikacji.",
+        "cta": "Otwórz ustawienia"
+      },
+      "chat": {
+        "eyebrow": "ZAPYTAJ SPARKY",
+        "headline": "Porozmawiaj z trenerem AI",
+        "body": "Poproś Sparky o zapisanie posiłków, zaplanowanie jedzenia i odpowiedzi na pytania dotyczące Twojego dnia.",
+        "cta": "Rozpocznij rozmowę"
+      },
+      "widget": {
+        "eyebrow": "WIDGET EKRANU GŁÓWNEGO",
+        "headline": "Kalorie na ekranie głównym",
+        "body": "Sprawdzaj stan dnia jednym rzutem oka. Dodaj SparkyFitness z galerii widgetów ekranu głównego."
+      },
+      "photo": {
+        "eyebrow": "SKANOWANIE ZDJĘCIA AI",
+        "headline": "Zrób zdjęcie posiłku i zapisz makroskładniki",
+        "body": "Oszacuj wartości odżywcze ze zdjęcia, gdy brakuje Ci czasu.",
+        "cta": "Wypróbuj"
+      }
+    }
   }
 }

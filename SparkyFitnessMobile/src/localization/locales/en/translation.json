@@ -2191,5 +2191,73 @@
     "androidAuthMethods": "your fingerprint, face unlock, or device PIN",
     "iosNameExample": "My iPhone",
     "androidNameExample": "My Android Phone"
+  },
+  "whatsNewPage": {
+    "title": "What's New",
+    "mockup": {
+      "today": "TODAY",
+      "kcalLeft": "kcal left",
+      "in": "In",
+      "out": "Out",
+      "chatQuestion": "What can I have for dinner with 500 calories left?",
+      "chatAnswer": "Grilled salmon with a side salad keeps you right around 480 kcal.",
+      "estimatedCalories": "~412 kcal",
+      "lutealPhase": "Luteal Phase",
+      "day18": "Day 18",
+      "symptomFlowLog": "Symptom & Flow Log",
+      "mildNormal": "Mild • Normal",
+      "benchPress": "Bench Press",
+      "threeSets": "3 Sets",
+      "setOneReps": "Set 1: 10 reps",
+      "doneWeight": "80 kg • Done",
+      "fauxprofen": "Fauxprofen",
+      "dailyDose": "200 mg • Daily",
+      "taken": "Taken",
+      "caloriesLeftValue": "1,515",
+      "caloriesInValue": "1,540",
+      "caloriesOutValue": "255",
+      "eightAm": "8:00 AM"
+    },
+    "features": {
+      "medications": {
+        "eyebrow": "MEDICATIONS",
+        "headline": "Track your medications",
+        "body": "Add your medications, set dose schedules, and log each dose from the dashboard with optional reminders.",
+        "cta": "Set up medications"
+      },
+      "cycle": {
+        "eyebrow": "CYCLE & PREGNANCY",
+        "headline": "Track your cycle & pregnancy",
+        "body": "Comprehensive tracking for cycle phases, symptoms, flow, and pregnancy progress with tailored insights and goal adjustments."
+      },
+      "workout": {
+        "eyebrow": "WORKOUT & EXERCISES",
+        "headline": "Revamped workout workflows",
+        "body": "Streamlined exercise logging, updated exercise library management, and improved multi-set performance tracking."
+      },
+      "ios": {
+        "eyebrow": "IOS 26",
+        "headline": "A Liquid Glass look",
+        "body": "Turn on Liquid Glass navigation for translucent tabs and headers that pick up the color behind them. Toggle it anytime in App settings.",
+        "cta": "Open settings"
+      },
+      "chat": {
+        "eyebrow": "ASK SPARKY",
+        "headline": "Chat with your AI coach",
+        "body": "Ask Sparky to log meals, plan what to eat, and answer questions about your day through chat.",
+        "cta": "Start chatting"
+      },
+      "widget": {
+        "eyebrow": "HOME SCREEN WIDGET",
+        "headline": "Calories on your home screen",
+        "body": "See where your day stands at a glance. Add SparkyFitness from your home screen's widget gallery."
+      },
+      "photo": {
+        "eyebrow": "AI PHOTO SCAN",
+        "headline": "Snap a meal, log the macros",
+        "body": "Estimate nutrition from a photo when you're short on time.",
+        "cta": "Try it out"
+      }
+    }
   }
 }
