@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { getAppLocale } from '../localization';
 import { useNutritionTrends, type TrendRange } from '../hooks/useNutritionTrends';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -20,6 +22,7 @@ const RANGE_SEGMENTS: Segment<TrendRange>[] = [
 ];
 
 const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) => {
+  const { t } = useTranslation();
   const { nutrientKey, nutrientLabel, unit, goal } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -27,7 +30,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
   const [range, setRange] = useState<TrendRange>('7d');
 
   const header = useScreenHeader({
-    title: `${nutrientLabel} Trends`,
+    title: t('nutrientTrends.title', { defaultValue: '{{nutrient}} Trends', nutrient: nutrientLabel }),
     left: { kind: 'back' },
   });
 
@@ -70,7 +73,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
     if (!stats.peakDay) return '';
     const [year, month, d] = stats.peakDay.split('-').map(Number);
     const date = new Date(year, month - 1, d);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
   }, [stats.peakDay]);
 
   if (isLoading) {
@@ -81,10 +84,10 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
     return (
       <View className="flex-1 bg-background justify-center items-center p-4">
         <Text className="text-text-primary text-base font-semibold mb-2">
-          Failed to load trend data
+          {t('nutrientTrends.states.loadFailed', { defaultValue: 'Failed to load trend data' })}
         </Text>
         <Text className="text-text-secondary text-sm text-center">
-          Please check your connection and try again.
+          {t('common.connectionRetry', { defaultValue: 'Please check your connection and try again.' })}
         </Text>
       </View>
     );
@@ -124,18 +127,18 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
         {/* Statistics Summary Card */}
         <View className="bg-surface rounded-xl p-4 mt-4 shadow-sm">
           <Text className="text-text-primary text-base font-bold mb-3">
-            Summary Statistics
+            {t('nutrientTrends.labels.summary', { defaultValue: 'Summary Statistics' })}
           </Text>
 
           <View className="flex-row justify-between py-2 border-b border-border-subtle">
-            <Text className="text-text-secondary text-sm">Daily Average</Text>
+            <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.dailyAverage', { defaultValue: 'Daily Average' })}</Text>
             <Text className="text-text-primary text-sm font-semibold">
               {stats.average % 1 !== 0 ? stats.average.toFixed(1) : stats.average} {unit}
             </Text>
           </View>
 
           <View className="flex-row justify-between py-2 border-b border-border-subtle">
-            <Text className="text-text-secondary text-sm">Highest Intake Day</Text>
+            <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.highestDay', { defaultValue: 'Highest Intake Day' })}</Text>
             <View className="items-end">
               <Text className="text-text-primary text-sm font-semibold">
                 {stats.peak % 1 !== 0 ? stats.peak.toFixed(1) : stats.peak} {unit}
@@ -149,16 +152,16 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
           {goal && goal > 0 ? (
             <>
               <View className="flex-row justify-between py-2 border-b border-border-subtle">
-                <Text className="text-text-secondary text-sm">Target Daily Goal</Text>
+                <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.targetGoal', { defaultValue: 'Target Daily Goal' })}</Text>
                 <Text className="text-text-primary text-sm font-semibold">
                   {Math.round(goal).toLocaleString()} {unit}
                 </Text>
               </View>
 
               <View className="flex-row justify-between py-2">
-                <Text className="text-text-secondary text-sm">Average vs. Target</Text>
+                <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.averageVsTarget', { defaultValue: 'Average vs. Target' })}</Text>
                 <Text className="text-text-primary text-sm font-semibold">
-                  {Math.round((stats.average / goal) * 100)}% of goal
+                  {t('nutrientTrends.labels.percentOfGoal', { defaultValue: '{{percent}}% of goal', percent: Math.round((stats.average / goal) * 100) })}
                 </Text>
               </View>
             </>

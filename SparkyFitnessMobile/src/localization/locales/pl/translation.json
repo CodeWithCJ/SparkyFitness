@@ -3335,5 +3335,19 @@
       "addFood": "Dodaj produkt",
       "copyMeal": "Kopiuj posiłek na inny dzień"
     }
+  },
+  "nutrientTrends": {
+    "title": "Trendy: {{nutrient}}",
+    "states": {
+      "loadFailed": "Nie udało się wczytać danych trendu"
+    },
+    "labels": {
+      "summary": "Podsumowanie statystyk",
+      "dailyAverage": "Średnia dzienna",
+      "highestDay": "Dzień z najwyższym spożyciem",
+      "targetGoal": "Dzienny cel",
+      "averageVsTarget": "Średnia względem celu",
+      "percentOfGoal": "{{percent}}% celu"
+    }
   }
 }

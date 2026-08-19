@@ -3295,5 +3295,19 @@
       "addFood": "Add Food",
       "copyMeal": "Copy meal to another day"
     }
+  },
+  "nutrientTrends": {
+    "title": "{{nutrient}} Trends",
+    "states": {
+      "loadFailed": "Failed to load trend data"
+    },
+    "labels": {
+      "summary": "Summary Statistics",
+      "dailyAverage": "Daily Average",
+      "highestDay": "Highest Intake Day",
+      "targetGoal": "Target Daily Goal",
+      "averageVsTarget": "Average vs. Target",
+      "percentOfGoal": "{{percent}}% of goal"
+    }
   }
 }
