@@ -9,6 +9,25 @@ import {
 
 const router = express.Router();
 
+const UNIT_SYSTEMS = ['metric', 'imperial'] as const;
+type UnitSystem = (typeof UNIT_SYSTEMS)[number];
+
+/**
+ * Resolves the documented `unitSystem` enum, defaulting to metric when absent.
+ * Returns null for anything else so the route can answer 400 rather than
+ * silently formatting an unrecognised value as metric — a caller that
+ * misspells "imperial" should be told, not handed the wrong units.
+ */
+function parseUnitSystem(raw: unknown): UnitSystem | null {
+  if (raw === undefined) return 'metric';
+  return typeof raw === 'string' && UNIT_SYSTEMS.includes(raw as UnitSystem)
+    ? (raw as UnitSystem)
+    : null;
+}
+
+const INVALID_UNIT_SYSTEM_ERROR =
+  "Invalid unitSystem. Expected 'metric' or 'imperial'.";
+
 /**
  * @swagger
  * /exercise-stats/summary:
@@ -158,9 +177,11 @@ router.get('/query', authenticate, async (req, res, next) => {
  *   get:
  *     summary: Get personal records (PRs) matrix across distance milestones and 1RMs
  *     description: >
- *       Returns one cardio record per (sport, distance standard) pair. Records are
- *       only comparable within a sportGroup — a 1 km walk is slower than a 1 mile
- *       run — so clients should group by sportGroup rather than render a flat list.
+ *       Returns one cardio record per (sportGroup, distance standard) pair.
+ *       sportGroup is the record boundary, so a hike and a walk compete for the
+ *       same walk record, while sport describes the winning activity itself.
+ *       Records are only comparable within a sportGroup — a 1 km walk is slower
+ *       than a 1 mile run — so group by sportGroup rather than render a flat list.
  *     tags: [Exercise Stats]
  *     security:
  *       - cookieAuth: []
@@ -181,7 +202,7 @@ router.get('/query', authenticate, async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/ExercisePRMatrixResponse'
  *       400:
- *         description: Target User ID is required.
+ *         description: Target User ID is required, or unitSystem is not metric/imperial.
  *       403:
  *         description: Forbidden — no reports permission for the requested user.
  */
@@ -207,8 +228,10 @@ router.get('/prs', authenticate, async (req, res, next) => {
       }
     }
 
-    const unitSystem =
-      (req.query.unitSystem as 'metric' | 'imperial') || 'metric';
+    const unitSystem = parseUnitSystem(req.query.unitSystem);
+    if (!unitSystem) {
+      return res.status(400).json({ error: INVALID_UNIT_SYSTEM_ERROR });
+    }
     const prMatrix = await exerciseStatsService.getPersonalRecordMatrix(
       targetUserId,
       unitSystem
@@ -244,7 +267,7 @@ router.get('/prs', authenticate, async (req, res, next) => {
  *             schema:
  *               $ref: '#/components/schemas/MatchedCoursesResponse'
  *       400:
- *         description: Target User ID is required.
+ *         description: Target User ID is required, or unitSystem is not metric/imperial.
  *       403:
  *         description: Forbidden — no reports permission for the requested user.
  */
@@ -270,8 +293,10 @@ router.get('/matched-courses', authenticate, async (req, res, next) => {
       }
     }
 
-    const unitSystem =
-      (req.query.unitSystem as 'metric' | 'imperial') || 'metric';
+    const unitSystem = parseUnitSystem(req.query.unitSystem);
+    if (!unitSystem) {
+      return res.status(400).json({ error: INVALID_UNIT_SYSTEM_ERROR });
+    }
     const matchedCourses = await exerciseStatsService.getMatchedCourses(
       targetUserId,
       unitSystem

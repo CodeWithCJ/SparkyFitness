@@ -1330,7 +1330,7 @@ const options = {
         ExercisePersonalRecordItem: {
           type: 'object',
           description:
-            'One best effort, scoped to a single sport. Records are only comparable within the same sportGroup.',
+            'One best effort. sportGroup is the record boundary — efforts compete only within the same group, so a hike and a walk contend for the same walk record — while sport classifies the winning activity itself.',
           properties: {
             id: {
               type: 'string',
@@ -1354,13 +1354,13 @@ const options = {
                 'other',
               ],
               description:
-                'Canonical sport, named after the ANT+/FIT SDK sport enum. Absent on servers predating per-sport records.',
+                'Canonical sport of the winning activity, named after the ANT+/FIT SDK sport enum. Descriptive only — it does not define which efforts competed for this record. Absent on servers predating per-sport records.',
             },
             sportGroup: {
               type: 'string',
               enum: ['run', 'ride', 'walk', 'swim', 'other'],
               description:
-                'Coarser display bucket; hiking folds into walk. Group by this field to render the matrix.',
+                'The record boundary: one record is kept per (sportGroup, distanceStandard) pair, and hiking folds into walk. Group by this field to render the matrix.',
             },
             sportConfidence: {
               type: 'string',
