@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Pressable,
   Text,
@@ -301,6 +302,8 @@ function ActiveWorkoutSetRow({
       }
     }
   }
+
+  const { t } = useTranslation();
 
   const weightInputRef = useRef<TextInput>(null);
   const repsInputRef = useRef<TextInput>(null);
@@ -625,7 +628,7 @@ function ActiveWorkoutSetRow({
           onPress={openSetTypeMenu}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={`Change type for set ${set.set_number}`}
+          accessibilityLabel={t('activeWorkout.setRow.changeType', { defaultValue: 'Change type for set {{setNumber}}', setNumber: set.set_number })}
         >
           {setIndicator}
         </Pressable>
@@ -653,7 +656,7 @@ function ActiveWorkoutSetRow({
           onPress={() => onUncomplete?.(setId)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={`Un-complete set ${set.set_number}`}
+          accessibilityLabel={t('activeWorkout.setRow.incomplete', { defaultValue: 'Un-complete set {{setNumber}}', setNumber: set.set_number })}
         >
           <CompletionCheck size={28} />
         </Pressable>
@@ -665,7 +668,7 @@ function ActiveWorkoutSetRow({
           onPress={handleLog}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={`Log set ${set.set_number}`}
+          accessibilityLabel={t('activeWorkout.setRow.log', { defaultValue: 'Log set {{setNumber}}', setNumber: set.set_number })}
         >
           <LogCircle color={accentPrimary} />
         </Pressable>
@@ -681,7 +684,7 @@ function ActiveWorkoutSetRow({
         onPress={handleLog}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
-        accessibilityLabel={`Log set ${set.set_number}`}
+        accessibilityLabel={t('activeWorkout.setRow.log', { defaultValue: 'Log set {{setNumber}}', setNumber: set.set_number })}
       >
         <View
           className="h-7 w-7 rounded-full border-2 items-center justify-center"
@@ -702,7 +705,7 @@ function ActiveWorkoutSetRow({
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       accessibilityRole="button"
       accessibilityLabel={
-        completedBadge ? `Un-complete set ${set.set_number}` : `Mark set ${set.set_number} complete`
+        completedBadge ? t('activeWorkout.setRow.incomplete', { defaultValue: 'Un-complete set {{setNumber}}', setNumber: set.set_number }) : t('activeWorkout.setRow.complete', { defaultValue: 'Mark set {{setNumber}} complete', setNumber: set.set_number })
       }
     >
       {completedBadge ? (
@@ -805,7 +808,7 @@ function ActiveWorkoutSetRow({
         onBlur={isEdit ? undefined : () => commitWeight(weightDraft)}
         onFocus={() => onActivateSet?.(setId, 'weight')}
         keyboardType="decimal-pad"
-        accessibilityLabel="Weight"
+        accessibilityLabel={t('activeWorkout.setRow.weight', { defaultValue: 'Weight' })}
         className="w-16"
         placeholder={isEdit ? '–' : (assumedWeightText ?? '–')}
         flat
@@ -823,7 +826,7 @@ function ActiveWorkoutSetRow({
         onBlur={isEdit ? undefined : () => commitReps(repsDraft)}
         onFocus={() => onActivateSet?.(setId, 'reps')}
         keyboardType="number-pad"
-        accessibilityLabel="Reps"
+        accessibilityLabel={t('activeWorkout.setRow.reps', { defaultValue: 'Reps' })}
         className="w-16"
         placeholder={isEdit ? '–' : (assumedRepsText ?? '–')}
         flat
@@ -845,7 +848,7 @@ function ActiveWorkoutSetRow({
         onBlur={isEdit ? undefined : () => commitDuration(durationDraft)}
         onFocus={() => onActivateSet?.(setId, 'duration')}
         keyboardType="number-pad"
-        accessibilityLabel="Duration"
+        accessibilityLabel={t('activeWorkout.setRow.duration', { defaultValue: 'Duration' })}
         className="w-16"
         placeholder={
           isEdit
@@ -868,7 +871,7 @@ function ActiveWorkoutSetRow({
         onBlur={() => commitRpe(rpeDraft)}
         onFocus={() => onActivateRpe?.(setId)}
         keyboardType="decimal-pad"
-        accessibilityLabel="RPE"
+        accessibilityLabel={t('activeWorkout.setRow.rpe', { defaultValue: 'RPE' })}
         className="w-11"
         flat
         textColor={metricValue.color}
@@ -937,7 +940,7 @@ function ActiveWorkoutSetRow({
       renderRightActions={() => (
         <SetSwipeDeleteAction
           onPress={() => onDelete?.(setId)}
-          accessibilityLabel={`Delete set ${set.set_number}`}
+          accessibilityLabel={t('activeWorkout.setRow.delete', { defaultValue: 'Delete set {{setNumber}}', setNumber: set.set_number })}
         />
       )}
       overshootRight={false}

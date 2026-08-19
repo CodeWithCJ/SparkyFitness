@@ -727,7 +727,7 @@ function ActiveWorkoutExerciseCard({
                     minWidth: 52,
                   }}
                 />
-                <Text className="text-sm text-text-secondary">Cal</Text>
+                <Text className="text-sm text-text-secondary">{t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'Cal' })}</Text>
               </View>
             ) : (
               <Pressable
@@ -739,7 +739,7 @@ function ActiveWorkoutExerciseCard({
               >
                 <Icon name="flame" size={14} color={accentPrimary} />
                 <Text className="text-sm" style={{ color: accentPrimary }}>
-                  {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} Cal
+                  {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} {t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'Cal' })}
                 </Text>
                 <Icon name="chevron-down" size={10} color={accentPrimary} />
               </Pressable>
@@ -747,7 +747,7 @@ function ActiveWorkoutExerciseCard({
             {caloriesText != null && (
               <View className="flex-row items-center">
                 <Icon name="flame" size={14} color={textMuted} />
-                <Text className="text-sm text-text-secondary ml-1">{caloriesText} Cal</Text>
+                <Text className="text-sm text-text-secondary ml-1">{caloriesText} {t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'Cal' })}</Text>
               </View>
             )}
             {bestDisplay != null && (
@@ -947,7 +947,7 @@ function ActiveWorkoutExerciseCard({
           >
             <Icon name="add" size={15} color={accentPrimary} />
             <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
-              Add set
+              {t('activeWorkout.exercise.addSetLabel', { defaultValue: 'Add set' })}
             </Text>
           </Pressable>
         )}

@@ -541,12 +541,12 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
     const ok = await flushActiveWorkoutBeforeClear(queryClient);
     if (!ok) {
       Alert.alert(
-        'Could not save your workout',
-        'Some changes have not reached the server.',
+        t('activeWorkout.bar.saveFailed', { defaultValue: 'Could not save your workout' }),
+        t('activeWorkout.bar.unsavedChanges', { defaultValue: 'Some changes have not reached the server.' }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
           {
-            text: 'Discard anyway',
+            text: t('activeWorkout.bar.discardAnyway', { defaultValue: 'Discard anyway' }),
             style: 'destructive',
             onPress: () => useActiveWorkoutStore.getState().clearWorkout(),
           },
@@ -563,12 +563,12 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       return;
     }
     Alert.alert(
-      'Clear workout?',
-      'This will end the current workout without saving progress.',
+      t('activeWorkout.bar.clearWorkoutTitle', { defaultValue: 'Clear workout?' }),
+      t('activeWorkout.bar.endWithoutSaving', { defaultValue: 'This will end the current workout without saving progress.' }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('activeWorkout.bar.clearWorkout', { defaultValue: 'Clear' }),
           style: 'destructive',
           onPress: () => {
             void flushAndClear();

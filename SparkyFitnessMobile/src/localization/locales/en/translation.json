@@ -210,7 +210,7 @@
       "skip": "Skip rest",
       "pause": "Pause rest",
       "resume": "Resume rest",
-      "targetValue": "Target: {{value}}",
+      "targetValue": "Target {{value}}",
       "shorten": "Shorten rest by 15 seconds",
       "extend": "Extend rest by 15 seconds"
     },
@@ -225,9 +225,10 @@
       "duration": "Duration",
       "log": "Log set {{setNumber}}",
       "reps": "Reps",
-      "complete": "Complete set {{setNumber}}",
-      "incomplete": "Mark set {{setNumber}} as incomplete",
-      "weight": "Weight"
+      "complete": "Mark set {{setNumber}} complete",
+      "incomplete": "Un-complete set {{setNumber}}",
+      "weight": "Weight",
+      "rpe": "RPE"
     },
     "columns": {
       "set": "Set",
@@ -246,7 +247,9 @@
       "best": "Best {{value}}",
       "changeMetric": "Change metric column",
       "notesForSet": "Notes for set {{number}}",
-      "addSet": "Add set to {{name}}"
+      "addSet": "Add set to {{name}}",
+      "caloriesUnit": "Cal",
+      "addSetLabel": "Add set"
     }
   },
   "addSheet": {

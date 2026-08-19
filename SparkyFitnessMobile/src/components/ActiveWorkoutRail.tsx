@@ -258,7 +258,7 @@ function ActiveWorkoutRail({
           className="mt-1 text-center text-xs leading-tight font-medium"
           style={{ color: accentPrimary }}
         >
-          Add
+          {t('activeWorkout.rail.add', { defaultValue: 'Add' })}
         </Text>
       </Pressable>
     </ScrollView>

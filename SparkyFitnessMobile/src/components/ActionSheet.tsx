@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   BackHandler,
   Platform,
@@ -56,6 +57,7 @@ interface ActionSheetProps {
  */
 const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
   ({ title, items, onBack, onDismiss }, ref) => {
+    const { t } = useTranslation();
     const modalRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
@@ -216,7 +218,7 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
                 onPress={onBack}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 accessibilityRole="button"
-                accessibilityLabel="Back"
+                accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
                 className="absolute left-2 top-0 bottom-0 justify-center px-2"
               >
                 <Icon name="chevron-back" size={20} color={accentPrimary} />

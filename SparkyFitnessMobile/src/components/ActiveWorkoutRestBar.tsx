@@ -122,7 +122,7 @@ function ActiveWorkoutRestBar({
           className="text-sm font-semibold"
           style={{ color: '#ffffff' }}
         >
-          Complete Set
+          {t('activeWorkout.rest.completeSetTitle', { defaultValue: 'Complete Set' })}
         </Text>
       </Pressable>
     </View>
@@ -168,7 +168,7 @@ function ActiveWorkoutRestBar({
               className="text-sm font-semibold text-text-primary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              −15s
+              {t('activeWorkout.rest.subtractSecondsShort', { defaultValue: '−{{seconds}}s', seconds: 15 })}
             </Text>
           </Pressable>
         </View>
@@ -194,7 +194,7 @@ function ActiveWorkoutRestBar({
               className="text-sm font-semibold text-text-primary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              +15s
+              {t('activeWorkout.rest.addSecondsShort', { defaultValue: '+{{seconds}}s', seconds: 15 })}
             </Text>
           </Pressable>
           <Pressable
@@ -224,7 +224,7 @@ function ActiveWorkoutRestBar({
               className="text-xs text-text-secondary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
-              Target {nextSetText}
+              {t('activeWorkout.rest.targetValue', { defaultValue: 'Target {{value}}', value: nextSetText })}
             </Text>
           )}
         </View>

@@ -216,7 +216,7 @@
       "skip": "Pomiń przerwę",
       "pause": "Wstrzymaj przerwę",
       "resume": "Wznów przerwę",
-      "targetValue": "Cel: {{value}}",
+      "targetValue": "Cel {{value}}",
       "shorten": "Skróć przerwę o 15 sekund",
       "extend": "Wydłuż przerwę o 15 sekund"
     },
@@ -231,9 +231,10 @@
       "duration": "Czas trwania",
       "log": "Zapisz serię {{setNumber}}",
       "reps": "Powtórzenia",
-      "complete": "Ukończ serię {{setNumber}}",
+      "complete": "Oznacz serię {{setNumber}} jako ukończoną",
       "incomplete": "Oznacz serię {{setNumber}} jako nieukończoną",
-      "weight": "Ciężar"
+      "weight": "Ciężar",
+      "rpe": "RPE"
     },
     "columns": {
       "set": "Seria",
@@ -252,7 +253,9 @@
       "best": "Najlepszy wynik: {{value}}",
       "changeMetric": "Zmień kolumnę metryki",
       "notesForSet": "Notatki do serii {{number}}",
-      "addSet": "Dodaj serię do {{name}}"
+      "addSet": "Dodaj serię do {{name}}",
+      "caloriesUnit": "kcal",
+      "addSetLabel": "Dodaj serię"
     }
   },
   "addSheet": {
