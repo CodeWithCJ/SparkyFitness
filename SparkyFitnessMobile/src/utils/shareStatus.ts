@@ -42,7 +42,11 @@ export function ownershipFilterHeaderMenu({
     ionicon: 'filter',
     showsBadge: filter !== 'all',
     badgeValue: filter !== 'all' ? '•' : undefined,
-    accessibilityLabel: filterAccessibilityLabel.replace('{{noun}}', noun).replace(/,?\s*filtered to \{\{filter\}\}/, '').replace(/,?\s*wybrano: \{\{filter\}\}/, ''),
+    accessibilityLabel: (() => {
+      const base = filterAccessibilityLabel.replace('{{noun}}', noun);
+      if (filter === 'all') return base;
+      return base.includes('{{filter}}') ? base.replace('{{filter}}', labels[filter]) : `${base}, ${labels[filter]}`;
+    })(),
     customAccessibilityLabel: filterAccessibilityLabel.replace('{{noun}}', noun).replace(/,?\s*filtered to \{\{filter\}\}/, '').replace(/,?\s*wybrano: \{\{filter\}\}/, ''),
     nativeAccessibilityLabel: (() => {
       const base = filterAccessibilityLabel.replace('{{noun}}', noun);
