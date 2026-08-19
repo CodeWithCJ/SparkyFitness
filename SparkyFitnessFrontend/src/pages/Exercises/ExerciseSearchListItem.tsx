@@ -4,6 +4,7 @@ import { EXERCISE_CATEGORY_META } from '@/constants/exercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { Exercise } from '@/types/exercises';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
+import { resolveExerciseImageSrc } from '@/utils/exercises';
 import {
   Share2,
   Users,
@@ -99,11 +100,7 @@ export const ExerciseSearchListItem = ({
       {hasImage && !showFallback ? (
         <div className="relative flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700 bg-gray-50 dark:bg-gray-800">
           <img
-            src={
-              exercise.source
-                ? exercise.images![currentImageIndex]
-                : '/uploads/exercises/' + exercise.images![currentImageIndex]
-            }
+            src={resolveExerciseImageSrc(exercise.images![currentImageIndex])}
             alt={exercise.name}
             className="w-full h-full object-contain"
             onError={() => setImageError(true)}
