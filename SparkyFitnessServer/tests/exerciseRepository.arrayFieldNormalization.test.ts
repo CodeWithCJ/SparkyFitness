@@ -12,6 +12,10 @@ import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 import exerciseDb from '../models/exercise.js';
 import { getClient } from '../db/poolManager.js';
+import {
+  createMockDbClient,
+  type MockDbClient,
+} from './helpers/mockDbClient.js';
 
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
@@ -38,19 +42,17 @@ const UPDATE_PARAM = {
   images: 13,
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function lastQuery(mockClient: any): [string, unknown[]] {
-  return mockClient.query.mock.calls[mockClient.query.mock.calls.length - 1];
+function lastQuery(mockClient: MockDbClient): [string, unknown[]] {
+  const calls = mockClient.query.mock.calls;
+  return calls[calls.length - 1] as [string, unknown[]];
 }
 
 describe('exercise array-field normalization at the write chokepoint', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockDbClient;
 
   beforeEach(() => {
-    mockClient = { query: vi.fn(), release: vi.fn() };
-    // @ts-expect-error mock typing
-    getClient.mockResolvedValue(mockClient);
+    mockClient = createMockDbClient();
+    vi.mocked(getClient).mockResolvedValue(mockClient);
   });
 
   afterEach(() => {

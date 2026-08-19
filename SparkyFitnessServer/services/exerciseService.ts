@@ -308,10 +308,10 @@ async function createExercise(authenticatedUserId: any, exerciseData: any) {
   try {
     // Ensure the exercise is created for the authenticated user
     exerciseData.user_id = authenticatedUserId;
-    // If images are provided, ensure they are stored as JSON string in the database
-    if (exerciseData.images && Array.isArray(exerciseData.images)) {
-      exerciseData.images = JSON.stringify(exerciseData.images);
-    }
+    // exerciseDb.createExercise (models/exercise.ts) is the single
+    // persistence chokepoint for JSON-encoding equipment/muscles/
+    // instructions/images — encoding images here too would double-encode it
+    // into a JSON string containing a JSON string.
     const newExercise = await exerciseDb.createExercise(exerciseData);
     return newExercise;
   } catch (error) {
@@ -737,10 +737,10 @@ async function updateExercise(
     if (!exerciseOwnerId) {
       throw new Error('Exercise not found.');
     }
-    // If images are provided, ensure they are stored as JSON string in the database
-    if (updateData.images && Array.isArray(updateData.images)) {
-      updateData.images = JSON.stringify(updateData.images);
-    }
+    // exerciseDb.updateExercise (models/exercise.ts) is the single
+    // persistence chokepoint for JSON-encoding equipment/muscles/
+    // instructions/images — encoding images here too would double-encode it
+    // into a JSON string containing a JSON string.
     const updatedExercise = await exerciseDb.updateExercise(
       id,
       authenticatedUserId,

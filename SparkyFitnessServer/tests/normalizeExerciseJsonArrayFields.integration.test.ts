@@ -81,6 +81,13 @@ const RUN = await dbReachable();
 const U = '00000000-0000-4000-b000-0000000000bb';
 const EX_MALFORMED = '00000000-0000-4000-b000-0000000000f1';
 const ENTRY_MALFORMED = '00000000-0000-4000-b000-000000000601';
+// Bracket-prefixed text that is NOT valid JSON (unquoted list items, or
+// prose that happens to be wrapped in brackets). The naive "starts with '['
+// means already correct" heuristic would wrongly skip these rows forever;
+// exercise_json_array_is_valid() in the migration must catch it and still
+// route them through normalize_exercise_json_array().
+const EX_BRACKET_INVALID = '00000000-0000-4000-b000-0000000000f2';
+const ENTRY_BRACKET_INVALID = '00000000-0000-4000-b000-000000000602';
 
 describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
   beforeAll(async () => {
@@ -90,8 +97,8 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
         'DELETE FROM public.exercise_entries WHERE user_id = $1',
         [U]
       );
-      await sys.query('DELETE FROM public.exercises WHERE id = $1', [
-        EX_MALFORMED,
+      await sys.query('DELETE FROM public.exercises WHERE id = ANY($1)', [
+        [EX_MALFORMED, EX_BRACKET_INVALID],
       ]);
       await sys.query('DELETE FROM public."user" WHERE id = $1', [U]);
       await sys.query(
@@ -111,7 +118,10 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
           U,
           '"Barbell"', // bare JSON string -> should wrap to ["Barbell"]
           '["chest"]', // already correct -> must round-trip unchanged
-          'triceps, shoulders', // not valid JSON -> comma-split fallback
+          // Not valid JSON -> comma-split fallback. One item carries an
+          // apostrophe that must survive the split, not be stripped along
+          // with legacy list-wrapping punctuation.
+          "Trainer's Choice, shoulders",
           // Not valid JSON, but prose, not a list: a comma AND an apostrophe
           // inside. Must become ONE element with the text untouched, not two
           // fake steps with the apostrophe stripped.
@@ -134,6 +144,34 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
           'exercises/dumbbell-curl, 0.jpg', // path-like text with a comma -> one element, not split
         ]
       );
+
+      // Bracket-prefixed but NOT valid JSON: an unquoted legacy list
+      // ("[Barbell, Dumbbell]") and prose that happens to start/end with
+      // brackets. A naive "starts with '[' -> already correct" prefilter
+      // would leave these rows broken forever.
+      await sys.query(
+        `INSERT INTO public.exercises
+           (id, name, source, user_id, is_custom, modality, equipment, instructions)
+         VALUES ($1, $2, 'test', $3, true, 'weight_reps', $4, $5)`,
+        [
+          EX_BRACKET_INVALID,
+          'Migration Test Exercise (bracket-invalid)',
+          U,
+          '[Barbell, Dumbbell]', // looks like an array, unquoted items -> not valid JSON
+          '[Lie on the bench, then press]', // prose wrapped in brackets -> not valid JSON
+        ]
+      );
+      await sys.query(
+        `INSERT INTO public.exercise_entries
+           (id, user_id, exercise_id, duration_minutes, calories_burned, entry_date, exercise_name, equipment)
+         VALUES ($1, $2, $3, 0, 0, '2026-08-16', 'Migration Test Exercise', $4)`,
+        [
+          ENTRY_BRACKET_INVALID,
+          U,
+          EX_MALFORMED,
+          '[Kettlebell, Bands]', // looks like an array, unquoted items -> not valid JSON
+        ]
+      );
     } finally {
       sys.release();
     }
@@ -146,8 +184,8 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
         'DELETE FROM public.exercise_entries WHERE user_id = $1',
         [U]
       );
-      await sys.query('DELETE FROM public.exercises WHERE id = $1', [
-        EX_MALFORMED,
+      await sys.query('DELETE FROM public.exercises WHERE id = ANY($1)', [
+        [EX_MALFORMED, EX_BRACKET_INVALID],
       ]);
       await sys.query('DELETE FROM public."user" WHERE id = $1', [U]);
     } finally {
@@ -171,7 +209,19 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
           [ENTRY_MALFORMED]
         )
       ).rows[0];
-      return { exercise, entry };
+      const exerciseBracketInvalid = (
+        await sys.query(
+          'SELECT equipment, instructions FROM public.exercises WHERE id = $1',
+          [EX_BRACKET_INVALID]
+        )
+      ).rows[0];
+      const entryBracketInvalid = (
+        await sys.query(
+          'SELECT equipment FROM public.exercise_entries WHERE id = $1',
+          [ENTRY_BRACKET_INVALID]
+        )
+      ).rows[0];
+      return { exercise, entry, exerciseBracketInvalid, entryBracketInvalid };
     } finally {
       sys.release();
     }
@@ -185,12 +235,13 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
       sys.release();
     }
 
-    const { exercise, entry } = await readRows();
+    const { exercise, entry, exerciseBracketInvalid, entryBracketInvalid } =
+      await readRows();
 
     expect(JSON.parse(exercise.equipment)).toEqual(['Barbell']);
     expect(JSON.parse(exercise.primary_muscles)).toEqual(['chest']);
     expect(JSON.parse(exercise.secondary_muscles)).toEqual([
-      'triceps',
+      "Trainer's Choice",
       'shoulders',
     ]);
     expect(JSON.parse(exercise.instructions)).toEqual([
@@ -207,6 +258,23 @@ describe.runIf(RUN)('normalize_exercise_json_array_fields migration', () => {
     expect(JSON.parse(entry.instructions)).toEqual(['Lie flat, then curl up.']);
     expect(JSON.parse(entry.images)).toEqual([
       'exercises/dumbbell-curl, 0.jpg',
+    ]);
+
+    // Bracket-prefixed but not valid JSON must NOT be skipped by the
+    // "starts with '[' -> already correct" prefilter — it still has to go
+    // through normalize_exercise_json_array().
+    expect(JSON.parse(exerciseBracketInvalid.equipment)).toEqual([
+      'Barbell',
+      'Dumbbell',
+    ]);
+    // instructions never comma-splits or strips characters, so the whole
+    // bracket-wrapped sentence is preserved verbatim as one element.
+    expect(JSON.parse(exerciseBracketInvalid.instructions)).toEqual([
+      '[Lie on the bench, then press]',
+    ]);
+    expect(JSON.parse(entryBracketInvalid.equipment)).toEqual([
+      'Kettlebell',
+      'Bands',
     ]);
   });
 
