@@ -2811,5 +2811,38 @@
       "save": "Zapisz",
       "edit": "Edytuj aktywność"
     }
+  },
+  "foodSettings": {
+    "title": "Ustawienia produktów",
+    "errors": {
+      "error": "Błąd",
+      "updateFailed": "Nie udało się zaktualizować ustawienia."
+    },
+    "mealTypes": {
+      "title": "Typy posiłków",
+      "subtitle": "Dodawaj, edytuj, zmieniaj kolejność i usuwaj własne kategorie posiłków"
+    },
+    "netCarbs": {
+      "title": "Pokaż węglowodany netto",
+      "description": "Po włączeniu podsumowania węglowodanów pokazują wartości netto (węglowodany ogółem − błonnik), a w zestawieniach pojawia się wiersz Węglowodany ogółem."
+    },
+    "foodSource": {
+      "title": "Domyślne źródło produktów",
+      "pickerTitle": "Dostawca wyszukiwania",
+      "firstAvailable": "Pierwszy dostępny",
+      "description": "Używane podczas wyszukiwania produktów po nazwie."
+    },
+    "openFacts": {
+      "title": "Dostosuj wartości Open Food Facts",
+      "description": "Open Food Facts podaje wartości na 100 g. Ta opcja przelicza je na wielkość porcji produktu."
+    },
+    "barcode": {
+      "title": "Skanowanie kodów kreskowych",
+      "provider": "Dostawca",
+      "pickerTitle": "Dostawca kodów kreskowych",
+      "default": "Domyślny",
+      "retryTitle": "Spróbuj ponownie z Open Food Facts",
+      "retryDescription": "Jeśli nie znaleziono wyniku, automatycznie spróbuj Open Food Facts."
+    }
   }
 }

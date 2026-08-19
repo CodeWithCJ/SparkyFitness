@@ -422,3 +422,16 @@ describe('ActivityDetail localization', () => {
     });
   });
 });
+
+describe('FoodSettings localization', () => {
+  it('resolves food settings labels and descriptions in Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('pl');
+      expect(i18n.t('foodSettings.title', { defaultValue: 'Food Settings' })).toBe('Ustawienia produktów');
+      expect(i18n.t('foodSettings.mealTypes.title', { defaultValue: 'Meal Types' })).toBe('Typy posiłków');
+      expect(i18n.t('foodSettings.netCarbs.title', { defaultValue: 'Show Net Carbs' })).toBe('Pokaż węglowodany netto');
+      expect(i18n.t('foodSettings.barcode.retryTitle', { defaultValue: 'Retry with Open Food Facts' })).toBe('Spróbuj ponownie z Open Food Facts');
+    });
+  });
+});

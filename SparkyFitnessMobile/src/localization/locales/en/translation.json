@@ -2775,5 +2775,38 @@
       "save": "Save",
       "edit": "Edit activity"
     }
+  },
+  "foodSettings": {
+    "title": "Food Settings",
+    "errors": {
+      "error": "Error",
+      "updateFailed": "Failed to update setting."
+    },
+    "mealTypes": {
+      "title": "Meal Types",
+      "subtitle": "Add, edit, reorder, or delete custom meal categories"
+    },
+    "netCarbs": {
+      "title": "Show Net Carbs",
+      "description": "When enabled, carbohydrate summaries display net carbs (total carbs − fiber), and a Total Carbs row is added in nutrient breakdowns."
+    },
+    "foodSource": {
+      "title": "Default Food Source",
+      "pickerTitle": "Search Provider",
+      "firstAvailable": "First available",
+      "description": "Used when searching for foods by name."
+    },
+    "openFacts": {
+      "title": "Adjust Open Food Facts Values",
+      "description": "Open Food Facts uses values per 100g. This converts them to the product’s serving size."
+    },
+    "barcode": {
+      "title": "Barcode Scanning",
+      "provider": "Provider",
+      "pickerTitle": "Barcode Provider",
+      "default": "Default",
+      "retryTitle": "Retry with Open Food Facts",
+      "retryDescription": "If no result is found, try Open Food Facts automatically."
+    }
   }
 }
