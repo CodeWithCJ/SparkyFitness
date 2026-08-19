@@ -3651,5 +3651,16 @@
     "moreFailed": "Failed to load more presets.",
     "exercise": "exercise",
     "exercises": "exercises"
+  },
+  "workoutForm": {
+    "viewExercise": "Wyświetl ćwiczenie",
+    "notes": "Notatki",
+    "supersetWith": "Połącz w superserię…",
+    "removeFromSuperset": "Usuń z superserii",
+    "replaceExercise": "Zastąp ćwiczenie",
+    "clearLoggedSets": "Wyczyść zapisane serie",
+    "removeExercise": "Usuń ćwiczenie",
+    "addExercise": "Dodaj ćwiczenie",
+    "exercise": "Ćwiczenie"
   }
 }

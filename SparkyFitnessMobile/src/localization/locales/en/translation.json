@@ -3609,5 +3609,16 @@
     "moreFailed": "Failed to load more presets.",
     "exercise": "exercise",
     "exercises": "exercises"
+  },
+  "workoutForm": {
+    "viewExercise": "View exercise",
+    "notes": "Notes",
+    "supersetWith": "Superset with…",
+    "removeFromSuperset": "Remove from superset",
+    "replaceExercise": "Replace exercise",
+    "clearLoggedSets": "Clear logged sets",
+    "removeExercise": "Remove exercise",
+    "addExercise": "Add Exercise",
+    "exercise": "Exercise"
   }
 }
