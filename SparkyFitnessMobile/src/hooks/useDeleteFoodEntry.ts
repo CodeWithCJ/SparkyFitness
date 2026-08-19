@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
+import i18n from '../localization/i18n';
 import { deleteFoodEntry } from '../services/api/foodEntriesApi';
 import { normalizeDate } from '../utils/dateUtils';
 import { dailySummaryQueryKey } from './queryKeys';
@@ -21,14 +22,14 @@ export function useDeleteFoodEntry({ entryId, entryDate, onSuccess }: UseDeleteF
       onSuccess?.();
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: 'Failed to delete', text2: 'Please try again.' });
+      Toast.show({ type: 'error', text1: i18n.t('foodEntryView.errors.deleteFailed', { defaultValue: 'Failed to delete' }), text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }) });
     },
   });
 
   const confirmAndDelete = () => {
-    Alert.alert('Delete Entry', 'Are you sure you want to delete this food entry?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => mutation.mutate() },
+    Alert.alert(i18n.t('foodEntryView.deleteEntry', { defaultValue: 'Delete Entry' }), i18n.t('foodEntryView.deleteConfirm', { defaultValue: 'Are you sure you want to delete this food entry?' }), [
+      { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+      { text: i18n.t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: () => mutation.mutate() },
     ]);
   };
 

@@ -2970,7 +2970,16 @@
     "dateSelectorHint": "Opens date selection",
     "timeSelectorHint": "Opens time selection",
     "clearTime": "Clear time",
-    "nutritionEditHint": "Opens nutrition editing"
+    "nutritionEditHint": "Opens nutrition editing",
+    "servingOptionsLabel": "Serving options: {{serving}}",
+    "timeSelectorLabel": "Select time: {{time}}",
+    "clearTimeLabel": "Clear entry time",
+    "errors": {
+      "permission": "You don't have permission to edit this entry.",
+      "saveFailed": "Failed to save changes",
+      "deleteFailed": "Failed to delete"
+    },
+    "deleteConfirm": "Are you sure you want to delete this food entry?"
   },
   "presetSearch": {
     "title": "Start Workout",

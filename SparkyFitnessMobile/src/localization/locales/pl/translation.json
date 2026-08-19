@@ -2992,7 +2992,7 @@
     "deleteFood": "Usuń produkt"
   },
   "foodEntryView": {
-    "saveChanges": "Zapisz zmiany wpisu produktu",
+    "saveChanges": "Zapisz zmiany wpisu",
     "editEntry": "Edytuj wpis produktu",
     "selectServing": "Wybierz porcję",
     "tapToEditNutrition": "Dotknij, aby edytować wartości odżywcze",
@@ -3006,7 +3006,16 @@
     "dateSelectorHint": "Otwiera wybór daty",
     "timeSelectorHint": "Otwiera wybór godziny",
     "clearTime": "Wyczyść godzinę",
-    "nutritionEditHint": "Otwiera edycję wartości odżywczych"
+    "nutritionEditHint": "Otwiera edycję wartości odżywczych",
+    "servingOptionsLabel": "Opcje porcji: {{serving}}",
+    "timeSelectorLabel": "Wybierz godzinę: {{time}}",
+    "clearTimeLabel": "Wyczyść godzinę wpisu",
+    "errors": {
+      "permission": "Nie masz uprawnień do edycji tego wpisu.",
+      "saveFailed": "Nie udało się zapisać zmian",
+      "deleteFailed": "Nie udało się usunąć wpisu"
+    },
+    "deleteConfirm": "Czy na pewno chcesz usunąć ten wpis produktu?"
   },
   "presetSearch": {
     "title": "Rozpocznij trening",

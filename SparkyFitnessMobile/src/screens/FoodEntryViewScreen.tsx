@@ -26,9 +26,6 @@ import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
-import {
-  getFoodEntryMealTypeLabel,
-} from '../utils/mealNutrition';
 import { getLocalizedMealLabel } from '../constants/meals';
 import {
   useMealTypes,
@@ -216,6 +213,20 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     mealType.user_id == null
       ? getLocalizedMealLabel(t, mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase())
       : mealType.name;
+
+  const entryMealTypeLabel = (() => {
+    const resolve = (mealType: (typeof mealTypes)[number] | undefined) =>
+      mealType ? mealTypeLabel(mealType) : undefined;
+    if (entry.meal_type_id) {
+      return resolve(mealTypes.find((mealType) => mealType.id === entry.meal_type_id))
+        ?? entry.meal_type?.trim()
+        ?? t('mealTypes.other', { defaultValue: 'Other' });
+    }
+    const historicalName = entry.meal_type?.trim();
+    if (!historicalName) return t('mealTypes.other', { defaultValue: 'Other' });
+    return resolve(mealTypes.find((mealType) => mealType.name.toLowerCase() === historicalName.toLowerCase()))
+      ?? historicalName;
+  })();
 
   const { variants } = useFoodVariants(entry.food_id!, {
     enabled: !!entry.food_id,
@@ -903,7 +914,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                           activeOpacity={0.7}
                           className="flex-row items-center ml-1"
                           accessibilityRole="button"
-                          accessibilityLabel={t('foodEntryView.servingOptionsHint', { defaultValue: 'Opens serving options' })}
+                          accessibilityLabel={t('foodEntryView.servingOptionsLabel', {
+                            defaultValue: 'Serving options: {{serving}}',
+                            serving: `${displayValues.servingSize} ${formatServingUnit(displayValues.servingUnit)} ${t('foodEntryAdd.labels.perServing', { defaultValue: 'per serving' })}`,
+                          })}
                         >
                           <Text className="text-text-secondary text-sm">
                             {' - '}
@@ -1208,7 +1222,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               />
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {getFoodEntryMealTypeLabel(entry, mealTypes)}
+                {entryMealTypeLabel}
               </Text>
             )}
           </View>
@@ -1226,7 +1240,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 activeOpacity={0.7}
                 className="flex-row items-center"
                 accessibilityRole="button"
-                accessibilityLabel={t('foodEntryView.timeSelectorHint', { defaultValue: 'Opens time selection' })}
+                accessibilityLabel={t('foodEntryView.timeSelectorLabel', { defaultValue: 'Select time: {{time}}', time: formatTimeLabel(entryTime) ?? t('common.none', { defaultValue: 'None' }) })}
               >
                 <Text className="text-text-primary text-base font-medium">
                   {formatTimeLabel(entryTime) ?? t('common.none', { defaultValue: 'None' })}
@@ -1244,6 +1258,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   activeOpacity={0.7}
                   className="flex-row items-center ml-4"
                   onPress={() => updateEdit({ entryTime: '' })}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('foodEntryView.clearTimeLabel', { defaultValue: 'Clear entry time' })}
                 >
                   <Text className="text-text-link text-sm font-medium">{t('foodEntryView.clearTime', { defaultValue: 'Clear time' })}</Text>
                 </TouchableOpacity>
