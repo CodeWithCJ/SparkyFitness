@@ -333,8 +333,13 @@ export const calculateNutrition = (
  * falls back to `dayTotals.custom_nutrients` for a nutrient with no fixed field, so this
  * needs no display change to become visible.
  *
- * Returns the food totals unchanged when there is no supplement arm, so a day with no
- * supplements is byte-for-byte what it was before supplements existed.
+ * Returns the argument itself when there is no supplement arm at all, which now means an
+ * older server or a failed fetch rather than a day without supplements: this server always
+ * sends the arm, so a supplement-free day arrives present-and-zero and takes the merge
+ * below instead. That path adds nothing to the seventeen, but it does leave a
+ * `custom_nutrients` key on totals that may not have carried one. Downstream reads it as
+ * `custom_nutrients?.[nutrient] ?? 0`, so an empty map and an absent one mean the same
+ * thing there.
  */
 export const addSupplementTotals = <T extends MealTotals>(
   foodTotals: T,

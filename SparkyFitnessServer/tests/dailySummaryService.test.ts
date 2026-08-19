@@ -623,4 +623,23 @@ describe('dailySummaryService supplement calories', () => {
     expect(summary.calorieBalance.eaten).toBe(500);
     expect(summary.supplementTotals.calories).toBe(0);
   });
+
+  test('degraded path does not hand out the shared empty constant', async () => {
+    vi.mocked(foodRepository.getDailySupplementTotals).mockRejectedValue(
+      new Error('supplement totals unavailable')
+    );
+
+    const first = await run();
+    // A caller folding into what it was given must not reach the constant behind it,
+    // which every later degraded response would otherwise carry.
+    first.supplementTotals.calories = 999;
+    first.supplementTotals.custom_nutrients.Magnesium = 400;
+
+    const second = await run();
+
+    expect(second.supplementTotals.calories).toBe(0);
+    expect(second.supplementTotals.custom_nutrients).toEqual({});
+    expect(EMPTY_SUPPLEMENT_TOTALS.calories).toBe(0);
+    expect(EMPTY_SUPPLEMENT_TOTALS.custom_nutrients).toEqual({});
+  });
 });
