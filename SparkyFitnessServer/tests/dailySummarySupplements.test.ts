@@ -1,5 +1,9 @@
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  EMPTY_SUPPLEMENT_TOTALS,
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+} from '@workspace/shared';
+import {
   createMockDbClient,
   type MockDbClient,
 } from './helpers/mockDbClient.js';
@@ -110,6 +114,58 @@ describe('getDailySupplementTotals', () => {
     }
   });
 
+  // Only six catalog micronutrients have a fixed column. Magnesium, vitamin D, vitamin K,
+  // zinc and the B vitamins are user-defined nutrients living in the snapshot's
+  // custom_nutrients object, so the fixed columns above cannot carry them at all and the
+  // Diary would still understate the typical multivitamin (#2145).
+  it('aggregates the custom nutrients a dose carries', async () => {
+    mockClient = createMockDbClient([{}]);
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+
+    await getDailySupplementTotals(userId, '2026-08-06');
+
+    const sql = String(mockClient.query.mock.calls[0][0]);
+    expect(sql).toContain("nutrients_snapshot->'custom_nutrients'");
+    expect(sql).toContain('jsonb_object_agg(key, value)');
+    expect(sql).toContain('AS custom_nutrients');
+    // Same status filter and dose clamp as the fixed arm, because the custom rows are the
+    // shared fragment rather than a second copy that could drift from it.
+    expect(sql).toContain("me2.status IN ('taken', 'prn_taken')");
+    expect(sql).toContain('GREATEST(COALESCE(me2.dose_amount_snapshot, 1), 0)');
+    // Supplements alone. Unioning the food rows in here, the way getDailyNutritionSummary
+    // does, would double-count every custom nutrient: callers add this arm onto totals
+    // they have already derived from food entries themselves.
+    expect(sql).not.toContain('food_entries');
+  });
+
+  it('returns the custom nutrient map the query produced', async () => {
+    mockClient = createMockDbClient([
+      { calories: '0', custom_nutrients: { Magnesium: 400, 'Vitamin D': 50 } },
+    ]);
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+
+    const totals = await getDailySupplementTotals(userId, '2026-08-06');
+
+    expect(totals.custom_nutrients).toEqual({
+      Magnesium: 400,
+      'Vitamin D': 50,
+    });
+  });
+
+  it('coerces a custom nutrient that summed to null', async () => {
+    // sf_try_numeric returns NULL for a value it cannot parse; a key whose contributions
+    // are all NULL sums to NULL and jsonb_object_agg emits it as JSON null.
+    mockClient = createMockDbClient([
+      { custom_nutrients: { Magnesium: null, Zinc: '15' } },
+    ]);
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+
+    const totals = await getDailySupplementTotals(userId, '2026-08-06');
+
+    expect(totals.custom_nutrients.Magnesium).toBe(0);
+    expect(totals.custom_nutrients.Zinc).toBe(15);
+  });
+
   it('returns zeros, not nulls, on a day with no supplements', async () => {
     // COALESCE makes the SQL emit 0, but an empty result set must not become NaN either:
     // callers add these to food totals unconditionally.
@@ -118,13 +174,15 @@ describe('getDailySupplementTotals', () => {
 
     const totals = await getDailySupplementTotals(userId, '2026-08-06');
 
-    expect(totals).toEqual({
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      dietary_fiber: 0,
-    });
+    expect(totals).toEqual(EMPTY_SUPPLEMENT_TOTALS);
+    // Full width, not just the macros: the Diary card renders whichever fixed nutrients
+    // the user has enabled, so a narrow zero object reintroduces #2145 on an empty day.
+    const { custom_nutrients, ...fixed } = totals;
+    expect(Object.keys(fixed).sort()).toEqual(
+      [...FOOD_VARIANT_NUTRIENT_FIELDS].sort()
+    );
+    // An empty map rather than undefined, so callers can iterate without checking.
+    expect(custom_nutrients).toEqual({});
   });
 
   it('coerces numeric strings, which is what pg returns for numeric columns', async () => {

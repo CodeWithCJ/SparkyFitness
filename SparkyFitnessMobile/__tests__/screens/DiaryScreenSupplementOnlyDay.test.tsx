@@ -148,6 +148,21 @@ describe('DiaryScreen on a supplement-only day', () => {
     expect(screen.queryByText('Add Food')).toBeNull();
   });
 
+  // A magnesium or vitamin D supplement carries nothing in any fixed field, because those
+  // nutrients have no fixed column: only six catalog entries do. The whole arm reads zero
+  // and the day presents as empty under a calorie figure that is not (#2145).
+  it('does not call the day empty for a supplement carrying only custom nutrients', () => {
+    mockUseDailySummary.mockReturnValue(
+      summary({
+        ...EMPTY_SUPPLEMENT_TOTALS,
+        custom_nutrients: { Magnesium: 400 },
+      })
+    );
+    renderDiary();
+
+    expect(screen.queryByText('Add Food')).toBeNull();
+  });
+
   it('still shows the empty day when nothing at all was logged', () => {
     // The other half of the rule: zero supplement totals must not defeat the empty state.
     mockUseDailySummary.mockReturnValue(summary(EMPTY_SUPPLEMENT_TOTALS));
