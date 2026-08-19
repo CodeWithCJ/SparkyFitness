@@ -474,7 +474,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 0)).toBe('1 exercise · 1 sets');
+        expect(buildSessionSubtitle(session, 60, 0)).toBe('1 exercise · 1 set');
       });
 
       it('shows singular "exercise" for one exercise', () => {
@@ -565,7 +565,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 40, 300)).toBe(
-          '2 exercises · 1 sets · 500 kg · 5.2 km · 300 Cal',
+          '2 exercises · 1 set · 500 kg · 5.2 km · 300 Cal',
         );
       });
 
