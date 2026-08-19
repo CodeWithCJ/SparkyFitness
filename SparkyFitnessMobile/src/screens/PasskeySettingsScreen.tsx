@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -31,6 +32,7 @@ import {
 } from '../services/api/authService';
 import ReauthModal from '../components/ReauthModal';
 import { getActiveServerConfig } from '../services/storage';
+import { getAppLocale } from '../localization';
 
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -43,6 +45,7 @@ const passkeyAuthMethods =
 const passkeyNameExample = Platform.OS === 'ios' ? 'My iPhone' : 'My Android Phone';
 
 const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -82,8 +85,8 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
       const msg = err instanceof Error ? err.message : String(err);
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: `Failed to load passkeys: ${msg}`,
+        text1: t('common.error', { defaultValue: 'Error' }),
+        text2: t('passkeySettings.loadFailed', { defaultValue: 'Failed to load passkeys: {{error}}', error: msg }),
       });
     } finally {
       setLoading(false);
@@ -102,8 +105,8 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
     await addPasskey(url, token, name);
     Toast.show({
       type: 'success',
-      text1: 'Success',
-      text2: 'Passkey registered successfully!',
+      text1: t('common.success', { defaultValue: 'Success' }),
+      text2: t('passkeySettings.registered', { defaultValue: 'Passkey registered successfully!' }),
     });
     setNewPasskeyName('');
     await fetchList();
@@ -114,11 +117,11 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
     if (msg.includes('cancelled') || msg.includes('cancel')) {
       Toast.show({
         type: 'info',
-        text1: 'Cancelled',
-        text2: 'Passkey registration was cancelled.',
+        text1: t('passkeySettings.cancelledTitle', { defaultValue: 'Cancelled' }),
+        text2: t('passkeySettings.cancelledMessage', { defaultValue: 'Passkey registration was cancelled.' }),
       });
     } else {
-      Alert.alert('Registration Failed', msg);
+      Alert.alert(t('passkeySettings.registrationFailedTitle', { defaultValue: 'Registration Failed' }), msg);
     }
   };
 
@@ -126,13 +129,13 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
     if (!activeConfig || !activeConfig.sessionToken) return;
     const name = newPasskeyName.trim();
     if (!name) {
-      Alert.alert('Required', 'Please enter a name for this passkey.');
+      Alert.alert(t('passkeySettings.requiredTitle', { defaultValue: 'Required' }), t('passkeySettings.nameRequired', { defaultValue: 'Please enter a name for this passkey.' }));
       return;
     }
     if (passkeys.some((p) => (p.name ?? '').trim().toLowerCase() === name.toLowerCase())) {
       Alert.alert(
-        'Name Already Used',
-        `You already have a passkey named "${name}". Please choose a different name.`
+        t('passkeySettings.nameAlreadyUsedTitle', { defaultValue: 'Name Already Used' }),
+        t('passkeySettings.nameAlreadyUsedMessage', { defaultValue: 'You already have a passkey named \"{{name}}\". Please choose a different name.', name })
       );
       return;
     }
@@ -171,7 +174,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
       // Re-read the config so we use the freshly-minted session token.
       const fresh = await getActiveServerConfig();
       if (!fresh || !fresh.sessionToken) {
-        throw new Error('No active session. Please sign in again.');
+        throw new Error(t('passkeySettings.noActiveSession', { defaultValue: 'No active session. Please sign in again.' }));
       }
       await registerPasskeyWithConfig(fresh.url, fresh.sessionToken, name);
     } catch (err) {
@@ -183,12 +186,12 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
 
   const handleDeletePasskey = (id: string, name: string | null) => {
     Alert.alert(
-      'Delete Passkey',
-      `Are you sure you want to delete "${name || 'Unnamed Passkey'}"?`,
+      t('passkeySettings.deleteTitle', { defaultValue: 'Delete Passkey' }),
+      t('passkeySettings.deleteMessage', { defaultValue: 'Are you sure you want to delete \"{{name}}\"?', name: name || t('passkeySettings.unnamed', { defaultValue: 'Unnamed Passkey' }) }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete', { defaultValue: 'Delete' }),
           style: 'destructive',
           onPress: async () => {
             if (!activeConfig || !activeConfig.sessionToken) return;
@@ -197,13 +200,13 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
               await deletePasskey(activeConfig.url, activeConfig.sessionToken, id);
               Toast.show({
                 type: 'success',
-                text1: 'Deleted',
-                text2: 'Passkey was removed.',
+                text1: t('passkeySettings.deletedTitle', { defaultValue: 'Deleted' }),
+                text2: t('passkeySettings.deletedMessage', { defaultValue: 'Passkey was removed.' }),
               });
               await fetchList();
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
-              Alert.alert('Error', `Failed to delete passkey: ${msg}`);
+              Alert.alert(t('common.error', { defaultValue: 'Error' }), t('passkeySettings.deleteFailed', { defaultValue: 'Failed to delete passkey: {{error}}', error: msg }));
             } finally {
               setActionLoading(false);
             }
@@ -214,7 +217,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   };
 
   const header = useScreenHeader({
-    title: 'Passkeys',
+    title: t('screens.passkeys', { defaultValue: 'Passkeys' }),
     left: { kind: 'back' },
   });
 
@@ -238,10 +241,10 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
           <View className="bg-surface rounded-xl p-6 items-center shadow-sm border border-border-subtle">
             <Icon name="lock-closed" size={48} color={textMuted} />
             <Text className="text-base text-text-primary text-center mt-4">
-              Passkeys are only supported on servers using session-based authentication.
+              {t('passkeySettings.sessionOnly', { defaultValue: 'Passkeys are only supported on servers using session-based authentication.' })}
             </Text>
             <Text className="text-sm text-text-muted text-center mt-2">
-              If you connect via an API Key, passkeys cannot be used.
+              {t('passkeySettings.apiKeyUnsupported', { defaultValue: 'If you connect via an API Key, passkeys cannot be used.' })}
             </Text>
           </View>
         ) : (
@@ -266,10 +269,10 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                   <Icon name="fingerprint" size={40} color={textMuted} />
                 </View>
                 <Text className="text-base font-semibold text-text-primary text-center">
-                  No Passkeys Registered
+                  {t('passkeySettings.noneRegistered', { defaultValue: 'No Passkeys Registered' })}
                 </Text>
                 <Text className="text-sm text-text-muted text-center mt-2">
-                  Add this device or biometric credentials to sign in quickly next time.
+                  {t('passkeySettings.noneHint', { defaultValue: 'Add this device or biometric credentials to sign in quickly next time.' })}
                 </Text>
               </View>
             ) : (
@@ -279,13 +282,13 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                     key={passkey.id}
                     icon="fingerprint"
                     iconColor={accentPrimary}
-                    title={passkey.name || 'Unnamed Passkey'}
-                    subtitle={`Registered ${new Date(passkey.createdAt).toLocaleDateString()}`}
+                    title={passkey.name || t('passkeySettings.unnamed', { defaultValue: 'Unnamed Passkey' })}
+                    subtitle={t('passkeySettings.registeredOn', { defaultValue: 'Registered {{date}}', date: new Date(passkey.createdAt).toLocaleDateString(getAppLocale()) })}
                     rightAccessory={
                       <TouchableOpacity
                         onPress={() => handleDeletePasskey(passkey.id, passkey.name)}
                         disabled={actionLoading}
-                        accessibilityLabel="Delete passkey"
+                        accessibilityLabel={t('passkeySettings.deleteAccessibility', { defaultValue: 'Delete passkey' })}
                         className="p-2"
                       >
                         <Icon name="remove-circle" size={20} color="#ef4444" />
@@ -313,12 +316,12 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                 </View>
               )}
               <Text className="text-base font-semibold text-white">
-                Add Passkey
+                {t('passkeySettings.add', { defaultValue: 'Add Passkey' })}
               </Text>
             </Button>
 
             <Text className="text-xs text-text-muted mt-4">
-              Passkeys allow you to sign in securely using {passkeyAuthMethods} without entering your password.
+              {t('passkeySettings.securityHint', { defaultValue: 'Passkeys allow you to sign in securely using {{methods}} without entering your password.', methods: passkeyAuthMethods })}
             </Text>
           </>
         )}
@@ -341,14 +344,14 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
           >
             <View className="w-full max-w-90 rounded-2xl p-6 bg-surface shadow-sm border border-border-subtle">
               <Text className="text-[20px] font-bold text-center text-text-primary mb-4">
-                Register Passkey
+                {t('passkeySettings.registerTitle', { defaultValue: 'Register Passkey' })}
               </Text>
               <Text className="text-sm text-text-secondary mb-4">
-                Give this passkey a friendly name to identify it later (e.g. {passkeyNameExample}).
+                {t('passkeySettings.nameHint', { defaultValue: 'Give this passkey a friendly name to identify it later (e.g. {{example}}).', example: passkeyNameExample })}
               </Text>
 
               <FormInput
-                placeholder={`e.g. ${passkeyNameExample}`}
+                placeholder={t('passkeySettings.namePlaceholder', { defaultValue: 'e.g. {{example}}', example: passkeyNameExample })}
                 value={newPasskeyName}
                 onChangeText={setNewPasskeyName}
                 autoCapitalize="sentences"
@@ -361,7 +364,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                   onPress={() => setModalVisible(false)}
                   className="flex-1 py-2.5"
                 >
-                  Cancel
+                  {t('common.cancel', { defaultValue: 'Cancel' })}
                 </Button>
                 <Button
                   variant="primary"
@@ -369,7 +372,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                   className="flex-1 py-2.5"
                   style={{ backgroundColor: accentPrimary }}
                 >
-                  Continue
+                  {t('common.continue', { defaultValue: 'Continue' })}
                 </Button>
               </View>
             </View>
