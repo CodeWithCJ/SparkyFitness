@@ -43,14 +43,14 @@ export function parseJsonArrayField(
  * Callers into this (models/exercise.ts's createExercise/updateExercise,
  * reached by untyped import paths like CSV import and external-provider
  * responses) aren't statically guaranteed to hand this a real string or
- * string[] despite the signature below, so non-string elements are dropped
- * at runtime rather than trusted through to JSON.stringify — a stray number
- * or object in the array would otherwise persist as valid JSON that isn't a
+ * string[] — the parameter is typed `unknown` rather than `string |
+ * string[] | null | undefined` so the signature doesn't claim a guarantee
+ * the caller can't actually provide. Non-string elements are dropped at
+ * runtime rather than trusted through to JSON.stringify — a stray number or
+ * object in the array would otherwise persist as valid JSON that isn't a
  * string array, silently violating the column's documented shape.
  */
-export function normalizeToStringArray(
-  value: string | string[] | null | undefined
-): string[] {
+export function normalizeToStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value.filter((item): item is string => typeof item === 'string');
   }

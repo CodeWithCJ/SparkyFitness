@@ -13,13 +13,17 @@ import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 import exerciseService from '../services/exerciseService.js';
 import { getClient } from '../db/poolManager.js';
+import {
+  createMockDbClient,
+  type MockDbClient,
+} from './helpers/mockDbClient.js';
 
-vi.mock('../db/poolManager', () => ({
+vi.mock('../db/poolManager.js', () => ({
   getClient: vi.fn(),
   getSystemClient: vi.fn(),
 }));
 
-vi.mock('../config/logging', () => ({
+vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
 
@@ -28,19 +32,17 @@ vi.mock('../config/logging', () => ({
 const CREATE_IMAGES_PARAM = 11;
 const UPDATE_IMAGES_PARAM = 13;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function lastQuery(mockClient: any): [string, unknown[]] {
-  return mockClient.query.mock.calls[mockClient.query.mock.calls.length - 1];
+function lastQuery(mockClient: MockDbClient): [string, unknown[]] {
+  const calls = mockClient.query.mock.calls;
+  return calls[calls.length - 1] as [string, unknown[]];
 }
 
 describe('exercise images are JSON-encoded exactly once', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockDbClient;
 
   beforeEach(() => {
-    mockClient = { query: vi.fn(), release: vi.fn() };
-    // @ts-expect-error mock typing
-    getClient.mockResolvedValue(mockClient);
+    mockClient = createMockDbClient();
+    vi.mocked(getClient).mockResolvedValue(mockClient);
   });
 
   afterEach(() => {

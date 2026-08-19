@@ -78,16 +78,14 @@ describe('normalizeToStringArray', () => {
 
   it('drops non-string elements instead of persisting them as valid-but-wrong-shape JSON', () => {
     // Callers into this (CSV import, external-provider responses) are
-    // untyped at runtime despite the string[] signature; a stray number or
-    // object must not silently ride through to JSON.stringify.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(
-      normalizeToStringArray(['Barbell', 5, null, { a: 1 }] as any)
-    ).toEqual(['Barbell']);
+    // untyped at runtime despite the unknown-accepting signature; a stray
+    // number or object must not silently ride through to JSON.stringify.
+    expect(normalizeToStringArray(['Barbell', 5, null, { a: 1 }])).toEqual([
+      'Barbell',
+    ]);
   });
 
   it('returns [] for a non-string, non-array value rather than wrapping it', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(normalizeToStringArray(5 as any)).toEqual([]);
+    expect(normalizeToStringArray(5)).toEqual([]);
   });
 });
