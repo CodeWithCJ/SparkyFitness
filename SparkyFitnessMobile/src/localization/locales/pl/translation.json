@@ -50,7 +50,8 @@
     "done": "Gotowe",
     "none": "Brak",
     "food": "Produkt",
-    "dismiss": "Zamknij"
+    "dismiss": "Zamknij",
+    "remove": "Usuń"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -3690,5 +3691,20 @@
     "avgCadence": "Śr. kadencja",
     "zone": "Strefa {{zone}}",
     "heartRateZone": "Tętno {{zone}}"
+  },
+  "copyMeal": {
+    "title": "Kopiuj posiłek: {{meal}}",
+    "sourceDate": "Data źródłowa: {{date}}",
+    "targetDate": "Data docelowa",
+    "targetMeal": "Posiłek docelowy",
+    "copy": "Kopiuj",
+    "copying": "Kopiowanie…",
+    "duplicateTitle": "Nie można skopiować posiłku",
+    "duplicateMessage": "Nie można obecnie użyć powtarzających się nazw typów posiłków podczas kopiowania."
+  },
+  "ingredientRow": {
+    "lastWarning": "To ostatni składnik. Dodaj kolejny, aby móc zapisać, albo użyj opcji usunięcia całego posiłku.",
+    "removeTitle": "Usunąć {{name}}?",
+    "edit": "Edytuj {{name}}"
   }
 }

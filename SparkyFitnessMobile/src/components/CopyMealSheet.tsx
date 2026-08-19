@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -35,6 +36,7 @@ interface CopyMealSheetProps {
 
 const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
   ({ isPending = false, onCopy }, ref) => {
+    const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
 
     const [
@@ -130,8 +132,8 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       if (nameIsAmbiguous(source.mealTypeName) || nameIsAmbiguous(targetType.name)) {
         Toast.show({
           type: 'error',
-          text1: "Can't copy meal",
-          text2: 'Duplicate meal-type names cannot currently be used for Copy Meal.',
+          text1: t('copyMeal.duplicateTitle', { defaultValue: "Can't copy meal" }),
+          text2: t('copyMeal.duplicateMessage', { defaultValue: 'Duplicate meal-type names cannot currently be used for Copy Meal.' }),
         });
         return;
       }
@@ -159,16 +161,16 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
             <View className="px-5">
               <View className="items-center mb-4">
                 <Text className="text-text-primary text-lg font-semibold text-center">
-                  {`Copy meal: ${sourceTitle}`}
+                  {t('copyMeal.title', { defaultValue: 'Copy meal: {{meal}}', meal: sourceTitle })}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-1 text-center">
-                  {`Source date: ${formatDateLabel(source.date)}`}
+                  {t('copyMeal.sourceDate', { defaultValue: 'Source date: {{date}}', date: formatDateLabel(source.date) })}
                 </Text>
               </View>
 
               {/* Target date */}
               <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
-                Target date
+                {t('copyMeal.targetDate', { defaultValue: 'Target date' })}
               </Text>
               <DateTimePicker
                 mode="single"
@@ -198,7 +200,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
 
               {/* Target meal type */}
               <Text className="text-xs font-semibold uppercase text-text-muted mt-4 mb-2">
-                Target meal
+                {t('copyMeal.targetMeal', { defaultValue: 'Target meal' })}
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-6">
                 {mealTypes.map((mt) => {
@@ -229,7 +231,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
               <Button
                 variant="primary"
                 onPress={handleCopy}
-                accessibilityLabel="Copy"
+                accessibilityLabel={t('copyMeal.copy', { defaultValue: 'Copy' })}
                 disabled={
                   isPending ||
                   !targetDate ||
@@ -237,7 +239,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                   (source.date === targetDate && source.mealTypeId === targetMealTypeId)
                 }
               >
-                {isPending ? 'Copying...' : 'Copy'}
+                {isPending ? t('copyMeal.copying', { defaultValue: 'Copying...' }) : t('copyMeal.copy', { defaultValue: 'Copy' })}
               </Button>
             </View>
           )}

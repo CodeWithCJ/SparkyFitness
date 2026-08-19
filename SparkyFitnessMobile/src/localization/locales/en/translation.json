@@ -50,7 +50,8 @@
     "food": "Food",
     "dismiss": "Dismiss",
     "itemCount_few": "{{count}} items",
-    "itemCount_many": "{{count}} items"
+    "itemCount_many": "{{count}} items",
+    "remove": "Remove"
   },
   "settings": {
     "app": "App Settings",
@@ -3690,5 +3691,20 @@
     "avgCadence": "Avg Cadence",
     "zone": "Zone {{zone}}",
     "heartRateZone": "HR {{zone}}"
+  },
+  "copyMeal": {
+    "title": "Copy meal: {{meal}}",
+    "sourceDate": "Source date: {{date}}",
+    "targetDate": "Target date",
+    "targetMeal": "Target meal",
+    "copy": "Copy",
+    "copying": "Copying...",
+    "duplicateTitle": "Can't copy meal",
+    "duplicateMessage": "Duplicate meal-type names cannot currently be used for Copy Meal."
+  },
+  "ingredientRow": {
+    "lastWarning": "This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.",
+    "removeTitle": "Remove {{name}}?",
+    "edit": "Edit {{name}}"
   }
 }
