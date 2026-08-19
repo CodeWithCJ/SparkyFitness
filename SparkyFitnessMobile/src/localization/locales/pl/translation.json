@@ -3706,7 +3706,9 @@
     "exercise": "ćwiczenie",
     "exercises": "ćwiczenia",
     "exerciseCount_one": "{{count}} ćwiczenie",
-    "exerciseCount_other": "{{count}} ćwiczeń"
+    "exerciseCount_other": "{{count}} ćwiczenia",
+    "exerciseCount_few": "{{count}} ćwiczenia",
+    "exerciseCount_many": "{{count}} ćwiczeń"
   },
   "workoutForm": {
     "viewExercise": "Wyświetl ćwiczenie",

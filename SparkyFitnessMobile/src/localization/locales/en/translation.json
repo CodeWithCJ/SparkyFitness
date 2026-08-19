@@ -3704,7 +3704,9 @@
     "exercise": "exercise",
     "exercises": "exercises",
     "exerciseCount_one": "{{count}} exercise",
-    "exerciseCount_other": "{{count}} exercises"
+    "exerciseCount_other": "{{count}} exercises",
+    "exerciseCount_few": "{{count}} exercises",
+    "exerciseCount_many": "{{count}} exercises"
   },
   "workoutForm": {
     "viewExercise": "View exercise",
