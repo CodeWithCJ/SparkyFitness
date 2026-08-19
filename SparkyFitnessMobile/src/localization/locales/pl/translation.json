@@ -92,7 +92,8 @@
     "diary": "Dziennik",
     "details": "Szczegóły",
     "dashboard": "Pulpit",
-    "add": "Dodaj"
+    "add": "Dodaj",
+    "mealTypes": "Typy posiłków"
   },
   "notifications": {
     "title": "Powiadomienia",
@@ -2459,5 +2460,28 @@
     "deleteExercise": "Usuń ćwiczenie",
     "makePrivate": "Ustaw jako prywatne",
     "shareWithPublic": "Udostępnij publicznie"
+  },
+  "mealTypeSettings": {
+    "reorder": "Zmień kolejność: {{name}}",
+    "moveUp": "Przenieś w górę",
+    "moveDown": "Przenieś w dół",
+    "edit": "Edytuj {{name}}",
+    "visible": "Widoczny: {{name}}",
+    "failedUpdate": "Nie udało się zaktualizować",
+    "deleted": "Typ posiłku usunięto",
+    "failedDelete": "Nie udało się usunąć",
+    "failedReorder": "Nie udało się zmienić kolejności typów posiłków",
+    "capacity": "Nie można umieścić większej liczby typów posiłków {{gap}}.",
+    "add": "Dodaj typ posiłku",
+    "createdPartial": "Utworzono, ale niektórych ustawień nie udało się zapisać.",
+    "created": "Typ posiłku utworzono",
+    "failedCreate": "Nie udało się utworzyć typu posiłku",
+    "deleteTitle": "Usunąć typ posiłku",
+    "deleteMessage": "Usunąć „{{name}}”?",
+    "loading": "Wczytywanie typów posiłków…",
+    "loadFailed": "Nie udało się wczytać typów posiłków.",
+    "empty": "Nie znaleziono typów posiłków",
+    "defaultTime": "Domyślna godzina dla {{name}}{{time}}",
+    "notSet": "Nie ustawiono"
   }
 }

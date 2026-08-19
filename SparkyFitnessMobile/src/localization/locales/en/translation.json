@@ -90,7 +90,8 @@
     "diary": "Diary",
     "details": "Details",
     "dashboard": "Dashboard",
-    "add": "Add"
+    "add": "Add",
+    "mealTypes": "Meal Types"
   },
   "notifications": {
     "title": "Notifications",
@@ -2433,5 +2434,28 @@
     "deleteExercise": "Delete Exercise",
     "makePrivate": "Make private",
     "shareWithPublic": "Share with public"
+  },
+  "mealTypeSettings": {
+    "reorder": "Reorder {{name}}",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "edit": "Edit {{name}}",
+    "visible": "Visible {{name}}",
+    "failedUpdate": "Failed to update",
+    "deleted": "Meal type deleted",
+    "failedDelete": "Failed to delete",
+    "failedReorder": "Failed to reorder meal types",
+    "capacity": "No more meal types can be placed {{gap}}.",
+    "add": "Add meal type",
+    "createdPartial": "Created, but some settings failed to save.",
+    "created": "Meal type created",
+    "failedCreate": "Failed to create meal type",
+    "deleteTitle": "Delete Meal Type",
+    "deleteMessage": "Delete '{{name}}'?",
+    "loading": "Loading meal types...",
+    "loadFailed": "Failed to load meal types.",
+    "empty": "No meal types found",
+    "defaultTime": "Default time for {{name}}{{time}}",
+    "notSet": "Not set"
   }
 }
