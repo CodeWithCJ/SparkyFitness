@@ -55,7 +55,10 @@
     "overwrite": "Nadpisz",
     "previousDay": ": poprzedni dzień",
     "nextDay": ": następny dzień",
-    "dismissMenu": "Zamknij menu"
+    "dismissMenu": "Zamknij menu",
+    "units": {
+      "cm": "cm"
+    }
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -3513,7 +3516,8 @@
     "sizeOf": "Rozmiar jak {{comparison}}",
     "length": "Długość",
     "weight": "Masa",
-    "forYou": "Dla Ciebie"
+    "forYou": "Dla Ciebie",
+    "noData": "Rozwój dziecka tydzień po tygodniu zaczyna się około 4. tygodnia. Zajrzyj ponownie wkrótce!"
   },
   "addSheetActions": {
     "noServerTitle": "Brak połączenia z serwerem",
@@ -3609,7 +3613,7 @@
       "loadFailed": "Nie udało się wczytać danych o krokach",
       "empty": "Brak danych o krokach w tym okresie"
     },
-    "loading": "Wczytywanie…",
+    "loading": "Wczytywanie wykresu...",
     "weightLoadFailed": "Nie udało się wczytać danych masy ciała",
     "stepsLoadFailed": "Nie udało się wczytać danych kroków",
     "noStepData": "Brak danych o krokach w tym okresie",
@@ -3619,6 +3623,10 @@
     "nutrients": {
       "loadFailed": "Nie udało się wczytać danych trendu",
       "empty": "Brak zarejestrowanego spożycia w tym okresie"
+    },
+    "bbt": {
+      "tooltip": "Naciśnij linię, aby zobaczyć szczegóły",
+      "empty": "Zapisuj codziennie temperaturę, aby wyświetlić wykres podstawowej temperatury ciała."
     }
   },
   "exerciseLibrary": {
@@ -3860,5 +3868,33 @@
   "activeWorkoutAutosave": {
     "failedTitle": "Nie zapisano treningu",
     "failedMessage": "Zmiany są przechowywane na tym urządzeniu i zostaną ponownie wysłane."
+  },
+  "medicalDisclaimer": {
+    "text": "Tylko do śledzenia i ogólnych informacji, to nie jest porada medyczna. W sprawach zdrowotnych skonsultuj się z lekarzem."
+  },
+  "pregnancy": {
+    "prompt": {
+      "title": "Skonfiguruj ciążę",
+      "message": "Dodaj termin porodu, aby śledzić rozwój dziecka tydzień po tygodniu i prowadzić dziennik zdjęć brzucha.",
+      "getStarted": "Rozpocznij"
+    },
+    "weekBanner": {
+      "due": "Termin",
+      "wellnessProgress": "Postęp monitorowania",
+      "week": "Tydzień {{week}}",
+      "weekDay": "{{week}} t. {{day}} d.",
+      "edit": "Edytuj szczegóły ciąży",
+      "daysToGo": "Pozostało {{days}} dni",
+      "anyDayNow": "Termin jest blisko"
+    },
+    "trimester": {
+      "first": "Pierwszy trymestr",
+      "second": "Drugi trymestr",
+      "third": "Trzeci trymestr"
+    },
+    "checklist": {
+      "title": "Zadania na ten tydzień",
+      "empty": "Brak zadań na ten tydzień."
+    }
   }
 }

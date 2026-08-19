@@ -452,7 +452,7 @@ export function SetSwipeDeleteAction({
       style={{ width: 72 }}
       onPress={onPress}
       activeOpacity={0.7}
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ?? t('common.delete', { defaultValue: 'Delete' })}
     >
       <Text className="text-text-danger font-semibold text-sm">{t('common.delete', { defaultValue: 'Delete' })}</Text>
     </TouchableOpacity>

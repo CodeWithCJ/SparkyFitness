@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable, Platform, ActivityIndicator } from 'react-native';
 import { checklistForWeek, CHECKLIST_TEMPLATES } from '@workspace/shared';
 import { usePregnancyChecklist, usePregnancyChecklistMutations } from '../../../hooks/usePregnancyChecklist';
@@ -24,6 +25,7 @@ interface ChecklistRow {
  * their window closes, so users don't lose sight of what they checked off.
  */
 const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentWeek }) => {
+  const { t } = useTranslation();
   const { items, isLoading } = usePregnancyChecklist(pregnancyId);
   const { toggleAsync } = usePregnancyChecklistMutations();
   const [accentColor, iconSuccess, iconDecorative] = useCSSVariable([
@@ -78,12 +80,12 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm">
-      <Text className="text-base font-bold text-text-secondary mb-1">This Week&apos;s To-Do</Text>
+      <Text className="text-base font-bold text-text-secondary mb-1">{t('pregnancy.checklist.title', { defaultValue: "This Week's To-Do" })}</Text>
       {isLoading ? (
         <ActivityIndicator color={accentColor} />
       ) : rows.length === 0 ? (
         <Text className="text-text-secondary text-sm py-2">
-          Nothing on your checklist for this week.
+          {t('pregnancy.checklist.empty', { defaultValue: 'Nothing on your checklist for this week.' })}
         </Text>
       ) : (
         rows.map((row) => (

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
@@ -28,14 +29,15 @@ const formatXLabel = (day: string): string => {
   return `${parts[1]}/${parts[2]}`;
 };
 
-const DEFAULT_TOOLTIP = 'Press the line for details';
 
 const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
+  const { t } = useTranslation();
+  const tooltipFallback = t('charts.bbt.tooltip', { defaultValue: 'Press the line for details' });
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [tooltipText, setTooltipText] = useState(() => tooltipFallback);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -46,7 +48,7 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   const [tooltipResetKey, setTooltipResetKey] = useState({ data });
   if (tooltipResetKey.data !== data) {
     setTooltipResetKey({ data });
-    setTooltipText(DEFAULT_TOOLTIP);
+    setTooltipText(tooltipFallback);
   }
 
   const chartData = useMemo(() => {
@@ -63,12 +65,12 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
     if (point) {
       setTooltipText(`${formatTooltipDate(point.date)}: ${point.bbt.toFixed(2)}°C`);
     } else {
-      setTooltipText(DEFAULT_TOOLTIP);
+      setTooltipText(tooltipFallback);
     }
   };
 
   const onTouchEnd = () => {
-    setTooltipText(DEFAULT_TOOLTIP);
+    setTooltipText(tooltipFallback);
   };
 
 
@@ -76,7 +78,7 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   if (isLoading) {
     return (
       <View className="h-44 justify-center items-center">
-        <Text className="text-text-secondary text-sm">Loading chart...</Text>
+        <Text className="text-text-secondary text-sm">{t('charts.loading', { defaultValue: 'Loading chart...' })}</Text>
       </View>
     );
   }
@@ -85,7 +87,7 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
     return (
       <View className="h-44 justify-center items-center bg-raised rounded-2xl border border-dashed border-border-subtle p-4">
         <Text className="text-text-secondary text-xs text-center italic">
-          Log daily temperature logs to view your BBT chart.
+          {t('charts.bbt.empty', { defaultValue: 'Log daily temperature logs to view your BBT chart.' })}
         </Text>
       </View>
     );

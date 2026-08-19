@@ -36,7 +36,7 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
       <View className="bg-surface rounded-xl p-4 shadow-sm gap-2">
         <Text className="text-base font-bold text-text-secondary">{t('babyGrowth.title', { defaultValue: 'Baby this week' })}</Text>
         <Text className="text-text-secondary text-xs leading-5">
-          Week-by-week baby development starts around week 4. Check back soon!
+          {t('babyGrowth.noData', { defaultValue: 'Week-by-week baby development starts around week 4. Check back soon!' })}
         </Text>
       </View>
     );
@@ -55,7 +55,7 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
             {info.lengthCm != null && (
               <View>
                 <Text className="text-text-secondary text-xs">{t('babyGrowth.length', { defaultValue: 'Length' })}</Text>
-                <Text className="text-text-primary text-base font-bold">{info.lengthCm} cm</Text>
+                <Text className="text-text-primary text-base font-bold">{info.lengthCm} {t('common.units.cm', { defaultValue: 'cm' })}</Text>
               </View>
             )}
             {info.weightG != null && (

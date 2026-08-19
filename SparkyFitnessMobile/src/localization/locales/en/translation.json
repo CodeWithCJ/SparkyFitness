@@ -55,7 +55,10 @@
     "overwrite": "Overwrite",
     "previousDay": ": previous day",
     "nextDay": ": next day",
-    "dismissMenu": "Dismiss menu"
+    "dismissMenu": "Dismiss menu",
+    "units": {
+      "cm": "cm"
+    }
   },
   "settings": {
     "app": "App Settings",
@@ -3511,7 +3514,8 @@
     "sizeOf": "Size of {{comparison}}",
     "length": "Length",
     "weight": "Weight",
-    "forYou": "For you"
+    "forYou": "For you",
+    "noData": "Week-by-week baby development starts around week 4. Check back soon!"
   },
   "addSheetActions": {
     "noServerTitle": "No Server Connected",
@@ -3607,7 +3611,7 @@
       "loadFailed": "Failed to load step data",
       "empty": "No step data for this period"
     },
-    "loading": "Loading...",
+    "loading": "Loading chart...",
     "weightLoadFailed": "Failed to load weight data",
     "stepsLoadFailed": "Failed to load step data",
     "noStepData": "No step data for this period",
@@ -3617,6 +3621,10 @@
     "nutrients": {
       "loadFailed": "Failed to load trend data",
       "empty": "No logged intake for this period"
+    },
+    "bbt": {
+      "tooltip": "Press the line for details",
+      "empty": "Log daily temperature readings to view your BBT chart."
     }
   },
   "exerciseLibrary": {
@@ -3860,5 +3868,33 @@
   "activeWorkoutAutosave": {
     "failedTitle": "Workout not saved",
     "failedMessage": "Changes are kept on this device and will retry."
+  },
+  "medicalDisclaimer": {
+    "text": "For tracking and general information only, not medical advice. Talk with your healthcare provider about medical concerns."
+  },
+  "pregnancy": {
+    "prompt": {
+      "title": "Set up your pregnancy",
+      "message": "Add your due date to track baby's growth week by week and keep a bump photo journal.",
+      "getStarted": "Get Started"
+    },
+    "weekBanner": {
+      "due": "Due",
+      "wellnessProgress": "Wellness Progress",
+      "week": "Week {{week}}",
+      "weekDay": "{{week}}w {{day}}d",
+      "edit": "Edit pregnancy details",
+      "daysToGo": "{{days}} days to go",
+      "anyDayNow": "Any day now"
+    },
+    "trimester": {
+      "first": "First trimester",
+      "second": "Second trimester",
+      "third": "Third trimester"
+    },
+    "checklist": {
+      "title": "This Week's To-Do",
+      "empty": "Nothing on your checklist for this week."
+    }
   }
 }
