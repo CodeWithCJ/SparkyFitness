@@ -150,11 +150,11 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
                 />
               </View>
               <View className="flex-row justify-between mt-1">
-                <Text className="text-xs text-text-muted">0h</Text>
+                <Text className="text-xs text-text-muted">0{t('time.hoursShort', { defaultValue: 'h' })}</Text>
                 <Text className="text-xs text-text-muted">
                   {Math.round(timer.progress * 100)}%
                 </Text>
-                <Text className="text-xs text-text-muted">{Math.round(timer.goalHours)}h</Text>
+                <Text className="text-xs text-text-muted">{Math.round(timer.goalHours)}{t('time.hoursShort', { defaultValue: 'h' })}</Text>
               </View>
             </>
           ) : (

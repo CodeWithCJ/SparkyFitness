@@ -791,6 +791,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     buildNutrientDisplayList(displayValues, {
       showNetCarbs: useNetCarbsInList,
       carbs: useNetCarbsInList ? displayValues.carbs : undefined,
+      t,
     });
   const hasAdditional = additionalNutrients.length > 0 || customNutrientRows.length > 0;
   const showAdditionalRows = showMoreNutrients && hasAdditional;

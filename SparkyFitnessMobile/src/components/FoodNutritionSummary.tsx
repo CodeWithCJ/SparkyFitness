@@ -104,6 +104,7 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
         showNetCarbs: useNetCarbs,
         // Pass raw carbs; renderRow scales by `servings` like every other row.
         carbs: useNetCarbs ? values.carbs : undefined,
+        t,
       }),
     [values, useNetCarbs],
   );

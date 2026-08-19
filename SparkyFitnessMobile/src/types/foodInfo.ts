@@ -2,6 +2,8 @@ import type { FoodItem, TopFoodItem } from './foods';
 import type { ExternalFoodItem, ExternalFoodVariant } from './externalFoods';
 import type { Meal, MealIngredientDraft } from './meals';
 import type { BarcodeFood } from '../services/api/externalFoodSearchApi';
+import type { TFunction } from 'i18next';
+import { localizeNutrientKey } from '../utils/nutrientLocalization';
 import { parseDecimalInput, toFiniteNumber } from '../utils/numericInput';
 
 /** Convert a numeric value to a form-compatible string. Returns '' for null/undefined. */
@@ -62,14 +64,14 @@ export interface BuildNutrientDisplayListOptions {
 /** Build primary + additional display lists from a camelCase nutrient source. */
 export function buildNutrientDisplayList(
   source: Partial<Record<ExtraNutrientKey, number>>,
-  options: BuildNutrientDisplayListOptions = {},
+  options: BuildNutrientDisplayListOptions & { t?: TFunction } = {},
 ) {
   const primary: NutrientDisplayItem[] = [];
   const additional: NutrientDisplayItem[] = [];
   for (const field of EXTRA_NUTRIENT_FIELDS) {
     const value = source[field.key];
     if (value == null) continue;
-    const item: NutrientDisplayItem = { label: field.label, value, unit: field.unit };
+    const item: NutrientDisplayItem = { label: options.t ? localizeNutrientKey(options.t, field.key) : field.label, value, unit: field.unit };
     if ('additional' in field && field.additional) {
       additional.push(item);
     } else {
@@ -78,7 +80,7 @@ export function buildNutrientDisplayList(
   }
 
   if (options.showNetCarbs && options.carbs !== undefined) {
-    const carbClusterLabels = new Set(['Fiber', 'Sugars']);
+    const carbClusterLabels = new Set([options.t ? localizeNutrientKey(options.t, 'fiber') : 'Fiber', options.t ? localizeNutrientKey(options.t, 'sugars') : 'Sugars']);
     let insertIdx = 0;
     for (let i = 0; i < primary.length; i++) {
       if (carbClusterLabels.has(primary[i].label)) {
@@ -86,7 +88,7 @@ export function buildNutrientDisplayList(
       }
     }
     primary.splice(insertIdx, 0, {
-      label: 'Total Carbs',
+      label: options.t ? localizeNutrientKey(options.t, 'totalCarbs') : 'Total Carbs',
       value: options.carbs,
       unit: 'g',
     });

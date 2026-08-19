@@ -3932,5 +3932,8 @@
   },
   "workoutPresetLibrary": {
     "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić presety treningów."
+  },
+  "time": {
+    "hoursShort": "godz."
   }
 }
