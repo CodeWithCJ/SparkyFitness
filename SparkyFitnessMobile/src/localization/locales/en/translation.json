@@ -2550,5 +2550,56 @@
       "selectServing": "Select Serving",
       "selectMeal": "Select Meal"
     }
+  },
+  "exerciseSearch": {
+    "title": "Exercises",
+    "tabs": {
+      "search": "Search",
+      "online": "Online"
+    },
+    "sections": {
+      "recent": "Recent",
+      "popular": "Popular"
+    },
+    "search": {
+      "placeholder": "Search exercises..."
+    },
+    "errors": {
+      "failedToAddExercise": "Failed to add exercise"
+    },
+    "actions": {
+      "viewDetails": "View exercise details",
+      "loadMoreFailed": "Failed to load more. Tap to retry",
+      "loadMore": "Load More",
+      "clearSearch": "Clear search"
+    },
+    "states": {
+      "failedToSearch": "Failed to search exercises",
+      "noMatches": "No matching exercises found",
+      "connectToView": "Connect to a server to view exercises",
+      "failedToLoad": "Failed to load exercises",
+      "searchToStart": "Search for an exercise to get started",
+      "failedToSearchProvider": "Failed to search {{provider}}",
+      "connectToSearchOnline": "Connect to a server to search online exercises",
+      "failedToLoadProviders": "Failed to load providers",
+      "noProviders": "No online exercise providers configured",
+      "searchProvider": "Search {{provider}} for exercises"
+    },
+    "filter": {
+      "noun": "exercises",
+      "all": "All",
+      "mine": "Mine",
+      "family": "Family",
+      "public": "Public",
+      "show": "Show",
+      "accessibility": "Filter {{noun}}",
+      "emptyTitle": "No {{noun}} in {{filter}}",
+      "emptySubtitle": "Change the filter to see your other {{noun}}.",
+      "showAll": "Show All"
+    },
+    "accessibility": {
+      "provider": "Exercise provider {{provider}}",
+      "loadingMore": "Loading more exercises"
+    }
   }
 }

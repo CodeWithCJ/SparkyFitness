@@ -24,10 +24,16 @@ export function ownershipFilterHeaderMenu({
   identifier,
   filter,
   onSelect,
+  labels = OWNERSHIP_FILTER_LABELS,
+  showLabel = 'Show',
+  filterAccessibilityLabel = 'Filter {{noun}}',
 }: {
   noun: string;
   identifier: string;
   filter: OwnershipFilter;
+  labels?: Record<OwnershipFilter, string>;
+  showLabel?: string;
+  filterAccessibilityLabel?: string;
   onSelect: (filter: OwnershipFilter) => void;
 }): HeaderItem {
   return {
@@ -37,14 +43,14 @@ export function ownershipFilterHeaderMenu({
     showsBadge: filter !== 'all',
     accessibilityLabel:
       filter !== 'all'
-        ? `Filter ${noun}, filtered to ${OWNERSHIP_FILTER_LABELS[filter]}`
-        : `Filter ${noun}`,
+        ? `${filterAccessibilityLabel.replace('{{noun}}', noun)}, ${labels[filter]}`
+        : filterAccessibilityLabel.replace('{{noun}}', noun),
     identifier,
     items: [
       {
-        label: 'Show',
-        items: (Object.keys(OWNERSHIP_FILTER_LABELS) as OwnershipFilter[]).map((option) => ({
-          label: OWNERSHIP_FILTER_LABELS[option],
+        label: showLabel,
+        items: (Object.keys(labels) as OwnershipFilter[]).map((option) => ({
+          label: labels[option],
           selected: filter === option,
           onPress: () => onSelect(option),
         })),
@@ -64,15 +70,23 @@ export function ownershipFilterEmptyState({
   noun,
   filter,
   onReset,
+  labels = OWNERSHIP_FILTER_LABELS,
+  emptyTitle = 'No {{noun}} in {{filter}}',
+  emptySubtitle = 'Change the filter to see your other {{noun}}.',
+  showAllLabel = 'Show All',
 }: {
   noun: string;
   filter: Exclude<OwnershipFilter, 'all'>;
+  labels?: Record<OwnershipFilter, string>;
+  emptyTitle?: string;
+  emptySubtitle?: string;
+  showAllLabel?: string;
   onReset: () => void;
 }) {
   return {
-    title: `No ${noun} in ${OWNERSHIP_FILTER_LABELS[filter]}`,
-    subtitle: `Change the filter to see your other ${noun}.`,
-    action: { label: 'Show All', onPress: onReset },
+    title: emptyTitle.replace('{{noun}}', noun).replace('{{filter}}', labels[filter]),
+    subtitle: emptySubtitle.replace('{{noun}}', noun),
+    action: { label: showAllLabel, onPress: onReset },
   };
 }
 

@@ -348,3 +348,21 @@ describe('FoodEntryAdd localization', () => {
     });
   });
 });
+
+describe('ExerciseSearch localization', () => {
+  it('resolves exercise search copy and ownership filter labels in English and Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('en');
+      expect(i18n.t('exerciseSearch.tabs.search', { defaultValue: 'Search' })).toBe('Search');
+      expect(i18n.t('exerciseSearch.actions.clearSearch', { defaultValue: 'Clear search' })).toBe('Clear search');
+      expect(i18n.t('exerciseSearch.filter.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}', noun: 'exercises', filter: 'Mine' })).toBe('No exercises in Mine');
+      expect(i18n.t('exerciseSearch.accessibility.provider', { defaultValue: 'Exercise provider {{provider}}', provider: 'Wger' })).toBe('Exercise provider Wger');
+      await i18n.changeLanguage('pl');
+      expect(i18n.t('exerciseSearch.tabs.search', { defaultValue: 'Search' })).toBe('Szukaj');
+      expect(i18n.t('exerciseSearch.actions.clearSearch', { defaultValue: 'Clear search' })).toBe('Wyczyść wyszukiwanie');
+      expect(i18n.t('exerciseSearch.filter.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}', noun: 'ćwiczenia', filter: 'Moje' })).toBe('Brak: ćwiczenia — Moje');
+      expect(i18n.t('exerciseSearch.accessibility.provider', { defaultValue: 'Exercise provider {{provider}}', provider: 'Wger' })).toBe('Dostawca ćwiczeń: Wger');
+    });
+  });
+});

@@ -2584,5 +2584,56 @@
       "selectServing": "Wybierz porcję",
       "selectMeal": "Wybierz posiłek"
     }
+  },
+  "exerciseSearch": {
+    "title": "Ćwiczenia",
+    "tabs": {
+      "search": "Szukaj",
+      "online": "Online"
+    },
+    "sections": {
+      "recent": "Ostatnie",
+      "popular": "Popularne"
+    },
+    "search": {
+      "placeholder": "Szukaj ćwiczeń..."
+    },
+    "errors": {
+      "failedToAddExercise": "Nie udało się dodać ćwiczenia"
+    },
+    "actions": {
+      "viewDetails": "Wyświetl szczegóły ćwiczenia",
+      "loadMoreFailed": "Nie udało się wczytać więcej. Dotknij, aby spróbować ponownie",
+      "loadMore": "Wczytaj więcej",
+      "clearSearch": "Wyczyść wyszukiwanie"
+    },
+    "states": {
+      "failedToSearch": "Nie udało się wyszukać ćwiczeń",
+      "noMatches": "Nie znaleziono pasujących ćwiczeń",
+      "connectToView": "Połącz się z serwerem, aby wyświetlić ćwiczenia",
+      "failedToLoad": "Nie udało się wczytać ćwiczeń",
+      "searchToStart": "Wyszukaj ćwiczenie, aby rozpocząć",
+      "failedToSearchProvider": "Nie udało się wyszukać w usłudze {{provider}}",
+      "connectToSearchOnline": "Połącz się z serwerem, aby wyszukiwać ćwiczenia online",
+      "failedToLoadProviders": "Nie udało się wczytać dostawców",
+      "noProviders": "Nie skonfigurowano dostawców ćwiczeń online",
+      "searchProvider": "Wyszukaj ćwiczenia w usłudze {{provider}}"
+    },
+    "filter": {
+      "noun": "ćwiczenia",
+      "all": "Wszystkie",
+      "mine": "Moje",
+      "family": "Rodzina",
+      "public": "Publiczne",
+      "show": "Pokaż",
+      "accessibility": "Filtruj: {{noun}}",
+      "emptyTitle": "Brak: {{noun}} — {{filter}}",
+      "emptySubtitle": "Zmień filtr, aby zobaczyć pozostałe {{noun}}.",
+      "showAll": "Pokaż wszystkie"
+    },
+    "accessibility": {
+      "provider": "Dostawca ćwiczeń: {{provider}}",
+      "loadingMore": "Wczytywanie kolejnych ćwiczeń"
+    }
   }
 }

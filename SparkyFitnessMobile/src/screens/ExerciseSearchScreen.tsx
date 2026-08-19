@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -53,13 +54,9 @@ type ExerciseSection = {
 
 type TabKey = 'search' | 'online';
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'search', label: 'Search' },
-  { key: 'online', label: 'Online' },
-] as const;
-
 const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({ navigation, route }) => {
   const { returnKey } = route.params;
+  const { t } = useTranslation();
 
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -161,7 +158,7 @@ useEffect(() => {
       // apiFetch already logs the failure; surface it so the tap isn't silent.
       Toast.show({
         type: 'error',
-        text1: 'Failed to add exercise',
+        text1: t('exerciseSearch.errors.failedToAddExercise', { defaultValue: 'Failed to add exercise' }),
         text2: getApiErrorMessage(error) ?? undefined,
       });
     }
@@ -169,7 +166,7 @@ useEffect(() => {
     // whole component. Every path above falls through to this cleanup.
     importInFlightRef.current = false;
     setImportingExerciseId(null);
-  }, [queryClient, handleSelectExercise, navigation]);
+  }, [queryClient, handleSelectExercise, navigation, t]);
 
   const handlePreviewExercise = useCallback((item: Exercise) => {
     runNavigationAction(() => {
@@ -254,7 +251,7 @@ useEffect(() => {
           activeOpacity={0.7}
           hitSlop={8}
           disabled={isNavigationLocked || importingExerciseId !== null}
-          accessibilityLabel="View exercise details"
+          accessibilityLabel={t('exerciseSearch.actions.viewDetails', { defaultValue: 'View exercise details' })}
           onPress={() => handlePreviewExercise(item)}
         >
           <Icon name="info-circle" size={22} color={accentColor} />
@@ -271,6 +268,7 @@ useEffect(() => {
     textMuted,
     getImageSource,
     profile,
+    t,
   ]);
 
   const filteredRecentExercises = useMemo(() => filterByOwnership(recentExercises, ownershipFilter, profile?.id), [recentExercises, ownershipFilter, profile?.id]);
@@ -279,11 +277,11 @@ useEffect(() => {
 
   const sections = useMemo(() => {
     const allSections: ExerciseSection[] = [
-      { title: 'Recent', data: filteredRecentExercises },
-      { title: 'Popular', data: filteredTopExercises },
+      { title: t('exerciseSearch.sections.recent', { defaultValue: 'Recent' }), data: filteredRecentExercises },
+      { title: t('exerciseSearch.sections.popular', { defaultValue: 'Popular' }), data: filteredTopExercises },
     ];
     return allSections.filter((section) => section.data.length > 0);
-  }, [filteredRecentExercises, filteredTopExercises]);
+  }, [filteredRecentExercises, filteredTopExercises, t]);
 
   const renderSectionHeader = ({ section }: { section: ExerciseSection }) => (
     <View className="px-4 py-2 bg-background">
@@ -304,7 +302,7 @@ useEffect(() => {
           <TextInput
             className="text-text-primary"
             style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-            placeholder="Search exercises..."
+            placeholder={t('exerciseSearch.search.placeholder', { defaultValue: 'Search exercises...' })}
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -316,7 +314,7 @@ useEffect(() => {
           />
         </View>
         {searchText.length > 0 && (
-          <Button variant="header" onPress={() => setSearchText('')} hitSlop={8}>
+          <Button variant="header" onPress={() => setSearchText('')} hitSlop={8} accessibilityLabel={t('exerciseSearch.actions.clearSearch', { defaultValue: 'Clear search' })}>
             <Icon name="close" size={16} color={textMuted} />
           </Button>
         )}
@@ -332,7 +330,7 @@ useEffect(() => {
     }
 
     if (isSearchError) {
-      return <StatusView icon="alert-circle" title="Failed to search exercises" />;
+      return <StatusView icon="alert-circle" title={t('exerciseSearch.states.failedToSearch', { defaultValue: 'Failed to search exercises' })} />;
     }
 
     if (filteredSearchResults.length === 0) {
@@ -340,14 +338,23 @@ useEffect(() => {
         return (
           <StatusView
             {...ownershipFilterEmptyState({
-              noun: 'exercises',
+              noun: t('exerciseSearch.filter.noun', { defaultValue: 'exercises' }),
               filter: ownershipFilter,
+              labels: {
+                all: t('exerciseSearch.filter.all', { defaultValue: 'All' }),
+                mine: t('exerciseSearch.filter.mine', { defaultValue: 'Mine' }),
+                family: t('exerciseSearch.filter.family', { defaultValue: 'Family' }),
+                public: t('exerciseSearch.filter.public', { defaultValue: 'Public' }),
+              },
+              emptyTitle: t('exerciseSearch.filter.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}' }),
+              emptySubtitle: t('exerciseSearch.filter.emptySubtitle', { defaultValue: 'Change the filter to see your other {{noun}}.' }),
+              showAllLabel: t('exerciseSearch.filter.showAll', { defaultValue: 'Show All' }),
               onReset: () => setOwnershipFilter('all'),
             })}
           />
         );
       }
-      return <StatusView title="No matching exercises found" />;
+      return <StatusView title={t('exerciseSearch.states.noMatches', { defaultValue: 'No matching exercises found' })} />;
     }
 
     return (
@@ -365,7 +372,7 @@ useEffect(() => {
 
   const renderSearchTab = () => {
     if (!isConnected) {
-      return <StatusView icon="cloud-offline" title="Connect to a server to view exercises" />;
+      return <StatusView icon="cloud-offline" title={t('exerciseSearch.states.connectToView', { defaultValue: 'Connect to a server to view exercises' })} />;
     }
 
     if (isSearchActive) {
@@ -380,8 +387,8 @@ useEffect(() => {
       return (
         <StatusView
           icon="alert-circle"
-          title="Failed to load exercises"
-          action={{ label: 'Retry', onPress: () => refetchSuggested() }}
+          title={t('exerciseSearch.states.failedToLoad', { defaultValue: 'Failed to load exercises' })}
+          action={{ label: t('common.retry', { defaultValue: 'Retry' }), onPress: () => refetchSuggested() }}
         />
       );
     }
@@ -391,14 +398,23 @@ useEffect(() => {
         return (
           <StatusView
             {...ownershipFilterEmptyState({
-              noun: 'exercises',
+              noun: t('exerciseSearch.filter.noun', { defaultValue: 'exercises' }),
               filter: ownershipFilter,
+              labels: {
+                all: t('exerciseSearch.filter.all', { defaultValue: 'All' }),
+                mine: t('exerciseSearch.filter.mine', { defaultValue: 'Mine' }),
+                family: t('exerciseSearch.filter.family', { defaultValue: 'Family' }),
+                public: t('exerciseSearch.filter.public', { defaultValue: 'Public' }),
+              },
+              emptyTitle: t('exerciseSearch.filter.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}' }),
+              emptySubtitle: t('exerciseSearch.filter.emptySubtitle', { defaultValue: 'Change the filter to see your other {{noun}}.' }),
+              showAllLabel: t('exerciseSearch.filter.showAll', { defaultValue: 'Show All' }),
               onReset: () => setOwnershipFilter('all'),
             })}
           />
         );
       }
-      return <StatusView title="Search for an exercise to get started" />;
+      return <StatusView title={t('exerciseSearch.states.searchToStart', { defaultValue: 'Search for an exercise to get started' })} />;
     }
 
     return (
@@ -467,7 +483,7 @@ useEffect(() => {
           activeOpacity={0.7}
           hitSlop={8}
           disabled={isNavigationLocked || isImportInFlight}
-          accessibilityLabel="View exercise details"
+          accessibilityLabel={t('exerciseSearch.actions.viewDetails', { defaultValue: 'View exercise details' })}
           onPress={() => handlePreviewExternalExercise(item)}
         >
           {importingExerciseId === item.id ? (
@@ -489,13 +505,13 @@ useEffect(() => {
           className="py-3"
           textClassName="text-sm"
         >
-          Failed to load more. Tap to retry
+          {t('exerciseSearch.actions.loadMoreFailed', { defaultValue: 'Failed to load more. Tap to retry' })}
         </Button>
       );
     }
     if (isFetchingNextPage) {
       return (
-        <View className="py-3 items-center">
+        <View className="py-3 items-center" accessibilityRole="progressbar" accessibilityLabel={t('exerciseSearch.accessibility.loadingMore', { defaultValue: 'Loading more exercises' })}>
           <ActivityIndicator size="small" color={accentColor} />
         </View>
       );
@@ -508,7 +524,7 @@ useEffect(() => {
           className="py-4 mb-4"
           textClassName="text-sm"
         >
-          Load More
+          {t('exerciseSearch.actions.loadMore', { defaultValue: 'Load More' })}
         </Button>
       );
     }
@@ -521,11 +537,11 @@ useEffect(() => {
     }
 
     if (isOnlineSearchError) {
-      return <StatusView icon="alert-circle" title={`Failed to search ${selectedProviderName}`} />;
+      return <StatusView icon="alert-circle" title={t('exerciseSearch.states.failedToSearchProvider', { defaultValue: 'Failed to search {{provider}}', provider: selectedProviderName })} />;
     }
 
     if (onlineSearchResults.length === 0) {
-      return <StatusView title="No matching exercises found" />;
+      return <StatusView title={t('exerciseSearch.states.noMatches', { defaultValue: 'No matching exercises found' })} />;
     }
 
     return (
@@ -544,7 +560,7 @@ useEffect(() => {
 
   const renderOnlineTab = () => {
     if (!isConnected) {
-      return <StatusView icon="cloud-offline" title="Connect to a server to search online exercises" />;
+      return <StatusView icon="cloud-offline" title={t('exerciseSearch.states.connectToSearchOnline', { defaultValue: 'Connect to a server to search online exercises' })} />;
     }
 
     if (isProvidersLoading) {
@@ -555,14 +571,14 @@ useEffect(() => {
       return (
         <StatusView
           icon="alert-circle"
-          title="Failed to load providers"
-          action={{ label: 'Retry', onPress: () => refetchProviders() }}
+          title={t('exerciseSearch.states.failedToLoadProviders', { defaultValue: 'Failed to load providers' })}
+          action={{ label: t('common.retry', { defaultValue: 'Retry' }), onPress: () => refetchProviders() }}
         />
       );
     }
 
     if (providers.length === 0) {
-      return <StatusView icon="globe" iconColor={textMuted} title="No online exercise providers configured" />;
+      return <StatusView icon="globe" iconColor={textMuted} title={t('exerciseSearch.states.noProviders', { defaultValue: 'No online exercise providers configured' })} />;
     }
 
     return (
@@ -578,6 +594,9 @@ useEffect(() => {
             return (
               <TouchableOpacity
                 key={provider.id}
+                accessibilityRole="tab"
+                accessibilityLabel={t('exerciseSearch.accessibility.provider', { defaultValue: 'Exercise provider {{provider}}', provider: provider.provider_name })}
+                accessibilityState={{ selected: isActive }}
                 onPress={() => {
                   hasUserSelectedProvider.current = true;
                   setSelectedProvider(provider.id);
@@ -603,7 +622,7 @@ useEffect(() => {
         {isOnlineSearchActive ? (
           renderOnlineSearchResults()
         ) : (
-          <StatusView icon="search" iconColor={textSecondary} title={`Search ${selectedProviderName} for exercises`} />
+          <StatusView icon="search" iconColor={textSecondary} title={t('exerciseSearch.states.searchProvider', { defaultValue: 'Search {{provider}} for exercises', provider: selectedProviderName })} />
         )}
       </View>
     );
@@ -618,14 +637,27 @@ useEffect(() => {
     }
   };
 
+  const tabs = useMemo(() => [
+    { key: 'search' as const, label: t('exerciseSearch.tabs.search', { defaultValue: 'Search' }) },
+    { key: 'online' as const, label: t('exerciseSearch.tabs.online', { defaultValue: 'Online' }) },
+  ], [t]);
+
   const header = useScreenHeader({
-    title: 'Exercises',
+    title: t('exerciseSearch.title', { defaultValue: 'Exercises' }),
     left: { kind: 'dismiss', onPress: () => navigation.goBack(), identifier: 'exercise-search-cancel' },
     // The filter only applies to the local library, so the Online tab drops it.
     right: activeTab === 'search'
       ? ownershipFilterHeaderMenu({
-          noun: 'exercises',
+          noun: t('exerciseSearch.filter.noun', { defaultValue: 'exercises' }),
           identifier: 'exercise-search-filter',
+          labels: {
+            all: t('exerciseSearch.filter.all', { defaultValue: 'All' }),
+            mine: t('exerciseSearch.filter.mine', { defaultValue: 'Mine' }),
+            family: t('exerciseSearch.filter.family', { defaultValue: 'Family' }),
+            public: t('exerciseSearch.filter.public', { defaultValue: 'Public' }),
+          },
+          showLabel: t('exerciseSearch.filter.show', { defaultValue: 'Show' }),
+          filterAccessibilityLabel: t('exerciseSearch.filter.accessibility', { defaultValue: 'Filter {{noun}}' }),
           filter: ownershipFilter,
           onSelect: setOwnershipFilter,
         })
@@ -638,7 +670,7 @@ useEffect(() => {
 
       {/* Segmented control */}
       <View className="px-4 mt-2">
-        <SegmentedControl segments={TABS} activeKey={activeTab} onSelect={setActiveTab} />
+        <SegmentedControl segments={tabs} activeKey={activeTab} onSelect={setActiveTab} />
       </View>
 
       {/* Search bar */}
