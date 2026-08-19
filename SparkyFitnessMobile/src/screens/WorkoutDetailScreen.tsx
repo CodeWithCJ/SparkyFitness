@@ -697,7 +697,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Start Workout button */}
         {!isEditing && canEdit && !isWorkoutActive && (
           <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
-            Start Workout
+            {t('workout.startWorkout', { defaultValue: 'Start Workout' })}
           </Button>
         )}
 

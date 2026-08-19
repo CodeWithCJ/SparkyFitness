@@ -121,18 +121,25 @@ const Button: React.FC<ButtonProps> = ({
   );
 };
 
+// i18n-audit-ignore-next-line hardcoded-ui-text -- Storybook preview label, not shipped UI
 preview(<Button variant="primary">Primary Button</Button>);
 
+// i18n-audit-ignore-next-line hardcoded-ui-text -- Storybook preview label, not shipped UI
 preview(<Button variant="secondary">Secondary Button</Button>);
 
+// i18n-audit-ignore-next-line hardcoded-ui-text -- Storybook preview label, not shipped UI
 preview(<Button variant="outline">Outline Button</Button>);
 
+// i18n-audit-ignore-next-line hardcoded-ui-text -- Storybook preview label, not shipped UI
 preview(<Button variant="ghost">Ghost Button</Button>);
 
+// i18n-audit-ignore-next-line hardcoded-ui-text -- Storybook preview label, not shipped UI
 preview(<Button variant="link">Link Button</Button>);
 
+// i18n-audit-ignore-next-line hardcoded-ui-text -- Storybook preview label, not shipped UI
 preview(<Button variant="destructive">Destructive Button</Button>);
 
+// i18n-audit-ignore-next-line hardcoded-ui-text -- Storybook preview label, not shipped UI
 preview(<Button variant="primary" loading>Loading Button</Button>);
 
 export default Button;

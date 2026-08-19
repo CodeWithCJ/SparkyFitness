@@ -1313,7 +1313,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onPress={handleAddExercise}
           className="mt-5 mx-1"
         >
-          Add Exercise
+          {t('workout.addExercise', { defaultValue: 'Add an Exercise' })}
         </Button>
 
         <Button
@@ -1321,7 +1321,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onPress={handleConfirmEnd}
           className="mt-2 mb-2 mx-1"
         >
-          End Workout
+          {t('workout.endWorkout', { defaultValue: 'End Workout' })}
         </Button>
       </KeyboardAwareScrollView>
 

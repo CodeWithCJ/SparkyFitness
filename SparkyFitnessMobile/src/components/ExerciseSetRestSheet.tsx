@@ -253,7 +253,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
           </View>
 
           <Button variant="primary" onPress={handleDone}>
-            Done
+            {t('common.done', { defaultValue: 'Done' })}
           </Button>
         </BottomSheetView>
       </BottomSheetModal>

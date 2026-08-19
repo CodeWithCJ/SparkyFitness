@@ -206,6 +206,11 @@ function isLikelyFalsePositive(value) {
 
   if (!/[A-Za-z]/.test(trimmed)) return true;
 
+  // Template expressions whose only literal residue is punctuation/affordance
+  // glyphs are not user-facing hard-coded language (for example a dynamic
+  // calorie value followed by a dropdown marker).
+  if (/^(?:\{\{dynamic\}\}\s*)+[^A-Za-z]*$/.test(trimmed)) return true;
+
   if (isLikelyRoute(trimmed)) return true;
 
   if (isLikelyCss(trimmed)) return true;
