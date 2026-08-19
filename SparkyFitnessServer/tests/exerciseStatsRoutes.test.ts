@@ -1,5 +1,6 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import express from 'express';
+import type { NextFunction, Request, Response } from 'express';
 // @ts-expect-error TS(7016): no type declarations shipped for supertest
 import request from 'supertest';
 import exerciseStatsService from '../services/exerciseStatsService.js';
@@ -15,8 +16,9 @@ vi.mock('../utils/permissionUtils.js', () => ({
   canAccessUserData: vi.fn().mockResolvedValue(true),
 }));
 vi.mock('../middleware/authMiddleware.js', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticate: (req: any, _res: any, next: any) => {
+  // types/express.d.ts augments Request with userId/authenticatedUserId, so
+  // this mock needs no `any` casts to stand in for the real middleware.
+  authenticate: (req: Request, _res: Response, next: NextFunction) => {
     req.userId = 'user-123';
     req.authenticatedUserId = 'user-123';
     next();
