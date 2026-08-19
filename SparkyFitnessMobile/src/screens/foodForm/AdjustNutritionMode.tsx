@@ -204,7 +204,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
     ) {
       Toast.show({
         type: 'error',
-        text1: 'Still loading food details. Try again in a moment.',
+        text1: t('foodForm.loadingDetails', { defaultValue: 'Still loading food details. Try again in a moment.' }),
       });
       return;
     }
@@ -238,7 +238,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           setPendingUnitSelection(nextUnitSelection);
           setCurrentVariantId(createdVariant.id);
         } catch {
-          Toast.show({ type: 'error', text1: 'Could not save new unit' });
+          Toast.show({ type: 'error', text1: t('foodForm.saveNewUnitFailed', { defaultValue: 'Could not save new unit' }) });
           return;
         }
       }
@@ -281,7 +281,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                   } as CreateFoodVariantPayload),
                 ),
               ).catch(() => {
-                Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+                Toast.show({ type: 'error', text1: t('foodForm.equivalentUnitsFailed', { defaultValue: 'Some equivalent units could not be saved' }) });
               }).finally(() => {
                 invalidateFoodCaches(queryClient, foodId);
               });
@@ -354,14 +354,14 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                         } as CreateFoodVariantPayload),
                       ),
                     ).catch(() => {
-                      Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+                      Toast.show({ type: 'error', text1: t('foodForm.equivalentUnitsFailed', { defaultValue: 'Some equivalent units could not be saved' }) });
                     }).finally(() => {
                       invalidateFoodCaches(queryClient, foodId);
                     });
                     setEquivalentBaseline(equivalentDraft);
                   }
                 } catch {
-                  Toast.show({ type: 'error', text1: 'Could not save new variant' });
+                  Toast.show({ type: 'error', text1: t('foodForm.saveNewVariantFailed', { defaultValue: 'Could not save new variant' }) });
                   return;
                 }
                 // Fall through to persistFoodEdits with the new variant ID so the
@@ -486,7 +486,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             setEquivalentBaseline(equivalentDraft);
           }
         } catch {
-          Toast.show({ type: 'error', text1: 'Could not save nutrition for future use' });
+          Toast.show({ type: 'error', text1: t('foodForm.saveNutritionFailed', { defaultValue: 'Could not save nutrition for future use' }) });
         }
       }
 

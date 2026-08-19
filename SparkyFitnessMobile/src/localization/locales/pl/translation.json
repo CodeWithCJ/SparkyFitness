@@ -2199,7 +2199,18 @@
       "message": "Nie można przeliczyć między jednostkami. Przed zapisaniem zaktualizuj wartości odżywcze ręcznie.",
       "saveAnyway": "Zapisz mimo to",
       "banner": "Nie można przeliczyć między jednostkami. Zaktualizuj wartości odżywcze ręcznie."
-    }
+    },
+    "loadingDetails": "Szczegóły jedzenia są nadal wczytywane. Spróbuj ponownie za chwilę.",
+    "saveNewUnitFailed": "Nie udało się zapisać nowej jednostki",
+    "equivalentUnitsFailed": "Nie udało się zapisać części równoważnych jednostek",
+    "saveNewVariantFailed": "Nie udało się zapisać nowego wariantu",
+    "saveNutritionFailed": "Nie udało się zapisać wartości odżywczych do przyszłego użycia",
+    "savedNewVariant": "Zapisano jako nowy wariant",
+    "pastEntriesUpdated": "Zaktualizowano wcześniejsze wpisy",
+    "pastEntriesFailed": "Nie udało się zaktualizować wcześniejszych wpisów",
+    "foodSaved": "Jedzenie zostało zapisane.",
+    "updateFailed": "Nie udało się zaktualizować jedzenia",
+    "editTitle": "Edytuj jedzenie"
   },
   "exerciseHistory": {
     "noSetData": "Brak danych o seriach",
