@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Button from '../ui/Button';
 import MealLibraryRow from '../MealLibraryRow';
@@ -10,12 +11,12 @@ import { externalFoodImage } from '../../utils/foodImages';
 import { useOpenLightbox } from '../LightboxProvider';
 import { landingKey } from '../../utils/landingLists';
 import { formatServingDescription, formatServingUnit } from '../../utils/foodDetails';
-import { OWNERSHIP_FILTER_LABELS, type OwnershipFilter } from '../../utils/shareStatus';
 import { mealToFoodInfo } from '../../types/foodInfo';
 import type { FoodInfoItem } from '../../types/foodInfo';
 import type { ExternalFoodItem } from '../../types/externalFoods';
 import type { ExternalProvider } from '../../types/externalProviders';
 import type { ResultRow } from './types';
+import type { OwnershipFilter } from '../../utils/shareStatus';
 
 interface OnlineResultRowProps {
   item: ExternalFoodItem;
@@ -36,6 +37,7 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
   getProviderColor,
   onSelect,
 }) => {
+  const { t } = useTranslation();
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
   const image = externalFoodImage(item);
@@ -100,7 +102,7 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
         ) : (
           <>
             <Text className="text-text-primary text-base font-semibold">
-              {item.calories} cal
+              {item.calories} {t('foodSearch.labels.caloriesShort', { defaultValue: 'cal' })}
             </Text>
             <Text className="text-text-secondary text-xs">
               {item.serving_description
@@ -129,17 +131,20 @@ const ShowAllProviderRow: React.FC<ShowAllProviderRowProps> = ({
   count,
   accentColor,
   onSelectProvider,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <TouchableOpacity
     className="px-4 py-3 border-b border-border-subtle"
     activeOpacity={0.7}
     onPress={() => onSelectProvider(provider.id)}
   >
     <Text className="text-sm font-medium" style={{ color: accentColor }}>
-      Show all {count} {provider.provider_name} results
+      {t('foodSearch.actions.showAllProviderResults', { defaultValue: 'Show all {{count}} {{provider}} results', count, provider: provider.provider_name })}
     </Text>
   </TouchableOpacity>
-);
+  );
+};
 
 interface ShowAllLocalRowProps {
   section: 'foods' | 'meals';
@@ -153,17 +158,20 @@ const ShowAllLocalRow: React.FC<ShowAllLocalRowProps> = ({
   count,
   accentColor,
   onShowAll,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <TouchableOpacity
     className="px-4 py-3 border-b border-border-subtle"
     activeOpacity={0.7}
     onPress={() => onShowAll(section)}
   >
     <Text className="text-sm font-medium" style={{ color: accentColor }}>
-      Show all {count} {section === 'foods' ? 'foods' : 'meals'}
+      {t('foodSearch.actions.showAllLocalResults', { defaultValue: 'Show all {{count}} {{itemType}}', count, itemType: section === 'foods' ? t('foodSearch.labels.foods', { defaultValue: 'foods' }) : t('foodSearch.labels.meals', { defaultValue: 'meals' }) })}
     </Text>
   </TouchableOpacity>
-);
+  );
+};
 
 const ProviderSkeletonRow: React.FC<{ textMuted: string }> = ({ textMuted }) => (
   <View className="px-4 py-3 gap-2">
@@ -196,14 +204,21 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
   ownershipFilter,
   onResetOwnershipFilter,
 }) => {
+  const { t } = useTranslation();
+  const filterLabels: Record<OwnershipFilter, string> = {
+    all: t('foodSearch.filter.all', { defaultValue: 'All' }),
+    mine: t('foodSearch.filter.mine', { defaultValue: 'Mine' }),
+    family: t('foodSearch.filter.family', { defaultValue: 'Family' }),
+    public: t('foodSearch.filter.public', { defaultValue: 'Public' }),
+  };
   const isFiltered = ownershipFilter !== 'all';
   const baseMessage = isMealBuilderMode
-    ? 'No saved foods found'
-    : 'No saved foods or meals found';
+    ? t('foodSearch.states.noSavedFoods', { defaultValue: 'No saved foods found' })
+    : t('foodSearch.states.noSavedFoodsMeals', { defaultValue: 'No saved foods or meals found' });
   // A persisted non-default filter can empty the local sections; naming the
   // filter and offering the reset keeps that from reading as missing data.
   const message = isFiltered
-    ? `${baseMessage} in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
+    ? t('foodSearch.states.noFilteredSaved', { defaultValue: '{{message}} in {{filter}}', message: baseMessage, filter: filterLabels[ownershipFilter] })
     : baseMessage;
   return (
     <View className="px-4 py-6 items-center justify-center">
@@ -223,7 +238,7 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
             onPress={onResetOwnershipFilter}
             className="mt-3 px-5"
           >
-            Show All
+            {t('foodSearch.filter.showAll', { defaultValue: 'Show All' })}
           </Button>
         ) : null}
       </View>
@@ -234,8 +249,8 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
           accessibilityRole="progressbar"
           accessibilityLabel={
             isMealBuilderMode
-              ? 'Searching saved foods'
-              : 'Searching saved foods and meals'
+              ? t('foodSearch.accessibility.searchingFoods', { defaultValue: 'Searching saved foods' })
+              : t('foodSearch.accessibility.searchingFoodsMeals', { defaultValue: 'Searching saved foods and meals' })
           }
         >
           <ActivityIndicator size="small" color={accentColor} />

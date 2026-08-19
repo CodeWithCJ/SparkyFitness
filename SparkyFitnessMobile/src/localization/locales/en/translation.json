@@ -37,7 +37,9 @@
     "add": "Add",
     "loading": "Loading…",
     "pleaseTryAgain": "Please try again.",
-    "ok": "OK"
+    "ok": "OK",
+    "collapse": "Collapse",
+    "expand": "Expand"
   },
   "settings": {
     "app": "App Settings",
@@ -2600,6 +2602,80 @@
     "accessibility": {
       "provider": "Exercise provider {{provider}}",
       "loadingMore": "Loading more exercises"
+    }
+  },
+  "foodSearch": {
+    "menu": {
+      "newFood": "New Food",
+      "newMeal": "New Meal",
+      "show": "Show",
+      "allSources": "All Sources"
+    },
+    "accessibility": {
+      "moreFiltered": "More options, filtered to {{filter}}",
+      "moreOptions": "More options",
+      "clearSearch": "Clear search",
+      "scanFood": "Scan Food",
+      "searchingFoods": "Searching saved foods",
+      "searchingFoodsMeals": "Searching saved foods and meals",
+      "sourceChange": "Source {{source}}, tap to change",
+      "providerError": "{{provider}}, could not load, tap to retry",
+      "providerNoResults": "{{provider}}, no results",
+      "providerExpand": "{{provider}}, {{count}} results, tap to {{action}}",
+      "favorite": "Favorite",
+      "viewPhoto": "View photo",
+      "verifiedFood": "Verified food"
+    },
+    "errors": {
+      "detailsUnavailable": "Details unavailable"
+    },
+    "sections": {
+      "favorites": "Favorites",
+      "recentlyLogged": "Recently Logged",
+      "top": "Top",
+      "yourFoods": "Your Foods",
+      "yourMeals": "Your Meals",
+      "topMatches": "Top Matches",
+      "bySource": "By Source",
+      "onlineResults": "Online Results"
+    },
+    "search": {
+      "placeholder": "Search foods..."
+    },
+    "states": {
+      "connectToSearch": "Connect to a server to search foods",
+      "failedToLoad": "Failed to load foods",
+      "noFilteredFoods": "No foods in {{filter}}",
+      "searchToLog": "Search for a food or meal to log",
+      "noSavedFoods": "No saved foods found",
+      "noSavedFoodsMeals": "No saved foods or meals found",
+      "noFilteredSaved": "{{message}} in {{filter}}",
+      "couldNotLoad": "Couldn't load",
+      "noResults": "No results",
+      "noOnlineResultsFrom": "No online results from {{provider}}"
+    },
+    "filter": {
+      "all": "All",
+      "mine": "Mine",
+      "family": "Family",
+      "public": "Public",
+      "showAll": "Show All"
+    },
+    "actions": {
+      "showAllProviderResults": "Show all {{count}} {{provider}} results",
+      "showAllLocalResults": "Show all {{count}} {{itemType}}",
+      "loadMoreFailed": "Failed to load more. Tap to retry",
+      "loadMore": "Load More"
+    },
+    "pickers": {
+      "onlineProvider": "Online provider"
+    },
+    "labels": {
+      "caloriesShort": "cal",
+      "foods": "foods",
+      "meals": "meals",
+      "meal": "Meal",
+      "itemCount": "{{count}} item"
     }
   }
 }

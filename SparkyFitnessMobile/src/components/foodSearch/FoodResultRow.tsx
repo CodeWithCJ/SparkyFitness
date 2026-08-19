@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Icon from '../Icon';
 import ShareStatusBadge from '../ShareStatusBadge';
@@ -28,6 +29,7 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
   favoriteGold,
   onSelect,
 }) => {
+  const { t } = useTranslation();
   const status = deriveShareStatus(item.user_id, item.shared_with_public, profileId);
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
@@ -67,7 +69,7 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
                 size={16}
                 color={favoriteGold}
                 style={{ marginTop: 3 }}
-                accessibilityLabel="Favorite"
+                accessibilityLabel={t('foodSearch.accessibility.favorite', { defaultValue: 'Favorite' })}
               />
             )}
           </View>
@@ -77,7 +79,7 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
-            {item.default_variant.calories} cal
+            {item.default_variant.calories} {t('foodSearch.labels.caloriesShort', { defaultValue: 'cal' })}
           </Text>
           <Text className="text-text-secondary text-xs">
             {`${item.default_variant.serving_size} ${formatServingUnit(item.default_variant.serving_unit)}`}

@@ -39,7 +39,9 @@
     "add": "Dodaj",
     "loading": "Ładowanie…",
     "pleaseTryAgain": "Spróbuj ponownie.",
-    "ok": "OK"
+    "ok": "OK",
+    "collapse": "Zwiń",
+    "expand": "Rozwiń"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -2634,6 +2636,80 @@
     "accessibility": {
       "provider": "Dostawca ćwiczeń: {{provider}}",
       "loadingMore": "Wczytywanie kolejnych ćwiczeń"
+    }
+  },
+  "foodSearch": {
+    "menu": {
+      "newFood": "Nowy produkt",
+      "newMeal": "Nowy posiłek",
+      "show": "Pokaż",
+      "allSources": "Wszystkie źródła"
+    },
+    "accessibility": {
+      "moreFiltered": "Więcej opcji, filtr: {{filter}}",
+      "moreOptions": "Więcej opcji",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "scanFood": "Skanuj produkt",
+      "searchingFoods": "Wyszukiwanie zapisanych produktów",
+      "searchingFoodsMeals": "Wyszukiwanie zapisanych produktów i posiłków",
+      "sourceChange": "Źródło: {{source}}, dotknij, aby zmienić",
+      "providerError": "{{provider}}, nie udało się wczytać, dotknij, aby spróbować ponownie",
+      "providerNoResults": "{{provider}}, brak wyników",
+      "providerExpand": "{{provider}}, wyników: {{count}}, dotknij, aby {{action}}",
+      "favorite": "Ulubione",
+      "viewPhoto": "Wyświetl zdjęcie",
+      "verifiedFood": "Zweryfikowany produkt"
+    },
+    "errors": {
+      "detailsUnavailable": "Szczegóły niedostępne"
+    },
+    "sections": {
+      "favorites": "Ulubione",
+      "recentlyLogged": "Ostatnio zapisane",
+      "top": "Najpopularniejsze",
+      "yourFoods": "Twoje produkty",
+      "yourMeals": "Twoje posiłki",
+      "topMatches": "Najlepsze dopasowania",
+      "bySource": "Według źródła",
+      "onlineResults": "Wyniki online"
+    },
+    "search": {
+      "placeholder": "Szukaj produktów..."
+    },
+    "states": {
+      "connectToSearch": "Połącz się z serwerem, aby wyszukiwać produkty",
+      "failedToLoad": "Nie udało się wczytać produktów",
+      "noFilteredFoods": "Brak produktów: {{filter}}",
+      "searchToLog": "Wyszukaj produkt lub posiłek, aby go zapisać",
+      "noSavedFoods": "Nie znaleziono zapisanych produktów",
+      "noSavedFoodsMeals": "Nie znaleziono zapisanych produktów ani posiłków",
+      "noFilteredSaved": "{{message}} — filtr: {{filter}}",
+      "couldNotLoad": "Nie udało się wczytać",
+      "noResults": "Brak wyników",
+      "noOnlineResultsFrom": "Brak wyników online z {{provider}}"
+    },
+    "filter": {
+      "all": "Wszystkie",
+      "mine": "Moje",
+      "family": "Rodzina",
+      "public": "Publiczne",
+      "showAll": "Pokaż wszystkie"
+    },
+    "actions": {
+      "showAllProviderResults": "Pokaż wszystkie wyniki ({{count}}) z usługi {{provider}}",
+      "showAllLocalResults": "Pokaż wszystkie: {{count}} {{itemType}}",
+      "loadMoreFailed": "Nie udało się wczytać więcej. Dotknij, aby spróbować ponownie",
+      "loadMore": "Wczytaj więcej"
+    },
+    "pickers": {
+      "onlineProvider": "Dostawca online"
+    },
+    "labels": {
+      "caloriesShort": "kcal",
+      "foods": "produkty",
+      "meals": "posiłki",
+      "meal": "Posiłek",
+      "itemCount": "{{count}} element"
     }
   }
 }

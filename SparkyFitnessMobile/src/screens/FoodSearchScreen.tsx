@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -94,6 +95,7 @@ const LOCAL_RESULT_CAP = 6;
 const LANDING_ITEM_LIMIT = 10;
 
 const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const mealTypeId = route.params?.mealTypeId;
@@ -224,10 +226,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }));
     // Offer the aggregated view only when there is more than one provider.
     if (providers.length > 1) {
-      opts.unshift({ label: 'All Sources', value: ALL_PROVIDERS_VALUE });
+      opts.unshift({ label: t('foodSearch.menu.allSources', { defaultValue: 'All Sources' }), value: ALL_PROVIDERS_VALUE });
     }
     return opts;
-  }, [providers]);
+  }, [providers, t]);
   // Temporary peek at another provider; does not change the saved default.
   const handleSelectProvider = useCallback((id: string) => {
     hasUserSelectedProvider.current = true;
@@ -366,30 +368,37 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   // spending a permanent bar on a rarely-changed choice. Built twice from the
   // same source data: AnchoredMenu items for the custom-header path, native
   // UIMenu items for the iOS native-header path — keep the two in sync.
+  const localizedFilterLabels = useMemo<Record<OwnershipFilter, string>>(() => ({
+    all: t('foodSearch.filter.all', { defaultValue: 'All' }),
+    mine: t('foodSearch.filter.mine', { defaultValue: 'Mine' }),
+    family: t('foodSearch.filter.family', { defaultValue: 'Family' }),
+    public: t('foodSearch.filter.public', { defaultValue: 'Public' }),
+  }), [t]);
+
   const menuItems = useMemo<AnchoredMenuItem[]>(() => {
     const items: AnchoredMenuItem[] = [
-      { key: 'food', label: 'New Food', icon: 'food', onPress: openCreateFood },
+      { key: 'food', label: t('foodSearch.menu.newFood', { defaultValue: 'New Food' }), icon: 'food', onPress: openCreateFood },
     ];
     if (!isMealBuilderMode) {
-      items.push({ key: 'meal', label: 'New Meal', icon: 'meal', onPress: openMealAdd });
+      items.push({ key: 'meal', label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }), icon: 'meal', onPress: openMealAdd });
     }
-    items.push({ key: 'show-label', label: 'Show', isGroupLabel: true });
+    items.push({ key: 'show-label', label: t('foodSearch.menu.show', { defaultValue: 'Show' }), isGroupLabel: true });
     for (const filter of Object.keys(OWNERSHIP_FILTER_LABELS) as OwnershipFilter[]) {
       items.push({
         key: `filter-${filter}`,
-        label: OWNERSHIP_FILTER_LABELS[filter],
+        label: localizedFilterLabels[filter],
         selected: ownershipFilter === filter,
         onPress: () => setOwnershipFilter(filter),
       });
     }
     return items;
-  }, [isMealBuilderMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter]);
+  }, [isMealBuilderMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter, localizedFilterLabels, t]);
 
   const nativeMenuItems = useMemo<NativeStackHeaderItemMenu['menu']['items']>(() => {
     const items: NativeStackHeaderItemMenu['menu']['items'] = [
       {
         type: 'action',
-        label: 'New Food',
+        label: t('foodSearch.menu.newFood', { defaultValue: 'New Food' }),
         icon: { type: 'sfSymbol', name: 'fork.knife' as never },
         onPress: openCreateFood,
       },
@@ -397,27 +406,27 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     if (!isMealBuilderMode) {
       items.push({
         type: 'action',
-        label: 'New Meal',
+        label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }),
         icon: { type: 'sfSymbol', name: 'square.stack.3d.up.fill' as never },
         onPress: openMealAdd,
       });
     }
     items.push({
       type: 'submenu',
-      label: 'Show',
+      label: t('foodSearch.menu.show', { defaultValue: 'Show' }),
       // An inline single-selection submenu renders as a titled section with a
       // leading checkmark on the active option (the Mail-app pattern).
       inline: true,
       multiselectable: false,
       items: (Object.keys(OWNERSHIP_FILTER_LABELS) as OwnershipFilter[]).map((filter) => ({
         type: 'action',
-        label: OWNERSHIP_FILTER_LABELS[filter],
+        label: localizedFilterLabels[filter],
         state: ownershipFilter === filter ? 'on' : 'off',
         onPress: () => setOwnershipFilter(filter),
       })),
     });
     return items;
-  }, [isMealBuilderMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter]);
+  }, [isMealBuilderMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter, localizedFilterLabels, t]);
 
   useLayoutEffect(() => {
     if (!usesNativeHeader) return;
@@ -428,7 +437,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           sfSymbol: 'xmark',
           identifier: 'food-search-close',
           tintColor: headerActionColor,
-          accessibilityLabel: 'Close',
+          accessibilityLabel: t('common.close', { defaultValue: 'Close' }),
           onPress: () => navigation.goBack(),
         }),
       ],
@@ -440,8 +449,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           identifier: 'food-search-overflow',
           tintColor: headerActionColor,
           accessibilityLabel: isOwnershipFiltered
-            ? `More options, filtered to ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
-            : 'More options',
+            ? t('foodSearch.accessibility.moreFiltered', { defaultValue: 'More options, filtered to {{filter}}', filter: localizedFilterLabels[ownershipFilter] })
+            : t('foodSearch.accessibility.moreOptions', { defaultValue: 'More options' }),
           badge: isOwnershipFiltered
             ? createNativeHeaderAccentBadge(accentColor)
             : undefined,
@@ -457,6 +466,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     navigation,
     ownershipFilter,
     usesNativeHeader,
+    t,
   ]);
 
   const handleExternalFoodTap = useCallback(
@@ -499,7 +509,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         } catch (error) {
           const message =
             getApiErrorMessage(error) ?? "Couldn't load full nutrition details.";
-          Toast.show({ type: 'error', text1: 'Details unavailable', text2: message });
+          Toast.show({ type: 'error', text1: t('foodSearch.errors.detailsUnavailable', { defaultValue: 'Details unavailable' }), text2: message });
           showFoodInfo(externalFoodItemToFoodInfo(item));
         }
         setLoadingFoodId(null);
@@ -507,7 +517,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       }
       showFoodInfo(externalFoodItemToFoodInfo(item));
     },
-    [selectedProvider, providers, showFoodInfo],
+    [selectedProvider, providers, showFoodInfo, t],
   );
 
   // --- Derived state ---
@@ -645,9 +655,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       new Set([...favoriteKeys, ...recentEntries.map((entry) => entry.key)]),
     );
     return [
-      { title: 'Favorites', data: favoriteEntries },
-      { title: 'Recently Logged', data: recentEntries },
-      { title: 'Top', data: frequentEntries },
+      { title: t('foodSearch.sections.favorites', { defaultValue: 'Favorites' }), data: favoriteEntries },
+      { title: t('foodSearch.sections.recentlyLogged', { defaultValue: 'Recently Logged' }), data: recentEntries },
+      { title: t('foodSearch.sections.top', { defaultValue: 'Top' }), data: frequentEntries },
     ].filter((section) => section.data.length > 0);
   }, [
     favoriteEntries,
@@ -657,6 +667,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     filteredRecentMeals,
     filteredTopMeals,
     landingLimit,
+    t,
   ]);
 
   const resultSections = useMemo<ResultSection[]>(() => {
@@ -682,7 +693,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             count: searchFoodsFavFirst.length,
           });
         }
-        sections.push({ key: 'foods', kind: 'food', title: 'Your Foods', data });
+        sections.push({ key: 'foods', kind: 'food', title: t('foodSearch.sections.yourFoods', { defaultValue: 'Your Foods' }), data });
       }
       if (!isMealBuilderMode && searchMealsFavFirst.length > 0) {
         const capMeals = willShowOnline && !showAllMeals;
@@ -697,7 +708,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             count: searchMealsFavFirst.length,
           });
         }
-        sections.push({ key: 'meals', kind: 'meal', title: 'Your Meals', data });
+        sections.push({ key: 'meals', kind: 'meal', title: t('foodSearch.sections.yourMeals', { defaultValue: 'Your Meals' }), data });
       }
     } else {
       sections.push({
@@ -717,7 +728,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         sections.push({
           key: 'online-top',
           kind: 'online-top',
-          title: 'Top Matches',
+          title: t('foodSearch.sections.topMatches', { defaultValue: 'Top Matches' }),
           data: topMatches.map((m) => ({
             type: 'online-top',
             online: m.online,
@@ -728,7 +739,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         sections.push({
           key: 'by-source-label',
           kind: 'label',
-          title: 'By Source',
+          title: t('foodSearch.sections.bySource', { defaultValue: 'By Source' }),
           data: [],
         });
         for (const r of providerResults) {
@@ -792,6 +803,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     showAllFoods,
     showAllMeals,
     onlineAllowedByOwnership,
+    t,
   ]);
 
   // --- Results list renderers ---
@@ -879,7 +891,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="p-0"
-          accessibilityLabel="Close"
+          accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
         >
           <Icon name="close" size={22} color={headerActionColor} />
         </Button>
@@ -904,7 +916,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <TextInput
             className="text-text-primary"
             style={{ fontSize: 16, padding: 0, includeFontPadding: false }}
-            placeholder="Search foods..."
+            placeholder={t('foodSearch.search.placeholder', { defaultValue: 'Search foods...' })}
             placeholderTextColor={textMuted}
             value={searchText}
             onChangeText={setSearchText}
@@ -922,7 +934,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             onPress={() => setSearchText('')}
             hitSlop={8}
             className="ml-2"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t('foodSearch.accessibility.clearSearch', { defaultValue: 'Clear search' })}
           >
             <Icon name="close" size={20} color={textMuted} />
           </Button>
@@ -932,7 +944,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             onPress={openFoodScan}
             hitSlop={8}
             className="ml-2"
-            accessibilityLabel="Scan Food"
+            accessibilityLabel={t('foodSearch.accessibility.scanFood', { defaultValue: 'Scan Food' })}
           >
             <Icon name="scan" size={20} color={headerActionColor} />
           </Button>
@@ -948,8 +960,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
             className="p-0"
             accessibilityLabel={
               isOwnershipFiltered
-                ? `More options, filtered to ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
-                : 'More options'
+                ? t('foodSearch.accessibility.moreFiltered', { defaultValue: 'More options, filtered to {{filter}}', filter: localizedFilterLabels[ownershipFilter] })
+                : t('foodSearch.accessibility.moreOptions', { defaultValue: 'More options' })
             }
           >
             <View>
@@ -975,7 +987,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="cloud-offline" size={48} color={accentColor} />
           <Text className="text-text-secondary text-base mt-4 text-center">
-            Connect to a server to search foods
+            {t('foodSearch.states.connectToSearch', { defaultValue: 'Connect to a server to search foods' })}
           </Text>
         </View>
       );
@@ -1008,10 +1020,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="alert-circle" size={48} color={accentColor} />
           <Text className="text-text-secondary text-base mt-4 text-center">
-            Failed to load foods
+            {t('foodSearch.states.failedToLoad', { defaultValue: 'Failed to load foods' })}
           </Text>
           <Button variant="secondary" onPress={retryLanding} className="mt-4 px-6">
-            Retry
+            {t('common.retry', { defaultValue: 'Retry' })}
           </Button>
         </View>
       );
@@ -1022,8 +1034,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           <Icon name="search" size={48} color={textSecondary} />
           <Text className="text-text-secondary text-base mt-4 text-center">
             {isOwnershipFiltered
-              ? `No foods in ${OWNERSHIP_FILTER_LABELS[ownershipFilter]}`
-              : 'Search for a food or meal to log'}
+              ? t('foodSearch.states.noFilteredFoods', { defaultValue: 'No foods in {{filter}}', filter: localizedFilterLabels[ownershipFilter] })
+              : t('foodSearch.states.searchToLog', { defaultValue: 'Search for a food or meal to log' })}
           </Text>
           {isOwnershipFiltered && (
             <Button
@@ -1031,7 +1043,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
               onPress={() => setOwnershipFilter('all')}
               className="mt-4 px-6"
             >
-              Show All
+              {t('foodSearch.filter.showAll', { defaultValue: 'Show All' })}
             </Button>
           )}
         </View>

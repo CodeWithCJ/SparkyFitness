@@ -366,3 +366,19 @@ describe('ExerciseSearch localization', () => {
     });
   });
 });
+
+describe('FoodSearch localization', () => {
+  it('resolves food search copy and filter labels in English and Polish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('en');
+      expect(i18n.t('foodSearch.menu.newFood', { defaultValue: 'New Food' })).toBe('New Food');
+      expect(i18n.t('foodSearch.search.placeholder', { defaultValue: 'Search foods...' })).toBe('Search foods...');
+      expect(i18n.t('foodSearch.states.noFilteredFoods', { defaultValue: 'No foods in {{filter}}', filter: 'Mine' })).toBe('No foods in Mine');
+      await i18n.changeLanguage('pl');
+      expect(i18n.t('foodSearch.menu.newFood', { defaultValue: 'New Food' })).toBe('Nowy produkt');
+      expect(i18n.t('foodSearch.search.placeholder', { defaultValue: 'Search foods...' })).toBe('Szukaj produktów...');
+      expect(i18n.t('foodSearch.states.noFilteredFoods', { defaultValue: 'No foods in {{filter}}', filter: 'Moje' })).toBe('Brak produktów: Moje');
+    });
+  });
+});
