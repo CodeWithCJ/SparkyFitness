@@ -3795,5 +3795,12 @@
     "failed": "Nie udało się usunąć jedzenia",
     "title": "Usuń jedzenie",
     "message": "Czy na pewno chcesz usunąć to jedzenie? Istniejące wpisy pozostaną bez zmian."
+  },
+  "exerciseEditing": {
+    "removeTitle": "Usunąć ćwiczenie?",
+    "removeMessage": "Usunąć „{{name}}” i wszystkie jego serie?"
+  },
+  "editableSet": {
+    "removeTitle": "Seria {{number}}"
   }
 }

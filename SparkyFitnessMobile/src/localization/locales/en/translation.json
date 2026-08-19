@@ -3795,5 +3795,12 @@
     "failed": "Failed to delete food",
     "title": "Delete Food",
     "message": "Are you sure you want to delete this food? Existing logged entries will stay unchanged."
+  },
+  "exerciseEditing": {
+    "removeTitle": "Remove Exercise?",
+    "removeMessage": "Remove \"{{name}}\" and all its sets?"
+  },
+  "editableSet": {
+    "removeTitle": "Set {{number}}"
   }
 }
