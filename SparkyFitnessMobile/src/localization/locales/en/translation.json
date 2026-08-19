@@ -3531,5 +3531,16 @@
   "foodUnit": {
     "updateFailed": "Could not update that unit",
     "savedCustomUnits": "Saved Custom Units"
+  },
+  "charts": {
+    "weight": "Weight",
+    "steps": "Steps",
+    "loading": "Loading...",
+    "weightLoadFailed": "Failed to load weight data",
+    "stepsLoadFailed": "Failed to load step data",
+    "noStepData": "No step data for this period",
+    "trendLoadFailed": "Failed to load trend data",
+    "noLoggedIntake": "No logged intake for this period",
+    "consumed": "consumed"
   }
 }
