@@ -1,5 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../../localization/i18n';
 import { eddFromLmp, eddFromConception, compareDays } from '@workspace/shared';
 import type { PregnancyDueDateBasis, SharedPregnancy } from '@workspace/shared';
 import { getTodayDate, formatDate, addDays } from '../../../utils/dateUtils';
@@ -8,17 +10,17 @@ import CalendarSheet, { type CalendarSheetRef } from '../../CalendarSheet';
 import SettingsRow, { SettingsRowGroup } from '../../SettingsRow';
 
 const BASIS_OPTIONS: { value: PregnancyDueDateBasis; label: string }[] = [
-  { value: 'manual', label: 'Due date' },
-  { value: 'scan', label: 'Ultrasound scan' },
-  { value: 'lmp', label: 'Last period (LMP)' },
-  { value: 'conception', label: 'Conception date' },
+  { value: 'manual', label: 'dueDate' },
+  { value: 'scan', label: 'ultrasoundScan' },
+  { value: 'lmp', label: 'lastPeriod' },
+  { value: 'conception', label: 'conceptionDate' },
 ];
 
 const DATE_FIELD_LABEL: Record<PregnancyDueDateBasis, string> = {
-  lmp: 'First day of last period',
-  conception: 'Conception date',
-  manual: 'Estimated due date',
-  scan: 'Estimated due date (from scan)',
+  lmp: 'firstDayLastPeriod',
+  conception: 'conceptionDate',
+  manual: 'estimatedDueDate',
+  scan: 'estimatedDueDateFromScan',
 };
 
 // A pregnancy runs ~280 days; term is capped at 42 weeks (294 days). Allow a
@@ -65,16 +67,16 @@ export function usePregnancyDueDateForm(
   const validate = (): string | null => {
     const today = getTodayDate();
     if (basis === 'lmp' && compareDays(date, today) > 0) {
-      return 'Your last period can’t be in the future.';
+      return i18n.t('pregnancyDueDate.errors.lmpFuture', { defaultValue: 'Your last period can’t be in the future.' });
     }
     if (basis === 'conception' && compareDays(date, today) > 0) {
-      return 'The conception date can’t be in the future.';
+      return i18n.t('pregnancyDueDate.errors.conceptionFuture', { defaultValue: 'The conception date can’t be in the future.' });
     }
     if (compareDays(computedDueDate, addDays(today, -MAX_OVERDUE_DAYS)) < 0) {
-      return 'That due date is in the past. Please check the date.';
+      return i18n.t('pregnancyDueDate.errors.past', { defaultValue: 'That due date is in the past. Please check the date.' });
     }
     if (compareDays(computedDueDate, addDays(today, MAX_DUE_DAYS_AHEAD)) > 0) {
-      return 'That due date is too far away — a pregnancy is about 40 weeks.';
+      return i18n.t('pregnancyDueDate.errors.tooFar', { defaultValue: 'That due date is too far away — a pregnancy is about 40 weeks.' });
     }
     return null;
   };
@@ -107,25 +109,26 @@ interface PregnancyDueDateFormProps {
  * `usePregnancyDueDateForm` so they can validate and build the save payload.
  */
 const PregnancyDueDateForm: React.FC<PregnancyDueDateFormProps> = ({ form, children }) => {
+  const { t } = useTranslation();
   const calendarRef = useRef<CalendarSheetRef>(null);
 
   return (
     <View>
       <SettingsRowGroup>
         <SettingsRow
-          title="Based on"
+          title={t('pregnancyDueDate.basedOn', { defaultValue: 'Based on' })}
           rightAccessory={
             <BottomSheetPicker
               value={form.basis}
-              options={BASIS_OPTIONS}
+              options={BASIS_OPTIONS.map((option) => ({ ...option, label: ({ dueDate: t('pregnancyDueDate.options.dueDate', { defaultValue: 'Due date' }), ultrasoundScan: t('pregnancyDueDate.options.ultrasoundScan', { defaultValue: 'Ultrasound scan' }), lastPeriod: t('pregnancyDueDate.options.lastPeriod', { defaultValue: 'Last period (LMP)' }), conceptionDate: t('pregnancyDueDate.options.conceptionDate', { defaultValue: 'Conception date' }) } as Record<string, string>)[option.label] }))}
               onSelect={form.setBasis}
-              title="Estimate due date by"
+              title={t('pregnancyDueDate.estimateBy', { defaultValue: 'Estimate due date by' })}
               containerStyle={{ flex: 1, maxWidth: 210 }}
             />
           }
         />
         <SettingsRow
-          title={DATE_FIELD_LABEL[form.basis]}
+          title={({ firstDayLastPeriod: t('pregnancyDueDate.fields.firstDayLastPeriod', { defaultValue: 'First day of last period' }), conceptionDate: t('pregnancyDueDate.fields.conceptionDate', { defaultValue: 'Conception date' }), estimatedDueDate: t('pregnancyDueDate.fields.estimatedDueDate', { defaultValue: 'Estimated due date' }), estimatedDueDateFromScan: t('pregnancyDueDate.fields.estimatedDueDateFromScan', { defaultValue: 'Estimated due date (from scan)' }) } as Record<string, string>)[DATE_FIELD_LABEL[form.basis]]}
           rightAccessory={
             <TouchableOpacity onPress={() => calendarRef.current?.present()}>
               <Text className="text-accent-primary text-base font-semibold">
@@ -138,7 +141,7 @@ const PregnancyDueDateForm: React.FC<PregnancyDueDateFormProps> = ({ form, child
       </SettingsRowGroup>
 
       <View className="bg-surface rounded-2xl p-4 mt-4 border border-border-subtle shadow-sm">
-        <Text className="text-text-secondary text-xs">Estimated due date</Text>
+        <Text className="text-text-secondary text-xs">{t('pregnancyDueDate.estimated', { defaultValue: 'Estimated due date' })}</Text>
         <Text className="text-text-primary text-lg font-bold">
           {formatDate(form.computedDueDate)}
         </Text>

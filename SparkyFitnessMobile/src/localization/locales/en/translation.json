@@ -3719,5 +3719,50 @@
     "overwriteTitle": "Overwrite rest times?",
     "overwriteMessage": "These sets have different rest times. Set all to {{rest}}?",
     "all": "All"
+  },
+  "pregnancyDueDate": {
+    "errors": {
+      "lmpFuture": "Your last period can’t be in the future.",
+      "conceptionFuture": "The conception date can’t be in the future.",
+      "past": "That due date is in the past. Please check the date.",
+      "tooFar": "That due date is too far away — a pregnancy is about 40 weeks."
+    },
+    "basedOn": "Based on",
+    "estimateBy": "Estimate due date by",
+    "estimated": "Estimated due date",
+    "options": {
+      "dueDate": "Due date",
+      "ultrasoundScan": "Ultrasound scan",
+      "lastPeriod": "Last period (LMP)",
+      "conceptionDate": "Conception date"
+    },
+    "fields": {
+      "firstDayLastPeriod": "First day of last period",
+      "conceptionDate": "Conception date",
+      "estimatedDueDate": "Estimated due date",
+      "estimatedDueDateFromScan": "Estimated due date (from scan)"
+    }
+  },
+  "fertility": {
+    "title": "Fertility",
+    "fertileWindow": "Est. fertile window",
+    "ovulation": "Est. ovulation",
+    "nextPeriod": "Next period in",
+    "days": "{{count}} days",
+    "twoWeekWait": "Two-week wait",
+    "ovulationDay": "Ovulation day",
+    "daysPastOvulation": "{{count}} {{unit}} past ovulation",
+    "testAccuracy": "Home tests are usually most accurate 12 to 14 days past ovulation.",
+    "disclaimer": "Estimates from your logged data. Not medical advice."
+  },
+  "pregnancySetup": {
+    "checkDates": "Check the dates",
+    "updated": "Pregnancy updated",
+    "created": "Pregnancy set up",
+    "saveFailed": "Could not save pregnancy",
+    "editTitle": "Edit Pregnancy",
+    "title": "Pregnancy Setup",
+    "description": "Tell us how to estimate your due date. You can change this later.",
+    "numberOfBabies": "Number of babies"
   }
 }

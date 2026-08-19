@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import { useCycleFertility } from '../../../hooks/useCycleInsights';
 import { daysBetween } from '@workspace/shared';
@@ -17,6 +18,7 @@ interface FertilityCardProps {
  * with client-side prediction fallback.
  */
 const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
+  const { t } = useTranslation();
   const referenceDate = date ?? getTodayDate();
   const { fertility, isLoading } = useCycleFertility(referenceDate);
   const predictionData = useCyclePredictionData(referenceDate);
@@ -73,45 +75,45 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm border-0 gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-text-secondary text-sm font-semibold">Fertility</Text>
+        <Text className="text-text-secondary text-sm font-semibold">{t('fertility.title', { defaultValue: 'Fertility' })}</Text>
         {isFertileToday && (
           <View className="rounded-full bg-bg-success px-3 py-1">
-            <Text className="text-text-success text-sm font-semibold">Est. fertile window</Text>
+            <Text className="text-text-success text-sm font-semibold">{t('fertility.fertileWindow', { defaultValue: 'Est. fertile window' })}</Text>
           </View>
         )}
       </View>
 
       <View className="flex-row justify-between">
         <View>
-          <Text className="text-text-secondary text-sm">Est. ovulation</Text>
+          <Text className="text-text-secondary text-sm">{t('fertility.ovulation', { defaultValue: 'Est. ovulation' })}</Text>
           <Text className="text-text-primary text-base font-bold">
             {effectiveOvulationDate ? formatDate(effectiveOvulationDate) : '—'}
           </Text>
         </View>
         <View className="items-end">
-          <Text className="text-text-secondary text-sm">Next period in</Text>
+          <Text className="text-text-secondary text-sm">{t('fertility.nextPeriod', { defaultValue: 'Next period in' })}</Text>
           <Text className="text-text-primary text-base font-bold">
-            {daysUntilNextPeriod != null ? `${daysUntilNextPeriod} days` : '—'}
+            {daysUntilNextPeriod != null ? t('fertility.days', { defaultValue: '{{count}} days', count: daysUntilNextPeriod }) : '—'}
           </Text>
         </View>
       </View>
 
       {dpo !== null && (
         <View className="rounded-xl bg-raised p-3">
-          <Text className="text-text-secondary text-sm mb-0.5">Two-week wait</Text>
+          <Text className="text-text-secondary text-sm mb-0.5">{t('fertility.twoWeekWait', { defaultValue: 'Two-week wait' })}</Text>
           <Text className="text-text-primary text-sm font-semibold">
-            {dpo === 0 ? 'Ovulation day' : `${dpo} ${dpo === 1 ? 'day' : 'days'} past ovulation`}
+            {dpo === 0 ? t('fertility.ovulationDay', { defaultValue: 'Ovulation day' }) : t('fertility.daysPastOvulation', { defaultValue: '{{count}} {{unit}} past ovulation', count: dpo, unit: dpo === 1 ? 'day' : 'days' })}
           </Text>
           {dpo >= 1 && dpo < 14 && (
             <Text className="text-text-secondary text-sm mt-1">
-              Home tests are usually most accurate 12 to 14 days past ovulation.
+              {t('fertility.testAccuracy', { defaultValue: 'Home tests are usually most accurate 12 to 14 days past ovulation.' })}
             </Text>
           )}
         </View>
       )}
 
       <Text className="text-text-secondary text-sm">
-        Estimates from your logged data. Not medical advice.
+        {t('fertility.disclaimer', { defaultValue: 'Estimates from your logged data. Not medical advice.' })}
       </Text>
     </View>
   );

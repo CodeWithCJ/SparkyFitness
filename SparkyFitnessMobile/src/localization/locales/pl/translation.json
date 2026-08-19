@@ -3719,5 +3719,50 @@
     "overwriteTitle": "Nadpisać czasy odpoczynku?",
     "overwriteMessage": "Te serie mają różne czasy odpoczynku. Ustawić wszystkim {{rest}}?",
     "all": "Wszystkie"
+  },
+  "pregnancyDueDate": {
+    "errors": {
+      "lmpFuture": "Ostatnia miesiączka nie może przypadać w przyszłości.",
+      "conceptionFuture": "Data poczęcia nie może przypadać w przyszłości.",
+      "past": "Termin porodu przypada w przeszłości. Sprawdź datę.",
+      "tooFar": "Termin porodu jest zbyt odległy — ciąża trwa około 40 tygodni."
+    },
+    "basedOn": "Na podstawie",
+    "estimateBy": "Sposób wyznaczenia terminu",
+    "estimated": "Szacowany termin porodu",
+    "options": {
+      "dueDate": "Termin porodu",
+      "ultrasoundScan": "Badanie USG",
+      "lastPeriod": "Ostatnia miesiączka (LMP)",
+      "conceptionDate": "Data poczęcia"
+    },
+    "fields": {
+      "firstDayLastPeriod": "Pierwszy dzień ostatniej miesiączki",
+      "conceptionDate": "Data poczęcia",
+      "estimatedDueDate": "Szacowany termin porodu",
+      "estimatedDueDateFromScan": "Szacowany termin porodu (z USG)"
+    }
+  },
+  "fertility": {
+    "title": "Płodność",
+    "fertileWindow": "Szacowane dni płodne",
+    "ovulation": "Szacowana owulacja",
+    "nextPeriod": "Do następnej miesiączki",
+    "days": "{{count}} dni",
+    "twoWeekWait": "Oczekiwanie po owulacji",
+    "ovulationDay": "Dzień owulacji",
+    "daysPastOvulation": "{{count}} {{unit}} po owulacji",
+    "testAccuracy": "Testy domowe są zwykle najdokładniejsze od 12 do 14 dni po owulacji.",
+    "disclaimer": "Szacunki na podstawie zapisanych danych. To nie jest porada medyczna."
+  },
+  "pregnancySetup": {
+    "checkDates": "Sprawdź daty",
+    "updated": "Ciąża zaktualizowana",
+    "created": "Ciąża skonfigurowana",
+    "saveFailed": "Nie udało się zapisać ciąży",
+    "editTitle": "Edytuj ciążę",
+    "title": "Konfiguracja ciąży",
+    "description": "Powiedz nam, jak oszacować termin porodu. Możesz zmienić to później.",
+    "numberOfBabies": "Liczba dzieci"
   }
 }
