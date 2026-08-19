@@ -48,7 +48,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
-import { NUTRIENT_META } from '../constants/nutrients';
+import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
 const RANGE_SEGMENTS: Segment<StepsRange>[] = [
@@ -334,7 +334,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   const customDef = !meta
                     ? customNutrients.find((cn) => cn.name === nutrientKey)
                     : undefined;
-                  const label = meta?.label ?? customDef?.name ?? nutrientKey;
+                  const label = meta ? getNutrientLabel(t, nutrientKey) : (customDef?.name ?? nutrientKey);
                   const unit = meta?.unit ?? customDef?.unit ?? 'g';
 
                   // Use theme-aware CSS variable colors for the 4 core macros;

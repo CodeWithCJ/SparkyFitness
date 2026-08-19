@@ -2491,5 +2491,23 @@
     "logMeal": "Log Meal",
     "deleting": "Deleting...",
     "deleteMeal": "Delete Meal"
+  },
+  "dailyNutritionDetails": {
+    "title": "Nutrition Details",
+    "loadFailed": "Failed to load nutrition details",
+    "tryAgain": "Please check your connection and try again.",
+    "left": "{{value}}{{unit}} left",
+    "over": "{{value}}{{unit}} over",
+    "met": "met",
+    "percentRemaining": "{{percent}}% · {{remaining}}",
+    "nutrientBreakdown": "Nutrient Breakdown",
+    "customTracked": "Custom Tracked Nutrients"
+  },
+  "mealTypes": {
+    "breakfast": "Breakfast",
+    "lunch": "Lunch",
+    "snacks": "Snacks",
+    "dinner": "Dinner",
+    "other": "Other"
   }
 }

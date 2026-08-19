@@ -1,4 +1,4 @@
-import { MEAL_CONFIG } from '../constants/meals';
+import { getLocalizedMealLabel, MEAL_CONFIG } from '../constants/meals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDisplayValues } from './foodDetails';
 import type { DailyGoals } from '../types/goals';
@@ -313,4 +313,24 @@ export function getMealPercentage(mealName: string, goals?: DailyGoals): number 
   }
 
   return 0;
+}
+
+/** Localized display label for a KNOWN system meal type. Custom types keep their literal name. */
+export function getLocalizedMealTypeDisplayLabel(
+  mealType: Pick<MealType, 'name' | 'user_id'>,
+  t: (key: string, options: { defaultValue: string }) => string,
+): string {
+  if (mealType.user_id != null) return mealType.name;
+  const key = mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase();
+  return getLocalizedMealLabel(t, key);
+}
+
+/** Localized fallback for a historical system group. Non-system groups keep literal name. */
+export function getLocalizedMealGroupLabel(
+  group: Pick<MealGroup, 'name' | 'isSystem'>,
+  t: (key: string, options: { defaultValue: string }) => string,
+): string {
+  if (!group.isSystem) return getHistoricalMealTypeLabel(group.name);
+  const key = group.name.toLowerCase() === 'snack' ? 'snacks' : group.name.toLowerCase();
+  return getLocalizedMealLabel(t, key);
 }

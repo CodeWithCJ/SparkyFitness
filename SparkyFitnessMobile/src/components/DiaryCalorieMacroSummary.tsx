@@ -15,7 +15,7 @@ import Icon from './Icon';
 import NutrientPill from './NutrientPill';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
-import { NUTRIENT_META } from '../constants/nutrients';
+import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import type { DailySummary } from '../types/dailySummary';
 import type { UserCustomNutrient } from '../hooks/useCustomNutrients';
 
@@ -218,7 +218,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
           {customNutrientKeys.map((name) => {
             const customDef = customNutrients.find((cn) => cn.name === name);
             const meta = NUTRIENT_META[name];
-            const label = meta?.label ?? customDef?.name ?? name;
+            const label = meta ? getNutrientLabel(t, name) : (customDef?.name ?? name);
             const unit = meta?.unit ?? customDef?.unit ?? 'g';
             const consumed = summary.customNutrientTotals[name] ?? 0;
             const nutrientGoal = summary.customNutrientGoals[name] || undefined;

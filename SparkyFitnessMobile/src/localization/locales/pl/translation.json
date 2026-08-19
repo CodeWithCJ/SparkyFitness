@@ -2517,5 +2517,23 @@
     "logMeal": "Zarejestruj posiłek",
     "deleting": "Usuwanie…",
     "deleteMeal": "Usuń posiłek"
+  },
+  "dailyNutritionDetails": {
+    "title": "Szczegóły wartości odżywczych",
+    "loadFailed": "Nie udało się wczytać szczegółów wartości odżywczych",
+    "tryAgain": "Sprawdź połączenie i spróbuj ponownie.",
+    "left": "{{value}}{{unit}} do celu",
+    "over": "{{value}}{{unit}} ponad cel",
+    "met": "osiągnięto",
+    "percentRemaining": "{{percent}}% · {{remaining}}",
+    "nutrientBreakdown": "Rozbicie składników odżywczych",
+    "customTracked": "Własne śledzone składniki"
+  },
+  "mealTypes": {
+    "breakfast": "Śniadanie",
+    "lunch": "Lunch",
+    "snacks": "Przekąski",
+    "dinner": "Kolacja",
+    "other": "Inne"
   }
 }

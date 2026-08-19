@@ -56,3 +56,15 @@ export function getDefaultMealTypeId(
   );
   return match?.id ?? mealTypes[0].id;
 }
+
+/** Localized label for a KNOWN system meal type key. Unknown/custom names are returned literally. */
+export function getLocalizedMealLabel(t: (key: string, options: { defaultValue: string }) => string, key: string): string {
+  switch (key) {
+    case 'breakfast': return t('mealTypes.breakfast', { defaultValue: 'Breakfast' });
+    case 'lunch': return t('mealTypes.lunch', { defaultValue: 'Lunch' });
+    case 'snacks': return t('mealTypes.snacks', { defaultValue: 'Snacks' });
+    case 'dinner': return t('mealTypes.dinner', { defaultValue: 'Dinner' });
+    case 'other': return t('mealTypes.other', { defaultValue: 'Other' });
+    default: return MEAL_CONFIG[key]?.label ?? key;
+  }
+}
