@@ -1,4 +1,5 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -19,7 +20,7 @@ import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useCreateExerciseEntry, useUpdateExerciseEntry } from '../hooks/useExerciseMutations';
 import { usePreferences } from '../hooks/usePreferences';
@@ -35,6 +36,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 type Props = RootStackScreenProps<'ActivityAdd'>;
 
 const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const entry = route.params?.entry;
   const initialDate = route.params?.date ?? useDiaryDateStore.getState().selectedDate;
   const popCount = route.params?.popCount ?? 1;
@@ -183,7 +185,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
       }
     } catch (error) {
       addLog(`Failed to save activity: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save activity', text2: 'Please try again.' });
+      Toast.show({ type: 'error', text1: t('activityAdd.errors.saveFailed', { defaultValue: 'Failed to save activity' }), text2: t('common.tryAgain', { defaultValue: 'Please try again.' }) });
     }
   }, [
     submission, isEditMode, entry, popCount, modality,
@@ -199,8 +201,8 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
+      label: t('common.save', { defaultValue: 'Save' }),
+      busyLabel: t('common.saving', { defaultValue: 'Saving…' }),
       busy: isPending,
       disabled: isPending || !canSave,
       placement: 'native-only',
@@ -227,7 +229,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     className="text-xl font-bold text-text-primary rounded-lg"
                     value={state.name}
                     onChangeText={setName}
-                    placeholder="Activity"
+                    placeholder={t('activityAdd.fields.activity', { defaultValue: 'Activity' })} accessibilityLabel={t('activityAdd.accessibility.activityName', { defaultValue: 'Activity name' })}
                     returnKeyType="done"
                     autoFocus
                     selectTextOnFocus
@@ -243,7 +245,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                     activeOpacity={0.6}
                   >
                     <Text className="text-xl font-bold text-text-primary">
-                      {state.name || state.exerciseName || 'Activity'}
+                      {state.name || state.exerciseName || t('activityAdd.fields.activity', { defaultValue: 'Activity' })}
                     </Text>
                     <Icon name="pencil" size={20} color={textMuted} />
                   </TouchableOpacity>
@@ -260,17 +262,21 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
               {state.entryDate === getTodayDate() ? (
                 <TouchableOpacity activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('activityAdd.accessibility.useYesterday', { defaultValue: 'Use yesterday' })}
                   className="flex-row items-center mx-4"
                   onPress={() => setDate(addDays(getTodayDate(), -1))}
                 >
-                  <Text className="text-text-link text-sm font-medium mx-1.5">Use Yesterday</Text>
+                  <Text className="text-text-link text-sm font-medium mx-1.5">{t('activityAdd.actions.useYesterday', { defaultValue: 'Use Yesterday' })}</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('activityAdd.accessibility.useToday', { defaultValue: 'Use today' })}
                   className="flex-row items-center mx-4"
                   onPress={() => setDate(getTodayDate())}
                 >
-                  <Text className="text-text-link text-sm font-medium mx-1.5">Use Today</Text>
+                  <Text className="text-text-link text-sm font-medium mx-1.5">{t('activityAdd.actions.useToday', { defaultValue: 'Use Today' })}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -307,7 +313,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   <View className="flex-row items-center">
                     <Icon name="add-circle" size={20} color={accentPrimary} />
                     <Text className="text-base font-medium ml-3" style={{ color: accentPrimary }}>
-                      Select Activity
+                      {t('activityAdd.actions.selectActivity', { defaultValue: 'Select Activity' })}
                     </Text>
                   </View>
                 </FadeView>
@@ -316,7 +322,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Duration */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Duration (min)</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">{t('activityAdd.fields.duration', { defaultValue: 'Duration (min)' })}</Text>
               <FormInput
                 value={state.duration}
                 onChangeText={setDuration}
@@ -329,7 +335,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
             {/* Distance */}
             <View className="mb-4">
               <Text className="text-sm font-medium text-text-secondary mb-1.5">
-                Distance ({distanceUnit === 'miles' ? 'mi' : 'km'})
+                {t('activityAdd.fields.distance', { defaultValue: 'Distance ({{unit}})', unit: distanceUnit === 'miles' ? 'mi' : 'km' })}
               </Text>
               <FormInput
                 value={state.distance}
@@ -342,7 +348,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Calories */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Calories</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">{t('activityAdd.fields.calories', { defaultValue: 'Calories' })}</Text>
               <FormInput
                 value={state.calories}
                 onChangeText={setCalories}
@@ -351,13 +357,13 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 returnKeyType="done"
               />
               <Text className="text-xs text-text-muted mt-1">
-                {state.caloriesManuallySet ? 'Custom' : 'Auto-calculated'}
+                {state.caloriesManuallySet ? t('activityAdd.labels.custom', { defaultValue: 'Custom' }) : t('activityAdd.labels.autoCalculated', { defaultValue: 'Auto-calculated' })}
               </Text>
             </View>
 
             {/* Avg Heart Rate */}
             <View className="mb-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Avg Heart Rate (bpm)</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">{t('activityAdd.fields.avgHeartRate', { defaultValue: 'Avg Heart Rate (bpm)' })}</Text>
               <FormInput
                 value={state.avgHeartRate}
                 onChangeText={setAvgHeartRate}
@@ -369,11 +375,11 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
             {/* Notes */}
             <View className="mb-6">
-              <Text className="text-sm font-medium text-text-secondary mb-1.5">Notes</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1.5">{t('activityAdd.fields.notes', { defaultValue: 'Notes' })}</Text>
               <FormInput
                 value={state.notes}
                 onChangeText={setNotes}
-                placeholder="Optional notes..."
+                placeholder={t('activityAdd.fields.notesPlaceholder', { defaultValue: 'Optional notes...' })}
                 multiline
                 textAlignVertical="top"
                 returnKeyType="default"
