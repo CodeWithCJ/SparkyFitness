@@ -90,6 +90,25 @@ export function resolveExerciseImageSrc(image: string | undefined): string {
   return `/uploads/exercises/${image}`;
 }
 
+/**
+ * Return only the usable image entries from an exercise's `images` array.
+ *
+ * Persisted `images` can contain unusable entries: empty strings, whitespace,
+ * or the `'[]'` sentinel produced when an exercise has no images. Callers must
+ * drive presence checks, `<img>` sources, and gallery navigation off the same
+ * filtered list so they never disagree and render a broken thumbnail.
+ */
+export function filterValidExerciseImages(
+  images: string[] | undefined | null
+): string[] {
+  if (!Array.isArray(images)) return [];
+  return images.filter((img) => {
+    if (typeof img !== 'string') return false;
+    const trimmed = img.trim();
+    return trimmed !== '' && trimmed !== '[]';
+  });
+}
+
 export function calcExerciseStatsFlat(entries: DailyExerciseEntry[]) {
   return {
     otherCalories: entries.reduce(

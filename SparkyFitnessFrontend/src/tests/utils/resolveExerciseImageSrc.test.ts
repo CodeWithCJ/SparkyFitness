@@ -1,4 +1,7 @@
-import { resolveExerciseImageSrc } from '@/utils/exercises';
+import {
+  resolveExerciseImageSrc,
+  filterValidExerciseImages,
+} from '@/utils/exercises';
 
 describe('resolveExerciseImageSrc', () => {
   it('prefixes relative upload paths with /uploads/exercises/', () => {
@@ -30,5 +33,31 @@ describe('resolveExerciseImageSrc', () => {
   it('returns an empty string for missing values', () => {
     expect(resolveExerciseImageSrc(undefined)).toBe('');
     expect(resolveExerciseImageSrc('')).toBe('');
+  });
+});
+
+describe('filterValidExerciseImages', () => {
+  it('drops empty, whitespace, and "[]" sentinel entries', () => {
+    expect(
+      filterValidExerciseImages(['', '  ', '[]', 'Machine_Bicep_Curl/0.jpg'])
+    ).toEqual(['Machine_Bicep_Curl/0.jpg']);
+  });
+
+  it('keeps the order of valid entries in a mixed array', () => {
+    expect(
+      filterValidExerciseImages([
+        '[]',
+        'A/0.jpg',
+        '',
+        'https://example.com/b.png',
+      ])
+    ).toEqual(['A/0.jpg', 'https://example.com/b.png']);
+  });
+
+  it('returns an empty array for missing or non-array input', () => {
+    expect(filterValidExerciseImages(undefined)).toEqual([]);
+    expect(filterValidExerciseImages(null)).toEqual([]);
+    expect(filterValidExerciseImages([])).toEqual([]);
+    expect(filterValidExerciseImages(['[]'])).toEqual([]);
   });
 });
