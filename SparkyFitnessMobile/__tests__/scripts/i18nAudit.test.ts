@@ -698,6 +698,22 @@ export function Test() {
   });
 });
 
+describe('Custom component UI text detection', () => {
+  it('detects literal custom component props and button children', () => {
+    const source = `
+import React from 'react';
+import { View } from 'react-native';
+function Footer({ errorMessage }) { return <View>{errorMessage}</View>; }
+export function Test() {
+  return <Footer errorMessage="Failed to load more" />;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'test.tsx': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).toContain('Failed to load more');
+  });
+});
+
 describe('False positive exclusion', () => {
   it('18. does not flag route names, icon names, or testIDs', () => {
     const source = `
