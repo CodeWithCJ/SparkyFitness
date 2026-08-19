@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ActivityIndicator } from 'react-native';
 import type {
   ExerciseEntryResponse,
@@ -84,6 +85,7 @@ const SessionCard: React.FC<{
   modality?: ExerciseModality;
   bestSet?: ExerciseSetStats | null;
 }> = ({ session, exerciseId, weightUnit, distanceUnit, modality, bestSet }) => {
+  const { t } = useTranslation();
   // The history endpoint filters at the session level, so a preset session
   // still carries every exercise it contains — show only this exercise's sets.
   const entries =
@@ -128,7 +130,7 @@ const SessionCard: React.FC<{
         </View>
       ) : (
         <Text className="text-text-secondary text-sm mt-2">
-          {formatEntrySummary(entries) ?? 'No set data'}
+          {formatEntrySummary(entries) ?? t('exerciseHistory.noSetData', { defaultValue: 'No set data' })}
         </Text>
       )}
     </View>
@@ -146,6 +148,7 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   modality,
   bestSet,
 }) => {
+  const { t } = useTranslation();
   const { sessions, isLoading, isLoadingMore, isError, refetch, loadMore, hasMore } =
     useExerciseHistory({ exerciseId });
 
@@ -160,9 +163,9 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   if (isError) {
     return (
       <View className="bg-surface rounded-xl p-4 items-center">
-        <Text className="text-text-secondary text-sm">Couldn&apos;t load history.</Text>
+        <Text className="text-text-secondary text-sm">{t('exerciseHistory.loadError', { defaultValue: "Couldn't load history." })}</Text>
         <Button variant="ghost" onPress={refetch}>
-          Retry
+          {t('common.retry', { defaultValue: 'Retry' })}
         </Button>
       </View>
     );
@@ -171,7 +174,7 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   if (sessions.length === 0) {
     return (
       <View className="bg-surface rounded-xl p-4 items-center">
-        <Text className="text-text-secondary text-sm">No sessions logged yet.</Text>
+        <Text className="text-text-secondary text-sm">{t('exerciseHistory.empty', { defaultValue: 'No sessions logged yet.' })}</Text>
       </View>
     );
   }
@@ -191,7 +194,7 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
       ))}
       {hasMore ? (
         <Button variant="ghost" onPress={loadMore} disabled={isLoadingMore}>
-          {isLoadingMore ? 'Loading…' : 'Load more'}
+          {isLoadingMore ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.loadMore', { defaultValue: 'Load more' })}
         </Button>
       ) : null}
     </>

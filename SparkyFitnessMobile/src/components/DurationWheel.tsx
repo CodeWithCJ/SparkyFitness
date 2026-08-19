@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import WheelPicker, { type PickerOption as WheelPickerOption } from './ui/wheel-picker';
 import { useCSSVariable } from 'uniwind';
@@ -21,6 +22,7 @@ const SEC_TOTAL = 60 * SEC_LOOP; // 600
 const SEC_MID_OFFSET = Math.floor(SEC_LOOP / 2) * 60; // 300
 
 function DurationWheel({ valueSec, onChangeSec, maxSec = 900 }: DurationWheelProps) {
+  const { t } = useTranslation();
   const [textPrimary, borderSubtle] = useCSSVariable([
     '--color-text-primary',
     '--color-border-subtle',
@@ -102,11 +104,11 @@ function DurationWheel({ valueSec, onChangeSec, maxSec = 900 }: DurationWheelPro
     <View style={{ height: ITEM_HEIGHT * 5 + 22 }}>
       <View className="flex-row items-center justify-center mb-1">
         <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-          Minutes
+          {t('duration.minutes', { defaultValue: 'Minutes' })}
         </Text>
         <View style={{ width: 18 }} />
         <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-          Seconds
+          {t('duration.seconds', { defaultValue: 'Seconds' })}
         </Text>
       </View>
 

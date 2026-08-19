@@ -10,7 +10,7 @@
     "close": "Zamknij",
     "cancel": "Anuluj",
     "continue": "Kontynuuj",
-    "retry": "Spróbuj ponownie",
+    "retry": "Ponów",
     "details": "Szczegóły",
     "error": "Błąd",
     "delete": "Usuń",
@@ -26,7 +26,7 @@
     "success": "Sukces",
     "clear": "Wyczyść",
     "discardChanges": "Odrzuć zmiany",
-    "loadMore": "Załaduj więcej",
+    "loadMore": "Wczytaj więcej",
     "edit": "Edytuj",
     "connectionRetry": "Sprawdź połączenie i spróbuj ponownie.",
     "deleteItemTitle": "Usunąć „{{title}}”?",
@@ -36,7 +36,9 @@
     "and": "i",
     "listFinalSeparator": " i ",
     "date": "Data",
-    "add": "Dodaj"
+    "add": "Dodaj",
+    "loading": "Ładowanie…",
+    "pleaseTryAgain": "Spróbuj ponownie."
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -1440,16 +1442,42 @@
     "reps": "Powt."
   },
   "cycleCard": {
+    "mode": {
+      "wellness": "Zdrowie",
+      "pregnancy": "Monitorowanie ciąży",
+      "fertility": "Monitorowanie płodności",
+      "postpartum": "Regeneracja po porodzie",
+      "menopause": "Monitorowanie menopauzy",
+      "cycle": "Monitorowanie cyklu",
+      "cyclePregnancy": "Cykl i ciąża"
+    },
+    "setupA11y": "Skonfiguruj monitorowanie cyklu i ciąży",
+    "setUp": "Skonfiguruj",
+    "weekDay": "Tydzień {{week}}, dzień {{day}}",
+    "sizeOf": "Wielkość: {{comparison}}",
+    "cm": "{{value}} cm",
+    "grams": "{{value}} g",
+    "daysToDue": "{{count}} dni do terminu",
+    "dueNow": "Termin przypada dziś",
+    "pregnancyActive": "Monitorowanie ciąży aktywne",
+    "gestationalProgress": "Dotknij, aby zobaczyć przebieg ciąży.",
+    "wellnessActive": "Monitorowanie zdrowia aktywne",
+    "modeValue": "Tryb: {{mode}}",
+    "hubProgress": "Dotknij, aby otworzyć centrum monitorowania cyklu.",
+    "hubA11y": "Otwórz centrum monitorowania cyklu i ciąży",
+    "hub": "Centrum",
     "phase": {
       "period": "Miesiączka",
       "follicular": "Faza folikularna",
-      "fertile": "Szacowane okno płodności",
+      "fertile": "Szacowane dni płodne",
       "ovulation": "Szacowana owulacja",
       "luteal": "Faza lutealna",
       "active": "Cykl aktywny"
     },
-    "periodLate": "Miesiączka spóźnia się {{count}} {{unit}}",
-    "nextPeriod": "Przewidywana miesiączka: {{date}}",
+    "discreetDescription": "Monitoruj parametry zdrowia i prognozy.",
+    "description": "Monitoruj fazy cyklu, prognozy, objawy i etapy ciąży.",
+    "periodLate": "Miesiączka spóźnia się o {{count}} {{unit}}",
+    "nextPeriod": "Szacowany początek miesiączki: {{date}}",
     "day": "Dzień {{day}}",
     "active": "Aktywny"
   },
@@ -2030,5 +2058,32 @@
     "title": "Podsumowanie",
     "collapse": "Zwiń tę sekcję",
     "expand": "Rozwiń tę sekcję"
+  },
+  "dateRange": {
+    "removeTitle": "Wybierz zakres dat do usunięcia",
+    "removeAction": "Usuń wybrany zakres"
+  },
+  "duration": {
+    "minutes": "Minuty",
+    "seconds": "Sekundy"
+  },
+  "entryImage": {
+    "photo": "Zdjęcie",
+    "addHelp": "Dodaj zdjęcie, aby ustawić je dla tego wpisu.",
+    "entryOnly": "To zdjęcie dotyczy tylko tego wpisu.",
+    "saveFailed": "Nie udało się zapisać zdjęcia",
+    "removeFailed": "Nie udało się usunąć zdjęcia"
+  },
+  "foodForm": {
+    "equivalentSizes": "Równoważne porcje",
+    "selectUnit": "Wybierz jednostkę",
+    "unit": "jednostka",
+    "removeEquivalent": "Usuń odpowiednik",
+    "addEquivalent": "+ Dodaj odpowiednik"
+  },
+  "exerciseHistory": {
+    "noSetData": "Brak danych o seriach",
+    "loadError": "Nie udało się wczytać historii.",
+    "empty": "Nie zarejestrowano jeszcze sesji."
   }
 }

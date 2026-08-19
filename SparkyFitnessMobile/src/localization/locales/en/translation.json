@@ -24,7 +24,7 @@
     "success": "Success",
     "clear": "Clear",
     "discardChanges": "Discard changes",
-    "loadMore": "Load More",
+    "loadMore": "Load more",
     "edit": "Edit",
     "connectionRetry": "Please check your connection and try again.",
     "deleteItemTitle": "Delete {{title}}?",
@@ -34,7 +34,9 @@
     "and": "and",
     "listFinalSeparator": ", and ",
     "date": "Date",
-    "add": "Add"
+    "add": "Add",
+    "loading": "Loading…",
+    "pleaseTryAgain": "Please try again."
   },
   "settings": {
     "app": "App Settings",
@@ -1420,6 +1422,30 @@
     "reps": "Reps"
   },
   "cycleCard": {
+    "mode": {
+      "wellness": "Wellness",
+      "pregnancy": "Pregnancy Tracking",
+      "fertility": "Fertility Tracking",
+      "postpartum": "Postpartum Recovery",
+      "menopause": "Menopause Tracking",
+      "cycle": "Cycle Tracking",
+      "cyclePregnancy": "Cycle & Pregnancy"
+    },
+    "setupA11y": "Set up cycle and pregnancy tracking",
+    "setUp": "Set Up",
+    "weekDay": "Week {{week}}, Day {{day}}",
+    "sizeOf": "Size of {{comparison}}",
+    "cm": "{{value}} cm",
+    "grams": "{{value}} g",
+    "daysToDue": "{{count}}d to due date",
+    "dueNow": "Due now",
+    "pregnancyActive": "Pregnancy Tracking Active",
+    "gestationalProgress": "Tap to view gestational progress.",
+    "wellnessActive": "Wellness Tracking Active",
+    "modeValue": "{{mode}} mode",
+    "hubProgress": "Tap to view cycle tracking hub.",
+    "hubA11y": "Open cycle and pregnancy tracking hub",
+    "hub": "Hub",
     "phase": {
       "period": "Period",
       "follicular": "Follicular Phase",
@@ -1428,6 +1454,8 @@
       "luteal": "Luteal Phase",
       "active": "Cycle Active"
     },
+    "discreetDescription": "Track your wellness parameters and predictions.",
+    "description": "Track cycle phases, predictions, symptoms, and pregnancy milestones.",
     "periodLate": "Period {{count}} {{unit}} late",
     "nextPeriod": "Next period est. {{date}}",
     "day": "Day {{day}}",
@@ -2004,5 +2032,32 @@
     "title": "Summary",
     "collapse": "Collapse this section",
     "expand": "Expand this section"
+  },
+  "dateRange": {
+    "removeTitle": "Select a date range to remove",
+    "removeAction": "Remove selected range"
+  },
+  "duration": {
+    "minutes": "Minutes",
+    "seconds": "Seconds"
+  },
+  "entryImage": {
+    "photo": "Photo",
+    "addHelp": "Add a photo to set one for this entry.",
+    "entryOnly": "This photo applies to this entry only.",
+    "saveFailed": "Failed to save photo",
+    "removeFailed": "Failed to remove photo"
+  },
+  "foodForm": {
+    "equivalentSizes": "Equivalent sizes",
+    "selectUnit": "Select Unit",
+    "unit": "unit",
+    "removeEquivalent": "Remove equivalent",
+    "addEquivalent": "+ Add equivalent"
+  },
+  "exerciseHistory": {
+    "noSetData": "No set data",
+    "loadError": "Couldn't load history.",
+    "empty": "No sessions logged yet."
   }
 }

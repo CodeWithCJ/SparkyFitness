@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, View, Text } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -25,6 +26,7 @@ interface DateRangeSheetProps {
  */
 const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
   ({ onConfirm }, ref) => {
+    const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const [start, setStart] = useState<DateType>(undefined);
     const [end, setEnd] = useState<DateType>(undefined);
@@ -84,7 +86,7 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
       >
         <BottomSheetView className="pb-safe-or-5 px-2">
           <Text className="text-base font-semibold text-text-primary text-center mt-2 mb-1">
-            Select a date range to remove
+            {t('dateRange.removeTitle', { defaultValue: 'Select a date range to remove' })}
           </Text>
           <DateTimePicker
             mode="range"
@@ -120,7 +122,7 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
           />
           <View className="px-2 mt-1">
             <Button variant="primary" onPress={confirm} disabled={!start || !end}>
-              <Text className="text-base font-semibold text-white">Remove selected range</Text>
+              <Text className="text-base font-semibold text-white">{t('dateRange.removeAction', { defaultValue: 'Remove selected range' })}</Text>
             </Button>
           </View>
         </BottomSheetView>
