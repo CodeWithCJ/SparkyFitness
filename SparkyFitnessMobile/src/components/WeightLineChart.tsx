@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
@@ -32,7 +33,7 @@ const font = makeChartFont(12);
 
 const formatTooltipWeight = (weight: number): string => weight.toFixed(2);
 
-const DEFAULT_TOOLTIP = 'Press the line for details';
+const DEFAULT_TOOLTIP = '';
 
 const WeightTooltip: React.FC<{ text: string }> = ({ text }) => (
   <View className="h-6 justify-center mt-3 mb-1">
@@ -47,6 +48,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   range,
   unit,
 }) => {
+  const { t } = useTranslation();
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -117,19 +119,19 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <Text className="text-text-primary text-lg font-semibold mb-2">
-        Weight
+        {t('charts.weight.title', { defaultValue: 'Weight' })}
       </Text>
 
       <WeightTooltip text={tooltipText} />
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Loading...</Text>
+          <Text className="text-text-muted text-sm">{t('common.loading', { defaultValue: 'Loading...' })}</Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            Failed to load weight data
+            {t('charts.weight.loadFailed', { defaultValue: 'Failed to load weight data' })}
           </Text>
         </View>
       ) : (

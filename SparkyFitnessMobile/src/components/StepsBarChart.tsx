@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { CartesianChart, Bar } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
@@ -37,7 +38,7 @@ const formatYLabel = (value: number) => {
   return String(value);
 };
 
-const DEFAULT_TOOLTIP = 'Press a bar for details';
+const DEFAULT_TOOLTIP = '';
 
 const StepsTooltip: React.FC<{ text: string }> = ({ text }) => (
   <View className="h-6 justify-center mt-3 mb-1">
@@ -51,11 +52,12 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
   isError,
   range,
 }) => {
+  const { t } = useTranslation();
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [tooltipText, setTooltipText] = useState('');
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -113,25 +115,25 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <Text className="text-text-primary text-lg font-semibold mb-2">
-        Steps
+        {t('charts.steps.title', { defaultValue: 'Steps' })}
       </Text>
 
       <StepsTooltip text={tooltipText} />
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Loading...</Text>
+          <Text className="text-text-muted text-sm">{t('common.loading', { defaultValue: 'Loading...' })}</Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            Failed to load step data
+            {t('charts.steps.loadFailed', { defaultValue: 'Failed to load step data' })}
           </Text>
         </View>
       ) : !hasData ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            No step data for this period
+            {t('charts.steps.empty', { defaultValue: 'No step data for this period' })}
           </Text>
         </View>
       ) : (

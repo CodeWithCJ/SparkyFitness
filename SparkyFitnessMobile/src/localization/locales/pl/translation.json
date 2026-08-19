@@ -37,7 +37,7 @@
     "listFinalSeparator": " i ",
     "date": "Data",
     "add": "Dodaj",
-    "loading": "Ładowanie…",
+    "loading": "Wczytywanie...",
     "pleaseTryAgain": "Spróbuj ponownie.",
     "ok": "OK",
     "collapse": "Zwiń",
@@ -3582,15 +3582,26 @@
     "savedCustomUnits": "Zapisane jednostki własne"
   },
   "charts": {
-    "weight": "Masa ciała",
-    "steps": "Kroki",
+    "weight": {
+      "title": "Masa ciała",
+      "loadFailed": "Nie udało się wczytać danych o masie ciała"
+    },
+    "steps": {
+      "title": "Kroki",
+      "loadFailed": "Nie udało się wczytać danych o krokach",
+      "empty": "Brak danych o krokach w tym okresie"
+    },
     "loading": "Wczytywanie…",
     "weightLoadFailed": "Nie udało się wczytać danych masy ciała",
     "stepsLoadFailed": "Nie udało się wczytać danych kroków",
     "noStepData": "Brak danych o krokach w tym okresie",
     "trendLoadFailed": "Nie udało się wczytać trendu",
     "noLoggedIntake": "Brak zarejestrowanego spożycia w tym okresie",
-    "consumed": "spożyto"
+    "consumed": "spożyto",
+    "nutrients": {
+      "loadFailed": "Nie udało się wczytać danych trendu",
+      "empty": "Brak zarejestrowanego spożycia w tym okresie"
+    }
   },
   "exerciseLibrary": {
     "title": "Ćwiczenia",

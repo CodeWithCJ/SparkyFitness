@@ -35,7 +35,7 @@
     "listFinalSeparator": ", and ",
     "date": "Date",
     "add": "Add",
-    "loading": "Loading…",
+    "loading": "Loading...",
     "pleaseTryAgain": "Please try again.",
     "ok": "OK",
     "collapse": "Collapse",
@@ -3580,15 +3580,26 @@
     "savedCustomUnits": "Saved Custom Units"
   },
   "charts": {
-    "weight": "Weight",
-    "steps": "Steps",
+    "weight": {
+      "title": "Weight",
+      "loadFailed": "Failed to load weight data"
+    },
+    "steps": {
+      "title": "Steps",
+      "loadFailed": "Failed to load step data",
+      "empty": "No step data for this period"
+    },
     "loading": "Loading...",
     "weightLoadFailed": "Failed to load weight data",
     "stepsLoadFailed": "Failed to load step data",
     "noStepData": "No step data for this period",
     "trendLoadFailed": "Failed to load trend data",
     "noLoggedIntake": "No logged intake for this period",
-    "consumed": "consumed"
+    "consumed": "consumed",
+    "nutrients": {
+      "loadFailed": "Failed to load trend data",
+      "empty": "No logged intake for this period"
+    }
   },
   "exerciseLibrary": {
     "title": "Exercises",

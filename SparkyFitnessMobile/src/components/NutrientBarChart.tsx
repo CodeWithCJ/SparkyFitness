@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { CartesianChart, Bar } from 'victory-native';
 import { Line as SkiaLine } from '@shopify/react-native-skia';
@@ -47,7 +48,7 @@ const formatYLabel = (value: number) => {
   return String(value);
 };
 
-const DEFAULT_TOOLTIP = 'Press a bar for details';
+const DEFAULT_TOOLTIP = '';
 
 const NutrientTooltip: React.FC<{ text: string }> = ({ text }) => (
   <View className="h-6 justify-center mt-3 mb-1">
@@ -64,6 +65,7 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
   unit,
   goal,
 }) => {
+  const { t } = useTranslation();
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -139,18 +141,18 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">Loading...</Text>
+          <Text className="text-text-muted text-sm">{t('common.loading', { defaultValue: 'Loading...' })}</Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            Failed to load trend data
+            {t('charts.nutrients.loadFailed', { defaultValue: 'Failed to load trend data' })}
           </Text>
         </View>
       ) : !hasData ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            No logged intake for this period
+            {t('charts.nutrients.empty', { defaultValue: 'No logged intake for this period' })}
           </Text>
         </View>
       ) : (
