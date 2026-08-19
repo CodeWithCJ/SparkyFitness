@@ -28,17 +28,17 @@ function toTrimmedString(value: unknown): string {
 
 /** Ordered list of extra nutrient fields for display and form conversion. */
 export const EXTRA_NUTRIENT_FIELDS = [
-  { key: 'fiber', label: 'fiber', unit: 'g' },
-  { key: 'sugars', label: 'sugars', unit: 'g' },
-  { key: 'saturatedFat', label: 'saturatedFat', unit: 'g' },
-  { key: 'transFat', label: 'transFat', unit: 'g' },
-  { key: 'cholesterol', label: 'cholesterol', unit: 'mg' },
-  { key: 'sodium', label: 'sodium', unit: 'mg' },
-  { key: 'potassium', label: 'potassium', unit: 'mg', additional: true },
-  { key: 'calcium', label: 'calcium', unit: 'mg', additional: true },
-  { key: 'iron', label: 'iron', unit: 'mg', additional: true },
-  { key: 'vitaminA', label: 'vitaminA', unit: 'mcg', additional: true },
-  { key: 'vitaminC', label: 'vitaminC', unit: 'mg', additional: true },
+  { key: 'fiber', label: 'Fiber', unit: 'g' },
+  { key: 'sugars', label: 'Sugars', unit: 'g' },
+  { key: 'saturatedFat', label: 'Saturated Fat', unit: 'g' },
+  { key: 'transFat', label: 'Trans Fat', unit: 'g' },
+  { key: 'cholesterol', label: 'Cholesterol', unit: 'mg' },
+  { key: 'sodium', label: 'Sodium', unit: 'mg' },
+  { key: 'potassium', label: 'Potassium', unit: 'mg', additional: true },
+  { key: 'calcium', label: 'Calcium', unit: 'mg', additional: true },
+  { key: 'iron', label: 'Iron', unit: 'mg', additional: true },
+  { key: 'vitaminA', label: 'Vitamin A', unit: 'mcg', additional: true },
+  { key: 'vitaminC', label: 'Vitamin C', unit: 'mg', additional: true },
 ] as const;
 
 type ExtraNutrientKey = typeof EXTRA_NUTRIENT_FIELDS[number]['key'];
@@ -78,15 +78,15 @@ export function buildNutrientDisplayList(
   }
 
   if (options.showNetCarbs && options.carbs !== undefined) {
-    const carbClusterKeys = new Set(['fiber', 'sugars']);
+    const carbClusterLabels = new Set(['Fiber', 'Sugars']);
     let insertIdx = 0;
     for (let i = 0; i < primary.length; i++) {
-      if (carbClusterKeys.has(primary[i].label)) {
+      if (carbClusterLabels.has(primary[i].label)) {
         insertIdx = i + 1;
       }
     }
     primary.splice(insertIdx, 0, {
-      label: 'totalCarbs',
+      label: 'Total Carbs',
       value: options.carbs,
       unit: 'g',
     });

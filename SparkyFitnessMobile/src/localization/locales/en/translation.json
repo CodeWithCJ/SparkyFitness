@@ -3527,5 +3527,9 @@
     "noExercises": "This preset has no exercises.",
     "noServerTitle": "No Server Connected",
     "noServerMessage": "Configure your server connection in Settings to start a workout."
+  },
+  "foodUnit": {
+    "updateFailed": "Could not update that unit",
+    "savedCustomUnits": "Saved Custom Units"
   }
 }

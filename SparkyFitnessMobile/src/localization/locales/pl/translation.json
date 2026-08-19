@@ -3569,5 +3569,9 @@
     "noExercises": "Ten szablon nie zawiera ćwiczeń.",
     "noServerTitle": "Brak połączenia z serwerem",
     "noServerMessage": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby rozpocząć trening."
+  },
+  "foodUnit": {
+    "updateFailed": "Nie udało się zaktualizować tej jednostki",
+    "savedCustomUnits": "Zapisane jednostki własne"
   }
 }

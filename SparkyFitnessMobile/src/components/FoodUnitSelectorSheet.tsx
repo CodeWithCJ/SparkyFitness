@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Platform,
@@ -60,11 +61,13 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   variants,
   selectedVariantId,
   selectedSelection,
-  title = 'Select Unit',
+  title,
   renderTrigger,
   onSelect,
 }) => {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const resolvedTitle = title ?? t('foodForm.selectUnit', { defaultValue: 'Select Unit' });
   const isDismissingRef = useRef(false);
   const isOpenRef = useRef(false);
   const isPresentingRef = useRef(false);
@@ -210,8 +213,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       } catch {
         Toast.show({
           type: 'error',
-          text1: 'Could not update that unit',
-          text2: 'Please try again.',
+          text1: t('foodUnit.updateFailed', { defaultValue: 'Could not update that unit' }),
+          text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
         });
       } finally {
         setIsSubmitting(false);
@@ -233,8 +236,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       if (!manualVariant) {
         Toast.show({
           type: 'error',
-          text1: 'Could not update that unit',
-          text2: 'Please try again.',
+          text1: t('foodUnit.updateFailed', { defaultValue: 'Could not update that unit' }),
+          text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
         });
         return;
       }
@@ -249,8 +252,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
       } catch {
         Toast.show({
           type: 'error',
-          text1: 'Could not update that unit',
-          text2: 'Please try again.',
+          text1: t('foodUnit.updateFailed', { defaultValue: 'Could not update that unit' }),
+          text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
         });
       } finally {
         setIsSubmitting(false);
@@ -283,8 +286,8 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         } catch {
           Toast.show({
             type: 'error',
-            text1: 'Could not update that unit',
-            text2: 'Please try again.',
+            text1: t('foodUnit.updateFailed', { defaultValue: 'Could not update that unit' }),
+            text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
           });
         } finally {
           setIsSubmitting(false);
@@ -458,7 +461,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         <View className="flex-1">
           <View className="px-4 py-4 border-b border-border-subtle">
             <Text className="text-lg font-semibold text-center text-text-primary">
-              {title}
+              {resolvedTitle}
             </Text>
           </View>
 
@@ -467,7 +470,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
               <>
                 <View className="px-4 py-2 bg-surface">
                   <Text className="text-xs font-semibold uppercase text-text-muted">
-                    Saved Custom Units
+                    {t('foodUnit.savedCustomUnits', { defaultValue: 'Saved Custom Units' })}
                   </Text>
                 </View>
                 {customSavedVariants.map(renderCustomVariantRow)}
