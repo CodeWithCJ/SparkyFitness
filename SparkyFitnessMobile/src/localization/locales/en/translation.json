@@ -2379,5 +2379,23 @@
       "completed": "Completed",
       "nextSync": "New data will be picked up automatically by normal sync. Run another import only if you enable additional health data metrics."
     }
+  },
+  "fastingDetail": {
+    "title": "Fasting",
+    "metabolicStages": "Metabolic Stages",
+    "now": "now",
+    "remaining": "{{percent}}% · {{time}} left",
+    "goalReached": "Goal reached",
+    "elapsed": "{{time}} elapsed",
+    "avgFast": "Avg Fast",
+    "fasts": "# Fasts",
+    "total": "Total",
+    "protocol": "Protocol",
+    "started": "Started",
+    "endFast": "End Fast",
+    "protocolWithGoal": "{{protocol}} · {{hours}}h fast",
+    "noActiveFast": "No active fast",
+    "startDescription": "Start a fast to track your fasting window and metabolic stages.",
+    "startFast": "Start Fast"
   }
 }

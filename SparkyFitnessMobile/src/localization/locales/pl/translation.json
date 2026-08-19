@@ -2405,5 +2405,23 @@
       "completed": "Ukończono",
       "nextSync": "Nowe dane zostaną automatycznie pobrane podczas zwykłej synchronizacji. Uruchom kolejny import tylko po włączeniu dodatkowych metryk zdrowotnych."
     }
+  },
+  "fastingDetail": {
+    "title": "Post",
+    "metabolicStages": "Etapy postu",
+    "now": "teraz",
+    "remaining": "{{percent}}% · pozostało {{time}}",
+    "goalReached": "Cel osiągnięty",
+    "elapsed": "{{time}} minęło",
+    "avgFast": "Średni post",
+    "fasts": "Liczba postów",
+    "total": "Łącznie",
+    "protocol": "Protokół",
+    "started": "Rozpoczęto",
+    "endFast": "Zakończ post",
+    "protocolWithGoal": "{{protocol}} · post {{hours}} godz.",
+    "noActiveFast": "Brak aktywnego postu",
+    "startDescription": "Rozpocznij post, aby śledzić jego czas i etapy metaboliczne.",
+    "startFast": "Rozpocznij post"
   }
 }
