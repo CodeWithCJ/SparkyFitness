@@ -585,6 +585,7 @@ const WorkoutFormExerciseList = forwardRef<
     handleViewExercise,
     setExerciseNotes,
     handleToggleExerciseNote,
+    t,
   ]);
 
   return (

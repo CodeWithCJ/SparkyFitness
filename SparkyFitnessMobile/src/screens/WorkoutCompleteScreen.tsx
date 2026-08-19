@@ -402,7 +402,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
       );
     }, UPDATE_PRESET_PROMPT_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [isFocused, sourcePreset, presetUpdateExercises, profile?.id, updatePresetAsync]);
+  }, [isFocused, sourcePreset, presetUpdateExercises, profile?.id, updatePresetAsync, t]);
 
   const rpeTone = summary.averageRpe != null ? getRpeTone(summary.averageRpe) : null;
   const rpeToneColor = String(
@@ -451,7 +451,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 <Text className="font-semibold text-text-secondary">
                   {summary.totalSetCount} {t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', defaultValue_one: '{{count}} set', defaultValue_other: '{{count}} sets', count: summary.totalSetCount })}
                 </Text>{' '}
-                logged
+                {t('workoutComplete.labels.logged', { defaultValue: 'logged' })}
               </>
             ) : (
               <>
@@ -459,7 +459,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                   {summary.completedSetCount} {t('workoutComplete.labels.of', { defaultValue: 'of' })} {summary.totalSetCount}{' '}
                   {t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', defaultValue_one: '{{count}} set', defaultValue_other: '{{count}} sets', count: summary.totalSetCount })}
                 </Text>{' '}
-                logged
+                {t('workoutComplete.labels.logged', { defaultValue: 'logged' })}
               </>
             )}
             {t('workoutComplete.labels.todayAt', { defaultValue: ' · Today at ' })}
@@ -493,7 +493,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 <Text className="text-sm font-semibold text-text-secondary">
                   {' '}
                   / {summary.totalSetCount}
-                  {summary.skippedSetCount > 0 && ` · ${summary.skippedSetCount} {t('workoutComplete.labels.skipped', { defaultValue: 'skipped' })}`}
+                  {summary.skippedSetCount > 0 && <> · {summary.skippedSetCount} {t('workoutComplete.labels.skipped', { defaultValue: 'skipped' })}</>}
                 </Text>
               </Text>
             </StatTile>

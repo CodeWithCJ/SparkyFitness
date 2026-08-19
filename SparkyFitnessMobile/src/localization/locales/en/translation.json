@@ -3032,7 +3032,8 @@
       "sets": "{{count}} sets",
       "all": "All",
       "of": "of",
-      "top": "top"
+      "top": "top",
+      "logged": "logged"
     },
     "accessibility": {
       "calculating": "Calculating"
@@ -3837,7 +3838,8 @@
     "sets": "set",
     "drag": "Drag to reorder",
     "title": "Reorder exercises",
-    "doneHint": "Done reordering"
+    "doneHint": "Done reordering",
+    "setsPlural": "sets"
   },
   "ranges": {
     "7d": "7d",

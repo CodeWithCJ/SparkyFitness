@@ -1755,7 +1755,7 @@
     "saveFailed": "Nie udało się zapisać ustawień cyklu. Spróbuj ponownie.",
     "mode": {
       "standard": "Standardowy cykl",
-      "ttc": "Staranie się o ciążę",
+      "ttc": "Starania o ciążę",
       "pregnant": "Monitorowanie ciąży",
       "postpartum": "Połóg",
       "menopause": "Uwzględnianie menopauzy"
@@ -1766,7 +1766,7 @@
       "iudHormonal": "Wkładka hormonalna",
       "iudCopper": "Wkładka miedziana",
       "implant": "Implant",
-      "ring": "Krążek",
+      "ring": "Krążek dopochwowy",
       "patch": "Plaster",
       "shot": "Zastrzyk",
       "condoms": "Prezerwatywy / bariera",
@@ -3032,7 +3032,8 @@
       "sets": "{{count}} serii",
       "all": "Wszystkie",
       "of": "z",
-      "top": "najlepszy wynik"
+      "top": "najlepszy wynik",
+      "logged": "zapisano"
     },
     "accessibility": {
       "calculating": "Obliczanie"
@@ -3837,7 +3838,8 @@
     "sets": "serii",
     "drag": "Przeciągnij, aby zmienić kolejność",
     "title": "Zmień kolejność ćwiczeń",
-    "doneHint": "Zakończono zmianę kolejności"
+    "doneHint": "Zakończono zmianę kolejności",
+    "setsPlural": "serii"
   },
   "ranges": {
     "7d": "7 dni",

@@ -108,7 +108,7 @@ function EditableSetList({
       >
         <Icon name="add" size={18} color={accentPrimary} />
         <Text className="text-base font-medium ml-1" style={{ color: accentPrimary }}>
-          {t('activeWorkout.exerciseCard.addSet', { defaultValue: 'Add set' })}
+          {t('activeWorkout.exerciseCard.addSet', { defaultValue: 'Add Set' })}
         </Text>
       </TouchableOpacity>
     </>

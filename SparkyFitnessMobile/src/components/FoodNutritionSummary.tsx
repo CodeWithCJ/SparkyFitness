@@ -106,7 +106,7 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
         carbs: useNetCarbs ? values.carbs : undefined,
         t,
       }),
-    [values, useNetCarbs],
+    [values, useNetCarbs, t],
   );
 
   // Build custom nutrient rows: show ALL user-defined custom nutrients (from defs),

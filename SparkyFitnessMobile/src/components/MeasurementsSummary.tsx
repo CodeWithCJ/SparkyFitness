@@ -74,9 +74,9 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
     '--color-icon-decorative',
   ]) as [string, string];
 
-  if (!measurements && (!customMeasurements || customMeasurements.length === 0)) return null;
-
   const { t } = useTranslation();
+
+  if (!measurements && (!customMeasurements || customMeasurements.length === 0)) return null;
 
   const localizedMeasurement = (key: 'weight' | 'bodyFatPercentage' | 'height' | 'neck' | 'waist' | 'hips' | 'steps') => {
     switch (key) {
