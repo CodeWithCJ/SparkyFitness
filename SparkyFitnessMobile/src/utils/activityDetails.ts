@@ -6,8 +6,18 @@ export interface ActivitySummaryItem {
   value: string;
 }
 
-const activityLabel = (t: TFunction | undefined, key: string, defaultValue: string): string =>
-  t ? t(key, { defaultValue }) : defaultValue;
+const activityLabel = (t: TFunction | undefined, key: string, defaultValue: string): string => {
+  if (!t) return defaultValue;
+  switch (key) {
+    case 'activitySummary.avgHeartRate': return t('activitySummary.avgHeartRate', { defaultValue: 'Avg HR' });
+    case 'activitySummary.maxHeartRate': return t('activitySummary.maxHeartRate', { defaultValue: 'Max HR' });
+    case 'activitySummary.elevationGain': return t('activitySummary.elevationGain', { defaultValue: 'Elevation Gain' });
+    case 'activitySummary.avgCadence': return t('activitySummary.avgCadence', { defaultValue: 'Avg Cadence' });
+    case 'activitySummary.zone': return t('activitySummary.zone', { defaultValue: 'Zone {{zone}}' });
+    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'HR {{zone}}' });
+    default: return defaultValue;
+  }
+};
 
 
 function parseDetailData(detailData: unknown): unknown {
