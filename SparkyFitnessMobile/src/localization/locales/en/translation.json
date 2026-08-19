@@ -3316,5 +3316,51 @@
       "averageVsTarget": "Average vs. Target",
       "percentOfGoal": "{{percent}}% of goal"
     }
+  },
+  "workoutPresetDetail": {
+    "toast": {
+      "shared": "Workout preset shared publicly",
+      "private": "Workout preset made private",
+      "deleted": "Workout preset deleted"
+    },
+    "share": {
+      "title": "Make public?",
+      "message": "This workout preset will become visible to all users on this server.",
+      "confirm": "Make public"
+    },
+    "draft": {
+      "title": "Draft in progress",
+      "message": "You have an unsaved {{type}} draft. What would you like to do?",
+      "workout": "workout",
+      "activity": "activity",
+      "resume": "Resume draft",
+      "discard": "Discard & continue"
+    },
+    "accessibility": {
+      "makePrivate": "Make private",
+      "sharePublic": "Share with public",
+      "edit": "Edit workout preset"
+    },
+    "exerciseCount_other": "{{count}} exercises",
+    "actions": {
+      "starting": "Starting…",
+      "start": "Start workout",
+      "logPast": "Log past workout",
+      "delete": "Delete preset"
+    },
+    "exerciseCount_one": "{{count}} exercise"
+  },
+  "workoutPresetMutations": {
+    "errors": {
+      "create": "Could not create workout preset",
+      "update": "Failed to update preset",
+      "delete": "Failed to delete preset",
+      "editPermission": "You don't have permission to edit this preset.",
+      "deletePermission": "You don't have permission to delete this preset."
+    },
+    "confirm": {
+      "title": "Delete Workout Preset?",
+      "message": "This preset will be permanently removed from your library."
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
+import i18n from '../localization/i18n';
 import {
   createWorkoutPreset,
   updateWorkoutPreset,
@@ -34,8 +35,8 @@ export function useCreateWorkoutPreset() {
     onError: () => {
       Toast.show({
         type: 'error',
-        text1: 'Could not create workout preset',
-        text2: 'Please try again.',
+        text1: i18n.t('workoutPresetMutations.errors.create', { defaultValue: 'Could not create workout preset' }),
+        text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     },
   });
@@ -56,9 +57,9 @@ export function useUpdateWorkoutPreset() {
     },
     onError: (error) => {
       const message = isAuthzError(error)
-        ? "You don't have permission to edit this preset."
-        : 'Please try again.';
-      Toast.show({ type: 'error', text1: 'Failed to update preset', text2: message });
+        ? i18n.t('workoutPresetMutations.errors.editPermission', { defaultValue: "You don't have permission to edit this preset." })
+        : i18n.t('common.tryAgain', { defaultValue: 'Please try again.' });
+      Toast.show({ type: 'error', text1: i18n.t('workoutPresetMutations.errors.update', { defaultValue: 'Failed to update preset' }), text2: message });
     },
   });
 
@@ -86,19 +87,19 @@ export function useDeleteWorkoutPreset({ presetId, onSuccess }: UseDeleteWorkout
     },
     onError: (error) => {
       const message = isAuthzError(error)
-        ? "You don't have permission to delete this preset."
-        : 'Please try again.';
-      Toast.show({ type: 'error', text1: 'Failed to delete preset', text2: message });
+        ? i18n.t('workoutPresetMutations.errors.deletePermission', { defaultValue: "You don't have permission to delete this preset." })
+        : i18n.t('common.tryAgain', { defaultValue: 'Please try again.' });
+      Toast.show({ type: 'error', text1: i18n.t('workoutPresetMutations.errors.delete', { defaultValue: 'Failed to delete preset' }), text2: message });
     },
   });
 
   const confirmAndDelete = () => {
     Alert.alert(
-      'Delete Workout Preset?',
-      'This preset will be permanently removed from your library.',
+      i18n.t('workoutPresetMutations.confirm.title', { defaultValue: 'Delete Workout Preset?' }),
+      i18n.t('workoutPresetMutations.confirm.message', { defaultValue: 'This preset will be permanently removed from your library.' }),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => mutation.mutate() },
+        { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+        { text: i18n.t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: () => mutation.mutate() },
       ],
     );
   };

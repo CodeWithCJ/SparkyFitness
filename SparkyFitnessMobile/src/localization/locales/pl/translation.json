@@ -3356,5 +3356,53 @@
       "averageVsTarget": "Średnia względem celu",
       "percentOfGoal": "{{percent}}% celu"
     }
+  },
+  "workoutPresetDetail": {
+    "toast": {
+      "shared": "Udostępniono preset treningu publicznie",
+      "private": "Ustawiono preset treningu jako prywatny",
+      "deleted": "Usunięto preset treningu"
+    },
+    "share": {
+      "title": "Udostępnić publicznie?",
+      "message": "Ten preset treningu będzie widoczny dla wszystkich użytkowników tego serwera.",
+      "confirm": "Udostępnij publicznie"
+    },
+    "draft": {
+      "title": "Niezapisany szkic",
+      "message": "Masz niezapisany szkic typu: {{type}}. Co chcesz zrobić?",
+      "workout": "trening",
+      "activity": "aktywność",
+      "resume": "Wznów szkic",
+      "discard": "Odrzuć i kontynuuj"
+    },
+    "accessibility": {
+      "makePrivate": "Ustaw jako prywatny",
+      "sharePublic": "Udostępnij publicznie",
+      "edit": "Edytuj preset treningu"
+    },
+    "exerciseCount_few": "{{count}} ćwiczenia",
+    "exerciseCount_many": "{{count}} ćwiczeń",
+    "exerciseCount_other": "{{count}} ćwiczenia",
+    "actions": {
+      "starting": "Uruchamianie…",
+      "start": "Rozpocznij trening",
+      "logPast": "Zapisz wcześniejszy trening",
+      "delete": "Usuń preset"
+    },
+    "exerciseCount_one": "{{count}} ćwiczenie"
+  },
+  "workoutPresetMutations": {
+    "errors": {
+      "create": "Nie udało się utworzyć presetu treningu",
+      "update": "Nie udało się zaktualizować presetu",
+      "delete": "Nie udało się usunąć presetu",
+      "editPermission": "Nie masz uprawnień do edycji tego presetu.",
+      "deletePermission": "Nie masz uprawnień do usunięcia tego presetu."
+    },
+    "confirm": {
+      "title": "Usunąć preset treningu?",
+      "message": "Ten preset zostanie trwale usunięty z biblioteki."
+    }
   }
 }
