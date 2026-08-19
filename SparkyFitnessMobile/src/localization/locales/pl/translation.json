@@ -128,7 +128,7 @@
   "navigation": {
     "settings": "Ustawienia",
     "library": "Biblioteka",
-    "presets": "Presety",
+    "presets": "Szablony treningów",
     "foods": "Produkty spożywcze",
     "meals": "Posiłki",
     "exercises": "Ćwiczenia",
@@ -142,7 +142,7 @@
     "title": "Powiadomienia",
     "channels": {
       "medicationReminders": "Przypomnienia o lekach",
-      "workoutTimer": "Timer treningu",
+      "workoutTimer": "Minutnik treningu",
       "fasting": "Post"
     },
     "actions": {
@@ -152,11 +152,11 @@
     },
     "permission": {
       "notificationsOff": "Powiadomienia wyłączone",
-      "timerInApp": "Timer nadal powiadomi w aplikacji."
+      "timerInApp": "Minutnik nadal zadziała w aplikacji."
     },
     "exactAlarm": {
       "title": "Alerty na czas",
-      "message": "Android opóźnia zaplanowane alerty, jeśli SparkyFitness nie może ustawiać alarmów dokładnych. Włącz „Alarmy i przypomnienia”, aby timery odpoczynku i przypomnienia o lekach działały na czas.",
+      "message": "Android opóźnia zaplanowane alerty, jeśli SparkyFitness nie może ustawiać alarmów dokładnych. Włącz „Alarmy i przypomnienia”, aby minutniki odpoczynku i przypomnienia o lekach działały na czas.",
       "notNow": "Nie teraz",
       "openSettings": "Otwórz ustawienia"
     },
@@ -281,7 +281,7 @@
       "reps": "Powtórzenia",
       "complete": "Oznacz serię {{setNumber}} jako ukończoną",
       "incomplete": "Oznacz serię {{setNumber}} jako nieukończoną",
-      "weight": "Ciężar",
+      "weight": "Obciążenie",
       "rpe": "RPE"
     },
     "columns": {
@@ -308,10 +308,10 @@
     "nextSet": "Następna seria"
   },
   "addSheet": {
-    "food": "Jedzenie",
+    "food": "Produkt",
     "exercise": "Ćwiczenie",
     "measurements": "Pomiary",
-    "scanFood": "Skanuj jedzenie",
+    "scanFood": "Skanuj produkt",
     "workout": "Trening",
     "liveSets": "Serie i powtórzenia na żywo",
     "activity": "Aktywność",
@@ -328,22 +328,22 @@
     "foods": "Produkty spożywcze",
     "meals": "Posiłki",
     "exercises": "Ćwiczenia",
-    "workoutPresets": "Presety treningów",
-    "addFood": "Dodaj jedzenie",
-    "newFood": "Nowe jedzenie",
-    "editFood": "Edytuj jedzenie",
+    "workoutPresets": "Szablony treningów",
+    "addFood": "Dodaj produkt",
+    "newFood": "Nowy produkt",
+    "editFood": "Edytuj produkt",
     "adjustNutrition": "Dostosuj wartości odżywcze",
     "barcodes": "Kody kreskowe",
     "editExercise": "Edytuj ćwiczenie",
     "newExercise": "Nowe ćwiczenie",
-    "editPreset": "Edytuj preset",
-    "newPreset": "Nowy preset",
-    "scanFood": "Skanuj jedzenie",
-    "photoFood": "Dodaj jedzenie ze zdjęcia",
+    "editPreset": "Edytuj szablon treningu",
+    "newPreset": "Nowy szablon treningu",
+    "scanFood": "Skanuj produkt",
+    "photoFood": "Dodaj produkt ze zdjęcia",
     "sparky": "Sparky",
     "editMeal": "Edytuj posiłek",
     "createMeal": "Utwórz posiłek",
-    "foodEntry": "Wpis jedzenia",
+    "foodEntry": "Wpis produktu",
     "meal": "Posiłek",
     "nutritionDetails": "Szczegóły odżywiania",
     "trends": "Trendy",
@@ -388,13 +388,13 @@
       "meal": "Posiłek",
       "groupFoods": "Grupuj produkty",
       "exercise": "Ćwiczenie",
-      "workoutPreset": "Preset treningu",
+      "workoutPreset": "Szablon treningu",
       "exerciseRoutine": "Rutyna ćwiczeń",
       "browse": "Przeglądaj",
       "foods": "Produkty spożywcze",
       "meals": "Posiłki",
       "exercises": "Ćwiczenia",
-      "workoutPresets": "Presety treningów",
+      "workoutPresets": "Szablony treningów",
       "medications": "Leki",
       "recentlyLogged": "Ostatnio zapisane",
       "loadingRecentItems": "Ładowanie ostatnich elementów...",
@@ -519,10 +519,10 @@
     "apiKey": "Klucz API",
     "signIn": "Zaloguj się",
     "sso": "SSO",
-    "passkey": "Passkey",
+    "passkey": "Klucz dostępu",
     "connect": "Połącz",
     "connectTitle": "Połącz ze SparkyFitness",
-    "signInWithPasskey": "Zaloguj się za pomocą Passkey",
+    "signInWithPasskey": "Zaloguj się za pomocą klucza dostępu",
     "orSignInWith": "Lub zaloguj się przez",
     "noMethods": "Na tym serwerze nie włączono standardowych metod logowania. Użyj klucza API lub skontaktuj się z administratorem.",
     "pasteUrl": "Wklej adres URL ze schowka",
@@ -602,8 +602,8 @@
     "checkConnection": "Sprawdź połączenie i spróbuj ponownie.",
     "askSparky": "Zapytaj Sparky…",
     "nutrients": "Składniki odżywcze",
-    "food": "Jedzenie",
-    "tapToAddFood": "Dotknij, aby dodać jedzenie",
+    "food": "Produkty",
+    "tapToAddFood": "Dotknij, aby dodać produkt",
     "healthTrends": "Trendy zdrowotne",
     "consumed": "Spożyte",
     "remaining": "pozostało",
@@ -1221,7 +1221,7 @@
     "categoryStretching": "Rozciąganie",
     "categoryIsometric": "Izometryczne",
     "trackingType": "Typ śledzenia",
-    "modalityWeightReps": "Ciężar i powtórzenia",
+    "modalityWeightReps": "Obciążenie i powtórzenia",
     "modalityReps": "Powtórzenia",
     "modalityDuration": "Czas trwania",
     "modalityDurationDistance": "Czas trwania i dystans",
@@ -1248,7 +1248,7 @@
     "steps": "Kroki",
     "pace": "Tempo",
     "sec": "Sek.",
-    "weight": "Ciężar",
+    "weight": "Obciążenie",
     "repsLabel": "Powtórzenia",
     "setLabel": "Seria",
     "startWorkoutHere": "Rozpocznij trening tutaj",
@@ -1319,7 +1319,7 @@
     "defaultRest": "Domyślny odpoczynek",
     "defaultRestSubtitle": "Odpoczynek między seriami dla nowo dodanych ćwiczeń.",
     "defaultRestAccessibility": "Domyślny odpoczynek, {{value}}",
-    "restTimerSound": "Dźwięk timera odpoczynku",
+    "restTimerSound": "Dźwięk minutnika odpoczynku",
     "restTimerSoundSubtitle": "Odtwarzaj dźwięk po zakończeniu odpoczynku, gdy aplikacja jest otwarta.",
     "keepAwake": "Nie wygaszaj ekranu",
     "keepAwakeSubtitle": "Nie pozwalaj ekranowi zasnąć podczas aktywnego treningu.",
@@ -1420,13 +1420,13 @@
     "popular": "Popularne",
     "recent": "Ostatnie",
     "exercises": "Ćwiczenia",
-    "presets": "Presety",
+    "presets": "Szablony treningów",
     "searchExercises": "Szukaj ćwiczeń...",
-    "searchPresets": "Szukaj presetów...",
+    "searchPresets": "Szukaj szablonów treningów…",
     "search": "Szukaj",
     "noMatchingExercises": "Brak pasujących ćwiczeń",
-    "noMatchingPresets": "Brak pasujących presetów",
-    "noPresets": "Brak presetów",
+    "noMatchingPresets": "Brak pasujących szablonów treningów",
+    "noPresets": "Brak szablonów treningów",
     "emptyWorkout": "Pusty trening",
     "pickFirstExercise": "Wybierz pierwsze ćwiczenie",
     "startWorkout": "Rozpocznij trening",
@@ -1439,24 +1439,24 @@
     "failedSearchExercises": "Nie udało się wyszukać ćwiczeń",
     "failedAdd": "Nie udało się dodać ćwiczenia",
     "viewExerciseDetails": "Wyświetl szczegóły ćwiczenia",
-    "failedLoadPresets": "Nie udało się wczytać presetów",
-    "failedSearchPresets": "Nie udało się wyszukać presetów",
+    "failedLoadPresets": "Nie udało się wczytać szablonów treningów",
+    "failedSearchPresets": "Nie udało się wyszukać szablonów treningów",
     "startEmptyOrSave": "Rozpocznij pusty trening lub zapisz trening jako preset, aby zobaczyć go tutaj",
     "changeOwnership": "Zmień filtr własności",
-    "viewPresetDetails": "Wyświetl szczegóły presetu",
+    "viewPresetDetails": "Wyświetl szczegóły szablonu treningu",
     "presetNamePlaceholder": "np. dzień klatki",
     "optionalPresetNotes": "Opcjonalne notatki o tym planie",
     "presetDescription": "Opis",
-    "presetCreated": "Preset treningu utworzony",
-    "presetUpdated": "Preset treningu zaktualizowany",
-    "presetDeleted": "Preset treningu usunięty",
+    "presetCreated": "Utworzono szablon treningu",
+    "presetUpdated": "Zaktualizowano szablon treningu",
+    "presetDeleted": "Usunięto szablon treningu",
     "presetAddBeforeSave": "Przed zapisaniem dodaj co najmniej jedno ćwiczenie z serią.",
-    "presetNameRequired": "Wpisz nazwę tego presetu.",
+    "presetNameRequired": "Wpisz nazwę tego szablonu treningu.",
     "presetMissingName": "Brak nazwy",
     "draftInProgress": "Wersja robocza w toku",
     "resumeDraft": "Wznów wersję roboczą",
     "discardContinue": "Odrzuć i kontynuuj",
-    "editPreset": "Edytuj preset treningu",
+    "editPreset": "Edytuj szablon treningu",
     "makePresetPublicTitle": "Udostępnić publicznie?",
     "makePresetPublicMessage": "Preset będzie widoczny dla wszystkich użytkowników tego serwera.",
     "makePresetPublic": "Udostępnij publicznie",
@@ -1466,11 +1466,11 @@
     "calculating": "Obliczanie",
     "volume": "Objętość",
     "viewWorkout": "Wyświetl trening",
-    "saveAsPreset": "Zapisz jako preset",
-    "keepPreset": "Zachowaj preset",
-    "updatePresetTitle": "Zaktualizować preset?",
+    "saveAsPreset": "Zapisz jako szablon treningu",
+    "keepPreset": "Zachowaj szablon treningu",
+    "updatePresetTitle": "Zaktualizować szablon treningu?",
     "updatePreset": "Zaktualizuj",
-    "presetUpdatedToast": "Preset zaktualizowany",
+    "presetUpdatedToast": "Szablon treningu zaktualizowany",
     "todayDiffers": "Dzisiejszy trening różni się od \"{{name}}\". Zaktualizować preset?",
     "of": "z",
     "setsLabel": "Serie",
@@ -1479,13 +1479,13 @@
     "durationLabel": "Czas trwania",
     "details": "Szczegóły",
     "name": "Nazwa",
-    "saveAsPresetLabel": "Zapisz jako preset",
+    "saveAsPresetLabel": "Zapisz jako szablon treningu",
     "startHere": "Rozpocznij trening tutaj",
     "workoutNeedsExercise": "Trening wymaga ćwiczenia",
-    "presetsTitle": "Presety treningów",
+    "presetsTitle": "Szablony treningów",
     "noServer": "Brak skonfigurowanego serwera",
     "configureServer": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby zobaczyć presety treningów.",
-    "loadingPresets": "Wczytywanie presetów treningów...",
+    "loadingPresets": "Wczytywanie szablonów treningów…",
     "tryConnection": "Sprawdź połączenie i spróbuj ponownie.",
     "tryOwnership": "Zmień filtr własności.",
     "durationSpan": "Czas trwania treningu: {{span}}",
@@ -1775,7 +1775,7 @@
     "condition": {
       "pcos": "PCOS",
       "endometriosis": "Endometrioza",
-      "fibroids": "Włókniaki",
+      "fibroids": "Mięśniaki",
       "thyroid": "Choroby tarczycy",
       "other": "Inne"
     },
@@ -2212,7 +2212,7 @@
       "saveAnyway": "Zapisz mimo to",
       "banner": "Nie można przeliczyć między jednostkami. Zaktualizuj wartości odżywcze ręcznie."
     },
-    "loadingDetails": "Szczegóły jedzenia są nadal wczytywane. Spróbuj ponownie za chwilę.",
+    "loadingDetails": "Szczegóły produktu są nadal wczytywane. Spróbuj ponownie za chwilę.",
     "saveNewUnitFailed": "Nie udało się zapisać nowej jednostki",
     "equivalentUnitsFailed": "Nie udało się zapisać części równoważnych jednostek",
     "saveNewVariantFailed": "Nie udało się zapisać nowego wariantu",
@@ -2220,9 +2220,9 @@
     "savedNewVariant": "Zapisano jako nowy wariant",
     "pastEntriesUpdated": "Zaktualizowano wcześniejsze wpisy",
     "pastEntriesFailed": "Nie udało się zaktualizować wcześniejszych wpisów",
-    "foodSaved": "Jedzenie zostało zapisane.",
-    "updateFailed": "Nie udało się zaktualizować jedzenia",
-    "editTitle": "Edytuj jedzenie"
+    "foodSaved": "Produkt został zapisany.",
+    "updateFailed": "Nie udało się zaktualizować produktu",
+    "editTitle": "Edytuj produkt"
   },
   "exerciseHistory": {
     "noSetData": "Brak danych o seriach",
@@ -2305,7 +2305,7 @@
     "unexpectedImageFormatTitle": "Nieoczekiwany format zdjęcia",
     "unexpectedImageFormatMessage": "Zrób zdjęcie ponownie.",
     "couldNotProcessPhotoTitle": "Nie udało się przetworzyć zdjęcia",
-    "couldNotProcessPhotoMessage": "Dostawca zablokował to zdjęcie. Spróbuj zrobić inne.",
+    "couldNotProcessPhotoMessage": "Dostawca zablokował to zdjęcie. Zrób inne zdjęcie.",
     "providerTimedOutTitle": "Dostawca AI przekroczył limit czasu",
     "providerTimedOutMessage": "Szacowanie trwało zbyt długo. Spróbuj ponownie lub dodaj produkt ręcznie.",
     "providerNotAllowedTitle": "Dostawca AI jest niedozwolony",
@@ -2393,7 +2393,8 @@
       "caloriesLeftValue": "1 515",
       "caloriesInValue": "1 540",
       "caloriesOutValue": "255",
-      "eightAm": "08:00"
+      "eightAm": "08:00",
+      "eyebrow": "iOS 26"
     },
     "features": {
       "medications": {
@@ -2474,7 +2475,7 @@
     "birthControl": {
       "none": "Brak",
       "pill": "Tabletka",
-      "iud": "Wkładka domaciczna",
+      "iud": "Wkładka wewnątrzmaciczna",
       "implant": "Implant",
       "patch": "Plaster",
       "ring": "Krążek",
@@ -2944,7 +2945,7 @@
     "accessibility": {
       "save": "Zapisz",
       "reorder": "Zmień kolejność ćwiczeń",
-      "saveAsPreset": "Zapisz jako zestaw",
+      "saveAsPreset": "Zapisz jako szablon treningu",
       "editWorkout": "Edytuj trening"
     },
     "title": {
@@ -2970,7 +2971,7 @@
       "sets": "Serie",
       "set": "Seria",
       "secondsShort": "Sek.",
-      "weight": "Ciężar",
+      "weight": "Obciążenie",
       "reps": "Powtórzenia",
       "notes": "Notatki"
     },
@@ -3042,18 +3043,18 @@
       "calculating": "Obliczanie"
     },
     "actions": {
-      "saveAsPreset": "Zapisz jako zestaw",
+      "saveAsPreset": "Zapisz jako szablon treningu",
       "viewWorkout": "Wyświetl trening",
       "done": "Gotowe",
-      "keepPreset": "Zachowaj zestaw",
+      "keepPreset": "Zachowaj szablon treningu",
       "update": "Aktualizuj"
     },
     "success": {
-      "presetUpdated": "Zaktualizowano zestaw"
+      "presetUpdated": "Zaktualizowano szablon treningu"
     },
     "confirm": {
-      "updatePresetTitle": "Zaktualizować zestaw?",
-      "updatePresetMessage": "Dzisiejszy trening różni się od „{{preset}}”. Czy zaktualizować zestaw?"
+      "updatePresetTitle": "Zaktualizować szablon treningu?",
+      "updatePresetMessage": "Dzisiejszy trening różni się od „{{preset}}”. Czy zaktualizować szablon treningu?"
     },
     "rpe": {
       "easy": "Łatwy",
@@ -3141,13 +3142,13 @@
   },
   "presetSearch": {
     "title": "Rozpocznij trening",
-    "noun": "plany treningowe",
-    "viewDetails": "Wyświetl szczegóły planu",
+    "noun": "szablony treningów",
+    "viewDetails": "Wyświetl szczegóły szablonu treningu",
     "searchFailed": "Nie udało się wyszukać planów",
     "noMatches": "Nie znaleziono pasujących planów",
     "loadFailed": "Nie udało się wczytać planów",
-    "noPresetsYet": "Brak planów treningowych",
-    "noPresetsYetMessage": "Rozpocznij pusty trening albo zapisz trening jako plan, aby pojawił się tutaj",
+    "noPresetsYet": "Brak szablonów treningowych",
+    "noPresetsYetMessage": "Rozpocznij pusty trening albo zapisz trening jako szablon, aby pojawił się tutaj",
     "searchPlaceholder": "Szukaj planów...",
     "emptyWorkout": "Pusty trening",
     "pickFirstExercise": "Wybierz pierwsze ćwiczenie",
@@ -3173,10 +3174,10 @@
     "description": "Opis",
     "descriptionPlaceholder": "Opcjonalne notatki dotyczące tego planu",
     "reorderExercises": "Zmień kolejność ćwiczeń",
-    "newTitle": "Nowy plan",
-    "editTitle": "Edytuj plan",
-    "created": "Plan treningowy został utworzony",
-    "updated": "Plan treningowy został zaktualizowany",
+    "newTitle": "Nowy szablon treningu",
+    "editTitle": "Edytuj szablon treningu",
+    "created": "Szablon treningu został utworzony",
+    "updated": "Szablon treningu został zaktualizowany",
     "errors": {
       "missingName": "Brak nazwy",
       "nameRequired": "Wprowadź nazwę tego planu.",
@@ -3270,7 +3271,7 @@
       "snack": "Zaproponuj wysokobiałkową przekąskę"
     },
     "tools": {
-      "food": "Jedzenie",
+      "food": "Produkt",
       "exercise": "Ćwiczenie",
       "checkin": "Kontrola",
       "goals": "Cele",
@@ -3471,13 +3472,13 @@
   },
   "workoutPresetDetail": {
     "toast": {
-      "shared": "Udostępniono preset treningu publicznie",
-      "private": "Ustawiono preset treningu jako prywatny",
-      "deleted": "Usunięto preset treningu"
+      "shared": "Udostępniono szablon treningu publicznie",
+      "private": "Ustawiono szablon treningu jako prywatny",
+      "deleted": "Usunięto szablon treningu"
     },
     "share": {
       "title": "Udostępnić publicznie?",
-      "message": "Ten preset treningu będzie widoczny dla wszystkich użytkowników tego serwera.",
+      "message": "Ten szablon treningu będzie widoczny dla wszystkich użytkowników tego serwera.",
       "confirm": "Udostępnij publicznie"
     },
     "draft": {
@@ -3491,7 +3492,7 @@
     "accessibility": {
       "makePrivate": "Ustaw jako prywatny",
       "sharePublic": "Udostępnij publicznie",
-      "edit": "Edytuj preset treningu"
+      "edit": "Edytuj szablon treningu"
     },
     "exerciseCount_few": "{{count}} ćwiczenia",
     "exerciseCount_many": "{{count}} ćwiczeń",
@@ -3500,21 +3501,21 @@
       "starting": "Uruchamianie…",
       "start": "Rozpocznij trening",
       "logPast": "Zapisz wcześniejszy trening",
-      "delete": "Usuń preset"
+      "delete": "Usuń szablon treningu"
     },
     "exerciseCount_one": "{{count}} ćwiczenie"
   },
   "workoutPresetMutations": {
     "errors": {
-      "create": "Nie udało się utworzyć presetu treningu",
-      "update": "Nie udało się zaktualizować presetu",
-      "delete": "Nie udało się usunąć presetu",
+      "create": "Nie udało się utworzyć szablonu treningu",
+      "update": "Nie udało się zaktualizować szablonu treningu",
+      "delete": "Nie udało się usunąć szablonu treningu",
       "editPermission": "Nie masz uprawnień do edycji tego presetu.",
       "deletePermission": "Nie masz uprawnień do usunięcia tego presetu."
     },
     "confirm": {
-      "title": "Usunąć preset treningu?",
-      "message": "Ten preset zostanie trwale usunięty z biblioteki."
+      "title": "Usunąć szablon treningu?",
+      "message": "Ten szablon treningu zostanie trwale usunięty z biblioteki."
     }
   },
   "babyGrowth": {
@@ -3651,8 +3652,8 @@
     "noItems": "Nie znaleziono ćwiczeń",
     "trySearch": "Spróbuj innego hasła, aby znaleźć zapisane ćwiczenia.",
     "empty": "Zapisane lub zarejestrowane ćwiczenia pojawią się tutaj.",
-    "moreFailed": "Failed to load more exercises.",
-    "view": "View exercise"
+    "moreFailed": "Nie udało się wczytać kolejnych ćwiczeń.",
+    "view": "Wyświetl ćwiczenie"
   },
   "foodLibrary": {
     "title": "Produkty",
@@ -3668,7 +3669,7 @@
     "noItems": "Nie znaleziono produktów",
     "trySearch": "Spróbuj innego hasła, aby znaleźć zapisane produkty.",
     "empty": "Zapisane lub zarejestrowane produkty pojawią się tutaj.",
-    "moreFailed": "Failed to load more foods.",
+    "moreFailed": "Nie udało się wczytać kolejnych produktów.",
     "noun": "produkty"
   },
   "mealLibrary": {
@@ -3679,7 +3680,7 @@
     "go": "Przejdź do ustawień",
     "loading": "Wczytywanie posiłków…",
     "failed": "Nie udało się wczytać posiłków",
-    "searchFailed": "Failed to search meals",
+    "searchFailed": "Nie udało się wyszukać posiłków",
     "retry": "Ponów",
     "check": "Sprawdź połączenie i spróbuj ponownie.",
     "noMatch": "Nie znaleziono pasujących posiłków",
@@ -3691,7 +3692,7 @@
     "title": "Szablony treningów",
     "search": "Szukaj szablonów treningów…",
     "noServer": "Nie skonfigurowano serwera",
-    "configure": "Configure your server connection in Settings to view your workout presets.",
+    "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić szablony treningów.",
     "go": "Przejdź do ustawień",
     "loading": "Wczytywanie szablonów treningów…",
     "failed": "Nie udało się wczytać szablonów treningów",
@@ -3701,9 +3702,9 @@
     "noItems": "Brak szablonów treningów",
     "trySearch": "Spróbuj innego hasła, aby znaleźć szablon treningu.",
     "empty": "Utworzone szablony treningów pojawią się tutaj.",
-    "moreFailed": "Failed to load more presets.",
-    "exercise": "exercise",
-    "exercises": "exercises"
+    "moreFailed": "Nie udało się wczytać kolejnych szablonów treningów.",
+    "exercise": "ćwiczenie",
+    "exercises": "ćwiczenia"
   },
   "workoutForm": {
     "viewExercise": "Wyświetl ćwiczenie",
@@ -3822,9 +3823,9 @@
     "failed": "Nie udało się skopiować posiłku"
   },
   "foodDelete": {
-    "failed": "Nie udało się usunąć jedzenia",
-    "title": "Usuń jedzenie",
-    "message": "Czy na pewno chcesz usunąć to jedzenie? Istniejące wpisy pozostaną bez zmian."
+    "failed": "Nie udało się usunąć produktu",
+    "title": "Usuń produkt",
+    "message": "Czy na pewno chcesz usunąć ten produkt? Istniejące wpisy pozostaną bez zmian."
   },
   "exerciseEditing": {
     "removeTitle": "Usunąć ćwiczenie?",
@@ -3854,7 +3855,7 @@
     "failed": "Nie udało się dodać posiłku"
   },
   "foodSave": {
-    "failed": "Nie udało się zapisać jedzenia"
+    "failed": "Nie udało się zapisać produktu"
   },
   "favorites": {
     "updateFailed": "Nie udało się zaktualizować ulubionych"
