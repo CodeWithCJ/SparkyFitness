@@ -32,7 +32,7 @@ describe('foodPhotoEstimate', () => {
         const copy = mapEstimateError(code);
         expect(copy.invalidateAiSettings).toBe(true);
         expect(copy.stayOnForm).toBe(false);
-        expect(copy.title.toLowerCase()).toContain('ai');
+        expect(copy.titleDefaultValue.toLowerCase()).toContain('ai');
       }
     });
 
@@ -40,7 +40,7 @@ describe('foodPhotoEstimate', () => {
       const copy = mapEstimateError('IMAGE_TOO_LARGE');
       expect(copy.stayOnForm).toBe(false);
       expect(copy.invalidateAiSettings).toBe(false);
-      expect(copy.message.toLowerCase()).toContain('retake');
+      expect(copy.messageDefaultValue.toLowerCase()).toContain('retake');
     });
 
     test('CONTENT_BLOCKED stays on form so user keeps typed context', () => {
@@ -60,15 +60,15 @@ describe('foodPhotoEstimate', () => {
       const copy = mapEstimateError('TIMEOUT');
       expect(copy.stayOnForm).toBe(true);
       expect(copy.invalidateAiSettings).toBe(false);
-      expect(copy.title.toLowerCase()).toContain('timed out');
-      expect(copy.message.toLowerCase()).toContain('too long');
+      expect(copy.titleDefaultValue.toLowerCase()).toContain('timed out');
+      expect(copy.messageDefaultValue.toLowerCase()).toContain('too long');
     });
 
     test('PRIVATE_NETWORK_FORBIDDEN invalidates AI settings', () => {
       const copy = mapEstimateError('PRIVATE_NETWORK_FORBIDDEN');
       expect(copy.stayOnForm).toBe(false);
       expect(copy.invalidateAiSettings).toBe(true);
-      expect(copy.title.toLowerCase()).toContain('not allowed');
+      expect(copy.titleDefaultValue.toLowerCase()).toContain('not allowed');
     });
   });
 });
