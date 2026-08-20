@@ -64,6 +64,7 @@ export function computeFastTimerValues(
   startTime: string,
   targetEndTime: string | null | undefined,
   now: number,
+  t?: TFunction,
 ): FastTimerValues {
   const startMs = new Date(startTime).getTime();
   const safeStart = Number.isNaN(startMs) ? now : startMs;
@@ -80,7 +81,7 @@ export function computeFastTimerValues(
     remainingMs = Math.max(0, targetMs - now);
     progress = Math.min(1, Math.max(0, elapsedMs / totalMs));
     goalHours = totalMs / MS_PER_HOUR;
-    remainingLabel = formatHoursMinutes(remainingMs);
+    remainingLabel = formatHoursMinutes(remainingMs, t);
   }
   return {
     elapsedMs,
@@ -91,7 +92,7 @@ export function computeFastTimerValues(
     goalHours,
     stage: getMetabolicStage(elapsedHours),
     hhmmss: formatElapsedClock(elapsedMs),
-    elapsedLabel: formatHoursMinutes(elapsedMs),
+    elapsedLabel: formatHoursMinutes(elapsedMs, t),
     remainingLabel,
   };
 }

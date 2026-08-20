@@ -52,6 +52,16 @@ describe('formatHoursMinutes', () => {
     expect(formatHoursMinutes(964 * 60 * 1000)).toBe('16h 4m');
   });
 
+  test('uses the supplied translator for localized duration labels', () => {
+    const pl = ((key: string, options: { defaultValue: string; minutes?: number; hours?: number }) => {
+      if (key === 'fastingCard.duration.minutes') return `${options.minutes ?? 0} min`;
+      return `${options.hours ?? 0} godz. ${options.minutes ?? 0} min`;
+    }) as never;
+
+    expect(formatHoursMinutes(47 * 60 * 1000, pl)).toBe('47 min');
+    expect(formatHoursMinutes(107 * 60 * 1000, pl)).toBe('1 godz. 47 min');
+  });
+
   test('clamps negative input to zero', () => {
     expect(formatHoursMinutes(-1000)).toBe('0m');
   });
@@ -64,13 +74,17 @@ describe('computeFastTimerValues', () => {
     // 14:12:38 elapsed
     const now = (14 * 3600 + 12 * 60 + 38) * 1000;
 
-    const v = computeFastTimerValues(start, target, now);
+    const pl = ((key: string, options: { defaultValue: string; minutes?: number; hours?: number }) => {
+      if (key === 'fastingCard.duration.minutes') return `${options.minutes ?? 0} min`;
+      return `${options.hours ?? 0} godz. ${options.minutes ?? 0} min`;
+    }) as never;
+    const v = computeFastTimerValues(start, target, now, pl);
 
     expect(v.hasGoal).toBe(true);
     expect(v.goalHours).toBe(16);
     expect(v.hhmmss).toBe('14:12:38');
     expect(Math.round(v.progress * 100)).toBe(89);
-    expect(v.remainingLabel).toBe('1h 47m');
+    expect(v.remainingLabel).toBe('1 godz. 47 min');
     expect(v.stage.key).toBe('catabolic');
   });
 
