@@ -3934,7 +3934,21 @@
     "checklist": {
       "title": "Zadania na ten tydzień",
       "empty": "Brak zadań na ten tydzień.",
-      "item": "Element listy kontrolnej"
+      "item": "Element listy kontrolnej",
+      "items": {
+        "firstAppt": "Umów pierwszą wizytę prenatalną",
+        "prenatalVitamin": "Zacznij przyjmować witaminy prenatalne z kwasem foliowym",
+        "ntScan": "Umów badanie przesiewowe w pierwszym trymestrze",
+        "shareNews": "Podziel się wiadomością, jeśli jesteś gotowa",
+        "anatomyScan": "Wykonaj badanie USG połówkowe",
+        "glucoseTest": "Umów test obciążenia glukozą",
+        "countKicks": "Zacznij codziennie liczyć ruchy dziecka",
+        "birthClass": "Zapisz się na zajęcia porodowe lub dla rodziców",
+        "birthPlan": "Przygotuj plan porodu",
+        "hospitalBag": "Spakuj torbę do szpitala",
+        "installCarSeat": "Zamontuj i sprawdź fotelik samochodowy",
+        "pediatrician": "Wybierz pediatrę"
+      }
     }
   },
   "workoutDraft": {

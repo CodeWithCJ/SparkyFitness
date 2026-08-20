@@ -3934,7 +3934,21 @@
     "checklist": {
       "title": "This Week's To-Do",
       "empty": "Nothing on your checklist for this week.",
-      "item": "Checklist item"
+      "item": "Checklist item",
+      "items": {
+        "firstAppt": "Book your first prenatal appointment",
+        "prenatalVitamin": "Start a prenatal vitamin with folic acid",
+        "ntScan": "Schedule first-trimester screening",
+        "shareNews": "Share your news if you’re ready",
+        "anatomyScan": "Attend your anatomy-scan ultrasound",
+        "glucoseTest": "Book your glucose screening test",
+        "countKicks": "Start counting fetal kicks daily",
+        "birthClass": "Enroll in a birth or parenting class",
+        "birthPlan": "Draft your birth plan",
+        "hospitalBag": "Pack your hospital bag",
+        "installCarSeat": "Install and check the car seat",
+        "pediatrician": "Choose a pediatrician"
+      }
     }
   },
   "workoutDraft": {

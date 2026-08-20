@@ -346,7 +346,7 @@ function buildNativeMenuItem(
     sfSymbol: item.sfSymbol ?? 'ellipsis',
     identifier,
     tintColor: colors.defaultColor,
-    accessibilityLabel: item.accessibilityLabel,
+    accessibilityLabel: item.nativeAccessibilityLabel ?? item.accessibilityLabel,
     badge: item.showsBadge ? createNativeHeaderAccentBadge(accentColor, item.badgeValue ?? '•') : undefined,
     menuItems,
   });
@@ -584,6 +584,8 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
           showsBadge: !!item.showsBadge,
           badgeValue: item.kind === 'menu' ? item.badgeValue : undefined,
           accessibilityLabel: item.accessibilityLabel,
+          customAccessibilityLabel: item.customAccessibilityLabel,
+          nativeAccessibilityLabel: item.nativeAccessibilityLabel,
           entries: item.items.map((entry) =>
             isMenuSection(entry)
               ? {
