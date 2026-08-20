@@ -1,4 +1,5 @@
 import { apiCall } from '@/api/api';
+import { withBasePath } from '@/utils/basePath';
 import { ExerciseCSVData } from '@/pages/Exercises/ExerciseImportCSV';
 import {
   Exercise,
@@ -280,7 +281,7 @@ export const importFitFiles = async (
 };
 
 export const getBodyMapSvg = async (): Promise<string> => {
-  const response = await fetch('/images/muscle-male.svg');
+  const response = await fetch(withBasePath('/images/muscle-male.svg'));
   if (!response.ok) {
     throw new Error('Failed to fetch SVG');
   }

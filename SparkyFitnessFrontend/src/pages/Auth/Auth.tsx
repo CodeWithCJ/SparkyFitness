@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -35,6 +35,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AuthResponse } from '@/types/auth';
 import { getErrorMessage } from '@/utils/api';
 import { useTranslation } from 'react-i18next';
+import { withBasePath } from '@/utils/basePath';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -415,7 +416,7 @@ const Auth = () => {
             <CardHeader className="text-center">
               <div className="flex items-center justify-center mb-4">
                 <img
-                  src="/images/SparkyFitness.webp"
+                  src={withBasePath('/images/SparkyFitness.webp')}
                   alt="SparkyFitness Logo"
                   className="h-10 w-10 mr-2"
                 />
@@ -514,12 +515,12 @@ const Auth = () => {
                         />
                       </div>
                       <div className="text-right text-sm">
-                        <a
-                          href="/forgot-password"
+                        <Link
+                          to="/forgot-password"
                           className="font-medium text-primary hover:underline"
                         >
                           Forgot password?
-                        </a>
+                        </Link>
                       </div>
                       <Button
                         type="submit"

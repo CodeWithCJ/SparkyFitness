@@ -6,6 +6,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { BookOpen } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { withBasePath } from '@/utils/basePath';
 
 export const DeveloperResources = () => {
   const { t } = useTranslation();
@@ -35,7 +36,7 @@ export const DeveloperResources = () => {
             <div className="flex gap-4 mt-2">
               <Button variant="outline" asChild>
                 <a
-                  href="/api/api-docs/swagger"
+                  href={withBasePath('/api/api-docs/swagger')}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -44,7 +45,7 @@ export const DeveloperResources = () => {
               </Button>
               <Button variant="outline" asChild>
                 <a
-                  href="/api/api-docs/redoc"
+                  href={withBasePath('/api/api-docs/redoc')}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

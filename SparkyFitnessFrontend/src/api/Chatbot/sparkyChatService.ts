@@ -1,4 +1,4 @@
-import { apiCall } from '@/api/api';
+import { apiCall, API_BASE_URL } from '@/api/api';
 import { error } from '@/utils/logging';
 import { Message } from '@/types/Chatbot_types';
 
@@ -11,6 +11,8 @@ interface ChatHistory extends Message {
   message_type: string;
   created_at: string;
 }
+
+export const getChatStreamUrl = (): string => `${API_BASE_URL}/chat/stream`;
 
 export const loadUserPreferences = async (): Promise<UserPreferences> => {
   const data = await apiCall(`/user-preferences`, {

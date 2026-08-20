@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   const backendHost = process.env.VITE_BACKEND_HOST || 'localhost';
   const target = `http://${backendHost}:3010`;
   return {
+    base: './',
     // react-grid-layout reads process.env["NODE_ENV"] at runtime, but the
     // browser has no `process`. Shim just the env object so it resolves in both
     // dev and the production/Docker build (where mode === 'production'). Client
@@ -80,7 +81,7 @@ export default defineConfig(({ mode }) => {
           },
           workbox: {
             maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
-            navigateFallback: '/index.html',
+            navigateFallback: './index.html',
             navigateFallbackDenylist: [/^\/api/, /^\/uploads/], // Don't serve index.html for API or Uploads
           },
         }),

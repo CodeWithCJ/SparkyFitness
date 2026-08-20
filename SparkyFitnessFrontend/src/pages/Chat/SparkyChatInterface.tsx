@@ -8,6 +8,7 @@ import {
 import {
   useChatPreferencesQuery,
   useChatHistoryQuery,
+  getChatStreamUrl,
 } from '@/hooks/AI/useSparkyChat';
 import {
   AssistantChatTransport,
@@ -151,7 +152,7 @@ const SparkyChatInner = ({
 
   const runtime = useChatRuntime({
     transport: new AssistantChatTransport({
-      api: '/api/chat/stream',
+      api: getChatStreamUrl(),
       body: {
         service_config_id: activeAIServiceSetting?.id,
         user_date: userDate,

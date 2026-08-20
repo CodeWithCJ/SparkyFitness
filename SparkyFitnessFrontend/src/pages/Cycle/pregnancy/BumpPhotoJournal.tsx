@@ -9,6 +9,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, Trash2 } from 'lucide-react';
+import { withBasePath } from '@/utils/basePath';
 
 interface BumpPhotoJournalProps {
   pregnancyId: string;
@@ -75,7 +76,7 @@ export default function BumpPhotoJournal({
             {photos.map((p) => (
               <div key={p.id} className="group relative">
                 <img
-                  src={`/${p.file_path}`}
+                  src={withBasePath(`/${p.file_path}`)}
                   alt={t('pregnancy.photos.weekAlt', 'Week {{n}} bump photo', {
                     n: p.week,
                   })}

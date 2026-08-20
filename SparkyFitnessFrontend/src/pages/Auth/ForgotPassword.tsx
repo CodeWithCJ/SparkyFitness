@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,6 +14,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info } from '@/utils/logging';
 import { useRequestPasswordResetMutation } from '@/hooks/Auth/useAuth';
 import { getErrorMessage } from '@/utils/api';
+import { withBasePath } from '@/utils/basePath';
 
 const ForgotPassword = () => {
   const { loggingLevel } = usePreferences();
@@ -49,7 +51,7 @@ const ForgotPassword = () => {
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <img
-              src="/images/SparkyFitness.webp"
+              src={withBasePath('/images/SparkyFitness.webp')}
               alt="SparkyFitness Logo"
               className="h-10 w-10 mr-2"
             />
@@ -84,9 +86,9 @@ const ForgotPassword = () => {
               </p>
             )}
             <div className="text-center text-sm">
-              <a href="/" className="font-medium text-primary hover:underline">
+              <Link to="/" className="font-medium text-primary hover:underline">
                 Back to Sign In
-              </a>
+              </Link>
             </div>
           </form>
         </CardContent>
