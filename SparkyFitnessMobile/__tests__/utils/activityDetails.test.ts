@@ -1,4 +1,5 @@
 import type { ActivityDetailResponse } from '@workspace/shared';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { extractActivitySummary } from '../../src/utils/activityDetails';
 
 function activityDetail(overrides: Partial<ActivityDetailResponse> = {}): ActivityDetailResponse {
@@ -197,5 +198,50 @@ describe('extractActivitySummary', () => {
     const items = extractActivitySummary([activityDetail({ detail_type: 'hr_zones', detail_data: JSON.stringify({ hr_zones: { light: 'not-a-number', moderate: 300 } }), provider_name: 'withings' })]);
     expect(items).toHaveLength(1);
     expect(items[0]).toEqual({ label: 'Heart-rate zone: Moderate', value: '5m 0s' });
+  });
+
+  test('localizes HR-zone durations per application locale', async () => {
+    const enDuration: Record<string, string> = {
+      'activitySummary.durationMinutesSeconds': '{{minutes}}m {{seconds}}s',
+    };
+    const plDuration: Record<string, string> = {
+      'activitySummary.durationMinutesSeconds': '{{minutes}} min {{seconds}} s',
+    };
+    const makeT = (map: Record<string, string>) => ((key: string, options: { defaultValue: string; minutes?: number; seconds?: number; zone?: string | number }) =>
+      (map[key] ?? options.defaultValue)
+        .replace('{{minutes}}', String(options.minutes ?? ''))
+        .replace('{{seconds}}', String(options.seconds ?? '')));
+
+    const garmin = () => [activityDetail({
+      detail_type: 'hr_zones',
+      detail_data: JSON.stringify({ hr_in_timezones: [{ zoneNumber: 3, secsInZone: 125 }] }),
+      provider_name: 'garmin',
+    })];
+
+    const enItems = extractActivitySummary(garmin(), makeT(enDuration) as never);
+    // 125 seconds = 2 minutes 5 seconds.
+    expect(enItems.find(i => i.label === 'Zone 3')?.value).toBe('2m 5s');
+
+    const plItems = extractActivitySummary(garmin(), makeT(plDuration) as never);
+    expect(plItems.find(i => i.label === 'Zone 3')?.value).toBe('2 min 5 s');
+  });
+
+  test('uses localized numeric separators for Garmin metrics', async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
+
+    const makeSummary = (hr: number) => extractActivitySummary([activityDetail({
+      detail_data: { activity: { averageHeartRateInBeatsPerMinute: hr } },
+    })]);
+
+    // A fractional heart-rate value proves the numeric separator follows the locale.
+    const enItems = makeSummary(151.5);
+    expect(enItems.find(i => i.label === 'Avg HR')?.value).toBe('151.5 bpm');
+
+    await i18n.changeLanguage('pl');
+    const plItems = makeSummary(151.5);
+    expect(plItems.find(i => i.label === 'Avg HR')?.value).toBe('151,5 bpm');
+
+    await i18n.changeLanguage('en');
   });
 });

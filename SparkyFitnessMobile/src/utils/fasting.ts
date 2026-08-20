@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 import i18n from '../localization/i18n';
+import { getAppLocale, formatLocalizedNumber } from '../localization';
 import { getMetabolicStage, type MetabolicStage } from '../constants/fasting';
 import { toLocalDateString, formatDateLabel, normalizeDate } from './dateUtils';
 import type { FastingLog, FastingStats } from '../types/fasting';
@@ -10,11 +11,11 @@ function resolveTranslator(t?: TFunction): TFunction {
 }
 /** Formats an ISO timestamp's local time of day, e.g. "6:32 PM". */
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' });
 }
 /** Formats a Date as a short weekday + date + time label, e.g. "Mon, Jun 3, 6:32 PM". */
 export function formatDateTime(date: Date): string {
-  return date.toLocaleString([], {
+  return date.toLocaleString(getAppLocale(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -158,10 +159,10 @@ export function formatFastingStats(
   const totalMin = toFiniteNumber(stats?.total_minutes_fasted);
   const count = toFiniteNumber(stats?.total_completed_fasts);
   return {
-    avgFastValue: avgMin != null ? (avgMin / 60).toFixed(1) : '-',
+    avgFastValue: avgMin != null ? formatLocalizedNumber(avgMin / 60, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-',
     avgFastUnit: avgMin != null ? hoursUnit : '',
-    fastsCount: count != null ? String(Math.round(count)) : '0',
-    totalValue: totalMin != null ? String(Math.round(totalMin / 60)) : '-',
+    fastsCount: count != null ? formatLocalizedNumber(Math.round(count)) : '0',
+    totalValue: totalMin != null ? formatLocalizedNumber(Math.round(totalMin / 60)) : '-',
     totalUnit: totalMin != null ? hoursUnit : '',
   };
 }

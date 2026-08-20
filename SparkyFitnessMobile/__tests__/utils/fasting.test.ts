@@ -5,6 +5,8 @@ import {
   computeFastTimerValues,
   formatFastingStats,
   formatLastFast,
+  formatTime,
+  formatDateTime,
 } from '../../src/utils/fasting';
 import type { FastingLog } from '../../src/types/fasting';
 
@@ -162,6 +164,30 @@ describe('formatFastingStats', () => {
     }, i18n.t);
     expect(polish.avgFastUnit).toBe('godz.');
     expect(polish.totalUnit).toBe('godz.');
+    // The locale-aware formatter must render a decimal comma in Polish, not
+    // the English decimal point, while the numeric value is unchanged.
+    expect(polish.avgFastValue).toBe('15,8');
+  });
+
+  test('formats populated stats with locale-aware decimal separators', async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
+    const english = formatFastingStats({
+      total_completed_fasts: '47',
+      total_minutes_fasted: 44520,
+      average_duration_minutes: 948,
+    }, i18n.t);
+    expect(english.avgFastValue).toBe('15.8');
+
+    await i18n.changeLanguage('pl');
+    const polish = formatFastingStats({
+      total_completed_fasts: '47',
+      total_minutes_fasted: 44520,
+      average_duration_minutes: 948,
+    }, i18n.t);
+    expect(polish.avgFastValue).toBe('15,8');
+
+    await i18n.changeLanguage('en');
   });
 });
 
@@ -203,5 +229,40 @@ describe('formatLastFast', () => {
       polishT,
     );
     expect(result).toBe('Ostatni post: 2 godz. 0 min · dzisiaj');
+  });
+});
+
+describe('formatTime / formatDateTime locale handling', () => {
+  const iso = new Date('2026-06-03T15:30:00').toISOString();
+
+  test('follows the active application locale (not the device locale) for time', async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
+    const enTime = formatTime(iso);
+    // en-US uses 12-hour AM/PM presentation.
+    expect(enTime.toLowerCase()).toContain('pm');
+
+    await i18n.changeLanguage('pl');
+    const plTime = formatTime(iso);
+    // pl-PL uses 24-hour presentation, no AM/PM suffix.
+    expect(plTime.toLowerCase()).not.toContain('pm');
+    expect(plTime).not.toBe(enTime);
+
+    await i18n.changeLanguage('en');
+  });
+
+  test('follows the active application locale for date + time', async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
+    const date = new Date('2026-06-03T15:30:00');
+    const enDateTime = formatDateTime(date);
+    expect(enDateTime.toLowerCase()).toContain('pm');
+
+    await i18n.changeLanguage('pl');
+    const plDateTime = formatDateTime(date);
+    expect(plDateTime.toLowerCase()).not.toContain('pm');
+    expect(plDateTime).not.toBe(enDateTime);
+
+    await i18n.changeLanguage('en');
   });
 });

@@ -3785,7 +3785,8 @@
     "heartRateZoneLight": "Light",
     "heartRateZoneModerate": "Moderate",
     "heartRateZoneIntense": "Intense",
-    "heartRateZonePeak": "Peak"
+    "heartRateZonePeak": "Peak",
+    "durationMinutesSeconds": "{{minutes}}m {{seconds}}s"
   },
   "copyMeal": {
     "title": "Copy meal: {{meal}}",

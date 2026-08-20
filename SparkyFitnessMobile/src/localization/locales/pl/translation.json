@@ -505,7 +505,7 @@
     "syncMetricHint": "Włącza lub wyłącza synchronizację tego parametru zdrowotnego.",
     "enableAllHint": "Włącza lub wyłącza synchronizację wszystkich parametrów zdrowotnych.",
     "writeMetricLabel": "Zapisuj {{metric}} w {{store}}",
-    "writeMetricHint": "Włącza lub wyłącza zapis tego parametru w magazynie danych zdrowotnych.",
+    "writeMetricHint": "Włącza lub wyłącza zapisywanie tego parametru w aplikacji zdrowotnej.",
     "noData": "Brak danych",
     "loading": "Ładowanie danych zdrowotnych",
     "alerts": {
@@ -753,7 +753,7 @@
       "dynamic": "Cel dynamiczny",
       "fixed": "Cel stały",
       "percentage": "Procentowy zwrot kalorii",
-      "tdee": "Projekcja urządzenia"
+      "tdee": "Prognoza z urządzenia"
     },
     "activity": {
       "none": "Brak (×1,0)",
@@ -3785,7 +3785,8 @@
     "heartRateZoneLight": "Lekka",
     "heartRateZoneModerate": "Umiarkowana",
     "heartRateZoneIntense": "Intensywna",
-    "heartRateZonePeak": "Szczytowa"
+    "heartRateZonePeak": "Szczytowa",
+    "durationMinutesSeconds": "{{minutes}} min {{seconds}} s"
   },
   "copyMeal": {
     "title": "Kopiuj posiłek: {{meal}}",

@@ -44,6 +44,27 @@ const StepsTooltip: React.FC<{ text: string }> = ({ text }) => (
   </View>
 );
 
+/**
+ * Builds the tooltip copy from the semantically selected data point. The text
+ * is derived from the current `t` translator and the current application
+ * locale on every render, so an already-visible tooltip can never retain stale
+ * copy after a language switch.
+ */
+export const buildTooltipText = (
+  point: StepsDataPoint | undefined,
+  t: ReturnType<typeof useTranslation>['t'],
+): string => {
+  if (!point) return DEFAULT_TOOLTIP;
+  const formattedCount = formatLocalizedNumber(point.steps);
+  return `${t('charts.steps.tooltip', {
+    count: point.steps,
+    formattedCount,
+    defaultValue: '{{formattedCount}} steps',
+    defaultValue_one: '{{formattedCount}} step',
+    defaultValue_other: '{{formattedCount}} steps',
+  })} · ${formatTooltipDate(point.day)}`;
+};
+
 const StepsBarChart: React.FC<StepsBarChartProps> = ({
   data,
   isLoading,
@@ -55,7 +76,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -64,14 +85,19 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
-  // Clear a lingering tooltip when the dataset or range changes. Done during
-  // render (instead of in an effect) so the tooltip is already reset on the
+  // Reset a lingering selection when the dataset or range changes. Done during
+  // render (instead of in an effect) so the tooltip is already cleared on the
   // first render after the data changes.
   const [tooltipResetKey, setTooltipResetKey] = useState({ data, range });
   if (tooltipResetKey.data !== data || tooltipResetKey.range !== range) {
     setTooltipResetKey({ data, range });
-    setTooltipText(DEFAULT_TOOLTIP);
+    setSelectedIndex(null);
   }
+
+  // Derive the presentation text from the selected point on every render, so
+  // an already-visible tooltip reflects the current app language immediately.
+  const selectedPoint = selectedIndex != null ? data[selectedIndex] : undefined;
+  const tooltipText = buildTooltipText(selectedPoint, t);
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {
@@ -97,23 +123,13 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
         return;
       }
 
-      setTooltipText(
-        `${t('charts.steps.tooltip', {
-          count: point.steps,
-          formattedCount: formatLocalizedNumber(point.steps),
-          defaultValue: '{{formattedCount}} steps',
-          defaultValue_one: '{{formattedCount}} step',
-          defaultValue_other: '{{formattedCount}} steps',
-        })} · ${formatTooltipDate(
-          point.day,
-        )}`,
-      );
+      setSelectedIndex(index);
     },
-    [data, t],
+    [data],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(DEFAULT_TOOLTIP);
+    setSelectedIndex(null);
   }, []);
 
   return (
