@@ -7,7 +7,7 @@ import {
   computeCaloriesRemaining,
   computeExerciseCredited,
   computeCalorieProgress,
-} from '@/utils/calorieCalculations';
+} from '@workspace/shared';
 import {
   computeCalorieTarget,
   getGoalModeAdjustment,

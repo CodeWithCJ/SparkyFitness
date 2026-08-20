@@ -10,7 +10,6 @@ import i18n from '@/i18n';
 import type { FoodEntry, FoodVariant } from '@/types/food';
 import { FoodEntryMeal, MealTotals } from '@/types/meal';
 import {
-  CALORIE_CALCULATION_CONSTANTS,
   ACTIVITY_MULTIPLIERS,
   calculateBmr,
   computeCalorieTarget,
@@ -21,25 +20,6 @@ import { getMealPercentage } from './goals';
 import { ExpandedGoals } from '@/types/goals';
 
 // Utility functions for nutrition calculations
-
-export const convertStepsToCalories = (
-  steps: number,
-  weightKg: number = CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
-  heightCm: number = CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM
-): number => {
-  // Stride length estimation
-  const strideLengthM =
-    (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
-  const distanceKm = (steps * strideLengthM) / 1000;
-
-  // Net calories burned per km is approx 0.39 - 0.45 kcal/kg above BMR
-  // We use a conservative "background" movement estimate
-  return Math.round(
-    distanceKm *
-      weightKg *
-      CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM
-  );
-};
 
 export const estimateStepsFromWalkingExercise = (
   durationMinutes: number,

@@ -1606,6 +1606,62 @@ async function getDailyExerciseTotalsRange(
   }
 }
 
+export interface DailyExerciseCalorieSplit {
+  entry_date: string;
+  active_calories: number;
+  other_calories: number;
+  activity_steps: number;
+}
+
+/**
+ * Per-day active / logged / step splits for a whole range, in one query.
+ *
+ * This is the ranged equivalent of walking `getExerciseEntriesByDateV2`'s session tree
+ * through `extractExerciseStats`. The tree exists for the Diary's UI; the calorie balance
+ * only ever reduces it to these three sums, and both individual entries and preset
+ * children live in this one table, so a GROUP BY reproduces it exactly.
+ *
+ * Two predicates carry the whole correctness of #2094:
+ *
+ *  - `IS DISTINCT FROM`, never `<>`. `exercise_name` is nullable, and `<>` yields NULL for
+ *    a null-named row, so its calories would land in neither bucket and silently vanish --
+ *    the same class of undercount this fix exists to remove.
+ *  - `exercise_preset_entry_id IS NULL` on the active bucket, because `extractExerciseStats`
+ *    folds every preset child into the logged arm regardless of its name. Without it, an
+ *    "Active Calories" row inside a preset would be classified one way by the Diary and
+ *    another way here.
+ *
+ * Deliberately not `getDailyExerciseTotalsRange`: that cannot separate the device summary
+ * row from logged workouts, which is precisely the discrimination this needs.
+ */
+async function getDailyExerciseCalorieSplitRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<DailyExerciseCalorieSplit[]> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date,
+              COALESCE(SUM(calories_burned) FILTER (
+                WHERE exercise_name = 'Active Calories'
+                  AND exercise_preset_entry_id IS NULL), 0)::float8 AS active_calories,
+              COALESCE(SUM(calories_burned) FILTER (
+                WHERE exercise_name IS DISTINCT FROM 'Active Calories'
+                   OR exercise_preset_entry_id IS NOT NULL), 0)::float8 AS other_calories,
+              COALESCE(SUM(steps), 0)::int AS activity_steps
+       FROM exercise_entries
+       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
+       GROUP BY entry_date
+       ORDER BY entry_date ASC`,
+      [userId, startDate, endDate]
+    );
+    return result.rows as DailyExerciseCalorieSplit[];
+  } finally {
+    client.release();
+  }
+}
+
 // Entry-level diary rows for a date range, plus all their sets, with catalog
 // name/category. Backs the chatbot sparky_get_exercise_diary tool.
 async function getExerciseDiaryRange(
@@ -1756,12 +1812,14 @@ export { getRecentSessionsForExercise };
 export { deleteExerciseEntriesByEntrySourceAndDate };
 export { deleteExerciseEntriesByEntrySourceAndDateWithClient };
 export { getDailyExerciseTotalsRange };
+export { getDailyExerciseCalorieSplitRange };
 export { getExerciseDiaryRange };
 export { getRecentExerciseEntries };
 export { getExerciseUsage };
 export { getWaterEstimatedSumForDate };
 export { getWaterEstimatedSumForDateRange };
 export default {
+  getDailyExerciseCalorieSplitRange,
   upsertExerciseEntryData,
   _createExerciseEntryWithClient,
   _updateExerciseEntryWithClient,

@@ -66,6 +66,7 @@ import {
   GoalModeCalculationMethod,
   calculateBmr,
   calculateAge,
+  CalorieGoalAdjustmentMode,
 } from '@workspace/shared';
 
 const CalculationSettings = () => {
@@ -100,9 +101,10 @@ const CalculationSettings = () => {
   } = usePreferences();
 
   const invalidateDailyProgress = useDailyProgressInvalidation();
-  const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] = useState<
-    'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive'
-  >(contextCalorieGoalAdjustmentMode || 'dynamic');
+  const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] =
+    useState<CalorieGoalAdjustmentMode>(
+      contextCalorieGoalAdjustmentMode || 'dynamic'
+    );
   const [exerciseCaloriePercentage, setExerciseCaloriePercentage] =
     useState<number>(contextExerciseCaloriePercentage ?? 100);
   const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustment] =

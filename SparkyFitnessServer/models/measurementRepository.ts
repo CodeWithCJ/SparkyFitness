@@ -4,6 +4,7 @@ import { log } from '../config/logging.js';
 import format from 'pg-format';
 import {
   CALORIE_CALCULATION_CONSTANTS,
+  computeStepCalories,
   isDayString,
   isValidTimeZone,
   todayInZone,
@@ -1363,66 +1364,113 @@ async function deleteCustomMeasurement(id: any, userId: any) {
   }
 }
 /**
- * Compute step calories for a user on a given date.
- * Background steps = total check-in steps minus steps already logged in exercise sessions.
- * @param {string} userId
- * @param {string} date - YYYY-MM-DD
- * @param {Array} sessions - exercise sessions for the date (ExerciseSessionResponse[])
- * @returns {Promise<number>} step calories burned
+ * Weight and height for step-calorie estimation.
+ *
+ * Deliberately whole-table latest rather than latest-on-or-before the target day. The
+ * Diary has always read it this way, and the acceptance criterion for #2094 is that
+ * Reports agrees with the Diary -- date-scoping it here would make the two disagree again
+ * for every day after a weight change. Note that BMR in the same balance *does* use
+ * on-or-before, so the two are inconsistent with each other. Tracked separately; do not
+ * "fix" one without the other.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getStepCaloriesForDate(userId: any, date: any, sessions: any) {
+async function getLatestWeightHeight(
+  userId: string
+): Promise<{ weightKg: number | null; heightCm: number | null }> {
   const client = await getClient(userId);
   try {
-    const [checkInResult, weightResult, heightResult] = await Promise.all([
-      client.query(
-        'SELECT steps FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2',
-        [userId, date]
-      ),
-      client.query(
-        `SELECT weight FROM check_in_measurements
-         WHERE user_id = $1 AND weight IS NOT NULL
-         ORDER BY entry_date DESC, updated_at DESC LIMIT 1`,
-        [userId]
-      ),
-      client.query(
-        `SELECT height FROM check_in_measurements
-         WHERE user_id = $1 AND height IS NOT NULL
-         ORDER BY entry_date DESC, updated_at DESC LIMIT 1`,
-        [userId]
-      ),
-    ]);
-    const totalSteps = parseInt(checkInResult.rows[0]?.steps ?? '0', 10) || 0;
-    const weightKg =
-      parseFloat(weightResult.rows[0]?.weight) ||
-      CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
-    const heightCm =
-      parseFloat(heightResult.rows[0]?.height) ||
-      CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const activitySteps = sessions.reduce((sum: any, s: any) => {
-      if (s.type === 'preset') {
-        return (
-          sum +
-          (s.exercises ?? []).reduce(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (eSum: any, e: any) =>
-              eSum + (parseInt(String(e.steps ?? '0'), 10) || 0),
-            0
-          )
-        );
-      }
-      return sum + (parseInt(String(s.steps ?? '0'), 10) || 0);
-    }, 0);
-    const backgroundSteps = Math.max(0, totalSteps - activitySteps);
-    const strideLengthM =
-      (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
-    const distanceKm = (backgroundSteps * strideLengthM) / 1000;
-    return Math.round(
-      distanceKm *
-        weightKg *
-        CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM
+    const result = await client.query(
+      `SELECT
+         (SELECT weight FROM check_in_measurements
+           WHERE user_id = $1 AND weight IS NOT NULL
+           ORDER BY entry_date DESC, updated_at DESC LIMIT 1) AS weight,
+         (SELECT height FROM check_in_measurements
+           WHERE user_id = $1 AND height IS NOT NULL
+           ORDER BY entry_date DESC, updated_at DESC LIMIT 1) AS height`,
+      [userId]
     );
+    const weight = parseFloat(result.rows[0]?.weight);
+    const height = parseFloat(result.rows[0]?.height);
+    return {
+      weightKg: Number.isFinite(weight) ? weight : null,
+      heightCm: Number.isFinite(height) ? height : null,
+    };
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Compute step calories for a user on a given date.
+ *
+ * Background steps = total check-in steps minus the steps a logged workout already
+ * accounted for. `activitySteps` is passed in rather than re-derived from the session
+ * tree because the caller has already walked it to split active/logged calories; walking
+ * it twice is two implementations of one rule.
+ */
+async function getStepCaloriesForDate(
+  userId: string,
+  date: string,
+  activitySteps: number
+): Promise<number> {
+  const [{ weightKg, heightCm }, totalSteps] = await Promise.all([
+    getLatestWeightHeight(userId),
+    getCheckInStepsForDate(userId, date),
+  ]);
+
+  return computeStepCalories({
+    backgroundSteps: Math.max(0, totalSteps - (activitySteps || 0)),
+    weightKg: weightKg ?? CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
+    heightCm: heightCm ?? CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+  });
+}
+
+/** The day's total step count as recorded on the check-in row, or 0. */
+async function getCheckInStepsForDate(
+  userId: string,
+  date: string
+): Promise<number> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'SELECT steps FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2',
+      [userId, date]
+    );
+    return parseInt(result.rows[0]?.steps ?? '0', 10) || 0;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Synced resting/BMR values keyed by date, for a whole range.
+ *
+ * The per-date sibling `getExternalBmrForDate` issues one query per day; the ranged
+ * report path would turn that into one query per day in the window.
+ */
+async function getExternalBmrByDateRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<Map<string, number>> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT DISTINCT ON (cm.entry_date)
+              TO_CHAR(cm.entry_date, 'YYYY-MM-DD') AS entry_date, cm.value
+       FROM custom_measurements cm
+       JOIN custom_categories cc ON cm.category_id = cc.id
+       WHERE cm.user_id = $1
+         AND cc.name = 'basal_metabolic_rate'
+         AND cm.entry_date BETWEEN $2 AND $3
+       ORDER BY cm.entry_date, cm.updated_at DESC, cm.entry_timestamp DESC`,
+      [userId, startDate, endDate]
+    );
+    const byDate = new Map<string, number>();
+    for (const row of result.rows) {
+      const value = parseFloat(row.value);
+      if (Number.isFinite(value)) byDate.set(row.entry_date, value);
+    }
+    return byDate;
   } finally {
     client.release();
   }
@@ -1518,6 +1566,8 @@ export { getLatestCheckInMeasurementsOnOrBeforeDate };
 export { getExternalBmrForDate };
 export { getMostRecentMeasurement };
 export { getStepCaloriesForDate };
+export { getLatestWeightHeight };
+export { getExternalBmrByDateRange };
 
 // ── Water Intake Entries (granular drink-by-drink tracking) ──────────────
 
@@ -1924,4 +1974,6 @@ export default {
   getExternalBmrForDate,
   getMostRecentMeasurement,
   getStepCaloriesForDate,
+  getLatestWeightHeight,
+  getExternalBmrByDateRange,
 };

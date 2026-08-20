@@ -1,12 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import NutritionPeriodSummary from '@/pages/Reports/NutritionPeriodSummary';
-import type { DailyExerciseEntry, NutritionData } from '@/types/reports';
+import type { NutritionData } from '@/types/reports';
 import type { ExpandedGoals } from '@/types/goals';
-import type { Exercise } from '@/types/exercises';
+import type { DailyCalorieBalanceRow } from '@workspace/shared';
 
-let mockAdjustmentMode: 'dynamic' | 'adaptive' | 'fixed' | 'percentage' =
-  'dynamic';
+let mockAdjustmentMode:
+  | 'dynamic'
+  | 'adaptive'
+  | 'fixed'
+  | 'percentage'
+  | 'tdee'
+  | 'smart' = 'dynamic';
 
 jest.mock('@/i18n', () => ({
   __esModule: true,
@@ -56,7 +61,7 @@ jest.mock('@/components/ZoomableChart', () => ({
   }) => <div>{children(false, 1)}</div>,
 }));
 
-// Mock recharts responsive container and charts to prevent jsdom SVG sizing issues
+// Mock recharts responsive container to prevent jsdom SVG sizing issues
 jest.mock('recharts', () => {
   const Original = jest.requireActual('recharts');
   return {
@@ -67,50 +72,88 @@ jest.mock('recharts', () => {
   };
 });
 
+const EMPTY_NUTRIENTS = {
+  protein: 150,
+  carbs: 200,
+  fat: 70,
+  saturated_fat: 0,
+  polyunsaturated_fat: 0,
+  monounsaturated_fat: 0,
+  trans_fat: 0,
+  cholesterol: 0,
+  sodium: 0,
+  potassium: 0,
+  dietary_fiber: 0,
+  sugars: 0,
+  vitamin_a: 0,
+  vitamin_c: 0,
+  calcium: 0,
+  iron: 0,
+};
+
+const day = (date: string, calories: number): NutritionData => ({
+  date,
+  calories,
+  ...EMPTY_NUTRIENTS,
+});
+
+const goalFor = (calories: number): ExpandedGoals =>
+  ({ calories, protein: 140, carbs: 180, fat: 60 }) as ExpandedGoals;
+
+/**
+ * Builds one server-shaped balance row.
+ *
+ * `credit` is what the server decided the day's activity is worth *after*
+ * `resolveExerciseCalories` picked max(active, logged + steps) and after the
+ * "Include BMR in Net Calories" preference was applied. The component derives the
+ * effective goal as `eaten + remaining`, so the row only has to be internally consistent.
+ */
+const balance = ({
+  date,
+  eaten,
+  goal,
+  credit = 0,
+  stepCalories = 0,
+}: {
+  date: string;
+  eaten: number;
+  goal: number;
+  credit?: number;
+  stepCalories?: number;
+}): DailyCalorieBalanceRow => ({
+  date,
+  eaten,
+  goal,
+  remaining: goal + credit - eaten,
+  burned: credit,
+  net: eaten - credit,
+  progress: 0,
+  bmr: 2000,
+  bmrSource: 'formula',
+  exerciseSource: credit > 0 ? 'logged' : 'none',
+  tdeeProjection: null,
+  stepCalories,
+});
+
+const byDate = (
+  rows: DailyCalorieBalanceRow[]
+): Record<string, DailyCalorieBalanceRow> =>
+  Object.fromEntries(rows.map((row) => [row.date, row]));
+
 describe('NutritionPeriodSummary', () => {
   beforeEach(() => {
     mockAdjustmentMode = 'dynamic';
   });
 
   it('calculates Net Balance as Total Eaten - Total Goal when no exercise is logged', () => {
-    const nutritionData: NutritionData[] = [
-      {
-        date: '2026-08-03',
-        calories: 2000,
-        protein: 150,
-        carbs: 200,
-        fat: 70,
-        saturated_fat: 0,
-        polyunsaturated_fat: 0,
-        monounsaturated_fat: 0,
-        trans_fat: 0,
-        cholesterol: 0,
-        sodium: 0,
-        potassium: 0,
-        dietary_fiber: 0,
-        sugars: 0,
-        vitamin_a: 0,
-        vitamin_c: 0,
-        calcium: 0,
-        iron: 0,
-      },
-    ];
-
-    const goals: Record<string, ExpandedGoals> = {
-      '2026-08-03': {
-        calories: 1800,
-        protein: 140,
-        carbs: 180,
-        fat: 60,
-      } as ExpandedGoals,
-    };
-
     render(
       <NutritionPeriodSummary
-        nutritionData={nutritionData}
+        nutritionData={[day('2026-08-03', 2000)]}
         customNutrients={[]}
-        goals={goals}
-        exerciseEntries={[]}
+        goals={{ '2026-08-03': goalFor(1800) }}
+        calorieBalanceByDate={byDate([
+          balance({ date: '2026-08-03', eaten: 2000, goal: 1800 }),
+        ])}
       />
     );
 
@@ -120,10 +163,172 @@ describe('NutritionPeriodSummary', () => {
     expect(screen.getByText(/Total Goal: 1800 kcal/i)).toBeInTheDocument();
   });
 
-  it('correctly includes exercise calories burned in dynamic mode (Issue #2094)', () => {
-    mockAdjustmentMode = 'dynamic';
+  /**
+   * The regression gate for the reopened #2094.
+   *
+   * Aug 11 from the reporter's screenshots: a 641 kcal logged workout, a 774 kcal device
+   * "Active Calories" row, and 138 kcal of background steps. The Diary credits
+   * max(774, 641 + 138) = 779. The old browser-side derivation summed the entries and
+   * credited 641 + 774 = 1415, which is the "doubling" in the bug report.
+   */
+  it('does not double-count device Active Calories on top of logged workouts (Issue #2094)', () => {
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[day('2026-08-11', 2477)]}
+        customNutrients={[]}
+        goals={{ '2026-08-11': goalFor(1962) }}
+        calorieBalanceByDate={byDate([
+          balance({
+            date: '2026-08-11',
+            eaten: 2477,
+            goal: 1962,
+            credit: 779,
+            stepCalories: 138,
+          }),
+        ])}
+      />
+    );
 
-    // 8-day dataset matching issue #2094 exact reproduction
+    // Effective goal = 1962 + 779 = 2741, NOT 1962 + 1415 = 3377.
+    expect(screen.getByText(/Total Goal: 2741 kcal/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Total Goal: 3377 kcal/i)
+    ).not.toBeInTheDocument();
+    // Net Balance = 2477 - 2741 = -264, i.e. the negation of the Diary's +264 remaining.
+    expect(screen.getAllByText('-264 kcal')).toHaveLength(2);
+  });
+
+  /**
+   * Aug 8 from the reporter's screenshots: no exercise entries at all, 5,781 steps worth
+   * 174 kcal. Step calories come from `check_in_measurements`, which the browser-side
+   * derivation could not see, so it credited exactly zero.
+   */
+  it('credits background step calories on a steps-only day (Issue #2094)', () => {
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[day('2026-08-08', 2198)]}
+        customNutrients={[]}
+        goals={{ '2026-08-08': goalFor(1962) }}
+        calorieBalanceByDate={byDate([
+          balance({
+            date: '2026-08-08',
+            eaten: 2198,
+            goal: 1962,
+            credit: 174,
+            stepCalories: 174,
+          }),
+        ])}
+      />
+    );
+
+    // Effective goal = 1962 + 174 = 2136, not the bare 1962 the old code showed.
+    expect(screen.getByText(/Total Goal: 2136 kcal/i)).toBeInTheDocument();
+    expect(screen.getAllByText('+62 kcal')).toHaveLength(2);
+  });
+
+  /**
+   * With "Include BMR in Net Calories" on, the day's budget legitimately contains the
+   * BMR as well. The old derivation ignored the preference entirely, understating the
+   * goal by a whole BMR every day.
+   */
+  it('reflects BMR in the goal when Include BMR in Net Calories is enabled', () => {
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[day('2026-08-07', 2574)]}
+        customNutrients={[]}
+        goals={{ '2026-08-07': goalFor(1962) }}
+        calorieBalanceByDate={byDate([
+          // 683 exercise + 3 steps + 2001 BMR
+          balance({
+            date: '2026-08-07',
+            eaten: 2574,
+            goal: 1962,
+            credit: 2687,
+          }),
+        ])}
+      />
+    );
+
+    expect(screen.getByText(/Total Goal: 4649 kcal/i)).toBeInTheDocument();
+  });
+
+  it('falls back to the raw goal when no balance is available', () => {
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[day('2026-08-03', 2000)]}
+        customNutrients={[]}
+        goals={{ '2026-08-03': goalFor(1800) }}
+        calorieBalanceByDate={undefined}
+      />
+    );
+
+    expect(screen.getByText(/Total Goal: 1800 kcal/i)).toBeInTheDocument();
+    expect(screen.getAllByText('+200 kcal')).toHaveLength(2);
+  });
+
+  /**
+   * The component no longer knows that calorie adjustment modes exist -- the server
+   * already applied the user's mode when it computed `remaining`. This pins that:
+   * before the fix, four of these six modes silently credited zero.
+   */
+  it.each([
+    'dynamic',
+    'percentage',
+    'tdee',
+    'smart',
+    'adaptive',
+    'fixed',
+  ] as const)(
+    'renders identically regardless of calorieGoalAdjustmentMode (%s)',
+    (mode) => {
+      mockAdjustmentMode = mode;
+
+      render(
+        <NutritionPeriodSummary
+          nutritionData={[day('2026-08-11', 2477)]}
+          customNutrients={[]}
+          goals={{ '2026-08-11': goalFor(1962) }}
+          calorieBalanceByDate={byDate([
+            balance({
+              date: '2026-08-11',
+              eaten: 2477,
+              goal: 1962,
+              credit: 779,
+            }),
+          ])}
+        />
+      );
+
+      expect(screen.getByText(/Total Goal: 2741 kcal/i)).toBeInTheDocument();
+    }
+  );
+
+  it('leaves non-calorie nutrients on their stored goals', () => {
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[{ ...day('2026-08-11', 2477), protein: 150 }]}
+        customNutrients={[]}
+        goals={{ '2026-08-11': goalFor(1962) }}
+        calorieBalanceByDate={byDate([
+          balance({
+            date: '2026-08-11',
+            eaten: 2477,
+            goal: 1962,
+            credit: 779,
+          }),
+        ])}
+      />
+    );
+
+    // Protein is untouched by the calorie balance: 150 eaten against a 140 goal.
+    expect(screen.getByText(/Total Goal: 2741 kcal/i)).toBeInTheDocument();
+  });
+
+  /**
+   * The original #2094 reproduction, kept as an 8-day dataset but fed server balances
+   * instead of raw entries. Days 6-8 are steps-only days the old code credited at zero.
+   */
+  it('matches the sum of the Diary’s daily remaining over a range (Issue #2094)', () => {
     const dates = [
       '2026-08-03',
       '2026-08-04',
@@ -134,159 +339,31 @@ describe('NutritionPeriodSummary', () => {
       '2026-08-09',
       '2026-08-10',
     ];
-    const eatenPerDay = [2523, 2230, 2579, 2179, 2574, 2198, 2095, 1942]; // sum = 18320
-    const exerciseBurnedPerDay = [800, 444, 692, 374, 686, 175, 65, 793]; // sum = 4029
-
-    const nutritionData: NutritionData[] = dates.map((date, i) => ({
-      date,
-      calories: eatenPerDay[i] ?? 0,
-      protein: 150,
-      carbs: 200,
-      fat: 70,
-      saturated_fat: 0,
-      polyunsaturated_fat: 0,
-      monounsaturated_fat: 0,
-      trans_fat: 0,
-      cholesterol: 0,
-      sodium: 0,
-      potassium: 0,
-      dietary_fiber: 0,
-      sugars: 0,
-      vitamin_a: 0,
-      vitamin_c: 0,
-      calcium: 0,
-      iron: 0,
-    }));
-
-    const goals: Record<string, ExpandedGoals> = {};
-    dates.forEach((date) => {
-      goals[date] = {
-        calories: 1962,
-        protein: 140,
-        carbs: 180,
-        fat: 60,
-      } as ExpandedGoals;
-    });
-
-    const mockExercise: Exercise = {
-      id: 'exercise-1',
-      name: 'Workout',
-      category: 'Strength',
-      force: 'push',
-      level: 'intermediate',
-      mechanic: 'compound',
-      equipment: ['barbell'],
-      images: [],
-      primary_muscles: ['Chest'],
-      secondary_muscles: ['Triceps'],
-      instructions: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const exerciseEntries: DailyExerciseEntry[] = dates.map((date, i) => ({
-      id: `ex-${i}`,
-      entry_date: date,
-      duration_minutes: 45,
-      calories_burned: exerciseBurnedPerDay[i] ?? 0,
-      exercises: mockExercise,
-      sets: [],
-    }));
+    const eatenPerDay = [2523, 2230, 2579, 2179, 2574, 2198, 2095, 1942];
+    const creditPerDay = [800, 444, 692, 374, 686, 174, 65, 793];
 
     render(
       <NutritionPeriodSummary
-        nutritionData={nutritionData}
+        nutritionData={dates.map((date, i) => day(date, eatenPerDay[i] ?? 0))}
         customNutrients={[]}
-        goals={goals}
-        exerciseEntries={exerciseEntries}
+        goals={Object.fromEntries(dates.map((date) => [date, goalFor(1962)]))}
+        calorieBalanceByDate={byDate(
+          dates.map((date, i) =>
+            balance({
+              date,
+              eaten: eatenPerDay[i] ?? 0,
+              goal: 1962,
+              credit: creditPerDay[i] ?? 0,
+            })
+          )
+        )}
       />
     );
 
-    // Total Eaten = 18,320 kcal
-    // Total Base Goal = 1962 * 8 = 15,696 kcal
-    // Total Exercise Burned = 4,029 kcal
-    // Total Effective Goal = 15,696 + 4,029 = 19,725 kcal
-    // Net Balance = 18,320 - 19,725 = -1,405 kcal (matching journal sum of remaining calories)
-    expect(screen.getByText('-1405 kcal')).toBeInTheDocument();
+    // Total eaten 18,320. Total goal 1962*8 + 4,028 = 19,724.
+    // Net Balance = 18,320 - 19,724 = -1,404, the negation of the summed remaining.
     expect(screen.getByText(/Total Eaten: 18320 kcal/i)).toBeInTheDocument();
-    expect(screen.getByText(/Total Goal: 19725 kcal/i)).toBeInTheDocument();
-  });
-
-  it('does not add exercise burned to calorie goal in adaptive mode', () => {
-    mockAdjustmentMode = 'adaptive';
-
-    const nutritionData: NutritionData[] = [
-      {
-        date: '2026-08-13',
-        calories: 2254,
-        protein: 11,
-        carbs: 453,
-        fat: 44,
-        saturated_fat: 0,
-        polyunsaturated_fat: 0,
-        monounsaturated_fat: 0,
-        trans_fat: 0,
-        cholesterol: 0,
-        sodium: 0,
-        potassium: 0,
-        dietary_fiber: 25,
-        sugars: 0,
-        vitamin_a: 0,
-        vitamin_c: 0,
-        calcium: 0,
-        iron: 0,
-      },
-    ];
-
-    const goals: Record<string, ExpandedGoals> = {
-      '2026-08-13': {
-        calories: 1872,
-        protein: 91,
-        carbs: 208,
-        fat: 71,
-      } as ExpandedGoals,
-    };
-
-    const mockExercise: Exercise = {
-      id: 'exercise-1',
-      name: 'Other Exercise',
-      category: 'Cardio',
-      force: null,
-      level: null,
-      mechanic: null,
-      equipment: null,
-      images: null,
-      primary_muscles: null,
-      secondary_muscles: null,
-      instructions: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-
-    const exerciseEntries: DailyExerciseEntry[] = [
-      {
-        id: 'ex-1',
-        entry_date: '2026-08-13',
-        duration_minutes: 30,
-        calories_burned: 450,
-        exercises: mockExercise,
-        sets: [],
-      },
-    ];
-
-    render(
-      <NutritionPeriodSummary
-        nutritionData={nutritionData}
-        customNutrients={[]}
-        goals={goals}
-        exerciseEntries={exerciseEntries}
-      />
-    );
-
-    // In adaptive mode: Goal remains 1872 kcal (450 kcal exercise not added)
-    // Eaten: 2254, Goal: 1872 -> Net Balance: +382 kcal (matching -382 remaining in Diary)
-    expect(screen.getAllByText('+382 kcal')).toHaveLength(2);
-    expect(screen.getByText(/Total Eaten: 2254 kcal/i)).toBeInTheDocument();
-    expect(screen.getByText(/Total Goal: 1872 kcal/i)).toBeInTheDocument();
+    expect(screen.getByText(/Total Goal: 19724 kcal/i)).toBeInTheDocument();
+    expect(screen.getByText('-1404 kcal')).toBeInTheDocument();
   });
 });

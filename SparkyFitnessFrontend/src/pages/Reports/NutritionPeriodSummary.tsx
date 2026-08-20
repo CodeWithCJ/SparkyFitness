@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { DailyExerciseEntry, NutritionData } from '@/types/reports';
+import { NutritionData } from '@/types/reports';
 import { ExpandedGoals } from '@/types/goals';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
@@ -39,29 +39,30 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import type { DailyCalorieBalanceRow } from '@workspace/shared';
 
 interface NutritionPeriodSummaryProps {
   nutritionData: NutritionData[];
   customNutrients: UserCustomNutrient[];
   goals?: Record<string, ExpandedGoals>;
-  exerciseEntries?: DailyExerciseEntry[];
+  /**
+   * Server-computed calorie balance per date, from `GET /daily-summary/range`.
+   *
+   * Only the calories series uses it. Undefined while loading, or when the viewer lacks
+   * diary permission on a shared account -- both fall back to the raw goal.
+   */
+  calorieBalanceByDate?: Record<string, DailyCalorieBalanceRow>;
 }
 
 const NutritionPeriodSummary = ({
   nutritionData,
   customNutrients,
   goals,
-  exerciseEntries,
+  calorieBalanceByDate,
 }: NutritionPeriodSummaryProps) => {
   const { t } = useTranslation();
-  const {
-    formatDateInUserTimezone,
-    energyUnit,
-    convertEnergy,
-    showNetCarbs,
-    calorieGoalAdjustmentMode,
-    exerciseCaloriePercentage,
-  } = usePreferences();
+  const { formatDateInUserTimezone, energyUnit, convertEnergy, showNetCarbs } =
+    usePreferences();
   const effectiveNutritionData = useMemo(
     () => withNetCarbsSubstitution(nutritionData, showNetCarbs),
     [nutritionData, showNetCarbs]
@@ -152,17 +153,27 @@ const NutritionPeriodSummary = ({
       : effectiveNutritionData;
   }, [effectiveNutritionData, config.excludeIncompleteDay]);
 
-  const exerciseBurnByDate = useMemo(() => {
-    const map: Record<string, number> = {};
-    (exerciseEntries || []).forEach((entry) => {
-      const date =
-        typeof entry.entry_date === 'string'
-          ? entry.entry_date.slice(0, 10)
-          : format(entry.entry_date, 'yyyy-MM-dd');
-      map[date] = (map[date] || 0) + (Number(entry.calories_burned) || 0);
-    });
-    return map;
-  }, [exerciseEntries]);
+  /**
+   * The day's real calorie budget: what was eaten plus what is still left.
+   *
+   * `eaten + remaining` is the one identity that reconciles the server's "remaining"
+   * with this chart's "goal" framing. In dynamic mode it expands to
+   * `goal + exercise + bmr`, the same shape this code used to build by hand -- except
+   * the server's version applies `max(active, logged + steps)` rather than a sum, counts
+   * step calories, and honours "Include BMR in Net Calories". It also generalises to
+   * percentage/tdee/smart/adaptive/fixed for free, which the hand-built version did not:
+   * four of those six modes silently credited zero.
+   *
+   * Returns undefined when there is no balance for the date, so callers fall back to the
+   * raw goal rather than inventing one.
+   */
+  const effectiveCalorieGoal = useCallback(
+    (date: string): number | undefined => {
+      const balance = calorieBalanceByDate?.[date];
+      return balance ? balance.eaten + balance.remaining : undefined;
+    },
+    [calorieBalanceByDate]
+  );
 
   // Calculate KPIs and prepare cumulative chart data using the same filtered dataset
   const { totalEaten, totalGoal, validDaysCount, cumulativeData, netBalance } =
@@ -194,21 +205,12 @@ const NutritionPeriodSummary = ({
             const dayEatenRaw = point[nutKey as keyof NutritionData];
             const dayEaten = typeof dayEatenRaw === 'number' ? dayEatenRaw : 0;
 
-            // For calories, adjust base goal according to user's calorieGoalAdjustmentMode
-            let exerciseBurn = 0;
-            if (nutKey === 'calories') {
-              const rawExerciseBurn = exerciseBurnByDate[point.date] || 0;
-              if (calorieGoalAdjustmentMode === 'dynamic') {
-                exerciseBurn = rawExerciseBurn;
-              } else if (calorieGoalAdjustmentMode === 'percentage') {
-                exerciseBurn =
-                  rawExerciseBurn * ((exerciseCaloriePercentage ?? 100) / 100);
-              } else {
-                exerciseBurn = 0;
-              }
-            }
+            // Calories come from the server-computed balance; every other nutrient
+            // keeps its plain stored goal.
             const effectiveDayGoal =
-              dayGoal !== undefined ? dayGoal + exerciseBurn : undefined;
+              nutKey === 'calories'
+                ? (effectiveCalorieGoal(point.date) ?? dayGoal)
+                : dayGoal;
 
             // Allow goal to be 0 (e.g. 0g sugar target)
             if (effectiveDayGoal !== undefined) {
@@ -253,9 +255,7 @@ const NutritionPeriodSummary = ({
       primaryNutrient,
       selectedNutrients,
       customNutrients,
-      exerciseBurnByDate,
-      calorieGoalAdjustmentMode,
-      exerciseCaloriePercentage,
+      effectiveCalorieGoal,
     ]);
 
   const averageVariance = validDaysCount > 0 ? netBalance / validDaysCount : 0;
@@ -310,20 +310,12 @@ const NutritionPeriodSummary = ({
         const dayEaten = typeof dayEatenRaw === 'number' ? dayEatenRaw : 0;
 
         newPoint[nutKey] = dayEaten;
-        if (dayGoal !== undefined) {
-          let exerciseBurn = 0;
-          if (nutKey === 'calories') {
-            const rawExerciseBurn = exerciseBurnByDate[point.date] || 0;
-            if (calorieGoalAdjustmentMode === 'dynamic') {
-              exerciseBurn = rawExerciseBurn;
-            } else if (calorieGoalAdjustmentMode === 'percentage') {
-              exerciseBurn =
-                rawExerciseBurn * ((exerciseCaloriePercentage ?? 100) / 100);
-            } else {
-              exerciseBurn = 0;
-            }
-          }
-          newPoint[`${nutKey}_goal`] = dayGoal + exerciseBurn;
+        const effectiveDayGoal =
+          nutKey === 'calories'
+            ? (effectiveCalorieGoal(point.date) ?? dayGoal)
+            : dayGoal;
+        if (effectiveDayGoal !== undefined) {
+          newPoint[`${nutKey}_goal`] = effectiveDayGoal;
         }
       });
 
@@ -334,9 +326,7 @@ const NutritionPeriodSummary = ({
     goals,
     selectedNutrients,
     customNutrients,
-    exerciseBurnByDate,
-    calorieGoalAdjustmentMode,
-    exerciseCaloriePercentage,
+    effectiveCalorieGoal,
   ]);
 
   const yAxisDomain = calculateSmartYAxisDomain(

@@ -3242,6 +3242,7 @@
     "dailyAverages": "Daily Averages",
     "dailySteps": "Daily Steps",
     "exerciseVarietyScore": "Exercise Variety Score",
+    "failedToLoadCalorieBalance": "Failed to load calorie balance data.",
     "failedToLoadCoreData": "Failed to load core reports data.",
     "failedToLoadExerciseDashboard": "Failed to load exercise dashboard data.",
     "failedToLoadStress": "Failed to load stress data.",

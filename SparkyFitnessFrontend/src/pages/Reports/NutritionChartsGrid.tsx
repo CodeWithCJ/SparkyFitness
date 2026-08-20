@@ -29,17 +29,26 @@ import {
 import { NutritionData } from '@/types/reports';
 import { calculateAverage } from '@/utils/reportUtil';
 import { ExpandedGoals } from '@/types/goals';
+import type { DailyCalorieBalanceRow } from '@workspace/shared';
 
 interface NutritionChartsGridProps {
   nutritionData: NutritionData[];
   customNutrients: UserCustomNutrient[];
   goals?: Record<string, ExpandedGoals>;
+  /**
+   * Server-computed calorie balance per date. Only the calories chart uses it, and only
+   * to draw its goal line -- without it this grid would show the bare stored goal while
+   * the summary above it shows the exercise-adjusted one, i.e. two different
+   * "Calories Goal" values on the same screen.
+   */
+  calorieBalanceByDate?: Record<string, DailyCalorieBalanceRow>;
 }
 
 const NutritionChartsGrid = ({
   nutritionData,
   customNutrients,
   goals,
+  calorieBalanceByDate,
 }: NutritionChartsGridProps) => {
   const { t } = useTranslation();
   const {
@@ -76,9 +85,19 @@ const NutritionChartsGrid = ({
     // Merge goal value per date if goals is a map
     if (goals && typeof goals === 'object' && !('calories' in goals)) {
       result = result.map((point) => {
-        const goalValue = (goals as Record<string, ExpandedGoals>)[
-          point.date
-        ]?.[chartKey as keyof ExpandedGoals];
+        // Calories carry an exercise/BMR credit the stored goal knows nothing about.
+        // `eaten + remaining` is the same identity NutritionPeriodSummary uses, so both
+        // charts draw one goal line. Falls back to the stored goal when the balance has
+        // not loaded or the viewer lacks diary permission.
+        const balance =
+          chartKey === 'calories'
+            ? calorieBalanceByDate?.[point.date]
+            : undefined;
+        const goalValue = balance
+          ? balance.eaten + balance.remaining
+          : (goals as Record<string, ExpandedGoals>)[point.date]?.[
+              chartKey as keyof ExpandedGoals
+            ];
         return goalValue !== undefined
           ? { ...point, [`${chartKey}_goal`]: goalValue }
           : point;

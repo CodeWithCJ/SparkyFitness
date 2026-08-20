@@ -1,5 +1,6 @@
 import {
   ACTIVITY_MULTIPLIERS,
+  CALORIE_CALCULATION_CONSTANTS,
   ENERGY_DENSITY_KCAL_PER_KG,
 } from "../constants/calorieConstants.ts";
 
@@ -43,6 +44,48 @@ export function deriveActiveCalories(
  * It returns whichever is larger to ensure we don't under-count, but avoids
  * double-counting by not adding steps on top of a device-wide "Active Calories" summary.
  */
+export interface StepCalorieInputs {
+  /**
+   * Steps that no logged exercise entry already accounts for, i.e. the day's total
+   * steps minus the steps attributed to workouts. Passing raw total steps here would
+   * double-count the walking a logged workout already charged for.
+   */
+  backgroundSteps: number;
+  weightKg?: number;
+  heightCm?: number;
+}
+
+/**
+ * Net (above-BMR) kcal from background walking, estimated from step count.
+ *
+ * Stride length is approximated from height, distance from stride × steps, and energy
+ * from distance × body weight. The per-kg-per-km figure is deliberately conservative
+ * because these are incidental steps, not a workout.
+ *
+ * Shared because this arithmetic has to agree in four places that each used to carry
+ * their own copy: the Diary's per-date step calories, the ranged Reports path, the
+ * dashboard stats endpoint, and the frontend's own step estimate. When those drift, the
+ * same day's walking is worth a different number of calories depending on which screen
+ * is asking -- which is the class of bug this function exists to end.
+ */
+export function computeStepCalories({
+  backgroundSteps,
+  weightKg = CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
+  heightCm = CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+}: StepCalorieInputs): number {
+  if (!Number.isFinite(backgroundSteps) || backgroundSteps <= 0) return 0;
+
+  const strideLengthM =
+    (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
+  const distanceKm = (backgroundSteps * strideLengthM) / 1000;
+
+  return Math.round(
+    distanceKm *
+      weightKg *
+      CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM,
+  );
+}
+
 export function resolveExerciseCalories(
   loggedExerciseCalories: number,
   activeCaloriesFromExercise: number,

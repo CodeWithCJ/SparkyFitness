@@ -1,5 +1,6 @@
-import express, { RequestHandler } from 'express';
+import express, { Request, RequestHandler } from 'express';
 import { getDailySummary } from '../services/dailySummaryService.js';
+import { getDailySummaryRange } from '../services/dailySummaryRangeService.js';
 
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
@@ -9,6 +10,56 @@ const router = express.Router();
 router.use(checkPermissionMiddleware('diary'));
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Bounds the goalService day loop and the response size. A year of report is already
+ * far more than any chart renders legibly.
+ */
+const MAX_RANGE_DAYS = 366;
+
+interface SummaryAccess {
+  actorUserId: string;
+  targetUserId: string;
+  /**
+   * Whether check-in data may be read. Water intake, step calories and external BMR all
+   * derive from `check_in_measurements` and require the `checkin` permission, not
+   * `diary`. Shared by both handlers so the single-date and ranged paths cannot gate
+   * differently -- if they did, Reports and the Diary would disagree for exactly the
+   * family viewers least able to explain why.
+   */
+  includeCheckin: boolean;
+}
+
+async function resolveSummaryAccess(
+  req: Request
+): Promise<SummaryAccess | null> {
+  const queryUserId = req.query.userId as string | undefined;
+  const targetUserId = queryUserId || req.userId;
+  const actorUserId = req.originalUserId || req.userId;
+
+  // Family access: either explicit ?userId param, or onBehalfOfMiddleware
+  // rewrote req.userId via sparky_active_user_id header.
+  const isFamilyAccess = targetUserId !== actorUserId;
+
+  if (!isFamilyAccess) {
+    return { actorUserId, targetUserId, includeCheckin: true };
+  }
+
+  const hasPermission = await canAccessUserData(
+    targetUserId,
+    'diary',
+    actorUserId
+  );
+  if (!hasPermission) return null;
+
+  const includeCheckin = await canAccessUserData(
+    targetUserId,
+    'checkin',
+    actorUserId
+  );
+
+  return { actorUserId, targetUserId, includeCheckin };
+}
 
 /**
  * @swagger
@@ -54,45 +105,17 @@ const handler: RequestHandler = async (req, res, next) => {
       return;
     }
 
-    const queryUserId = req.query.userId as string | undefined;
-
-    const targetUserId = queryUserId || req.userId;
-
-    const actorUserId = req.originalUserId || req.userId;
-
-    // Family access: either explicit ?userId param, or onBehalfOfMiddleware
-    // rewrote req.userId via sparky_active_user_id header.
-    const isFamilyAccess = targetUserId !== actorUserId;
-
-    if (isFamilyAccess) {
-      const hasPermission = await canAccessUserData(
-        targetUserId,
-        'diary',
-        actorUserId
-      );
-      if (!hasPermission) {
-        res.status(403).json({ error: 'Forbidden' });
-        return;
-      }
-    }
-
-    // Water intake and step calories both derive from check_in_measurements and
-    // require checkin permission, not diary. When accessing another user's data,
-    // only include them if the actor also has checkin access.
-    let includeCheckin = true;
-    if (isFamilyAccess) {
-      includeCheckin = await canAccessUserData(
-        targetUserId,
-        'checkin',
-        actorUserId
-      );
+    const access = await resolveSummaryAccess(req);
+    if (!access) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
 
     const result = await getDailySummary({
-      actorUserId,
-      targetUserId,
+      actorUserId: access.actorUserId,
+      targetUserId: access.targetUserId,
       date,
-      includeCheckin,
+      includeCheckin: access.includeCheckin,
     });
     res.status(200).json(result);
   } catch (error: unknown) {
@@ -100,6 +123,104 @@ const handler: RequestHandler = async (req, res, next) => {
   }
 };
 
+/**
+ * @swagger
+ * /daily-summary/range:
+ *   get:
+ *     summary: Get per-day calorie balance for a date range
+ *     tags: [Dashboard]
+ *     description: >
+ *       Returns one calorie-balance row per day, computed by the same code path as
+ *       GET /daily-summary. Reports uses this instead of deriving the balance in the
+ *       browser, which is what caused issue #2094.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: "2026-08-06"
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: "2026-08-20"
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional user ID for family access
+ *     responses:
+ *       200:
+ *         description: One calorie-balance row per calendar day in the range
+ *       400:
+ *         description: Missing/invalid dates, inverted range, or range longer than 366 days
+ *       403:
+ *         description: User does not have permission to access this resource
+ *       500:
+ *         description: Internal server error
+ */
+const rangeHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
+
+    if (
+      !startDate ||
+      !endDate ||
+      !DATE_REGEX.test(startDate) ||
+      !DATE_REGEX.test(endDate)
+    ) {
+      res.status(400).json({
+        error:
+          'Missing or invalid startDate/endDate query parameters (expected YYYY-MM-DD)',
+      });
+      return;
+    }
+
+    if (startDate > endDate) {
+      res.status(400).json({ error: 'startDate must not be after endDate' });
+      return;
+    }
+
+    const spanDays =
+      Math.round(
+        (Date.parse(`${endDate}T00:00:00Z`) -
+          Date.parse(`${startDate}T00:00:00Z`)) /
+          86_400_000
+      ) + 1;
+    if (spanDays > MAX_RANGE_DAYS) {
+      res.status(400).json({
+        error: `Date range must not exceed ${MAX_RANGE_DAYS} days`,
+      });
+      return;
+    }
+
+    const access = await resolveSummaryAccess(req);
+    if (!access) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+
+    const result = await getDailySummaryRange({
+      targetUserId: access.targetUserId,
+      startDate,
+      endDate,
+      includeCheckin: access.includeCheckin,
+    });
+    res.status(200).json(result);
+  } catch (error: unknown) {
+    next(error);
+  }
+};
+
+router.get('/range', rangeHandler);
 router.get('/', handler);
 
 module.exports = router;

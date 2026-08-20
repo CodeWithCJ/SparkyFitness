@@ -23,7 +23,6 @@ import {
 
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug } from '@/utils/logging';
-import { computeExerciseCredited } from '@/utils/calorieCalculations';
 
 import {
   useDailyExerciseStats,
@@ -42,11 +41,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
 import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
 import {
+  ACTIVITY_MULTIPLIERS,
   calculateAge,
   computeCalorieTarget,
   calculateBmr,
+  computeExerciseCredited,
 } from '@workspace/shared';
-import { ACTIVITY_MULTIPLIERS } from '@/utils/calorieCalculations';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
 
