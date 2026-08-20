@@ -101,6 +101,32 @@ describe('getResolvedExerciseCaloriesRange', () => {
     expect(partial!.stepCalories).toBeGreaterThan(0);
   });
 
+  /**
+   * The steps-only shape from issue #2094: no exercise entries at all, so the splits
+   * query returns no row for the date. Iterating only the splits dropped the day's step
+   * calories from the totals the health-summary and 30-day tools report.
+   */
+  test('includes a day that has check-in steps but no exercise entries', async () => {
+    vi.mocked(
+      exerciseEntryRepository.getDailyExerciseCalorieSplitRange
+    ).mockResolvedValue([]);
+    vi.mocked(
+      measurementRepository.getCheckInMeasurementsByDateRange
+    ).mockResolvedValue([{ entry_date: '2026-08-08', steps: 5781 }]);
+
+    const byDate = await getResolvedExerciseCaloriesRange(
+      USER,
+      '2026-08-08',
+      '2026-08-08'
+    );
+
+    const day = byDate.get('2026-08-08');
+    expect(day).toBeDefined();
+    expect(day?.calories).toBeGreaterThan(0);
+    expect(day?.source).toBe('steps');
+    expect(day?.calories).toBe(day?.stepCalories);
+  });
+
   test('reports a day with nothing logged as zero', async () => {
     vi.mocked(
       exerciseEntryRepository.getDailyExerciseCalorieSplitRange
@@ -132,6 +158,27 @@ describe('getResolvedExerciseCaloriesRange', () => {
 });
 
 describe('getResolvedExerciseCaloriesTotal', () => {
+  test('counts steps-only days toward the period total', async () => {
+    vi.mocked(
+      exerciseEntryRepository.getDailyExerciseCalorieSplitRange
+    ).mockResolvedValue([split('2026-08-09', 0, 400)]);
+    vi.mocked(
+      measurementRepository.getCheckInMeasurementsByDateRange
+    ).mockResolvedValue([
+      { entry_date: '2026-08-08', steps: 5781 },
+      { entry_date: '2026-08-09', steps: 0 },
+    ]);
+
+    const total = await getResolvedExerciseCaloriesTotal(
+      USER,
+      '2026-08-08',
+      '2026-08-09'
+    );
+
+    // 400 from the logged day plus the steps-only day, which used to contribute 0.
+    expect(total).toBeGreaterThan(400);
+  });
+
   test('sums the resolved per-day figures, not the raw rows', async () => {
     vi.mocked(
       exerciseEntryRepository.getDailyExerciseCalorieSplitRange

@@ -4,7 +4,14 @@ import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (_key: string, defaultValue?: string) => defaultValue,
+    // Interpolates `{{var}}` the way i18next does, so assertions can match the rendered
+    // text rather than the raw template.
+    t: (_key: string, defaultValue?: string, opts?: Record<string, unknown>) =>
+      opts
+        ? (defaultValue ?? '').replace(/\{\{(\w+)\}\}/g, (_m, name) =>
+            String(opts[name] ?? '')
+          )
+        : defaultValue,
   }),
   initReactI18next: {
     type: '3rdParty',
@@ -239,11 +246,51 @@ describe('CalorieTargetBreakdown shown working', () => {
 
   it('says body fat is used when the BMR formula consumes it', () => {
     render(
-      <CalorieTargetBreakdown {...defaultProps} bmrAlgorithm="Katch-McArdle" />
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        bmrAlgorithm="Katch-McArdle"
+        displayBodyFat={19.6}
+      />
     );
     expect(
       screen.getByText(/is used by this BMR formula/i)
     ).toBeInTheDocument();
+  });
+
+  /**
+   * A lean-mass formula with no logged measurement silently treats body fat as 0%,
+   * which reads as an implausibly high BMR. Saying the value "is used" there would be
+   * wrong twice: there is nothing to use, and the resulting target is not trustworthy.
+   */
+  it('flags a missing measurement when the BMR formula needs body fat', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        bmrAlgorithm="Katch-McArdle"
+        displayBodyFat={0}
+      />
+    );
+    expect(screen.getByText(/no measurement is logged/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/is used by this BMR formula/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not warn when confidence is absent', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        adaptiveTdeeData={{
+          tdee: 2194,
+          isFallback: false,
+          daysOfData: 35,
+          avgIntake: 2300,
+          weightTrend: -0.2,
+        }}
+      />
+    );
+    expect(screen.queryByText(/Under-logging intake/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/0 day\(s\)/i)).not.toBeInTheDocument();
   });
 
   /**

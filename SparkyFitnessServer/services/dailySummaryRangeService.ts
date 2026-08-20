@@ -1,4 +1,3 @@
-import { addDays, format, isAfter, parseISO } from 'date-fns';
 import goalService from './goalService.js';
 import reportRepository from '../models/reportRepository.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
@@ -11,7 +10,11 @@ import {
   resolveDayFraction,
   type CalorieBalanceMeasurements,
 } from './calorieBalanceService.js';
-import { resolveBackgroundStepCalories } from '@workspace/shared';
+import {
+  addDays,
+  compareDays,
+  resolveBackgroundStepCalories,
+} from '@workspace/shared';
 import type { DailyCalorieBalanceRow } from '@workspace/shared';
 
 /**
@@ -60,13 +63,17 @@ const MEASUREMENT_FIELDS = [
   'body_fat_percentage',
 ] as const satisfies readonly (keyof CalorieBalanceMeasurements)[];
 
-/** Every calendar day from start to end inclusive, as YYYY-MM-DD. */
+/**
+ * Every calendar day from start to end inclusive, as YYYY-MM-DD.
+ *
+ * Uses the shared day-string helpers rather than parsing into host-local `Date` objects,
+ * so the values never round-trip through an instant that a timezone could shift.
+ */
 function enumerateDays(startDate: string, endDate: string): string[] {
   const days: string[] = [];
-  const end = parseISO(endDate);
-  let cursor = parseISO(startDate);
-  while (!isAfter(cursor, end)) {
-    days.push(format(cursor, 'yyyy-MM-dd'));
+  let cursor = startDate;
+  while (compareDays(cursor, endDate) <= 0) {
+    days.push(cursor);
     cursor = addDays(cursor, 1);
   }
   return days;

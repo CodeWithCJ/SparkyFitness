@@ -87,6 +87,23 @@ describe('GET /daily-summary/range validation', () => {
     }
   );
 
+  /**
+   * Handler-level only. In the real stack `checkPermissionMiddleware` runs first and
+   * hands the raw string to `canAccessUserData`, which fails a Postgres uuid cast and
+   * yields a 500 — pre-existing behaviour shared by every route using that middleware,
+   * including `GET /daily-summary`. The schema check still belongs here so the handler
+   * is correct on its own terms, but it is not what a client sees today.
+   */
+  it('rejects a userId that is not a uuid', async () => {
+    const app = await buildApp();
+    const res = await request(app).get(
+      '/api/daily-summary/range?startDate=2026-08-01&endDate=2026-08-02&userId=not-a-uuid'
+    );
+
+    expect(res.status).toBe(400);
+    expect(getDailySummaryRange).not.toHaveBeenCalled();
+  });
+
   it('rejects an inverted range', async () => {
     const app = await buildApp();
     const res = await request(app).get(

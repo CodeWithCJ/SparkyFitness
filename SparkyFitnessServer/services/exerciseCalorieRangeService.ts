@@ -70,14 +70,24 @@ export async function getResolvedExerciseCaloriesRange(
     stepsByDate.set(row.entry_date, Number(row.steps) || 0);
   }
 
+  const splitByDate = new Map(splits.map((split) => [split.entry_date, split]));
+
+  // Iterate the union, not just the exercise splits. `getDailyExerciseCalorieSplitRange`
+  // groups over `exercise_entries`, so a day with check-in steps and no logged exercise
+  // produces no row at all -- and that day's step calories would vanish from the totals
+  // the health-summary and 30-day tools report. That shape is common: it is exactly the
+  // steps-only day from issue #2094.
+  const dates = new Set([...splitByDate.keys(), ...stepsByDate.keys()]);
+
   const byDate = new Map<string, ResolvedExerciseCalorieDay>();
-  for (const split of splits) {
-    const activeCalories = Number(split.active_calories) || 0;
-    const loggedCalories = Number(split.other_calories) || 0;
-    const activitySteps = Number(split.activity_steps) || 0;
+  for (const date of [...dates].sort()) {
+    const split = splitByDate.get(date);
+    const activeCalories = Number(split?.active_calories) || 0;
+    const loggedCalories = Number(split?.other_calories) || 0;
+    const activitySteps = Number(split?.activity_steps) || 0;
 
     const stepCalories = resolveBackgroundStepCalories({
-      totalSteps: stepsByDate.get(split.entry_date) ?? 0,
+      totalSteps: stepsByDate.get(date) ?? 0,
       activitySteps,
       weightKg: latestWeightHeight.weightKg,
       heightCm: latestWeightHeight.heightCm,
@@ -89,8 +99,8 @@ export async function getResolvedExerciseCaloriesRange(
       stepCalories
     );
 
-    byDate.set(split.entry_date, {
-      date: split.entry_date,
+    byDate.set(date, {
+      date,
       calories: resolved.calories,
       source: resolved.source,
       stepCalories,

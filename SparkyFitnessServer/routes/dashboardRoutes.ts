@@ -70,6 +70,10 @@ router.use(checkPermissionMiddleware('diary'));
  *                   example: kcal
  *       401:
  *         description: Authentication required.
+ *       403:
+ *         description: >
+ *           Family access denied — the caller lacks `diary` permission on the
+ *           requested user.
  */
 router.get('/stats', async (req, res, next) => {
   try {

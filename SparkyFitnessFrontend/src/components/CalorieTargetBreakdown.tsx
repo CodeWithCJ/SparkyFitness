@@ -174,8 +174,13 @@ Math: 10 × ${formatInput(displayWeight)} + 6.25 × ${formatInput(displayHeight)
 
   // Only the lean-mass formulas consume body fat; for the others section 2 is purely
   // informational and should not read like an input to the target.
-  const bodyFatUsedByBmr =
+  const bmrConsumesBodyFat =
     bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham';
+  const hasMeasuredBodyFat = displayBodyFat !== undefined && displayBodyFat > 0;
+  // Claiming the measured value "is used" while none exists would be wrong twice over:
+  // there is nothing to use, and the lean-mass formula silently treats a missing figure
+  // as 0% body fat, which reads as an implausibly high BMR.
+  const bodyFatUsedByBmr = bmrConsumesBodyFat && hasMeasuredBodyFat;
 
   const bodyFatMathText = () => {
     if (bodyFatAlgorithm === 'BMI Method') {
@@ -328,8 +333,21 @@ Calculated: ${bfp.toFixed(1)}%`;
         */}
         <p className="text-xs text-muted-foreground">
           {bodyFatUsedByBmr
-            ? 'The measured value above is used by this BMR formula; the estimate is shown for comparison.'
-            : `Shown for reference only — ${bmrAlgorithm} does not take body fat as an input.`}
+            ? t(
+                'settings.calorieBreakdown.bodyFatUsed',
+                'The measured value above is used by this BMR formula; the estimate is shown for comparison.'
+              )
+            : bmrConsumesBodyFat
+              ? t(
+                  'settings.calorieBreakdown.bodyFatMissing',
+                  '{{algorithm}} uses body fat, but no measurement is logged — log one for an accurate target.',
+                  { algorithm: bmrAlgorithm }
+                )
+              : t(
+                  'settings.calorieBreakdown.bodyFatUnused',
+                  'Shown for reference only — {{algorithm}} does not take body fat as an input.',
+                  { algorithm: bmrAlgorithm }
+                )}
         </p>
       </div>
 
@@ -459,21 +477,29 @@ Calculated: ${bfp.toFixed(1)}%`;
                               : 'font-medium text-red-600 dark:text-red-400'
                         }
                       >
-                        Confidence: {adaptiveTdeeData.confidence}
+                        {t(
+                          'settings.calorieBreakdown.confidence',
+                          'Confidence: {{level}}',
+                          { level: adaptiveTdeeData.confidence }
+                        )}
                       </span>
                     </>
                   )}
                 </p>
-                {adaptiveTdeeData?.confidence !== 'HIGH' && (
-                  // The server downgrades confidence for sparse logs, short tracking
-                  // history, or weight gaps. Adaptive TDEE infers expenditure from
-                  // intake vs weight trend, so under-logging inflates the result --
-                  // showing the target without this caveat presents a soft number as
-                  // a firm one.
+                {(adaptiveTdeeData?.confidence === 'LOW' ||
+                  adaptiveTdeeData?.confidence === 'MEDIUM') && (
+                  // Only on an explicit downgrade. The server lowers confidence for
+                  // sparse logs, short tracking history, or weight gaps; adaptive TDEE
+                  // infers expenditure from intake vs weight trend, so under-logging
+                  // inflates the result and the target should not be presented as firm.
+                  // A missing confidence is not a downgrade -- warning there would
+                  // nag about "0 day(s)" on a server that simply did not report it.
                   <p className="text-xs text-muted-foreground">
-                    Based on {adaptiveTdeeData?.daysOfData ?? 0} day(s) of
-                    calorie logs. Under-logging intake makes this estimate read
-                    high — log consistently to improve it.
+                    {t(
+                      'settings.calorieBreakdown.adaptiveConfidenceCaveat',
+                      'Based on {{days}} day(s) of calorie logs. Under-logging intake makes this estimate read high — log consistently to improve it.',
+                      { days: adaptiveTdeeData?.daysOfData ?? 0 }
+                    )}
                   </p>
                 )}
                 <ul className="list-disc pl-4 space-y-0.5 text-sm">

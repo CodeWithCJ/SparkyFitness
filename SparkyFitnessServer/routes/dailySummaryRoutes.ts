@@ -30,7 +30,9 @@ const rangeQuerySchema = z
   .object({
     startDate: z.iso.date(),
     endDate: z.iso.date(),
-    userId: z.string().optional(),
+    // Rejected here rather than reaching `canAccessUserData` and the repositories with
+    // a value that can never identify a user.
+    userId: z.uuid().optional(),
   })
   .refine((q) => q.startDate <= q.endDate, {
     message: 'startDate must not be after endDate',
