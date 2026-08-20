@@ -2,7 +2,7 @@ name: PR Checks
 
 on:
   pull_request_target:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
@@ -19,22 +19,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # pull_request_target checks out the BASE branch, never the PR head, so this is
+      # repo-owned code and a PR cannot alter the rules that judge it.
+      - name: Check out policy rules
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - name: Validate and Label PR
         uses: actions/github-script@v7
         with:
           script: |
-            const title  = context.payload.pull_request.title;
-            const body   = context.payload.pull_request.body || '';
-            const author = context.payload.pull_request.user.login;
+            // Exemptions and checkbox matching are shared with pr-license-enforcement.yml so the
+            // two workflows can never disagree about who is enforced.
+            const policy = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/pr-policy.cjs`);
 
-            // Maintainer exempt from the license countdown (see pr-license-enforcement.yml).
-            const LICENSE_EXEMPT_AUTHORS = ['CodeWithCJ'];
-            const LICENSE_LABEL = 'needs-license-agreement';
+            const pr     = context.payload.pull_request;
+            const title  = pr.title;
+            const body   = pr.body || '';
+            const isDraft = pr.draft === true;
 
-            const { data: files } = await github.rest.pulls.listFiles({
+            const { LICENSE_LABEL, LICENSE_ITEM } = policy;
+            const GRACE_HOURS = Math.round(policy.GRACE_MS / (60 * 60 * 1000));
+
+            // Bots (our own schema-backup / nix / translation-sync PRs and any future
+            // automation), maintainers, and same-repo automation branches.
+            const exemption = policy.getExemption(pr);
+            const licenseExempt = exemption.exempt;
+
+            // Bot-authored / automation-branch PRs are not held to the contributor checklist at
+            // all. A human collaborator is exempt from the license box but still ticks the rest.
+            const isAutomation = policy.isAutomation(pr);
+
+            // paginate: the unpaginated call caps at 30 files, which silently mis-detects
+            // change areas on large PRs and would restore the wrong checklist items.
+            const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              pull_number: context.payload.pull_request.number,
+              pull_number: pr.number,
+              per_page: 100,
             });
 
             const changedFiles = files.map(f => f.filename);
@@ -54,15 +77,10 @@ jobs:
             const hasSQLChanges = changedFiles.some(f => f.includes('rls_policies.sql'));
 
             // ---- Checkbox helpers ----
-            // Matches "- [x] **<str>**" or "- [X] **<str>**", regardless of surrounding whitespace
-            const escapeRegex = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const checked = str =>
-              new RegExp(`-\\s*\\[[xX]\\]\\s*\\*\\*${escapeRegex(str)}`, 'i').test(body);
-
-            // Item exists in the body at all, ticked or not. An unticked box is the contributor's
-            // job; a missing box means the template was deleted and we add it back.
-            const present = str =>
-              new RegExp(`-\\s*\\[[ xX]\\]\\s*\\*\\*${escapeRegex(str)}`, 'i').test(body);
+            // checked: "- [x] **<str>". present: same line ticked or not — a missing box means the
+            // template was deleted and we add it back; an unticked box is the contributor's job.
+            const checked = str => policy.isChecked(body, str);
+            const present = str => policy.isPresent(body, str);
 
             // ---- PR Type detection ----
             const isIssue      = /-\s*\[[xX]\]\s*Issue/i.test(body);
@@ -85,7 +103,7 @@ jobs:
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
+                issue_number: pr.number,
                 labels: toAdd,
               });
             }
@@ -94,13 +112,11 @@ jobs:
             // Contributors often replace the whole template with their own summary, which removes
             // the mandatory checkboxes entirely. Add back only the items this PR actually needs,
             // appended after whatever they wrote so nothing of theirs is lost.
-            const LICENSE_ITEM = '[MANDATORY - ALL] Integrity & License';
-
             const checklistItems = [
               {
                 label: LICENSE_ITEM,
                 required: true,
-                text: '**[MANDATORY - ALL] Integrity & License**: I certify this is my own work, free of malicious code, and I agree to the [License terms](https://github.com/CodeWithCJ/SparkyFitness/blob/main/LICENSE).',
+                text: policy.LICENSE_ITEM_TEXT,
               },
               {
                 label: '[MANDATORY for new feature] Alignment',
@@ -140,9 +156,16 @@ jobs:
             ];
 
             const missingItems = checklistItems.filter(i => i.required && !present(i.label));
+
+            // Never rewrite the description of an exempt PR: those are our own bot-authored
+            // PRs (schema sync, nix hashes, translations) and maintainer PRs, and injecting a
+            // checklist into them is noise at best.
+            //
+            // The sender guard is belt-and-braces: GitHub does not emit workflow-triggering
+            // events for GITHUB_TOKEN actions, so our own edit below cannot re-enter here.
             const senderIsSelf = context.payload.sender?.login === 'github-actions[bot]';
 
-            if (missingItems.length > 0 && !senderIsSelf) {
+            if (missingItems.length > 0 && !licenseExempt && !senderIsSelf) {
               const restored = [
                 '<!-- restored-checklist -->',
                 '---',
@@ -159,7 +182,7 @@ jobs:
               await github.rest.pulls.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                pull_number: context.payload.pull_request.number,
+                pull_number: pr.number,
                 body: `${body.trimEnd()}\n\n${restored}\n`,
               });
 
@@ -172,10 +195,12 @@ jobs:
 
             // Mandatory for all PRs
             const licenseAgreed = checked(LICENSE_ITEM);
-            const licenseExempt = LICENSE_EXEMPT_AUTHORS.includes(author);
-            const licenseCountdown = !licenseAgreed && !licenseExempt;
 
-            if (!licenseAgreed) {
+            // Drafts are still told what is missing, but the clock only starts once the PR is
+            // marked ready for review (hence the `ready_for_review` trigger above).
+            const licenseCountdown = !licenseAgreed && !licenseExempt && !isDraft;
+
+            if (!licenseAgreed && !licenseExempt) {
               errors.push('**[MANDATORY]** Check the "Integrity & License" checkbox.');
             }
 
@@ -248,8 +273,8 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   name: LICENSE_LABEL,
-                  color: 'b60205',
-                  description: 'License checkbox not ticked; PR closes 24h after this label was applied',
+                  color: policy.LICENSE_LABEL_COLOR,
+                  description: policy.LICENSE_LABEL_DESCRIPTION,
                 });
               } catch (error) {
                 if (error.status !== 422) throw error; // 422 = already exists
@@ -258,7 +283,7 @@ jobs:
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
+                issue_number: pr.number,
                 labels: [LICENSE_LABEL],
               });
             } else {
@@ -266,12 +291,25 @@ jobs:
                 await github.rest.issues.removeLabel({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  issue_number: context.payload.pull_request.number,
+                  issue_number: pr.number,
                   name: LICENSE_LABEL,
                 });
               } catch (error) {
                 if (error.status !== 404) throw error;
               }
+            }
+
+            // ---- Our own automation is not held to the contributor checklist ----
+            // sync-translations.yml rewrites non-English locale files by design, schema-backup.yml
+            // opens a PR with no template, and no bot can tick a checkbox. Keep the change
+            // detection for the record, drop the required actions so these never show a red X.
+            if (isAutomation && (errors.length > 0 || warnings.length > 0)) {
+              core.info(
+                `Automation PR (${exemption.reason}): suppressing ` +
+                `${errors.length} error(s) and ${warnings.length} warning(s).`
+              );
+              errors.length = 0;
+              warnings.length = 0;
             }
 
             // ---- Build summary ----
@@ -280,11 +318,21 @@ jobs:
             if (licenseCountdown) {
               message +=
                 '> [!WARNING]\n' +
-                '> ⏳ **This PR will be closed automatically in 24 hours** unless the ' +
-                '**[MANDATORY - ALL] Integrity & License** checkbox is ticked in the PR description.\n' +
-                '> We cannot merge a contribution without a recorded license agreement. ' +
+                `> ⏳ **This PR will be closed automatically in ${GRACE_HOURS} hours** unless the ` +
+                `**${LICENSE_ITEM}** checkbox is ticked in the PR description.\n` +
+                '> We can only accept contributions from people who have agreed to the project ' +
+                'license, and this box is how that agreement is recorded. ' +
                 'If the checklist is missing, it has been added back to the description for you — ' +
                 'just tick the box (no new commit needed) and this check will pass.\n\n';
+            } else if (isDraft && !licenseAgreed && !licenseExempt) {
+              message +=
+                '> [!NOTE]\n' +
+                `> This is a draft, so the license countdown has not started. The ` +
+                `**${LICENSE_ITEM}** checkbox must be ticked before you mark it ready for review.\n\n`;
+            } else if (isAutomation) {
+              message += `> [!NOTE]\n> Automation PR (${exemption.reason}) — contributor checklist not applied.\n\n`;
+            } else if (licenseExempt) {
+              message += `> [!NOTE]\n> License check skipped: ${exemption.reason}.\n\n`;
             }
 
             message += '### Change Detection\n';
@@ -322,7 +370,7 @@ jobs:
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
+              issue_number: pr.number,
             });
 
             const existing = comments.find(c =>
@@ -342,7 +390,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
+                issue_number: pr.number,
                 body: commentBody,
               });
             }
