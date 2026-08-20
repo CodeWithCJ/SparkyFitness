@@ -149,16 +149,18 @@ function formatLatestPercentValue(
 function formatTemperature(records: unknown[]): string {
   const latestTemp = (records as { time?: string; startTime?: string; temperature?: { inCelsius: number } }[])
     .sort((a, b) => new Date(b.time || b.startTime || '').getTime() - new Date(a.time || a.startTime || '').getTime())[0];
-  return latestTemp.temperature?.inCelsius
-    ? t('healthDataDisplay.celsius', { defaultValue: "{{value}}°C", value: number(latestTemp.temperature.inCelsius, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
+  const value = latestTemp.temperature?.inCelsius;
+  return value != null && Number.isFinite(value)
+    ? t('healthDataDisplay.celsius', { defaultValue: "{{value}}°C", value: number(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
     : NO_DATA_DISPLAY;
 }
 
 function formatMassInKg(records: unknown[]): string {
   const latestMass = (records as { startTime?: string; time?: string; mass?: { inKilograms: number } }[])
     .sort((a, b) => new Date(b.startTime || b.time || '').getTime() - new Date(a.startTime || a.time || '').getTime())[0];
-  return latestMass.mass?.inKilograms
-    ? t('healthDataDisplay.kg', { defaultValue: "{{value}} kg", value: number(latestMass.mass.inKilograms, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
+  const value = latestMass.mass?.inKilograms;
+  return value != null && Number.isFinite(value)
+    ? t('healthDataDisplay.kg', { defaultValue: "{{value}} kg", value: number(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
     : NO_DATA_DISPLAY;
 }
 
@@ -261,8 +263,9 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
   Height: (records) => {
     const latestHeight = (records as { time: string; height?: { inMeters: number } }[])
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
-    return latestHeight.height?.inMeters
-      ? t('healthDataDisplay.cm', { defaultValue: "{{value}} cm", value: number(latestHeight.height.inMeters * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
+    const value = latestHeight.height?.inMeters;
+    return value != null && Number.isFinite(value)
+      ? t('healthDataDisplay.cm', { defaultValue: "{{value}} cm", value: number(value * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
       : NO_DATA_DISPLAY;
   },
 
@@ -276,7 +279,7 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
       || latestGlucose.bloodGlucose?.inMillimolesPerLiter
       || (latestGlucose.level?.inMilligramsPerDeciliter ? latestGlucose.level.inMilligramsPerDeciliter / 18.018 : null)
       || (latestGlucose.bloodGlucose?.inMilligramsPerDeciliter ? latestGlucose.bloodGlucose.inMilligramsPerDeciliter / 18.018 : null);
-    return glucoseValue
+    return glucoseValue != null && Number.isFinite(glucoseValue)
       ? t('healthDataDisplay.mmolL', { defaultValue: "{{value}} mmol/L", value: number(glucoseValue, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
       : NO_DATA_DISPLAY;
   },

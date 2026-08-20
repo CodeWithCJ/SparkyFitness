@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../localization/i18n';
 import { CartesianChart, Bar } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
-import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
+import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate, formatChartYLabel } from './charts/chartFormatting';
 import type { StepsDataPoint, StepsRange } from '../hooks/useMeasurementsRange';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
@@ -34,10 +34,7 @@ const X_TICK_COUNT: Record<StepsRange, number> = {
 
 const font = makeChartFont(12);
 
-const formatYLabel = (value: number) => {
-  if (value >= 1000) return `${Math.round(value / 1000)}k`;
-  return String(value);
-};
+const formatYLabel = (value: number) => formatChartYLabel(value);
 
 const DEFAULT_TOOLTIP = '';
 
