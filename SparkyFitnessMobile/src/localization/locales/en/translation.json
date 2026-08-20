@@ -2225,7 +2225,8 @@
       "servingSizeRequired": "Set a serving size first",
       "estimating": "Estimating…",
       "convertWithAI": "Convert with AI",
-      "estimateSuffix": "estimate"
+      "estimateSuffix": "estimate",
+      "estimateFailed": "AI estimate failed."
     },
     "manualUpdate": {
       "title": "Manual Nutrition Update",

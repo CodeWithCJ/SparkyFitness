@@ -402,7 +402,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
       }
       setCapturedPhoto(prepared);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('foodScan.errors.loadPhoto', { defaultValue: 'Failed to load photo.' });
+      const msg = t('foodScan.errors.loadPhoto', { defaultValue: 'Failed to load photo.' });
       Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: msg });
     } finally {
       pickerLock.current = false;
@@ -544,7 +544,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         params: { date, photo: { uri: asset.uri }, mealTypeId: mealTypeId ?? undefined },
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('foodScan.errors.loadPhoto', { defaultValue: 'Failed to load photo.' });
+      const msg = t('foodScan.errors.loadPhoto', { defaultValue: 'Failed to load photo.' });
       Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: msg });
     } finally {
       pickerLock.current = false;

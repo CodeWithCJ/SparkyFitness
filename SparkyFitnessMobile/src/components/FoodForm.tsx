@@ -759,7 +759,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
       swapContextRef.current = null;
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'AI estimate failed.';
+        t('foodForm.ai.estimateFailed', { defaultValue: 'AI estimate failed.' });
       Toast.show({
         type: 'error',
         text1: t('foodForm.ai.couldNotEstimate', { defaultValue: "Couldn't estimate" }),

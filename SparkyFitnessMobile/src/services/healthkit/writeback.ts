@@ -32,6 +32,7 @@ import {
   type WritebackRemovalResult,
 } from '../../WritebackMetrics';
 import { getMealTypeLabel } from '../../constants/meals';
+import i18n from '../../localization/i18n';
 import { runTasksInBatches } from '../../utils/concurrency';
 
 type DailySummary = Awaited<ReturnType<typeof fetchDailySummary>>;
@@ -158,7 +159,20 @@ const saveFoodCorrelation = async (
     HKFoodType: descriptor.name,
     SparkyWritebackVersion: version,
   };
-  const mealLabel = descriptor.mealType ? getMealTypeLabel(descriptor.mealType) : '';
+  const mealKey = descriptor.mealType?.toLowerCase();
+  const mealLabel = mealKey === 'breakfast'
+    ? i18n.t('mealTypes.breakfast', { defaultValue: 'Breakfast' })
+    : mealKey === 'lunch'
+      ? i18n.t('mealTypes.lunch', { defaultValue: 'Lunch' })
+      : mealKey === 'snacks' || mealKey === 'snack'
+        ? i18n.t('mealTypes.snacks', { defaultValue: 'Snacks' })
+        : mealKey === 'dinner'
+          ? i18n.t('mealTypes.dinner', { defaultValue: 'Dinner' })
+          : mealKey === 'other'
+            ? i18n.t('mealTypes.other', { defaultValue: 'Other' })
+            : descriptor.mealType
+              ? getMealTypeLabel(descriptor.mealType)
+              : '';
   if (mealLabel) metadata.Meal = mealLabel;
   const samples = descriptor.samples.map((sample) => ({ ...sample, metadata }));
   try {
