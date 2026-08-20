@@ -158,8 +158,10 @@ export const FoodSourcesStep = ({ onContinue }: FoodSourcesStepProps) => {
             autoComplete="off"
           />
           <p className="text-xs text-muted-foreground">
-            FatSecret also requires you to whitelist your public IP in its
-            developer dashboard. This can take up to 24 hours to take effect.
+            Use the <strong>REST API OAuth 2.0</strong> credentials from the
+            dashboard, not the OAuth 1.0 Consumer Key/Secret. FatSecret also
+            requires you to whitelist your public IP in its developer dashboard.
+            This can take up to 24 hours to take effect.
           </p>
         </div>
       </div>
