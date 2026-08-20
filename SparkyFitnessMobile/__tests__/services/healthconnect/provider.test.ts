@@ -54,6 +54,18 @@ describe('healthconnect provider', () => {
       );
     });
 
+    test('queries through the end of the local day so interval records are not prorated', async () => {
+      await readCumulativeByDay({ recordType: 'Steps' }, start, end);
+
+      expect(mockAggregateGroupByPeriod).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timeRangeFilter: expect.objectContaining({
+            endTime: new Date(2026, 6, 4, 0, 0, 0, 0).toISOString(),
+          }),
+        }),
+      );
+    });
+
     test('BasalMetabolicRate reports capability missing (null), never an empty envelope', async () => {
       // HC BMR records carry kcal/day values — treating them as day totals would be
       // wrong, so Android must route BMR down the raw path via null.
