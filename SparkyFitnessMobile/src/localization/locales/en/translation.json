@@ -4043,7 +4043,7 @@
     "meters": "{{value}} m",
     "watts": "{{value}} W",
     "metersPerSecond": "{{value}} m/s",
-    "breathsPerMinute": "{{value}} br/min",
+    "breathsPerMinute": "{{value}}/min",
     "error": "Error",
     "workouts_one": "{{count}} workout",
     "workouts_few": "{{count}} workouts",

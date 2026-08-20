@@ -27,7 +27,7 @@ const t = (key: string, options: Record<string, unknown> = {}): string => {
     'healthDataDisplay.ms': '{{value}} ms', 'healthDataDisplay.vo2': '{{value}} ml/min/kg',
     'healthDataDisplay.minutes': '{{value}} min', 'healthDataDisplay.meters': '{{value}} m',
     'healthDataDisplay.watts': '{{value}} W', 'healthDataDisplay.metersPerSecond': '{{value}} m/s',
-    'healthDataDisplay.breathsPerMinute': '{{value}} br/min', 'healthDataDisplay.error': 'Error',
+    'healthDataDisplay.breathsPerMinute': '{{value}}/min', 'healthDataDisplay.error': 'Error',
     'healthDataDisplay.sleepHours': '{{count}}h', 'healthDataDisplay.sleepMinutes': '{{count}}m',
     'healthDataDisplay.workouts': '{{count}} workouts', 'healthDataDisplay.records': '{{count}} records',
   };
@@ -373,7 +373,7 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
   RespiratoryRate: (records) => {
     const avgRespRate = (records as { rate?: number }[]).reduce((sum, record) =>
       sum + (record.rate || 0), 0) / records.length;
-    return avgRespRate === 0 ? NO_DATA_DISPLAY : t('healthDataDisplay.breathsPerMinute', { defaultValue: "{{value}} br/min", value: number(Math.round(avgRespRate)) });
+    return avgRespRate === 0 ? NO_DATA_DISPLAY : t('healthDataDisplay.breathsPerMinute', { defaultValue: '{{value}}/min', value: number(Math.round(avgRespRate)) });
   },
 
   Nutrition: (records) => {
