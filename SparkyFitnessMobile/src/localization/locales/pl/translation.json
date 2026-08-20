@@ -359,11 +359,11 @@
     "workout": "Trening",
     "activity": "Aktywność",
     "logs": "Dzienniki",
-    "healthSync": "Synchronizacja zdrowia",
+    "healthSync": "Synchronizacja danych zdrowotnych",
     "importHistory": "Historia importu",
     "measurements": "Pomiary",
     "calorieSettings": "Ustawienia kalorii",
-    "foodSettings": "Ustawienia jedzenia",
+    "foodSettings": "Ustawienia produktów",
     "mealTypes": "Typy posiłków",
     "dashboardSettings": "Ustawienia pulpitu",
     "diarySettings": "Ustawienia dziennika",
@@ -769,13 +769,13 @@
       "dynamic": "Cel − energia netto",
       "percentageWithBmr": "Cel − zjedzone + PPM + {{percentage}}% ćwiczeń",
       "percentage": "Cel − zjedzone + {{percentage}}% ćwiczeń",
-      "tdee": "Cel − zjedzone + (projekcja − TDEE)",
+      "tdee": "Cel − zjedzone + (prognoza − TDEE)",
       "adaptive": "Cel − zjedzone",
       "fixed": "Cel − zjedzone"
     },
     "notes": {
       "dynamic": "Cel rośnie wraz z aktywnością",
-      "tdee": "Projekcja zbiega się o północy",
+      "tdee": "Prognoza zbiega się o północy",
       "adaptive": "Cel = adaptacyjne TDEE",
       "fixed": "Aktywność nie zmienia budżetu"
     },
@@ -904,7 +904,7 @@
       "namePlaceholder": "Ipsumol",
       "type": "Typ",
       "typeTitle": "Typ leku",
-      "strength": "Stężenie",
+      "strength": "Moc",
       "dose": "Dawka",
       "unit": "Jednostka",
       "strengthUnitPlaceholder": "mg",
@@ -921,7 +921,7 @@
       "required": "Wymagane",
       "nameRequired": "Wpisz nazwę leku.",
       "invalidNumber": "Nieprawidłowa liczba",
-      "invalidNumberMessage": "Wpisz prawidłowe wartości liczbowe stężenia i dawki.",
+      "invalidNumberMessage": "Wpisz prawidłowe wartości liczbowe mocy i dawki.",
       "updateFailed": "Nie udało się zaktualizować leku: {{error}}",
       "createFailed": "Nie udało się utworzyć leku: {{error}}"
     },
@@ -1269,17 +1269,17 @@
     "thisExercise": "to ćwiczenie",
     "discard": "Odrzuć",
     "setsRemaining": "Zapisano {{done}} z {{total}} serii. Pozostało: {{remaining}}.",
-    "allSetsLogged": "Wszystkie {{total}} serie zapisane. Dobra robota!",
+    "allSetsLogged": "Zapisano wszystkie serie ({{total}}). Dobra robota!",
     "setNumber": "Seria {{number}}",
     "exerciseShared": "Ćwiczenie udostępnione publicznie",
     "exercisePrivate": "Ćwiczenie ustawione jako prywatne",
     "makePrivate": "Ustaw jako prywatne",
     "sharePublic": "Udostępnij publicznie",
-    "best": "Najlepsza ({{unit}})",
-    "last": "Ostatnia ({{unit}})",
+    "best": "Najlepszy wynik ({{unit}})",
+    "last": "Ostatni wynik ({{unit}})",
     "calPerHour": "Kal./godz.",
     "starting": "Rozpoczynanie...",
-    "invalidCalories": "Nieprawidłowe kalorie na godzinę",
+    "invalidCalories": "Nieprawidłowa liczba kalorii na godzinę",
     "failedLoadMore": "Nie udało się załadować kolejnych. Dotknij, aby ponowić",
     "loadMore": "Załaduj więcej",
     "failedSearchProvider": "Nie udało się wyszukać w {{provider}}",
@@ -1498,11 +1498,11 @@
     "metricVolumeShort": "Obj.",
     "metricE1rmShort": "1RM",
     "metricTenrmShort": "10RM",
-    "kg": "KG",
-    "lbs": "LBS",
+    "kg": "kg",
+    "lbs": "lbs",
     "prev": "Poprz.",
-    "mi": "Mile",
-    "km": "Km",
+    "mi": "mi",
+    "km": "km",
     "reps": "Powt.",
     "setCount_one": "{{formattedCount}} seria",
     "setCount_few": "{{formattedCount}} serie",
@@ -1729,7 +1729,7 @@
       "serving": "porcja",
       "g": "g",
       "ml": "ml",
-      "oz": "uncja",
+      "oz": "oz",
       "cup": "szklanka",
       "tbsp": "łyżka",
       "tsp": "łyżeczka",
@@ -2097,7 +2097,22 @@
     "symptomForecast": "Prognoza objawów",
     "forecastHint": "Zapisuj objawy przez kilka cykli, aby prognozować nadchodzące dni.",
     "personalCorrelations": "Korelacje osobiste",
-    "days": "{{count}} dni"
+    "days_one": "{{count}} dzień",
+    "days_few": "{{count}} dni",
+    "days_many": "{{count}} dni",
+    "days_other": "{{count}} dni",
+    "anomaly": {
+      "irregular_cycles": "Długość Twoich cykli zmieniała się ostatnio o więcej niż kilka dni. Jeśli to nowa sytuacja, warto wspomnieć o tym lekarzowi.",
+      "short_cycle": "Miałaś krótki cykl krótszy niż 21 dni. Cykle krótsze niż 21 dni warto monitorować.",
+      "long_cycle": "Miałaś długi cykl dłuższy niż 45 dni. Cykle dłuższe niż 45 dni warto monitorować.",
+      "heavy_bleeding": "Twoje ostatnie wpisy wskazują na silniejsze niż zwykle krwawienie lub miesiączkę trwającą dłużej niż 7 dni. Jeśli to się utrzyma, warto wspomnieć o tym lekarzowi.",
+      "unusual_discharge": "Zanotowałaś nietypową wydzielinę. Warto zwrócić uwagę na zmiany koloru, zapachu lub konsystencji."
+    },
+    "alert": {
+      "late_period": "Spodziewana miesiączka jest spóźniona.",
+      "upcoming_period": "Miesiączka spodziewana jest wkrótce.",
+      "ovulation_today": "Owulacja przewidywana jest na dziś."
+    }
   },
   "cycleCorrelations": {
     "metrics": {
@@ -2114,9 +2129,9 @@
       "luteal": "Lutealna"
     },
     "byPhase": "{{metric}} według fazy cyklu",
-    "higher": "wyższy",
-    "lower": "niższy",
-    "peak": "{{metric}} jest zwykle {{direction}} w fazie {{phase}} ({{delta}}{{unit}} względem średniej).",
+    "higher": "wyższa",
+    "lower": "niższa",
+    "peak": "Wartość dla „{{metric}}” jest zwykle {{direction}} w fazie {{phase}} ({{delta}}{{unit}} względem średniej).",
     "noDataTitle": "Korelacje będą dostępne po zebraniu większej ilości danych",
     "noDataHint": "Zapisuj masę ciała, nastrój, sen i energię przez kilka cykli, aby zobaczyć ich zależność od faz cyklu.",
     "conditions": {
@@ -2139,7 +2154,6 @@
     "started": "Rozpoczęto {{date}}",
     "dayCycle": "{{count}}-dniowy cykl",
     "currentCycle": "Bieżący cykl",
-    "dayPeriod": "{{count}} dni miesiączki",
     "toast": {
       "success": "Sukces",
       "error": "Błąd",
@@ -2149,7 +2163,11 @@
       "updateFailed": "Nie udało się zaktualizować wpisu cyklu.",
       "deleted": "Usunięto wpis cyklu.",
       "deleteFailed": "Nie udało się usunąć wpisu cyklu."
-    }
+    },
+    "dayPeriod_one": "{{count}} dzień miesiączki",
+    "dayPeriod_few": "{{count}} dni miesiączki",
+    "dayPeriod_many": "{{count}} dni miesiączki",
+    "dayPeriod_other": "{{count}} dni miesiączki"
   },
   "nutrients": {
     "calories": "Kalorie",
@@ -2225,7 +2243,6 @@
       "servingSizeRequired": "Najpierw ustaw wielkość porcji",
       "estimating": "Szacowanie…",
       "convertWithAI": "Przelicz za pomocą AI",
-      "estimateSuffix": "szacunek",
       "estimateFailed": "Nie udało się oszacować danych przez AI.",
       "estimateQuality": {
         "high": "Dobre oszacowanie",

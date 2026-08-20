@@ -1494,11 +1494,11 @@
     "metricVolumeShort": "Vol",
     "metricE1rmShort": "1RM",
     "metricTenrmShort": "10RM",
-    "kg": "KG",
-    "lbs": "LBS",
+    "kg": "kg",
+    "lbs": "lbs",
     "prev": "Prev",
-    "mi": "Mi",
-    "km": "Km",
+    "mi": "mi",
+    "km": "km",
     "reps": "Reps",
     "exerciseCount_few": "{{formattedCount}} exercises",
     "exerciseCount_many": "{{formattedCount}} exercises",
@@ -2085,7 +2085,7 @@
     "cycleSummary": "Cycle Summary",
     "avgCycle": "Avg Cycle",
     "avgPeriod": "Avg Period",
-    "regularity": "Regularność",
+    "regularity": "Regularity",
     "set": "Set",
     "regular": "Regular",
     "nextPredictions": "Next Predictions",
@@ -2097,20 +2097,33 @@
     "symptomForecast": "Symptom Forecast",
     "forecastHint": "Log symptoms across a couple of cycles to forecast upcoming days.",
     "personalCorrelations": "Personal Correlations",
-    "days": "{{count}} days"
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "anomaly": {
+      "irregular_cycles": "Your cycle lengths have varied by more than a few days recently. If this is new for you, it may be worth mentioning to a clinician.",
+      "short_cycle": "You had a short cycle of fewer than 21 days. Cycles shorter than 21 days are worth tracking.",
+      "long_cycle": "You had a long cycle of more than 45 days. Cycles longer than 45 days are worth tracking.",
+      "heavy_bleeding": "Your recent logs show heavier flow than usual or periods lasting longer than 7 days. If this continues, consider mentioning it to a clinician.",
+      "unusual_discharge": "You have logged unusual discharge. Consider noting color, odor, or texture changes."
+    },
+    "alert": {
+      "late_period": "Your period is expected and is late.",
+      "upcoming_period": "Your period is expected soon.",
+      "ovulation_today": "Ovulation is predicted to occur today."
+    }
   },
   "cycleCorrelations": {
     "metrics": {
       "weight": "Weight",
       "mood": "Mood",
-      "sleep": "Sen",
+      "sleep": "Sleep",
       "energy": "Energy"
     },
     "phases": {
       "menstrual": "Menstrual",
       "follicular": "Follicular",
       "fertile": "Fertile",
-      "ovulation": "Owulacja",
+      "ovulation": "Ovulation",
       "luteal": "Luteal"
     },
     "byPhase": "{{metric}} by cycle phase",
@@ -2139,7 +2152,6 @@
     "started": "Started {{date}}",
     "dayCycle": "{{count}} day cycle",
     "currentCycle": "Current cycle",
-    "dayPeriod": "{{count}} day period",
     "toast": {
       "success": "Success",
       "error": "Error",
@@ -2149,7 +2161,9 @@
       "updateFailed": "Could not update cycle entry.",
       "deleted": "Cycle entry deleted successfully.",
       "deleteFailed": "Could not delete cycle entry."
-    }
+    },
+    "dayPeriod_one": "{{count}} day period",
+    "dayPeriod_other": "{{count}} day periods"
   },
   "nutrients": {
     "calories": "Calories",
@@ -2225,7 +2239,6 @@
       "servingSizeRequired": "Set a serving size first",
       "estimating": "Estimating…",
       "convertWithAI": "Convert with AI",
-      "estimateSuffix": "estimate",
       "estimateFailed": "AI estimate failed.",
       "estimateQuality": {
         "high": "Good estimate",

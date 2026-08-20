@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../Icon';
+import { localizeCycleAlert } from '../../utils/cycleLocalization';
 
 export interface CycleAlert {
   key: string;
@@ -14,6 +16,7 @@ interface CycleAlertsProps {
 }
 
 const CycleAlerts: React.FC<CycleAlertsProps> = ({ alerts }) => {
+  const { t } = useTranslation();
   const [dangerColor, accentColor] = useCSSVariable([
     '--color-icon-danger',
     '--color-accent-primary',
@@ -38,7 +41,7 @@ const CycleAlerts: React.FC<CycleAlertsProps> = ({ alerts }) => {
               />
             </View>
             <Text className="flex-1 text-sm text-text-primary leading-5">
-              {alert.message}
+              {localizeCycleAlert(alert.key, alert.message, t)}
             </Text>
           </View>
         );

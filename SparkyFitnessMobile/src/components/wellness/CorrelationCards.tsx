@@ -5,6 +5,7 @@ import { useCSSVariable } from 'uniwind';
 import { useCycleCorrelations } from '../../hooks/useCycleInsights';
 import type { CorrelationResult } from '@workspace/shared';
 import Icon from '../Icon';
+import { formatLocalizedNumber } from '../../localization';
 
 const METRIC_UNITS: Record<string, string> = {
   weight: 'kg',
@@ -53,7 +54,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
                 />
               </View>
               <Text className="w-14 text-right text-text-primary text-sm font-semibold">
-                {p.count ? `${p.mean}${unit}` : '—'}
+                {p.count ? `${formatLocalizedNumber(p.mean)}${unit}` : '—'}
               </Text>
             </View>
           );
@@ -61,7 +62,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
       </View>
       {c.peakPhase ? (
         <Text className="text-sm text-text-secondary leading-relaxed border-t border-border-subtle pt-2">
-          {t('cycleCorrelations.peak', { defaultValue: '{{metric}} tends to be {{direction}} in your {{phase}} phase ({{delta}}{{unit}} vs your average).', metric: label, direction: c.peakDelta > 0 ? t('cycleCorrelations.higher', { defaultValue: 'higher' }) : t('cycleCorrelations.lower', { defaultValue: 'lower' }), phase: c.peakPhase === 'menstrual' ? t('cycleCorrelations.phases.menstrual', { defaultValue: 'Menstrual' }) : c.peakPhase === 'follicular' ? t('cycleCorrelations.phases.follicular', { defaultValue: 'Follicular' }) : c.peakPhase === 'fertile' ? t('cycleCorrelations.phases.fertile', { defaultValue: 'Fertile' }) : c.peakPhase === 'ovulation' ? t('cycleCorrelations.phases.ovulation', { defaultValue: 'Ovulation' }) : c.peakPhase === 'luteal' ? t('cycleCorrelations.phases.luteal', { defaultValue: 'Luteal' }) : c.peakPhase, delta: c.peakDelta > 0 ? `+${c.peakDelta}` : c.peakDelta, unit })}
+          {t('cycleCorrelations.peak', { defaultValue: '{{metric}} tends to be {{direction}} in your {{phase}} phase ({{delta}}{{unit}} vs your average).', metric: label, direction: c.peakDelta > 0 ? t('cycleCorrelations.higher', { defaultValue: 'higher' }) : t('cycleCorrelations.lower', { defaultValue: 'lower' }), phase: c.peakPhase === 'menstrual' ? t('cycleCorrelations.phases.menstrual', { defaultValue: 'Menstrual' }) : c.peakPhase === 'follicular' ? t('cycleCorrelations.phases.follicular', { defaultValue: 'Follicular' }) : c.peakPhase === 'fertile' ? t('cycleCorrelations.phases.fertile', { defaultValue: 'Fertile' }) : c.peakPhase === 'ovulation' ? t('cycleCorrelations.phases.ovulation', { defaultValue: 'Ovulation' }) : c.peakPhase === 'luteal' ? t('cycleCorrelations.phases.luteal', { defaultValue: 'Luteal' }) : c.peakPhase, delta: c.peakDelta > 0 ? `+${formatLocalizedNumber(c.peakDelta)}` : formatLocalizedNumber(c.peakDelta), unit })}
         </Text>
       ) : null}
     </View>

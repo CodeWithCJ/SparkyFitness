@@ -12,6 +12,10 @@ import Icon from '../Icon';
 import CycleIcon from './CycleIcon';
 import BBTLineChart from './BBTLineChart';
 import CorrelationCards from './CorrelationCards';
+import {
+  localizeCycleSymptom,
+  localizeCycleAnomaly,
+} from '../../utils/cycleLocalization';
 
 const CycleInsightsView: React.FC = () => {
   const { t } = useTranslation();
@@ -163,7 +167,7 @@ const CycleInsightsView: React.FC = () => {
         <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
           <Text className="text-text-secondary text-base font-semibold">{t('cycleInsights.patternsToWatch', { defaultValue: 'Patterns to Watch' })}</Text>
           <View className="gap-2">
-            {anomalies.map((anom: { message: string }, idx: number) => (
+            {anomalies.map((anom: { key: string; message: string }, idx: number) => (
               <View
                 key={idx}
                 className="flex-row items-start p-2"
@@ -172,7 +176,7 @@ const CycleInsightsView: React.FC = () => {
                   <Icon name="warning" size={18} color={dangerColor} />
                 </View>
                 <Text className="flex-1 text-sm text-text-primary leading-normal">
-                  {anom.message}
+                  {localizeCycleAnomaly(anom.key, anom.message, t)}
                 </Text>
               </View>
             ))}
@@ -198,7 +202,7 @@ const CycleInsightsView: React.FC = () => {
               <View key={f.date} className="flex-row justify-between items-start py-1 gap-3">
                 <Text className="text-text-secondary text-sm font-semibold">{formatDate(f.date)}</Text>
                 <Text className="flex-1 text-right text-text-primary text-sm capitalize">
-                  {f.symptoms.join(', ')}
+                  {f.symptoms.map((s) => localizeCycleSymptom(s, t)).join(', ')}
                 </Text>
               </View>
             ))}
