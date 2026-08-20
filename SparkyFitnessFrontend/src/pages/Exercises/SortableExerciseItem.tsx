@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   GripVertical,
@@ -91,6 +92,7 @@ export const SortableExerciseItem = ({
   workoutPresets,
   simplified = false,
 }: SortableExerciseItemProps) => {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   const { distanceUnit } = usePreferences();
 
@@ -242,7 +244,14 @@ export const SortableExerciseItem = ({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              title="Replace exercise"
+              title={t(
+                'workoutPresetForm.replaceExerciseButton',
+                'Replace exercise'
+              )}
+              aria-label={t(
+                'workoutPresetForm.replaceExerciseButton',
+                'Replace exercise'
+              )}
               onClick={() => onReplaceExercise(exerciseIndex)}
             >
               <Repeat className="h-4 w-4" />
@@ -253,7 +262,14 @@ export const SortableExerciseItem = ({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              title="Duplicate exercise"
+              title={t(
+                'workoutPresetForm.duplicateExerciseButton',
+                'Duplicate exercise'
+              )}
+              aria-label={t(
+                'workoutPresetForm.duplicateExerciseButton',
+                'Duplicate exercise'
+              )}
               onClick={() => onDuplicateExercise(exerciseIndex)}
             >
               <CopyPlus className="h-4 w-4" />

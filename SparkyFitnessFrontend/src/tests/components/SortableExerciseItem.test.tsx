@@ -177,8 +177,8 @@ describe('SortableExerciseItem replace/duplicate exercise actions', () => {
       />
     );
 
-    fireEvent.click(screen.getByTitle('Replace exercise'));
-    fireEvent.click(screen.getByTitle('Duplicate exercise'));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate exercise' }));
 
     expect(onReplaceExercise).toHaveBeenCalledWith(2);
     expect(onDuplicateExercise).toHaveBeenCalledWith(2);
@@ -193,7 +193,11 @@ describe('SortableExerciseItem replace/duplicate exercise actions', () => {
       })
     );
 
-    expect(screen.queryByTitle('Replace exercise')).not.toBeInTheDocument();
-    expect(screen.queryByTitle('Duplicate exercise')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Replace exercise' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Duplicate exercise' })
+    ).not.toBeInTheDocument();
   });
 });

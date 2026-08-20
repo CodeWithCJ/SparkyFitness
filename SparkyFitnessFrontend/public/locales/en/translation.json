@@ -2949,6 +2949,8 @@
     "shareWithPublicLabel": "Share with Public",
     "exercisesLabel": "Exercises",
     "addExerciseButton": "Add Exercise",
+    "replaceExerciseButton": "Replace exercise",
+    "duplicateExerciseButton": "Duplicate exercise",
     "addSetButton": "Add Set",
     "createPresetButton": "Create Preset",
     "validationErrorTitle": "Validation Error",
