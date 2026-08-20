@@ -54,7 +54,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
       '--color-accent-primary',
     ]) as [string, string, string];
 
-    const [title, setTitle] = useState('Exercise');
+    const [title, setTitle] = useState('');
     const [sets, setSets] = useState<ExerciseSetRestItem[]>([]);
     const [selectedKey, setSelectedKey] = useState<string>(ALL_KEY);
     const [initialBySetId, setInitialBySetId] = useState<Record<string, number>>({});
@@ -93,6 +93,12 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
     }));
 
     const renderBackdrop = useSheetBackdrop();
+    const restTitle = isSupersetRound
+      ? t('exerciseSetRest.roundRest', { defaultValue: 'Round Rest' })
+      : t('exerciseSetRest.rest', { defaultValue: 'Rest' });
+    const itemTitle = isSupersetRound
+      ? t('exerciseSetRest.round', { defaultValue: 'Round' })
+      : t('exerciseSetRest.set', { defaultValue: 'Set' });
 
     const selectedSeconds = useMemo(() => {
       if (selectedKey === ALL_KEY) {
@@ -176,7 +182,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
       >
         <BottomSheetView className="px-5 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-3">
-            {isSupersetRound ? 'Round Rest' : 'Rest'} — {title}
+            {restTitle} — {title}
           </Text>
 
           <View className="flex-row flex-wrap" style={{ gap: 8 }}>
@@ -226,7 +232,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                       className={selected ? 'font-semibold text-text-primary' : 'text-text-secondary'}
                       style={selected ? { color: accentPrimary } : undefined}
                     >
-                      {isSupersetRound ? 'Round' : 'Set'} {set.setNumber}
+                      {itemTitle} {set.setNumber}
                     </Text>
                     <Text
                       className={

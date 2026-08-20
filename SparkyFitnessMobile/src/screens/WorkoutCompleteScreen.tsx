@@ -491,7 +491,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             </StatTile>
             <StatTile icon="flame" label={t('workoutComplete.stats.calories', { defaultValue: 'Calories' })}>
               {caloriesValue != null ? (
-                <StatValue value={Math.round(caloriesValue).toLocaleString()} unit="Cal" />
+                <StatValue value={Math.round(caloriesValue).toLocaleString()} unit={t('nutrition.caloriesShort', { defaultValue: 'kcal' })} />
               ) : caloriesFailed ? (
                 <StatValue value="—" />
               ) : (

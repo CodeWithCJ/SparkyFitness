@@ -3461,7 +3461,8 @@
     "accessibility": {
       "addFood": "Add Food",
       "copyMeal": "Copy meal to another day"
-    }
+    },
+    "targetCalories": "Target: {{calories}} kcal"
   },
   "nutrientTrends": {
     "title": "{{nutrient}} Trends",
@@ -3784,7 +3785,11 @@
   "exerciseSetRest": {
     "overwriteTitle": "Overwrite rest times?",
     "overwriteMessage": "These sets have different rest times. Set all to {{rest}}?",
-    "all": "All"
+    "all": "All",
+    "roundRest": "Round Rest",
+    "rest": "Rest",
+    "round": "Round",
+    "set": "Set"
   },
   "pregnancyDueDate": {
     "errors": {

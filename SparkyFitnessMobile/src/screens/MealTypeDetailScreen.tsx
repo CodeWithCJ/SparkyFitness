@@ -157,7 +157,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       >
         <FoodNutritionSummary
           name={label}
-          brand={targetCalories > 0 ? `${formatDateLabel(date)} · Target: ${targetCalories} Cal` : formatDateLabel(date)}
+          brand={targetCalories > 0 ? `${formatDateLabel(date)} · ${t('mealTypeDetail.targetCalories', { defaultValue: 'Target: {{calories}} kcal', calories: targetCalories })}` : formatDateLabel(date)}
           values={nutrition.values}
           showNetCarbs={showNetCarbs}
           customNutrients={Object.keys(nutrition.customNutrients).length > 0 ? nutrition.customNutrients : null}

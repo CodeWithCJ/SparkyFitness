@@ -3463,7 +3463,8 @@
     "accessibility": {
       "addFood": "Dodaj produkt",
       "copyMeal": "Kopiuj posiłek na inny dzień"
-    }
+    },
+    "targetCalories": "Cel: {{calories}} kcal"
   },
   "nutrientTrends": {
     "title": "Trendy: {{nutrient}}",
@@ -3784,7 +3785,11 @@
   "exerciseSetRest": {
     "overwriteTitle": "Nadpisać czasy odpoczynku?",
     "overwriteMessage": "Te serie mają różne czasy odpoczynku. Ustawić wszystkim {{rest}}?",
-    "all": "Wszystkie"
+    "all": "Wszystkie",
+    "roundRest": "Odpoczynek po rundzie",
+    "rest": "Odpoczynek",
+    "round": "Runda",
+    "set": "Seria"
   },
   "pregnancyDueDate": {
     "errors": {
