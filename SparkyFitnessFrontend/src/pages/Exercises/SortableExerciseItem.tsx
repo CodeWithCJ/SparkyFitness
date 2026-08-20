@@ -7,6 +7,8 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  CopyPlus,
+  Repeat,
   Book,
   Dumbbell,
   HeartPulse,
@@ -59,6 +61,10 @@ interface SortableExerciseItemProps {
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void;
   onAddSet?: (exerciseIndex: number) => void;
   onCopyExercise?: (ex: SortableExerciseItemData) => void;
+  /** Swap which exercise this entry points to, keeping its configured sets. */
+  onReplaceExercise?: (exerciseIndex: number) => void;
+  /** Add an independent copy of this entry (same sets) right after it. */
+  onDuplicateExercise?: (exerciseIndex: number) => void;
   onReorderSets?: (
     exerciseIndex: number,
     oldIndex: number,
@@ -78,6 +84,8 @@ export const SortableExerciseItem = ({
   onRemoveSet,
   onAddSet,
   onCopyExercise,
+  onReplaceExercise,
+  onDuplicateExercise,
   onReorderSets,
   weightUnit,
   workoutPresets,
@@ -227,6 +235,28 @@ export const SortableExerciseItem = ({
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
+            </Button>
+          )}
+          {onReplaceExercise && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title="Replace exercise"
+              onClick={() => onReplaceExercise(exerciseIndex)}
+            >
+              <Repeat className="h-4 w-4" />
+            </Button>
+          )}
+          {onDuplicateExercise && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title="Duplicate exercise"
+              onClick={() => onDuplicateExercise(exerciseIndex)}
+            >
+              <CopyPlus className="h-4 w-4" />
             </Button>
           )}
           {onCopyExercise && (

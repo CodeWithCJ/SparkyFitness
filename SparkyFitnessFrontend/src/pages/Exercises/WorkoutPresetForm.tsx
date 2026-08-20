@@ -51,7 +51,10 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     setIsPublic,
     setIsAddExerciseDialogOpen,
     handleAddExercise,
+    handleOpenAddExercise,
+    handleOpenReplaceExercise,
     handleRemoveExercise,
+    handleDuplicateExercise,
     handleSetChange,
     handleAddSet,
     handleDuplicateSet,
@@ -118,11 +121,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
               <h3 className="text-lg font-semibold">
                 {t('workoutPresetForm.exercisesLabel', 'Exercises')}
               </h3>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setIsAddExerciseDialogOpen(true)}
-              >
+              <Button type="button" size="sm" onClick={handleOpenAddExercise}>
                 <Plus className="h-4 w-4 mr-2" />
                 {t('workoutPresetForm.addExerciseButton', 'Add Exercise')}
               </Button>
@@ -166,6 +165,8 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                         exerciseIndex={exerciseIndex}
                         weightUnit={weightUnit}
                         onRemoveExercise={handleRemoveExercise}
+                        onReplaceExercise={handleOpenReplaceExercise}
+                        onDuplicateExercise={handleDuplicateExercise}
                         onSetChange={handleSetChange}
                         onDuplicateSet={handleDuplicateSet}
                         onRemoveSet={handleRemoveSet}
