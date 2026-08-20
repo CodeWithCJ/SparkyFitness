@@ -200,9 +200,9 @@ function itemIsDisabled(item: HeaderItem): boolean {
 function itemAccessibilityLabel(item: HeaderItem, t: TFunction): string | undefined {
   switch (item.kind) {
     case 'back':
-      return 'Back';
+      return t('common.back', 'Back');
     case 'dismiss':
-      return item.accessibilityLabel ?? 'Close';
+      return item.accessibilityLabel ?? t('common.close', 'Close');
     case 'icon':
       return item.accessibilityLabel;
     case 'menu':
@@ -473,7 +473,7 @@ function buildNativeItem(
         sfSymbol: 'xmark',
         identifier,
         tintColor: colors.defaultColor,
-        accessibilityLabel: item.accessibilityLabel ?? 'Close',
+        accessibilityLabel: item.accessibilityLabel ?? t('common.close', 'Close'),
         onPress: press,
         disabled: !!item.disabled,
       });

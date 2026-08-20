@@ -1,4 +1,5 @@
 import type { WellnessPalette } from '../components/wellness/theme/wellnessTokens';
+import i18n from '../localization/i18n';
 
 export type CyclePhaseKey = 'menstrual' | 'follicular' | 'fertile' | 'ovulation' | 'luteal' | 'unknown';
 
@@ -7,20 +8,20 @@ export type CyclePhaseKey = 'menstrual' | 'follicular' | 'fertile' | 'ovulation'
  * Respects discreet mode to avoid revealing sensitive terms when enabled.
  */
 export function getPhaseDisplayName(phase: string, discreetMode = false): string {
-  if (discreetMode) return 'Active Phase';
+  if (discreetMode) return i18n.t('cycle.phase.active', { defaultValue: 'Active Phase' });
   switch (phase) {
     case 'menstrual':
-      return 'Period';
+      return i18n.t('cycle.phase.period', { defaultValue: 'Period' });
     case 'follicular':
-      return 'Follicular Phase';
+      return i18n.t('cycle.phase.follicular', { defaultValue: 'Follicular Phase' });
     case 'fertile':
-      return 'Est. Fertile Window';
+      return i18n.t('cycle.phase.fertile', { defaultValue: 'Est. Fertile Window' });
     case 'ovulation':
-      return 'Est. Ovulation';
+      return i18n.t('cycle.phase.ovulation', { defaultValue: 'Est. Ovulation' });
     case 'luteal':
-      return 'Luteal Phase';
+      return i18n.t('cycle.phase.luteal', { defaultValue: 'Luteal Phase' });
     default:
-      return 'Cycle Active';
+      return i18n.t('cycle.phase.activeCycle', { defaultValue: 'Cycle Active' });
   }
 }
 

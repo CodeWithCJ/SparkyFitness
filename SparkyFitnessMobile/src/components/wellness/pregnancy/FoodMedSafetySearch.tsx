@@ -47,7 +47,9 @@ const FoodMedSafetySearch: React.FC = () => {
       <FormInput
         value={query}
         onChangeText={setQuery}
-        placeholder={category === 'food' ? 'Sushi' : 'Ibuprofen'}
+        placeholder={category === 'food'
+          ? t('pregnancySafety.foodExample', { defaultValue: 'Sushi' })
+          : t('pregnancySafety.medicationExample', { defaultValue: 'Ibuprofen' })}
       />
 
       {!debouncedQuery.trim() ? (

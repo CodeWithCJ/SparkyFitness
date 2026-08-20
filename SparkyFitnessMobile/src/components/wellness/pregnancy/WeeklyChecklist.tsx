@@ -58,7 +58,7 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
         const tpl = CHECKLIST_TEMPLATES.find((t) => t.key === i.template_key);
         return {
           key: i.template_key as string,
-          title: tpl?.title ?? i.custom_title ?? i.template_key ?? 'Checklist item',
+          title: tpl?.title ?? i.custom_title ?? i.template_key ?? t('pregnancy.checklist.item', { defaultValue: 'Checklist item' }),
           week: i.week ?? currentWeek,
           completed: true,
           persistedId: i.id,
@@ -66,7 +66,7 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
       });
 
     return [...windowRows, ...pastCompleted];
-  }, [items, currentWeek]);
+  }, [items, currentWeek, t]);
 
   const handleToggle = (row: ChecklistRow) => {
     toggleAsync({

@@ -1,4 +1,5 @@
 import { localDateToDay } from '@workspace/shared';
+import i18n from '../localization/i18n';
 
 /**
  * Converts a timestamp to a local date string (YYYY-MM-DD).
@@ -36,7 +37,7 @@ export const addDays = (dateString: string, days: number): string => {
 export const normalizeDate = (dateString: string): string => dateString.split('T')[0];
 
 // Format a YYYY-MM-DD date for display ("Mon, Jan 6")
-export const formatDate = (dateString: string, locale = 'en-US'): string => {
+export const formatDate = (dateString: string, locale = (i18n.resolvedLanguage === 'pl' ? 'pl-PL' : 'en-US')): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   return date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
@@ -46,14 +47,14 @@ export const formatDate = (dateString: string, locale = 'en-US'): string => {
 export const formatShortDate = (dateString: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(i18n.resolvedLanguage === 'pl' ? 'pl-PL' : 'en-US', { month: 'short', day: 'numeric' });
 };
 
 // Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
 export const formatDateLabel = (dateString: string): string => {
   const today = getTodayDate();
-  if (dateString === today) return 'Today';
-  if (dateString === addDays(today, -1)) return 'Yesterday';
+  if (dateString === today) return i18n.t('date.today', { defaultValue: 'Today' });
+  if (dateString === addDays(today, -1)) return i18n.t('date.yesterday', { defaultValue: 'Yesterday' });
   return formatDate(dateString);
 };
 

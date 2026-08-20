@@ -1,4 +1,5 @@
 import { getLocalizedMealLabel, MEAL_CONFIG } from '../constants/meals';
+import i18n from '../localization/i18n';
 import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDisplayValues } from './foodDetails';
 import type { DailyGoals } from '../types/goals';
@@ -65,7 +66,7 @@ export function getHistoricalMealTypeLabel(
   name: string | null | undefined,
 ): string {
   const trimmed = (name ?? '').trim();
-  if (!trimmed) return 'Other';
+  if (!trimmed) return i18n.t('mealTypes.other', { defaultValue: 'Other' });
   return trimmed;
 }
 

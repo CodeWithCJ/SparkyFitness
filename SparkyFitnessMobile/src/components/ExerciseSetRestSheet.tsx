@@ -130,7 +130,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
         if (selectedKey === ALL_KEY && restTimesMixed && !allOverwriteConfirmed) {
           Alert.alert(
             t('exerciseSetRest.overwriteTitle', { defaultValue: 'Overwrite rest times?' }),
-            t('exerciseSetRest.overwriteMessage', { defaultValue: 'These sets have different rest times. Set all to {{rest}}?', rest: formatRestLabel(next) }),
+            t('exerciseSetRest.overwriteMessage', { defaultValue: 'These sets have different rest times. Set all to {{rest}}?', rest: formatRestLabel(next, t('restPeriod.off', { defaultValue: 'Off' })) }),
             [
               {
                 text: t('common.cancel', { defaultValue: 'Cancel' }),
@@ -212,7 +212,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                 }
                 style={selectedKey === ALL_KEY ? { color: accentPrimary } : undefined}
               >
-                {formatRestRangeLabel(allSetRests, getDefaultRestSec())}
+                {formatRestRangeLabel(allSetRests, getDefaultRestSec(), t('restPeriod.off', { defaultValue: 'Off' }))}
               </Text>
             </Pressable>
             {sets.map((set) => {
@@ -242,7 +242,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                       }
                       style={selected ? { color: accentPrimary } : undefined}
                     >
-                    {formatRestLabel(setRest)}
+                    {formatRestLabel(setRest, t('restPeriod.off', { defaultValue: 'Off' }))}
                     </Text>
                 </Pressable>
               );

@@ -60,7 +60,8 @@
       "cm": "cm"
     },
     "unknownDate": "Unknown date",
-    "selectOption": "Select an option"
+    "selectOption": "Select an option",
+    "requestTimedOut": "Request timed out. Check your server connection."
   },
   "settings": {
     "app": "App Settings",
@@ -2843,7 +2844,8 @@
       "verifiedFood": "Verified food"
     },
     "errors": {
-      "detailsUnavailable": "Details unavailable"
+      "detailsUnavailable": "Details unavailable",
+      "loadNutritionDetails": "Couldn't load full nutrition details."
     },
     "sections": {
       "favorites": "Favorites",
@@ -3570,7 +3572,9 @@
     "avoid": "Avoid",
     "searchHint": "Search to see how a food or medication is commonly categorized during pregnancy.",
     "noMatch": "No match found. This list is not exhaustive, so ask your provider if unsure.",
-    "disclaimer": "General guidance only, not medical advice. Always confirm with your provider."
+    "disclaimer": "General guidance only, not medical advice. Always confirm with your provider.",
+    "foodExample": "Sushi",
+    "medicationExample": "Ibuprofen"
   },
   "foodPhotoLogEntry": {
     "estimateSaved": "Estimate saved",
@@ -3929,7 +3933,8 @@
     },
     "checklist": {
       "title": "This Week's To-Do",
-      "empty": "Nothing on your checklist for this week."
+      "empty": "Nothing on your checklist for this week.",
+      "item": "Checklist item"
     }
   },
   "workoutDraft": {
@@ -3975,5 +3980,16 @@
   "shareStatus": {
     "public": "Shared publicly",
     "family": "Shared with family"
+  },
+  "cycle": {
+    "phase": {
+      "active": "Active Phase",
+      "period": "Period",
+      "follicular": "Follicular Phase",
+      "fertile": "Est. Fertile Window",
+      "ovulation": "Est. Ovulation",
+      "luteal": "Luteal Phase",
+      "activeCycle": "Cycle Active"
+    }
   }
 }

@@ -60,7 +60,8 @@
       "cm": "cm"
     },
     "unknownDate": "Nieznana data",
-    "selectOption": "Wybierz opcję"
+    "selectOption": "Wybierz opcję",
+    "requestTimedOut": "Przekroczono limit czasu żądania. Sprawdź połączenie z serwerem."
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -2843,7 +2844,8 @@
       "verifiedFood": "Zweryfikowany produkt"
     },
     "errors": {
-      "detailsUnavailable": "Szczegóły niedostępne"
+      "detailsUnavailable": "Szczegóły niedostępne",
+      "loadNutritionDetails": "Nie udało się wczytać pełnych informacji o wartościach odżywczych."
     },
     "sections": {
       "favorites": "Ulubione",
@@ -3572,7 +3574,9 @@
     "avoid": "Unikaj",
     "searchHint": "Wyszukaj produkt lub lek, aby zobaczyć jego typową klasyfikację w ciąży.",
     "noMatch": "Brak wyników. Ta lista nie jest kompletna — w razie wątpliwości zapytaj lekarza.",
-    "disclaimer": "To tylko ogólne wskazówki, nie porada medyczna. Zawsze potwierdź informacje u lekarza."
+    "disclaimer": "To tylko ogólne wskazówki, nie porada medyczna. Zawsze potwierdź informacje u lekarza.",
+    "foodExample": "Sushi",
+    "medicationExample": "Ibuprofen"
   },
   "foodPhotoLogEntry": {
     "estimateSaved": "Zapisano oszacowanie",
@@ -3929,7 +3933,8 @@
     },
     "checklist": {
       "title": "Zadania na ten tydzień",
-      "empty": "Brak zadań na ten tydzień."
+      "empty": "Brak zadań na ten tydzień.",
+      "item": "Element listy kontrolnej"
     }
   },
   "workoutDraft": {
@@ -3975,5 +3980,16 @@
   "shareStatus": {
     "public": "Udostępniono publicznie",
     "family": "Udostępniono rodzinie"
+  },
+  "cycle": {
+    "phase": {
+      "active": "Aktywna faza",
+      "period": "Miesiączka",
+      "follicular": "Faza folikularna",
+      "fertile": "Szacowane dni płodne",
+      "ovulation": "Szacowana owulacja",
+      "luteal": "Faza lutealna",
+      "activeCycle": "Aktywny cykl"
+    }
   }
 }

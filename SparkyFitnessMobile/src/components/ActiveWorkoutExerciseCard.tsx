@@ -611,7 +611,7 @@ function ActiveWorkoutExerciseCard({
           onPress={onPressThumb ? () => onPressThumb(exercise.id) : undefined}
           accessible={onPressThumb != null}
           accessibilityRole={onPressThumb != null ? 'button' : undefined}
-          accessibilityLabel={onPressThumb != null ? `View ${name} details` : undefined}
+          accessibilityLabel={onPressThumb != null ? t('activeWorkout.exercise.viewDetails', { defaultValue: 'View {{name}} details', name }) : undefined}
         >
           {thumb}
         </Pressable>

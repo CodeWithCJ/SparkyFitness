@@ -509,7 +509,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           );
         } catch (error) {
           const message =
-            getApiErrorMessage(error) ?? "Couldn't load full nutrition details.";
+            getApiErrorMessage(error) ?? t('foodSearch.errors.loadNutritionDetails', { defaultValue: "Couldn't load full nutrition details." });
           Toast.show({ type: 'error', text1: t('foodSearch.errors.detailsUnavailable', { defaultValue: 'Details unavailable' }), text2: message });
           showFoodInfo(externalFoodItemToFoodInfo(item));
         }
