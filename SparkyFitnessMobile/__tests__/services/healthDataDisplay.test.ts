@@ -311,7 +311,7 @@ describe('fetchHealthDisplayData', () => {
       {
         recordType: 'RespiratoryRate',
         records: [{ rate: 14 }, { rate: 16 }],
-        expected: '15 br/min',
+        expected: '15/min',
       },
       {
         recordType: 'Nutrition',
