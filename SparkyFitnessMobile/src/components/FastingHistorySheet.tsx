@@ -30,6 +30,7 @@ interface FastingHistoryRowProps {
   onEdit: (fast: FastingLog) => void;
   onDelete: (fast: FastingLog) => void;
   textMuted: string;
+  t: ReturnType<typeof useTranslation>['t'];
 }
 
 const FastingHistoryRow: React.FC<FastingHistoryRowProps> = ({
@@ -38,10 +39,11 @@ const FastingHistoryRow: React.FC<FastingHistoryRowProps> = ({
   onEdit,
   onDelete,
   textMuted,
+  t,
 }) => {
-  const dayLabel = relativeDayLabel(toLocalDateString(fast.end_time ?? fast.start_time));
+  const dayLabel = relativeDayLabel(toLocalDateString(fast.end_time ?? fast.start_time), t);
   const durationLabel =
-    fast.duration_minutes != null ? formatHoursMinutes(fast.duration_minutes * 60000) : '—';
+    fast.duration_minutes != null ? formatHoursMinutes(fast.duration_minutes * 60000, t) : '—';
   const timeRangeLabel = fast.end_time
     ? `${formatTime(fast.start_time)} → ${formatTime(fast.end_time)}`
     : formatTime(fast.start_time);
@@ -174,6 +176,7 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => 
                   onEdit={openEdit}
                   onDelete={confirmDelete}
                   textMuted={textMuted}
+                  t={t}
                 />
               ))}
             </View>

@@ -278,7 +278,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
       const existing = entryForDue(due);
       if (existing) {
         deleteEntryMutation.mutate(existing.id, {
-          onError: (error) => showEntryError(t('medications.dose.failedUpdate', { defaultValue: 'Failed to update {{name}}', name: due.medication.name }), error),
+          onError: (error) => showEntryError(t('medications.dose.failedUnmark', { defaultValue: 'Failed to unmark {{name}}', name: due.medication.name }), error),
         });
         return;
       }

@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import i18n from '../localization/i18n';
 import { getMetabolicStage, type MetabolicStage } from '../constants/fasting';
-import { toLocalDateString, formatDateLabel } from './dateUtils';
+import { toLocalDateString, formatDateLabel, normalizeDate } from './dateUtils';
 import type { FastingLog, FastingStats } from '../types/fasting';
 const MS_PER_HOUR = 1000 * 60 * 60;
 const defaultTranslator: TFunction = i18n.t.bind(i18n);
@@ -98,16 +98,17 @@ export function computeFastTimerValues(
 /** Lowercases "Today"/"Yesterday" (matches the card mockup) but keeps absolute dates. */
 export function relativeDayLabel(dateString: string, t?: TFunction): string {
   const translate = resolveTranslator(t);
+  const date = normalizeDate(dateString);
   const today = new Date();
-  const date = toLocalDateString(dateString);
-  if (date === toLocalDateString(today)) {
+  const todayString = toLocalDateString(today);
+  if (date === todayString) {
     return translate('fastingCard.today', { defaultValue: 'today' });
   }
   today.setDate(today.getDate() - 1);
   if (date === toLocalDateString(today)) {
     return translate('fastingCard.yesterday', { defaultValue: 'yesterday' });
   }
-  return formatDateLabel(dateString);
+  return formatDateLabel(date, translate);
 }
 /**
  * "Last fast 16h 4m · yesterday" line for the idle card, built from the newest

@@ -1,4 +1,5 @@
 import { localDateToDay } from '@workspace/shared';
+import type { TFunction } from 'i18next';
 import i18n from '../localization/i18n';
 
 /**
@@ -51,11 +52,13 @@ export const formatShortDate = (dateString: string): string => {
 };
 
 // Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
-export const formatDateLabel = (dateString: string): string => {
+export const formatDateLabel = (dateString: string, t?: TFunction): string => {
+  const translate = t ?? i18n.t.bind(i18n);
+  const normalized = normalizeDate(dateString);
   const today = getTodayDate();
-  if (dateString === today) return i18n.t('date.today', { defaultValue: 'Today' });
-  if (dateString === addDays(today, -1)) return i18n.t('date.yesterday', { defaultValue: 'Yesterday' });
-  return formatDate(dateString);
+  if (normalized === today) return translate('date.today', { defaultValue: 'Today' });
+  if (normalized === addDays(today, -1)) return translate('date.yesterday', { defaultValue: 'Yesterday' });
+  return formatDate(normalized);
 };
 
 // Format a timestamp as a human-readable relative time ("Just now", "3 minutes ago", etc.)
