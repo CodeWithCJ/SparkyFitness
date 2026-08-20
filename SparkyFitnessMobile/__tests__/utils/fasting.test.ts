@@ -140,17 +140,28 @@ describe('formatFastingStats', () => {
     expect(display.totalValue).toBe('-');
   });
 
-  test('formats populated stats (string count, minutes to hours)', () => {
-    const display = formatFastingStats({
+  test('formats populated stats with the active locale unit', async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
+    const english = formatFastingStats({
       total_completed_fasts: '47',
       total_minutes_fasted: 44520,
       average_duration_minutes: 948,
-    });
-    expect(display.fastsCount).toBe('47');
-    expect(display.avgFastValue).toBe('15.8');
-    expect(display.avgFastUnit).toBe('h');
-    expect(display.totalValue).toBe('742');
-    expect(display.totalUnit).toBe('h');
+    }, i18n.t);
+    expect(english.fastsCount).toBe('47');
+    expect(english.avgFastValue).toBe('15.8');
+    expect(english.avgFastUnit).toBe('h');
+    expect(english.totalValue).toBe('742');
+    expect(english.totalUnit).toBe('h');
+
+    await i18n.changeLanguage('pl');
+    const polish = formatFastingStats({
+      total_completed_fasts: '47',
+      total_minutes_fasted: 44520,
+      average_duration_minutes: 948,
+    }, i18n.t);
+    expect(polish.avgFastUnit).toBe('godz.');
+    expect(polish.totalUnit).toBe('godz.');
   });
 });
 
@@ -165,7 +176,7 @@ describe('formatLastFast', () => {
   });
 
   test('formats a completed fast that ended yesterday', async () => {
-    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     const yesterday = new Date(Date.now() - 24 * HOUR).toISOString();
     const result = formatLastFast(
       buildFast({ duration_minutes: 964, end_time: yesterday }),
@@ -175,7 +186,7 @@ describe('formatLastFast', () => {
   });
 
   test('formats a completed fast that ended today', async () => {
-    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     const now = new Date().toISOString();
     const result = formatLastFast(
       buildFast({ duration_minutes: 120, end_time: now }),

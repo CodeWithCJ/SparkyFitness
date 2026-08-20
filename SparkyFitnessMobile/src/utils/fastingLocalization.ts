@@ -1,9 +1,9 @@
 import type { TFunction } from 'i18next';
 
-/** Translate only application-owned fasting stage identifiers. */
+/** Translate only application-owned fasting stage identifiers and range metadata. */
 export function localizeFastingStage(
   t: TFunction,
-  stage: { key: string; name: string; description: string; rangeLabel: string },
+  stage: { key: string; name: string; description: string; minHours?: number; maxHours?: number | null; rangeLabel: string },
 ): { name: string; description: string; rangeLabel: string } {
   const copy: Record<string, { name: string; description: string }> = {
     anabolic: {
@@ -27,8 +27,22 @@ export function localizeFastingStage(
       description: t('fastingDetail.stages.deepKetosis.description', { defaultValue: 'Autophagy peak' }),
     },
   };
+  const rangeLabel = stage.minHours == null
+    ? stage.rangeLabel
+    : stage.maxHours == null
+      ? t('fastingDetail.rangeOpen', {
+          defaultValue: '{{start}}{{unit}}+',
+          start: stage.minHours,
+          unit: t('time.hoursShort', { defaultValue: 'h' }),
+        })
+      : t('fastingDetail.range', {
+          defaultValue: '{{start}}–{{end}}{{unit}}',
+          start: stage.minHours,
+          end: stage.maxHours,
+          unit: t('time.hoursShort', { defaultValue: 'h' }),
+        });
   const translated = copy[stage.key];
-    return translated ? { ...translated, rangeLabel: stage.rangeLabel } : { ...stage, description: stage.description };
+  return translated ? { ...translated, rangeLabel } : { ...stage, rangeLabel, description: stage.description };
 }
 
 export function localizeProtocolBadge(t: TFunction, value: string | null | undefined): string {

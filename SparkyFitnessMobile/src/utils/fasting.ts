@@ -150,15 +150,18 @@ function toFiniteNumber(value: string | number | null | undefined): number | nul
  */
 export function formatFastingStats(
   stats: FastingStats | null | undefined,
+  t?: TFunction,
 ): FastingStatsDisplay {
+  const translate = resolveTranslator(t);
+  const hoursUnit = translate('time.hoursShort', { defaultValue: 'h' });
   const avgMin = toFiniteNumber(stats?.average_duration_minutes);
   const totalMin = toFiniteNumber(stats?.total_minutes_fasted);
   const count = toFiniteNumber(stats?.total_completed_fasts);
   return {
     avgFastValue: avgMin != null ? (avgMin / 60).toFixed(1) : '-',
-    avgFastUnit: avgMin != null ? 'h' : '',
+    avgFastUnit: avgMin != null ? hoursUnit : '',
     fastsCount: count != null ? String(Math.round(count)) : '0',
     totalValue: totalMin != null ? String(Math.round(totalMin / 60)) : '-',
-    totalUnit: totalMin != null ? 'h' : '',
+    totalUnit: totalMin != null ? hoursUnit : '',
   };
 }

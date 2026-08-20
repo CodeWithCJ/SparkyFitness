@@ -1,14 +1,24 @@
-import { localizeProtocolBadge } from '../../src/utils/fastingLocalization';
+import { localizeFastingStage, localizeProtocolBadge } from '../../src/utils/fastingLocalization';
 
 describe('localizeProtocolBadge', () => {
-  const en = ((key: string, options: { defaultValue: string }) => options.defaultValue);
-  const pl = ((key: string, options: { defaultValue: string }) => {
+  const en = ((key: string, options: { defaultValue: string; start?: number; end?: number; unit?: string }) =>
+    options.defaultValue
+      .replace('{{start}}', String(options.start ?? ''))
+      .replace('{{end}}', String(options.end ?? ''))
+      .replace('{{unit}}', options.unit ?? ''));
+  const pl = ((key: string, options: { defaultValue: string; start?: number; end?: number; unit?: string }) => {
     const values: Record<string, string> = {
       'fastingDetail.title': 'Post',
       'fastingProtocol.presets.circadian.name': 'Rytm dobowy',
       'fastingProtocol.presets.custom.name': 'Własny post',
+      'fastingDetail.range': '{{start}}–{{end}}{{unit}}',
+      'fastingDetail.rangeOpen': '{{start}}{{unit}}+',
+      'time.hoursShort': 'godz.',
     };
-    return values[key] ?? options.defaultValue;
+    return (values[key] ?? options.defaultValue)
+      .replace('{{start}}', String(options.start ?? ''))
+      .replace('{{end}}', String(options.end ?? ''))
+      .replace('{{unit}}', options.unit ?? '');
   });
 
   it.each([
@@ -32,5 +42,29 @@ describe('localizeProtocolBadge', () => {
   it('uses the localized fasting title for empty values', () => {
     expect(localizeProtocolBadge(pl as never, null)).toBe('Post');
     expect(localizeProtocolBadge(pl as never, '   ')).toBe('Post');
+  });
+
+
+  it('localizes metabolic-stage range units', () => {
+    const stage = {
+      key: 'catabolic',
+      name: 'Catabolic',
+      description: 'Glycogen depleting · fat metabolism ramping up',
+      minHours: 4,
+      maxHours: 16,
+      rangeLabel: '4–16h',
+    };
+    expect(localizeFastingStage(en as never, stage).rangeLabel).toBe('4–16h');
+    expect(localizeFastingStage(pl as never, stage).rangeLabel).toBe('4–16godz.');
+
+    const finalStage = {
+      key: 'deep-ketosis',
+      name: 'Deep ketosis',
+      description: 'Autophagy peak',
+      minHours: 72,
+      maxHours: null,
+      rangeLabel: '72h+',
+    };
+    expect(localizeFastingStage(pl as never, finalStage).rangeLabel).toBe('72godz.+');
   });
 });

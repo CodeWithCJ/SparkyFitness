@@ -2603,6 +2603,8 @@
     "noActiveFast": "Brak aktywnego postu",
     "startDescription": "Rozpocznij post, aby śledzić jego czas i etapy metaboliczne.",
     "startFast": "Rozpocznij post",
+    "range": "{{start}}–{{end}}{{unit}}",
+    "rangeOpen": "{{start}}{{unit}}+",
     "stages": {
       "anabolic": {
         "name": "Anaboliczna",

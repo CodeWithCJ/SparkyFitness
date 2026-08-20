@@ -75,7 +75,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
   const currentStageIndex = getMetabolicStageIndex(timer.stage);
   const stageColor = stageColors[currentStageIndex] ?? accentPrimary;
 
-  const statsDisplay = formatFastingStats(stats);
+  const statsDisplay = formatFastingStats(stats, t);
 
   const header = (
     <View className="flex-row items-center px-4 py-3">
@@ -142,7 +142,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                   {localizeFastingStage(t, stage).name}
                 </Text>
                 <Text className="text-xs text-text-secondary">
-                  {stage.rangeLabel}
+                  {localizeFastingStage(t, stage).rangeLabel}
                   {current ? ` · ${t('fastingDetail.now', { defaultValue: 'now' })}` : ''}
                 </Text>
               </View>
