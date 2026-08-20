@@ -8,6 +8,7 @@ import reportRepository from '../../models/reportRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { normalizeDayKeywords } from './dates.js';
 import { dayString, formatJsonResult } from './formatting.js';
+import { getResolvedExerciseCaloriesRange } from '../../services/exerciseCalorieRangeService.js';
 import { getNutritionalSummaryRows, getWaterHistoryRows } from './foodTools.js';
 import { getBiometricsHistoryRows } from './checkinTools.js';
 import {
@@ -110,6 +111,14 @@ async function getDailyReport(
     startDate,
     endDate
   );
+  // Calories come from the resolved figure, not the raw row sum: a device "Active
+  // Calories" summary already contains the logged workouts beside it, so adding them
+  // reports a day as ~30% more burned than the Diary shows.
+  const resolvedByDate = await getResolvedExerciseCaloriesRange(
+    userId,
+    startDate,
+    endDate
+  );
   const waterRows = await measurementRepository.getWaterTotalsByDateRange(
     userId,
     startDate,
@@ -132,7 +141,9 @@ async function getDailyReport(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     exercise: exerciseRows.map((r: any) => ({
       entry_date: dayString(r.entry_date),
-      exercise_calories: r.calories_burned,
+      exercise_calories:
+        resolvedByDate.get(dayString(r.entry_date))?.calories ??
+        r.calories_burned,
       exercise_minutes: r.duration_minutes,
       steps: r.steps,
     })),

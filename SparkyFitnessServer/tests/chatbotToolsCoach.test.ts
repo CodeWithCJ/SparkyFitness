@@ -2,6 +2,7 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { todayInZone } from '@workspace/shared';
 import { buildCoachTools } from '../ai/tools/coachTools.js';
 import coachRepository from '../models/coachRepository.js';
+import { getResolvedExerciseCaloriesTotal } from '../services/exerciseCalorieRangeService.js';
 
 vi.mock('../models/coachRepository', () => ({
   default: {
@@ -20,6 +21,10 @@ vi.mock('../models/coachRepository', () => ({
     getFrequentHighProteinFoods: vi.fn(),
   },
 }));
+vi.mock('../services/exerciseCalorieRangeService', () => ({
+  getResolvedExerciseCaloriesRange: vi.fn(),
+  getResolvedExerciseCaloriesTotal: vi.fn(),
+}));
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
 }));
@@ -31,6 +36,13 @@ const DB_ERROR_TEXT =
 let tools: ReturnType<typeof buildCoachTools>;
 
 beforeEach(() => {
+  // These fixtures contain no device "Active Calories" row, so the resolved total and
+  // the raw SUM agree. Tracking the repo mock keeps every existing golden intact while
+  // routing the tool through the resolver it now uses.
+  vi.mocked(getResolvedExerciseCaloriesTotal).mockImplementation(async () => {
+    const agg = await coachRepository.getExerciseAggregates('', '', '');
+    return Number(agg.total_calories_burned) || 0;
+  });
   vi.clearAllMocks();
   tools = buildCoachTools('user-1', 'UTC');
 });
@@ -385,6 +397,9 @@ describe('sparky_get_30_day_trends', () => {
       active_days: 6,
       total_calories_burned: '2400',
     });
+    // The 30-day tool resolves over its own window rather than reusing the range
+    // aggregate; no device summary in this fixture, so the two agree.
+    vi.mocked(getResolvedExerciseCaloriesTotal).mockResolvedValue(2400);
     vi.mocked(coachRepository.get30DayMoodAggregates).mockResolvedValue({
       entries: 10,
       avg_mood: '7.44',

@@ -15,6 +15,7 @@ import {
   formatJsonResult,
   formatList,
 } from './formatting.js';
+import { getResolvedExerciseCaloriesRange } from '../../services/exerciseCalorieRangeService.js';
 import {
   normalizePagination,
   buildPaginatedResult,
@@ -950,10 +951,27 @@ Actions:
             startDate,
             endDate
           );
+          // `calories_burned` reports the resolved figure — max(device summary,
+          // logged + background steps) — so it matches the Diary. The raw row sum
+          // double-counts a device summary against the workouts it already includes.
+          const resolvedByDate = await getResolvedExerciseCaloriesRange(
+            userId,
+            startDate,
+            endDate
+          );
           const data = {
             start_date: startDate,
             end_date: endDate,
-            rows: rows.map(projectEntryDate),
+            rows: rows.map((row: { entry_date?: unknown }) => {
+              const projected = projectEntryDate(row) as Record<
+                string,
+                unknown
+              >;
+              const resolved = resolvedByDate.get(String(projected.entry_date));
+              return resolved
+                ? { ...projected, calories_burned: resolved.calories }
+                : projected;
+            }),
           };
           return formatJsonResult(data);
         } catch (error) {
