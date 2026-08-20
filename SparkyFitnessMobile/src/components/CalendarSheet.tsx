@@ -1,12 +1,17 @@
-import React, { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-import { Platform } from 'react-native';
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { Platform, Text, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
-import { useCalendarPresentation } from '../utils/calendarLocalization';
+import {
+  useCalendarPresentation,
+  getCalendarWeekdayShortNames,
+  getCalendarMonthNames,
+} from '../utils/calendarLocalization';
+import { getAppLocale } from '../localization';
 
 export interface CalendarSheetRef {
   present: () => void;
@@ -36,6 +41,15 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
       '--color-text-primary',
       '--color-text-secondary',
     ]) as [string, string, string, string, string];
+
+    // Deterministic, app-locale driven names for the weekday/month labels.
+    // These are rebuilt on every render from the reactive getAppLocale() (the
+    // hook above subscribes this component to app-language changes), so the
+    // grid re-localizes immediately on a runtime language switch regardless of
+    // react-native-ui-datepicker's internal dayjs locale handling.
+    const appLocale = getAppLocale();
+    const weekdayLabels = useMemo(() => getCalendarWeekdayShortNames(appLocale), [appLocale]);
+    const monthLabels = useMemo(() => getCalendarMonthNames(appLocale), [appLocale]);
 
     useImperativeHandle(ref, () => ({
       present: () => bottomSheetRef.current?.present(),
@@ -90,6 +104,29 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
             components={{
               IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
               IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,
+              // Override the weekday labels with SparkyFitness-reactive app
+              // locale names (CalendarWeek.index is the JS getDay() weekday).
+              Weekday: (weekday) => (
+                <View style={{ minWidth: 30 }}>
+                  <Text
+                    style={{
+                      color: textSecondary,
+                      fontSize: 12,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {weekdayLabels[weekday.index] ?? weekday.name.short}
+                  </Text>
+                </View>
+              ),
+              // Override the months-picker grid labels with reactive app locale.
+              Month: (month) => (
+                <View style={{ paddingVertical: 4, alignItems: 'center' }}>
+                  <Text style={{ color: textPrimary, fontSize: 14 }}>
+                    {monthLabels[month.index] ?? month.name.full}
+                  </Text>
+                </View>
+              ),
             }}
             styles={{
               selected: { backgroundColor: accentPrimary },

@@ -4,6 +4,8 @@ import { formatDate } from '../../src/utils/dateUtils';
 import {
   resolveCalendarPresentation,
   appLocaleToDatepickerLocale,
+  getCalendarWeekdayShortNames,
+  getCalendarMonthNames,
 } from '../../src/utils/calendarLocalization';
 
 describe('runtime app-language reactivity (PL <-> EN without restart)', () => {
@@ -72,5 +74,37 @@ describe('runtime app-language reactivity (PL <-> EN without restart)', () => {
     expect(resolveCalendarPresentation(getAppLocale(), undefined).firstDayOfWeek).toBe(0);
     await i18n.changeLanguage('pl');
     expect(resolveCalendarPresentation(getAppLocale(), undefined).firstDayOfWeek).toBe(0);
+  });
+});
+
+
+describe('calendar grid visible labels (app-locale driven, live switch)', () => {
+  beforeAll(async () => {
+    await initializeI18n('pl');
+    await i18n.changeLanguage('pl');
+  });
+
+  test('month names re-localize live: PL sierpień -> EN August -> PL sierpień', async () => {
+    await i18n.changeLanguage('pl');
+    const plMonths = getCalendarMonthNames(getAppLocale());
+    expect(plMonths[7]).toMatch(/^sierpień$/i);
+
+    await i18n.changeLanguage('en');
+    const enMonths = getCalendarMonthNames(getAppLocale());
+    expect(enMonths[7]).toMatch(/august/i);
+
+    await i18n.changeLanguage('pl');
+    expect(getCalendarMonthNames(getAppLocale())[7]).toMatch(/^sierpień$/i);
+  });
+
+  test('weekday short names re-localize live and are Sunday-indexed', async () => {
+    await i18n.changeLanguage('pl');
+    const plWeekdays = getCalendarWeekdayShortNames(getAppLocale());
+    expect(plWeekdays[0].length).toBeGreaterThan(0);
+    expect(plWeekdays[1]).not.toBe(plWeekdays[0]);
+
+    await i18n.changeLanguage('en');
+    const enWeekdays = getCalendarWeekdayShortNames(getAppLocale());
+    expect(enWeekdays[1].toLowerCase()).toBe('mon');
   });
 });

@@ -1,6 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import { getAppLocale } from '../localization';
 import { usePreferences } from '../hooks/usePreferences';
+// Register the Polish dayjs locale so the datepicker's internal dayjs.locale('pl')
+// call actually resolves Polish month/weekday names (dayjs falls back to the
+// last registered locale otherwise, which is why the calendar could stay in the
+// device/system locale until restart). English is dayjs' built-in default.
+import 'dayjs/locale/pl';
 
 /**
  * react-native-ui-datepicker uses a dayjs locale string (e.g. "en", "pl") and a
@@ -17,6 +22,44 @@ export interface CalendarPresentation {
   locale: string;
   /** 0 = Sunday ... 6 = Saturday. */
   firstDayOfWeek: number;
+}
+
+/**
+ * Localized full weekday names for the current app locale, indexed by JS
+ * getDay() semantics (0 = Sunday ... 6 = Saturday) — matching the datepicker's
+ * CalendarWeek.index. Driven by Intl so it reliably follows the app language.
+ */
+export function getCalendarWeekdayNames(appLocale: string): string[] {
+  const base = new Date(2026, 0, 4); // a Sunday
+  return Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(appLocale, { weekday: 'long' }).format(
+      new Date(base.getFullYear(), base.getMonth(), base.getDate() + i),
+    ),
+  );
+}
+
+/**
+ * Localized short weekday names (e.g. "Pn", "Wt", ...) for the current app
+ * locale, indexed by JS getDay() semantics (0 = Sunday).
+ */
+export function getCalendarWeekdayShortNames(appLocale: string): string[] {
+  const base = new Date(2026, 0, 4); // a Sunday
+  return Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(appLocale, { weekday: 'short' }).format(
+      new Date(base.getFullYear(), base.getMonth(), base.getDate() + i),
+    ),
+  );
+}
+
+/**
+ * Localized month names for the current app locale, indexed by month (0 = Jan).
+ */
+export function getCalendarMonthNames(appLocale: string): string[] {
+  return Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(appLocale, { month: 'long' }).format(
+      new Date(2026, i, 1),
+    ),
+  );
 }
 
 /**
