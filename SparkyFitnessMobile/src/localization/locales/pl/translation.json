@@ -3637,7 +3637,11 @@
     "steps": {
       "title": "Kroki",
       "loadFailed": "Nie udało się wczytać danych o krokach",
-      "empty": "Brak danych o krokach w tym okresie"
+      "empty": "Brak danych o krokach w tym okresie",
+      "tooltip_one": "{{formattedCount}} krok",
+      "tooltip_few": "{{formattedCount}} kroki",
+      "tooltip_many": "{{formattedCount}} kroków",
+      "tooltip_other": "{{formattedCount}} kroków"
     },
     "loading": "Wczytywanie wykresu...",
     "weightLoadFailed": "Nie udało się wczytać danych masy ciała",
@@ -4005,5 +4009,35 @@
       "luteal": "Faza lutealna",
       "activeCycle": "Aktywny cykl"
     }
+  },
+  "healthDataDisplay": {
+    "distance": "{{value}} km",
+    "kcal": "{{value}} kcal",
+    "bpm": "{{value}} bpm",
+    "kg": "{{value}} kg",
+    "percent": "{{value}}%",
+    "celsius": "{{value}}°C",
+    "mmHg": "{{systolic}}/{{diastolic}} mmHg",
+    "sleepHours": "{{count}} godz.",
+    "sleepMinutes": "{{count}} min",
+    "liters": "{{value}} L",
+    "cm": "{{value}} cm",
+    "mmolL": "{{value}} mmol/L",
+    "ms": "{{value}} ms",
+    "vo2": "{{value}} ml/min/kg",
+    "minutes": "{{count}} min",
+    "meters": "{{value}} m",
+    "watts": "{{value}} W",
+    "metersPerSecond": "{{value}} m/s",
+    "breathsPerMinute": "{{value}} br/min",
+    "workouts_one": "{{count}} trening",
+    "workouts_few": "{{count}} treningi",
+    "workouts_many": "{{count}} treningów",
+    "workouts_other": "{{count}} treningów",
+    "records_one": "{{count}} rekord",
+    "records_few": "{{count}} rekordy",
+    "records_many": "{{count}} rekordów",
+    "records_other": "{{count}} rekordów",
+    "error": "Błąd"
   }
 }

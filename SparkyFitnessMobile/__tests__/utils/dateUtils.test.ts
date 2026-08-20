@@ -120,9 +120,9 @@ describe('with a pinned clock', () => {
     test('branches on elapsed time', () => {
       expect(formatRelativeTime(minutesAgo(0.5))).toBe('Just now');
       expect(formatRelativeTime(minutesAgo(1))).toMatch(/1 minute ago/);
-      expect(formatRelativeTime(minutesAgo(5))).toMatch(/minutes ago/);
+      expect(formatRelativeTime(minutesAgo(5))).toMatch(/minute ago/);
       expect(formatRelativeTime(minutesAgo(90))).toMatch(/1 hour ago/);
-      expect(formatRelativeTime(minutesAgo(3 * 60))).toMatch(/hours ago/);
+      expect(formatRelativeTime(minutesAgo(3 * 60))).toMatch(/hour ago/);
       expect(formatRelativeTime(minutesAgo(30 * 60))).toMatch(/^Yesterday at /);
       const older = formatRelativeTime(minutesAgo(5 * 24 * 60));
       expect(older).not.toMatch(/^Yesterday/);

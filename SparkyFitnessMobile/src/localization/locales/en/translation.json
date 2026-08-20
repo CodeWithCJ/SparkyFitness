@@ -3635,7 +3635,11 @@
     "steps": {
       "title": "Steps",
       "loadFailed": "Failed to load step data",
-      "empty": "No step data for this period"
+      "empty": "No step data for this period",
+      "tooltip_one": "{{formattedCount}} step",
+      "tooltip_few": "{{formattedCount}} steps",
+      "tooltip_many": "{{formattedCount}} steps",
+      "tooltip_other": "{{formattedCount}} steps"
     },
     "loading": "Loading chart...",
     "weightLoadFailed": "Failed to load weight data",
@@ -4005,5 +4009,31 @@
       "luteal": "Luteal Phase",
       "activeCycle": "Cycle Active"
     }
+  },
+  "healthDataDisplay": {
+    "distance": "{{value}} km",
+    "kcal": "{{value}} kcal",
+    "bpm": "{{value}} bpm",
+    "kg": "{{value}} kg",
+    "percent": "{{value}}%",
+    "celsius": "{{value}}°C",
+    "mmHg": "{{systolic}}/{{diastolic}} mmHg",
+    "sleepHours": "{{count}}h",
+    "sleepMinutes": "{{count}}m",
+    "liters": "{{value}} L",
+    "cm": "{{value}} cm",
+    "mmolL": "{{value}} mmol/L",
+    "ms": "{{value}} ms",
+    "vo2": "{{value}} ml/min/kg",
+    "minutes": "{{count}} min",
+    "meters": "{{value}} m",
+    "watts": "{{value}} W",
+    "metersPerSecond": "{{value}} m/s",
+    "breathsPerMinute": "{{value}} br/min",
+    "error": "Error",
+    "workouts_one": "{{count}} workout",
+    "workouts_other": "{{count}} workouts",
+    "records_one": "{{count}} record",
+    "records_other": "{{count}} records"
   }
 }

@@ -133,7 +133,7 @@ describe('fetchHealthDisplayData', () => {
   describe('basal metabolic rate', () => {
     it('averages the aggregated resting-energy values when present', async () => {
       mockBasalEnergy.mockResolvedValue([{ value: 1500 }, { value: 1600 }]);
-      expect(await displayFor('BasalMetabolicRate')).toBe('1550 kcal');
+      expect(await displayFor('BasalMetabolicRate')).toBe('1,550 kcal');
       expect(mockReadHealthRecords).not.toHaveBeenCalled();
     });
 
@@ -147,7 +147,7 @@ describe('fetchHealthDisplayData', () => {
         { time: '2026-06-02T10:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 1700 } },
       ] as unknown[]);
       // Bucket avgs = [1550, 1700], overall avg = 1625.
-      expect(await displayFor('BasalMetabolicRate')).toBe('1625 kcal');
+      expect(await displayFor('BasalMetabolicRate')).toBe('1,625 kcal');
     });
 
     it('shows no-data when neither aggregate nor raw records exist', async () => {
@@ -167,7 +167,7 @@ describe('fetchHealthDisplayData', () => {
     ])('extracts a raw BMR value from a $label payload', async ({ record }) => {
       mockBasalEnergy.mockResolvedValue([]);
       mockReadHealthRecords.mockResolvedValue([record] as unknown[]);
-      expect(await displayFor('BasalMetabolicRate')).toBe('1500 kcal');
+      expect(await displayFor('BasalMetabolicRate')).toBe('1,500 kcal');
     });
   });
 
@@ -307,12 +307,12 @@ describe('fetchHealthDisplayData', () => {
       {
         recordType: 'Nutrition',
         records: [{ energy: { inCalories: 1500000 } }, { energy: { inCalories: 500000 } }],
-        expected: '2000 kcal',
+        expected: '2,000 kcal',
       },
       {
         recordType: 'Workout',
         records: [{}, {}, {}],
-        expected: '3 workouts',
+        expected: '3 workout',
       },
     ];
 
@@ -381,7 +381,7 @@ describe('fetchHealthDisplayData', () => {
 
     it('uses a generic record count for record types with no dedicated formatter', async () => {
       mockReadHealthRecords.mockResolvedValue([{}, {}]);
-      expect(await displayFor('Stress')).toBe('2 records');
+      expect(await displayFor('Stress')).toBe('2 record');
     });
 
     it('uses the singular form for a single generic record', async () => {

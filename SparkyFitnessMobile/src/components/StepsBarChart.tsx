@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization/i18n';
 import { CartesianChart, Bar } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
@@ -100,12 +101,16 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
       }
 
       setTooltipText(
-        `${point.steps.toLocaleString()} steps · ${formatTooltipDate(
+        `${t('charts.steps.tooltip', {
+          count: point.steps,
+          formattedCount: formatLocalizedNumber(point.steps),
+          defaultValue: '{{formattedCount}} steps',
+        })} · ${formatTooltipDate(
           point.day,
         )}`,
       );
     },
-    [data],
+    [data, t],
   );
 
   const handleClearSelection = useCallback(() => {

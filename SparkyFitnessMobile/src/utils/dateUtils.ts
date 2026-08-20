@@ -65,37 +65,31 @@ export interface RelativeTimeTranslator {
 
 export const formatRelativeTime = (timestamp: Date | null, t?: RelativeTimeTranslator): string => {
   const translate = t ?? ((key: string, options: Record<string, unknown>) => {
-    const defaults: Record<string, string> = {
-      'date.neverSynced': 'Never synced',
-      'date.justNow': 'Just now',
-      'date.minutesAgo': '{{count}} minute{{plural}} ago',
-      'date.hoursAgo': '{{count}} hour{{plural}} ago',
-      'date.yesterdayAt': 'Yesterday at {{time}}',
-      'date.onDateAt': '{{date}} at {{time}}',
-    };
-    let value = defaults[key] ?? key;
-    for (const [name, replacement] of Object.entries(options)) value = value.replace(`{{${name}}}`, String(replacement));
-    if (key === 'date.minutesAgo' || key === 'date.hoursAgo') value = value.replace('{{plural}}', Number(options.count) === 1 ? '' : 's');
-    return value;
+    // i18n-audit-ignore-next-line dynamic-i18n-key -- translator is injected by callers or uses the closed date key set
+    const value = i18n.t(key, options);
+    if (value !== key) return value;
+    const count = Number(options.count);
+    if (key === 'date.minutesAgo') return `${count} minute${count === 1 ? '' : 's'} ago`;
+    if (key === 'date.hoursAgo') return `${count} hour${count === 1 ? '' : 's'} ago`;
+    const defaults: Record<string, string> = { 'date.neverSynced': 'Never synced', 'date.justNow': 'Just now', 'date.yesterdayAt': 'Yesterday at {{time}}', 'date.onDateAt': '{{date}} at {{time}}' };
+    let result = defaults[key] ?? key;
+    for (const [name, replacement] of Object.entries(options)) result = result.replace(`{{${name}}}`, String(replacement));
+    return result;
   });
   if (!timestamp) return translate('date.neverSynced', { defaultValue: 'Never synced' });
 
   const now = new Date();
-  const diffMs = now.getTime() - timestamp.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffSeconds = Math.floor((now.getTime() - timestamp.getTime()) / 1000);
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
+  const locale = i18n.resolvedLanguage === 'pl' ? 'pl-PL' : 'en-US';
+  const time = timestamp.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 
-  if (diffSeconds < 60) {
-    return translate('date.justNow', { defaultValue: 'Just now' });
-  } else if (diffMinutes < 60) {
-    return translate('date.minutesAgo', { defaultValue: '{{count}} minute{{plural}} ago', count: diffMinutes, plural: diffMinutes === 1 ? '' : 's' });
-  } else if (diffHours < 24) {
-    return translate('date.hoursAgo', { defaultValue: '{{count}} hour{{plural}} ago', count: diffHours, plural: diffHours === 1 ? '' : 's' });
-  } else if (diffDays === 1) {
-    return translate('date.yesterdayAt', { defaultValue: 'Yesterday at {{time}}', time: timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) });
-  } else {
-    return translate('date.onDateAt', { defaultValue: '{{date}} at {{time}}', date: timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' }), time: timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) });
-  }
+  if (diffSeconds < 60) return translate('date.justNow', { defaultValue: 'Just now' });
+  if (diffMinutes < 60) return translate('date.minutesAgo', { count: diffMinutes, defaultValue: '{{count}} minute ago', defaultValue_plural: '{{count}} minutes ago' });
+  if (diffHours < 24) return translate('date.hoursAgo', { count: diffHours, defaultValue: '{{count}} hour ago', defaultValue_plural: '{{count}} hours ago' });
+  if (diffDays === 1) return translate('date.yesterdayAt', { time, defaultValue: 'Yesterday at {{time}}' });
+  const date = timestamp.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+  return translate('date.onDateAt', { date, time, defaultValue: '{{date}} at {{time}}' });
 };
