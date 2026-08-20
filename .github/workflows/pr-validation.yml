@@ -9,6 +9,10 @@ permissions:
   pull-requests: write
   issues: write
 
+concurrency:
+  group: pr-validation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Validate & Label
@@ -19,8 +23,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const title = context.payload.pull_request.title;
-            const body  = context.payload.pull_request.body || '';
+            const title  = context.payload.pull_request.title;
+            const body   = context.payload.pull_request.body || '';
+            const author = context.payload.pull_request.user.login;
+
+            // Maintainer exempt from the license countdown (see pr-license-enforcement.yml).
+            const LICENSE_EXEMPT_AUTHORS = ['CodeWithCJ'];
+            const LICENSE_LABEL = 'needs-license-agreement';
 
             const { data: files } = await github.rest.pulls.listFiles({
               owner: context.repo.owner,
@@ -50,6 +59,11 @@ jobs:
             const checked = str =>
               new RegExp(`-\\s*\\[[xX]\\]\\s*\\*\\*${escapeRegex(str)}`, 'i').test(body);
 
+            // Item exists in the body at all, ticked or not. An unticked box is the contributor's
+            // job; a missing box means the template was deleted and we add it back.
+            const present = str =>
+              new RegExp(`-\\s*\\[[ xX]\\]\\s*\\*\\*${escapeRegex(str)}`, 'i').test(body);
+
             // ---- PR Type detection ----
             const isIssue      = /-\s*\[[xX]\]\s*Issue/i.test(body);
             const isNewFeature = /-\s*\[[xX]\]\s*New Feature/i.test(body);
@@ -76,12 +90,92 @@ jobs:
               });
             }
 
+            // ---- Restore deleted template checklist items ----
+            // Contributors often replace the whole template with their own summary, which removes
+            // the mandatory checkboxes entirely. Add back only the items this PR actually needs,
+            // appended after whatever they wrote so nothing of theirs is lost.
+            const LICENSE_ITEM = '[MANDATORY - ALL] Integrity & License';
+
+            const checklistItems = [
+              {
+                label: LICENSE_ITEM,
+                required: true,
+                text: '**[MANDATORY - ALL] Integrity & License**: I certify this is my own work, free of malicious code, and I agree to the [License terms](https://github.com/CodeWithCJ/SparkyFitness/blob/main/LICENSE).',
+              },
+              {
+                label: '[MANDATORY for new feature] Alignment',
+                required: isNewFeature,
+                text: '**[MANDATORY for new feature] Alignment**: I have raised a GitHub issue and it was reviewed/approved by maintainers or it was approved on Discord.',
+              },
+              {
+                label: '[MANDATORY for Frontend changes] Quality',
+                required: hasFrontendChanges,
+                text: '**[MANDATORY for Frontend changes] Quality**: I have run `pnpm run validate` and it passes.',
+              },
+              {
+                label: '[MANDATORY for Frontend changes] Translations',
+                required: hasEnTranslationChange,
+                text: '**[MANDATORY for Frontend changes] Translations**: I have only updated the English (`en`) translation file.',
+              },
+              {
+                label: '[MANDATORY for Backend changes] Code Quality',
+                required: hasBackendChanges,
+                text: '**[MANDATORY for Backend changes] Code Quality**: I have run typecheck, lint, and tests. New files use TypeScript, new endpoints have Zod schemas, and new endpoints include tests.',
+              },
+              {
+                label: '[MANDATORY for Backend changes] Database Security',
+                required: hasSQLChanges,
+                text: '**[MANDATORY for Backend changes] Database Security**: I have updated `rls_policies.sql` for any new user-specific tables.',
+              },
+              {
+                label: '[MANDATORY for UI changes] Screenshots',
+                required: hasFrontendChanges || hasMobileChanges,
+                text: '**[MANDATORY for UI changes] Screenshots**: I have attached Before/After screenshots below.',
+              },
+              {
+                label: '[MANDATORY for Mobile changes] Tested on device or emulator',
+                required: hasMobileChanges,
+                text: '**[MANDATORY for Mobile changes] Tested on device or emulator**: I have verified the changes work on iOS or Android.',
+              },
+            ];
+
+            const missingItems = checklistItems.filter(i => i.required && !present(i.label));
+            const senderIsSelf = context.payload.sender?.login === 'github-actions[bot]';
+
+            if (missingItems.length > 0 && !senderIsSelf) {
+              const restored = [
+                '<!-- restored-checklist -->',
+                '---',
+                '## ✅ Required Checklist (restored automatically)',
+                '',
+                '> The mandatory checklist from our PR template is missing from this description, so it',
+                '> has been added back below. **Please tick each box and do not delete this section** —',
+                '> these checked boxes are how we record your agreement. Edit the description in place;',
+                '> no new commit is needed.',
+                '',
+                ...missingItems.map(i => `- [ ] ${i.text}`),
+              ].join('\n');
+
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                body: `${body.trimEnd()}\n\n${restored}\n`,
+              });
+
+              core.notice(`Restored ${missingItems.length} missing checklist item(s) to the PR description.`);
+            }
+
             // ---- Validation ----
             const errors   = [];
             const warnings = [];
 
             // Mandatory for all PRs
-            if (!checked('[MANDATORY - ALL] Integrity & License')) {
+            const licenseAgreed = checked(LICENSE_ITEM);
+            const licenseExempt = LICENSE_EXEMPT_AUTHORS.includes(author);
+            const licenseCountdown = !licenseAgreed && !licenseExempt;
+
+            if (!licenseAgreed) {
               errors.push('**[MANDATORY]** Check the "Integrity & License" checkbox.');
             }
 
@@ -145,8 +239,53 @@ jobs:
               warnings.push('Please link a related GitHub issue (`Linked Issue: Closes #123`).');
             }
 
+            // ---- License countdown label ----
+            // Adding the label starts the 24h clock; pr-license-enforcement.yml reads the `labeled`
+            // event timestamp. Ticking the box removes the label here and cancels the countdown.
+            if (licenseCountdown) {
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: LICENSE_LABEL,
+                  color: 'b60205',
+                  description: 'License checkbox not ticked; PR closes 24h after this label was applied',
+                });
+              } catch (error) {
+                if (error.status !== 422) throw error; // 422 = already exists
+              }
+
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: [LICENSE_LABEL],
+              });
+            } else {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  name: LICENSE_LABEL,
+                });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+              }
+            }
+
             // ---- Build summary ----
             let message = '## PR Validation Results\n\n';
+
+            if (licenseCountdown) {
+              message +=
+                '> [!WARNING]\n' +
+                '> ⏳ **This PR will be closed automatically in 24 hours** unless the ' +
+                '**[MANDATORY - ALL] Integrity & License** checkbox is ticked in the PR description.\n' +
+                '> We cannot merge a contribution without a recorded license agreement. ' +
+                'If the checklist is missing, it has been added back to the description for you — ' +
+                'just tick the box (no new commit needed) and this check will pass.\n\n';
+            }
 
             message += '### Change Detection\n';
             if (hasFrontendChanges)      message += '- 🖥️ Frontend changes detected\n';
