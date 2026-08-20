@@ -1083,11 +1083,15 @@
       "everyNDays": "Every {{count}} days",
       "monthlyOnDay": "Monthly on day {{day}}",
       "monthly": "Monthly",
-      "cycle": "{{on}} days on, {{off}} days off",
+      "cycle": "{{on}}, {{off}}",
       "asNeeded": "As needed",
       "taper": "Taper",
       "at": "{{frequency}} at {{time}}",
-      "unknown": "Schedule"
+      "unknown": "Schedule",
+      "cycleOn_one": "{{count}} day on",
+      "cycleOn_other": "{{count}} days on",
+      "cycleOff_one": "{{count}} day off",
+      "cycleOff_other": "{{count}} days off"
     },
     "notificationScheduledDose": "You have a scheduled dose",
     "notificationScheduledDoseNamed": "Scheduled dose: {{name}}{{dose}}"
@@ -1098,10 +1102,14 @@
     "everyNDays": "Every {{count}} days",
     "monthlyOnDay": "Monthly on day {{day}}",
     "monthly": "Monthly",
-    "cycle": "{{on}} days on, {{off}} days off",
+    "cycle": "{{on}}, {{off}}",
     "asNeeded": "As needed",
     "taper": "Taper",
-    "at": "{{frequency}} at {{time}}"
+    "at": "{{frequency}} at {{time}}",
+    "cycleOn_one": "{{count}} day on",
+    "cycleOn_other": "{{count}} days on",
+    "cycleOff_one": "{{count}} day off",
+    "cycleOff_other": "{{count}} days off"
   },
   "devTools": {
     "title": "Dev Tools",
@@ -1528,7 +1536,6 @@
     "sizeOf": "Size of {{comparison}}",
     "cm": "{{value}} cm",
     "grams": "{{value}} g",
-    "daysToDue": "{{count}}d to due date",
     "dueNow": "Due now",
     "pregnancyActive": "Pregnancy Tracking Active",
     "gestationalProgress": "Tap to view gestational progress.",
@@ -1547,10 +1554,13 @@
     },
     "discreetDescription": "Track your wellness parameters and predictions.",
     "description": "Track cycle phases, predictions, symptoms, and pregnancy milestones.",
-    "periodLate": "Period {{count}} {{unit}} late",
     "nextPeriod": "Next period est. {{date}}",
     "day": "Day {{day}}",
-    "active": "Active"
+    "active": "Active",
+    "periodLate_one": "Period {{count}} day late",
+    "periodLate_other": "Period {{count}} days late",
+    "daysToDue_one": "{{count}} day to due date",
+    "daysToDue_other": "{{count}} days to due date"
   },
   "syncHealth": {
     "unknownError": "Unknown sync error",
@@ -3093,9 +3103,10 @@
       "of": "of",
       "top": "top",
       "logged": "logged",
-      "allSets": "{{count}} sets",
       "partialSets": "{{completed}} of {{total}} sets",
-      "allSetsOne": "1 set"
+      "allSetsOne": "1 set",
+      "allSets_one": "{{count}} set",
+      "allSets_other": "{{count}} sets"
     },
     "accessibility": {
       "calculating": "Calculating"
@@ -3964,10 +3975,12 @@
     "fertileWindow": "Est. fertile window",
     "ovulation": "Est. ovulation",
     "nextPeriod": "Next period in",
-    "days": "{{count}} days",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
     "twoWeekWait": "Two-week wait",
     "ovulationDay": "Ovulation day",
-    "daysPastOvulation": "{{count}} {{unit}} past ovulation",
+    "daysPastOvulation_one": "{{count}} day past ovulation",
+    "daysPastOvulation_other": "{{count}} days past ovulation",
     "testAccuracy": "Home tests are usually most accurate 12 to 14 days past ovulation.",
     "disclaimer": "Estimates from your logged data. Not medical advice."
   },
@@ -4058,8 +4071,9 @@
       "week": "Week {{week}}",
       "weekDay": "{{week}}w {{day}}d",
       "edit": "Edit pregnancy details",
-      "daysToGo": "{{days}} days to go",
-      "anyDayNow": "Any day now"
+      "anyDayNow": "Any day now",
+      "daysToGo_one": "{{days}} day to go",
+      "daysToGo_other": "{{days}} days to go"
     },
     "trimester": {
       "first": "First trimester",
@@ -4083,6 +4097,319 @@
         "hospitalBag": "Pack your hospital bag",
         "installCarSeat": "Install and check the car seat",
         "pediatrician": "Choose a pediatrician"
+      }
+    },
+    "babyDev": {
+      "w4": {
+        "comparison": "A poppy seed",
+        "baby": "The embryo has implanted and the placenta is beginning to form.",
+        "mom": "You may have just missed your period. Early hormones are rising."
+      },
+      "w5": {
+        "comparison": "A sesame seed",
+        "baby": "The neural tube — the start of the brain and spinal cord — is forming.",
+        "mom": "Early symptoms like tender breasts and fatigue may begin."
+      },
+      "w6": {
+        "comparison": "A lentil",
+        "baby": "A tiny heart begins to beat and pump blood.",
+        "mom": "Morning sickness can start around now."
+      },
+      "w7": {
+        "comparison": "A blueberry",
+        "baby": "Arm and leg buds are appearing; the brain is growing fast.",
+        "mom": "Your uterus is starting to expand, though it is not visible yet."
+      },
+      "w8": {
+        "comparison": "A raspberry",
+        "baby": "Fingers and toes are forming and tiny movements begin.",
+        "mom": "Blood volume is increasing to support your baby."
+      },
+      "w9": {
+        "comparison": "A cherry",
+        "baby": "Essential organs are formed; the baby is now officially a fetus.",
+        "mom": "You might notice mood changes from shifting hormones."
+      },
+      "w10": {
+        "comparison": "A strawberry",
+        "baby": "Vital organs are working and tiny nails start to develop.",
+        "mom": "Your waistline may start to change."
+      },
+      "w11": {
+        "comparison": "A lime",
+        "baby": "The baby can open and close its fists; bones are hardening.",
+        "mom": "Nausea often begins to ease in the coming weeks."
+      },
+      "w12": {
+        "comparison": "A plum",
+        "baby": "Reflexes are developing; the baby may curl its fingers and toes.",
+        "mom": "End of the first trimester is near — energy often returns."
+      },
+      "w13": {
+        "comparison": "A peapod",
+        "baby": "Tiny fingerprints are forming and vocal cords are developing.",
+        "mom": "Welcome to the second trimester — often the most comfortable."
+      },
+      "w14": {
+        "comparison": "A lemon",
+        "baby": "The baby can make facial expressions and may suck its thumb.",
+        "mom": "You may start to feel more like yourself again."
+      },
+      "w15": {
+        "comparison": "An apple",
+        "baby": "The baby can sense light and is moving amniotic fluid.",
+        "mom": "You might notice a little baby bump appearing."
+      },
+      "w16": {
+        "comparison": "An avocado",
+        "baby": "The baby can hear sounds and its heart pumps a lot of blood daily.",
+        "mom": "Some people feel the first flutters (\"quickening\") around now."
+      },
+      "w17": {
+        "comparison": "A turnip",
+        "baby": "Fat stores begin to form and the skeleton hardens.",
+        "mom": "Your center of gravity is shifting as your bump grows."
+      },
+      "w18": {
+        "comparison": "A bell pepper",
+        "baby": "The baby can hear your voice and may respond to sounds.",
+        "mom": "You may feel more defined movements now."
+      },
+      "w19": {
+        "comparison": "A mango",
+        "baby": "A protective coating (vernix) covers the skin.",
+        "mom": "Round-ligament aches are common as things stretch."
+      },
+      "w20": {
+        "comparison": "A banana",
+        "baby": "Halfway there! The baby is swallowing and developing taste buds.",
+        "mom": "Your anatomy-scan ultrasound often happens around now."
+      },
+      "w21": {
+        "comparison": "A carrot",
+        "baby": "The baby is moving more, with regular sleep and wake cycles.",
+        "mom": "You may feel kicks more strongly and regularly."
+      },
+      "w22": {
+        "comparison": "A spaghetti squash",
+        "baby": "Lips, eyelids and eyebrows are more distinct.",
+        "mom": "Your bump is now clearly visible."
+      },
+      "w23": {
+        "comparison": "A large mango",
+        "baby": "The baby can hear loud sounds and is putting on weight.",
+        "mom": "Swelling in feet and ankles can begin."
+      },
+      "w24": {
+        "comparison": "An ear of corn",
+        "baby": "The lungs are developing; the baby reaches a viability milestone.",
+        "mom": "You may have a glucose screening test soon."
+      },
+      "w25": {
+        "comparison": "A rutabaga",
+        "baby": "The baby is growing hair and its startle reflex is developing.",
+        "mom": "Backaches are common as your bump grows."
+      },
+      "w26": {
+        "comparison": "A scallion bunch",
+        "baby": "The eyes begin to open and lungs practice breathing motions.",
+        "mom": "You might feel rhythmic movements — the baby has hiccups."
+      },
+      "w27": {
+        "comparison": "A cauliflower",
+        "baby": "Brain activity increases sharply; the baby may recognize your voice.",
+        "mom": "Welcome to the third trimester."
+      },
+      "w28": {
+        "comparison": "An eggplant",
+        "baby": "The baby can blink and its eyelashes have formed.",
+        "mom": "Prenatal visits often become more frequent now."
+      },
+      "w29": {
+        "comparison": "A butternut squash",
+        "baby": "Muscles and lungs continue maturing; bones are fully formed.",
+        "mom": "You may feel short of breath as your uterus rises."
+      },
+      "w30": {
+        "comparison": "A large cabbage",
+        "baby": "The baby can regulate its own temperature better now.",
+        "mom": "Fatigue can return in the third trimester."
+      },
+      "w31": {
+        "comparison": "A coconut",
+        "baby": "The baby is putting on weight quickly and moving often.",
+        "mom": "You may notice Braxton-Hicks practice contractions."
+      },
+      "w32": {
+        "comparison": "A jicama",
+        "baby": "The lungs are practicing breathing; the baby often settles head-down.",
+        "mom": "Consider starting your birth plan and hospital bag."
+      },
+      "w33": {
+        "comparison": "A pineapple",
+        "baby": "The baby's bones are hardening, though the skull stays soft.",
+        "mom": "You may feel more pressure in your pelvis."
+      },
+      "w34": {
+        "comparison": "A cantaloupe",
+        "baby": "The central nervous system and lungs are maturing well.",
+        "mom": "Fatigue and swelling are common; rest when you can."
+      },
+      "w35": {
+        "comparison": "A honeydew melon",
+        "baby": "The baby is filling out; most systems are nearly ready.",
+        "mom": "Your provider may check the baby's position."
+      },
+      "w36": {
+        "comparison": "A head of romaine",
+        "baby": "The baby is likely head-down and gaining ~28 g a day.",
+        "mom": "Weekly checkups usually begin around now."
+      },
+      "w37": {
+        "comparison": "A bunch of Swiss chard",
+        "baby": "The baby is considered early term and practicing breathing.",
+        "mom": "Watch for signs of labor and keep your bag ready."
+      },
+      "w38": {
+        "comparison": "A leek",
+        "baby": "Organs are ready for life outside; the baby has a firm grasp.",
+        "mom": "You may feel the baby \"drop\" lower into your pelvis."
+      },
+      "w39": {
+        "comparison": "A mini watermelon",
+        "baby": "The baby is full term and ready to meet you.",
+        "mom": "Any day now — watch for regular contractions."
+      },
+      "w40": {
+        "comparison": "A small pumpkin",
+        "baby": "Your due date is here! Babies arrive on their own schedule.",
+        "mom": "If labor hasn't started, your provider will discuss next steps."
+      }
+    },
+    "safety": {
+      "food": {
+        "cooked_salmon": {
+          "name": "Cooked salmon",
+          "note": "Well-cooked, low-mercury fish is a great source of omega-3s. Aim for 2–3 servings/week."
+        },
+        "tuna_canned_light": {
+          "name": "Tuna (canned light)",
+          "note": "Limit to ~2 servings/week; choose light over albacore for lower mercury."
+        },
+        "swordfish": {
+          "name": "Swordfish",
+          "note": "High-mercury fish should be avoided during pregnancy."
+        },
+        "sushi_raw": {
+          "name": "Sushi (raw)",
+          "note": "Raw fish carries a risk of parasites and bacteria. Cooked rolls are fine."
+        },
+        "shrimp_cooked": {
+          "name": "Shrimp (cooked)",
+          "note": "Fully cooked shellfish is low-mercury and safe."
+        },
+        "soft_cheese_unpasteurized": {
+          "name": "Soft cheese (unpasteurized)",
+          "note": "Unpasteurized soft cheeses risk listeria. Pasteurized versions are fine."
+        },
+        "hard_cheese": {
+          "name": "Hard cheese",
+          "note": "Hard and pasteurized cheeses are safe."
+        },
+        "pasteurized_milk": {
+          "name": "Pasteurized milk",
+          "note": "Pasteurized dairy is safe and a good calcium source."
+        },
+        "deli_meat_cold": {
+          "name": "Deli meat (cold)",
+          "note": "Heat until steaming to reduce listeria risk."
+        },
+        "undercooked_meat": {
+          "name": "Undercooked meat",
+          "note": "Cook meat thoroughly to avoid toxoplasmosis and bacteria."
+        },
+        "cooked_chicken": {
+          "name": "Cooked chicken",
+          "note": "Fully cooked poultry is a safe protein source."
+        },
+        "runny_raw_eggs": {
+          "name": "Runny/raw eggs",
+          "note": "Cook until firm, or use pasteurized eggs, to avoid salmonella."
+        },
+        "coffee": {
+          "name": "Coffee",
+          "note": "Limit caffeine to about 200 mg/day (roughly one 12 oz coffee)."
+        },
+        "alcohol": {
+          "name": "Alcohol",
+          "note": "No amount of alcohol is considered safe during pregnancy."
+        },
+        "herbal_tea": {
+          "name": "Herbal tea",
+          "note": "Some herbs are not recommended; check specific teas with your provider."
+        },
+        "cooked_leafy_greens": {
+          "name": "Cooked leafy greens",
+          "note": "Wash well; a great source of folate and iron."
+        },
+        "unwashed_produce": {
+          "name": "Unwashed produce",
+          "note": "Wash thoroughly; avoid raw sprouts, which can harbor bacteria."
+        },
+        "liver_pate": {
+          "name": "Liver / pâté",
+          "note": "Very high in vitamin A, which can be harmful in large amounts."
+        },
+        "peanuts": {
+          "name": "Peanuts",
+          "note": "Safe unless you have a personal allergy; a good protein source."
+        },
+        "honey": {
+          "name": "Honey",
+          "note": "Safe for you in pregnancy (avoid giving to infants under 1 year)."
+        }
+      },
+      "med": {
+        "acetaminophen": {
+          "name": "Acetaminophen (Tylenol)",
+          "note": "Generally considered first-line for pain/fever at recommended doses. Confirm with your provider."
+        },
+        "ibuprofen": {
+          "name": "Ibuprofen (Advil)",
+          "note": "Avoid especially in the third trimester; use only if your provider advises."
+        },
+        "aspirin": {
+          "name": "Aspirin",
+          "note": "Only low-dose if prescribed; regular-dose aspirin is generally avoided."
+        },
+        "prenatal_vitamin": {
+          "name": "Prenatal vitamin",
+          "note": "Recommended throughout pregnancy for folic acid, iron and DHA."
+        },
+        "antacids_tums": {
+          "name": "Antacids (Tums)",
+          "note": "Calcium-based antacids are commonly used for heartburn."
+        },
+        "diphenhydramine": {
+          "name": "Diphenhydramine (Benadryl)",
+          "note": "Often considered okay short-term, but check with your provider."
+        },
+        "ibuprofen_gel": {
+          "name": "Ibuprofen gel",
+          "note": "Discuss topical NSAIDs with your provider before use."
+        },
+        "isotretinoin": {
+          "name": "Isotretinoin (Accutane)",
+          "note": "Retinoids cause serious birth defects and must be avoided."
+        },
+        "pseudoephedrine": {
+          "name": "Decongestant (pseudoephedrine)",
+          "note": "Generally avoided in the first trimester; ask your provider."
+        },
+        "vitamin_a_high_dose": {
+          "name": "Vitamin A (high dose)",
+          "note": "High-dose vitamin A can harm the baby; stick to prenatal amounts."
+        }
       }
     }
   },
@@ -4114,7 +4441,11 @@
     "cycleHub": "Cycle Hub",
     "logEntry": "Log Entry",
     "overview": "Overview",
-    "history": "History"
+    "history": "History",
+    "ring": {
+      "day": "Day {{day}}",
+      "dayCycle": "{{count}}-day cycle"
+    }
   },
   "workoutPresetLibrary": {
     "configure": "Configure your server connection in Settings to view your workout presets."

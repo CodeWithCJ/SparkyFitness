@@ -102,7 +102,7 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
         <View className="rounded-xl bg-raised p-3">
           <Text className="text-text-secondary text-sm mb-0.5">{t('fertility.twoWeekWait', { defaultValue: 'Two-week wait' })}</Text>
           <Text className="text-text-primary text-sm font-semibold">
-            {dpo === 0 ? t('fertility.ovulationDay', { defaultValue: 'Ovulation day' }) : t('fertility.daysPastOvulation', { defaultValue: '{{count}} {{unit}} past ovulation', count: dpo, unit: dpo === 1 ? 'day' : 'days' })}
+            {dpo === 0 ? t('fertility.ovulationDay', { defaultValue: 'Ovulation day' }) : t('fertility.daysPastOvulation', { defaultValue: '{{count}} days past ovulation', count: dpo })}
           </Text>
           {dpo >= 1 && dpo < 14 && (
             <Text className="text-text-secondary text-sm mt-1">

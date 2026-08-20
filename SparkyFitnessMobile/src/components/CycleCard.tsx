@@ -11,6 +11,8 @@ import { getPhaseColor } from '../utils/cycleDisplayUtils';
 import { formatDate } from '../utils/dateUtils';
 import { babyWeek } from '@workspace/shared';
 import WombScene from './wellness/pregnancy/WombScene';
+import { localizeBabyWeek } from '../utils/pregnancyContentLocalization';
+import { formatLocalizedNumber } from '../localization';
 import CycleRing from './wellness/CycleRing';
 import { useWellnessTokens } from './wellness/theme/wellnessTokens';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -87,7 +89,7 @@ export const CycleCardRingContent: React.FC<{
 
           {info.daysLate > 0 ? (
             <Text className="text-sm font-semibold text-text-primary mt-0.5">
-              {t('cycleCard.periodLate', { defaultValue: 'Period {{count}} {{unit}} late', count: info.daysLate, unit: info.daysLate === 1 ? 'day' : 'days' })}
+              {t('cycleCard.periodLate', { defaultValue: 'Period {{count}} day late', count: info.daysLate })}
             </Text>
           ) : info.nextPeriodStart ? (
             <Text className="text-sm text-text-secondary mt-0.5">
@@ -192,6 +194,7 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
       const ga = overview?.gestation;
       const baby = ga ? babyWeek(ga.week) : null;
       if (ga) {
+        const localized = localizeBabyWeek(ga.week, t);
         return (
           <View className="flex-row items-center gap-3 mt-2">
             {baby && <WombScene scene={baby.wombScene} size={72} />}
@@ -201,18 +204,18 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
               </Text>
               {baby && (
                 <Text className="text-sm font-semibold mt-0.5" style={{ color: tokens.phasePregnant }}>
-                  {t('cycleCard.sizeOf', { defaultValue: 'Size of {{comparison}}', comparison: baby.comparison })}
+                  {t('cycleCard.sizeOf', { defaultValue: 'Size of {{comparison}}', comparison: localized?.comparison ?? baby.comparison })}
                 </Text>
               )}
               <View className="flex-row items-center gap-3 mt-1.5">
                 {baby?.lengthCm != null && (
                   <Text className="text-xs text-text-secondary">
-                    <Text className="font-medium text-text-primary">{t('cycleCard.cm', { defaultValue: '{{value}} cm', value: baby.lengthCm })}</Text>
+                    <Text className="font-medium text-text-primary">{t('cycleCard.cm', { defaultValue: '{{value}} cm', value: formatLocalizedNumber(baby.lengthCm) })}</Text>
                   </Text>
                 )}
                 {baby?.weightG != null && (
                   <Text className="text-xs text-text-secondary">
-                    <Text className="font-medium text-text-primary">{t('cycleCard.grams', { defaultValue: '{{value}} g', value: baby.weightG })}</Text>
+                    <Text className="font-medium text-text-primary">{t('cycleCard.grams', { defaultValue: '{{value}} g', value: formatLocalizedNumber(baby.weightG) })}</Text>
                   </Text>
                 )}
                 <Text className="text-xs text-text-secondary">
@@ -242,7 +245,7 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
     return (
       <View className="mt-1">
         <Text className="text-base font-semibold text-text-primary capitalize">
-          {t('cycleCard.modeValue', { defaultValue: '{{mode}} mode', mode: settings.mode })}
+          {getModeTitle(t as any, settings.mode, discreetMode)}
         </Text>
         <Text className="text-sm text-text-secondary mt-0.5">
           {t('cycleCard.hubProgress', { defaultValue: 'Tap to view cycle tracking hub.' })}

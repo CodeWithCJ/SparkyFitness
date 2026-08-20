@@ -175,8 +175,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
                     fertileEndDay={ringMarkers.fertileEndDay}
                     ovulationDay={ringMarkers.ovulationDay}
                     centerLabel={activeSegmentLabel}
-                    centerValue={dayStats.cycleDay !== null ? `Day ${dayStats.cycleDay}` : '—'}
-                    centerSub={discreetMode ? undefined : `${cycleStats.avgCycleLength} day cycle`}
+                    centerValue={dayStats.cycleDay !== null ? t('cycleHub.ring.day', { defaultValue: 'Day {{day}}', day: dayStats.cycleDay }) : '—'}
+                    centerSub={discreetMode ? undefined : t('cycleHub.ring.dayCycle', { defaultValue: '{{count}}-day cycle', count: cycleStats.avgCycleLength })}
                   />
                 </View>
 

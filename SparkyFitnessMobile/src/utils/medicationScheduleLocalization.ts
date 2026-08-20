@@ -72,10 +72,20 @@ function localizedFrequency(t: TFunction, schedule: ScheduleFields): string {
       : t('medications.scheduleSummary.monthly', { defaultValue: 'Monthly' });
   }
   if (type === 'cyclic' && schedule.cycle_on_days != null && schedule.cycle_on_days > 0) {
+    const onDays = schedule.cycle_on_days;
+    const offDays = schedule.cycle_off_days ?? 0;
+    const onText = t('medications.scheduleSummary.cycleOn', {
+      defaultValue: '{{count}} days on',
+      count: onDays,
+    });
+    const offText = t('medications.scheduleSummary.cycleOff', {
+      defaultValue: '{{count}} days off',
+      count: offDays,
+    });
     return t('medications.scheduleSummary.cycle', {
-      defaultValue: '{{on}} days on, {{off}} days off',
-      on: schedule.cycle_on_days,
-      off: schedule.cycle_off_days ?? 0,
+      defaultValue: '{{on}}, {{off}}',
+      on: onText,
+      off: offText,
     });
   }
   if (type === 'prn') {

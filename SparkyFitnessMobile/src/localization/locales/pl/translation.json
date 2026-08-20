@@ -1083,11 +1083,19 @@
       "everyNDays": "Co {{count}} dni",
       "monthlyOnDay": "Co miesiąc, {{day}}. dnia",
       "monthly": "Co miesiąc",
-      "cycle": "{{on}} dni stosowania, {{off}} dni przerwy",
+      "cycle": "{{on}}, {{off}}",
       "asNeeded": "W razie potrzeby",
       "taper": "Stopniowe zmniejszanie dawki",
       "at": "{{frequency}} o {{time}}",
-      "unknown": "Harmonogram"
+      "unknown": "Harmonogram",
+      "cycleOn_one": "{{count}} dzień stosowania",
+      "cycleOn_few": "{{count}} dni stosowania",
+      "cycleOn_many": "{{count}} dni stosowania",
+      "cycleOn_other": "{{count}} dni stosowania",
+      "cycleOff_one": "{{count}} dzień przerwy",
+      "cycleOff_few": "{{count}} dni przerwy",
+      "cycleOff_many": "{{count}} dni przerwy",
+      "cycleOff_other": "{{count}} dni przerwy"
     },
     "notificationScheduledDose": "Zaplanowano przyjęcie dawki",
     "notificationScheduledDoseNamed": "Zaplanowana dawka: {{name}}{{dose}}"
@@ -1098,10 +1106,18 @@
     "everyNDays": "Co {{count}} dni",
     "monthlyOnDay": "Co miesiąc, {{day}}. dnia",
     "monthly": "Co miesiąc",
-    "cycle": "{{on}} dni stosowania, {{off}} dni przerwy",
+    "cycle": "{{on}}, {{off}}",
     "asNeeded": "W razie potrzeby",
     "taper": "Stopniowe zmniejszanie dawki",
-    "at": "{{frequency}} o {{time}}"
+    "at": "{{frequency}} o {{time}}",
+    "cycleOn_one": "{{count}} dzień stosowania",
+    "cycleOn_few": "{{count}} dni stosowania",
+    "cycleOn_many": "{{count}} dni stosowania",
+    "cycleOn_other": "{{count}} dni stosowania",
+    "cycleOff_one": "{{count}} dzień przerwy",
+    "cycleOff_few": "{{count}} dni przerwy",
+    "cycleOff_many": "{{count}} dni przerwy",
+    "cycleOff_other": "{{count}} dni przerwy"
   },
   "devTools": {
     "title": "Narzędzia deweloperskie",
@@ -1528,7 +1544,6 @@
     "sizeOf": "Rozmiar jak {{comparison}}",
     "cm": "{{value}} cm",
     "grams": "{{value}} g",
-    "daysToDue": "{{count}} dni do terminu",
     "dueNow": "Termin przypada dziś",
     "pregnancyActive": "Monitorowanie ciąży aktywne",
     "gestationalProgress": "Dotknij, aby zobaczyć przebieg ciąży.",
@@ -1547,10 +1562,17 @@
     },
     "discreetDescription": "Monitoruj parametry zdrowia i prognozy.",
     "description": "Monitoruj fazy cyklu, prognozy, objawy i etapy ciąży.",
-    "periodLate": "Miesiączka spóźnia się o {{count}} {{unit}}",
     "nextPeriod": "Szacowany początek miesiączki: {{date}}",
     "day": "Dzień {{day}}",
-    "active": "Aktywny"
+    "active": "Aktywny",
+    "periodLate_one": "Miesiączka spóźnia się o {{count}} dzień",
+    "periodLate_few": "Miesiączka spóźnia się o {{count}} dni",
+    "periodLate_many": "Miesiączka spóźnia się o {{count}} dni",
+    "periodLate_other": "Miesiączka spóźnia się o {{count}} dni",
+    "daysToDue_one": "{{count}} dzień do terminu",
+    "daysToDue_few": "{{count}} dni do terminu",
+    "daysToDue_many": "{{count}} dni do terminu",
+    "daysToDue_other": "{{count}} dni do terminu"
   },
   "syncHealth": {
     "unknownError": "Nieznany błąd synchronizacji",
@@ -3105,9 +3127,12 @@
       "of": "z",
       "top": "najlepszy wynik",
       "logged": "zapisano",
-      "allSets": "{{count}} serii",
       "partialSets": "{{completed}} z {{total}} serii",
-      "allSetsOne": "1 seria"
+      "allSetsOne": "1 seria",
+      "allSets_one": "{{count}} seria",
+      "allSets_few": "{{count}} serie",
+      "allSets_many": "{{count}} serii",
+      "allSets_other": "{{count}} serii"
     },
     "accessibility": {
       "calculating": "Obliczanie"
@@ -4014,10 +4039,16 @@
     "fertileWindow": "Szacowane dni płodne",
     "ovulation": "Szacowana owulacja",
     "nextPeriod": "Do następnej miesiączki",
-    "days": "{{count}} dni",
+    "days_one": "{{count}} dzień",
+    "days_few": "{{count}} dni",
+    "days_many": "{{count}} dni",
+    "days_other": "{{count}} dni",
     "twoWeekWait": "Oczekiwanie po owulacji",
     "ovulationDay": "Dzień owulacji",
-    "daysPastOvulation": "{{count}} {{unit}} po owulacji",
+    "daysPastOvulation_one": "{{count}} dzień po owulacji",
+    "daysPastOvulation_few": "{{count}} dni po owulacji",
+    "daysPastOvulation_many": "{{count}} dni po owulacji",
+    "daysPastOvulation_other": "{{count}} dni po owulacji",
     "testAccuracy": "Testy domowe są zwykle najdokładniejsze od 12 do 14 dni po owulacji.",
     "disclaimer": "Szacunki na podstawie zapisanych danych. To nie jest porada medyczna."
   },
@@ -4108,8 +4139,11 @@
       "week": "Tydzień {{week}}",
       "weekDay": "{{week}} t. {{day}} d.",
       "edit": "Edytuj szczegóły ciąży",
-      "daysToGo": "Pozostało {{days}} dni",
-      "anyDayNow": "Termin jest blisko"
+      "anyDayNow": "Termin jest blisko",
+      "daysToGo_one": "Pozostał {{days}} dzień",
+      "daysToGo_few": "Pozostały {{days}} dni",
+      "daysToGo_many": "Pozostało {{days}} dni",
+      "daysToGo_other": "Pozostało {{days}} dni"
     },
     "trimester": {
       "first": "Pierwszy trymestr",
@@ -4133,6 +4167,319 @@
         "hospitalBag": "Spakuj torbę do szpitala",
         "installCarSeat": "Zamontuj i sprawdź fotelik samochodowy",
         "pediatrician": "Wybierz pediatrę"
+      }
+    },
+    "babyDev": {
+      "w4": {
+        "comparison": "Ziarenko maku",
+        "baby": "Zarodek zagnieździł się w macicy, a łożysko zaczyna się formować.",
+        "mom": "Miesiączka mogła się właśnie nie pojawić. Poziom wczesnych hormonów rośnie."
+      },
+      "w5": {
+        "comparison": "Ziarenko sezamu",
+        "baby": "Powstaje cewa nerwowa — początek mózgu i rdzenia kręgowego.",
+        "mom": "Mogą pojawić się pierwsze objawy, takie jak tkliwość piersi i zmęczenie."
+      },
+      "w6": {
+        "comparison": "Soczewica",
+        "baby": "Malutkie serduszko zaczyna bić i pompować krew.",
+        "mom": "Nudności poranne mogą pojawić się właśnie teraz."
+      },
+      "w7": {
+        "comparison": "Borówka",
+        "baby": "Pojawiają się zawiązki rączek i nóżek, a mózg szybko rośnie.",
+        "mom": "Twoja macica zaczyna się powiększać, choć nie jest to jeszcze widoczne."
+      },
+      "w8": {
+        "comparison": "Malina",
+        "baby": "Formują się paluszki rąk i stóp, a malutkie ruchy się zaczynają.",
+        "mom": "Objętość krwi rośnie, aby wspomóc rozwój dziecka."
+      },
+      "w9": {
+        "comparison": "Wiśnia",
+        "baby": "Powstały najważniejsze narządy; dziecko jest teraz oficjalnie płodem.",
+        "mom": "Możesz zauważyć zmiany nastroju związane ze zmianami hormonalnymi."
+      },
+      "w10": {
+        "comparison": "Truskawka",
+        "baby": "Najważniejsze narządy już pracują, a malutkie paznokcie zaczynają się rozwijać.",
+        "mom": "Twoja talia może zacząć się zmieniać."
+      },
+      "w11": {
+        "comparison": "Limonka",
+        "baby": "Dziecko potrafi zaciskać i otwierać piąstki; kości twardnieją.",
+        "mom": "Nudności często zaczynają ustępować w nadchodzących tygodniach."
+      },
+      "w12": {
+        "comparison": "Śliwka",
+        "baby": "Rozwijają się odruchy; dziecko może zwijać paluszki rąk i stóp.",
+        "mom": "Koniec pierwszego trymestru już blisko — energia często wraca."
+      },
+      "w13": {
+        "comparison": "Strączek grochu",
+        "baby": "Powstają malutkie linie papilarne i rozwijają się struny głosowe.",
+        "mom": "Witaj w drugim trymestrze — często najwygodniejszym okresie."
+      },
+      "w14": {
+        "comparison": "Cytryna",
+        "baby": "Dziecko potrafi robić miny i może ssać kciuk.",
+        "mom": "Możesz zaczynać czuć się znów bardziej sobą."
+      },
+      "w15": {
+        "comparison": "Jabłko",
+        "baby": "Dziecko wyczuwa światło i porusza płynem owodniowym.",
+        "mom": "Możesz zauważyć pojawiający się mały brzuszek."
+      },
+      "w16": {
+        "comparison": "Awokado",
+        "baby": "Dziecko słyszy dźwięki, a jego serce codziennie pompuje dużo krwi.",
+        "mom": "Niektórzy odczuwają pierwsze ruchy dziecka właśnie teraz."
+      },
+      "w17": {
+        "comparison": "Rzepa",
+        "baby": "Zaczyna odkładać się tkanka tłuszczowa, a szkielet twardnieje.",
+        "mom": "Twój środek ciężkości przesuwa się wraz ze wzrostem brzuszka."
+      },
+      "w18": {
+        "comparison": "Papryka",
+        "baby": "Dziecko słyszy Twój głos i może reagować na dźwięki.",
+        "mom": "Możesz teraz odczuwać wyraźniejsze ruchy."
+      },
+      "w19": {
+        "comparison": "Mango",
+        "baby": "Skórę pokrywa warstwa ochronna (maź płodowa).",
+        "mom": "Bóle więzadeł obłych są częste, gdy wszystko się rozciąga."
+      },
+      "w20": {
+        "comparison": "Banana",
+        "baby": "Półmetek! Dziecko połyka i rozwija kubki smakowe.",
+        "mom": "Badanie USG połówkowe często odbywa się właśnie teraz."
+      },
+      "w21": {
+        "comparison": "Marchewka",
+        "baby": "Dziecko rusza się częściej, ma regularne cykle snu i czuwania.",
+        "mom": "Możesz odczuwać kopnięcia mocniej i regularniej."
+      },
+      "w22": {
+        "comparison": "Dynia makaronowa",
+        "baby": "Wargi, powieki i brwi są już wyraźniejsze.",
+        "mom": "Twój brzuszek jest już wyraźnie widoczny."
+      },
+      "w23": {
+        "comparison": "Duże mango",
+        "baby": "Dziecko słyszy głośne dźwięki i przybiera na wadze.",
+        "mom": "Może rozpocząć się obrzęk stóp i kostek."
+      },
+      "w24": {
+        "comparison": "Kolba kukurydzy",
+        "baby": "Rozwijają się płuca; dziecko osiąga etap zdolności do przeżycia.",
+        "mom": "Możesz mieć wkrótce badanie przesiewowe w kierunku cukrzycy."
+      },
+      "w25": {
+        "comparison": "Brukiew",
+        "baby": "Dziecku rośnie włos, rozwija się odruch zaskoczenia.",
+        "mom": "Bóle pleców są częste wraz ze wzrostem brzuszka."
+      },
+      "w26": {
+        "comparison": "Pęczek szczypiorku",
+        "baby": "Oczy zaczynają się otwierać, a płuca ćwiczą ruchy oddechowe.",
+        "mom": "Możesz czuć rytmiczne ruchy — dziecko ma czkawkę."
+      },
+      "w27": {
+        "comparison": "Kalafior",
+        "baby": "Aktywność mózgu znacznie wzrasta; dziecko może rozpoznawać Twój głos.",
+        "mom": "Witaj w trzecim trymestrze."
+      },
+      "w28": {
+        "comparison": "Bakłażan",
+        "baby": "Dziecko potrafi mrugać, a jego rzęsy już wykształcone.",
+        "mom": "Wizyty prenatalne stają się teraz często częstsze."
+      },
+      "w29": {
+        "comparison": "Dynia piżmowa",
+        "baby": "Mięśnie i płuca dalej dojrzewają; kości są w pełni ukształtowane.",
+        "mom": "Możesz odczuwać zadyszkę, gdy macica się unosi."
+      },
+      "w30": {
+        "comparison": "Duża kapusta",
+        "baby": "Dziecko lepiej reguluje teraz własną temperaturę.",
+        "mom": "Zmęczenie może wrócić w trzecim trymestrze."
+      },
+      "w31": {
+        "comparison": "Kokos",
+        "baby": "Dziecko szybko przybiera na wadze i często się rusza.",
+        "mom": "Możesz zauważyć skurcze przepowiadające (Braxtona-Hicksa)."
+      },
+      "w32": {
+        "comparison": "Jicama",
+        "baby": "Płuca ćwiczą oddychanie; dziecko często układa się główką w dół.",
+        "mom": "Rozważ rozpoczęcie planu porodu i spakowanie torby do szpitala."
+      },
+      "w33": {
+        "comparison": "Ananas",
+        "baby": "Kości dziecka twardnieją, choć czaszka pozostaje miękka.",
+        "mom": "Możesz odczuwać większy ucisk w miednicy."
+      },
+      "w34": {
+        "comparison": "Melon kantalupa",
+        "baby": "Ośrodkowy układ nerwowy i płuca dobrze dojrzewają.",
+        "mom": "Zmęczenie i obrzęki są częste; odpoczywaj, kiedy możesz."
+      },
+      "w35": {
+        "comparison": "Melon miodowy",
+        "baby": "Dziecko nabiera kształtów; większość układów jest prawie gotowa.",
+        "mom": "Twój lekarz może sprawdzić ułożenie dziecka."
+      },
+      "w36": {
+        "comparison": "Główka sałaty rzymskiej",
+        "baby": "Dziecko prawdopodobnie ułożone jest główką w dół i przybiera około 28 g dziennie.",
+        "mom": "Cotygodniowe kontrole zwykle rozpoczynają się właśnie teraz."
+      },
+      "w37": {
+        "comparison": "Pęczek boćwiny",
+        "baby": "Dziecko jest uznawane za terminowe i ćwiczy oddychanie.",
+        "mom": "Obserwuj oznaki porodu i miej spakowaną torbę."
+      },
+      "w38": {
+        "comparison": "Por",
+        "baby": "Narządy są gotowe do życia poza macicą; dziecko ma silny chwyt.",
+        "mom": "Możesz poczuć, że dziecko opuszcza się niżej w Twojej miednicy."
+      },
+      "w39": {
+        "comparison": "Mini arbuz",
+        "baby": "Dziecko jest donoszone i gotowe, by się z Tobą spotkać.",
+        "mom": "Lada dzień — obserwuj regularne skurcze."
+      },
+      "w40": {
+        "comparison": "Mała dynia",
+        "baby": "Twój termin porodu właśnie nadszedł! Dzieci przychodzą na świat we własnym tempie.",
+        "mom": "Jeśli poród się nie rozpoczął, Twój lekarz omówi kolejne kroki."
+      }
+    },
+    "safety": {
+      "food": {
+        "cooked_salmon": {
+          "name": "Ugotowany łosoś",
+          "note": "Dobrze ugotowana ryba o niskiej zawartości rtęci to świetne źródło kwasów omega-3. Celuj w 2–3 porcje tygodniowo."
+        },
+        "tuna_canned_light": {
+          "name": "Tuńczyk (lekki, w puszce)",
+          "note": "Ogranicz do ok. 2 porcji tygodniowo; wybieraj lekkiego zamiast białawego (albacore), który ma więcej rtęci."
+        },
+        "swordfish": {
+          "name": "Miecznik",
+          "note": "Ryba o wysokiej zawartości rtęci — należy jej unikać w ciąży."
+        },
+        "sushi_raw": {
+          "name": "Sushi (surowe)",
+          "note": "Surowa ryba niesie ryzyko pasożytów i bakterii. Gotowane rolki są w porządku."
+        },
+        "shrimp_cooked": {
+          "name": "Krewetki (gotowane)",
+          "note": "W pełni ugotowane owoce morza mają niską zawartość rtęci i są bezpieczne."
+        },
+        "soft_cheese_unpasteurized": {
+          "name": "Ser miękki (niepasteryzowany)",
+          "note": "Niepasteryzowane sery miękkie grożą listeriozą. Wersje pasteryzowane są w porządku."
+        },
+        "hard_cheese": {
+          "name": "Ser twardy",
+          "note": "Sery twarde i pasteryzowane są bezpieczne."
+        },
+        "pasteurized_milk": {
+          "name": "Mleko pasteryzowane",
+          "note": "Pasteryzowany nabiał jest bezpieczny i stanowi dobre źródło wapnia."
+        },
+        "deli_meat_cold": {
+          "name": "Wędliny (na zimno)",
+          "note": "Podgrzej do wrzenia, aby zmniejszyć ryzyko listeriozy."
+        },
+        "undercooked_meat": {
+          "name": "Niedogotowane mięso",
+          "note": "Gotuj mięso dokładnie, aby uniknąć toksoplazmozy i bakterii."
+        },
+        "cooked_chicken": {
+          "name": "Gotowany kurczak",
+          "note": "W pełni ugotowany drób to bezpieczne źródło białka."
+        },
+        "runny_raw_eggs": {
+          "name": "Płynne/surowe jajka",
+          "note": "Gotuj do ścięcia albo używaj jaj pasteryzowanych, aby uniknąć salmonelli."
+        },
+        "coffee": {
+          "name": "Kawa",
+          "note": "Ogranicz kofeinę do ok. 200 mg dziennie (mniej więcej jedna kawa 12 oz)."
+        },
+        "alcohol": {
+          "name": "Alkohol",
+          "note": "Żadna ilość alkoholu nie jest uznawana za bezpieczną w ciąży."
+        },
+        "herbal_tea": {
+          "name": "Herbata ziołowa",
+          "note": "Niektóre zioła nie są zalecane; sprawdź konkretne herbaty u swojego lekarza."
+        },
+        "cooked_leafy_greens": {
+          "name": "Gotowane zielone warzywa liściaste",
+          "note": "Dokładnie umyj; to świetne źródło kwasu foliowego i żelaza."
+        },
+        "unwashed_produce": {
+          "name": "Niemyte warzywa i owoce",
+          "note": "Dokładnie umyj; unikaj surowych kiełków, które mogą zawierać bakterie."
+        },
+        "liver_pate": {
+          "name": "Wątróbka / pasztet",
+          "note": "Bardzo bogaty w witaminę A, która w dużych ilościach może być szkodliwa."
+        },
+        "peanuts": {
+          "name": "Orzeszki ziemne",
+          "note": "Bezpieczne, chyba że masz własną alergię; dobre źródło białka."
+        },
+        "honey": {
+          "name": "Miód",
+          "note": "Bezpieczny w ciąży (nie podawaj niemowlętom poniżej 1. roku życia)."
+        }
+      },
+      "med": {
+        "acetaminophen": {
+          "name": "Paracetamol (Tylenol)",
+          "note": "Zwykle uznawany za lek pierwszego wyboru przy bólu i gorączce w zalecanych dawkach. Potwierdź u lekarza."
+        },
+        "ibuprofen": {
+          "name": "Ibuprofen (Advil)",
+          "note": "Unikaj zwłaszcza w trzecim trymestrze; stosuj tylko, jeśli zaleci to lekarz."
+        },
+        "aspirin": {
+          "name": "Aspiryna",
+          "note": "Tylko niska dawka, jeśli przepisana; aspiryna w zwykłej dawce jest zwykle unikana."
+        },
+        "prenatal_vitamin": {
+          "name": "Witamina prenatalna",
+          "note": "Zalecana przez całą ciążę ze względu na kwas foliowy, żelazo i DHA."
+        },
+        "antacids_tums": {
+          "name": "Leki zobojętniające (Tums)",
+          "note": "Leki zobojętniające na bazie wapnia są często stosowane przy zgadze."
+        },
+        "diphenhydramine": {
+          "name": "Difenhydramina (Benadryl)",
+          "note": "Często uznawana za w porządku krótkoterminowo, ale skonsultuj się z lekarzem."
+        },
+        "ibuprofen_gel": {
+          "name": "Żel ibuprofenowy",
+          "note": "Przed zastosowaniem omów miejscowe leki NSAID z lekarzem."
+        },
+        "isotretinoin": {
+          "name": "Izotretynoina (Accutane)",
+          "note": "Retinoidy powodują poważne wady wrodzone i należy ich unikać."
+        },
+        "pseudoephedrine": {
+          "name": "Lek zmniejszający przekrwienie (pseudoefedryna)",
+          "note": "Zwykle unikany w pierwszym trymestrze; zapytaj lekarza."
+        },
+        "vitamin_a_high_dose": {
+          "name": "Witamina A (wysoka dawka)",
+          "note": "Witamina A w wysokiej dawce może zaszkodzić dziecku; trzymaj się dawek prenatalnych."
+        }
       }
     }
   },
@@ -4164,7 +4511,11 @@
     "cycleHub": "Panel cyklu",
     "logEntry": "Dodaj wpis",
     "overview": "Przegląd",
-    "history": "Historia"
+    "history": "Historia",
+    "ring": {
+      "day": "Dzień {{day}}",
+      "dayCycle": "{{count}}-dniowy cykl"
+    }
   },
   "workoutPresetLibrary": {
     "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić szablony treningów."
