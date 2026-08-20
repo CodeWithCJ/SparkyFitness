@@ -4,7 +4,8 @@ import { View, Text } from 'react-native';
 import { CartesianChart, Bar } from 'victory-native';
 import { Line as SkiaLine } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
-import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
+import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate, formatChartYLabel } from './charts/chartFormatting';
+import { formatLocalizedNumber } from '../localization';
 import type { TrendRange } from '../hooks/useNutritionTrends';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
@@ -43,9 +44,9 @@ const X_TICK_COUNT: Record<TrendRange, number> = {
 const font = makeChartFont(11);
 
 const formatYLabel = (value: number) => {
-  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
-  if (value % 1 !== 0) return value.toFixed(1);
-  return String(value);
+  if (value >= 1000) return formatChartYLabel(value);
+  if (value % 1 !== 0) return formatLocalizedNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return formatChartYLabel(value);
 };
 
 const DEFAULT_TOOLTIP = '';
