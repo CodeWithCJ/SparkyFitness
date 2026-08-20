@@ -47,9 +47,11 @@ describe('food unit presentation localization', () => {
       expect(localizeFoodUnit('lbs', i18n.t)).toBe('lbs');
 
       await i18n.changeLanguage('pl');
-      expect(localizeFoodUnit('oz', i18n.t)).toBe('uncja');
-      expect(localizeFoodUnit('lb', i18n.t)).toBe('funt');
-      expect(localizeFoodUnit('lbs', i18n.t)).toBe('funt');
+      // Symbol/invariant model: oz/lb stay as invariant measurement symbols, not
+      // declined Polish nouns (avoids invalid "2 uncja").
+      expect(localizeFoodUnit('oz', i18n.t)).toBe('oz');
+      expect(localizeFoodUnit('lb', i18n.t)).toBe('lb');
+      expect(localizeFoodUnit('lbs', i18n.t)).toBe('lb');
     });
 
     test('volume containers localize in PL (cup -> szklanka)', async () => {
@@ -106,6 +108,36 @@ describe('food unit presentation localization', () => {
       expect(formatLocalizedUnitQuantity(100, 'g', i18n.t)).toBe('100 g');
       expect(formatLocalizedUnitQuantity(250, 'ml', i18n.t)).toBe('250 ml');
       expect(formatLocalizedUnitQuantity(1.5, 'l', i18n.t)).toBe('1,5 l');
+    });
+
+    test('oz / lb / liter aliases stay invariant symbols in both locales', async () => {
+      await i18n.changeLanguage('en');
+      // oz
+      expect(formatLocalizedUnitQuantity(1, 'oz', i18n.t)).toBe('1 oz');
+      expect(formatLocalizedUnitQuantity(2, 'oz', i18n.t)).toBe('2 oz');
+      expect(formatLocalizedUnitQuantity(1.5, 'oz', i18n.t)).toBe('1.5 oz');
+      // lb / lbs
+      expect(formatLocalizedUnitQuantity(1, 'lb', i18n.t)).toBe('1 lb');
+      expect(formatLocalizedUnitQuantity(2, 'lb', i18n.t)).toBe('2 lb');
+      expect(formatLocalizedUnitQuantity(5, 'lbs', i18n.t)).toBe('5 lbs');
+      // liter / liters aliases
+      expect(formatLocalizedUnitQuantity(1, 'liter', i18n.t)).toBe('1 l');
+      expect(formatLocalizedUnitQuantity(2, 'liter', i18n.t)).toBe('2 l');
+      expect(formatLocalizedUnitQuantity(1.5, 'liters', i18n.t)).toBe('1.5 l');
+
+      await i18n.changeLanguage('pl');
+      // oz
+      expect(formatLocalizedUnitQuantity(1, 'oz', i18n.t)).toBe('1 oz');
+      expect(formatLocalizedUnitQuantity(2, 'oz', i18n.t)).toBe('2 oz');
+      expect(formatLocalizedUnitQuantity(1.5, 'oz', i18n.t)).toBe('1,5 oz');
+      // lb / lbs
+      expect(formatLocalizedUnitQuantity(1, 'lb', i18n.t)).toBe('1 lb');
+      expect(formatLocalizedUnitQuantity(2, 'lb', i18n.t)).toBe('2 lb');
+      expect(formatLocalizedUnitQuantity(5, 'lbs', i18n.t)).toBe('5 lb');
+      // liter / liters aliases
+      expect(formatLocalizedUnitQuantity(1, 'liter', i18n.t)).toBe('1 l');
+      expect(formatLocalizedUnitQuantity(2, 'liter', i18n.t)).toBe('2 l');
+      expect(formatLocalizedUnitQuantity(1.5, 'liters', i18n.t)).toBe('1,5 l');
     });
 
     test('cup declension: fractional / singular / few / many', async () => {
