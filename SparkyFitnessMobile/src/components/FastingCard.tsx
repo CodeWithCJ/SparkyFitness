@@ -172,7 +172,7 @@ const FastingCard: React.FC<FastingCardProps> = ({ navigation }) => {
   }
 
   // ----- Idle state -----
-  const lastFastLine = formatLastFast(history?.[0]);
+  const lastFastLine = formatLastFast(history?.[0], t);
 
   return (
     <>

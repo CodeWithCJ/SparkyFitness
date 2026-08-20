@@ -586,7 +586,7 @@
     "noStandardMethods": "Na tym serwerze nie włączono standardowych metod logowania. Użyj klucza API lub skontaktuj się z administratorem."
   },
   "onboarding": {
-    "subtitle": "Twój własny tracker fitness",
+    "subtitle": "Twój własny dziennik fitness",
     "learnMoreTitle": "Dowiedz się więcej o SparkyFitness",
     "learnMoreBody": "SparkyFitness pomaga śledzić jedzenie, treningi i dane zdrowotne w jednym miejscu.",
     "learnMorePrivacy": "Aplikacja działa na Twoim serwerze, dzięki czemu Twoje dane pozostają prywatne.",
@@ -1029,8 +1029,10 @@
       "unskipped": "Cofnięto pominięcie: {{name}}",
       "removed": "Usunięto dawkę: {{name}}",
       "tapUndo": "Dotknij, aby cofnąć",
-      "failed": "Nie udało się wykonać operacji dla {{name}}: {{action}}",
-      "failedRemoveDose": "Nie udało się usunąć dawki leku {{name}}"
+      "failedRemoveDose": "Nie udało się usunąć dawki leku {{name}}",
+      "failedUnmark": "Nie udało się cofnąć oznaczenia {{name}}",
+      "failedUpdate": "Nie udało się zaktualizować {{name}}",
+      "failedLog": "Nie udało się zapisać {{name}}"
     },
     "card": {
       "title": "Leki",
@@ -1579,7 +1581,16 @@
     "elapsed": "Minęło {{elapsed}}",
     "startFast": "Rozpocznij post",
     "readyToStart": "Gotowy do rozpoczęcia",
-    "startFastAction": "Rozpocznij post"
+    "startFastAction": "Rozpocznij post",
+    "duration": {
+      "minutes": "{{minutes}} min",
+      "hours": "{{hours}} godz. {{minutes}} min",
+      "hoursMinutes": "{{hours}} godz. {{minutes}} min"
+    },
+    "lastFast": "Ostatni post: {{duration}}",
+    "lastFastWithDate": "Ostatni post: {{duration}} · {{date}}",
+    "today": "dzisiaj",
+    "yesterday": "wczoraj"
   },
   "fastingProtocol": {
     "fastStarted": "Post rozpoczęty",
@@ -1632,7 +1643,7 @@
     "failedEnd": "Nie udało się zakończyć postu",
     "endTitle": "Zakończ post",
     "time": "Czas",
-    "fasted": "{{duration}} postu",
+    "fasted": "Czas postu: {{duration}}",
     "started": "Rozpoczęto",
     "ended": "Zakończono",
     "beforeEnd": "Czas rozpoczęcia musi być wcześniejszy niż czas zakończenia.",
@@ -1678,7 +1689,7 @@
   },
   "mealBuilder": {
     "linkedMeal": "Połączony posiłek",
-    "linkedMealWebEdit": "Ten składnik będący podposiłkiem można edytować w aplikacji internetowej.",
+    "linkedMealWebEdit": "Ten składnik należący do połączonego posiłku można edytować w aplikacji internetowej.",
     "editTitle": "Edytuj posiłek",
     "createTitle": "Utwórz posiłek",
     "loading": "Wczytywanie posiłku…",
@@ -1926,7 +1937,7 @@
       "timeout": "Upłynął limit czasu żądania. Sprawdź połączenie z serwerem."
     },
     "permission": {
-      "camera": "Potrzebujemy uprawnień, aby wyświetlić kamerę",
+      "camera": "Aby używać aparatu, potrzebujemy Twojej zgody.",
       "grant": "Przyznaj uprawnienia"
     },
     "label": {
@@ -2298,7 +2309,7 @@
     "title": "Ulepsz oszacowanie",
     "removeImage": "Usuń zdjęcie {{number}}",
     "addAnotherImage": "Dodaj kolejne zdjęcie",
-    "descriptionHint": "Dodaj informacje, których {{subject}} może nie pokazywać wyraźnie.",
+    "descriptionHint": "Dodaj informacje, których {{subject}} może nie ujawniać na zdjęciu.",
     "photos": "zdjęcia",
     "photo": "zdjęcie",
     "totalWeightOptional": "Łączna masa (opcjonalnie)",
@@ -2452,7 +2463,7 @@
   "cycleOnboarding": {
     "checkDates": "Sprawdź daty",
     "setupComplete": "Konfiguracja zakończona!",
-    "profileInitialized": "Twój profil zdrowotny został zainicjalizowany.",
+    "profileInitialized": "Twój profil zdrowotny został utworzony.",
     "setupFailed": "Konfiguracja nie powiodła się",
     "setupFailedMessage": "Nie udało się ukończyć konfiguracji. Spróbuj ponownie.",
     "stepTitle": "Konfiguracja: krok {{step}} z 4",
@@ -2467,10 +2478,10 @@
     "averageCycleLength": "Średnia długość cyklu",
     "averagePeriodLength": "Średnia długość miesiączki",
     "profileTitle": "Profil i dolegliwości",
-    "profileDescription": "Wybierz odpowiednie dolegliwości lub metody antykoncepcji, aby spersonalizować śledzenie.",
+    "profileDescription": "Wybierz odpowiednie choroby lub metody antykoncepcji, aby spersonalizować monitorowanie.",
     "birthControlMethod": "Metoda antykoncepcji",
     "selectMethod": "Wybierz metodę",
-    "conditions": "Dolegliwości",
+    "conditions": "Choroby",
     "disclaimerTitle": "Zastrzeżenia i zakończenie",
     "medicalDisclaimer": "Zastrzeżenie medyczne",
     "disclaimerBody": "Aplikacja SparkyFitness do śledzenia zdrowia i zdrowia reprodukcyjnego pomaga monitorować prognozy, objawy i parametry fizjologiczne. NIE jest przeznaczona do stosowania jako metoda antykoncepcji ani jako narzędzie diagnostyczne lub lecznicze.",
@@ -2870,7 +2881,7 @@
       "noFilteredSaved": "{{message}} — filtr: {{filter}}",
       "couldNotLoad": "Nie udało się wczytać",
       "noResults": "Brak wyników",
-      "noOnlineResultsFrom": "Brak wyników online z {{provider}}"
+      "noOnlineResultsFrom": "Brak wyników z usługi {{provider}}"
     },
     "filter": {
       "all": "Wszystkie",

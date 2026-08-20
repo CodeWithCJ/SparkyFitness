@@ -1,3 +1,4 @@
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import {
   formatElapsedClock,
   formatHoursMinutes,
@@ -149,19 +150,33 @@ describe('formatLastFast', () => {
     expect(formatLastFast(buildFast({ duration_minutes: null }))).toBeNull();
   });
 
-  test('formats a completed fast that ended yesterday', () => {
+  test('formats a completed fast that ended yesterday', async () => {
+    await initializeI18n('en');
     const yesterday = new Date(Date.now() - 24 * HOUR).toISOString();
     const result = formatLastFast(
       buildFast({ duration_minutes: 964, end_time: yesterday }),
+      i18n.t,
     );
     expect(result).toBe('Last fast 16h 4m · yesterday');
   });
 
-  test('formats a completed fast that ended today', () => {
+  test('formats a completed fast that ended today', async () => {
+    await initializeI18n('en');
     const now = new Date().toISOString();
     const result = formatLastFast(
       buildFast({ duration_minutes: 120, end_time: now }),
+      i18n.t,
     );
     expect(result).toBe('Last fast 2h 0m · today');
+  });
+
+  test('uses Polish duration and relative-day copy', async () => {
+    const polishT = i18n.getFixedT('pl');
+    const now = new Date().toISOString();
+    const result = formatLastFast(
+      buildFast({ duration_minutes: 120, end_time: now }),
+      polishT,
+    );
+    expect(result).toBe('Ostatni post: 2 godz. 0 min · dzisiaj');
   });
 });

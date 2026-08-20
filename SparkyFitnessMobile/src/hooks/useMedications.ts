@@ -223,7 +223,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
         deleteEntryMutation.mutate(existing.id, {
           onSuccess: () =>
             Toast.show({ type: 'info', text1: undoneMessage }),
-          onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'unmark', name: due.medication.name }), error),
+          onError: (error) => showEntryError(t('medications.dose.failedUnmark', { defaultValue: 'Failed to unmark {{name}}', name: due.medication.name }), error),
         });
         return;
       }
@@ -251,7 +251,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
           },
           {
             onSuccess: showLoggedToast,
-            onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'update', name: due.medication.name }), error),
+            onError: (error) => showEntryError(t('medications.dose.failedUpdate', { defaultValue: 'Failed to update {{name}}', name: due.medication.name }), error),
           },
         );
       } else {
@@ -265,7 +265,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
           },
           {
             onSuccess: showLoggedToast,
-            onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'log', name: due.medication.name }), error),
+            onError: (error) => showEntryError(t('medications.dose.failedLog', { defaultValue: 'Failed to log {{name}}', name: due.medication.name }), error),
           },
         );
       }
@@ -278,7 +278,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
       const existing = entryForDue(due);
       if (existing) {
         deleteEntryMutation.mutate(existing.id, {
-          onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'update', name: due.medication.name }), error),
+          onError: (error) => showEntryError(t('medications.dose.failedUpdate', { defaultValue: 'Failed to update {{name}}', name: due.medication.name }), error),
         });
         return;
       }
@@ -314,7 +314,7 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
                 },
               },
             }),
-          onError: (error) => showEntryError(t('medications.dose.failed', { defaultValue: 'Failed to {{action}} {{name}}', action: 'log', name: med.name }), error),
+          onError: (error) => showEntryError(t('medications.dose.failedLog', { defaultValue: 'Failed to log {{name}}', name: med.name }), error),
         },
       );
     },

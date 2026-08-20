@@ -1029,8 +1029,10 @@
       "unskipped": "{{name}} unskipped",
       "removed": "{{name}} dose removed",
       "tapUndo": "Tap to undo",
-      "failed": "Failed to {{action}} {{name}}",
-      "failedRemoveDose": "Failed to remove {{name}} dose"
+      "failedRemoveDose": "Failed to remove {{name}} dose",
+      "failedUnmark": "Failed to unmark {{name}}",
+      "failedUpdate": "Failed to update {{name}}",
+      "failedLog": "Failed to log {{name}}"
     },
     "card": {
       "title": "Medications",
@@ -1579,7 +1581,16 @@
     "elapsed": "{{elapsed}} elapsed",
     "startFast": "Start a fast",
     "readyToStart": "Ready to start",
-    "startFastAction": "Start Fast"
+    "startFastAction": "Start Fast",
+    "duration": {
+      "minutes": "{{minutes}}m",
+      "hours": "{{hours}}h {{minutes}}m",
+      "hoursMinutes": "{{hours}}h {{minutes}}m"
+    },
+    "lastFast": "Last fast {{duration}}",
+    "lastFastWithDate": "Last fast {{duration}} · {{date}}",
+    "today": "today",
+    "yesterday": "yesterday"
   },
   "fastingProtocol": {
     "fastStarted": "Fast started",
