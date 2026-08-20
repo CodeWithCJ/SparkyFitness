@@ -2,7 +2,7 @@ import type { HealthMetric } from '../../HealthMetrics';
 import type { AggregatedHealthRecord, MetricConfig, ReadResult, TransformedRecord } from '../../types/healthRecords';
 import type { HealthReadProvider } from '../shared/healthSyncEngine';
 import type { TelemetryRunContext } from '../shared/telemetryBudget';
-import { ceilToLocalDayStart, type SyncWindows } from '../../utils/syncUtils';
+import type { SyncWindows } from '../../utils/syncUtils';
 import { prefetchSessionRoutes } from './workoutTelemetry';
 import {
   getAggregatedStepsByDateDetailed,
@@ -41,11 +41,7 @@ export const readCumulativeByDay = async (
   endDate: Date,
 ): Promise<ReadResult<AggregatedHealthRecord> | null> => {
   const reader = CUMULATIVE_READERS[metric.recordType];
-  // Health Connect prorates interval records to the requested overlap. Some step
-  // providers publish the current total as a midnight-to-midnight record, so an
-  // end edge of "now" returns only the fraction of the day that has elapsed.
-  // Querying through the next local midnight keeps the native daily total intact.
-  return reader ? reader(startDate, ceilToLocalDayStart(endDate)) : null;
+  return reader ? reader(startDate, endDate) : null;
 };
 
 /**
