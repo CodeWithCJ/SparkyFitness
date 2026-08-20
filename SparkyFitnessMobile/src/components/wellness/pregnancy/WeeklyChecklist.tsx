@@ -95,7 +95,7 @@ const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({ pregnancyId, currentW
           key: i.template_key as string,
           title: tpl
             ? localizedChecklistTitle(tpl.key, tpl.title, t)
-            : i.custom_title ?? i.template_key ?? t('pregnancy.checklist.item', { defaultValue: 'Checklist item' }),
+            : i.custom_title ?? t('pregnancy.checklist.item', { defaultValue: 'Checklist item' }),
           week: i.week ?? currentWeek,
           completed: true,
           persistedId: i.id,

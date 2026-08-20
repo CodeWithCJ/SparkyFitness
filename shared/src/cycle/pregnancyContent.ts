@@ -63,6 +63,7 @@ export interface ChecklistTemplateItem {
   key: string;
   weekStart: number;
   weekEnd: number;
+  /** English fallback only; clients must localize by key before rendering. */
   title: string;
 }
 
