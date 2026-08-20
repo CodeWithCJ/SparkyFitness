@@ -4172,8 +4172,8 @@
     "babyDev": {
       "w4": {
         "comparison": "Ziarenko maku",
-        "baby": "Zarodek zagnieździł się w macicy, a łożysko zaczyna się formować.",
-        "mom": "Miesiączka mogła się właśnie nie pojawić. Poziom wczesnych hormonów rośnie."
+        "baby": "Zarodek zagnieździł się w macicy, a łożysko zaczyna się kształtować.",
+        "mom": "Być może właśnie nie dostałaś miesiączki. Rośnie poziom wczesnych hormonów."
       },
       "w5": {
         "comparison": "Ziarenko sezamu",
@@ -4251,7 +4251,7 @@
         "mom": "Bóle więzadeł obłych są częste, gdy wszystko się rozciąga."
       },
       "w20": {
-        "comparison": "Banana",
+        "comparison": "Banan",
         "baby": "Półmetek! Dziecko połyka i rozwija kubki smakowe.",
         "mom": "Badanie USG połówkowe często odbywa się właśnie teraz."
       },
@@ -4277,7 +4277,7 @@
       },
       "w25": {
         "comparison": "Brukiew",
-        "baby": "Dziecku rośnie włos, rozwija się odruch zaskoczenia.",
+        "baby": "Dziecku zaczynają rosnąć włosy, rozwija się odruch zaskoczenia.",
         "mom": "Bóle pleców są częste wraz ze wzrostem brzuszka."
       },
       "w26": {
@@ -4293,7 +4293,7 @@
       "w28": {
         "comparison": "Bakłażan",
         "baby": "Dziecko potrafi mrugać, a jego rzęsy już wykształcone.",
-        "mom": "Wizyty prenatalne stają się teraz często częstsze."
+        "mom": "Wizyty prenatalne stają się teraz częstsze."
       },
       "w29": {
         "comparison": "Dynia piżmowa",
@@ -4337,8 +4337,8 @@
       },
       "w37": {
         "comparison": "Pęczek boćwiny",
-        "baby": "Dziecko jest uznawane za terminowe i ćwiczy oddychanie.",
-        "mom": "Obserwuj oznaki porodu i miej spakowaną torbę."
+        "baby": "Dziecko uznawane jest za bliskie terminu porodu i ćwiczy oddychanie.",
+        "mom": "Obserwuj oznaki porodu i miej przygotowaną torbę do szpitala."
       },
       "w38": {
         "comparison": "Por",
@@ -4364,7 +4364,7 @@
         },
         "tuna_canned_light": {
           "name": "Tuńczyk (lekki, w puszce)",
-          "note": "Ogranicz do ok. 2 porcji tygodniowo; wybieraj lekkiego zamiast białawego (albacore), który ma więcej rtęci."
+          "note": "Ogranicz do ok. 2 porcji tygodniowo; wybieraj tuńczyka lekkiego zamiast białawego (albacore), który zawiera więcej rtęci."
         },
         "swordfish": {
           "name": "Miecznik",
@@ -4376,11 +4376,11 @@
         },
         "shrimp_cooked": {
           "name": "Krewetki (gotowane)",
-          "note": "W pełni ugotowane owoce morza mają niską zawartość rtęci i są bezpieczne."
+          "note": "W pełni ugotowane owoce morza mają niską zawartość rtęci i są bezpieczne w ciąży."
         },
         "soft_cheese_unpasteurized": {
           "name": "Ser miękki (niepasteryzowany)",
-          "note": "Niepasteryzowane sery miękkie grożą listeriozą. Wersje pasteryzowane są w porządku."
+          "note": "Niepasteryzowane sery miękkie grożą listeriozą; wersje pasteryzowane są bezpieczne."
         },
         "hard_cheese": {
           "name": "Ser twardy",
@@ -4392,7 +4392,7 @@
         },
         "deli_meat_cold": {
           "name": "Wędliny (na zimno)",
-          "note": "Podgrzej do wrzenia, aby zmniejszyć ryzyko listeriozy."
+          "note": "Podgrzewaj wędliny, aż zaczną wydobywać się z nich para, aby zmniejszyć ryzyko listeriozy."
         },
         "undercooked_meat": {
           "name": "Niedogotowane mięso",
@@ -4404,11 +4404,11 @@
         },
         "runny_raw_eggs": {
           "name": "Płynne/surowe jajka",
-          "note": "Gotuj do ścięcia albo używaj jaj pasteryzowanych, aby uniknąć salmonelli."
+          "note": "Gotuj jajka na twardo albo używaj jaj pasteryzowanych, aby uniknąć salmonelli."
         },
         "coffee": {
           "name": "Kawa",
-          "note": "Ogranicz kofeinę do ok. 200 mg dziennie (mniej więcej jedna kawa 12 oz)."
+          "note": "Ogranicz kofeinę do ok. 200 mg dziennie (mniej więcej jedna duża kawa)."
         },
         "alcohol": {
           "name": "Alkohol",
@@ -4416,7 +4416,7 @@
         },
         "herbal_tea": {
           "name": "Herbata ziołowa",
-          "note": "Niektóre zioła nie są zalecane; sprawdź konkretne herbaty u swojego lekarza."
+          "note": "Niektóre zioła nie są zalecane; konkretne herbaty skonsultuj z lekarzem."
         },
         "cooked_leafy_greens": {
           "name": "Gotowane zielone warzywa liściaste",
@@ -4428,21 +4428,21 @@
         },
         "liver_pate": {
           "name": "Wątróbka / pasztet",
-          "note": "Bardzo bogaty w witaminę A, która w dużych ilościach może być szkodliwa."
+          "note": "Bogaty w witaminę A, która w dużych ilościach może być szkodliwa."
         },
         "peanuts": {
           "name": "Orzeszki ziemne",
-          "note": "Bezpieczne, chyba że masz własną alergię; dobre źródło białka."
+          "note": "Bezpieczne, chyba że masz alergię; dobre źródło białka."
         },
         "honey": {
           "name": "Miód",
-          "note": "Bezpieczny w ciąży (nie podawaj niemowlętom poniżej 1. roku życia)."
+          "note": "Bezpieczny w ciąży (nie podawaj go niemowlętom poniżej 1. roku życia)."
         }
       },
       "med": {
         "acetaminophen": {
           "name": "Paracetamol (Tylenol)",
-          "note": "Zwykle uznawany za lek pierwszego wyboru przy bólu i gorączce w zalecanych dawkach. Potwierdź u lekarza."
+          "note": "Zwykle lek pierwszego wyboru przy bólu i gorączce w zalecanych dawkach; potwierdź u lekarza."
         },
         "ibuprofen": {
           "name": "Ibuprofen (Advil)",
@@ -4450,11 +4450,11 @@
         },
         "aspirin": {
           "name": "Aspiryna",
-          "note": "Tylko niska dawka, jeśli przepisana; aspiryna w zwykłej dawce jest zwykle unikana."
+          "note": "Tylko niska dawka, jeśli lekarz ją przepisze; zwykłej dawki należy unikać."
         },
         "prenatal_vitamin": {
           "name": "Witamina prenatalna",
-          "note": "Zalecana przez całą ciążę ze względu na kwas foliowy, żelazo i DHA."
+          "note": "Zalecana przez całą ciążę — dostarcza kwas foliowy, żelazo i DHA."
         },
         "antacids_tums": {
           "name": "Leki zobojętniające (Tums)",
@@ -4462,11 +4462,11 @@
         },
         "diphenhydramine": {
           "name": "Difenhydramina (Benadryl)",
-          "note": "Często uznawana za w porządku krótkoterminowo, ale skonsultuj się z lekarzem."
+          "note": "Często uznawana za bezpieczną przy krótkotrwałym stosowaniu, ale skonsultuj się z lekarzem."
         },
         "ibuprofen_gel": {
           "name": "Żel ibuprofenowy",
-          "note": "Przed zastosowaniem omów miejscowe leki NSAID z lekarzem."
+          "note": "Przed zastosowaniem skonsultuj miejscowe leki przeciwzapalne (NSAID) z lekarzem."
         },
         "isotretinoin": {
           "name": "Izotretynoina (Accutane)",
@@ -4474,7 +4474,7 @@
         },
         "pseudoephedrine": {
           "name": "Lek zmniejszający przekrwienie (pseudoefedryna)",
-          "note": "Zwykle unikany w pierwszym trymestrze; zapytaj lekarza."
+          "note": "Zwykle odradzany w pierwszym trymestrze; zapytaj lekarza."
         },
         "vitamin_a_high_dose": {
           "name": "Witamina A (wysoka dawka)",

@@ -183,18 +183,35 @@ describe('pregnancy safety content', () => {
     }
   });
 
-  test('canonical EN search still works (salmon, raw fish, soft cheese)', async () => {
-    const foods = lookupSafetyLocalized('salmon', FOOD_SAFETY, 'food', i18n.t);
-    expect(foods.length).toBeGreaterThan(0);
-    expect(lookupSafetyLocalized('raw fish', FOOD_SAFETY, 'food', i18n.t).length).toBeGreaterThan(0);
-    expect(lookupSafetyLocalized('soft cheese', FOOD_SAFETY, 'food', i18n.t).length).toBeGreaterThan(0);
+  test('canonical EN search resolves the exact controlled keys', async () => {
+    const salmonKeys = lookupSafetyLocalized('salmon', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(salmonKeys).toContain('cooked_salmon');
+    const rawFishKeys = lookupSafetyLocalized('raw fish', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(rawFishKeys).toContain('sushi_raw');
+    const softCheeseKeys = lookupSafetyLocalized('soft cheese', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(softCheeseKeys).toContain('soft_cheese_unpasteurized');
   });
 
-  test('Polish search terms resolve controlled items (łosoś, ser, paracetamol)', async () => {
+  test('Polish search resolves the exact controlled keys (łosoś, ser, paracetamol)', async () => {
     await i18n.changeLanguage('pl');
-    expect(lookupSafetyLocalized('łosoś', FOOD_SAFETY, 'food', i18n.t).length).toBeGreaterThan(0);
-    expect(lookupSafetyLocalized('ser miękki', FOOD_SAFETY, 'food', i18n.t).length).toBeGreaterThan(0);
-    expect(lookupSafetyLocalized('paracetamol', MED_SAFETY, 'med', i18n.t).length).toBeGreaterThan(0);
+    const lososKeys = lookupSafetyLocalized('łosoś', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(lososKeys).toContain('cooked_salmon');
+    const serKeys = lookupSafetyLocalized('ser miękki', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(serKeys).toContain('soft_cheese_unpasteurized');
+    const paracetamolKeys = lookupSafetyLocalized('paracetamol', MED_SAFETY, 'med', i18n.t).map((i) => i.key);
+    expect(paracetamolKeys).toContain('acetaminophen');
+    // 'surowa ryba' must resolve to sushi_raw, NOT undercooked_meat.
+    const surowaRyba = lookupSafetyLocalized('surowa ryba', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(surowaRyba).toContain('sushi_raw');
+    expect(surowaRyba).not.toContain('undercooked_meat');
+    // 'nimesulid' must NOT resolve to ibuprofen (it is a different drug).
+    const nimesulidKeys = lookupSafetyLocalized('nimesulid', MED_SAFETY, 'med', i18n.t).map((i) => i.key);
+    expect(nimesulidKeys).not.toContain('ibuprofen');
+  });
+
+  test("Polish alias 'makrela królewska' resolves to swordfish", async () => {
+    await i18n.changeLanguage('pl');
+    expect(lookupSafetyLocalized('makrela królewska', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key)).toContain('swordfish');
   });
 
   test('brand aliases work (Tylenol, Advil, Benadryl)', async () => {
