@@ -87,8 +87,18 @@ export const formatRelativeTime = (timestamp: Date | null, t?: RelativeTimeTrans
   const time = timestamp.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 
   if (diffSeconds < 60) return translate('date.justNow', { defaultValue: 'Just now' });
-  if (diffMinutes < 60) return translate('date.minutesAgo', { count: diffMinutes, defaultValue: '{{count}} minute ago', defaultValue_plural: '{{count}} minutes ago' });
-  if (diffHours < 24) return translate('date.hoursAgo', { count: diffHours, defaultValue: '{{count}} hour ago', defaultValue_plural: '{{count}} hours ago' });
+  if (diffMinutes < 60) return translate('date.minutesAgo', {
+    count: diffMinutes,
+    defaultValue: '{{count}} minute ago',
+    defaultValue_one: '{{count}} minute ago',
+    defaultValue_other: '{{count}} minutes ago',
+  });
+  if (diffHours < 24) return translate('date.hoursAgo', {
+    count: diffHours,
+    defaultValue: '{{count}} hour ago',
+    defaultValue_one: '{{count}} hour ago',
+    defaultValue_other: '{{count}} hours ago',
+  });
   if (diffDays === 1) return translate('date.yesterdayAt', { time, defaultValue: 'Yesterday at {{time}}' });
   const date = timestamp.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
   return translate('date.onDateAt', { date, time, defaultValue: '{{date}} at {{time}}' });

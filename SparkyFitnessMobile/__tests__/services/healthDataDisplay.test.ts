@@ -10,6 +10,7 @@ import {
   getAggregatedBasalEnergyByDate,
 } from '../../src/services/healthConnectService';
 import { addLog } from '../../src/services/LogService';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import type { TimeRange } from '../../src/services/storage';
 
 // A single, controllable metric list — the real HEALTH_METRICS is platform
@@ -73,8 +74,10 @@ async function displayFor(recordType: string): Promise<string> {
 }
 
 describe('fetchHealthDisplayData', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     mockGetSyncStartDate.mockReturnValue(new Date('2026-06-01T00:00:00Z'));
     mockReadHealthRecords.mockResolvedValue([]);
     mockSteps.mockResolvedValue([]);
@@ -312,7 +315,7 @@ describe('fetchHealthDisplayData', () => {
       {
         recordType: 'Workout',
         records: [{}, {}, {}],
-        expected: '3 workout',
+        expected: '3 workouts',
       },
     ];
 
@@ -320,6 +323,27 @@ describe('fetchHealthDisplayData', () => {
       mockReadHealthRecords.mockResolvedValue(records);
       expect(await displayFor(recordType)).toBe(expected);
     });
+
+    it('formats aggregated and pluralized output in Polish using app locale', async () => {
+      await i18n.changeLanguage('pl');
+      mockSteps.mockResolvedValue([{ value: 1234.5 }]);
+      expect(await displayFor('Steps')).toBe('1234,5');
+      mockReadHealthRecords.mockResolvedValue([{}, {}, {}, {}, {}]);
+      expect(await displayFor('Workout')).toBe('5 treningów');
+      expect(await displayFor('Stress')).toBe('5 rekordów');
+    });
+
+    it('formats zero-valued temperature, mass, height and glucose records', async () => {
+      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', temperature: { inCelsius: 0 } }]);
+      expect(await displayFor('BodyTemperature')).toBe('0.0°C');
+      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', mass: { inKilograms: 0 } }]);
+      expect(await displayFor('Weight')).toBe(NO_DATA_DISPLAY);
+      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', height: { inMeters: 0 } }]);
+      expect(await displayFor('Height')).toBe('0.0 cm');
+      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', level: { inMillimolesPerLiter: 0 } }]);
+      expect(await displayFor('BloodGlucose')).toBe('0.0 mmol/L');
+    });
+
 
     it('ignores oxygen-saturation readings outside the 0–100 range', async () => {
       // The latest reading (0%) is invalid, so the earlier valid 96% wins.
@@ -381,7 +405,7 @@ describe('fetchHealthDisplayData', () => {
 
     it('uses a generic record count for record types with no dedicated formatter', async () => {
       mockReadHealthRecords.mockResolvedValue([{}, {}]);
-      expect(await displayFor('Stress')).toBe('2 record');
+      expect(await displayFor('Stress')).toBe('2 records');
     });
 
     it('uses the singular form for a single generic record', async () => {

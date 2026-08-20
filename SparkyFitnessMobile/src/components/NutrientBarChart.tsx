@@ -118,14 +118,20 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
         return;
       }
 
-      const formattedVal = point.value % 1 !== 0 ? point.value.toFixed(1) : point.value;
+      const formattedVal = formatLocalizedNumber(point.value, {
+        minimumFractionDigits: point.value % 1 !== 0 ? 1 : 0,
+        maximumFractionDigits: point.value % 1 !== 0 ? 1 : 0,
+      });
       setTooltipText(
-        `${formattedVal}${unit} consumed · ${formatTooltipDate(
-          point.day,
-        )}`,
+        t('charts.tooltip', {
+          defaultValue: '{{value}}{{unit}} consumed · {{date}}',
+          value: formattedVal,
+          unit,
+          date: formatTooltipDate(point.day),
+        }),
       );
     },
-    [data, unit],
+    [data, unit, t],
   );
 
   const handleClearSelection = useCallback(() => {

@@ -38,7 +38,11 @@ const t = (key: string, options: Record<string, unknown> = {}): string => {
 const number = (value: number, options?: Intl.NumberFormatOptions): string => formatLocalizedNumber(value, options);
 const unit = (key: string, count: number, defaultValue: string, defaultValuePlural?: string): string =>
   // i18n-audit-ignore-next-line dynamic-i18n-key -- key is restricted to the closed healthDataDisplay plural map
-  i18n.t(key, { count, defaultValue, ...(defaultValuePlural ? { defaultValue_plural: defaultValuePlural } : {}) });
+  i18n.t(key, {
+    count,
+    defaultValue,
+    ...(defaultValuePlural ? { defaultValue_one: defaultValue, defaultValue_other: defaultValuePlural } : {}),
+  });
 
 export const NO_DATA_DISPLAY = '__NO_DATA__';
 
@@ -226,8 +230,9 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
   Weight: (records) => {
     const latestWeight = (records as { time: string; weight?: { inKilograms: number } }[])
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
-    return latestWeight.weight?.inKilograms
-      ? t('healthDataDisplay.kg', { defaultValue: "{{value}} kg", value: number(latestWeight.weight.inKilograms, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
+    const weightValue = latestWeight.weight?.inKilograms;
+    return weightValue != null && Number.isFinite(weightValue)
+      ? t('healthDataDisplay.kg', { defaultValue: "{{value}} kg", value: number(weightValue, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
       : NO_DATA_DISPLAY;
   },
 
@@ -276,9 +281,9 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
     const latestGlucose = (records as { time: string; level?: { inMillimolesPerLiter?: number; inMilligramsPerDeciliter?: number }; bloodGlucose?: { inMillimolesPerLiter?: number; inMilligramsPerDeciliter?: number } }[])
       .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())[0];
     const glucoseValue = latestGlucose.level?.inMillimolesPerLiter
-      || latestGlucose.bloodGlucose?.inMillimolesPerLiter
-      || (latestGlucose.level?.inMilligramsPerDeciliter ? latestGlucose.level.inMilligramsPerDeciliter / 18.018 : null)
-      || (latestGlucose.bloodGlucose?.inMilligramsPerDeciliter ? latestGlucose.bloodGlucose.inMilligramsPerDeciliter / 18.018 : null);
+      ?? latestGlucose.bloodGlucose?.inMillimolesPerLiter
+      ?? (latestGlucose.level?.inMilligramsPerDeciliter != null ? latestGlucose.level.inMilligramsPerDeciliter / 18.018 : null)
+      ?? (latestGlucose.bloodGlucose?.inMilligramsPerDeciliter != null ? latestGlucose.bloodGlucose.inMilligramsPerDeciliter / 18.018 : null);
     return glucoseValue != null && Number.isFinite(glucoseValue)
       ? t('healthDataDisplay.mmolL', { defaultValue: "{{value}} mmol/L", value: number(glucoseValue, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
       : NO_DATA_DISPLAY;

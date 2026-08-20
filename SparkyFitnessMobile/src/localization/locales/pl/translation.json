@@ -3650,6 +3650,7 @@
     "trendLoadFailed": "Nie udało się wczytać trendu",
     "noLoggedIntake": "Brak zarejestrowanego spożycia w tym okresie",
     "consumed": "spożyto",
+    "tooltip": "{{value}}{{unit}} · spożyto {{date}}",
     "nutrients": {
       "loadFailed": "Nie udało się wczytać danych trendu",
       "empty": "Brak zarejestrowanego spożycia w tym okresie"

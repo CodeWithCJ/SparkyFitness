@@ -3648,6 +3648,7 @@
     "trendLoadFailed": "Failed to load trend data",
     "noLoggedIntake": "No logged intake for this period",
     "consumed": "consumed",
+    "tooltip": "{{value}}{{unit}} consumed · {{date}}",
     "nutrients": {
       "loadFailed": "Failed to load trend data",
       "empty": "No logged intake for this period"
@@ -4032,8 +4033,12 @@
     "breathsPerMinute": "{{value}} br/min",
     "error": "Error",
     "workouts_one": "{{count}} workout",
+    "workouts_few": "{{count}} workouts",
+    "workouts_many": "{{count}} workouts",
     "workouts_other": "{{count}} workouts",
     "records_one": "{{count}} record",
+    "records_few": "{{count}} records",
+    "records_many": "{{count}} records",
     "records_other": "{{count}} records"
   }
 }
