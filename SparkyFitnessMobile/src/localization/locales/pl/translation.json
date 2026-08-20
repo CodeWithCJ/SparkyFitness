@@ -2481,7 +2481,7 @@
       "ttc": "Staranie się o ciążę (TTC)",
       "pregnant": "Śledzenie ciąży",
       "postpartum": "Połóg i powrót do zdrowia",
-      "menopause": "Monitorowanie menopauzy"
+      "menopause": "Przemiany menopauzalne"
     },
     "birthControl": {
       "none": "Brak",
@@ -3381,7 +3381,7 @@
       "uncertain": "Niepewne"
     },
     "labels": {
-      "overallEstimate": "Oszacowanie: {{confidence}}",
+      "overallEstimate": "Pewność oszacowania: {{confidence}}",
       "totalEstimatedWeight": "Łączna szacowana masa: {{weight}}"
     },
     "actions": {
