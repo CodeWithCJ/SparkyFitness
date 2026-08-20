@@ -1,48 +1,11 @@
 import { Linter } from 'eslint';
+import { noHardcodedBasePathSelectors } from '../../../eslint-rules/noHardcodedBasePathSelectors.cjs';
 
 // Polyfill structuredClone for jsdom test environment
 if (typeof globalThis.structuredClone === 'undefined') {
-  globalThis.structuredClone = (obj: any) => JSON.parse(JSON.stringify(obj));
+  globalThis.structuredClone = (<T>(obj: T): T =>
+    JSON.parse(JSON.stringify(obj)) as T) as typeof structuredClone;
 }
-
-// Kept in sync manually with the `no-restricted-syntax` entries in
-// eslint.config.js. This file can't import eslint.config.js directly
-// (it's a native-ESM .js file that isn't part of the ts-jest transform,
-// the same class of cross-module-system problem this branch already hit
-// once with better-auth/react under Jest) — so the patterns are
-// duplicated here deliberately. If you change one, change the other.
-const noHardcodedBasePathSelectors = [
-  {
-    selector:
-      'JSXAttribute[name.name=/^(src|href)$/] > Literal[value=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-  {
-    selector:
-      'JSXAttribute[name.name=/^(src|href)$/] > JSXExpressionContainer > Literal[value=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-  {
-    selector:
-      'JSXAttribute[name.name=/^(src|href)$/] > JSXExpressionContainer > TemplateLiteral > TemplateElement:first-child[value.raw=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-  {
-    selector:
-      'CallExpression[callee.name="fetch"] > Literal[value=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-  {
-    selector:
-      'CallExpression[callee.name="fetch"] > TemplateLiteral > TemplateElement:first-child[value.raw=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-];
 
 function lintMessageCount(code: string): number {
   const linter = new Linter();
@@ -80,6 +43,16 @@ describe('no-hardcoded-base-path selectors', () => {
 
   it('flags a plain string literal passed to fetch', () => {
     expect(lintMessageCount("fetch('/uploads/exercises/x.png');")).toBe(1);
+  });
+
+  it('flags a plain string literal passed to window.fetch', () => {
+    expect(lintMessageCount("window.fetch('/uploads/exercises/x.png');")).toBe(
+      1
+    );
+  });
+
+  it('flags a template literal passed to globalThis.fetch', () => {
+    expect(lintMessageCount('globalThis.fetch(`/uploads/${id}`);')).toBe(1);
   });
 
   it('does not flag a src wrapped in withBasePath', () => {

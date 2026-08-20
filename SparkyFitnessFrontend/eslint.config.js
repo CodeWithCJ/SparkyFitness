@@ -4,39 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 import unusedImports from 'eslint-plugin-unused-imports';
-
-const noHardcodedBasePathSelectors = [
-  {
-    selector:
-      'JSXAttribute[name.name=/^(src|href)$/] > Literal[value=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-  {
-    selector:
-      'JSXAttribute[name.name=/^(src|href)$/] > JSXExpressionContainer > Literal[value=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-  {
-    selector:
-      'JSXAttribute[name.name=/^(src|href)$/] > JSXExpressionContainer > TemplateLiteral > TemplateElement:first-child[value.raw=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-  {
-    selector:
-      'CallExpression[callee.name="fetch"] > Literal[value=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-  {
-    selector:
-      'CallExpression[callee.name="fetch"] > TemplateLiteral > TemplateElement:first-child[value.raw=/^\\/(?!\\/)/]',
-    message:
-      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
-  },
-];
+import { noHardcodedBasePathSelectors } from './eslint-rules/noHardcodedBasePathSelectors.cjs';
 
 export default tseslint.config(
   { ignores: ['dist', 'build', 'coverage', 'node_modules'] },
