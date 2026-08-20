@@ -757,7 +757,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
       void unitSelector?.onUnitSelectionChange?.(aiSelection);
 
       swapContextRef.current = null;
-    } catch (err) {
+    } catch {
       const message =
         t('foodForm.ai.estimateFailed', { defaultValue: 'AI estimate failed.' });
       Toast.show({
