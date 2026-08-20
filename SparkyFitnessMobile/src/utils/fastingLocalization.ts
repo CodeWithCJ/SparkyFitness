@@ -31,12 +31,12 @@ export function localizeFastingStage(
     ? stage.rangeLabel
     : stage.maxHours == null
       ? t('fastingDetail.rangeOpen', {
-          defaultValue: '{{start}}{{unit}}+',
+          defaultValue: '{{start}} {{unit}}+',
           start: stage.minHours,
           unit: t('time.hoursShort', { defaultValue: 'h' }),
         })
       : t('fastingDetail.range', {
-          defaultValue: '{{start}}–{{end}}{{unit}}',
+          defaultValue: '{{start}}–{{end}} {{unit}}',
           start: stage.minHours,
           end: stage.maxHours,
           unit: t('time.hoursShort', { defaultValue: 'h' }),

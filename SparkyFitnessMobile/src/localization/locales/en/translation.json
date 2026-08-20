@@ -2603,8 +2603,8 @@
     "noActiveFast": "No active fast",
     "startDescription": "Start a fast to track your fasting window and metabolic stages.",
     "startFast": "Start Fast",
-    "range": "{{start}}–{{end}}{{unit}}",
-    "rangeOpen": "{{start}}{{unit}}+",
+    "range": "{{start}}–{{end}} {{unit}}",
+    "rangeOpen": "{{start}} {{unit}}+",
     "stages": {
       "anabolic": {
         "name": "Anabolic",

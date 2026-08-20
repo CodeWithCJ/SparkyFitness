@@ -11,8 +11,8 @@ describe('localizeProtocolBadge', () => {
       'fastingDetail.title': 'Post',
       'fastingProtocol.presets.circadian.name': 'Rytm dobowy',
       'fastingProtocol.presets.custom.name': 'Własny post',
-      'fastingDetail.range': '{{start}}–{{end}}{{unit}}',
-      'fastingDetail.rangeOpen': '{{start}}{{unit}}+',
+      'fastingDetail.range': '{{start}}–{{end}} {{unit}}',
+      'fastingDetail.rangeOpen': '{{start}} {{unit}}+',
       'time.hoursShort': 'godz.',
     };
     return (values[key] ?? options.defaultValue)
@@ -54,8 +54,8 @@ describe('localizeProtocolBadge', () => {
       maxHours: 16,
       rangeLabel: '4–16h',
     };
-    expect(localizeFastingStage(en as never, stage).rangeLabel).toBe('4–16h');
-    expect(localizeFastingStage(pl as never, stage).rangeLabel).toBe('4–16godz.');
+    expect(localizeFastingStage(en as never, stage).rangeLabel).toBe('4–16 h');
+    expect(localizeFastingStage(pl as never, stage).rangeLabel).toBe('4–16 godz.');
 
     const finalStage = {
       key: 'deep-ketosis',
@@ -65,6 +65,6 @@ describe('localizeProtocolBadge', () => {
       maxHours: null,
       rangeLabel: '72h+',
     };
-    expect(localizeFastingStage(pl as never, finalStage).rangeLabel).toBe('72godz.+');
+    expect(localizeFastingStage(pl as never, finalStage).rangeLabel).toBe('72 godz.+');
   });
 });
