@@ -38,6 +38,9 @@ export const EditProviderForm = ({
 }: EditProviderFormProps) => {
   const { t } = useTranslation();
   const { data: providerTypes } = useExternalProviderTypesQuery();
+  // Fatsecret shares the credential fields with Nutritionix, but its dashboard
+  // issues OAuth 2.0 Client ID / Client Secret rather than an App ID / App Key.
+  const isFatsecret = editData.provider_type === 'fatsecret';
   return (
     <form
       onSubmit={(e) => {
@@ -235,7 +238,7 @@ export const EditProviderForm = ({
         editData.provider_type === 'fatsecret') && (
         <>
           <div>
-            <Label>App ID</Label>
+            <Label>{isFatsecret ? 'Client ID' : 'App ID'}</Label>
             <Input
               type="text"
               value={editData.app_id || ''}
@@ -245,12 +248,12 @@ export const EditProviderForm = ({
                   app_id: e.target.value,
                 }))
               }
-              placeholder="Enter App ID"
+              placeholder={isFatsecret ? 'Enter Client ID' : 'Enter App ID'}
               autoComplete="off"
             />
           </div>
           <div>
-            <Label>App Key</Label>
+            <Label>{isFatsecret ? 'Client Secret' : 'App Key'}</Label>
             <Input
               type="password"
               value={editData.app_key || ''}
@@ -260,15 +263,17 @@ export const EditProviderForm = ({
                   app_key: e.target.value,
                 }))
               }
-              placeholder="Enter App Key"
+              placeholder={
+                isFatsecret ? 'Enter Client Secret' : 'Enter App Key'
+              }
               autoComplete="off"
             />
           </div>
           {editData.provider_type === 'fatsecret' && (
             <p className="text-sm text-muted-foreground col-span-2">
-              Note: For Fatsecret, you need to set up **your public IP**
-              whitelisting in your Fatsecret developer account. This process can
-              take up to 24 hours.
+              Note: For Fatsecret, you need to set up{' '}
+              <strong>your public IP</strong> whitelisting in your Fatsecret
+              developer account. This process can take up to 24 hours.
             </p>
           )}
         </>
@@ -384,7 +389,7 @@ export const EditProviderForm = ({
       )}
       {editData.provider_type === 'fatsecret' && (
         <p className="text-sm text-muted-foreground col-span-2">
-          Get your App ID and App Key from the{' '}
+          Get your Client ID and Client Secret from the{' '}
           <a
             href="https://platform.fatsecret.com/my-account/dashboard"
             target="_blank"
@@ -393,7 +398,8 @@ export const EditProviderForm = ({
           >
             Fatsecret Platform Dashboard
           </a>
-          .
+          , under <strong>REST API OAuth 2.0 Credentials</strong> (not the OAuth
+          1.0 Consumer Key/Secret).
         </p>
       )}
       {editData.provider_type === 'usda' && (
