@@ -175,6 +175,7 @@ Controls web access ports, Nginx brute-force protection, and client IP resolutio
 - **`NGINX_LISTEN_PORT`**: Port Nginx listens on inside container (`80` root / `8080` non-root).
 - **`NGINX_ACCESS_LOG`** / **`NGINX_ERROR_LOG`**: Nginx log paths.
 - **`NGINX_DUMP_CONFIG`**: Set to `true` to dump resolved Nginx configuration on startup.
+- **`SPARKY_BASE_PATH`**: The sub-path to serve the frontend from when running behind a reverse proxy that routes this app to a path instead of a dedicated (sub)domain, e.g. `/sparky/`. Must end with a trailing slash. Defaults to `/` (root deployment). See the [Reverse Proxy guide](/administration/reverse-proxy#deploying-at-a-sub-path) for full setup details.
 
 ### Module 10: 🛡️ Outbound Corporate / Forwarding Proxy `[Backend]`
 
