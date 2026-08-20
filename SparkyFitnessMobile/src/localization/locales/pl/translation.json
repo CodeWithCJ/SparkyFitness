@@ -450,12 +450,12 @@
     "nutritionDietarySodium": "Sód w diecie",
     "walkingSpeed": "Prędkość chodzenia",
     "walkingStepLength": "Długość kroku",
-    "walkingAsymmetryPercentage": "Asymetria chodu %",
-    "walkingDoubleSupportPercentage": "Podwójne podparcie podczas chodu %",
+    "walkingAsymmetryPercentage": "Asymetria chodu (%)",
+    "walkingDoubleSupportPercentage": "Podwójne podparcie podczas chodu (%)",
     "runningGroundContactTime": "Czas kontaktu z podłożem podczas biegu",
     "runningStrideLength": "Długość kroku biegowego",
     "runningPower": "Moc biegowa",
-    "runningVerticalOscillation": "Pionowa oscylacja podczas biegu",
+    "runningVerticalOscillation": "Pionowe oscylacje podczas biegu",
     "runningSpeed": "Prędkość biegu",
     "cyclingSpeed": "Prędkość jazdy na rowerze",
     "cyclingPower": "Moc kolarska",
@@ -510,7 +510,7 @@
     "loading": "Ładowanie danych zdrowotnych",
     "alerts": {
       "healthAppUnavailableTitle": "Aplikacja Zdrowie niedostępna",
-      "healthAppUnavailableMessage": "Zainstaluj aplikację Apple Health, aby synchronizować dane zdrowotne.",
+      "healthAppUnavailableMessage": "Zainstaluj aplikację Zdrowie, aby synchronizować dane zdrowotne.",
       "permissionErrorTitle": "Błąd uprawnień",
       "permissionErrorMessage": "Wystąpił nieoczekiwany błąd podczas żądania uprawnień do danych zdrowotnych: {{error}}"
     }
@@ -967,7 +967,7 @@
       "invalidDose": "Nieprawidłowa dawka",
       "doseMessage": "Wpisz prawidłową dawkę.",
       "invalidLimit": "Nieprawidłowy limit",
-      "limitMessage": "Maksimum dzienne musi wynosić co najmniej 1.",
+      "limitMessage": "Maksymalna liczba dawek dziennie musi wynosić co najmniej 1.",
       "invalidDates": "Nieprawidłowe daty",
       "datesMessage": "Data końcowa nie może przypadać przed datą początkową.",
       "updateFailed": "Nie udało się zaktualizować harmonogramu: {{error}}",
@@ -990,12 +990,12 @@
       "daysOff": "Dni przerwy",
       "reason": "Powód",
       "reasonPlaceholder": "Ból głowy",
-      "maxPerDay": "Maksimum dzienne",
+      "maxPerDay": "Maksymalna liczba dawek dziennie",
       "noLimit": "Bez limitu",
       "noTimeReminder": "Harmonogram bez godziny nie wyśle przypomnienia.",
       "default": "Domyślnie",
-      "doseOverride": "Nadpisanie dawki ({{unit}})",
-      "doseOverridePlain": "Nadpisanie dawki",
+      "doseOverride": "Niestandardowa dawka ({{unit}})",
+      "doseOverridePlain": "Niestandardowa dawka",
       "withMealTitle": "Posiłek",
       "withMeal": "Z posiłkiem",
       "startDate": "Data początkowa",
@@ -1015,7 +1015,7 @@
     "dose": {
       "log": "Zapisz",
       "skip": "Pomiń",
-      "taken": "Przyjęto",
+      "taken": "Dawka przyjęta",
       "skipped": "Pominięto",
       "logTaken": "Zapisz {{title}} jako przyjęty",
       "skipTitle": "Pomiń {{title}}",
@@ -1023,7 +1023,7 @@
       "unmark": "Cofnij oznaczenie {{title}}",
       "logTitle": "Zapisz {{title}}",
       "logged": "Zapisano: {{name}}",
-      "takenToast": "Przyjęto: {{name}}",
+      "takenToast": "Dawka przyjęta: {{name}}",
       "skippedToast": "Pominięto: {{name}}",
       "unmarked": "Cofnięto oznaczenie: {{name}}",
       "unskipped": "Cofnięto pominięcie: {{name}}",
@@ -1217,7 +1217,7 @@
     "selectActivityPlaceholder": "Aktywność",
     "categoryGeneral": "Ogólne",
     "categoryStrength": "Siłowe",
-    "categoryCardio": "Cardio",
+    "categoryCardio": "Trening cardio",
     "categoryYoga": "Joga",
     "categoryPowerlifting": "Trójbój siłowy",
     "categoryOlympicWeightlifting": "Podnoszenie ciężarów",
@@ -1389,8 +1389,8 @@
     "level": "Poziom",
     "force": "Siła",
     "mechanic": "Mechanika",
-    "primaryMuscles": "Główne mięśnie",
-    "secondaryMuscles": "Drugorzędne mięśnie",
+    "primaryMuscles": "Główne partie mięśni",
+    "secondaryMuscles": "Dodatkowe partie mięśni",
     "source": "Źródło",
     "history": "Historia",
     "summary": "Podsumowanie",
@@ -1525,7 +1525,7 @@
     "setupA11y": "Skonfiguruj monitorowanie cyklu i ciąży",
     "setUp": "Skonfiguruj",
     "weekDay": "Tydzień {{week}}, dzień {{day}}",
-    "sizeOf": "Wielkość: {{comparison}}",
+    "sizeOf": "Rozmiar: {{comparison}}",
     "cm": "{{value}} cm",
     "grams": "{{value}} g",
     "daysToDue": "{{count}} dni do terminu",
@@ -2489,7 +2489,7 @@
     "acceptInitialize": "Zaakceptuj i utwórz profil",
     "mode": {
       "standard": "Standardowy cykl menstruacyjny",
-      "ttc": "Staranie się o ciążę (TTC)",
+      "ttc": "Starania o ciążę (TTC)",
       "pregnant": "Śledzenie ciąży",
       "postpartum": "Połóg i powrót do zdrowia",
       "menopause": "Menopauza"
@@ -2612,7 +2612,7 @@
       },
       "catabolic": {
         "name": "Kataboliczna",
-        "description": "Zużywanie glikogenu · nasilanie metabolizmu tłuszczów"
+        "description": "Zużywanie glikogenu · zwiększone wykorzystywanie tłuszczu jako źródła energii"
       },
       "fatBurning": {
         "name": "Spalanie tłuszczu",
@@ -2624,7 +2624,7 @@
       },
       "deepKetosis": {
         "name": "Głęboka ketoza",
-        "description": "Szczyt autofagii"
+        "description": "Etap często wiązany ze zwiększoną autofagią"
       }
     }
   },
@@ -3669,7 +3669,7 @@
       "empty": "Brak zarejestrowanego spożycia w tym okresie"
     },
     "bbt": {
-      "tooltip": "Naciśnij linię, aby zobaczyć szczegóły",
+      "tooltip": "Dotknij linii, aby zobaczyć szczegóły",
       "empty": "Zapisuj codziennie temperaturę, aby wyświetlić wykres podstawowej temperatury ciała."
     }
   },
@@ -4043,7 +4043,7 @@
     "meters": "{{value}} m",
     "watts": "{{value}} W",
     "metersPerSecond": "{{value}} m/s",
-    "breathsPerMinute": "{{value}} br/min",
+    "breathsPerMinute": "{{value}} oddechów/min",
     "workouts_one": "{{count}} trening",
     "workouts_few": "{{count}} treningi",
     "workouts_many": "{{count}} treningów",

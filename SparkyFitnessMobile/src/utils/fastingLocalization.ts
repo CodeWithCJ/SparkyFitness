@@ -12,7 +12,7 @@ export function localizeFastingStage(
     },
     catabolic: {
       name: t('fastingDetail.stages.catabolic.name', { defaultValue: 'Catabolic' }),
-      description: t('fastingDetail.stages.catabolic.description', { defaultValue: 'Glycogen depleting · fat metabolism ramping up' }),
+      description: t('fastingDetail.stages.catabolic.description', { defaultValue: 'Glycogen depletion · increased use of fat for energy' }),
     },
     'fat-burning': {
       name: t('fastingDetail.stages.fatBurning.name', { defaultValue: 'Fat burning' }),
@@ -24,7 +24,7 @@ export function localizeFastingStage(
     },
     'deep-ketosis': {
       name: t('fastingDetail.stages.deepKetosis.name', { defaultValue: 'Deep ketosis' }),
-      description: t('fastingDetail.stages.deepKetosis.description', { defaultValue: 'Autophagy peak' }),
+      description: t('fastingDetail.stages.deepKetosis.description', { defaultValue: 'A stage often associated with increased autophagy' }),
     },
   };
   const rangeLabel = stage.minHours == null

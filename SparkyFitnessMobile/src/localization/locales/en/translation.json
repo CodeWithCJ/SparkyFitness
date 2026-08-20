@@ -2612,7 +2612,7 @@
       },
       "catabolic": {
         "name": "Catabolic",
-        "description": "Glycogen depleting · fat metabolism ramping up"
+        "description": "Glycogen depletion · increased use of fat for energy"
       },
       "fatBurning": {
         "name": "Fat burning",
@@ -2624,7 +2624,7 @@
       },
       "deepKetosis": {
         "name": "Deep ketosis",
-        "description": "Autophagy peak"
+        "description": "A stage often associated with increased autophagy"
       }
     }
   },
