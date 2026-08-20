@@ -9,6 +9,8 @@ export interface CycleAlert {
   key: string;
   severity: 'info' | 'attention';
   message: string;
+  /** Structured numeric parameters referenced by the message (e.g. days). */
+  params?: Record<string, number>;
 }
 
 interface CycleAlertsProps {
@@ -41,7 +43,7 @@ const CycleAlerts: React.FC<CycleAlertsProps> = ({ alerts }) => {
               />
             </View>
             <Text className="flex-1 text-sm text-text-primary leading-5">
-              {localizeCycleAlert(alert.key, alert.message, t)}
+              {localizeCycleAlert(alert.key, alert.message, alert.params, t)}
             </Text>
           </View>
         );

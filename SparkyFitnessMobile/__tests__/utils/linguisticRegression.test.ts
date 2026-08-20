@@ -1,5 +1,6 @@
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { formatLocalizedNumber } from '../../src/localization';
+import { formatMetricWithUnit } from '../../src/components/wellness/CorrelationCards';
 import {
   localizeCycleSymptom,
   localizeCycleAnomaly,
@@ -23,22 +24,47 @@ describe('linguistic correctness regression (cycle / EN contamination)', () => {
   });
 
   describe('cycleCorrelations grammatical agreement', () => {
-    const metrics = ['Masa ciała', 'Energia', 'Nastrój', 'Sen'];
-    test('peak sentence agrees with every metric gender in PL', async () => {
+    test('complete peak sentence is grammatically valid for every phase (PL)', async () => {
       await i18n.changeLanguage('pl');
-      for (const metric of metrics) {
+      const phaseKeys = [
+        'menstrual',
+        'follicular',
+        'fertile',
+        'ovulation',
+        'luteal',
+      ] as const;
+      for (const phase of phaseKeys) {
+        const phaseLabel = i18n.t(`cycleCorrelations.phasesSentence.${phase}`, {
+          defaultValue: 'Phase',
+        });
         const sentence = i18n.t('cycleCorrelations.peak', {
-          defaultValue: '{{metric}} tends to be {{direction}} in your {{phase}} phase ({{delta}}{{unit}} vs your average).',
-          metric,
+          defaultValue: '{{phase}}: {{metric}} tends to be {{direction}} ({{delta}}{{unit}} vs. your average).',
+          metric: 'Masa ciała',
           direction: i18n.t('cycleCorrelations.higher', { defaultValue: 'higher' }),
-          phase: i18n.t('cycleCorrelations.phases.follicular', { defaultValue: 'Follicular' }),
-          delta: '1,5',
+          phase: phaseLabel,
+          delta: '+1,5',
           unit: ' kg',
         });
-        // The gender-invariant "Wartość dla ... wyższa" construction must hold
-        // for every metric noun.
+        // The phase must appear with its noun ("Faza ..."), never the bare
+        // nominative label following "w fazie".
+        expect(phaseLabel).toMatch(/^(Faza |Owulacja)/);
         expect(sentence).toContain('jest zwykle wyższa');
+        expect(sentence).not.toMatch(/w fazie (Folikularna|Lutealna|Miesiączkowa|Płodna)/);
+        expect(sentence.startsWith(phaseLabel)).toBe(true);
       }
+    });
+
+    test('complete EN peak sentence with sentence-safe phase labels', async () => {
+      await i18n.changeLanguage('en');
+      const sentence = i18n.t('cycleCorrelations.peak', {
+        defaultValue: '{{phase}}: {{metric}} tends to be {{direction}} ({{delta}}{{unit}} vs. your average).',
+        metric: 'Weight',
+        direction: i18n.t('cycleCorrelations.higher', { defaultValue: 'higher' }),
+        phase: i18n.t('cycleCorrelations.phasesSentence.follicular', { defaultValue: 'Follicular phase' }),
+        delta: '+1.5',
+        unit: ' kg',
+      });
+      expect(sentence).toBe('Follicular phase: Weight tends to be higher (+1.5 kg vs. your average).');
     });
 
     test('cycleInsights.regularity is English not Polish', () => {
@@ -112,6 +138,17 @@ describe('linguistic correctness regression (cycle / EN contamination)', () => {
       await i18n.changeLanguage('pl');
       expect(formatLocalizedNumber(1.55)).toBe('1,55');
     });
+
+    test('formatMetricWithUnit inserts a space before a real unit and none for dimensionless', async () => {
+      await i18n.changeLanguage('en');
+      expect(formatMetricWithUnit(65.5, 'kg')).toBe('65.5 kg');
+      expect(formatMetricWithUnit(7.5, 'h')).toBe('7.5 h');
+      expect(formatMetricWithUnit(4, '')).toBe('4');
+      await i18n.changeLanguage('pl');
+      expect(formatMetricWithUnit(65.5, 'kg')).toBe('65,5 kg');
+      expect(formatMetricWithUnit(7.5, 'h')).toBe('7,5 h');
+      expect(formatMetricWithUnit(4, '')).toBe('4');
+    });
   });
 });
 
@@ -126,33 +163,83 @@ describe('cycle controlled server/shared presentation', () => {
 
   describe('localizeCycleAnomaly', () => {
     const fallback = 'You had a short cycle of 20 days.';
-    test('EN anonymous copy for controlled keys', async () => {
+    test('EN dynamic copy preserves the cycle length count', async () => {
       await i18n.changeLanguage('en');
-      expect(localizeCycleAnomaly('short_cycle', fallback, i18n.t)).toContain('short cycle');
-      expect(localizeCycleAnomaly('heavy_bleeding', fallback, i18n.t)).toContain('heavier flow');
+      const one = localizeCycleAnomaly('short_cycle', fallback, { cycleLength: 20 }, i18n.t);
+      expect(one).toBe('You had a short cycle of 20 days. Cycles shorter than 21 days are worth tracking.');
+      expect(localizeCycleAnomaly('long_cycle', fallback, { cycleLength: 47 }, i18n.t)).toContain('47 days');
     });
-    test('PL anonymous copy is localized, not English', async () => {
+    test('PL short/long cycle copy is neutral and preserves the length', async () => {
       await i18n.changeLanguage('pl');
-      const pl = localizeCycleAnomaly('short_cycle', fallback, i18n.t);
-      expect(pl).not.toContain('short cycle');
-      expect(pl).toContain('cykl');
-      expect(localizeCycleAnomaly('unusual_discharge', fallback, i18n.t)).toContain('wydzielin');
+      expect(localizeCycleAnomaly('short_cycle', fallback, { cycleLength: 20 }, i18n.t)).toBe(
+        'Zarejestrowano krótki cykl trwający 20 dni.',
+      );
+      expect(localizeCycleAnomaly('long_cycle', fallback, { cycleLength: 47 }, i18n.t)).toBe(
+        'Zarejestrowano długi cykl trwający 47 dni.',
+      );
+    });
+    test('PL anomaly copy avoids unnecessary gendered forms', async () => {
+      await i18n.changeLanguage('pl');
+      expect(localizeCycleAnomaly('unusual_discharge', fallback, undefined, i18n.t)).not.toContain('Zanotowałaś');
+      expect(localizeCycleAnomaly('unusual_discharge', fallback, undefined, i18n.t)).toContain('Zanotowano');
+      expect(localizeCycleAnomaly('heavy_bleeding', fallback, undefined, i18n.t)).not.toMatch(/Miałaś|Zanotowałaś/);
     });
     test('unknown key falls back to the server message literally', async () => {
       await i18n.changeLanguage('pl');
-      expect(localizeCycleAnomaly('unknown_future_key', fallback, i18n.t)).toBe(fallback);
+      expect(localizeCycleAnomaly('unknown_future_key', fallback, undefined, i18n.t)).toBe(fallback);
     });
   });
 
-  describe('localizeCycleAlert', () => {
-    test('PL alert copy localized for late_period/ovulation_today', async () => {
+  describe('localizeCycleAlert day counts', () => {
+    const enLate: Array<[number, string]> = [
+      [1, 'Your period is 1 day late.'],
+      [2, 'Your period is 2 days late.'],
+      [5, 'Your period is 5 days late.'],
+    ];
+    const plLate: Array<[number, string]> = [
+      [1, 'Miesiączka jest opóźniona o 1 dzień.'],
+      [2, 'Miesiączka jest opóźniona o 2 dni.'],
+      [5, 'Miesiączka jest opóźniona o 5 dni.'],
+      [12, 'Miesiączka jest opóźniona o 12 dni.'],
+      [22, 'Miesiączka jest opóźniona o 22 dni.'],
+      [25, 'Miesiączka jest opóźniona o 25 dni.'],
+    ];
+    const plUpcoming: Array<[number, string]> = [
+      [1, 'Miesiączka jest spodziewana za 1 dzień.'],
+      [2, 'Miesiączka jest spodziewana za 2 dni.'],
+      [5, 'Miesiączka jest spodziewana za 5 dni.'],
+    ];
+    test('EN late_period days', async () => {
+      await i18n.changeLanguage('en');
+      for (const [n, expected] of enLate) {
+        expect(localizeCycleAlert('late_period', 'late', { days: n }, i18n.t)).toBe(expected);
+      }
+    });
+    test('PL late_period days 1/2/5/12/22/25', async () => {
       await i18n.changeLanguage('pl');
-      expect(localizeCycleAlert('late_period', 'Your period is late', i18n.t)).toContain('miesiączka');
-      expect(localizeCycleAlert('ovulation_today', 'ovul today', i18n.t).toLowerCase()).toContain('owulacja');
+      for (const [n, expected] of plLate) {
+        expect(localizeCycleAlert('late_period', 'late', { days: n }, i18n.t)).toBe(expected);
+      }
+    });
+    test('PL upcoming_period days', async () => {
+      await i18n.changeLanguage('pl');
+      for (const [n, expected] of plUpcoming) {
+        expect(localizeCycleAlert('upcoming_period', 'upcoming', { days: n }, i18n.t)).toBe(expected);
+      }
+    });
+    test('PL ovulation_today localized', async () => {
+      await i18n.changeLanguage('pl');
+      expect(localizeCycleAlert('ovulation_today', 'ovul today', undefined, i18n.t)).toBe(
+        'Owulacja przewidywana jest na dziś.',
+      );
+    });
+    test('missing params falls back to the server message literally', async () => {
+      await i18n.changeLanguage('pl');
+      expect(localizeCycleAlert('late_period', 'Raw late text', undefined, i18n.t)).toBe('Raw late text');
     });
     test('unknown alert key falls back literally', async () => {
       await i18n.changeLanguage('pl');
-      expect(localizeCycleAlert('unknown_key', 'Raw server text', i18n.t)).toBe('Raw server text');
+      expect(localizeCycleAlert('unknown_key', 'Raw server text', undefined, i18n.t)).toBe('Raw server text');
     });
   });
 

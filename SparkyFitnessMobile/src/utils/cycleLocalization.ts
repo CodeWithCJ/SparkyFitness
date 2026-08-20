@@ -37,6 +37,12 @@ export function localizeCycleSymptom(
   return symptom;
 }
 
+/** Structured numeric params carried by a controlled cycle anomaly/alert. */
+export interface CycleMessageParams {
+  days?: number;
+  cycleLength?: number;
+}
+
 /** Controlled cycle-anomaly keys from shared detectAnomalies(). */
 const ANOMALY_KEYS = new Set([
   'irregular_cycles',
@@ -54,16 +60,30 @@ const ALERT_KEYS = new Set([
 ]);
 
 /**
- * Localizes a controlled cycle-anomaly by its stable `key`. Unknown / future
- * keys fall back to the server-provided message literally (we never parse
- * English prose into t()).
+ * Localizes a controlled cycle-anomaly by its stable `key`, using structured
+ * numeric params (e.g. cycleLength) with i18next count pluralization. Unknown /
+ * future keys (or missing params) fall back to the server message literally —
+ * we never parse English prose into t().
  */
 export function localizeCycleAnomaly(
   key: string,
   fallbackMessage: string,
+  params?: CycleMessageParams,
   t?: TFunction,
 ): string {
   const translate = resolveTranslator(t);
+  if (key === 'short_cycle' && params?.cycleLength != null) {
+    return translate('cycleInsights.anomaly.short_cycle', {
+      defaultValue: fallbackMessage,
+      count: params.cycleLength,
+    });
+  }
+  if (key === 'long_cycle' && params?.cycleLength != null) {
+    return translate('cycleInsights.anomaly.long_cycle', {
+      defaultValue: fallbackMessage,
+      count: params.cycleLength,
+    });
+  }
   if (ANOMALY_KEYS.has(key)) {
     return translate(`cycleInsights.anomaly.${key}`, {
       defaultValue: fallbackMessage,
@@ -74,20 +94,33 @@ export function localizeCycleAnomaly(
 
 /**
  * Localizes a controlled cycle alert (from buildCycleAlerts) by its stable key.
- * Handles both the period/ovulation alert keys and the anomaly keys that also
- * flow through as alerts. Unknown / future keys fall back to the server message
- * literally.
+ * Uses structured numeric params (e.g. days) with i18next count pluralization;
+ * handles late_period/upcoming_period and the anomaly keys that flow through as
+ * alerts. Unknown / future keys fall back to the server message literally.
  */
 export function localizeCycleAlert(
   key: string,
   fallbackMessage: string,
+  params?: CycleMessageParams,
   t?: TFunction,
 ): string {
   const translate = resolveTranslator(t);
+  if (key === 'late_period' && params?.days != null) {
+    return translate('cycleInsights.alert.late_period', {
+      defaultValue: fallbackMessage,
+      count: params.days,
+    });
+  }
+  if (key === 'upcoming_period' && params?.days != null) {
+    return translate('cycleInsights.alert.upcoming_period', {
+      defaultValue: fallbackMessage,
+      count: params.days,
+    });
+  }
   if (ALERT_KEYS.has(key)) {
     return translate(`cycleInsights.alert.${key}`, {
       defaultValue: fallbackMessage,
     });
   }
-  return localizeCycleAnomaly(key, fallbackMessage, translate);
+  return localizeCycleAnomaly(key, fallbackMessage, params, translate);
 }

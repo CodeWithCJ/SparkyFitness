@@ -2102,15 +2102,27 @@
     "days_many": "{{count}} dni",
     "days_other": "{{count}} dni",
     "anomaly": {
-      "irregular_cycles": "Długość Twoich cykli zmieniała się ostatnio o więcej niż kilka dni. Jeśli to nowa sytuacja, warto wspomnieć o tym lekarzowi.",
-      "short_cycle": "Miałaś krótki cykl krótszy niż 21 dni. Cykle krótsze niż 21 dni warto monitorować.",
-      "long_cycle": "Miałaś długi cykl dłuższy niż 45 dni. Cykle dłuższe niż 45 dni warto monitorować.",
-      "heavy_bleeding": "Twoje ostatnie wpisy wskazują na silniejsze niż zwykle krwawienie lub miesiączkę trwającą dłużej niż 7 dni. Jeśli to się utrzyma, warto wspomnieć o tym lekarzowi.",
-      "unusual_discharge": "Zanotowałaś nietypową wydzielinę. Warto zwrócić uwagę na zmiany koloru, zapachu lub konsystencji."
+      "irregular_cycles": "Długość cykli zmieniała się ostatnio o więcej niż kilka dni. Jeśli to nowa sytuacja, warto wspomnieć o tym lekarzowi.",
+      "short_cycle_one": "Zarejestrowano krótki cykl trwający {{count}} dzień.",
+      "short_cycle_few": "Zarejestrowano krótki cykl trwający {{count}} dni.",
+      "short_cycle_many": "Zarejestrowano krótki cykl trwający {{count}} dni.",
+      "short_cycle_other": "Zarejestrowano krótki cykl trwający {{count}} dni.",
+      "long_cycle_one": "Zarejestrowano długi cykl trwający {{count}} dzień.",
+      "long_cycle_few": "Zarejestrowano długi cykl trwający {{count}} dni.",
+      "long_cycle_many": "Zarejestrowano długi cykl trwający {{count}} dni.",
+      "long_cycle_other": "Zarejestrowano długi cykl trwający {{count}} dni.",
+      "heavy_bleeding": "Ostatnie wpisy wskazują na silniejsze niż zwykle krwawienie lub miesiączkę trwającą dłużej niż 7 dni. Jeśli to się utrzyma, warto wspomnieć o tym lekarzowi.",
+      "unusual_discharge": "Zanotowano nietypową wydzielinę. Warto zwrócić uwagę na zmiany koloru, zapachu lub konsystencji."
     },
     "alert": {
-      "late_period": "Spodziewana miesiączka jest spóźniona.",
-      "upcoming_period": "Miesiączka spodziewana jest wkrótce.",
+      "late_period_one": "Miesiączka jest opóźniona o {{count}} dzień.",
+      "late_period_few": "Miesiączka jest opóźniona o {{count}} dni.",
+      "late_period_many": "Miesiączka jest opóźniona o {{count}} dni.",
+      "late_period_other": "Miesiączka jest opóźniona o {{count}} dni.",
+      "upcoming_period_one": "Miesiączka jest spodziewana za {{count}} dzień.",
+      "upcoming_period_few": "Miesiączka jest spodziewana za {{count}} dni.",
+      "upcoming_period_many": "Miesiączka jest spodziewana za {{count}} dni.",
+      "upcoming_period_other": "Miesiączka jest spodziewana za {{count}} dni.",
       "ovulation_today": "Owulacja przewidywana jest na dziś."
     }
   },
@@ -2131,13 +2143,20 @@
     "byPhase": "{{metric}} według fazy cyklu",
     "higher": "wyższa",
     "lower": "niższa",
-    "peak": "Wartość dla „{{metric}}” jest zwykle {{direction}} w fazie {{phase}} ({{delta}}{{unit}} względem średniej).",
+    "peak": "{{phase}} — wartość „{{metric}}” jest zwykle {{direction}} ({{delta}}{{unit}} względem średniej).",
     "noDataTitle": "Korelacje będą dostępne po zebraniu większej ilości danych",
     "noDataHint": "Zapisuj masę ciała, nastrój, sen i energię przez kilka cykli, aby zobaczyć ich zależność od faz cyklu.",
     "conditions": {
       "longCycles": "Średnia długość Twoich cykli przekracza 35 dni. Jeśli to nowa sytuacja, warto omówić ją z lekarzem.",
       "irregularCycles": "Długość Twoich cykli jest dość zmienna. Zapisanie kolejnych cykli pomoże uzyskać dokładniejszy obraz; warto wspomnieć o tym lekarzowi.",
       "shortCycles": "Twoje cykle są krótsze niż zwykle. Jeśli to nowa sytuacja, warto skonsultować ją z lekarzem."
+    },
+    "phasesSentence": {
+      "menstrual": "Faza miesiączkowa",
+      "follicular": "Faza folikularna",
+      "fertile": "Faza płodna",
+      "ovulation": "Owulacja",
+      "luteal": "Faza lutealna"
     }
   },
   "cycleHistory": {

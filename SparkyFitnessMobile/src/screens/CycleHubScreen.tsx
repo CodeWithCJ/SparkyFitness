@@ -182,7 +182,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
 
                 {/* Cycle Alerts */}
                 {alerts.length > 0 && (
-                  <CycleAlerts alerts={alerts.map((a) => ({ key: a.key, severity: a.severity, message: a.message }))} />
+                  <CycleAlerts alerts={alerts.map((a) => ({ key: a.key, severity: a.severity, message: a.message, params: a.params }))} />
                 )}
 
                 {/* TTC: fertility summary */}

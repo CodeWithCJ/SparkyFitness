@@ -167,7 +167,7 @@ const CycleInsightsView: React.FC = () => {
         <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
           <Text className="text-text-secondary text-base font-semibold">{t('cycleInsights.patternsToWatch', { defaultValue: 'Patterns to Watch' })}</Text>
           <View className="gap-2">
-            {anomalies.map((anom: { key: string; message: string }, idx: number) => (
+            {anomalies.map((anom: { key: string; message: string; params?: Record<string, number> }, idx: number) => (
               <View
                 key={idx}
                 className="flex-row items-start p-2"
@@ -176,7 +176,7 @@ const CycleInsightsView: React.FC = () => {
                   <Icon name="warning" size={18} color={dangerColor} />
                 </View>
                 <Text className="flex-1 text-sm text-text-primary leading-normal">
-                  {localizeCycleAnomaly(anom.key, anom.message, t)}
+                  {localizeCycleAnomaly(anom.key, anom.message, anom.params, t)}
                 </Text>
               </View>
             ))}
