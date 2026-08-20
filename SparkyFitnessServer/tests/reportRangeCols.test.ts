@@ -42,6 +42,35 @@ describe('getDailyNutritionTotalsRange select list', () => {
     }
   });
 
+  // Each output column must carry the nutrient it is NAMED for. Asserting the set of source
+  // expressions and the set of output names separately leaves them unbound: swapping the
+  // source columns of two fields while keeping their aliases preserves every token and every
+  // alias, so set-wise assertions all pass while `row.calories` returns protein grams and
+  // `row.protein` returns calories. Nothing downstream would notice; the numbers are just
+  // wrong. So pair them off the same line.
+  it('binds each source column to the output name it is published under', async () => {
+    const sql = await sqlOf();
+    const pairs = sql
+      .split('\n')
+      .filter((line) => /SUM\(fe\.\w+ \*/.test(line))
+      .map((line) => [
+        line.match(/SUM\(fe\.(\w+) \*/)?.[1],
+        line.match(/\bas (\w+),?\s*$/i)?.[1],
+        line.match(/nutrients_snapshot->>'(\w+)'/)?.[1],
+      ]);
+    expect(pairs).toEqual(
+      FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => [
+        field,
+        field === 'dietary_fiber'
+          ? 'fiber'
+          : field === 'sugars'
+            ? 'sugar'
+            : field,
+        field,
+      ])
+    );
+  });
+
   it('emits one output column per shared nutrient field and no others', async () => {
     const sql = await sqlOf();
     const aliases = [...sql.matchAll(/\bas (\w+),?$/gim)].map((m) => m[1]);
