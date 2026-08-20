@@ -32,14 +32,18 @@ describe('the shared fragments correlate on what the caller passes', () => {
   // than one day. The alias is the only thing preventing it, so assert on it directly.
   it('does not shadow a caller that correlates on its own me', () => {
     const sql = supplementFixedSubquery('iron', 'me.user_id', 'me.entry_date');
-    expect(sql).toContain('FROM medication_entries sup_me');
-    expect(sql).toContain('sup_me.user_id = me.user_id');
-    expect(sql).toContain('sup_me.entry_date = me.entry_date');
+    // Derived, not hardcoded: the property that matters is that the inner alias differs
+    // from the caller's, not that it is spelled `sup_me`. Pinning the literal would reject
+    // a future rename that is equally safe while proving nothing extra.
+    const innerAlias = sql.match(/FROM medication_entries (\w+)/)?.[1];
+    expect(innerAlias, 'no inner scan found').toBeTruthy();
+    expect(innerAlias).not.toBe('me');
+    expect(sql).toContain(`${innerAlias}.user_id = me.user_id`);
+    expect(sql).toContain(`${innerAlias}.entry_date = me.entry_date`);
     // Boundary-anchored: a plain substring check would pass on `sup_me.user_id = me.user_id`
     // and assert nothing, since the correct string ends with the wrong one.
     expect(sql).not.toMatch(/(?<![\w.])me\.user_id = me\.user_id/);
     expect(sql).not.toMatch(/(?<![\w.])me\.entry_date = me\.entry_date/);
-    expect(sql).not.toMatch(/FROM medication_entries me(?![\w])/);
   });
 });
 

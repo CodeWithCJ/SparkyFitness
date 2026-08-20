@@ -20,6 +20,11 @@
  * `me`, so that a caller correlating on its own `me` cannot have the inner alias shadow the
  * outer one. That shadowing would turn the correlation into `me.user_id = me.user_id`: a
  * tautology that runs clean and silently sums the user's entire history.
+ *
+ * `sup_me` and `sup_me2` are therefore RESERVED. A caller must not alias its own table with
+ * either, and must not pass a `userExpr` / `dateExpr` qualified by one, since the same
+ * shadowing returns. Nothing in the type system prevents it; the names are deliberately
+ * unlike anything a caller would reach for.
  */
 
 /**

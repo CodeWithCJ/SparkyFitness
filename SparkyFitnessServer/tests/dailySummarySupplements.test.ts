@@ -136,9 +136,18 @@ describe('getDailySupplementTotals', () => {
     expect(sql).toContain('AS custom_nutrients');
     // Same status filter and dose clamp as the fixed arm, because the custom rows are the
     // shared fragment rather than a second copy that could drift from it.
-    expect(sql).toMatch(/\w+\.status IN \('taken', 'prn_taken'\)/);
-    expect(sql).toMatch(
-      /GREATEST\(COALESCE\(\w+\.dose_amount_snapshot, 1\), 0\)/
+    //
+    // Asserted against the CUSTOM scan's own alias, derived from the query. This statement
+    // holds two scans, so a bare /\w+\.status IN .../ is satisfied by the fixed one and
+    // stays green even when the custom fragment loses its filter entirely. Deriving the
+    // alias keeps the assertion pinned to the right scan without hardcoding its name.
+    const customAlias = sql.match(
+      /FROM medication_entries (\w+)\s+CROSS JOIN LATERAL jsonb_each_text/
+    )?.[1];
+    expect(customAlias, 'could not find the custom-nutrient scan').toBeTruthy();
+    expect(sql).toContain(`${customAlias}.status IN ('taken', 'prn_taken')`);
+    expect(sql).toContain(
+      `GREATEST(COALESCE(${customAlias}.dose_amount_snapshot, 1), 0)`
     );
     // Supplements alone. Unioning the food rows in here, the way getDailyNutritionSummary
     // does, would double-count every custom nutrient: callers add this arm onto totals
