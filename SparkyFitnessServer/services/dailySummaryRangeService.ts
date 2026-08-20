@@ -11,10 +11,7 @@ import {
   resolveDayFraction,
   type CalorieBalanceMeasurements,
 } from './calorieBalanceService.js';
-import {
-  CALORIE_CALCULATION_CONSTANTS,
-  computeStepCalories,
-} from '@workspace/shared';
+import { resolveBackgroundStepCalories } from '@workspace/shared';
 import type { DailyCalorieBalanceRow } from '@workspace/shared';
 
 /**
@@ -209,14 +206,11 @@ export async function getDailySummaryRange({
     const totalSteps = includeCheckin ? (stepsByDate.get(date) ?? 0) : 0;
 
     const stepCalories = includeCheckin
-      ? computeStepCalories({
-          backgroundSteps: Math.max(0, totalSteps - exercise.activitySteps),
-          weightKg:
-            latestWeightHeight.weightKg ??
-            CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
-          heightCm:
-            latestWeightHeight.heightCm ??
-            CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+      ? resolveBackgroundStepCalories({
+          totalSteps,
+          activitySteps: exercise.activitySteps,
+          weightKg: latestWeightHeight.weightKg,
+          heightCm: latestWeightHeight.heightCm,
         })
       : 0;
 

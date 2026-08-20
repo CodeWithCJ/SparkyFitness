@@ -2,6 +2,7 @@ import express, { Request, RequestHandler } from 'express';
 import { getDailySummary } from '../services/dailySummaryService.js';
 import { getDailySummaryRange } from '../services/dailySummaryRangeService.js';
 
+import { z } from 'zod';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 
@@ -16,6 +17,39 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
  * far more than any chart renders legibly.
  */
 const MAX_RANGE_DAYS = 366;
+
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * `z.iso.date()` rather than a digit-shape regex: the regex accepts calendar-invalid
+ * values like 2026-13-45, whose `Date.parse` is NaN. That made the span check compare
+ * against NaN (always false) and handed an unparseable day string to the service, which
+ * threw a RangeError -- a 500 for what is plainly a bad request.
+ */
+const rangeQuerySchema = z
+  .object({
+    startDate: z.iso.date(),
+    endDate: z.iso.date(),
+    userId: z.string().optional(),
+  })
+  .refine((q) => q.startDate <= q.endDate, {
+    message: 'startDate must not be after endDate',
+    path: ['startDate'],
+  })
+  .refine(
+    (q) =>
+      Math.round(
+        (Date.parse(`${q.endDate}T00:00:00Z`) -
+          Date.parse(`${q.startDate}T00:00:00Z`)) /
+          MS_PER_DAY
+      ) +
+        1 <=
+      MAX_RANGE_DAYS,
+    {
+      message: `Date range must not exceed ${MAX_RANGE_DAYS} days`,
+      path: ['endDate'],
+    }
+  );
 
 interface SummaryAccess {
   actorUserId: string;
@@ -168,39 +202,14 @@ const handler: RequestHandler = async (req, res, next) => {
  */
 const rangeHandler: RequestHandler = async (req, res, next) => {
   try {
-    const startDate = req.query.startDate as string | undefined;
-    const endDate = req.query.endDate as string | undefined;
-
-    if (
-      !startDate ||
-      !endDate ||
-      !DATE_REGEX.test(startDate) ||
-      !DATE_REGEX.test(endDate)
-    ) {
+    const parsed = rangeQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
       res.status(400).json({
-        error:
-          'Missing or invalid startDate/endDate query parameters (expected YYYY-MM-DD)',
+        error: parsed.error.issues.map((issue) => issue.message).join(', '),
       });
       return;
     }
-
-    if (startDate > endDate) {
-      res.status(400).json({ error: 'startDate must not be after endDate' });
-      return;
-    }
-
-    const spanDays =
-      Math.round(
-        (Date.parse(`${endDate}T00:00:00Z`) -
-          Date.parse(`${startDate}T00:00:00Z`)) /
-          86_400_000
-      ) + 1;
-    if (spanDays > MAX_RANGE_DAYS) {
-      res.status(400).json({
-        error: `Date range must not exceed ${MAX_RANGE_DAYS} days`,
-      });
-      return;
-    }
+    const { startDate, endDate } = parsed.data;
 
     const access = await resolveSummaryAccess(req);
     if (!access) {

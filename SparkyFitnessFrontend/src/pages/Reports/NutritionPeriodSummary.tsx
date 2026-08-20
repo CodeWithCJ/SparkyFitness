@@ -31,7 +31,10 @@ import {
   excludeIncompleteDay,
   getChartConfig,
 } from '@/utils/chartUtils';
-import { calculateAverage } from '@/utils/reportUtil';
+import {
+  calculateAverage,
+  effectiveCalorieGoal as calorieBudgetFor,
+} from '@/utils/reportUtil';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -153,25 +156,9 @@ const NutritionPeriodSummary = ({
       : effectiveNutritionData;
   }, [effectiveNutritionData, config.excludeIncompleteDay]);
 
-  /**
-   * The day's real calorie budget: what was eaten plus what is still left.
-   *
-   * `eaten + remaining` is the one identity that reconciles the server's "remaining"
-   * with this chart's "goal" framing. In dynamic mode it expands to
-   * `goal + exercise + bmr`, the same shape this code used to build by hand -- except
-   * the server's version applies `max(active, logged + steps)` rather than a sum, counts
-   * step calories, and honours "Include BMR in Net Calories". It also generalises to
-   * percentage/tdee/smart/adaptive/fixed for free, which the hand-built version did not:
-   * four of those six modes silently credited zero.
-   *
-   * Returns undefined when there is no balance for the date, so callers fall back to the
-   * raw goal rather than inventing one.
-   */
   const effectiveCalorieGoal = useCallback(
-    (date: string): number | undefined => {
-      const balance = calorieBalanceByDate?.[date];
-      return balance ? balance.eaten + balance.remaining : undefined;
-    },
+    (date: string): number | undefined =>
+      calorieBudgetFor(calorieBalanceByDate?.[date]),
     [calorieBalanceByDate]
   );
 

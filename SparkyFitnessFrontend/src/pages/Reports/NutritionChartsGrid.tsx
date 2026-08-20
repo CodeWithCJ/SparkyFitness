@@ -27,7 +27,7 @@ import {
   withNetCarbsSubstitution,
 } from '@/utils/nutrientUtils';
 import { NutritionData } from '@/types/reports';
-import { calculateAverage } from '@/utils/reportUtil';
+import { calculateAverage, effectiveCalorieGoal } from '@/utils/reportUtil';
 import { ExpandedGoals } from '@/types/goals';
 import type { DailyCalorieBalanceRow } from '@workspace/shared';
 
@@ -82,22 +82,25 @@ const NutritionChartsGrid = ({
       ? excludeIncompleteDay(data, format(new Date(), 'yyyy-MM-dd'))
       : data;
 
-    // Merge goal value per date if goals is a map
-    if (goals && typeof goals === 'object' && !('calories' in goals)) {
+    // The calorie budget is derived from the balance, which does not depend on the
+    // stored goals map — so it must be resolved OUTSIDE the guard below. Keeping it
+    // inside meant that while `goalData` was still loading (its loading state is not
+    // part of the page's render gate) this grid drew no calorie goal line at all while
+    // NutritionPeriodSummary drew one, showing two different things on one screen.
+    const goalsIsMap =
+      goals && typeof goals === 'object' && !('calories' in goals);
+    const storedGoals = goalsIsMap
+      ? (goals as Record<string, ExpandedGoals>)
+      : undefined;
+
+    if (goalsIsMap || chartKey === 'calories') {
       result = result.map((point) => {
-        // Calories carry an exercise/BMR credit the stored goal knows nothing about.
-        // `eaten + remaining` is the same identity NutritionPeriodSummary uses, so both
-        // charts draw one goal line. Falls back to the stored goal when the balance has
-        // not loaded or the viewer lacks diary permission.
-        const balance =
+        const goalValue =
           chartKey === 'calories'
-            ? calorieBalanceByDate?.[point.date]
-            : undefined;
-        const goalValue = balance
-          ? balance.eaten + balance.remaining
-          : (goals as Record<string, ExpandedGoals>)[point.date]?.[
-              chartKey as keyof ExpandedGoals
-            ];
+            ? // Same identity NutritionPeriodSummary uses, so both charts agree.
+              (effectiveCalorieGoal(calorieBalanceByDate?.[point.date]) ??
+              storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals])
+            : storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals];
         return goalValue !== undefined
           ? { ...point, [`${chartKey}_goal`]: goalValue }
           : point;

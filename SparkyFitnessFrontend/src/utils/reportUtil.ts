@@ -23,6 +23,22 @@ import {
   CustomMeasurementsResponse,
 } from '@workspace/shared';
 import { CustomCategoriesResponse } from '@workspace/shared';
+import type { DailyCalorieBalanceRow } from '@workspace/shared';
+
+/**
+ * The day's real calorie budget from a server-computed balance row.
+ *
+ * `eaten + remaining` is the identity that reconciles the server's "remaining" with the
+ * Reports charts' "goal" framing. In dynamic mode it expands to `goal + exercise + bmr`,
+ * but it generalises to every adjustment mode without the caller knowing which is active
+ * -- which is the point: the browser must not re-derive this. See issue #2094.
+ *
+ * Shared because two Reports surfaces draw a calorie goal line and they have to agree.
+ */
+export const effectiveCalorieGoal = (
+  balance: DailyCalorieBalanceRow | undefined
+): number | undefined =>
+  balance ? balance.eaten + balance.remaining : undefined;
 
 interface StressDataPoint {
   time: string;

@@ -328,3 +328,57 @@ describe('sumFoodEntryCalories', () => {
     expect(sumFoodEntryCalories([{ calories: 200, quantity: 1 }])).toBe(2);
   });
 });
+
+describe('external BMR override', () => {
+  const externalPrefs = {
+    timezone: 'UTC',
+    activity_level: 'not_much',
+    calorie_goal_adjustment_mode: 'dynamic' as const,
+    include_bmr_in_net_calories: true,
+    use_external_bmr: true,
+  };
+
+  test('prefers a synced BMR inside the sanity bounds', () => {
+    const balance = computeCalorieBalance(
+      inputs({ externalBmr: 1800, userPreferences: externalPrefs })
+    );
+
+    expect(balance.bmr).toBe(1800);
+    expect(balance.bmrSource).toBe('external');
+    expect(balance.burned).toBe(1800);
+  });
+
+  // A bad sample must not be able to zero out the day's target.
+  test.each([599, 6001, 0, -50])(
+    'keeps the formula BMR when the synced value %s is out of bounds',
+    (value) => {
+      const balance = computeCalorieBalance(
+        inputs({ externalBmr: value, userPreferences: externalPrefs })
+      );
+
+      expect(balance.bmr).toBe(BMR);
+      expect(balance.bmrSource).toBe('formula');
+    }
+  );
+
+  test.each([600, 6000])('accepts the boundary value %s', (value) => {
+    const balance = computeCalorieBalance(
+      inputs({ externalBmr: value, userPreferences: externalPrefs })
+    );
+
+    expect(balance.bmr).toBe(value);
+    expect(balance.bmrSource).toBe('external');
+  });
+
+  test('ignores a synced BMR when the user has not opted in', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        externalBmr: 1800,
+        userPreferences: { ...externalPrefs, use_external_bmr: false },
+      })
+    );
+
+    expect(balance.bmr).toBe(BMR);
+    expect(balance.bmrSource).toBe('formula');
+  });
+});

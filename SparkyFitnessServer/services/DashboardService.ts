@@ -5,10 +5,7 @@ import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
-import {
-  CALORIE_CALCULATION_CONSTANTS,
-  computeStepCalories,
-} from '@workspace/shared';
+import { resolveBackgroundStepCalories } from '@workspace/shared';
 import {
   computeCalorieBalance,
   resolveDayFraction,
@@ -96,14 +93,11 @@ async function getDashboardStats(
 
     const steps = parseInt(String(checkInMeasurements?.steps ?? '0'), 10) || 0;
     const stepCalories = includeCheckin
-      ? computeStepCalories({
-          backgroundSteps: Math.max(0, steps - exercise.activitySteps),
-          weightKg:
-            latestWeightHeight.weightKg ??
-            CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
-          heightCm:
-            latestWeightHeight.heightCm ??
-            CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+      ? resolveBackgroundStepCalories({
+          totalSteps: steps,
+          activitySteps: exercise.activitySteps,
+          weightKg: latestWeightHeight.weightKg,
+          heightCm: latestWeightHeight.heightCm,
         })
       : 0;
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import NutritionPeriodSummary from '@/pages/Reports/NutritionPeriodSummary';
 import type { NutritionData } from '@/types/reports';
@@ -303,7 +303,12 @@ describe('NutritionPeriodSummary', () => {
     }
   );
 
-  it('leaves non-calorie nutrients on their stored goals', () => {
+  /**
+   * The balance must not leak into other nutrients. Protein is promoted to the primary
+   * nutrient (the KPI reads `selectedNutrients[0]`) so its Total Goal becomes assertable;
+   * it must show the plain stored goal even though a calorie balance is supplied.
+   */
+  it('leaves non-calorie nutrients on their stored goals', async () => {
     render(
       <NutritionPeriodSummary
         nutritionData={[{ ...day('2026-08-11', 2477), protein: 150 }]}
@@ -320,8 +325,23 @@ describe('NutritionPeriodSummary', () => {
       />
     );
 
-    // Protein is untouched by the calorie balance: 150 eaten against a 140 goal.
+    // Sanity: calories currently drive the KPI and carry the 779 credit.
     expect(screen.getByText(/Total Goal: 2741 kcal/i)).toBeInTheDocument();
+
+    // Radix opens its trigger on pointerdown/keyboard, not a bare click in jsdom.
+    fireEvent.keyDown(screen.getByRole('button', { name: /calories/i }), {
+      key: 'Enter',
+    });
+    fireEvent.click(
+      await screen.findByRole('menuitemcheckbox', { name: /protein/i })
+    );
+    fireEvent.click(
+      screen.getByRole('menuitemcheckbox', { name: /calories/i })
+    );
+
+    // Protein's goal is the stored 140 — untouched by the calorie balance.
+    expect(await screen.findByText(/Total Goal: 140/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Total Goal: 2741/i)).not.toBeInTheDocument();
   });
 
   /**

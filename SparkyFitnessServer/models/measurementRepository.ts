@@ -3,8 +3,7 @@ import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
 import {
-  CALORIE_CALCULATION_CONSTANTS,
-  computeStepCalories,
+  resolveBackgroundStepCalories,
   isDayString,
   isValidTimeZone,
   todayInZone,
@@ -1381,18 +1380,21 @@ async function getLatestWeightHeight(
     const result = await client.query(
       `SELECT
          (SELECT weight FROM check_in_measurements
-           WHERE user_id = $1 AND weight IS NOT NULL
+           WHERE user_id = $1 AND weight IS NOT NULL AND weight > 0
            ORDER BY entry_date DESC, updated_at DESC LIMIT 1) AS weight,
          (SELECT height FROM check_in_measurements
-           WHERE user_id = $1 AND height IS NOT NULL
+           WHERE user_id = $1 AND height IS NOT NULL AND height > 0
            ORDER BY entry_date DESC, updated_at DESC LIMIT 1) AS height`,
       [userId]
     );
     const weight = parseFloat(result.rows[0]?.weight);
     const height = parseFloat(result.rows[0]?.height);
     return {
-      weightKg: Number.isFinite(weight) ? weight : null,
-      heightCm: Number.isFinite(height) ? height : null,
+      // `> 0`, not just finite: a stored 0 would otherwise survive the `??` fallbacks
+      // downstream and zero out the day's step calories. The per-date Diary lookup
+      // filters the same way, and the two must agree.
+      weightKg: Number.isFinite(weight) && weight > 0 ? weight : null,
+      heightCm: Number.isFinite(height) && height > 0 ? height : null,
     };
   } finally {
     client.release();
@@ -1417,10 +1419,11 @@ async function getStepCaloriesForDate(
     getCheckInStepsForDate(userId, date),
   ]);
 
-  return computeStepCalories({
-    backgroundSteps: Math.max(0, totalSteps - (activitySteps || 0)),
-    weightKg: weightKg ?? CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
-    heightCm: heightCm ?? CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+  return resolveBackgroundStepCalories({
+    totalSteps,
+    activitySteps,
+    weightKg,
+    heightCm,
   });
 }
 

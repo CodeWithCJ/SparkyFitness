@@ -217,7 +217,7 @@ export function computeCalorieBalance({
   // 1b. External BMR override — when the user opts in and a synced resting/BMR value
   // exists for the day, prefer it over the formula. Sanity-bounded so a bad sample
   // can't zero out the target; otherwise we keep the formula.
-  let bmrSource = 'formula';
+  let bmrSource: 'formula' | 'external' = 'formula';
   if (
     useExternalBmr &&
     externalBmr !== null &&
@@ -295,7 +295,7 @@ export function computeCalorieBalance({
     net: Math.round(netCalories),
     progress: Math.round(progress),
     bmr: Math.round(bmr),
-    bmrSource: bmrSource as 'formula' | 'external',
+    bmrSource,
     exerciseSource: resolved.source,
     tdeeProjection,
   };

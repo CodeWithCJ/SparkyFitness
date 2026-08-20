@@ -2,8 +2,7 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import { log } from '../config/logging.js';
 import {
-  CALORIE_CALCULATION_CONSTANTS,
-  computeStepCalories,
+  resolveBackgroundStepCalories,
   resolveExerciseCalories,
   type ExerciseCalorieSource,
 } from '@workspace/shared';
@@ -77,17 +76,11 @@ export async function getResolvedExerciseCaloriesRange(
     const loggedCalories = Number(split.other_calories) || 0;
     const activitySteps = Number(split.activity_steps) || 0;
 
-    const stepCalories = computeStepCalories({
-      backgroundSteps: Math.max(
-        0,
-        (stepsByDate.get(split.entry_date) ?? 0) - activitySteps
-      ),
-      weightKg:
-        latestWeightHeight.weightKg ??
-        CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
-      heightCm:
-        latestWeightHeight.heightCm ??
-        CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+    const stepCalories = resolveBackgroundStepCalories({
+      totalSteps: stepsByDate.get(split.entry_date) ?? 0,
+      activitySteps,
+      weightKg: latestWeightHeight.weightKg,
+      heightCm: latestWeightHeight.heightCm,
     });
 
     const resolved = resolveExerciseCalories(

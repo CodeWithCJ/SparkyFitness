@@ -69,6 +69,18 @@ import {
   CalorieGoalAdjustmentMode,
 } from '@workspace/shared';
 
+/**
+ * This screen offers radio items for five of the six adjustment modes. `smart` has no
+ * item of its own and behaves identically to `tdee` in `computeCaloriesRemaining`, so it
+ * is presented as `tdee` rather than leaving the RadioGroup with nothing selected and the
+ * explanation falling through to the `fixed` copy. Mirrors the same normalisation mobile
+ * already does in CalorieSettingsScreen.
+ */
+const toSelectableMode = (
+  mode: CalorieGoalAdjustmentMode | undefined
+): CalorieGoalAdjustmentMode =>
+  !mode ? 'dynamic' : mode === 'smart' ? 'tdee' : mode;
+
 const CalculationSettings = () => {
   const { t } = useTranslation();
   const invalidateDiary = useDiaryInvalidation();
@@ -103,7 +115,7 @@ const CalculationSettings = () => {
   const invalidateDailyProgress = useDailyProgressInvalidation();
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] =
     useState<CalorieGoalAdjustmentMode>(
-      contextCalorieGoalAdjustmentMode || 'dynamic'
+      toSelectableMode(contextCalorieGoalAdjustmentMode)
     );
   const [exerciseCaloriePercentage, setExerciseCaloriePercentage] =
     useState<number>(contextExerciseCaloriePercentage ?? 100);
@@ -194,7 +206,9 @@ const CalculationSettings = () => {
       setAddedSugarAlgorithm(contextAddedSugarAlgorithm);
     }
     if (contextCalorieGoalAdjustmentMode) {
-      setCalorieGoalAdjustmentMode(contextCalorieGoalAdjustmentMode);
+      setCalorieGoalAdjustmentMode(
+        toSelectableMode(contextCalorieGoalAdjustmentMode)
+      );
     }
     if (contextExerciseCaloriePercentage !== undefined) {
       setExerciseCaloriePercentage(contextExerciseCaloriePercentage);
@@ -707,9 +721,9 @@ const CalculationSettings = () => {
         </Label>
         <RadioGroup
           value={calorieGoalAdjustmentMode}
-          onValueChange={(
-            value: 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive'
-          ) => setCalorieGoalAdjustmentMode(value)}
+          onValueChange={(value: CalorieGoalAdjustmentMode) =>
+            setCalorieGoalAdjustmentMode(value)
+          }
           className="flex flex-col space-y-2 mb-4"
         >
           <div className="flex items-center space-x-2">

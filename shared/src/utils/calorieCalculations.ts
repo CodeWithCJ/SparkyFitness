@@ -86,6 +86,39 @@ export function computeStepCalories({
   );
 }
 
+/**
+ * Background step kcal from a day's raw totals.
+ *
+ * Wraps the two rules that always travel together: steps a logged workout already
+ * accounted for are not background steps, and a missing or non-positive body
+ * measurement falls back to the default rather than zeroing the day. Both the per-date
+ * Diary path and the ranged Reports path call this, so they cannot drift apart.
+ */
+export function resolveBackgroundStepCalories({
+  totalSteps,
+  activitySteps,
+  weightKg,
+  heightCm,
+}: {
+  totalSteps: number;
+  activitySteps: number;
+  /** Non-positive or nullish values fall back to the default. */
+  weightKg?: number | null;
+  heightCm?: number | null;
+}): number {
+  return computeStepCalories({
+    backgroundSteps: Math.max(0, (totalSteps || 0) - (activitySteps || 0)),
+    weightKg:
+      weightKg && weightKg > 0
+        ? weightKg
+        : CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
+    heightCm:
+      heightCm && heightCm > 0
+        ? heightCm
+        : CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+  });
+}
+
 export function resolveExerciseCalories(
   loggedExerciseCalories: number,
   activeCaloriesFromExercise: number,

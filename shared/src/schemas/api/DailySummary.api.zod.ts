@@ -37,7 +37,8 @@ export type CalorieBalance = z.infer<typeof calorieBalanceSchema>;
  * disagreed with the Diary's on three separate inputs.
  */
 export const dailyCalorieBalanceRowSchema = calorieBalanceSchema.extend({
-  date: z.string(),
+  /** Calendar day, not an instant. `z.iso.date()` also rejects impossible dates. */
+  date: z.iso.date(),
   /** Background step kcal that fed this day. 0 when checkin access is not permitted. */
   stepCalories: z.number(),
 });
