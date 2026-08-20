@@ -102,6 +102,8 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
           count: point.steps,
           formattedCount: formatLocalizedNumber(point.steps),
           defaultValue: '{{formattedCount}} steps',
+          defaultValue_one: '{{formattedCount}} step',
+          defaultValue_other: '{{formattedCount}} steps',
         })} · ${formatTooltipDate(
           point.day,
         )}`,

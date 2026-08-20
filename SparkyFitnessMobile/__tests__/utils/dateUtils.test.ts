@@ -6,6 +6,7 @@ import {
   formatDateLabel,
   formatRelativeTime,
 } from '../../src/utils/dateUtils';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 // These helpers implement device-local calendar-day logic. The process timezone
 // cannot be changed at runtime (V8 caches it at startup), so expectations are
@@ -117,7 +118,15 @@ describe('with a pinned clock', () => {
       expect(formatRelativeTime(null)).toBe('Never synced');
     });
 
-    test('branches on elapsed time', () => {
+    test('uses the active Polish app locale for relative time', async () => {
+      await initializeI18n('pl');
+      await i18n.changeLanguage('pl');
+      expect(formatRelativeTime(minutesAgo(1))).toMatch(/1 minutę temu/);
+      expect(formatRelativeTime(minutesAgo(5))).toMatch(/5 minut temu/);
+    });
+
+    test('branches on elapsed time', async () => {
+      await i18n.changeLanguage('en');
       expect(formatRelativeTime(minutesAgo(0.5))).toBe('Just now');
       expect(formatRelativeTime(minutesAgo(1))).toMatch(/1 minute ago/);
       expect(formatRelativeTime(minutesAgo(5))).toMatch(/5 minutes ago/);

@@ -10,7 +10,7 @@ import {
   getAggregatedBasalEnergyByDate,
 } from '../../src/services/healthConnectService';
 import { addLog } from '../../src/services/LogService';
-import i18n, { initializeI18n } from '../../src/localization/i18n';
+import i18n, { formatLocalizedNumber, initializeI18n } from '../../src/localization/i18n';
 import type { TimeRange } from '../../src/services/storage';
 
 // A single, controllable metric list — the real HEALTH_METRICS is platform
@@ -88,22 +88,28 @@ describe('fetchHealthDisplayData', () => {
     mockBasalEnergy.mockResolvedValue([]);
   });
 
+  it('formats aggregated values according to the active Polish app locale', async () => {
+    await i18n.changeLanguage('pl');
+    mockSteps.mockResolvedValue([{ value: 5000 }, { value: 432 }]);
+    expect(await displayFor('Steps')).toBe(formatLocalizedNumber(5432));
+  });
+
   describe('aggregated formatters', () => {
     it('formats steps as a localized total', async () => {
       mockSteps.mockResolvedValue([{ value: 5000 }, { value: 432 }]);
-      expect(await displayFor('Steps')).toBe((5432).toLocaleString());
+      expect(await displayFor('Steps')).toBe(formatLocalizedNumber(5432));
       // Aggregated metrics never read raw records.
       expect(mockReadHealthRecords).not.toHaveBeenCalled();
     });
 
     it('formats active calories as a localized total', async () => {
       mockActiveCals.mockResolvedValue([{ value: 300 }, { value: 200 }]);
-      expect(await displayFor('ActiveCaloriesBurned')).toBe((500).toLocaleString());
+      expect(await displayFor('ActiveCaloriesBurned')).toBe(formatLocalizedNumber(500));
     });
 
     it('formats total calories as a localized total', async () => {
       mockTotalCals.mockResolvedValue([{ value: 1500 }, { value: 500 }]);
-      expect(await displayFor('TotalCaloriesBurned')).toBe((2000).toLocaleString());
+      expect(await displayFor('TotalCaloriesBurned')).toBe(formatLocalizedNumber(2000));
     });
 
     it('converts distance from metres to kilometres', async () => {
@@ -113,7 +119,7 @@ describe('fetchHealthDisplayData', () => {
 
     it('rounds floors climbed before localizing', async () => {
       mockFloors.mockResolvedValue([{ value: 10.4 }, { value: 2.4 }]);
-      expect(await displayFor('FloorsClimbed')).toBe((13).toLocaleString());
+      expect(await displayFor('FloorsClimbed')).toBe(formatLocalizedNumber(13));
     });
 
     it('passes the resolved start/end window to the fetcher', async () => {
@@ -129,7 +135,7 @@ describe('fetchHealthDisplayData', () => {
       // Unlike raw formatters, aggregated metrics skip the no-records short-circuit,
       // so an empty result sums to 0 and is localized.
       mockSteps.mockResolvedValue([]);
-      expect(await displayFor('Steps')).toBe((0).toLocaleString());
+      expect(await displayFor('Steps')).toBe(formatLocalizedNumber(0));
     });
   });
 
