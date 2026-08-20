@@ -246,41 +246,29 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     }
   }, [createPresetAsync, preset, navigation]);
 
-  const rightItems: HeaderItem[] = [
-    ...(canManagePreset
-      ? [
-          {
-            kind: 'icon',
-            sfSymbol: isPublic ? 'lock.fill' : 'square.and.arrow.up',
-            ionicon: isPublic ? 'lock-closed-outline' : 'share-social-outline',
-            role: 'secondary',
-            useIoniconOnIOS: !isPublic,
-            disabled: isSharePending,
-            onPress: handleToggleShare,
-            accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
-            identifier: 'workout-preset-detail-share',
-          } as const,
-          {
-            kind: 'text',
-            label: 'Edit',
-            role: 'secondary',
-            onPress: handleEdit,
-            accessibilityLabel: 'Edit workout preset',
-            identifier: 'workout-preset-detail-edit',
-          } as const,
-        ]
-      : []),
-    {
-      kind: 'icon',
-      sfSymbol: 'doc.on.doc',
-      ionicon: 'copy-outline',
-      role: 'secondary',
-      disabled: isDuplicatePending,
-      onPress: () => void handleDuplicatePreset(),
-      accessibilityLabel: 'Duplicate workout preset',
-      identifier: 'workout-preset-detail-duplicate',
-    } as const,
-  ];
+  const rightItems: HeaderItem[] = canManagePreset
+    ? [
+        {
+          kind: 'icon',
+          sfSymbol: isPublic ? 'lock.fill' : 'square.and.arrow.up',
+          ionicon: isPublic ? 'lock-closed-outline' : 'share-social-outline',
+          role: 'secondary',
+          useIoniconOnIOS: !isPublic,
+          disabled: isSharePending,
+          onPress: handleToggleShare,
+          accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+          identifier: 'workout-preset-detail-share',
+        } as const,
+        {
+          kind: 'text',
+          label: 'Edit',
+          role: 'secondary',
+          onPress: handleEdit,
+          accessibilityLabel: 'Edit workout preset',
+          identifier: 'workout-preset-detail-edit',
+        } as const,
+      ]
+    : [];
 
   const header = useScreenHeader({
     title: preset.name,
@@ -376,6 +364,17 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           textClassName="text-text-secondary font-medium"
         >
           Log past workout
+        </Button>
+
+        <Button
+          variant="ghost"
+          onPress={() => void handleDuplicatePreset()}
+          disabled={isDuplicatePending}
+          className="mt-3"
+          textClassName="text-text-secondary font-medium"
+          accessibilityLabel="Duplicate workout preset"
+        >
+          {isDuplicatePending ? 'Duplicating...' : 'Duplicate preset'}
         </Button>
 
         {canManagePreset && (
