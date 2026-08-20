@@ -2,25 +2,25 @@
  * SQL fragments for the supplement arm of a day's nutrition.
  *
  * A logged supplement contributes its immutable per-entry `nutrients_snapshot`, scaled by
- * the dose count taken. Three model queries need that contribution — the Diary's
+ * the dose count taken. Several model queries need that contribution — the Diary's
  * supplement-only totals and its combined food+supplement summary (both `foodMisc.ts`),
- * and the range query behind trends and the chatbot (`reportRepository.ts`) — and until
- * this module they each spelled it out. Two copies had already drifted in shape while
- * agreeing in meaning, which is one edit away from disagreeing in meaning: the status
- * filter and the dose clamp are the parts that must never differ between them, since
- * either one being wrong in one place shows up as a plausible number rather than an error.
+ * and the reports and range queries (`reportRepository.ts`) — and until this module they
+ * each spelled it out. The copies had already drifted in shape while agreeing in meaning,
+ * which is one edit away from disagreeing in meaning: the status filter and the dose clamp
+ * are the parts that must never differ, since either one being wrong in one place shows up
+ * as a plausible number rather than an error.
  *
  * `userExpr` / `dateExpr` are the SQL expressions to correlate on, so a caller can bind
  * params ($1/$2) for a single-date query or reference grouped columns (`d.user_id`,
- * `d.entry_date`) for a per-date one. `alias` is the `medication_entries` alias in scope;
- * the fixed and custom fragments appear in the same statement and so cannot share one. Pass
- * an empty alias where the query selects from the bare table.
+ * `d.entry_date`) for a per-date one.
+ *
+ * `alias` is the `medication_entries` alias in the caller's own scope, and it is required:
+ * the fixed and custom fragments can appear in one statement and so cannot share an alias.
+ * Fragments that open their own scan use `sup_me` / `sup_me2` rather than the conventional
+ * `me`, so that a caller correlating on its own `me` cannot have the inner alias shadow the
+ * outer one. That shadowing would turn the correlation into `me.user_id = me.user_id`: a
+ * tautology that runs clean and silently sums the user's entire history.
  */
-
-/** `me.entry_date`, or plain `entry_date` when no alias is in scope. */
-function col(alias: string, name: string): string {
-  return alias ? `${alias}.${name}` : name;
-}
 
 /**
  * How many doses a `medication_entries` row counts for. Missing means one; non-positive
@@ -28,10 +28,10 @@ function col(alias: string, name: string): string {
  *
  * Exported on its own because `getNutritionData` scales per row before summing while the
  * daily aggregations sum the scaled products, so those two cannot share a whole expression
- * — but they must not disagree about what a dose count means.
+ * but must not disagree about what a dose count means.
  */
 function doseScale(alias: string): string {
-  return `GREATEST(COALESCE(${col(alias, 'dose_amount_snapshot')}, 1), 0)`;
+  return `GREATEST(COALESCE(${alias}.dose_amount_snapshot, 1), 0)`;
 }
 
 /**
@@ -40,58 +40,55 @@ function doseScale(alias: string): string {
  * differs between them (one day, or a range), which is why it is not folded in here.
  *
  * Shared rather than repeated because adding a status that should count is otherwise a
- * five-site edit with nothing to catch the site you miss — and missing one shows up as a
- * total that is quietly low, not as an error.
+ * five-site edit with nothing to catch the site you miss, and missing one shows up as a
+ * total that is quietly low rather than as an error.
  */
 function supplementCountable(alias: string): string {
-  return `${col(alias, 'status')} IN ('taken', 'prn_taken') AND ${col(alias, 'nutrients_snapshot')} IS NOT NULL`;
+  return `${alias}.status IN ('taken', 'prn_taken') AND ${alias}.nutrients_snapshot IS NOT NULL`;
 }
 
-/**
- * The full row filter for a single-date read: this user, this date, and countable.
- */
+/** The full row filter for a single-date read: this user, this date, and countable. */
 function supplementScanWhere(
   alias: string,
   userExpr: string,
   dateExpr: string
 ): string {
-  return `${col(alias, 'user_id')} = ${userExpr} AND ${col(alias, 'entry_date')} = ${dateExpr} AND ${supplementCountable(alias)}`;
+  return `${alias}.user_id = ${userExpr} AND ${alias}.entry_date = ${dateExpr} AND ${supplementCountable(alias)}`;
 }
 
 /**
- * The dose-scaled sum of one fixed nutrient field, as an aggregate over rows already
- * filtered by `supplementScanWhere`. Use this when the caller supplies its own single
- * `FROM medication_entries` scan; use `supplementFixed` when it needs a self-contained
- * scalar expression.
+ * The dose-scaled sum of one fixed nutrient field as a bare aggregate, for a caller that
+ * supplies its own single `FROM medication_entries` scan and its own WHERE.
  */
-function supplementFixedSum(key: string, alias: string): string {
+function supplementFixedAgg(key: string, alias: string): string {
   return `SUM(public.sf_try_numeric(${alias}.nutrients_snapshot->>'${key}') * ${doseScale(alias)})`;
 }
 
 /**
  * The dose-scaled total of one fixed nutrient field as a self-contained scalar subquery,
- * for callers adding it onto a food SUM in a grouped query. Zero rather than NULL on a day
- * with no doses, so it can be added unconditionally.
+ * for callers adding it onto a food SUM in a grouped query. Opens its own scan, so it needs
+ * no scan from the caller. Zero rather than NULL on a day with no doses, so it can be added
+ * unconditionally.
  */
-function supplementFixed(
+function supplementFixedSubquery(
   key: string,
   userExpr: string,
   dateExpr: string
 ): string {
-  return `COALESCE((SELECT ${supplementFixedSum(key, 'me')} FROM medication_entries me WHERE ${supplementScanWhere('me', userExpr, dateExpr)}), 0)`;
+  return `COALESCE((SELECT ${supplementFixedAgg(key, 'sup_me')} FROM medication_entries sup_me WHERE ${supplementScanWhere('sup_me', userExpr, dateExpr)}), 0)`;
 }
 
 /**
  * One scaled row per (custom nutrient, dose) pair. Kept apart from the UNION wrapper below
  * because the daily-summary query needs the supplement contribution on its own, not merged
- * into the food rows.
+ * into the food rows. Opens its own scan, hence its own unshadowable alias.
  */
 function supplementCustomRows(userExpr: string, dateExpr: string): string {
   return `
-                SELECT key, public.sf_try_numeric(value) * ${doseScale('me2')} AS scaled
-                FROM medication_entries me2
-                CROSS JOIN LATERAL jsonb_each_text(me2.nutrients_snapshot->'custom_nutrients')
-                WHERE ${supplementScanWhere('me2', userExpr, dateExpr)}`;
+                SELECT key, public.sf_try_numeric(value) * ${doseScale('sup_me2')} AS scaled
+                FROM medication_entries sup_me2
+                CROSS JOIN LATERAL jsonb_each_text(sup_me2.nutrients_snapshot->'custom_nutrients')
+                WHERE ${supplementScanWhere('sup_me2', userExpr, dateExpr)}`;
 }
 
 /** The same rows as an arm of a food query's custom-nutrient UNION. */
@@ -124,9 +121,8 @@ export {
   doseScale,
   supplementCountable,
   supplementScanWhere,
-  supplementFixedSum,
-  supplementFixed,
-  supplementCustomRows,
+  supplementFixedAgg,
+  supplementFixedSubquery,
   supplementCustomUnion,
   supplementCustomTotals,
 };

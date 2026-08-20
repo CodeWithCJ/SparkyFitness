@@ -4,9 +4,9 @@ import type { FoodVariantNutrientField } from '@workspace/shared';
 import type { FoodEntrySnapshot } from '../types/nutrition.js';
 import {
   supplementScanWhere,
-  supplementFixedSum,
+  supplementFixedAgg,
   supplementCountable,
-  supplementFixed,
+  supplementFixedSubquery,
   supplementCustomUnion,
   supplementCustomTotals,
 } from './supplementSql.js';
@@ -238,7 +238,7 @@ async function removeFoodFavorite(userId: string, foodId: string) {
  * food rows the user can see.
  *
  * Fields are `FOOD_VARIANT_NUTRIENT_FIELDS`, the same list `reportRepository` applies
- * `supplementFixed` to for the range query and the same fixed fields the Diary's summary
+ * `supplementFixedSubquery` to for the range query and the same fixed fields the Diary's summary
  * card can render. This selected only the five macro fields until #2145, which is how a
  * supplement's calcium reached Reports but not the Diary card beside it. Returns zeros
  * rather than nulls on a day with no supplements, so callers can add unconditionally.
@@ -259,7 +259,7 @@ async function getDailySupplementTotals(userId: string, date: string) {
   const client = await getClient(userId);
   try {
     const sums = FOOD_VARIANT_NUTRIENT_FIELDS.map(
-      (field) => `${supplementFixedSum(field, 'me')} AS ${field}`
+      (field) => `${supplementFixedAgg(field, 'me')} AS ${field}`
     ).join(',\n          ');
     const selects = FOOD_VARIANT_NUTRIENT_FIELDS.map(
       (field) => `COALESCE(supplement_fixed.${field}, 0) AS ${field}`
@@ -304,11 +304,11 @@ async function getDailyNutritionSummary(userId: string, date: string) {
   try {
     const result = await client.query(
       `SELECT
-        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('calories', '$1', '$2')} AS total_calories,
-        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('protein', '$1', '$2')} AS total_protein,
-        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('carbs', '$1', '$2')} AS total_carbs,
-        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('fat', '$1', '$2')} AS total_fat,
-        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('dietary_fiber', '$1', '$2')} AS total_dietary_fiber,
+        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('calories', '$1', '$2')} AS total_calories,
+        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('protein', '$1', '$2')} AS total_protein,
+        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('carbs', '$1', '$2')} AS total_carbs,
+        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('fat', '$1', '$2')} AS total_fat,
+        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('dietary_fiber', '$1', '$2')} AS total_dietary_fiber,
         COALESCE(
           (
             SELECT jsonb_object_agg(key, value)
@@ -348,11 +348,11 @@ async function getDailyNutritionSummariesByDates(
     const result = await client.query(
       `SELECT
         d.entry_date,
-        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('calories', 'd.user_id', 'd.entry_date')} AS total_calories,
-        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('protein', 'd.user_id', 'd.entry_date')} AS total_protein,
-        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('carbs', 'd.user_id', 'd.entry_date')} AS total_carbs,
-        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('fat', 'd.user_id', 'd.entry_date')} AS total_fat,
-        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('dietary_fiber', 'd.user_id', 'd.entry_date')} AS total_dietary_fiber,
+        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('calories', 'd.user_id', 'd.entry_date')} AS total_calories,
+        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('protein', 'd.user_id', 'd.entry_date')} AS total_protein,
+        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('carbs', 'd.user_id', 'd.entry_date')} AS total_carbs,
+        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('fat', 'd.user_id', 'd.entry_date')} AS total_fat,
+        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('dietary_fiber', 'd.user_id', 'd.entry_date')} AS total_dietary_fiber,
         COALESCE(
           (
             SELECT jsonb_object_agg(key, value)
@@ -374,10 +374,10 @@ async function getDailyNutritionSummariesByDates(
            FROM food_entries
           WHERE user_id = $1 AND entry_date = ANY($2::date[])
          UNION
-         SELECT DISTINCT user_id, entry_date
-           FROM medication_entries
-          WHERE user_id = $1 AND entry_date = ANY($2::date[])
-            AND ${supplementCountable('')}
+         SELECT DISTINCT me.user_id, me.entry_date
+           FROM medication_entries me
+          WHERE me.user_id = $1 AND me.entry_date = ANY($2::date[])
+            AND ${supplementCountable('me')}
        ) d
        LEFT JOIN food_entries fe
               ON fe.user_id = d.user_id AND fe.entry_date = d.entry_date

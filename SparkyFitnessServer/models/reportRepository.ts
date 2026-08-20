@@ -4,7 +4,7 @@ import { getClient } from '../db/poolManager.js';
 import {
   doseScale,
   supplementCountable,
-  supplementFixed,
+  supplementFixedSubquery,
 } from './supplementSql.js';
 async function getNutritionData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -650,7 +650,7 @@ async function getDailyNutritionTotalsRange(
     // disappearing from the range.
     const rangeSelects = RANGE_COLS.map(
       ([col, alias]) =>
-        `COALESCE(SUM(fe.${col} * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed(col, '$1', 'd.entry_date')} as ${alias}`
+        `COALESCE(SUM(fe.${col} * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery(col, '$1', 'd.entry_date')} as ${alias}`
     ).join(',\n              ');
     const result = await client.query(
       `SELECT d.entry_date,
@@ -660,10 +660,10 @@ async function getDailyNutritionTotalsRange(
            FROM food_entries
           WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
          UNION
-         SELECT DISTINCT entry_date
-           FROM medication_entries
-          WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
-            AND ${supplementCountable('')}
+         SELECT DISTINCT me.entry_date
+           FROM medication_entries me
+          WHERE me.user_id = $1 AND me.entry_date BETWEEN $2 AND $3
+            AND ${supplementCountable('me')}
        ) d
        LEFT JOIN food_entries fe
               ON fe.user_id = $1 AND fe.entry_date = d.entry_date

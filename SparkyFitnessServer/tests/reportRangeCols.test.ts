@@ -44,7 +44,7 @@ describe('getDailyNutritionTotalsRange select list', () => {
 
   it('emits one output column per shared nutrient field and no others', async () => {
     const sql = await sqlOf();
-    const aliases = [...sql.matchAll(/\bas (\w+),?$/gm)].map((m) => m[1]);
+    const aliases = [...sql.matchAll(/\bas (\w+),?$/gim)].map((m) => m[1]);
     expect(aliases).toHaveLength(FOOD_VARIANT_NUTRIENT_FIELDS.length);
     expect(new Set(aliases).size).toBe(aliases.length);
   });

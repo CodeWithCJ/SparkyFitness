@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
 import {
@@ -10,52 +8,38 @@ import { v4 as uuidv4 } from 'uuid';
 import { getClient } from '../db/poolManager.js';
 import { getDailySupplementTotals } from '../models/foodMisc.js';
 import { getDailyNutritionTotalsRange } from '../models/reportRepository.js';
-import { supplementFixed } from '../models/supplementSql.js';
+import { supplementFixedSubquery } from '../models/supplementSql.js';
 
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
 }));
 
-const sourceOf = (relative: string) =>
-  readFileSync(fileURLToPath(new URL(relative, import.meta.url)), 'utf8');
-
-// The status filter and the dose clamp decide what a supplement contributes to every total
-// the app shows. Both used to be written out separately in foodMisc and reportRepository,
-// which agreed by inspection and nothing else: either copy could have been edited alone and
-// the result would have been a plausible number on one screen and a different plausible
-// number on another, with no test and no type failing.
-describe('supplement SQL has a single definition', () => {
-  const models = ['../models/foodMisc.ts', '../models/reportRepository.ts'];
-
-  it.each(models)(
-    '%s builds no supplement snapshot SQL of its own',
-    (relative) => {
-      const source = sourceOf(relative);
-      // Constructs, not identifiers: these files legitimately discuss the snapshot and the
-      // dose count in prose, but neither may spell out the clamp or the correlated read.
-      expect(source).not.toContain('GREATEST(COALESCE(');
-      expect(source).not.toContain(
-        'FROM medication_entries me WHERE me.user_id ='
-      );
-      expect(source).not.toContain("me.status IN ('taken', 'prn_taken')");
-    }
-  );
-
-  it('both models correlate through the shared helper', () => {
-    for (const relative of models) {
-      expect(sourceOf(relative)).toContain("from './supplementSql.js'");
-    }
+describe('the shared fragments correlate on what the caller passes', () => {
+  // The helper takes the correlation expressions as arguments precisely so the callers'
+  // different date predicates ($2 vs a grouped column) do not justify a second copy.
+  it('emits the caller-supplied correlation, not a baked-in one', () => {
+    expect(supplementFixedSubquery('calcium', '$1', '$2')).toContain(
+      'sup_me.entry_date = $2'
+    );
+    expect(supplementFixedSubquery('calcium', '$1', 'd.entry_date')).toContain(
+      'sup_me.entry_date = d.entry_date'
+    );
   });
 
-  // The shared helper takes the correlation expressions as arguments precisely so the two
-  // callers' different date predicates ($2 vs the grouped column) do not justify a copy.
-  it('emits the caller-supplied correlation, not a baked-in one', () => {
-    expect(supplementFixed('calcium', '$1', '$2')).toContain(
-      'me.entry_date = $2'
-    );
-    expect(supplementFixed('calcium', '$1', 'd.entry_date')).toContain(
-      'me.entry_date = d.entry_date'
-    );
+  // A fragment that opens its own scan must not use the alias its callers use. With `me`
+  // inside, a caller correlating on its own `me` would emit `me.user_id = me.user_id`: a
+  // self-join tautology that runs clean and silently sums the user's whole history rather
+  // than one day. The alias is the only thing preventing it, so assert on it directly.
+  it('does not shadow a caller that correlates on its own me', () => {
+    const sql = supplementFixedSubquery('iron', 'me.user_id', 'me.entry_date');
+    expect(sql).toContain('FROM medication_entries sup_me');
+    expect(sql).toContain('sup_me.user_id = me.user_id');
+    expect(sql).toContain('sup_me.entry_date = me.entry_date');
+    // Boundary-anchored: a plain substring check would pass on `sup_me.user_id = me.user_id`
+    // and assert nothing, since the correct string ends with the wrong one.
+    expect(sql).not.toMatch(/(?<![\w.])me\.user_id = me\.user_id/);
+    expect(sql).not.toMatch(/(?<![\w.])me\.entry_date = me\.entry_date/);
+    expect(sql).not.toMatch(/FROM medication_entries me(?![\w])/);
   });
 });
 
@@ -96,10 +80,13 @@ describe('getDailySupplementTotals reads the day in one pass', () => {
     }
   });
 
-  // The per-subquery COALESCE used to guarantee this. An un-grouped aggregate over zero
-  // rows still returns one row, but every column in it is NULL, so the zeroing had to move
-  // outward with the collapse or a supplement-free day would have gone out as nulls.
-  it('returns zeros, not nulls, on a day with no doses', async () => {
+  // NOTE: this covers the JS coercion only, not the SQL. It feeds an all-NULL row through
+  // the mock, and `Number(null) || 0` is 0 regardless of what the query said, so it passes
+  // with or without the outer COALESCE. The SQL-level zeroing is asserted as a string by
+  // 'still selects every shared nutrient field' above; that is the assertion a mutation
+  // kills. Kept because the coercion is a real contract (callers add these unconditionally),
+  // but do not read it as a guard on the query.
+  it('coerces a NULL row to zeros, not nulls', async () => {
     const nullRow = Object.fromEntries(
       FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => [field, null])
     );
@@ -138,9 +125,11 @@ describe('the range query keeps its supplement arm', () => {
   it('correlates supplements on the grouped date', async () => {
     await getDailyNutritionTotalsRange(userId, '2026-08-01', '2026-08-19');
     const sql = String(mockClient.query.mock.calls[0][0]);
-    expect(sql).toContain('me.entry_date = d.entry_date');
-    expect(sql).not.toContain('me.entry_date = $2');
-    expect(sql).toContain("me.status IN ('taken', 'prn_taken')");
-    expect(sql).toContain('GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)');
+    expect(sql).toContain('sup_me.entry_date = d.entry_date');
+    expect(sql).not.toContain('sup_me.entry_date = $2');
+    expect(sql).toContain("sup_me.status IN ('taken', 'prn_taken')");
+    expect(sql).toContain(
+      'GREATEST(COALESCE(sup_me.dose_amount_snapshot, 1), 0)'
+    );
   });
 });

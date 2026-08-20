@@ -39,8 +39,10 @@ describe('daily-total aggregations include supplement snapshots', () => {
     // Reads the immutable per-entry snapshot, restricted to taken/prn_taken entries, and
     // scales by the dose count (GREATEST-clamped so a non-positive value can't subtract).
     expect(sql).toContain('medication_entries');
-    expect(sql).toContain("me.status IN ('taken', 'prn_taken')");
-    expect(sql).toContain('GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)');
+    expect(sql).toMatch(/\w+\.status IN \('taken', 'prn_taken'\)/);
+    expect(sql).toMatch(
+      /GREATEST\(COALESCE\(\w+\.dose_amount_snapshot, 1\), 0\)/
+    );
     // Both the fixed macros and the custom-nutrient aggregation pull from the snapshot.
     expect(sql).toContain("nutrients_snapshot->>'calories'");
     expect(sql).toContain("nutrients_snapshot->'custom_nutrients'");
@@ -80,7 +82,9 @@ describe('daily-total aggregations include supplement snapshots', () => {
     const sql = sqlOf();
     expect(sql).toContain('medication_entries');
     expect(sql).toContain("nutrients_snapshot->>'calories'");
-    expect(sql).toContain('GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)');
+    expect(sql).toMatch(
+      /GREATEST\(COALESCE\(\w+\.dose_amount_snapshot, 1\), 0\)/
+    );
   });
 });
 
@@ -99,8 +103,10 @@ describe('getDailySupplementTotals', () => {
     await getDailySupplementTotals(userId, '2026-08-06');
 
     const sql = String(mockClient.query.mock.calls[0][0]);
-    expect(sql).toContain("me.status IN ('taken', 'prn_taken')");
-    expect(sql).toContain('GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)');
+    expect(sql).toMatch(/\w+\.status IN \('taken', 'prn_taken'\)/);
+    expect(sql).toMatch(
+      /GREATEST\(COALESCE\(\w+\.dose_amount_snapshot, 1\), 0\)/
+    );
     // Exactly the fields the nutrition summary sums for supplements. Offering the picker
     // a field this query does not read would let a user enter a number that goes nowhere.
     for (const key of [
@@ -130,8 +136,10 @@ describe('getDailySupplementTotals', () => {
     expect(sql).toContain('AS custom_nutrients');
     // Same status filter and dose clamp as the fixed arm, because the custom rows are the
     // shared fragment rather than a second copy that could drift from it.
-    expect(sql).toContain("me2.status IN ('taken', 'prn_taken')");
-    expect(sql).toContain('GREATEST(COALESCE(me2.dose_amount_snapshot, 1), 0)');
+    expect(sql).toMatch(/\w+\.status IN \('taken', 'prn_taken'\)/);
+    expect(sql).toMatch(
+      /GREATEST\(COALESCE\(\w+\.dose_amount_snapshot, 1\), 0\)/
+    );
     // Supplements alone. Unioning the food rows in here, the way getDailyNutritionSummary
     // does, would double-count every custom nutrient: callers add this arm onto totals
     // they have already derived from food entries themselves.
