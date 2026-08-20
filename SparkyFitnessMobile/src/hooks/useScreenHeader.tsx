@@ -219,14 +219,22 @@ function itemAccessibilityLabel(item: HeaderItem, t: TFunction): string | undefi
 
 /**
  * Resolves the visible label for a header item. `kind:'primary'` items without
- * an explicit label fall back to the localized `common.save` value with an
- * explicit English fallback; every other item uses its required label.
+ * an explicit label, or whose label is the canonical English SAVE_LABEL marker,
+ * fall back to the localized `common.save` value with an explicit English
+ * fallback; every other item uses its required label.
  */
 function resolveItemLabel(item: HeaderItem, t: TFunction): string | undefined {
   switch (item.kind) {
     case 'primary':
-      return item.label ?? t('common.save', 'Save');
+      return item.label === undefined || item.label === SAVE_LABEL
+        ? t('common.save', 'Save')
+        : item.label;
     case 'text':
+      // A role:'primary' text item with the canonical SAVE_LABEL marker is also
+      // localized (e.g. caller reuses SAVE_LABEL for a primary text action).
+      if (('role' in item && item.role === 'primary') && item.label === SAVE_LABEL) {
+        return t('common.save', 'Save');
+      }
       return item.label;
     case 'back':
     case 'dismiss':
@@ -237,17 +245,24 @@ function resolveItemLabel(item: HeaderItem, t: TFunction): string | undefined {
 
 /**
  * Resolves the busy label for a header item. Primary items without an explicit
- * busy label fall back to the localized `common.saving` value with an explicit
- * English fallback.
+ * busy label, or whose busy label is the canonical SAVING_LABEL marker, fall
+ * back to the localized `common.saving` value with an explicit English fallback.
  */
 function resolveItemBusyLabel(item: HeaderItem, t: TFunction): string | undefined {
+  const primaryBusy = (kind: 'primary' | 'text') =>
+    kind === 'primary'
+      ? item.kind === 'primary' && (item.busyLabel === undefined || item.busyLabel === SAVING_LABEL)
+      : item.kind === 'text' && ('role' in item && item.role === 'primary') && item.busyLabel === SAVING_LABEL;
+
   if (item.kind === 'primary') {
-    return item.busyLabel ?? t('common.saving', 'Saving…');
+    return primaryBusy('primary')
+      ? t('common.saving', 'Saving…')
+      : item.busyLabel;
   }
 
   if (item.kind === 'text') {
-    return isPrimaryItem(item)
-      ? item.busyLabel ?? t('common.saving', 'Saving…')
+    return primaryBusy('text')
+      ? t('common.saving', 'Saving…')
       : item.busyLabel;
   }
 

@@ -48,8 +48,15 @@ export function localizeFastingStage(
 export function localizeProtocolBadge(t: TFunction, value: string | null | undefined): string {
   const raw = value?.trim();
   if (!raw) return t('fastingDetail.title', { defaultValue: 'Fasting' });
-  const ratio = raw.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/);
-  if (ratio) return `${ratio[1]}:${ratio[2]}`;
+  // Pure ratio ("16:8", "18 : 6") -> compact form.
+  const pureRatio = raw.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/);
+  if (pureRatio) return `${pureRatio[1]}:${pureRatio[2]}`;
+  // Known controlled presets encode the ratio as a prefix with an English
+  // name tail ("16:8 Leangains", "18:6 Warrior", "20:4 Warrior"). Extract the
+  // ratio so the badge never leaks the English name into Polish UI.
+  const presetRatio = raw.match(/^(\d{1,2})\s*:\s*(\d{1,2})\s+(?:Leangains|Warrior)$/i);
+  if (presetRatio) return `${presetRatio[1]}:${presetRatio[2]}`;
+  // Localize the remaining controlled presets by exact name.
   switch (raw) {
     case 'Circadian Rhythm': return t('fastingProtocol.presets.circadian.name', { defaultValue: 'Circadian Rhythm' });
     case 'Custom Fast': return t('fastingProtocol.presets.custom.name', { defaultValue: 'Custom Fast' });

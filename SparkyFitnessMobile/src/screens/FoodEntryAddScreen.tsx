@@ -1459,7 +1459,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               >
                 <Text className="text-text-secondary text-base">{t('foodEntryAdd.labels.time', { defaultValue: 'Time' })}</Text>
                 <Text className="text-text-primary text-base font-medium mx-1.5">
-                  {formatTimeLabel(entryTime) ?? t('foodEntryAdd.labels.none', { defaultValue: 'None' })}
+                  {formatTimeLabel(entryTime, preferences?.time_format) ?? t('foodEntryAdd.labels.none', { defaultValue: 'None' })}
                 </Text>
                 <Icon
                   name="chevron-down"

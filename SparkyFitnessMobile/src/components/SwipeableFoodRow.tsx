@@ -9,6 +9,7 @@ import { DeleteRowAction } from './SwipeableDeleteRow';
 import { useRowCollapse } from '../hooks/useRowCollapse';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
+import { usePreferences } from '../hooks/usePreferences';
 import type { FoodEntry } from '../types/foodEntries';
 import type { EntryNutrition } from '../utils/mealNutrition';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
@@ -25,6 +26,7 @@ interface SwipeableFoodRowProps {
 
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, onAdjustServing }) => {
   const { t } = useTranslation();
+  const { preferences } = usePreferences();
   const navigation = useNavigation();
   const swipeableRef = useRef<any>(null);
   const invalidateCacheRef = useRef<() => void>(() => {});
@@ -75,7 +77,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
 
   const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
   const name = entry.food_name || t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
-  const timeLabel = formatTimeLabel(entry.entry_time);
+  const timeLabel = formatTimeLabel(entry.entry_time, preferences?.time_format);
 
   const handlePress = () => {
     if (isMealComponent && entry.food_entry_meal_id) {

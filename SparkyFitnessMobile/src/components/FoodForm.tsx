@@ -23,6 +23,7 @@ import type {
 } from '../types/foodUnitVariants';
 import { formatFoodFormNumber } from '../utils/foodDetails';
 import { localizeFoodUnit } from '../utils/foodUnitLocalization';
+import { SAVE_LABEL } from '../hooks/useScreenHeader';
 import {
   FORM_DRAFT_UNIT_ID,
   NUMERIC_FOOD_FORM_FIELDS,
@@ -128,7 +129,14 @@ const FoodForm: React.FC<FoodFormProps> = ({
   onCustomNutrientsChange,
 }) => {
   const { t } = useTranslation();
-  const resolvedSubmitLabel = submitLabel ?? t('foodForm.addFood', { defaultValue: 'Add Food' });
+  // A caller may reuse the canonical English SAVE_LABEL marker for the footer
+  // submit button; localize it so it follows the active app language.
+  const resolvedSubmitLabel =
+    submitLabel && submitLabel !== SAVE_LABEL
+      ? submitLabel
+      : submitLabel === SAVE_LABEL
+        ? t('common.save', 'Save')
+        : t('foodForm.addFood', { defaultValue: 'Add Food' });
   const [form, setForm] = useState<FoodFormData>(() =>
     buildDisplayFormState(initialValues),
   );

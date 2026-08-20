@@ -36,7 +36,11 @@ describe('localizeProtocolBadge', () => {
   it('keeps arbitrary server or user-created protocol names literal', () => {
     expect(localizeProtocolBadge(pl as never, 'Mój post 14 godzin')).toBe('Mój post 14 godzin');
     expect(localizeProtocolBadge(pl as never, 'Custom 16:8 plan')).toBe('Custom 16:8 plan');
-    expect(localizeProtocolBadge(pl as never, '16:8 Leangains')).toBe('16:8 Leangains');
+    // Controlled presets nest the ratio before an English name tail; the badge
+    // must show only the compact ratio so it never leaks English into Polish UI.
+    expect(localizeProtocolBadge(pl as never, '16:8 Leangains')).toBe('16:8');
+    expect(localizeProtocolBadge(pl as never, '18:6 Warrior')).toBe('18:6');
+    expect(localizeProtocolBadge(pl as never, '20:4 Warrior')).toBe('20:4');
   });
 
   it('uses the localized fasting title for empty values', () => {

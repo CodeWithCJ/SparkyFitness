@@ -1268,7 +1268,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
             </>
           ) : (
             <Text className="text-text-primary text-base font-medium">
-              {formatTimeLabel(entry.entry_time) ?? t('common.none', { defaultValue: 'None' })}
+              {formatTimeLabel(entry.entry_time, preferences?.time_format) ?? t('common.none', { defaultValue: 'None' })}
             </Text>
           )}
         </Animated.View>

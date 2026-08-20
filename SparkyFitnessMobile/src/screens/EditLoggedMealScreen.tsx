@@ -491,10 +491,10 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
             activeOpacity={0.7}
             className="flex-row items-center"
             accessibilityRole="button"
-            accessibilityLabel={t('editLoggedMeal.accessibility.time', { defaultValue: 'Select time: {{time}}', time: formatTimeLabel(effectiveEntryTime) ?? t('common.none', { defaultValue: 'None' }) })}
+            accessibilityLabel={t('editLoggedMeal.accessibility.time', { defaultValue: 'Select time: {{time}}', time: formatTimeLabel(effectiveEntryTime, preferences?.time_format) ?? t('common.none', { defaultValue: 'None' }) })}
           >
             <Text className="text-text-primary text-base font-medium">
-              {formatTimeLabel(effectiveEntryTime) ?? t('common.none', { defaultValue: 'None' })}
+              {formatTimeLabel(effectiveEntryTime, preferences?.time_format) ?? t('common.none', { defaultValue: 'None' })}
             </Text>
             <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
           </TouchableOpacity>
