@@ -439,7 +439,7 @@
     "cervicalMucus": "Śluz szyjkowy",
     "cyclingPedalingCadence": "Kadencja pedałowania",
     "intermenstrualBleeding": "Krwawienie międzymiesiączkowe",
-    "menstruationPeriod": "Okres menstruacji",
+    "menstruationPeriod": "Miesiączka",
     "ovulationTest": "Test owulacyjny",
     "stepsCadence": "Kadencja kroków",
     "bloodOxygenSaturation": "Saturacja krwi tlenem",
@@ -1444,7 +1444,7 @@
     "viewExerciseDetails": "Wyświetl szczegóły ćwiczenia",
     "failedLoadPresets": "Nie udało się wczytać szablonów treningów",
     "failedSearchPresets": "Nie udało się wyszukać szablonów treningów",
-    "startEmptyOrSave": "Rozpocznij pusty trening lub zapisz trening jako preset, aby zobaczyć go tutaj",
+    "startEmptyOrSave": "Rozpocznij pusty trening lub zapisz trening jako szablon, aby zobaczyć go tutaj",
     "changeOwnership": "Zmień filtr własności",
     "viewPresetDetails": "Wyświetl szczegóły szablonu treningu",
     "presetNamePlaceholder": "np. dzień klatki",
@@ -1461,7 +1461,7 @@
     "discardContinue": "Odrzuć i kontynuuj",
     "editPreset": "Edytuj szablon treningu",
     "makePresetPublicTitle": "Udostępnić publicznie?",
-    "makePresetPublicMessage": "Preset będzie widoczny dla wszystkich użytkowników tego serwera.",
+    "makePresetPublicMessage": "Szablon treningu będzie widoczny dla wszystkich użytkowników tego serwera.",
     "makePresetPublic": "Udostępnij publicznie",
     "presetDraftMessage": "Masz niezapisany szkic {{name}}. Co chcesz zrobić?",
     "workoutComplete": "Trening ukończony",
@@ -1474,7 +1474,7 @@
     "updatePresetTitle": "Zaktualizować szablon treningu?",
     "updatePreset": "Zaktualizuj",
     "presetUpdatedToast": "Szablon treningu zaktualizowany",
-    "todayDiffers": "Dzisiejszy trening różni się od \"{{name}}\". Zaktualizować preset?",
+    "todayDiffers": "Dzisiejszy trening różni się od „{{name}}”. Zaktualizować szablon?",
     "of": "z",
     "setsLabel": "Serie",
     "caloriesLabel": "Kalorie",
@@ -1487,7 +1487,7 @@
     "workoutNeedsExercise": "Trening wymaga ćwiczenia",
     "presetsTitle": "Szablony treningów",
     "noServer": "Brak skonfigurowanego serwera",
-    "configureServer": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby zobaczyć presety treningów.",
+    "configureServer": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby zobaczyć szablony treningów.",
     "loadingPresets": "Wczytywanie szablonów treningów…",
     "tryConnection": "Sprawdź połączenie i spróbuj ponownie.",
     "tryOwnership": "Zmień filtr własności.",
@@ -1768,7 +1768,7 @@
       "ttc": "Starania o ciążę",
       "pregnant": "Monitorowanie ciąży",
       "postpartum": "Połóg",
-      "menopause": "Uwzględnianie menopauzy"
+      "menopause": "Monitorowanie menopauzy"
     },
     "birthControl": {
       "none": "Brak",
@@ -1779,7 +1779,7 @@
       "ring": "Krążek dopochwowy",
       "patch": "Plaster",
       "shot": "Zastrzyk",
-      "condoms": "Prezerwatywy / bariera",
+      "condoms": "Prezerwatywy / metody barierowe",
       "other": "Inne"
     },
     "condition": {
@@ -2481,7 +2481,7 @@
       "ttc": "Staranie się o ciążę (TTC)",
       "pregnant": "Śledzenie ciąży",
       "postpartum": "Połóg i powrót do zdrowia",
-      "menopause": "Okres menopauzy"
+      "menopause": "Monitorowanie menopauzy"
     },
     "birthControl": {
       "none": "Brak",
@@ -2494,7 +2494,7 @@
       "other": "Inna",
       "iudHormonal": "Wkładka hormonalna",
       "iudCopper": "Wkładka miedziana",
-      "condoms": "Prezerwatywy / barierowe",
+      "condoms": "Prezerwatywy / metody barierowe",
       "shot": "Zastrzyk"
     },
     "condition": {
@@ -3371,7 +3371,7 @@
     }
   },
   "foodPhotoEstimate": {
-    "title": "Sprawdź wycenę",
+    "title": "Sprawdź oszacowanie",
     "confidence": {
       "good": "Dobra",
       "fair": "Średnia",
@@ -3381,7 +3381,7 @@
       "uncertain": "Niepewne"
     },
     "labels": {
-      "overallEstimate": "{{confidence}} wycena",
+      "overallEstimate": "Oszacowanie: {{confidence}}",
       "totalEstimatedWeight": "Łączna szacowana masa: {{weight}}"
     },
     "actions": {
@@ -3525,8 +3525,8 @@
       "create": "Nie udało się utworzyć szablonu treningu",
       "update": "Nie udało się zaktualizować szablonu treningu",
       "delete": "Nie udało się usunąć szablonu treningu",
-      "editPermission": "Nie masz uprawnień do edycji tego presetu.",
-      "deletePermission": "Nie masz uprawnień do usunięcia tego presetu."
+      "editPermission": "Nie masz uprawnień do edycji tego szablonu treningu.",
+      "deletePermission": "Nie masz uprawnień do usunięcia tego szablonu treningu."
     },
     "confirm": {
       "title": "Usunąć szablon treningu?",
@@ -3982,7 +3982,7 @@
     "history": "Historia"
   },
   "workoutPresetLibrary": {
-    "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić presety treningów."
+    "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić szablony treningów."
   },
   "time": {
     "hoursShort": "godz."
