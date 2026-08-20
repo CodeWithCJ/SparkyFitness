@@ -471,6 +471,7 @@ AS $_$
 DECLARE
   quoted_permissions text;
   shared_expression text;
+  has_manage boolean;
 BEGIN
   -- Quote each permission name to ensure valid ARRAY syntax
   SELECT array_to_string(ARRAY(
@@ -483,14 +484,50 @@ BEGIN
   ELSE
     shared_expression := quote_ident(shared_column);
   END IF;
-  
+
+  -- Check whether 'can_manage_diary' is among the requested permissions.
+  -- If so, shared users with that permission may INSERT (but not UPDATE/DELETE).
+  has_manage := 'can_manage_diary' = ANY(permissions);
+
+  -- Drop existing policies to make this idempotent (the server re-applies
+  -- rls_policies.sql on every boot).
+  EXECUTE format('DROP POLICY IF EXISTS select_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS modify_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS insert_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS update_policy ON public.%I;', table_name);
+  EXECUTE format('DROP POLICY IF EXISTS delete_policy ON public.%I;', table_name);
+
+  -- SELECT: owner, publicly shared, or granted via family_access
   EXECUTE format('
     CREATE POLICY select_policy ON public.%I FOR SELECT TO PUBLIC
     USING (has_library_access_with_public(user_id, %s, ARRAY[%s]));
-    CREATE POLICY modify_policy ON public.%I FOR ALL TO PUBLIC
+  ', table_name, shared_expression, quoted_permissions);
+
+  IF has_manage THEN
+    -- INSERT: owner OR shared user with can_manage_diary (see issue #2182)
+    EXECUTE format('
+      CREATE POLICY insert_policy ON public.%I FOR INSERT TO PUBLIC
+      WITH CHECK (
+        authenticated_user_id() = user_id
+        OR has_family_access(user_id, ''can_manage_diary'')
+      );
+    ', table_name);
+  ELSE
+    -- INSERT: owner only
+    EXECUTE format('
+      CREATE POLICY insert_policy ON public.%I FOR INSERT TO PUBLIC
+      WITH CHECK (authenticated_user_id() = user_id);
+    ', table_name);
+  END IF;
+
+  -- UPDATE / DELETE: owner only (shared users must not alter or remove entries)
+  EXECUTE format('
+    CREATE POLICY update_policy ON public.%I FOR UPDATE TO PUBLIC
     USING (authenticated_user_id() = user_id)
     WITH CHECK (authenticated_user_id() = user_id);
-  ', table_name, shared_expression, quoted_permissions, table_name);
+    CREATE POLICY delete_policy ON public.%I FOR DELETE TO PUBLIC
+    USING (authenticated_user_id() = user_id);
+  ', table_name, table_name);
 END;
 $_$;
 
