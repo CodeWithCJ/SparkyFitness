@@ -126,6 +126,11 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
     convertEnergy(previewResult.rmr, 'kcal', energyUnit)
   );
 
+  // Inputs are printed at the precision the formula actually evaluates at. Rounding
+  // weight to one decimal made the panel unable to reproduce its own answer: a stored
+  // 73.45 kg printed as "73.5" recomputes to 1597 kcal against a stated 1596.
+  const formatInput = (value: number) => Number(value.toFixed(2)).toString();
+
   const bmrMathText = () => {
     if (bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham') {
       if (!displayBodyFat) {
@@ -134,38 +139,43 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
       const lbm = displayWeight * (1 - displayBodyFat / 100);
       if (bmrAlgorithm === 'Katch-McArdle') {
         return `Formula: 370 + 21.6 × LBM (where LBM = weight × (1 - BF/100))
-Math: 370 + 21.6 × (${displayWeight.toFixed(1)} kg × (1 - ${displayBodyFat.toFixed(1)}/100)) = ${Math.round(370 + 21.6 * lbm)} kcal`;
+Math: 370 + 21.6 × (${formatInput(displayWeight)} kg × (1 - ${formatInput(displayBodyFat)}/100)) = ${Math.round(370 + 21.6 * lbm)} kcal`;
       } else {
         return `Formula: 500 + 22 × LBM (where LBM = weight × (1 - BF/100))
-Math: 500 + 22 × (${displayWeight.toFixed(1)} kg × (1 - ${displayBodyFat.toFixed(1)}/100)) = ${Math.round(500 + 22 * lbm)} kcal`;
+Math: 500 + 22 × (${formatInput(displayWeight)} kg × (1 - ${formatInput(displayBodyFat)}/100)) = ${Math.round(500 + 22 * lbm)} kcal`;
       }
     }
 
     if (bmrAlgorithm === 'Revised Harris-Benedict') {
       if (displayGender === 'male') {
         return `Formula: 13.397 × weight + 4.799 × height - 5.677 × age + 88.362
-Math: 13.397 × ${displayWeight.toFixed(1)} + 4.799 × ${displayHeight.toFixed(1)} - 5.677 × ${displayAge} + 88.362 = ${Math.round(13.397 * displayWeight + 4.799 * displayHeight - 5.677 * displayAge + 88.362)} kcal`;
+Math: 13.397 × ${formatInput(displayWeight)} + 4.799 × ${formatInput(displayHeight)} - 5.677 × ${displayAge} + 88.362 = ${Math.round(13.397 * displayWeight + 4.799 * displayHeight - 5.677 * displayAge + 88.362)} kcal`;
       } else {
         return `Formula: 9.247 × weight + 3.098 × height - 4.33 × age + 447.593
-Math: 9.247 × ${displayWeight.toFixed(1)} + 3.098 × ${displayHeight.toFixed(1)} - 4.33 × ${displayAge} + 447.593 = ${Math.round(9.247 * displayWeight + 3.098 * displayHeight - 4.33 * displayAge + 447.593)} kcal`;
+Math: 9.247 × ${formatInput(displayWeight)} + 3.098 × ${formatInput(displayHeight)} - 4.33 × ${displayAge} + 447.593 = ${Math.round(9.247 * displayWeight + 3.098 * displayHeight - 4.33 * displayAge + 447.593)} kcal`;
       }
     }
 
     if (bmrAlgorithm === 'Oxford') {
       if (displayGender === 'male') {
         return `Formula: 14.2 × weight + 593
-Math: 14.2 × ${displayWeight.toFixed(1)} + 593 = ${Math.round(14.2 * displayWeight + 593)} kcal`;
+Math: 14.2 × ${formatInput(displayWeight)} + 593 = ${Math.round(14.2 * displayWeight + 593)} kcal`;
       } else {
         return `Formula: 10.9 × weight + 677
-Math: 10.9 × ${displayWeight.toFixed(1)} + 677 = ${Math.round(10.9 * displayWeight + 677)} kcal`;
+Math: 10.9 × ${formatInput(displayWeight)} + 677 = ${Math.round(10.9 * displayWeight + 677)} kcal`;
       }
     }
 
     // Default: Mifflin-St Jeor
     const genderOffset = displayGender === 'male' ? 5 : -161;
     return `Formula: 10 × weight + 6.25 × height - 5 × age + offset (${genderOffset})
-Math: 10 × ${displayWeight.toFixed(1)} + 6.25 × ${displayHeight.toFixed(1)} - 5 × ${displayAge} ${genderOffset >= 0 ? '+' : '-'} ${Math.abs(genderOffset)} = ${Math.round(10 * displayWeight + 6.25 * displayHeight - 5 * displayAge + genderOffset)} kcal`;
+Math: 10 × ${formatInput(displayWeight)} + 6.25 × ${formatInput(displayHeight)} - 5 × ${displayAge} ${genderOffset >= 0 ? '+' : '-'} ${Math.abs(genderOffset)} = ${Math.round(10 * displayWeight + 6.25 * displayHeight - 5 * displayAge + genderOffset)} kcal`;
   };
+
+  // Only the lean-mass formulas consume body fat; for the others section 2 is purely
+  // informational and should not read like an input to the target.
+  const bodyFatUsedByBmr =
+    bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham';
 
   const bodyFatMathText = () => {
     if (bodyFatAlgorithm === 'BMI Method') {
@@ -197,8 +207,11 @@ Missing measurements for formula visualization. Go to Check-In to record waist &
         return `Invalid measurements for log calculation.`;
       const bfp =
         86.01 * Math.log10(logValue) - 70.041 * Math.log10(heightIn) + 36.76;
+      // Print the inch values the formula is actually evaluated with. Showing the raw
+      // cm figures here made the panel contradict itself: plugging those into these
+      // (imperial) constants yields a visibly different number from the result below.
       return `Formula (Male): 86.01 × log10(waist - neck) - 70.041 × log10(height) + 36.76 (in inches)
-Math: 86.01 × log10(${displayWaist}cm - ${displayNeck}cm) - 70.041 × log10(${displayHeight}cm) + 36.76
+Math: 86.01 × log10(${waistIn.toFixed(1)}in - ${neckIn.toFixed(1)}in) - 70.041 × log10(${heightIn.toFixed(1)}in) + 36.76
 Calculated: ${bfp.toFixed(1)}%`;
     } else {
       const displayHipsVal = displayHips || 0;
@@ -209,7 +222,7 @@ Calculated: ${bfp.toFixed(1)}%`;
       const bfp =
         163.205 * Math.log10(logValue) - 97.684 * Math.log10(heightIn) - 78.387;
       return `Formula (Female): 163.205 × log10(waist + hips - neck) - 97.684 × log10(height) - 78.387 (in inches)
-Math: 163.205 × log10(${displayWaist}cm + ${displayHipsVal}cm - ${displayNeck}cm) - 97.684 × log10(${displayHeight}cm) - 78.387
+Math: 163.205 × log10(${waistIn.toFixed(1)}in + ${hipsIn.toFixed(1)}in - ${neckIn.toFixed(1)}in) - 97.684 × log10(${heightIn.toFixed(1)}in) - 78.387
 Calculated: ${bfp.toFixed(1)}%`;
     }
   };
@@ -301,13 +314,23 @@ Calculated: ${bfp.toFixed(1)}%`;
           {bodyFatMathText()}
         </pre>
         <div className="flex justify-between items-center bg-muted/50 dark:bg-muted/40 p-1.5 rounded mt-1">
-          <span>Current Body Fat:</span>
+          <span>Current Body Fat (measured):</span>
           <span className="font-semibold text-foreground">
             {displayBodyFat !== undefined && displayBodyFat > 0
               ? `${displayBodyFat.toFixed(1)}%`
               : 'No measurement'}
           </span>
         </div>
+        {/*
+          The block above is an estimate from tape measurements; this row is the logged
+          measurement. They rarely agree, and the panel previously showed both with no
+          indication of which -- if either -- feeds the target.
+        */}
+        <p className="text-xs text-muted-foreground">
+          {bodyFatUsedByBmr
+            ? 'The measured value above is used by this BMR formula; the estimate is shown for comparison.'
+            : `Shown for reference only — ${bmrAlgorithm} does not take body fat as an input.`}
+        </p>
       </div>
 
       {/* Step 3: Adaptive TDEE (Expenditure) */}
@@ -422,7 +445,37 @@ Calculated: ${bfp.toFixed(1)}%`;
               </div>
             ) : (
               <div className="space-y-1 mt-1">
-                <p>Status: Active (calculated baseline from logs).</p>
+                <p>
+                  Status: Active (calculated baseline from logs).
+                  {adaptiveTdeeData?.confidence && (
+                    <>
+                      {' '}
+                      <span
+                        className={
+                          adaptiveTdeeData.confidence === 'HIGH'
+                            ? 'font-medium text-green-600 dark:text-green-400'
+                            : adaptiveTdeeData.confidence === 'MEDIUM'
+                              ? 'font-medium text-amber-600 dark:text-amber-400'
+                              : 'font-medium text-red-600 dark:text-red-400'
+                        }
+                      >
+                        Confidence: {adaptiveTdeeData.confidence}
+                      </span>
+                    </>
+                  )}
+                </p>
+                {adaptiveTdeeData?.confidence !== 'HIGH' && (
+                  // The server downgrades confidence for sparse logs, short tracking
+                  // history, or weight gaps. Adaptive TDEE infers expenditure from
+                  // intake vs weight trend, so under-logging inflates the result --
+                  // showing the target without this caveat presents a soft number as
+                  // a firm one.
+                  <p className="text-xs text-muted-foreground">
+                    Based on {adaptiveTdeeData?.daysOfData ?? 0} day(s) of
+                    calorie logs. Under-logging intake makes this estimate read
+                    high — log consistently to improve it.
+                  </p>
+                )}
                 <ul className="list-disc pl-4 space-y-0.5 text-sm">
                   <li>
                     Average daily calorie intake:{' '}
