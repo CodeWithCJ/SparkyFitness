@@ -324,6 +324,14 @@ describe('fetchHealthDisplayData', () => {
       expect(await displayFor(recordType)).toBe(expected);
     });
 
+    it('uses English plural fallback when a plural translation resolves to its raw key', async () => {
+      await i18n.changeLanguage('en');
+      i18n.removeResourceBundle('en', 'translation');
+      mockReadHealthRecords.mockResolvedValue([{}, {}]);
+
+      expect(await displayFor('Workout')).toBe('2 workouts');
+    });
+
     it('formats aggregated and pluralized output in Polish using app locale', async () => {
       await i18n.changeLanguage('pl');
       mockSteps.mockResolvedValue([{ value: 1234.5 }]);

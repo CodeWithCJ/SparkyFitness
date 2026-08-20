@@ -36,13 +36,23 @@ const t = (key: string, options: Record<string, unknown> = {}): string => {
   return result;
 };
 const number = (value: number, options?: Intl.NumberFormatOptions): string => formatLocalizedNumber(value, options);
-const unit = (key: string, count: number, defaultValue: string, defaultValuePlural?: string): string =>
+const unit = (key: string, count: number, defaultValue: string, defaultValuePlural?: string): string => {
+  const fallback = count === 1 || !defaultValuePlural ? defaultValue : defaultValuePlural;
   // i18n-audit-ignore-next-line dynamic-i18n-key -- key is restricted to the closed healthDataDisplay plural map
-  i18n.t(key, {
+  const value = i18n.t(key, {
     count,
     defaultValue,
     ...(defaultValuePlural ? { defaultValue_one: defaultValue, defaultValue_other: defaultValuePlural } : {}),
   });
+
+  // Keep a readable English result even when i18next is not initialized or a
+  // plural resource is unavailable. The key set is closed at the call sites;
+  // this guard prevents a raw key from reaching a health-data card.
+  if (value === key || value === `${key}_one` || value === `${key}_other`) {
+    return fallback.replace('{{count}}', String(count));
+  }
+  return value;
+};
 
 export const NO_DATA_DISPLAY = '__NO_DATA__';
 
