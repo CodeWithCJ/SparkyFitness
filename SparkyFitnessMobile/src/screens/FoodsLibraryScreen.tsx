@@ -71,9 +71,18 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         <StatusView
           inline
           {...ownershipFilterEmptyState({
-            noun: 'foods',
+            noun: t('foodLibrary.noun', { defaultValue: 'foods' }),
             filter: ownershipFilter,
             onReset: () => setOwnershipFilter('all'),
+            labels: {
+              all: t('ownership.all', { defaultValue: 'All' }),
+              mine: t('ownership.mine', { defaultValue: 'Mine' }),
+              family: t('ownership.family', { defaultValue: 'Family' }),
+              public: t('ownership.public', { defaultValue: 'Public' }),
+            },
+            emptyTitle: t('ownership.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}' }),
+            emptySubtitle: t('ownership.emptySubtitle', { defaultValue: 'Change the filter to see your other {{noun}}.' }),
+            showAllLabel: t('ownership.showAll', { defaultValue: 'Show All' }),
           })}
         />
       );
@@ -161,8 +170,6 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
       noun: t('foodLibrary.noun', { defaultValue: 'foods' }),
-      identifier: 'foods-library-filter',
-      filter: ownershipFilter,
       labels: {
         all: t('ownership.all', { defaultValue: 'All' }),
         mine: t('ownership.mine', { defaultValue: 'Mine' }),
@@ -171,6 +178,8 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
       },
       showLabel: t('ownership.show', { defaultValue: 'Show' }),
       filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}, filtered to {{filter}}' }),
+      identifier: 'foods-library-filter',
+      filter: ownershipFilter,
       onSelect: setOwnershipFilter,
     }),
   });

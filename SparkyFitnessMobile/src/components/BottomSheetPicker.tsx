@@ -82,7 +82,7 @@ function BottomSheetPicker<T extends string | number>({
   options,
   sections,
   onSelect,
-  placeholder = 'Select an option',
+  placeholder = '',
   title,
   accessibilityHint,
   containerStyle,
@@ -109,7 +109,7 @@ function BottomSheetPicker<T extends string | number>({
   );
 
   const selectedOption = flatOptions.find((opt) => opt.value === value);
-  const displayText = selectedOption?.label || placeholder;
+  const displayText = selectedOption?.label || placeholder || t('common.selectOption', { defaultValue: 'Select an option' });
 
   // For long lists (>8 items), use a fixed max height with scrolling
   // For short lists, use dynamic sizing to fit content exactly

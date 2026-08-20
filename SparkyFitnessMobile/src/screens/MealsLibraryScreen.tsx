@@ -94,9 +94,18 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
         <StatusView
           inline
           {...ownershipFilterEmptyState({
-            noun: 'meals',
+            noun: t('mealLibrary.noun', { defaultValue: 'meals' }),
             filter: ownershipFilter,
             onReset: () => setOwnershipFilter('all'),
+            labels: {
+              all: t('ownership.all', { defaultValue: 'All' }),
+              mine: t('ownership.mine', { defaultValue: 'Mine' }),
+              family: t('ownership.family', { defaultValue: 'Family' }),
+              public: t('ownership.public', { defaultValue: 'Public' }),
+            },
+            emptyTitle: t('ownership.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}' }),
+            emptySubtitle: t('ownership.emptySubtitle', { defaultValue: 'Change the filter to see your other {{noun}}.' }),
+            showAllLabel: t('ownership.showAll', { defaultValue: 'Show All' }),
           })}
         />
       );
@@ -171,7 +180,15 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({ navigation }) =
     title: t('mealLibrary.title', { defaultValue: 'Meals' }),
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
-      noun: 'meals',
+      noun: t('mealLibrary.noun', { defaultValue: 'meals' }),
+      labels: {
+        all: t('ownership.all', { defaultValue: 'All' }),
+        mine: t('ownership.mine', { defaultValue: 'Mine' }),
+        family: t('ownership.family', { defaultValue: 'Family' }),
+        public: t('ownership.public', { defaultValue: 'Public' }),
+      },
+      showLabel: t('ownership.show', { defaultValue: 'Show' }),
+      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}, filtered to {{filter}}' }),
       identifier: 'meals-library-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,

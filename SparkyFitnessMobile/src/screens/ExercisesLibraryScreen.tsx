@@ -66,9 +66,18 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
         <StatusView
           inline
           {...ownershipFilterEmptyState({
-            noun: 'exercises',
+            noun: t('exerciseLibrary.noun', { defaultValue: 'exercises' }),
             filter: ownershipFilter,
             onReset: () => setOwnershipFilter('all'),
+            labels: {
+              all: t('ownership.all', { defaultValue: 'All' }),
+              mine: t('ownership.mine', { defaultValue: 'Mine' }),
+              family: t('ownership.family', { defaultValue: 'Family' }),
+              public: t('ownership.public', { defaultValue: 'Public' }),
+            },
+            emptyTitle: t('ownership.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}' }),
+            emptySubtitle: t('ownership.emptySubtitle', { defaultValue: 'Change the filter to see your other {{noun}}.' }),
+            showAllLabel: t('ownership.showAll', { defaultValue: 'Show All' }),
           })}
         />
       );
@@ -185,7 +194,15 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     title: t('exerciseLibrary.title', { defaultValue: 'Exercises' }),
     left: { kind: 'back' },
     right: ownershipFilterHeaderMenu({
-      noun: 'exercises',
+      noun: t('exerciseLibrary.noun', { defaultValue: 'exercises' }),
+      labels: {
+        all: t('ownership.all', { defaultValue: 'All' }),
+        mine: t('ownership.mine', { defaultValue: 'Mine' }),
+        family: t('ownership.family', { defaultValue: 'Family' }),
+        public: t('ownership.public', { defaultValue: 'Public' }),
+      },
+      showLabel: t('ownership.show', { defaultValue: 'Show' }),
+      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}, filtered to {{filter}}' }),
       identifier: 'exercises-library-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,

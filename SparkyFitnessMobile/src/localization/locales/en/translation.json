@@ -59,7 +59,8 @@
     "units": {
       "cm": "cm"
     },
-    "unknownDate": "Unknown date"
+    "unknownDate": "Unknown date",
+    "selectOption": "Select an option"
   },
   "settings": {
     "app": "App Settings",
@@ -3171,7 +3172,9 @@
     "public": "Public",
     "show": "Show",
     "filter": "Filter {{noun}}, filtered to {{filter}}",
-    "showAll": "Show All"
+    "showAll": "Show All",
+    "emptyTitle": "No {{noun}} in {{filter}}",
+    "emptySubtitle": "Change the filter to see your other {{noun}}."
   },
   "workoutPresetCount_one": "{{formattedCount}} exercise",
   "workoutPresetCount_other": "{{formattedCount}} exercises",
@@ -3661,7 +3664,8 @@
     "trySearch": "Try a different search term to find saved exercises.",
     "empty": "Exercises you save or log will appear here.",
     "moreFailed": "Failed to load more exercises.",
-    "view": "View exercise"
+    "view": "View exercise",
+    "noun": "exercises"
   },
   "foodLibrary": {
     "title": "Foods",
@@ -3694,7 +3698,8 @@
     "noMatch": "No matching meals found",
     "noItems": "No meals found",
     "trySearch": "Try a different search term to find saved meals.",
-    "empty": "Meals you create will appear here."
+    "empty": "Meals you create will appear here.",
+    "noun": "meals"
   },
   "presetLibrary": {
     "title": "Workout presets",
@@ -3716,7 +3721,8 @@
     "exerciseCount_one": "{{count}} exercise",
     "exerciseCount_other": "{{count}} exercises",
     "exerciseCount_few": "{{count}} exercises",
-    "exerciseCount_many": "{{count}} exercises"
+    "exerciseCount_many": "{{count}} exercises",
+    "noun": "workout presets"
   },
   "workoutForm": {
     "viewExercise": "View exercise",
@@ -3961,5 +3967,13 @@
   },
   "time": {
     "hoursShort": "h"
+  },
+  "exerciseImage": {
+    "playAnimation": "Play exercise animation",
+    "pauseAnimation": "Pause exercise animation"
+  },
+  "shareStatus": {
+    "public": "Shared publicly",
+    "family": "Shared with family"
   }
 }

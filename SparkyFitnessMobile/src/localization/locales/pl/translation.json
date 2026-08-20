@@ -59,7 +59,8 @@
     "units": {
       "cm": "cm"
     },
-    "unknownDate": "Nieznana data"
+    "unknownDate": "Nieznana data",
+    "selectOption": "Wybierz opcję"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -3171,7 +3172,9 @@
     "public": "Publiczne",
     "show": "Pokaż",
     "filter": "Filtruj {{noun}}, wybrano: {{filter}}",
-    "showAll": "Pokaż wszystkie"
+    "showAll": "Pokaż wszystkie",
+    "emptyTitle": "Brak {{noun}} w kategorii „{{filter}}”",
+    "emptySubtitle": "Zmień filtr, aby zobaczyć inne {{noun}}."
   },
   "workoutPresetCount_one": "{{formattedCount}} ćwiczenie",
   "workoutPresetCount_few": "{{formattedCount}} ćwiczenia",
@@ -3663,7 +3666,8 @@
     "trySearch": "Spróbuj innego hasła, aby znaleźć zapisane ćwiczenia.",
     "empty": "Zapisane lub zarejestrowane ćwiczenia pojawią się tutaj.",
     "moreFailed": "Nie udało się wczytać kolejnych ćwiczeń.",
-    "view": "Wyświetl ćwiczenie"
+    "view": "Wyświetl ćwiczenie",
+    "noun": "ćwiczenia"
   },
   "foodLibrary": {
     "title": "Produkty",
@@ -3696,7 +3700,8 @@
     "noMatch": "Nie znaleziono pasujących posiłków",
     "noItems": "Nie znaleziono posiłków",
     "trySearch": "Spróbuj innego hasła, aby znaleźć zapisane posiłki.",
-    "empty": "Utworzone posiłki pojawią się tutaj."
+    "empty": "Utworzone posiłki pojawią się tutaj.",
+    "noun": "posiłki"
   },
   "presetLibrary": {
     "title": "Szablony treningów",
@@ -3718,7 +3723,8 @@
     "exerciseCount_one": "{{count}} ćwiczenie",
     "exerciseCount_other": "{{count}} ćwiczenia",
     "exerciseCount_few": "{{count}} ćwiczenia",
-    "exerciseCount_many": "{{count}} ćwiczeń"
+    "exerciseCount_many": "{{count}} ćwiczeń",
+    "noun": "szablony treningów"
   },
   "workoutForm": {
     "viewExercise": "Wyświetl ćwiczenie",
@@ -3961,5 +3967,13 @@
   },
   "time": {
     "hoursShort": "godz."
+  },
+  "exerciseImage": {
+    "playAnimation": "Odtwórz animację ćwiczenia",
+    "pauseAnimation": "Wstrzymaj animację ćwiczenia"
+  },
+  "shareStatus": {
+    "public": "Udostępniono publicznie",
+    "family": "Udostępniono rodzinie"
   }
 }
