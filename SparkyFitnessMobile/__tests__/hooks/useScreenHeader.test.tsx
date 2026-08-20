@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { render } from '@testing-library/react-native';
 
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
@@ -117,6 +117,58 @@ describe('useScreenHeader accessibility label (custom path)', () => {
     const { getByRole } = render(<TestScreen right={primaryExplicitA11y} />);
 
     expect(getByRole('button').props.accessibilityLabel).toBe('Save meal');
+  });
+});
+
+describe('useScreenHeader custom bar title layout', () => {
+  let osSpy: jest.SpyInstance | null = null;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
+    mockUsesNativeHeader = false;
+    osSpy = jest.replaceProperty(Platform, 'OS', 'android');
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
+  });
+
+  afterEach(() => {
+    if (osSpy) osSpy.restore();
+  });
+
+  // Confirmed via onLayout measurement on a real device (row:411 L:0 T:379
+  // R:0): a `flex-1` (flexBasis: 0%) side cell next to a flexShrink-only
+  // (flexBasis: auto/content) title gets ZERO share of both the shrink
+  // distribution (scaled shrink factor = flexShrink × flexBasis = 0 for
+  // basis:0% items) and the growth (growth doesn't apply during overflow) —
+  // a long title claims the entire row and the side cells vanish. The side
+  // cells must be content-sized (no flex-grow/shrink) and the title must be
+  // the one flexible cell, with flexBasis: 0 like CSS's `flex: 1 1 0%`, so
+  // it's on equal footing in that algorithm instead of starting from an
+  // unbounded content-based size. Asserts the inline `style` (not a
+  // className string) since Uniwind's classes are processed at build time
+  // and are opaque to this test either way — the inline style is what
+  // actually guarantees the behavior at runtime.
+  it('makes the title cell the flexible one (flexGrow/flexShrink, flexBasis: 0) and the side cells content-sized, so a long title cannot squeeze them to zero', () => {
+    const { UNSAFE_getAllByType } = render(
+      <TestScreen title={'A very long preset name that would otherwise overflow the header bar'} />,
+    );
+
+    const views = UNSAFE_getAllByType(View);
+    const titleContainer = views.find((view) => view.props.className === 'px-2');
+    expect(titleContainer?.props.style).toEqual(
+      expect.objectContaining({ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }),
+    );
+
+    const leftContainer = views.find(
+      (view) => view.props.className === 'flex-row items-center gap-4',
+    );
+    expect(leftContainer?.props.style).toEqual(expect.objectContaining({ flexShrink: 0 }));
+
+    const rightContainer = views.find(
+      (view) => view.props.className === 'flex-row items-center justify-end gap-4',
+    );
+    expect(rightContainer?.props.style).toEqual(expect.objectContaining({ flexShrink: 0 }));
   });
 });
 
