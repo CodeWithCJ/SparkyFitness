@@ -1,15 +1,17 @@
 import { useTranslation } from 'react-i18next';
 import { getAppLocale } from '../localization';
 import { usePreferences } from '../hooks/usePreferences';
-// Register the Polish dayjs locale so the datepicker's internal dayjs.locale('pl')
-// call actually resolves Polish month/weekday names (dayjs falls back to the
-// last registered locale otherwise, which is why the calendar could stay in the
-// device/system locale until restart). English is dayjs' built-in default.
-import 'dayjs/locale/pl';
 
 /**
  * react-native-ui-datepicker uses a dayjs locale string (e.g. "en", "pl") and a
  * numeric first-day-of-week (0 = Sunday ... 6 = Saturday).
+ *
+ * Note: we intentionally do NOT import 'dayjs/locale/pl' here. dayjs is only a
+ * transitive dependency of react-native-ui-datepicker and is not resolvable as a
+ * top-level import in the mobile build (it broke Metro bundle resolution). The
+ * calendar grid is localized deterministically through the custom Weekday/Month
+ * renderers (Intl-based) plus the Intl helpers below, so the grid re-localizes
+ * on a runtime language switch without depending on dayjs global-locale state.
  */
 
 /** Maps the SparkyFitness application locale to the dayjs locale expected by the datepicker. */

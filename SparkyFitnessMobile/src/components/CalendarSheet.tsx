@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
+import { useTranslation } from 'react-i18next';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
@@ -27,6 +28,7 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
   ({ selectedDate, onSelectDate }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const { presentation } = useCalendarPresentation();
+    const { t } = useTranslation();
 
     const [
       surfaceBg,
@@ -51,6 +53,19 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
     const weekdayLabels = useMemo(() => getCalendarWeekdayShortNames(appLocale), [appLocale]);
     const monthLabels = useMemo(() => getCalendarMonthNames(appLocale), [appLocale]);
 
+    // The visible month/year, kept in sync with the picker's navigation so the
+    // custom month caption (localized via Intl, independent of dayjs) always
+    // reflects the month the user is looking at.
+    const [year, month] = selectedDate.split('-').map(Number);
+    const [visible, setVisible] = React.useState({ year, month: month - 1 });
+    const caption = `${monthLabels[visible.month] ?? ''} ${visible.year}`.trim();
+    const shiftVisible = useCallback((delta: number) => {
+      setVisible((prev) => {
+        const d = new Date(prev.year, prev.month + delta, 1);
+        return { year: d.getFullYear(), month: d.getMonth() };
+      });
+    }, []);
+
     useImperativeHandle(ref, () => ({
       present: () => bottomSheetRef.current?.present(),
       dismiss: () => bottomSheetRef.current?.dismiss(),
@@ -65,9 +80,11 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
 
     const renderBackdrop = useSheetBackdrop();
 
-    // Parse YYYY-MM-DD without timezone shifting
-    const [year, month, day] = selectedDate.split('-').map(Number);
-    const dateValue = new Date(year, month - 1, day);
+    // Real selected date (for the highlighted day); the visible month is
+    // tracked separately so the custom caption can navigate months without
+    // moving the selection.
+    const [sy, sm, sd] = selectedDate.split('-').map(Number);
+    const selectedDateValue = new Date(sy, sm - 1, sd);
 
     const handleChange = useCallback(
       ({ date }: { date: DateType }) => {
@@ -78,6 +95,13 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
       },
       [onSelectDate]
     );
+
+    const handleMonthChange = useCallback((value: number) => {
+      setVisible((prev) => {
+        const d = new Date(prev.year, value, 1);
+        return { year: d.getFullYear(), month: d.getMonth() };
+      });
+    }, []);
 
     return (
       <BottomSheetModal
@@ -90,20 +114,45 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
         <BottomSheetView className="pb-safe-or-5 px-2">
+          {/* Custom deterministic month caption + navigation, driven by the
+              reactive app locale via Intl (independent of the library's
+              dayjs global locale). The datepicker header is hidden so it never
+              renders a stale system-locale month title. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 8,
+            }}
+          >
+            <Pressable onPress={() => shiftVisible(-1)} hitSlop={12} accessibilityLabel={t('cycleCalendar.previousMonth', { defaultValue: 'Previous month' })}>
+              <Icon name="chevron-back" size={18} color={textPrimary} />
+            </Pressable>
+            <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600', textTransform: 'capitalize' }}>
+              {caption}
+            </Text>
+            <Pressable onPress={() => shiftVisible(1)} hitSlop={12} accessibilityLabel={t('cycleCalendar.nextMonth', { defaultValue: 'Next month' })}>
+              <Icon name="chevron-forward" size={18} color={textPrimary} />
+            </Pressable>
+          </View>
+
           {/* The datepicker caches its locale internally (dayjs global locale +
               memoized labels). Keying by locale + firstDayOfWeek forces only this
               picker instance to remount on a runtime language / week-start change
-              so month and weekday labels re-localize immediately. */}
+              so weekday labels re-localize immediately. */}
           <DateTimePicker
             mode="single"
-            date={dateValue}
+            date={selectedDateValue}
             onChange={handleChange}
+            month={visible.month}
+            year={visible.year}
+            onMonthChange={handleMonthChange}
+            hideHeader
             locale={presentation.locale}
             firstDayOfWeek={presentation.firstDayOfWeek}
-            key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}`}
+            key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}-${visible.month}-${visible.year}`}
             components={{
-              IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
-              IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,
               // Override the weekday labels with SparkyFitness-reactive app
               // locale names (CalendarWeek.index is the JS getDay() weekday).
               Weekday: (weekday) => (
