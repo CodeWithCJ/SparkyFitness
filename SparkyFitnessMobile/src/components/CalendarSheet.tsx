@@ -76,12 +76,17 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
         handleIndicatorStyle={{ backgroundColor: textMuted }}
       >
         <BottomSheetView className="pb-safe-or-5 px-2">
+          {/* The datepicker caches its locale internally (dayjs global locale +
+              memoized labels). Keying by locale + firstDayOfWeek forces only this
+              picker instance to remount on a runtime language / week-start change
+              so month and weekday labels re-localize immediately. */}
           <DateTimePicker
             mode="single"
             date={dateValue}
             onChange={handleChange}
             locale={presentation.locale}
             firstDayOfWeek={presentation.firstDayOfWeek}
+            key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}`}
             components={{
               IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
               IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,

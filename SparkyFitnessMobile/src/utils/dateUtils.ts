@@ -52,13 +52,17 @@ export const formatShortDate = (dateString: string): string => {
 };
 
 // Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
-export const formatDateLabel = (dateString: string, t?: TFunction): string => {
+export const formatDateLabel = (
+  dateString: string,
+  t?: TFunction,
+  locale?: string,
+): string => {
   const translate = t ?? i18n.t.bind(i18n);
   const normalized = normalizeDate(dateString);
   const today = getTodayDate();
   if (normalized === today) return translate('date.today', { defaultValue: 'Today' });
   if (normalized === addDays(today, -1)) return translate('date.yesterday', { defaultValue: 'Yesterday' });
-  return formatDate(normalized);
+  return formatDate(normalized, locale);
 };
 
 // Format a timestamp as a human-readable relative time ("Just now", "3 minutes ago", etc.)
