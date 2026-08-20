@@ -76,8 +76,9 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
 
   const isValid = startDate.getTime() < endDate.getTime();
   const durationLabel = useMemo(
-    () => formatHoursMinutes(Math.max(0, endDate.getTime() - startDate.getTime())),
-    [startDate, endDate],
+    () =>
+      formatHoursMinutes(Math.max(0, endDate.getTime() - startDate.getTime()), t),
+    [startDate, endDate, t],
   );
 
   const pickerStyles = useMemo(
