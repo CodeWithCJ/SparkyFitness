@@ -28,3 +28,27 @@ All current mobile source, tests, localization resources, native/widget resource
 - Fresh whole-branch adversarial audit: no actionable localization findings.
 - Polish linguistic review: identified and fixed Apple Health naming, fasting-stage medical wording, medication terminology, workout terminology, pregnancy wording, chart tooltip, health metric labels, respiratory-rate wording, and iOS widget wording.
 - Final audit after those fixes: zero actionable audit findings.
+
+## Final coverage fix pack (fresh independent audit)
+
+A further independent whole-branch audit found residual active defects that the
+static i18n scanner does not detect. Fixed in the final coverage pack:
+
+- Semantic pluralization: fertility.days, fertility.daysPastOvulation,
+  pregnancy.weekBanner.daysToGo, cycleCard.periodLate, cycleCard.daysToDue,
+  workoutComplete allSets (converted to proper {one,few,many,other} keys).
+- Controlled-variable interpolation: removed raw English `unit: 'day'/'days'`
+  from fertility/cycleCard; localized CycleHub ring Day/cycle template literals;
+  CycleCard mode enum now mapped before interpolation.
+- Medication cyclic schedule: separate localized on/off day-count phrases
+  (dual-count pluralization).
+- Pregnancy content: localized baby-development presentation for all active
+  weeks 4–40 (comparison/baby/parent blurbs, EN + PL) and pregnancy safety item
+  names/notes (FOOD_SAFETY + MED_SAFETY), plus localized PL search aliases with
+  canonical EN search preserved.
+- Earlier static shared exports (CYCLE_ARTICLES, POSTPARTUM_SYMPTOMS,
+  MENOPAUSE_SYMPTOMS, BIRTH_PLAN_QUESTIONS, HOSPITAL_BAG_ITEMS) were audited and
+  found to have NO active mobile call site; left canonical (inactive) and
+  documented.
+- Regression tests added for every fixed class (semantic plurals 1/2/5/12/22/25,
+  baby weeks 4–40, safety EN/PL content + localized search).

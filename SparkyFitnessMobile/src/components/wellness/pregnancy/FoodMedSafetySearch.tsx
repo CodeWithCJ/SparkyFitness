@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { lookupSafety, FOOD_SAFETY, MED_SAFETY } from '@workspace/shared';
+import { FOOD_SAFETY, MED_SAFETY } from '@workspace/shared';
 import type { SafetyItem, SafetyStatus } from '@workspace/shared';
 import FormInput from '../../FormInput';
 import SegmentedControl from '../../SegmentedControl';
 import { localizeSafetyStatus } from '../../../utils/safetyLocalization';
+import {
+  localizeSafetyName,
+  localizeSafetyNote,
+  lookupSafetyLocalized,
+} from '../../../utils/pregnancySafetyLocalization';
 
 const STATUS_STYLE: Record<SafetyStatus, { bg: string; text: string }> = {
   safe: { bg: 'bg-green-100', text: 'text-green-700' },
@@ -28,8 +33,14 @@ const FoodMedSafetySearch: React.FC = () => {
 
   const results = useMemo<SafetyItem[]>(() => {
     if (!debouncedQuery.trim()) return [];
-    return lookupSafety(debouncedQuery, category === 'food' ? FOOD_SAFETY : MED_SAFETY);
-  }, [debouncedQuery, category]);
+    const group = category === 'food' ? 'food' : 'med';
+    return lookupSafetyLocalized(
+      debouncedQuery,
+      category === 'food' ? FOOD_SAFETY : MED_SAFETY,
+      group,
+      t,
+    );
+  }, [debouncedQuery, category, t]);
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
@@ -71,13 +82,13 @@ const FoodMedSafetySearch: React.FC = () => {
               >
                 <View className="flex-row items-center justify-between">
                   <Text className="text-text-primary text-base font-semibold flex-1 mr-2">
-                    {item.name}
+                    {localizeSafetyName(item, category === 'food' ? 'food' : 'med', t)}
                   </Text>
                   <View className={`rounded-full px-2.5 py-0.5 ${style.bg}`}>
                     <Text className={`text-xs font-bold ${style.text}`}>{localizeSafetyStatus(t, item.status)}</Text>
                   </View>
                 </View>
-                <Text className="text-text-secondary text-xs leading-normal">{item.note}</Text>
+                <Text className="text-text-secondary text-xs leading-normal">{localizeSafetyNote(item, category === 'food' ? 'food' : 'med', t)}</Text>
               </View>
             );
           })}

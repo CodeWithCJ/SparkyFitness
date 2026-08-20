@@ -4,6 +4,11 @@ import { View, Text } from 'react-native';
 import { babyWeek } from '@workspace/shared';
 import { useWellnessTokens } from '../theme/wellnessTokens';
 import WombScene from './WombScene';
+import {
+  localizeBabyWeek,
+  formatBabyLength,
+  formatBabyWeight,
+} from '../../../utils/pregnancyContentLocalization';
 
 import { useDiscreetMode } from '../../../hooks/useDiscreetMode';
 
@@ -15,6 +20,7 @@ interface BabyGrowthViewProps {
 const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
   const { t } = useTranslation();
   const info = babyWeek(week);
+  const localized = localizeBabyWeek(week, t);
   const tokens = useWellnessTokens();
   const { discreetMode } = useDiscreetMode();
 
@@ -49,32 +55,32 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
         <WombScene scene={info.wombScene} size={96} />
         <View className="shrink gap-1">
           <Text className="text-sm font-semibold" style={{ color: tokens.phasePregnant }}>
-            {t('babyGrowth.sizeOf', { defaultValue: 'Size of {{comparison}}', comparison: info.comparison.toLowerCase() })}
+            {t('babyGrowth.sizeOf', { defaultValue: 'Size of {{comparison}}', comparison: (localized?.comparison ?? info.comparison).toLowerCase() })}
           </Text>
           <View className="flex-row gap-4 mt-1">
             {info.lengthCm != null && (
               <View>
                 <Text className="text-text-secondary text-xs">{t('babyGrowth.length', { defaultValue: 'Length' })}</Text>
-                <Text className="text-text-primary text-base font-bold">{info.lengthCm} {t('common.units.cm', { defaultValue: 'cm' })}</Text>
+                <Text className="text-text-primary text-base font-bold">{formatBabyLength(info.lengthCm)}</Text>
               </View>
             )}
             {info.weightG != null && (
               <View>
                 <Text className="text-text-secondary text-xs">{t('babyGrowth.weight', { defaultValue: 'Weight' })}</Text>
-                <Text className="text-text-primary text-base font-bold">{info.weightG} g</Text>
+                <Text className="text-text-primary text-base font-bold">{formatBabyWeight(info.weightG)}</Text>
               </View>
             )}
           </View>
         </View>
       </View>
 
-      {!!info.babyBlurb && (
-        <Text className="text-text-primary text-sm">{info.babyBlurb}</Text>
+      {localized?.baby && (
+        <Text className="text-text-primary text-sm">{localized.baby}</Text>
       )}
-      {!!info.momBlurb && (
+      {localized?.mom && (
         <View className="gap-0.5">
           <Text className="text-text-secondary text-sm font-semibold">{t('babyGrowth.forYou', { defaultValue: 'For you' })}</Text>
-          <Text className="text-text-primary text-sm leading-5">{info.momBlurb}</Text>
+          <Text className="text-text-primary text-sm leading-5">{localized.mom}</Text>
         </View>
       )}
     </View>
