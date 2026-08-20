@@ -8,6 +8,16 @@ jest.mock('../../src/hooks/useMealTypes', () => ({
   useMealTypes: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({
+    preferences: { first_day_of_week: 0 },
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: jest.fn(),
+  }),
+}));
+
 const defaultMealTypes = [
   { id: 'breakfast-id', name: 'Breakfast', user_id: null },
   { id: 'brunch-id', name: 'Brunch', user_id: 'user1' },

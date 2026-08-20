@@ -7,6 +7,7 @@ import type { SharedCycle, SharedCycleDailyLog, SharedCycleSettings } from '@wor
 import Icon from '../Icon';
 import { useWellnessTokens } from './theme/wellnessTokens';
 import { getPhaseColor } from '../../utils/cycleDisplayUtils';
+import { usePreferences } from '../../hooks/usePreferences';
 
 interface CycleCalendarGridProps {
   initialDate: string; // YYYY-MM-DD, seeds the visible month
@@ -29,6 +30,13 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const tokens = useWellnessTokens();
+  const { preferences } = usePreferences();
+  const firstDayOfWeek =
+    typeof preferences?.first_day_of_week === 'number' &&
+    preferences.first_day_of_week >= 0 &&
+    preferences.first_day_of_week <= 6
+      ? preferences.first_day_of_week
+      : 0;
   const [textPrimary, textMuted] = useCSSVariable([
     '--color-text-primary',
     '--color-text-muted',
@@ -45,8 +53,8 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
   }, [currentMonth]);
 
   const { days: gridDates } = useMemo(
-    () => buildMonthGrid(year, monthVal, 0), // 0 = Sunday
-    [year, monthVal]
+    () => buildMonthGrid(year, monthVal, firstDayOfWeek),
+    [year, monthVal, firstDayOfWeek]
   );
 
   // Stats for prediction
@@ -183,7 +191,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     i18n.language.toLowerCase().startsWith('pl') ? 'pl-PL' : 'en-US',
     { month: 'long', year: 'numeric' },
   );
-  const weekdays = [
+  const baseWeekdays = [
     t('cycleCalendar.weekdays.sunday', { defaultValue: 'S' }),
     t('cycleCalendar.weekdays.monday', { defaultValue: 'M' }),
     t('cycleCalendar.weekdays.tuesday', { defaultValue: 'T' }),
@@ -192,6 +200,8 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     t('cycleCalendar.weekdays.friday', { defaultValue: 'F' }),
     t('cycleCalendar.weekdays.saturday', { defaultValue: 'S' }),
   ];
+  // Rotate weekday headers so they start on the account-configured first day.
+  const weekdays = Array.from({ length: 7 }, (_, i) => baseWeekdays[(i + firstDayOfWeek) % 7]);
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm border-0">

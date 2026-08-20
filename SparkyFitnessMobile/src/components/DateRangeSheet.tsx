@@ -8,6 +8,7 @@ import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
 import Button from './ui/Button';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
+import { useCalendarPresentation } from '../utils/calendarLocalization';
 
 export interface DateRangeSheetRef {
   present: () => void;
@@ -28,6 +29,7 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
   ({ onConfirm }, ref) => {
     const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const { presentation } = useCalendarPresentation();
     const [start, setStart] = useState<DateType>(undefined);
     const [end, setEnd] = useState<DateType>(undefined);
 
@@ -94,6 +96,8 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
             endDate={end}
             maxDate={new Date()}
             onChange={handleChange}
+            locale={presentation.locale}
+            firstDayOfWeek={presentation.firstDayOfWeek}
             components={{
               IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
               IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,

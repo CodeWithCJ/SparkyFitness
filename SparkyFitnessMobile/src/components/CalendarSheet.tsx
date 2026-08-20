@@ -6,6 +6,7 @@ import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
+import { useCalendarPresentation } from '../utils/calendarLocalization';
 
 export interface CalendarSheetRef {
   present: () => void;
@@ -20,6 +21,7 @@ interface CalendarSheetProps {
 const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
   ({ selectedDate, onSelectDate }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const { presentation } = useCalendarPresentation();
 
     const [
       surfaceBg,
@@ -78,6 +80,8 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
             mode="single"
             date={dateValue}
             onChange={handleChange}
+            locale={presentation.locale}
+            firstDayOfWeek={presentation.firstDayOfWeek}
             components={{
               IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
               IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,

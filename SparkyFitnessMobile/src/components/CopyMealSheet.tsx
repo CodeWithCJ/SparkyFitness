@@ -19,6 +19,7 @@ import { useMealTypes } from '../hooks/useMealTypes';
 import { getLocalizedMealLabel } from '../constants/meals';
 import { getHistoricalMealTypeLabel } from '../utils/mealNutrition';
 import { formatDateLabel } from '../utils/dateUtils';
+import { useCalendarPresentation } from '../utils/calendarLocalization';
 import { dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
 
@@ -35,6 +36,7 @@ interface CopyMealSheetProps {
 const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
   ({ isPending = false, onCopy }, ref) => {
     const { t } = useTranslation();
+    const { presentation } = useCalendarPresentation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
 
     const [
@@ -178,6 +180,8 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                 mode="single"
                 date={dateValue}
                 onChange={handleDateChange}
+                locale={presentation.locale}
+                firstDayOfWeek={presentation.firstDayOfWeek}
                 components={{
                   IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
                   IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,
