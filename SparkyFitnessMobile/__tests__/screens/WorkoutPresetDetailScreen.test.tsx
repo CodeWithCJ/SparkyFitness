@@ -4,7 +4,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import WorkoutPresetDetailScreen from '../../src/screens/WorkoutPresetDetailScreen';
-import { usePreferences } from '../../src/hooks';
+import { usePreferences, useCreateWorkoutPreset } from '../../src/hooks';
 import { useStartLiveWorkout } from '../../src/hooks/useStartLiveWorkout';
 import { loadActiveDraft } from '../../src/services/workoutDraftService';
 import { buildPresetStartExercisesPayload } from '../../src/utils/workoutSession';
@@ -20,10 +20,19 @@ jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
   useDeleteWorkoutPreset: jest.fn(() => ({ confirmAndDelete: jest.fn(), isPending: false })),
   useUpdateWorkoutPreset: jest.fn(() => ({ updateWorkoutPreset: jest.fn(), isPending: false })),
+  useCreateWorkoutPreset: jest.fn(() => ({ createPresetAsync: jest.fn(), isPending: false })),
 }));
 
 jest.mock('../../src/hooks/useStartLiveWorkout', () => ({
   useStartLiveWorkout: jest.fn(),
+}));
+
+// Force the custom (non-native) header path so header action buttons render
+// as pressable React elements instead of being handed off to
+// unstable_header*Items, which the test renderer can't press.
+jest.mock('../../src/services/nativeTabBarPreference', () => ({
+  useNativeIOSTabsActive: jest.fn(() => false),
+  useNativeIOSHeadersActive: jest.fn(() => false),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -52,6 +61,9 @@ const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePrefe
 const mockLoadActiveDraft = loadActiveDraft as jest.MockedFunction<typeof loadActiveDraft>;
 const mockUseStartLiveWorkout = useStartLiveWorkout as jest.MockedFunction<
   typeof useStartLiveWorkout
+>;
+const mockUseCreateWorkoutPreset = useCreateWorkoutPreset as jest.MockedFunction<
+  typeof useCreateWorkoutPreset
 >;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -118,6 +130,10 @@ describe('WorkoutPresetDetailScreen', () => {
     } as any);
     mockLoadActiveDraft.mockResolvedValue(null);
     mockUseStartLiveWorkout.mockReturnValue({ startLiveWorkout, isStarting: false });
+    mockUseCreateWorkoutPreset.mockReturnValue({
+      createPresetAsync: jest.fn(),
+      isPending: false,
+    });
   });
 
   it('starts a live workout with the preset-built payload on Start workout', () => {
@@ -142,6 +158,59 @@ describe('WorkoutPresetDetailScreen', () => {
       sourcePresetId: 7,
     });
     expect(navigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it('duplicates the preset (available even though the fixture profile does not own it) into a private copy with the original exercises/sets', async () => {
+    const created = buildPreset({ id: 8, name: 'Push Day (Copy)' });
+    const createPresetAsync = jest.fn().mockResolvedValue(created);
+    mockUseCreateWorkoutPreset.mockReturnValue({ createPresetAsync, isPending: false });
+
+    const preset = buildPreset({
+      exercises: [
+        {
+          id: 'pe-1',
+          exercise_id: 'ex-1',
+          exercise_name: 'Bench Press',
+          image_url: null,
+          sets: [buildSet({ id: 's-1', set_number: 1, reps: 5, weight: 100 })],
+        },
+      ],
+    });
+    const screen = renderScreen(preset);
+
+    fireEvent.press(screen.getByLabelText('Duplicate workout preset'));
+
+    await waitFor(() => expect(createPresetAsync).toHaveBeenCalledTimes(1));
+    expect(createPresetAsync).toHaveBeenCalledWith({
+      name: 'Push Day (Copy)',
+      description: 'Chest, shoulders, triceps',
+      is_public: false,
+      exercises: [
+        {
+          exercise_id: 'ex-1',
+          image_url: null,
+          sort_order: undefined,
+          superset_group: undefined,
+          sets: [
+            {
+              set_number: 1,
+              set_type: 'normal',
+              reps: 5,
+              weight: 100,
+              duration: null,
+              distance: undefined,
+              rest_time: 60,
+              notes: null,
+            },
+          ],
+        },
+      ],
+    });
+    await waitFor(() => {
+      expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetDetail', {
+        preset: created,
+      });
+    });
   });
 
   it('navigates to WorkoutAdd with the preset and popCount=2 on Log past workout', async () => {
@@ -215,11 +284,10 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(preset);
 
-    // The name lives in the header title; the body keeps the description,
+    // The name lives in the header title (rendered as plain text on this
+    // file's forced custom header path); the body keeps the description,
     // exercise count, and the exercise card.
-    expect(navigation.setOptions).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Push Day' }),
-    );
+    expect(screen.getByText('Push Day')).toBeTruthy();
     expect(screen.getByText('Chest, shoulders, triceps')).toBeTruthy();
     expect(screen.getByText('1 exercise')).toBeTruthy();
     expect(screen.getByText('Bench Press')).toBeTruthy();
