@@ -90,7 +90,7 @@
       "healthSync": "Synchronizacja danych zdrowotnych",
       "app": "Ustawienia aplikacji",
       "calories": "Kalorie i PPM",
-      "food": "Żywność",
+      "food": "Produkty",
       "dashboard": "Pulpit",
       "diary": "Dziennik",
       "wellness": "Zdrowie",
@@ -679,7 +679,7 @@
     },
     "unavailable": {
       "healthConnect": "Health Connect jest niedostępne. Upewnij się, że jest zainstalowane i włączone.",
-      "healthKit": "Dane zdrowotne (HealthKit) są niedostępne. Włącz dostęp do Zdrowia w aplikacji Zdrowie na iOS."
+      "healthKit": "Dane zdrowotne (HealthKit) są niedostępne. Włącz dostęp do danych zdrowotnych w aplikacji Zdrowie na iOS."
     },
     "import": {
       "title": "Importuj pełną historię",
@@ -1691,7 +1691,7 @@
     "totalAmount": "Łączna ilość ({{unit}}) *",
     "unit": "Jednostka",
     "selectUnit": "Wybierz jednostkę",
-    "servingSize": "Rozmiar porcji ({{unit}}) *",
+    "servingSize": "Wielkość porcji ({{unit}}) *",
     "servingUnit": "porcja",
     "foodsInMeal": "Produkty w posiłku",
     "ingredient": "składnik",
@@ -1703,8 +1703,8 @@
     "errors": {
       "missingNameTitle": "Brak nazwy posiłku",
       "missingNameMessage": "Wpisz nazwę posiłku.",
-      "invalidServingSizeTitle": "Nieprawidłowy rozmiar porcji",
-      "invalidServingSizeMessage": "Domyślny rozmiar porcji musi być większy od zera.",
+      "invalidServingSizeTitle": "Nieprawidłowa wielkość porcji",
+      "invalidServingSizeMessage": "Domyślna wielkość porcji musi być większa od zera.",
       "invalidTotalServingsTitle": "Nieprawidłowa liczba porcji",
       "invalidTotalServingsMessage": "Liczba porcji musi być większa od zera.",
       "invalidTotalAmountTitle": "Nieprawidłowa łączna ilość",
@@ -1840,7 +1840,7 @@
     },
     "values": {
       "custom": "Własna wartość",
-      "defaultHistory": "Domyślna/historia",
+      "defaultHistory": "Domyślna / historia",
       "lutealSubtitle": "Dni po owulacji (domyślnie 14)",
       "fertileSubtitle": "Pokaż dni płodne w kalendarzu",
       "discreetSubtitle": "Używaj neutralnych nazw i ikon",
@@ -2245,10 +2245,10 @@
     "discardMessage": "Masz niezapisane rozmiary odpowiedników. Odrzucić je i kontynuować?",
     "discard": "Odrzuć",
     "updateTitle": "Zaktualizować wcześniejsze wpisy?",
-    "updateMessage": "Jedzenie w bibliotece zostało zapisane. Czy chcesz również zaktualizować wcześniejsze wpisy w dzienniku nowymi wartościami odżywczymi? Niezaktualizowane wpisy zachowają swoje pierwotne wartości.",
+    "updateMessage": "Produkt w bibliotece został zapisany. Czy chcesz również zaktualizować wcześniejsze wpisy w dzienniku nowymi wartościami odżywczymi? Niezaktualizowane wpisy zachowają swoje pierwotne wartości.",
     "dontUpdate": "Nie aktualizuj",
     "update": "Aktualizuj",
-    "updatePhotosMessage": "Jedzenie w bibliotece zostało zapisane. Jakich wartości mają używać wcześniejsze wpisy w dzienniku?",
+    "updatePhotosMessage": "Produkt w bibliotece został zapisany. Jakich wartości mają używać wcześniejsze wpisy w dzienniku?",
     "updateNutrition": "Aktualizuj tylko wartości odżywcze",
     "updateNutritionPhotos": "Aktualizuj wartości odżywcze i zdjęcia",
     "saveNutritionTitle": "Zapisz wartości odżywcze",
@@ -2481,7 +2481,7 @@
       "ttc": "Staranie się o ciążę (TTC)",
       "pregnant": "Śledzenie ciąży",
       "postpartum": "Połóg i powrót do zdrowia",
-      "menopause": "Przemiany menopauzalne"
+      "menopause": "Menopauza"
     },
     "birthControl": {
       "none": "Brak",
@@ -2552,7 +2552,7 @@
     "syncFinishing": "Synchronizacja jest jeszcze kończona. Ta opcja będzie dostępna za chwilę.",
     "syncFinishingPlural": "Synchronizacja jest jeszcze kończona. Te opcje będą dostępne za chwilę.",
     "healthConnectUnavailable": "Health Connect jest niedostępny. Upewnij się, że jest zainstalowany i włączony.",
-    "healthKitUnavailable": "Dane zdrowotne (HealthKit) są niedostępne. Włącz dostęp do zdrowia w aplikacji Zdrowie na iOS.",
+    "healthKitUnavailable": "Dane zdrowotne (HealthKit) są niedostępne. Włącz dostęp do danych zdrowotnych w aplikacji Zdrowie na iOS.",
     "androidLimit": "Health Connect ogranicza ilość historii, którą aplikacje mogą odczytać każdego dnia. Po osiągnięciu limitu import wznowi się później od miejsca przerwania.",
     "running": {
       "scanning": "Skanowanie historii…",
