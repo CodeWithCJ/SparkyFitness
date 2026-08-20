@@ -52,7 +52,7 @@ describe('Polish runtime localization', () => {
     expect(toastMock).toHaveBeenCalledWith({
       type: 'error',
       text1: 'Brak nazwy',
-      text2: 'Wpisz nazwę jedzenia.',
+      text2: 'Wpisz nazwę produktu.',
     });
   });
 });
