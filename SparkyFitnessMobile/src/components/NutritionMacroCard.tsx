@@ -5,6 +5,7 @@ import MacroCompositionRing from './MacroCompositionRing';
 import ProgressRing from './ProgressRing';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { localizeNutrientKey } from '../utils/nutrientLocalization';
+import { formatLocalizedNumber } from '../localization';
 
 export interface NutritionGoalPercentages {
   calories?: number | null;
@@ -149,7 +150,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
               )}
               <View className="absolute items-center justify-center">
                 <Text className="text-text-primary text-xl font-bold">
-                  {hasCalorieGoal ? Math.max(0, Math.round(calorieGoal - calories)).toLocaleString() : Math.round(calories).toLocaleString()}
+                  {hasCalorieGoal ? formatLocalizedNumber(Math.max(0, Math.round(calorieGoal - calories))) : formatLocalizedNumber(Math.round(calories))}
                 </Text>
                 <Text className="text-text-muted text-[10px] uppercase font-semibold mt-0.5">
                   {hasCalorieGoal ? t('nutrition.left', { defaultValue: 'left' }) : t('nutrition.caloriesShort', { defaultValue: 'cal' })}
@@ -158,11 +159,11 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
             </View>
             {hasCalorieGoal ? (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                {Math.round(calories).toLocaleString()} / {Math.round(calorieGoal).toLocaleString()} {t('nutrition.caloriesShort', { defaultValue: 'kcal' })} ({goalPercentages?.calories}%)
+                {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} {t('nutrition.caloriesShort', { defaultValue: 'kcal' })} ({goalPercentages?.calories}%)
               </Text>
             ) : (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                {Math.round(calories).toLocaleString()} {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+                {formatLocalizedNumber(Math.round(calories))} {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
               </Text>
             )}
           </View>
@@ -176,8 +177,8 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                   <View className="flex-row justify-between mb-1">
                     <Text className="text-text-secondary text-sm">{macro.label}</Text>
                     <Text className="text-text-primary text-sm font-medium">
-                      {Math.round(macro.value)}g
-                      {macro.goal && macro.goal > 0 ? ` / ${Math.round(macro.goal)}g` : ''}
+                      {formatLocalizedNumber(Math.round(macro.value))}g
+                      {macro.goal && macro.goal > 0 ? ` / ${formatLocalizedNumber(Math.round(macro.goal))}g` : ''}
                     </Text>
                   </View>
                   <View className="h-2 rounded-full bg-progress-track overflow-hidden">
@@ -194,9 +195,9 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                   {goalPct != null ? (() => {
                     const diff = macro.goal ? macro.goal - macro.value : 0;
                     const remainingText = diff > 0
-                      ? t('nutrition.remaining', { defaultValue: '{{value}}g left', value: Math.round(diff) })
+                      ? t('nutrition.remaining', { defaultValue: '{{value}}g left', value: formatLocalizedNumber(Math.round(diff)) })
                       : diff < 0
-                        ? t('nutrition.over', { defaultValue: '{{value}}g over', value: Math.round(Math.abs(diff)) })
+                        ? t('nutrition.over', { defaultValue: '{{value}}g over', value: formatLocalizedNumber(Math.round(Math.abs(diff))) })
                         : t('nutrition.met', { defaultValue: 'met' });
                     return (
                       <Text className="text-text-muted text-xs mt-1">
@@ -226,8 +227,8 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
               <View className="absolute items-center justify-center">
                 <Text className="text-text-primary text-3xl font-medium">
                   {hasCalorieGoal
-                    ? Math.max(0, Math.round(calorieGoal - calories)).toLocaleString()
-                    : Math.round(calories)}
+                    ? formatLocalizedNumber(Math.max(0, Math.round(calorieGoal - calories)))
+                    : formatLocalizedNumber(Math.round(calories))}
                 </Text>
                 <Text className="text-text-secondary text-xs mt-0.5">
                   {hasCalorieGoal ? t('nutrition.left', { defaultValue: 'left' }) : t('nutrition.calories', { defaultValue: 'calories' })}
@@ -236,7 +237,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
             </View>
             {hasCalorieGoal ? (
               <Text className="text-text-secondary text-xs font-medium mt-2 text-center">
-                {Math.round(calories).toLocaleString()} / {Math.round(calorieGoal).toLocaleString()} {t('nutrition.caloriesShort', { defaultValue: 'Cal' })}
+                {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} {t('nutrition.caloriesShort', { defaultValue: 'Cal' })}
               </Text>
             ) : null}
           </View>
@@ -254,7 +255,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                 />
                 <Text className="text-text-secondary text-sm flex-1">{macro.label}</Text>
                 <Text className="text-text-primary text-sm font-medium">
-                  {Math.round(macro.value)}g
+                  {formatLocalizedNumber(Math.round(macro.value))}g
                 </Text>
               </View>
             ))}

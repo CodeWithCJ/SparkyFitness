@@ -35,6 +35,7 @@ import { getActiveServerConfig } from '../services/storage';
 import { fireSuccessHaptic } from '../services/haptics';
 import { withAlpha } from '../utils/colors';
 import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
+import { formatLocalizedNumber, getAppLocale } from '../localization';
 import { setsDurationMinutes } from '@workspace/shared';
 import {
   buildPresetUpdateExercises,
@@ -409,7 +410,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
     useCSSVariable(RPE_TONE_VARS[rpeTone ?? 'easy']),
   );
 
-  const finishedTimeText = new Date(finishedAt).toLocaleTimeString([], {
+  const finishedTimeText = new Date(finishedAt).toLocaleTimeString(getAppLocale(), {
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -467,7 +468,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             <StatTile icon="exercise-weights" label={t('workoutComplete.stats.volume', { defaultValue: 'Volume' })}>
               {summary.volumeKg > 0 ? (
                 <StatValue
-                  value={Math.round(weightFromKg(summary.volumeKg, weightUnit)).toLocaleString()}
+                  value={formatLocalizedNumber(Math.round(weightFromKg(summary.volumeKg, weightUnit)))}
                   unit={weightUnit}
                 />
               ) : (
@@ -491,7 +492,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             </StatTile>
             <StatTile icon="flame" label={t('workoutComplete.stats.calories', { defaultValue: 'Calories' })}>
               {caloriesValue != null ? (
-                <StatValue value={Math.round(caloriesValue).toLocaleString()} unit={t('nutrition.caloriesShort', { defaultValue: 'kcal' })} />
+                <StatValue value={formatLocalizedNumber(Math.round(caloriesValue))} unit={t('nutrition.caloriesShort', { defaultValue: 'kcal' })} />
               ) : caloriesFailed ? (
                 <StatValue value="—" />
               ) : (
@@ -504,11 +505,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             <View className="flex-row gap-2 mt-2">
               <StatTile icon="exercise-running" label={t('workoutComplete.stats.distance', { defaultValue: 'Distance' })}>
                 <StatValue
-                  value={String(
-                    parseFloat(
-                      distanceFromKm(summary.totalDistanceKm, distanceUnit).toFixed(2),
-                    ),
-                  )}
+                  value={formatLocalizedNumber(distanceFromKm(summary.totalDistanceKm, distanceUnit), { maximumFractionDigits: 2 })}
                   unit={distanceUnit === 'miles' ? 'mi' : 'km'}
                 />
               </StatTile>
@@ -530,7 +527,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 className="text-base font-bold ml-2"
                 style={{ color: rpeToneColor, fontVariant: ['tabular-nums'] }}
               >
-                {String(parseFloat(summary.averageRpe.toFixed(1)))}
+                {formatLocalizedNumber(parseFloat(summary.averageRpe.toFixed(1)), { maximumFractionDigits: 1 })}
               </Text>
             </View>
           )}

@@ -34,6 +34,7 @@ import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivit
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
 import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
+import { formatLocalizedNumber } from '../localization';
 import Toast from 'react-native-toast-message';
 import { addLog } from '../services/LogService';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -302,7 +303,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         value: isEditing
           ? (formState.duration || '-')
           : (duration > 0
-              ? String(Number(duration.toFixed(2)))
+              ? formatLocalizedNumber(duration, { maximumFractionDigits: 2 })
               : '-'),
         label: t('activityDetail.stats.duration', { defaultValue: 'Duration' }),
         editKey: 'duration',
@@ -315,7 +316,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         value: isEditing
           ? (formState.calories || '-')
           : (calories > 0
-              ? (calories % 1 === 0 ? String(calories) : calories.toFixed(1))
+              ? formatLocalizedNumber(calories, { maximumFractionDigits: 1 })
               : '-'),
         label: t('activityDetail.stats.calories', { defaultValue: 'Calories' }),
         editKey: 'calories',
@@ -328,7 +329,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         value: isEditing
           ? (formState.distance || '-')
           : (session.distance != null && session.distance > 0
-              ? String(distanceFromKm(session.distance, distanceUnit).toFixed(1))
+              ? formatLocalizedNumber(distanceFromKm(session.distance, distanceUnit), { minimumFractionDigits: 1, maximumFractionDigits: 1 })
               : '-'),
         label: t('activityDetail.stats.distance', { defaultValue: 'Distance' }),
         editKey: 'distance',
@@ -340,7 +341,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       stats.push({
         value: isEditing
           ? (formState.avgHeartRate || '-')
-          : (session.avg_heart_rate != null ? String(session.avg_heart_rate) : '-'),
+          : (session.avg_heart_rate != null ? formatLocalizedNumber(session.avg_heart_rate) : '-'),
         label: t('activityDetail.stats.avgHeartRate', { defaultValue: 'Avg Heart Rate' }),
         editKey: 'avgHeartRate',
         editSuffix: 'bpm',
@@ -348,7 +349,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       });
     }
     if (session.steps != null && session.steps > 0) {
-      stats.push({ value: session.steps.toLocaleString(), label: t('activityDetail.stats.steps', { defaultValue: 'Steps' }) });
+      stats.push({ value: formatLocalizedNumber(session.steps), label: t('activityDetail.stats.steps', { defaultValue: 'Steps' }) });
     }
     if (paceDistanceKm != null && paceDistanceKm > 0 && paceDuration > 0) {
       const pace = formatPace(paceDuration, paceDistanceKm);

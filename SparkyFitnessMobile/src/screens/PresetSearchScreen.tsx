@@ -23,6 +23,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { formatLocalizedNumber } from '../localization';
 import {
   CATEGORY_ICON_MAP,
   buildPresetStartExercisesPayload,
@@ -163,7 +164,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({ navigation, rou
               <ShareStatusBadge status={status} />
             </View>
             <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-              {t('workoutPresetCount', { defaultValue: '{{formattedCount}} exercise', count: item.exercises.length, formattedCount: item.exercises.length.toLocaleString() })}
+              {t('workoutPresetCount', { defaultValue: '{{formattedCount}} exercise', count: item.exercises.length, formattedCount: formatLocalizedNumber(item.exercises.length) })}
             </Text>
           </View>
         </TouchableOpacity>

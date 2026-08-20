@@ -4,7 +4,7 @@ import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { getAppLocale } from '../localization';
+import { getAppLocale, formatLocalizedNumber } from '../localization';
 import { useNutritionTrends, type TrendRange } from '../hooks/useNutritionTrends';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -133,7 +133,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
           <View className="flex-row justify-between py-2 border-b border-border-subtle">
             <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.dailyAverage', { defaultValue: 'Daily Average' })}</Text>
             <Text className="text-text-primary text-sm font-semibold">
-              {stats.average % 1 !== 0 ? stats.average.toFixed(1) : stats.average} {unit}
+              {stats.average % 1 !== 0 ? formatLocalizedNumber(stats.average, { maximumFractionDigits: 1 }) : formatLocalizedNumber(stats.average)} {unit}
             </Text>
           </View>
 
@@ -141,7 +141,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
             <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.highestDay', { defaultValue: 'Highest Intake Day' })}</Text>
             <View className="items-end">
               <Text className="text-text-primary text-sm font-semibold">
-                {stats.peak % 1 !== 0 ? stats.peak.toFixed(1) : stats.peak} {unit}
+                {stats.peak % 1 !== 0 ? formatLocalizedNumber(stats.peak, { maximumFractionDigits: 1 }) : formatLocalizedNumber(stats.peak)} {unit}
               </Text>
               {formattedPeakDay ? (
                 <Text className="text-text-muted text-xs mt-0.5">{formattedPeakDay}</Text>
@@ -154,7 +154,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
               <View className="flex-row justify-between py-2 border-b border-border-subtle">
                 <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.targetGoal', { defaultValue: 'Target Daily Goal' })}</Text>
                 <Text className="text-text-primary text-sm font-semibold">
-                  {Math.round(goal).toLocaleString()} {unit}
+                  {formatLocalizedNumber(Math.round(goal))} {unit}
                 </Text>
               </View>
 

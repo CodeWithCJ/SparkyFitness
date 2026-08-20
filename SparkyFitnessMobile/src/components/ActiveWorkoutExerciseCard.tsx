@@ -26,6 +26,7 @@ import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
+import { formatLocalizedNumber } from '../localization';
 import {
   CATEGORY_ICON_MAP,
   compareSetRecords,
@@ -385,7 +386,7 @@ function ActiveWorkoutExerciseCard({
   const bestIsPr = stampedBest != null && bestDisplay === stampedBest;
   const bestText =
     bestDisplay != null
-      ? `${parseFloat(weightFromKg(bestDisplay.weight, weightUnit).toFixed(1))}${
+      ? `${formatLocalizedNumber(weightFromKg(bestDisplay.weight, weightUnit), { maximumFractionDigits: 1 })}${
           bestDisplay.reps != null ? ` × ${bestDisplay.reps}` : ''
         }`
       : null;
@@ -517,12 +518,10 @@ function ActiveWorkoutExerciseCard({
     if (cardioForm) {
       const firstCardioSet = exercise.sets[0];
       if (firstCardioSet?.duration != null) {
-        cardioParts.push(`${parseFloat((firstCardioSet.duration / 60).toFixed(1))} min`);
+        cardioParts.push(`${formatLocalizedNumber(firstCardioSet.duration / 60, { maximumFractionDigits: 1 })} min`);
       }
       if (firstCardioSet?.distance != null) {
-        const dist = parseFloat(
-          distanceFromKm(firstCardioSet.distance, distanceUnit).toFixed(2),
-        );
+        const dist = formatLocalizedNumber(distanceFromKm(firstCardioSet.distance, distanceUnit), { maximumFractionDigits: 2 });
         cardioParts.push(`${dist} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
       }
     }

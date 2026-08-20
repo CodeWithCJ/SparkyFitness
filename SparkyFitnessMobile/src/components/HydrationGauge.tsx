@@ -7,6 +7,7 @@ import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-nativ
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { WATER_UNIT_LABELS } from '../utils/unitConversions';
+import { formatLocalizedNumber } from '../localization';
 
 interface ContainerOption {
   id: number;
@@ -110,9 +111,9 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   const convertedGoal = convertFromMl(goal, unit);
   const formatUnitVolume = (val: number, u: string): string => {
     const decimals = u === 'oz' ? 1 : u === 'liter' ? 2 : 0;
-    // toLocaleString keeps thousands grouping and the locale's decimal
-    // separator; maximumFractionDigits alone strips trailing zeros.
-    return val.toLocaleString(undefined, { maximumFractionDigits: decimals });
+    // formatLocalizedNumber keeps thousands grouping and the app locale's
+    // decimal separator; maximumFractionDigits alone strips trailing zeros.
+    return formatLocalizedNumber(val, { maximumFractionDigits: decimals });
   };
   const displayConsumed = formatUnitVolume(convertedConsumed, unit);
   const displayGoal = formatUnitVolume(convertedGoal, unit);
@@ -195,7 +196,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
       </View>
       {showButtons && containerVolume != null && !showChips && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          {t('dashboard.perContainer', { defaultValue: '{{value}} {{unit}} per container', value: convertFromMl(containerVolume, unit).toLocaleString(undefined, { maximumFractionDigits: 1 }), unit: unitLabel })}
+          {t('dashboard.perContainer', { defaultValue: '{{value}} {{unit}} per container', value: formatLocalizedNumber(convertFromMl(containerVolume, unit), { maximumFractionDigits: 1 }), unit: unitLabel })}
         </Text>
       )}
       {showButtons && containerVolume == null && (

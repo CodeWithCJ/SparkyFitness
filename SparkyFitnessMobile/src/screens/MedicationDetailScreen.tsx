@@ -23,6 +23,7 @@ import {
   formatStrengthPerUnit,
 } from '@workspace/shared';
 import { localizedDescribeSchedule, formatLocalizedTimeOfDay } from '../utils/medicationScheduleLocalization';
+import { getAppLocale } from '../localization';
 import { getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 import { medicationTypeLabel, mealTimingLabel } from '../utils/medicationLocalization';
@@ -93,7 +94,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
     (entry: MedicationEntry) => {
       Alert.alert(
         t('medications.detail.removeDoseTitle', { defaultValue: 'Remove Dose' }),
-        t('medications.detail.removeDoseMessage', { defaultValue: 'Remove this logged dose from {{time}}?', time: entry.taken_at ? new Date(entry.taken_at).toLocaleTimeString() : t('medications.detail.today', { defaultValue: 'today' }) }),
+        t('medications.detail.removeDoseMessage', { defaultValue: 'Remove this logged dose from {{time}}?', time: entry.taken_at ? new Date(entry.taken_at).toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' }) : t('medications.detail.today', { defaultValue: 'today' }) }),
         [
           { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
           {
@@ -193,7 +194,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                     <View className="flex-1">
                       <Text className="text-base text-text-primary">
                         {dose.taken_at
-                          ? new Date(dose.taken_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                          ? new Date(dose.taken_at).toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' })
                           : 'Logged'}
                       </Text>
                       {dose.notes && (

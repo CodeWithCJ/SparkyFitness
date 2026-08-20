@@ -17,6 +17,7 @@ import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { dateTypeToDate } from './TimeSheet';
 import Toast from 'react-native-toast-message';
+import { getAppLocale } from '../localization';
 
 import Button from './ui/Button';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
@@ -123,7 +124,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
 
   const startLabel = useMemo(
     () =>
-      startDate.toLocaleString(undefined, {
+      startDate.toLocaleString(getAppLocale(), {
         weekday: 'short',
         hour: 'numeric',
         minute: '2-digit',

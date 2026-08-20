@@ -20,6 +20,7 @@ import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import { withAlpha } from '../utils/colors';
 import { parseDecimalInput } from '../utils/numericInput';
 import { distanceFromKm, weightFromKg, weightToKg } from '../utils/unitConversions';
+import { formatLocalizedNumber } from '../localization';
 import {
   effectiveSetDurationSec,
   epley1RmKg,
@@ -54,7 +55,7 @@ function formatDisplayWeight(weightKg: number | null, unit: 'kg' | 'lbs'): strin
 
 function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
   if (valueKg <= 0) return '–';
-  return Math.round(weightFromKg(valueKg, unit)).toLocaleString();
+  return formatLocalizedNumber(Math.round(weightFromKg(valueKg, unit)));
 }
 
 function formatRpe(rpe: number | null): string {

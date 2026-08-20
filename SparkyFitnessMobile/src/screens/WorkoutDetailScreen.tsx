@@ -30,6 +30,7 @@ import {
   canReorderDraftExercises,
   exerciseFromSnapshot,
 } from '../utils/workoutSession';
+import { formatLocalizedNumber } from '../localization';
 import {
   useDeleteWorkout,
   useUpdateWorkout,
@@ -534,13 +535,13 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: t('workoutDetail.summary.sets', { defaultValue: 'Sets' }) });
     if (totalVolume > 0) {
       const volumeLabel = isEditing
-        ? `${Math.round(totalVolume).toLocaleString()} ${weightUnit}`
+        ? `${formatLocalizedNumber(Math.round(totalVolume))} ${weightUnit}`
         : formatVolume(totalVolume, weightUnit);
       summaryItems.push({ value: volumeLabel, label: t('workoutDetail.summary.volume', { defaultValue: 'Volume' }) });
     }
     if (totalCalories > 0) {
       summaryItems.push({
-        value: Math.round(totalCalories).toLocaleString(),
+        value: formatLocalizedNumber(Math.round(totalCalories)),
         label: t('workoutDetail.summary.calories', { defaultValue: 'Calories' }),
       });
     }

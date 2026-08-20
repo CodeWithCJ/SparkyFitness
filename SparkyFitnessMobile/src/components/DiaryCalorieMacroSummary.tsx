@@ -18,6 +18,7 @@ import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import type { DailySummary } from '../types/dailySummary';
 import type { UserCustomNutrient } from '../hooks/useCustomNutrients';
+import { formatLocalizedNumber } from '../localization';
 
 const CORE_MACROS = ['protein', 'carbs', 'fat', 'dietary_fiber'] as const;
 
@@ -76,18 +77,18 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
     <View>
       <View className="flex-row justify-between items-baseline mb-3">
         <Text className="text-lg font-bold text-text-primary">
-          {Math.round(eaten).toLocaleString()}
+          {formatLocalizedNumber(Math.round(eaten))}
           {hasGoal && (
             <Text className="text-lg font-semibold text-text-muted">
 {/* i18n-audit-ignore-next-line hardcoded-ui-text -- slash and spacing are numeric presentation punctuation. */}
-              {t('nutrition.goalSeparator', { defaultValue: ' / {{value}}', value: Math.round(goal).toLocaleString() })}
+              {t('nutrition.goalSeparator', { defaultValue: ' / {{value}}', value: formatLocalizedNumber(Math.round(goal)) })}
             </Text>
           )}
           <Text className="text-sm font-normal text-text-muted"> {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}</Text>
         </Text>
         {hasGoal && (
           <Text className="text-sm font-bold text-text-primary">
-            {Math.abs(Math.round(remaining)).toLocaleString()}
+            {formatLocalizedNumber(Math.abs(Math.round(remaining)))}
             <Text className="text-sm font-normal text-text-muted">
               {' '}
               {remaining >= 0 ? t('diarySummary.remaining', { defaultValue: 'remaining' }) : t('diarySummary.over', { defaultValue: 'over' })}

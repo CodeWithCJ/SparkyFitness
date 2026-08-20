@@ -16,6 +16,7 @@ import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodEntry } from '../types/foodEntries';
+import { formatLocalizedNumber } from '../localization';
 
 type DailyNutritionDetailsScreenProps = RootStackScreenProps<'DailyNutritionDetails'>;
 
@@ -261,7 +262,7 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
     let subText = '';
     if (hasGoal) {
       const diff = item.goal! - item.consumed;
-      const remainingLabel = diff > 0 ? t('dailyNutritionDetails.left', { defaultValue: '{{value}}{{unit}} left', value: Math.round(diff).toLocaleString(), unit: item.unit }) : diff < 0 ? t('dailyNutritionDetails.over', { defaultValue: '{{value}}{{unit}} over', value: Math.round(Math.abs(diff)).toLocaleString(), unit: item.unit }) : t('dailyNutritionDetails.met', { defaultValue: 'met' });
+      const remainingLabel = diff > 0 ? t('dailyNutritionDetails.left', { defaultValue: '{{value}}{{unit}} left', value: formatLocalizedNumber(Math.round(diff)), unit: item.unit }) : diff < 0 ? t('dailyNutritionDetails.over', { defaultValue: '{{value}}{{unit}} over', value: formatLocalizedNumber(Math.round(Math.abs(diff))), unit: item.unit }) : t('dailyNutritionDetails.met', { defaultValue: 'met' });
       const pct = Math.round((item.consumed / item.goal!) * 100);
       subText = t('dailyNutritionDetails.percentRemaining', { defaultValue: '{{percent}}% · {{remaining}}', percent: pct, remaining: remainingLabel });
     }
@@ -284,8 +285,8 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
           <Text className="text-text-secondary text-sm font-medium">{item.label}</Text>
           <View className="flex-row items-center gap-1">
             <Text className="text-text-primary text-sm font-semibold">
-              {Math.round(item.consumed).toLocaleString()}{item.unit}
-              {hasGoal && ` / ${Math.round(item.goal!).toLocaleString()}${item.unit}`}
+              {formatLocalizedNumber(Math.round(item.consumed))}{item.unit}
+              {hasGoal && ` / ${formatLocalizedNumber(Math.round(item.goal!))}${item.unit}`}
             </Text>
             <Icon name="chevron-forward" size={14} color={progressTrackColor} />
           </View>

@@ -31,6 +31,7 @@ import { weightToKg, weightFromKg, distanceFromKm, distanceToKm } from './unitCo
 import { parseDecimalInput } from './numericInput';
 import { getDefaultRestSec } from './workoutSupersets';
 import i18n from '../localization/i18n';
+import { formatLocalizedNumber } from '../localization';
 
 // The superset/reorder algebra lives in its own module; re-exported here so
 // the many existing import sites keep working.
@@ -280,11 +281,11 @@ export function buildSessionSubtitle(
     }));
     if (totalVolumeKg > 0) {
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
-      parts.push(`${vol.toLocaleString()} ${weightUnit}`);
+      parts.push(`${formatLocalizedNumber(vol)} ${weightUnit}`);
     }
     if (totalDistanceKm > 0) {
       const dist = distanceFromKm(totalDistanceKm, distanceUnit);
-      parts.push(`${dist.toFixed(1)} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
+      parts.push(`${formatLocalizedNumber(dist, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
     }
     if (calories > 0) parts.push(`${Math.round(calories)} ${i18n.t('workout.caloriesShort', { defaultValue: 'Cal' })}`);
     return parts.join(' \u00b7 ');
@@ -303,7 +304,7 @@ export function buildSessionSubtitle(
     parts.push(`${totalSets} set${totalSets !== 1 ? 's' : ''}`);
     if (totalVolumeKg > 0) {
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
-      parts.push(`${vol.toLocaleString()} ${weightUnit}`);
+      parts.push(`${formatLocalizedNumber(vol)} ${weightUnit}`);
     }
     if (duration > 0) parts.push(formatDuration(duration));
     if (calories > 0) parts.push(`${Math.round(calories)} ${i18n.t('workout.caloriesShort', { defaultValue: 'Cal' })}`);
@@ -316,7 +317,7 @@ export function buildSessionSubtitle(
   if (session.distance != null && session.distance > 0) {
     const dist = distanceFromKm(session.distance, distanceUnit);
     const label = distanceUnit === 'miles' ? 'mi' : 'km';
-    parts.push(`${dist.toFixed(1)} ${label}`);
+    parts.push(`${formatLocalizedNumber(dist, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${label}`);
   }
   if (calories > 0) parts.push(`${Math.round(calories)} ${i18n.t('workout.caloriesShort', { defaultValue: 'Cal' })}`);
   return parts.join(' \u00b7 ');
@@ -628,7 +629,7 @@ export function presetExerciseToCardExercise(
 
 export function formatVolume(volumeKg: number, weightUnit: string): string {
   const value = weightFromKg(volumeKg, weightUnit as 'kg' | 'lbs');
-  return `${Math.round(value).toLocaleString()} ${weightUnit}`;
+  return `${formatLocalizedNumber(Math.round(value))} ${weightUnit}`;
 }
 
 /** Compact historical-set text, e.g. `W 60 × 8`, `100 × 5`, `12 reps`, `45s`, or `30:00 · 5.2 km`; weight is unitless display units. */

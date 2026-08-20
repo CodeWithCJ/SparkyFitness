@@ -57,6 +57,29 @@ const NutrientTooltip: React.FC<{ text: string }> = ({ text }) => (
   </View>
 );
 
+/**
+ * Builds the tooltip copy from the semantically selected data point using the
+ * current translator and application locale on every render, so an
+ * already-visible tooltip can never retain stale copy after a language switch.
+ */
+export const buildNutrientTooltipText = (
+  point: { day: string; value: number } | undefined,
+  unit: string,
+  t: ReturnType<typeof useTranslation>['t'],
+): string => {
+  if (!point) return DEFAULT_TOOLTIP;
+  const formattedVal = formatLocalizedNumber(point.value, {
+    minimumFractionDigits: point.value % 1 !== 0 ? 1 : 0,
+    maximumFractionDigits: point.value % 1 !== 0 ? 1 : 0,
+  });
+  return t('charts.tooltip', {
+    defaultValue: '{{value}}{{unit}} consumed · {{date}}',
+    value: formattedVal,
+    unit,
+    date: formatTooltipDate(point.day),
+  });
+};
+
 const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
   data,
   isLoading,
@@ -71,7 +94,7 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -91,8 +114,13 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
   const [tooltipResetKey, setTooltipResetKey] = useState({ data, range });
   if (tooltipResetKey.data !== data || tooltipResetKey.range !== range) {
     setTooltipResetKey({ data, range });
-    setTooltipText(DEFAULT_TOOLTIP);
+    setSelectedIndex(null);
   }
+
+  // Derive the presentation text from the selected point on every render, so
+  // an already-visible tooltip reflects the current app language immediately.
+  const selectedPoint = selectedIndex != null ? data[selectedIndex] : undefined;
+  const tooltipText = buildNutrientTooltipText(selectedPoint, unit, t);
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {
@@ -118,24 +146,13 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
         return;
       }
 
-      const formattedVal = formatLocalizedNumber(point.value, {
-        minimumFractionDigits: point.value % 1 !== 0 ? 1 : 0,
-        maximumFractionDigits: point.value % 1 !== 0 ? 1 : 0,
-      });
-      setTooltipText(
-        t('charts.tooltip', {
-          defaultValue: '{{value}}{{unit}} consumed · {{date}}',
-          value: formattedVal,
-          unit,
-          date: formatTooltipDate(point.day),
-        }),
-      );
+      setSelectedIndex(index);
     },
-    [data, unit, t],
+    [data],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(DEFAULT_TOOLTIP);
+    setSelectedIndex(null);
   }, []);
 
   return (

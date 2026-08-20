@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import ProgressRing from './ProgressRing';
+import { formatLocalizedNumber } from '../localization';
 
 interface SideStatProps {
   label: string;
@@ -12,7 +13,7 @@ interface SideStatProps {
 const SideStat: React.FC<SideStatProps> = ({ label, value }) => (
   <View className="items-center justify-center flex-1">
     <Text className="text-xl font-bold text-text-primary">
-      {Math.round(value).toLocaleString()}
+      {formatLocalizedNumber(Math.round(value))}
     </Text>
     <Text className="text-text-secondary text-xs mt-1">{label}</Text>
   </View>
@@ -58,13 +59,13 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
           </View>
           <View className="absolute items-center justify-center">
             <Text className="text-2xl font-bold text-text-primary">
-              {displayRemaining.toLocaleString()}
+              {formatLocalizedNumber(displayRemaining)}
             </Text>
             <Text className="text-text-secondary text-xs">
               {t('dashboard.remaining', { defaultValue: 'remaining' })}
             </Text>
             <Text className="text-text-muted text-xs mt-0.5">
-              {t('dashboard.ofCalories', { defaultValue: 'of {{value}} kcal', value: calorieGoal.toLocaleString() })}
+              {t('dashboard.ofCalories', { defaultValue: 'of {{value}} kcal', value: formatLocalizedNumber(calorieGoal) })}
             </Text>
           </View>
         </View>

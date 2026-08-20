@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 import { makeChartFont, formatTooltipDate } from '../charts/chartFormatting';
+import { formatLocalizedNumber, getAppLocale } from '../../localization';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
   EMPTY_CHART_TOUCH_LAYOUT,
@@ -22,34 +23,61 @@ type BBTLineChartProps = {
 
 const font = makeChartFont(11);
 
+// X-axis label: render the same calendar day in the active application locale
+// (e.g. "6/3" in en-US, "3.06" in pl-PL) instead of a hard-coded MM/DD.
 const formatXLabel = (day: string): string => {
   if (typeof day !== 'string') return '';
   const parts = day.split('-');
   if (parts.length < 3) return day;
-  return `${parts[1]}/${parts[2]}`;
+  const [, month, d] = parts.map(Number);
+  const date = new Date(1970, (month || 1) - 1, d || 1);
+  return date.toLocaleDateString(getAppLocale(), { month: 'numeric', day: 'numeric' });
 };
 
+/**
+ * Builds the tooltip copy from the semantically selected data point using the
+ * current translator and application locale on every render, so an
+ * already-visible tooltip (including the fallback) can never retain stale copy
+ * after a language switch.
+ */
+export const buildBBTTooltipText = (
+  point: BBTDataPoint | undefined,
+  t: ReturnType<typeof useTranslation>['t'],
+): string => {
+  const fallback = t('charts.bbt.tooltip', { defaultValue: 'Press the line for details' });
+  if (!point) return fallback;
+  const formatted = formatLocalizedNumber(point.bbt, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${formatTooltipDate(point.date)}: ${formatted}°C`;
+};
 
 const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   const { t } = useTranslation();
-  const tooltipFallback = t('charts.bbt.tooltip', { defaultValue: 'Press the line for details' });
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(() => tooltipFallback);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
 
   const hasData = useMemo(() => data.length > 0, [data]);
 
-  // Clear a lingering tooltip when data changes
+  // Reset a lingering selection when data changes
   const [tooltipResetKey, setTooltipResetKey] = useState({ data });
   if (tooltipResetKey.data !== data) {
     setTooltipResetKey({ data });
-    setTooltipText(tooltipFallback);
+    setSelectedIndex(null);
   }
+
+  // Derive the presentation text from the selected point on every render, so
+  // an already-visible tooltip (including the fallback) reflects the current
+  // app language immediately.
+  const selectedPoint = selectedIndex != null ? data[selectedIndex] : undefined;
+  const tooltipText = buildBBTTooltipText(selectedPoint, t);
 
   const chartData = useMemo(() => {
     return data.map((d) => ({
@@ -60,18 +88,17 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
     }));
   }, [data]);
 
-  const onTouch = (index: number) => {
-    const point = data[index];
-    if (point) {
-      setTooltipText(`${formatTooltipDate(point.date)}: ${point.bbt.toFixed(2)}°C`);
+  const onTouch = useCallback((index: number) => {
+    if (data[index]) {
+      setSelectedIndex(index);
     } else {
-      setTooltipText(tooltipFallback);
+      setSelectedIndex(null);
     }
-  };
+  }, [data]);
 
-  const onTouchEnd = () => {
-    setTooltipText(tooltipFallback);
-  };
+  const onTouchEnd = useCallback(() => {
+    setSelectedIndex(null);
+  }, []);
 
 
 

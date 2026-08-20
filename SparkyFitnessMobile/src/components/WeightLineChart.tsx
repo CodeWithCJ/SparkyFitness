@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
+import { formatLocalizedNumber } from '../localization/i18n';
 import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
 import type {
   WeightDataPoint,
@@ -31,8 +32,6 @@ const X_TICK_COUNT: Record<StepsRange, number> = {
 
 const font = makeChartFont(12);
 
-const formatTooltipWeight = (weight: number): string => weight.toFixed(2);
-
 const DEFAULT_TOOLTIP = '';
 
 const WeightTooltip: React.FC<{ text: string }> = ({ text }) => (
@@ -40,6 +39,24 @@ const WeightTooltip: React.FC<{ text: string }> = ({ text }) => (
     <Text className="text-text-secondary text-sm text-center">{text}</Text>
   </View>
 );
+
+/**
+ * Builds the tooltip copy from the semantically selected data point. The weight
+ * value, unit, and date are derived from the current application locale on
+ * every render, so an already-visible tooltip can never retain stale copy after
+ * a language switch.
+ */
+export const buildWeightTooltipText = (
+  point: { weight: number; day: string } | undefined,
+  unit: string,
+): string => {
+  if (!point) return DEFAULT_TOOLTIP;
+  const formattedWeight = formatLocalizedNumber(point.weight, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${formattedWeight} ${unit} · ${formatTooltipDate(point.day)}`;
+};
 
 const WeightLineChart: React.FC<WeightLineChartProps> = ({
   data,
@@ -53,7 +70,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     '--color-accent-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [tooltipText, setTooltipText] = useState(DEFAULT_TOOLTIP);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT,
   );
@@ -62,8 +79,8 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
-  // Clear a lingering tooltip when the dataset, range, or unit changes. Done
-  // during render (instead of in an effect) so the tooltip is already reset on
+  // Reset a lingering selection when the dataset, range, or unit changes. Done
+  // during render (instead of in an effect) so the tooltip is already cleared on
   // the first render after the data changes.
   const [tooltipResetKey, setTooltipResetKey] = useState({ data, range, unit });
   if (
@@ -72,8 +89,13 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     tooltipResetKey.unit !== unit
   ) {
     setTooltipResetKey({ data, range, unit });
-    setTooltipText(DEFAULT_TOOLTIP);
+    setSelectedIndex(null);
   }
+
+  // Derive the presentation text from the selected point on every render, so
+  // an already-visible tooltip reflects the current app language immediately.
+  const selectedPoint = selectedIndex != null ? data[selectedIndex] : undefined;
+  const tooltipText = buildWeightTooltipText(selectedPoint, unit);
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {
@@ -99,17 +121,13 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
         return;
       }
 
-      setTooltipText(
-        `${formatTooltipWeight(point.weight)} ${unit} · ${formatTooltipDate(
-          point.day,
-        )}`,
-      );
+      setSelectedIndex(index);
     },
-    [data, unit],
+    [data],
   );
 
   const handleClearSelection = useCallback(() => {
-    setTooltipText(DEFAULT_TOOLTIP);
+    setSelectedIndex(null);
   }, []);
 
   if (!hasData && !isLoading && !isError) {
