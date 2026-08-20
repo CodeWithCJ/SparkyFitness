@@ -1,6 +1,11 @@
 import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
 import type { FoodVariantNutrientField } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
+import {
+  doseScale,
+  supplementCountable,
+  supplementFixed,
+} from './supplementSql.js';
 async function getNutritionData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -57,13 +62,13 @@ async function getNutritionData(
     // malformed JSONB value can't error the whole query.
     const standardNutrientsSelectSupplement = FOOD_VARIANT_NUTRIENT_FIELDS.map(
       (nutrient) =>
-        `(COALESCE(public.sf_try_numeric(me.nutrients_snapshot->>'${nutrient}'), 0) * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) AS ${nutrient}`
+        `(COALESCE(public.sf_try_numeric(me.nutrients_snapshot->>'${nutrient}'), 0) * ${doseScale('me')}) AS ${nutrient}`
     ).join(',\n           ');
     const customNutrientsSelectSupplement = customNutrients
       .map((cn) => {
         const ident = cn.name.replace(/"/g, '""');
         const lit = cn.name.replace(/'/g, "''");
-        return `(COALESCE(public.sf_try_numeric(me.nutrients_snapshot->'custom_nutrients'->>'${lit}'), 0) * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) AS "${ident}"`;
+        return `(COALESCE(public.sf_try_numeric(me.nutrients_snapshot->'custom_nutrients'->>'${lit}'), 0) * ${doseScale('me')}) AS "${ident}"`;
       })
       .join(',\n           ');
     const result = await client.query(
@@ -112,8 +117,7 @@ async function getNutritionData(
          FROM medication_entries me
          WHERE me.user_id = $1
            AND me.entry_date BETWEEN $2 AND $3
-           AND me.status IN ('taken', 'prn_taken')
-           AND me.nutrients_snapshot IS NOT NULL
+           AND ${supplementCountable('me')}
        ) AS combined_nutrition
        GROUP BY entry_date
        ORDER BY entry_date`,
@@ -644,11 +648,9 @@ async function getDailyNutritionTotalsRange(
     // trends include supplements too. The date set is the UNION of food and taken-supplement
     // dates, so a day with only supplements logged still yields a row rather than
     // disappearing from the range.
-    const supplementFixed = (key: string) =>
-      `COALESCE((SELECT SUM(public.sf_try_numeric(me.nutrients_snapshot->>'${key}') * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) FROM medication_entries me WHERE me.user_id = $1 AND me.entry_date = d.entry_date AND me.status IN ('taken', 'prn_taken') AND me.nutrients_snapshot IS NOT NULL), 0)`;
     const rangeSelects = RANGE_COLS.map(
       ([col, alias]) =>
-        `COALESCE(SUM(fe.${col} * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed(col)} as ${alias}`
+        `COALESCE(SUM(fe.${col} * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed(col, '$1', 'd.entry_date')} as ${alias}`
     ).join(',\n              ');
     const result = await client.query(
       `SELECT d.entry_date,
@@ -661,8 +663,7 @@ async function getDailyNutritionTotalsRange(
          SELECT DISTINCT entry_date
            FROM medication_entries
           WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
-            AND status IN ('taken', 'prn_taken')
-            AND nutrients_snapshot IS NOT NULL
+            AND ${supplementCountable('')}
        ) d
        LEFT JOIN food_entries fe
               ON fe.user_id = $1 AND fe.entry_date = d.entry_date
