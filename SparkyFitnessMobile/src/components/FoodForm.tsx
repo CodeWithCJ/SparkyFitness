@@ -22,12 +22,13 @@ import type {
   FoodUnitVariant,
 } from '../types/foodUnitVariants';
 import { formatFoodFormNumber } from '../utils/foodDetails';
+import { localizeFoodUnit } from '../utils/foodUnitLocalization';
 import {
   FORM_DRAFT_UNIT_ID,
   NUMERIC_FOOD_FORM_FIELDS,
   NUMERIC_FOOD_FORM_FIELD_SET,
   NUTRITION_FIELDS,
-  SERVING_UNIT_SECTIONS,
+  makeServingUnitSections,
   applyCompatibleDraftToFormState,
   applyVariantToFormState,
   applyVariantUnitToFormState,
@@ -897,7 +898,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         style={{ fontSize: 16 }}
                         numberOfLines={1}
                       >
-                        {form.servingUnit || t('foodForm.unit', { defaultValue: 'unit' })}
+                        {form.servingUnit ? localizeFoodUnit(form.servingUnit, t) : t('foodForm.unit', { defaultValue: 'unit' })}
                       </Text>
                       <Icon
                         name="chevron-down"
@@ -911,7 +912,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
               ) : (
                 <BottomSheetPicker
                   value={form.servingUnit}
-                  sections={SERVING_UNIT_SECTIONS}
+                  sections={makeServingUnitSections(t)}
                   onSelect={(v) => update('servingUnit', v)}
                   title={t('foodForm.selectUnit', { defaultValue: 'Select Unit' })}
                   placeholder={t('foodForm.unit', { defaultValue: 'unit' })}

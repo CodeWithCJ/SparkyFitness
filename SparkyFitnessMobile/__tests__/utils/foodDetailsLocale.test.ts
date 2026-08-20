@@ -68,7 +68,7 @@ describe('foodDetails: INPUT vs DISPLAY formatting split', () => {
       expect(formatVariantServingLabel(fractionalServingValues)).toBe('1.5 cup');
 
       await i18n.changeLanguage('pl');
-      expect(formatVariantServingLabel(fractionalServingValues)).toBe('1,5 cup');
+      expect(formatVariantServingLabel(fractionalServingValues)).toBe('1,5 szklanka');
     });
 
     test('formatVariantLabel localizes the serving quantity and calories', async () => {
@@ -76,7 +76,7 @@ describe('foodDetails: INPUT vs DISPLAY formatting split', () => {
       expect(formatVariantLabel(fractionalServingValues)).toBe('1.5 cup (0.5 cal)');
 
       await i18n.changeLanguage('pl');
-      expect(formatVariantLabel(fractionalServingValues)).toBe('1,5 cup (0,5 cal)');
+      expect(formatVariantLabel(fractionalServingValues)).toBe('1,5 szklanka (0,5 cal)');
     });
   });
 
@@ -104,8 +104,8 @@ describe('foodDetails: INPUT vs DISPLAY formatting split', () => {
 
       await i18n.changeLanguage('pl');
       const plOptions = buildLocalVariantOptions(variants);
-      expect(plOptions[0].perServingLabel).toBe('1,5 cup');
-      expect(plOptions[0].label).toBe('1,5 cup (0,5 cal)');
+      expect(plOptions[0].perServingLabel).toBe('1,5 szklanka');
+      expect(plOptions[0].label).toBe('1,5 szklanka (0,5 cal)');
     });
   });
 });

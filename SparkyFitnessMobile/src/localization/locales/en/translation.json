@@ -3641,7 +3641,48 @@
     "updateFailed": "Could not update that unit",
     "savedCustomUnits": "Saved Custom Units",
     "aiEstimate": "AI estimate",
-    "aiEstimateWithConfidence": "AI estimate ({{confidence}} confidence)"
+    "aiEstimateWithConfidence": "AI estimate ({{confidence}} confidence)",
+    "groups": {
+      "weight": "Weight",
+      "volume": "Volume",
+      "quantity": "Quantity"
+    },
+    "units": {
+      "g": "g",
+      "kg": "kg",
+      "mg": "mg",
+      "oz": "oz",
+      "lb": "lb",
+      "lbs": "lbs",
+      "ml": "ml",
+      "l": "l",
+      "liter": "liter",
+      "liters": "liters",
+      "cup": "cup",
+      "cups": "cups",
+      "tbsp": "tbsp",
+      "tsp": "tsp",
+      "piece": "piece",
+      "slice": "slice",
+      "serving": "serving",
+      "portion": "portion",
+      "can": "can",
+      "bottle": "bottle",
+      "packet": "packet",
+      "bag": "bag",
+      "bowl": "bowl",
+      "plate": "plate",
+      "handful": "handful",
+      "scoop": "scoop",
+      "bar": "bar",
+      "stick": "stick",
+      "whole": "whole"
+    },
+    "confidence": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    }
   },
   "charts": {
     "weight": {

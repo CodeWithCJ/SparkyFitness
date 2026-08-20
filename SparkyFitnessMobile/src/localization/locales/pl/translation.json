@@ -3642,8 +3642,49 @@
   "foodUnit": {
     "updateFailed": "Nie udało się zaktualizować tej jednostki",
     "savedCustomUnits": "Zapisane jednostki własne",
-    "aiEstimate": "Szacunek AI",
-    "aiEstimateWithConfidence": "Szacunek AI (ufność: {{confidence}})"
+    "aiEstimate": "Oszacowanie AI",
+    "aiEstimateWithConfidence": "Oszacowanie AI (pewność: {{confidence}})",
+    "groups": {
+      "weight": "Masa",
+      "volume": "Objętość",
+      "quantity": "Ilość"
+    },
+    "units": {
+      "g": "g",
+      "kg": "kg",
+      "mg": "mg",
+      "oz": "uncja",
+      "lb": "funt",
+      "lbs": "funt",
+      "ml": "ml",
+      "l": "l",
+      "liter": "litr",
+      "liters": "litr",
+      "cup": "szklanka",
+      "cups": "szklanka",
+      "tbsp": "łyżka",
+      "tsp": "łyżeczka",
+      "piece": "sztuka",
+      "slice": "plaster",
+      "serving": "porcja",
+      "portion": "porcja",
+      "can": "puszka",
+      "bottle": "butelka",
+      "packet": "opakowanie",
+      "bag": "woreczek",
+      "bowl": "miska",
+      "plate": "talerz",
+      "handful": "garść",
+      "scoop": "miarka",
+      "bar": "baton",
+      "stick": "pałeczka",
+      "whole": "całość"
+    },
+    "confidence": {
+      "high": "wysoka",
+      "medium": "średnia",
+      "low": "niska"
+    }
   },
   "charts": {
     "weight": {

@@ -19,11 +19,11 @@ export const itemConfidenceLabels = ITEM_CONFIDENCE_LABELS;
 export const confidenceTones = CONFIDENCE_TONES;
 
 /**
- * Localizes the overall AI confidence tier (high/medium/low) for user-visible
- * presentation (e.g. "AI estimate (Good confidence)"). The raw English
- * OVERALL_CONFIDENCE_LABELS values are internal; this maps each controlled
- * enum value to explicit EN/PL copy via t(). Returns null for an unknown value
- * so callers can omit the confidence fragment entirely.
+ * Localizes the AI estimate-QUALITY tier (high/medium/low) for the FoodForm
+ * provenance badge and food-photo review screen, which present the estimate as
+ * an adjective (Good/Fair/Rough -> Dobra/Średnia/Przybliżona). This is the
+ * quality model, NOT a confidence-level phrase. Returns null for an unknown
+ * value so callers can omit the fragment entirely.
  */
 export function localizeAiConfidence(
   t: TFunction,
@@ -36,6 +36,29 @@ export function localizeAiConfidence(
       return t('foodPhotoEstimate.confidence.fair', { defaultValue: 'Fair' });
     case 'low':
       return t('foodPhotoEstimate.confidence.rough', { defaultValue: 'Rough' });
+    default:
+      return null;
+  }
+}
+
+/**
+ * Localizes the AI confidence LEVEL (high/medium/low) for explicit
+ * "confidence" phrasing (FoodUnitSelector accessibility label ->
+ * "Oszacowanie AI (pewność: wysoka)"). Uses dedicated confidence-level keys
+ * (foodUnit.confidence.*), separate from the estimate-QUALITY model above.
+ * Returns null for an unknown value so callers can omit the fragment.
+ */
+export function localizeAiConfidenceLevel(
+  t: TFunction,
+  confidence: AiConfidence | null | undefined,
+): string | null {
+  switch (confidence) {
+    case 'high':
+      return t('foodUnit.confidence.high', { defaultValue: 'High' });
+    case 'medium':
+      return t('foodUnit.confidence.medium', { defaultValue: 'Medium' });
+    case 'low':
+      return t('foodUnit.confidence.low', { defaultValue: 'Low' });
     default:
       return null;
   }

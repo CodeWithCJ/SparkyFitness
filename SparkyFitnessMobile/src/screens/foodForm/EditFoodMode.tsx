@@ -35,9 +35,11 @@ import {
   buildLocalUnitVariants,
   buildCreateFoodVariantPayload,
   diffSiblingRows,
+  formatServingSizeForDisplay,
   groupEquivalentVariants,
   toEquivalentUnit,
 } from '../../utils/foodDetails';
+import { localizeFoodUnit } from '../../utils/foodUnitLocalization';
 import { parseDecimalInput } from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../../hooks/useScreenHeader';
@@ -375,7 +377,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         if (nutritionChanged && currentVariantId) {
           const activeVariant = variants?.find((v) => v.id === currentVariantId);
           const unitLabel = activeVariant
-            ? `${activeVariant.serving_size} ${activeVariant.serving_unit}`
+            ? `${formatServingSizeForDisplay(activeVariant.serving_size)} ${localizeFoodUnit(activeVariant.serving_unit, t)}`
             : data.servingUnit;
           const choice = await confirmVariantOverwrite(unitLabel);
           if (choice === 'cancel') {

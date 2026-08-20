@@ -20,7 +20,8 @@ import {
   canAutoConvertToUnit,
   useUnitConversion,
 } from '../hooks/useUnitConversion';
-import { localizeAiConfidence } from '../utils/foodPhotoEstimate';
+import { localizeAiConfidenceLevel } from '../utils/foodPhotoEstimate';
+import { localizeFoodUnit, localizeFoodUnitGroup } from '../utils/foodUnitLocalization';
 import {
   CONFIDENCE_TONES,
   FOOD_FORM_UNIT_GROUPS,
@@ -343,7 +344,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     const aiConfidence = variant.ai_confidence as AiConfidence | null | undefined;
     const aiTone = aiConfidence ? CONFIDENCE_TONES[aiConfidence] : null;
     const aiSparkleColor = aiTone ? aiSparkleColorByTone[aiTone] : textMuted;
-    const aiConfidenceLabel = localizeAiConfidence(t, aiConfidence);
+    const aiConfidenceLabel = localizeAiConfidenceLevel(t, aiConfidence);
     const aiAccessibilityLabel = aiConfidenceLabel
       ? t('foodUnit.aiEstimateWithConfidence', {
           defaultValue: 'AI estimate ({{confidence}} confidence)',
@@ -367,7 +368,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
           <Text
             className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}
           >
-            {variant.serving_unit}
+            {localizeFoodUnit(variant.serving_unit, t)}
           </Text>
           {isAiSourced && aiConfidence ? (
             <View accessible accessibilityLabel={aiAccessibilityLabel}>
@@ -404,7 +405,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     const matchedAiSparkleColor = matchedAiTone
       ? aiSparkleColorByTone[matchedAiTone]
       : textMuted;
-    const matchedAiConfidenceLabel = localizeAiConfidence(t, matchedAiConfidence);
+    const matchedAiConfidenceLabel = localizeAiConfidenceLevel(t, matchedAiConfidence);
     const matchedAiAccessibilityLabel = matchedAiConfidenceLabel
       ? t('foodUnit.aiEstimateWithConfidence', {
           defaultValue: 'AI estimate ({{confidence}} confidence)',
@@ -429,7 +430,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
         <Text
           className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}
         >
-          {unit}
+          {localizeFoodUnit(unit, t)}
         </Text>
         {matchedAiConfidence ? (
           <View accessible accessibilityLabel={matchedAiAccessibilityLabel}>
@@ -490,7 +491,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
               <React.Fragment key={group.label}>
                 <View className="px-4 py-2 bg-surface">
                   <Text className="text-xs font-semibold uppercase text-text-muted">
-                    {group.label}
+                    {localizeFoodUnitGroup(group.label, t)}
                   </Text>
                 </View>
                 {group.units.map(renderUnitRow)}

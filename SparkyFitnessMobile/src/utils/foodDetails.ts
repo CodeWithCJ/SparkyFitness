@@ -8,6 +8,7 @@ import type {
 } from '../types/foodUnitVariants';
 import type { CreateFoodVariantPayload } from '../services/api/foodsApi';
 import { formatLocalizedNumber } from '../localization';
+import { localizeFoodUnit } from './foodUnitLocalization';
 
 export interface FoodDisplayValues {
   servingSize: number;
@@ -406,13 +407,13 @@ export function formatVariantServingLabel(
     return formatServingDescription(values.servingDescription ?? '');
   }
 
-  const servingLabel = `${formatServingSizeForDisplay(values.servingSize)} ${formatServingUnit(values.servingUnit)}`;
+  const servingLabel = `${formatServingSizeForDisplay(values.servingSize)} ${localizeFoodUnit(formatServingUnit(values.servingUnit))}`;
   const metricEquivalent = !isMetricUnit(values.servingUnit)
     ? findMetricEquivalent(equivalents)
     : undefined;
 
   if (metricEquivalent) {
-    return `${servingLabel} (${formatServingSizeForDisplay(metricEquivalent.serving_size)} ${formatServingUnit(metricEquivalent.serving_unit)})`;
+    return `${servingLabel} (${formatServingSizeForDisplay(metricEquivalent.serving_size)} ${localizeFoodUnit(formatServingUnit(metricEquivalent.serving_unit))})`;
   }
 
   return servingLabel;
@@ -433,10 +434,10 @@ export function formatQuantityUnitLabel(
   const metricEquivalent = !isMetricUnit(values.servingUnit)
     ? findMetricEquivalent(equivalents)
     : undefined;
-  const unitLabel = formatServingUnit(values.servingUnit);
+  const unitLabel = localizeFoodUnit(formatServingUnit(values.servingUnit));
 
   if (metricEquivalent) {
-    return `${unitLabel} (${formatServingSizeForDisplay(metricEquivalent.serving_size)} ${formatServingUnit(metricEquivalent.serving_unit)})`;
+    return `${unitLabel} (${formatServingSizeForDisplay(metricEquivalent.serving_size)} ${localizeFoodUnit(formatServingUnit(metricEquivalent.serving_unit))})`;
   }
 
   return unitLabel;

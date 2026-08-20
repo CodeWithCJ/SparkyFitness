@@ -6,7 +6,7 @@ import Button from './ui/Button';
 import FormInput from './FormInput';
 import Icon from './Icon';
 import type { EquivalentUnit } from '../types/foodUnitVariants';
-import { SERVING_UNIT_SECTIONS } from '../utils/foodFormState';
+import { makeServingUnitSections } from '../utils/foodFormState';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 let equivalentKeyCounter = 0;
@@ -81,7 +81,7 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
             <View className="flex-1">
               <BottomSheetPicker
                 value={item.serving_unit}
-                sections={SERVING_UNIT_SECTIONS}
+                sections={makeServingUnitSections(t)}
                 onSelect={(value) => updateRow(index, { serving_unit: value })}
                 title={t('foodForm.selectUnit', { defaultValue: 'Select Unit' })}
                 placeholder={t('foodForm.unit', { defaultValue: 'unit' })}
