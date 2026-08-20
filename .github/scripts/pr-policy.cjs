@@ -22,9 +22,13 @@ const LICENSE_ITEM_TEXT =
 
 const GRACE_MS = 24 * 60 * 60 * 1000;
 
-// Repo roles treated as insiders. Trim to ['OWNER'] to tighten; note MEMBER
-// only ever appears on org-owned repos, so it is inert here but harmless.
-const INSIDER_ASSOCIATIONS = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+// Deliberately owner-only. On a user-owned repo `OWNER` is exactly one person --
+// the account that owns the repo (CodeWithCJ) -- so this is "the maintainer and
+// nobody else", expressed without hardcoding a username.
+//
+// Other collaborators are NOT exempt: they tick the license box like everyone
+// else. Add 'COLLABORATOR' here only if that should change.
+const EXEMPT_ASSOCIATIONS = ['OWNER'];
 
 // Head-branch prefixes used by this repo's own automation. Only consulted for
 // branches pushed directly to this repo (see rule 3 in getExemption).
@@ -69,11 +73,11 @@ function getExemption(pr) {
     return { exempt: true, reason: `bot account (${pr.user.login})` };
   }
 
-  // 2. Repo insiders: the owner and anyone granted write access. Also covers
-  //    PAT-driven automation whose token belongs to a maintainer, which appears
-  //    as a normal User rather than a Bot (e.g. TRANSLATIONS_PAT in
-  //    sync-translations.yml).
-  if (INSIDER_ASSOCIATIONS.includes(pr.author_association)) {
+  // 2. The repo owner. Also covers PAT-driven automation whose token belongs to
+  //    the owner, which appears as a normal User rather than a Bot (e.g.
+  //    TRANSLATIONS_PAT in sync-translations.yml). If that PAT belongs to
+  //    someone else, rule 3 below still covers it via the branch name.
+  if (EXEMPT_ASSOCIATIONS.includes(pr.author_association)) {
     return { exempt: true, reason: `repo ${String(pr.author_association).toLowerCase()}` };
   }
 
@@ -122,7 +126,7 @@ module.exports = {
   LICENSE_ITEM,
   LICENSE_ITEM_TEXT,
   GRACE_MS,
-  INSIDER_ASSOCIATIONS,
+  EXEMPT_ASSOCIATIONS,
   AUTOMATION_BRANCH_PREFIXES,
   escapeRegex,
   isChecked,
