@@ -2112,7 +2112,9 @@
       "long_cycle_many": "Zarejestrowano długi cykl trwający {{count}} dni.",
       "long_cycle_other": "Zarejestrowano długi cykl trwający {{count}} dni.",
       "heavy_bleeding": "Ostatnie wpisy wskazują na silniejsze niż zwykle krwawienie lub miesiączkę trwającą dłużej niż 7 dni. Jeśli to się utrzyma, warto wspomnieć o tym lekarzowi.",
-      "unusual_discharge": "Zanotowano nietypową wydzielinę. Warto zwrócić uwagę na zmiany koloru, zapachu lub konsystencji."
+      "unusual_discharge": "Zanotowano nietypową wydzielinę. Warto zwrócić uwagę na zmiany koloru, zapachu lub konsystencji.",
+      "short_cycle_generic": "Zarejestrowano krótki cykl. Warto monitorować cykle krótsze niż 21 dni.",
+      "long_cycle_generic": "Zarejestrowano długi cykl. Warto monitorować cykle dłuższe niż 45 dni."
     },
     "alert": {
       "late_period_one": "Miesiączka jest opóźniona o {{count}} dzień.",
@@ -2123,7 +2125,8 @@
       "upcoming_period_few": "Miesiączka jest spodziewana za {{count}} dni.",
       "upcoming_period_many": "Miesiączka jest spodziewana za {{count}} dni.",
       "upcoming_period_other": "Miesiączka jest spodziewana za {{count}} dni.",
-      "ovulation_today": "Owulacja przewidywana jest na dziś."
+      "ovulation_today": "Owulacja przewidywana jest na dziś.",
+      "upcoming_period_today": "Miesiączka jest spodziewana dziś."
     }
   },
   "cycleCorrelations": {

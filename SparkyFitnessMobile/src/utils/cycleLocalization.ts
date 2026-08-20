@@ -56,14 +56,17 @@ const ANOMALY_KEYS = new Set([
 const ALERT_KEYS = new Set([
   'late_period',
   'upcoming_period',
+  'upcoming_period_today',
   'ovulation_today',
 ]);
 
 /**
- * Localizes a controlled cycle-anomaly by its stable `key`, using structured
- * numeric params (e.g. cycleLength) with i18next count pluralization. Unknown /
- * future keys (or missing params) fall back to the server message literally —
- * we never parse English prose into t().
+ * Localizes a controlled cycle-anomaly by its stable `key`. When the structured
+ * numeric params are present (e.g. cycleLength) the dynamic, pluralized copy is
+ * used. For KNOWN keys whose params are temporarily missing (e.g. a server that
+ * predates the params contract), a localized generic fallback is used so the
+ * copy never leaks English. Unknown / future keys always fall back to the server
+ * message literally.
  */
 export function localizeCycleAnomaly(
   key: string,
@@ -72,16 +75,26 @@ export function localizeCycleAnomaly(
   t?: TFunction,
 ): string {
   const translate = resolveTranslator(t);
-  if (key === 'short_cycle' && params?.cycleLength != null) {
-    return translate('cycleInsights.anomaly.short_cycle', {
+  if (key === 'short_cycle') {
+    if (params?.cycleLength != null) {
+      return translate('cycleInsights.anomaly.short_cycle', {
+        defaultValue: fallbackMessage,
+        count: params.cycleLength,
+      });
+    }
+    return translate('cycleInsights.anomaly.short_cycle_generic', {
       defaultValue: fallbackMessage,
-      count: params.cycleLength,
     });
   }
-  if (key === 'long_cycle' && params?.cycleLength != null) {
-    return translate('cycleInsights.anomaly.long_cycle', {
+  if (key === 'long_cycle') {
+    if (params?.cycleLength != null) {
+      return translate('cycleInsights.anomaly.long_cycle', {
+        defaultValue: fallbackMessage,
+        count: params.cycleLength,
+      });
+    }
+    return translate('cycleInsights.anomaly.long_cycle_generic', {
       defaultValue: fallbackMessage,
-      count: params.cycleLength,
     });
   }
   if (ANOMALY_KEYS.has(key)) {
@@ -111,10 +124,20 @@ export function localizeCycleAlert(
       count: params.days,
     });
   }
+  if (key === 'upcoming_period' && params?.days === 0) {
+    return translate('cycleInsights.alert.upcoming_period_today', {
+      defaultValue: fallbackMessage,
+    });
+  }
   if (key === 'upcoming_period' && params?.days != null) {
     return translate('cycleInsights.alert.upcoming_period', {
       defaultValue: fallbackMessage,
       count: params.days,
+    });
+  }
+  if (key === 'upcoming_period_today') {
+    return translate('cycleInsights.alert.upcoming_period_today', {
+      defaultValue: fallbackMessage,
     });
   }
   if (ALERT_KEYS.has(key)) {

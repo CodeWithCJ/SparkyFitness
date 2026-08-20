@@ -178,6 +178,15 @@ describe('cycle controlled server/shared presentation', () => {
         'Zarejestrowano długi cykl trwający 47 dni.',
       );
     });
+    test('known keys with MISSING params stay localized (generic fallback, not English)', async () => {
+      await i18n.changeLanguage('pl');
+      expect(localizeCycleAnomaly('short_cycle', 'You had a short cycle of 20 days.', undefined, i18n.t)).toBe(
+        'Zarejestrowano krótki cykl. Warto monitorować cykle krótsze niż 21 dni.',
+      );
+      expect(localizeCycleAnomaly('long_cycle', 'You had a long cycle of 47 days.', undefined, i18n.t)).toBe(
+        'Zarejestrowano długi cykl. Warto monitorować cykle dłuższe niż 45 dni.',
+      );
+    });
     test('PL anomaly copy avoids unnecessary gendered forms', async () => {
       await i18n.changeLanguage('pl');
       expect(localizeCycleAnomaly('unusual_discharge', fallback, undefined, i18n.t)).not.toContain('Zanotowałaś');
@@ -186,7 +195,13 @@ describe('cycle controlled server/shared presentation', () => {
     });
     test('unknown key falls back to the server message literally', async () => {
       await i18n.changeLanguage('pl');
-      expect(localizeCycleAnomaly('unknown_future_key', fallback, undefined, i18n.t)).toBe(fallback);
+      expect(localizeCycleAnomaly('future_unknown_key', 'Future server text', undefined, i18n.t)).toBe('Future server text');
+    });
+    test('short_cycle with params keeps the richer dynamic path (not the generic fallback)', async () => {
+      await i18n.changeLanguage('pl');
+      expect(localizeCycleAnomaly('short_cycle', 'fallback', { cycleLength: 20 }, i18n.t)).toBe(
+        'Zarejestrowano krótki cykl trwający 20 dni.',
+      );
     });
   });
 
@@ -205,6 +220,7 @@ describe('cycle controlled server/shared presentation', () => {
       [25, 'Miesiączka jest opóźniona o 25 dni.'],
     ];
     const plUpcoming: Array<[number, string]> = [
+      [0, 'Miesiączka jest spodziewana dziś.'],
       [1, 'Miesiączka jest spodziewana za 1 dzień.'],
       [2, 'Miesiączka jest spodziewana za 2 dni.'],
       [5, 'Miesiączka jest spodziewana za 5 dni.'],
@@ -226,6 +242,24 @@ describe('cycle controlled server/shared presentation', () => {
       for (const [n, expected] of plUpcoming) {
         expect(localizeCycleAlert('upcoming_period', 'upcoming', { days: n }, i18n.t)).toBe(expected);
       }
+    });
+    test('upcoming_period days 0/1/2/5 in EN (days=0 -> today)', async () => {
+      const enCases: Array<[number, string]> = [
+        [0, 'Period is expected today.'],
+        [1, 'Period is expected in 1 day.'],
+        [2, 'Period is expected in 2 days.'],
+        [5, 'Period is expected in 5 days.'],
+      ];
+      await i18n.changeLanguage('en');
+      for (const [n, expected] of enCases) {
+        expect(localizeCycleAlert('upcoming_period', 'upcoming', { days: n }, i18n.t)).toBe(expected);
+      }
+    });
+    test('upcoming_period_today key renders today copy', async () => {
+      await i18n.changeLanguage('en');
+      expect(localizeCycleAlert('upcoming_period_today', 'today', undefined, i18n.t)).toBe('Period is expected today.');
+      await i18n.changeLanguage('pl');
+      expect(localizeCycleAlert('upcoming_period_today', 'today', undefined, i18n.t)).toBe('Miesiączka jest spodziewana dziś.');
     });
     test('PL ovulation_today localized', async () => {
       await i18n.changeLanguage('pl');

@@ -725,7 +725,13 @@ export function buildCycleAlerts(
         params: { days: diff },
         message: `Your period is expected and is ${diff} day${diff > 1 ? "s" : ""} late.`,
       });
-    } else if (diff >= -3 && diff <= 0) {
+    } else if (diff === 0) {
+      alerts.push({
+        key: "upcoming_period_today",
+        severity: "info",
+        message: "Period is expected today.",
+      });
+    } else if (diff >= -3) {
       alerts.push({
         key: "upcoming_period",
         severity: "info",

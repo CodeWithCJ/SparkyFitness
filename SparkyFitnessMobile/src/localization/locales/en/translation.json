@@ -2106,14 +2106,17 @@
       "long_cycle_one": "You had a long cycle of {{count}} day. Cycles longer than 45 days are worth tracking.",
       "long_cycle_other": "You had a long cycle of {{count}} days. Cycles longer than 45 days are worth tracking.",
       "heavy_bleeding": "Your recent logs show heavier flow than usual or periods lasting longer than 7 days. If this continues, consider mentioning it to a clinician.",
-      "unusual_discharge": "You have logged unusual discharge. Consider noting color, odor, or texture changes."
+      "unusual_discharge": "You have logged unusual discharge. Consider noting color, odor, or texture changes.",
+      "short_cycle_generic": "A short cycle was recorded. Cycles shorter than 21 days are worth tracking.",
+      "long_cycle_generic": "A long cycle was recorded. Cycles longer than 45 days are worth tracking."
     },
     "alert": {
       "late_period_one": "Your period is {{count}} day late.",
       "late_period_other": "Your period is {{count}} days late.",
       "upcoming_period_one": "Period is expected in {{count}} day.",
       "upcoming_period_other": "Period is expected in {{count}} days.",
-      "ovulation_today": "Ovulation is predicted to occur today."
+      "ovulation_today": "Ovulation is predicted to occur today.",
+      "upcoming_period_today": "Period is expected today."
     }
   },
   "cycleCorrelations": {
