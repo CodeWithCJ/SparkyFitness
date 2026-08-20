@@ -1075,6 +1075,8 @@
     "logError": "Failed to log workout preset \"{{presetName}}\" to diary.",
     "exercises": "Exercises",
     "logToDiary": "Log to Diary",
+    "duplicate": "Duplicate",
+    "duplicateNameSuffix": "{{name}} (Copy)",
     "name": "Name",
     "presets": "presets",
     "startWorkout": "Start Workout",
