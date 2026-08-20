@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 import i18n from '../localization/i18n';
+import { formatLocalizedNumber } from '../localization';
 
 /**
  * Localized presentation helpers for the controlled FOOD_FORM_UNIT_GROUPS
@@ -75,9 +76,21 @@ const UNIT_KEYS: Record<string, string> = {
 };
 
 /**
- * Localized presentation label for a controlled canonical unit (e.g. "cup").
- * Returns the localized UI copy for known units, or the original literal for
- * unknown/custom/server-defined units. The raw unit is never altered.
+ * Countable noun units that decline by quantity (via i18next plural forms).
+ * Metric/imperial symbol units (g, kg, mg, ml, l, liter, liters, oz, lb, lbs)
+ * are NOT in this set and stay as plain `<qty> <symbol>`.
+ */
+const COUNTABLE_UNITS: ReadonlySet<string> = new Set([
+  'cup', 'cups', 'tbsp', 'tsp', 'piece', 'slice', 'serving', 'portion',
+  'can', 'bottle', 'packet', 'bag', 'bowl', 'plate', 'handful', 'scoop',
+  'bar', 'stick', 'whole',
+]);
+
+/**
+ * Localized presentation label for a controlled canonical unit in a standalone
+ * context (e.g. "cup" in a picker row). Returns the localized UI copy for known
+ * units, or the original literal for unknown/custom/server-defined units. The
+ * raw unit is never altered.
  */
 export function localizeFoodUnit(unit: string | null | undefined, t?: TFunction): string {
   if (unit == null) return '';
@@ -88,4 +101,44 @@ export function localizeFoodUnit(unit: string | null | undefined, t?: TFunction)
   // The canonical raw unit is the readable English defaultValue, so EN output
   // equals the raw value while PL output is the localized noun.
   return translate(key, { defaultValue: unit });
+}
+
+/**
+ * Localized "quantity + unit" presentation.
+ *
+ * Metric/imperial symbol units (g, kg, mg, ml, l, liter, liters, oz, lb, lbs)
+ * render as plain `<quantity> <symbol>` ("100 g", "250 ml", "1,5 l").
+ *
+ * Countable noun units render the quantity followed by the locale-aware noun
+ * form selected by i18next pluralization, so PL produces natural inflection
+ * (1 szklanka, 2 szklanki, 5 szklanek, 1,5 szklanki). Unknown/custom units
+ * fall back to `<quantity> <literal unit>`.
+ */
+export function formatLocalizedUnitQuantity(
+  quantity: number,
+  unit: string | null | undefined,
+  t?: TFunction,
+): string {
+  if (unit == null) return '';
+  const translate = resolveTranslator(t);
+  const normalized = unit.trim().toLowerCase();
+  const qty = formatLocalizedNumber(quantity, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 4,
+    useGrouping: false,
+  });
+
+  const key = UNIT_KEYS[normalized];
+  if (!key) return `${qty} ${unit}`;
+  if (COUNTABLE_UNITS.has(normalized)) {
+    // Plural selection uses the raw quantity; the localized numeral is rendered
+    // separately so the decimal separator follows the app locale. The plural
+    // forms live in the dedicated `foodUnit.unitPlurals.<unit>` namespace so
+    // they never collide with the standalone `foodUnit.units.<unit>` label.
+    return `${qty} ${translate(`foodUnit.unitPlurals.${normalized}`, {
+      defaultValue: unit,
+      count: quantity,
+    })}`;
+  }
+  return `${qty} ${translate(key, { defaultValue: unit })}`;
 }

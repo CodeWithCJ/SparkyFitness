@@ -19,23 +19,23 @@ export const itemConfidenceLabels = ITEM_CONFIDENCE_LABELS;
 export const confidenceTones = CONFIDENCE_TONES;
 
 /**
- * Localizes the AI estimate-QUALITY tier (high/medium/low) for the FoodForm
- * provenance badge and food-photo review screen, which present the estimate as
- * an adjective (Good/Fair/Rough -> Dobra/Średnia/Przybliżona). This is the
- * quality model, NOT a confidence-level phrase. Returns null for an unknown
- * value so callers can omit the fragment entirely.
+ * Localized complete badge phrase for the AI estimate-QUALITY tier
+ * (high/medium/low). Used by the FoodForm provenance badge, which presents the
+ * estimate as a complete, grammatically-correct phrase (EN "Good estimate"; PL
+ * "Dobre oszacowanie"). Returns null for an unknown value so callers can hide
+ * the badge entirely.
  */
-export function localizeAiConfidence(
+export function localizeAiEstimateQuality(
   t: TFunction,
   confidence: AiConfidence | null | undefined,
 ): string | null {
   switch (confidence) {
     case 'high':
-      return t('foodPhotoEstimate.confidence.good', { defaultValue: 'Good' });
+      return t('foodForm.ai.estimateQuality.high', { defaultValue: 'Good estimate' });
     case 'medium':
-      return t('foodPhotoEstimate.confidence.fair', { defaultValue: 'Fair' });
+      return t('foodForm.ai.estimateQuality.medium', { defaultValue: 'Fair estimate' });
     case 'low':
-      return t('foodPhotoEstimate.confidence.rough', { defaultValue: 'Rough' });
+      return t('foodForm.ai.estimateQuality.low', { defaultValue: 'Rough estimate' });
     default:
       return null;
   }

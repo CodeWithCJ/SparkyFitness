@@ -45,7 +45,7 @@ import {
   type NumericFoodFormField,
 } from '../utils/foodFormState';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
-import { localizeAiConfidence } from '../utils/foodPhotoEstimate';
+import { localizeAiEstimateQuality } from '../utils/foodPhotoEstimate';
 import {
   CONFIDENCE_TONES,
   getConversionFactor,
@@ -1050,13 +1050,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 }}
               >
                 {
-                  localizeAiConfidence(
+                  localizeAiEstimateQuality(
                     t,
                     selectedUnitSelection.variant
                       .ai_confidence as AiConfidence,
                   )
-                }{' '}
-                {t('foodForm.ai.estimateSuffix', { defaultValue: 'estimate' })}
+                }
               </Text>
             </View>
           ) : null}

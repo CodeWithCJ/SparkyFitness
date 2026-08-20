@@ -1,20 +1,21 @@
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import {
-  localizeAiConfidence,
+  localizeAiEstimateQuality,
   localizeAiConfidenceLevel,
 } from '../../src/utils/foodPhotoEstimate';
 
 /**
- * Regression coverage for the FoodUnitSelectorSheet accessibility-label
- * localization fix. Two semantically distinct models are exercised:
- * - estimate-QUALITY (localizeAiConfidence): Good/Fair/Rough, used by the
- *   FoodForm provenance badge and food-photo review screen.
+ * Regression coverage for the FoodForm AI provenance badge and the
+ * FoodUnitSelectorSheet accessibility label. Two semantically distinct models
+ * are exercised:
+ * - estimate-QUALITY (localizeAiEstimateQuality): complete badge phrases
+ *   (EN "Good/Fair/Rough estimate"; PL "Dobre/Średnie/Przybliżone oszacowanie"),
+ *   used by the FoodForm provenance badge.
  * - confidence-LEVEL (localizeAiConfidenceLevel): High/Medium/Low, used by the
  *   explicit "confidence" accessibility phrase.
- * This verifies the pure localization path without rendering the whole
- * BottomSheet component.
+ * This verifies the pure localization path without rendering the components.
  */
-describe('AI accessibility/confidence localization', () => {
+describe('AI badge/confidence localization', () => {
   beforeAll(async () => {
     await initializeI18n('en');
   });
@@ -23,16 +24,29 @@ describe('AI accessibility/confidence localization', () => {
     await i18n.changeLanguage('en');
   });
 
-  test('localizeAiConfidence maps estimate-QUALITY tiers (Good/Fair/Rough) in EN and PL', async () => {
+  test('localizeAiEstimateQuality produces complete EN badge phrases', async () => {
     await i18n.changeLanguage('en');
-    expect(localizeAiConfidence(i18n.t, 'high')).toBe('Good');
-    expect(localizeAiConfidence(i18n.t, 'medium')).toBe('Fair');
-    expect(localizeAiConfidence(i18n.t, 'low')).toBe('Rough');
+    expect(localizeAiEstimateQuality(i18n.t, 'high')).toBe('Good estimate');
+    expect(localizeAiEstimateQuality(i18n.t, 'medium')).toBe('Fair estimate');
+    expect(localizeAiEstimateQuality(i18n.t, 'low')).toBe('Rough estimate');
+  });
 
+  test('localizeAiEstimateQuality produces complete, grammatical PL badge phrases', async () => {
     await i18n.changeLanguage('pl');
-    expect(localizeAiConfidence(i18n.t, 'high')).toBe('Dobra');
-    expect(localizeAiConfidence(i18n.t, 'medium')).toBe('Średnia');
-    expect(localizeAiConfidence(i18n.t, 'low')).toBe('Przybliżona');
+    const high = localizeAiEstimateQuality(i18n.t, 'high');
+    const medium = localizeAiEstimateQuality(i18n.t, 'medium');
+    const low = localizeAiEstimateQuality(i18n.t, 'low');
+
+    expect(high).toBe('Dobre oszacowanie');
+    expect(medium).toBe('Średnie oszacowanie');
+    expect(low).toBe('Przybliżone oszacowanie');
+
+    // None of the PL outputs may contain the incorrect "szacunek" or invalid
+    // adjective/noun agreement like "Dobra szacunek"/"Dobra oszacowanie".
+    for (const phrase of [high, medium, low]) {
+      expect(phrase).not.toContain('szacunek ');
+      expect(phrase).not.toMatch(/^Dobra\s/);
+    }
   });
 
   test('localizeAiConfidenceLevel maps confidence LEVELS (High/Medium/Low) in EN and PL', async () => {
@@ -50,11 +64,13 @@ describe('AI accessibility/confidence localization', () => {
   test('dedicated confidence-level keys do not collide with estimate-quality keys', async () => {
     await i18n.changeLanguage('pl');
     expect(i18n.t('foodUnit.confidence.high', { defaultValue: 'High' })).toBe('wysoka');
-    expect(i18n.t('foodPhotoEstimate.confidence.good', { defaultValue: 'Good' })).toBe('Dobra');
+    expect(
+      i18n.t('foodForm.ai.estimateQuality.high', { defaultValue: 'Good estimate' }),
+    ).toBe('Dobre oszacowanie');
   });
 
   test('returns null for unknown/absent confidence in both helpers', async () => {
-    expect(localizeAiConfidence(i18n.t, null)).toBeNull();
+    expect(localizeAiEstimateQuality(i18n.t, null)).toBeNull();
     expect(localizeAiConfidenceLevel(i18n.t, undefined)).toBeNull();
     expect(localizeAiConfidenceLevel(i18n.t, 'unknown' as any)).toBeNull();
   });
@@ -78,7 +94,7 @@ describe('AI accessibility/confidence localization', () => {
           confidence: plLevel,
         })
       : i18n.t('foodUnit.aiEstimate', { defaultValue: 'AI estimate' });
-    // Pl must use natural Polish confidence phrasing, not quality or English.
+    // PL must use natural confidence phrasing, not quality or English.
     expect(plLabel).not.toContain('Dobra');
     expect(plLabel).not.toContain('Good');
     expect(plLabel).not.toContain('AI estimate');

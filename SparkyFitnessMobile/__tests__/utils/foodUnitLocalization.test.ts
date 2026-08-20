@@ -2,6 +2,7 @@ import i18n, { initializeI18n } from '../../src/localization/i18n';
 import {
   localizeFoodUnit,
   localizeFoodUnitGroup,
+  formatLocalizedUnitQuantity,
 } from '../../src/utils/foodUnitLocalization';
 
 describe('food unit presentation localization', () => {
@@ -80,7 +81,7 @@ describe('food unit presentation localization', () => {
         ['handful', 'garść'],
         ['scoop', 'miarka'],
         ['bar', 'baton'],
-        ['stick', 'pałeczka'],
+        ['stick', 'paluszek'],
         ['whole', 'całość'],
       ];
       await i18n.changeLanguage('pl');
@@ -94,7 +95,55 @@ describe('food unit presentation localization', () => {
     });
   });
 
-  describe('unknown / custom units remain literal', () => {
+  describe('quantity + unit presentation (grammar-correct)', () => {
+    test('metric symbols stay plain (no inflection)', async () => {
+      await i18n.changeLanguage('en');
+      expect(formatLocalizedUnitQuantity(100, 'g', i18n.t)).toBe('100 g');
+      expect(formatLocalizedUnitQuantity(250, 'ml', i18n.t)).toBe('250 ml');
+      expect(formatLocalizedUnitQuantity(1.5, 'l', i18n.t)).toBe('1.5 l');
+
+      await i18n.changeLanguage('pl');
+      expect(formatLocalizedUnitQuantity(100, 'g', i18n.t)).toBe('100 g');
+      expect(formatLocalizedUnitQuantity(250, 'ml', i18n.t)).toBe('250 ml');
+      expect(formatLocalizedUnitQuantity(1.5, 'l', i18n.t)).toBe('1,5 l');
+    });
+
+    test('cup declension: fractional / singular / few / many', async () => {
+      await i18n.changeLanguage('en');
+      expect(formatLocalizedUnitQuantity(1.5, 'cup', i18n.t)).toBe('1.5 cups');
+      expect(formatLocalizedUnitQuantity(1, 'cup', i18n.t)).toBe('1 cup');
+      expect(formatLocalizedUnitQuantity(2, 'cup', i18n.t)).toBe('2 cups');
+      expect(formatLocalizedUnitQuantity(5, 'cup', i18n.t)).toBe('5 cups');
+
+      await i18n.changeLanguage('pl');
+      expect(formatLocalizedUnitQuantity(1.5, 'cup', i18n.t)).toBe('1,5 szklanki');
+      expect(formatLocalizedUnitQuantity(1, 'cup', i18n.t)).toBe('1 szklanka');
+      expect(formatLocalizedUnitQuantity(2, 'cup', i18n.t)).toBe('2 szklanki');
+      expect(formatLocalizedUnitQuantity(5, 'cup', i18n.t)).toBe('5 szklanek');
+    });
+
+    test('another countable unit (bottle) declines in PL', async () => {
+      await i18n.changeLanguage('en');
+      expect(formatLocalizedUnitQuantity(2, 'bottle', i18n.t)).toBe('2 bottles');
+      expect(formatLocalizedUnitQuantity(1, 'bottle', i18n.t)).toBe('1 bottle');
+
+      await i18n.changeLanguage('pl');
+      expect(formatLocalizedUnitQuantity(1, 'bottle', i18n.t)).toBe('1 butelka');
+      expect(formatLocalizedUnitQuantity(2, 'bottle', i18n.t)).toBe('2 butelki');
+      expect(formatLocalizedUnitQuantity(5, 'bottle', i18n.t)).toBe('5 butelek');
+    });
+
+    test('unknown/custom unit falls back to literal with the quantity', async () => {
+      await i18n.changeLanguage('pl');
+      expect(formatLocalizedUnitQuantity(2, 'my custom scoop', i18n.t)).toBe(
+        '2 my custom scoop',
+      );
+      await i18n.changeLanguage('en');
+      expect(formatLocalizedUnitQuantity(1.5, 'mini box', i18n.t)).toBe('1.5 mini box');
+    });
+  });
+
+  describe('unknown / custom units remain literal (standalone)', () => {
     test('custom input stays exactly literal in both EN and PL', async () => {
       for (const unit of ['my custom scoop', 'mini box', 'śrubka']) {
         await i18n.changeLanguage('en');

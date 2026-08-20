@@ -2226,7 +2226,12 @@
       "estimating": "Estimating…",
       "convertWithAI": "Convert with AI",
       "estimateSuffix": "estimate",
-      "estimateFailed": "AI estimate failed."
+      "estimateFailed": "AI estimate failed.",
+      "estimateQuality": {
+        "high": "Good estimate",
+        "medium": "Fair estimate",
+        "low": "Rough estimate"
+      }
     },
     "manualUpdate": {
       "title": "Manual Nutrition Update",
@@ -3682,6 +3687,46 @@
       "high": "High",
       "medium": "Medium",
       "low": "Low"
+    },
+    "unitPlurals": {
+      "cup_one": "cup",
+      "cup_other": "cups",
+      "cups_one": "cup",
+      "cups_other": "cups",
+      "tbsp_one": "tbsp",
+      "tbsp_other": "tbsp",
+      "tsp_one": "tsp",
+      "tsp_other": "tsp",
+      "piece_one": "piece",
+      "piece_other": "pieces",
+      "slice_one": "slice",
+      "slice_other": "slices",
+      "serving_one": "serving",
+      "serving_other": "servings",
+      "portion_one": "portion",
+      "portion_other": "portions",
+      "can_one": "can",
+      "can_other": "cans",
+      "bottle_one": "bottle",
+      "bottle_other": "bottles",
+      "packet_one": "packet",
+      "packet_other": "packets",
+      "bag_one": "bag",
+      "bag_other": "bags",
+      "bowl_one": "bowl",
+      "bowl_other": "bowls",
+      "plate_one": "plate",
+      "plate_other": "plates",
+      "handful_one": "handful",
+      "handful_other": "handfuls",
+      "scoop_one": "scoop",
+      "scoop_other": "scoops",
+      "bar_one": "bar",
+      "bar_other": "bars",
+      "stick_one": "stick",
+      "stick_other": "sticks",
+      "whole_one": "whole",
+      "whole_other": "whole"
     }
   },
   "charts": {
