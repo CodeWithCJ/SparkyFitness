@@ -115,17 +115,6 @@ function englishAliasMatches(alias: string, q: string): boolean {
   return a.includes(q) || q.includes(a);
 }
 
-/** Name / English alias match: plain substring (with phrase support). */
-function nameOrAliasMatches(name: string, q: string): boolean {
-  // Polish display names (with diacritics) use the conservative stem matcher so
-  // a broad category word (mięso) does not imply a specific multi-word item.
-  const lower = name.toLowerCase();
-  if (/[ąćęłńóśźż]/.test(lower)) {
-    return plAliasMatches(lower, q);
-  }
-  return englishAliasMatches(lower, q);
-}
-
 /** Polish alias: stem-based conservative match (handles inflection + longer queries). */
 function plAliasMatches(alias: string, q: string): boolean {
   const aliasStems = stemPhrase(alias);
@@ -150,7 +139,6 @@ export function lookupSafetyLocalized(
 ): SafetyItem[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const translate = resolveTranslator(t);
   return list.filter((item) => {
     if (!item.key) {
       // Items without a key are not part of the controlled set; keep canonical
@@ -160,10 +148,8 @@ export function lookupSafetyLocalized(
         item.aliases.some((a) => englishAliasMatches(a, q))
       );
     }
-    if (nameOrAliasMatches(item.name, q)) return true;
+    if (englishAliasMatches(item.name, q)) return true;
     if (item.aliases.some((a) => englishAliasMatches(a, q))) return true;
-    const localizedName = localizeSafetyName(item, group, translate);
-    if (nameOrAliasMatches(localizedName, q)) return true;
     const plAliases = PL_ALIASES[item.key] ?? [];
     if (plAliases.some((a) => plAliasMatches(a, q))) return true;
     return false;

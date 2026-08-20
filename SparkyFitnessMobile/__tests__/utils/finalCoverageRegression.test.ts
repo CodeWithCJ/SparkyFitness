@@ -132,7 +132,7 @@ describe('baby development content (weeks 4-40)', () => {
     const w4 = localizeBabyWeek(4, i18n.t)!;
     expect(w4.mom).toBe('Miesiączka mogła się właśnie nie pojawić. Poziom hormonów ciążowych zaczyna rosnąć.');
     const w15 = localizeBabyWeek(15, i18n.t)!;
-    expect(w15.baby).toBe('Dziecko wyczuwa światło i połyka płyn owodniowy.');
+    expect(w15.baby).toBe('Dziecko wyczuwa światło, a jego ruchy wprawiają płyn owodniowy w ruch.');
     const w20 = localizeBabyWeek(20, i18n.t)!;
     expect(w20.comparison).toBe('Banan');
     const w25 = localizeBabyWeek(25, i18n.t)!;
@@ -241,18 +241,37 @@ describe('pregnancy safety content', () => {
     expect(softCheeseQuery).toContain('soft_cheese_unpasteurized');
   });
 
-  test('broad category words do not imply a single specific item', async () => {
+  test('broad category words do not imply any specific controlled item', async () => {
     await i18n.changeLanguage('pl');
+    // 'ryba' must not imply cooked_salmon or sushi_raw from the generic word.
     const ryba = lookupSafetyLocalized('ryba', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
     expect(ryba).not.toContain('cooked_salmon');
+    expect(ryba).not.toContain('sushi_raw');
+    // 'ser' must not imply a specific cheese item (hard_cheese / soft_cheese).
     const ser = lookupSafetyLocalized('ser', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
-    // A broad category word 'ser' must never imply a single wrong or non-cheese
-    // safety item (it may legally resolve to both cheeses or none, never to an
-    // unrelated item like fish/meat).
-    expect(ser).not.toContain('cooked_salmon');
-    expect(ser.every((k) => k === 'soft_cheese_unpasteurized' || k === 'hard_cheese')).toBe(true);
+    expect(ser).not.toContain('hard_cheese');
+    expect(ser).not.toContain('soft_cheese_unpasteurized');
+    // 'mięso' must not imply a specific meat item from the generic word.
     const mieso = lookupSafetyLocalized('mięso', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
     expect(mieso).not.toContain('undercooked_meat');
+    expect(mieso).not.toContain('deli_meat_cold');
+  });
+
+  test('precise Polish queries resolve their exact controlled keys (positive and negative)', async () => {
+    await i18n.changeLanguage('pl');
+    const twardy = lookupSafetyLocalized('ser twardy', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(twardy).toContain('hard_cheese');
+    expect(twardy).not.toContain('soft_cheese_unpasteurized');
+    const miekkie = lookupSafetyLocalized('ser miękki', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(miekkie).toContain('soft_cheese_unpasteurized');
+    expect(miekkie).not.toContain('hard_cheese');
+    const surowaRyba = lookupSafetyLocalized('surowa ryba', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(surowaRyba).toContain('sushi_raw');
+    expect(surowaRyba).not.toContain('undercooked_meat');
+    const niedogotowane = lookupSafetyLocalized('niedogotowane mięso', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(niedogotowane).toContain('undercooked_meat');
+    const losos = lookupSafetyLocalized('łosoś', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(losos).toContain('cooked_salmon');
   });
 
   test('brand aliases work (Tylenol, Advil, Benadryl)', async () => {
