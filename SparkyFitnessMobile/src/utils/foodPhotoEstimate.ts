@@ -2,9 +2,11 @@ import {
   CONFIDENCE_TONES,
   ITEM_CONFIDENCE_LABELS,
   OVERALL_CONFIDENCE_LABELS,
+  type AiConfidence,
   type ConfidenceTone,
   type FoodPhotoEstimateErrorCode,
 } from '@workspace/shared';
+import type { TFunction } from 'i18next';
 
 export type { ConfidenceTone };
 
@@ -15,6 +17,29 @@ export type { ConfidenceTone };
 export const overallConfidenceLabels = OVERALL_CONFIDENCE_LABELS;
 export const itemConfidenceLabels = ITEM_CONFIDENCE_LABELS;
 export const confidenceTones = CONFIDENCE_TONES;
+
+/**
+ * Localizes the overall AI confidence tier (high/medium/low) for user-visible
+ * presentation (e.g. "AI estimate (Good confidence)"). The raw English
+ * OVERALL_CONFIDENCE_LABELS values are internal; this maps each controlled
+ * enum value to explicit EN/PL copy via t(). Returns null for an unknown value
+ * so callers can omit the confidence fragment entirely.
+ */
+export function localizeAiConfidence(
+  t: TFunction,
+  confidence: AiConfidence | null | undefined,
+): string | null {
+  switch (confidence) {
+    case 'high':
+      return t('foodPhotoEstimate.confidence.good', { defaultValue: 'Good' });
+    case 'medium':
+      return t('foodPhotoEstimate.confidence.fair', { defaultValue: 'Fair' });
+    case 'low':
+      return t('foodPhotoEstimate.confidence.rough', { defaultValue: 'Rough' });
+    default:
+      return null;
+  }
+}
 
 export interface EstimateErrorCopy {
   titleKey: string;

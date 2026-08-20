@@ -20,10 +20,10 @@ import {
   canAutoConvertToUnit,
   useUnitConversion,
 } from '../hooks/useUnitConversion';
+import { localizeAiConfidence } from '../utils/foodPhotoEstimate';
 import {
   CONFIDENCE_TONES,
   FOOD_FORM_UNIT_GROUPS,
-  OVERALL_CONFIDENCE_LABELS,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
@@ -343,9 +343,13 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     const aiConfidence = variant.ai_confidence as AiConfidence | null | undefined;
     const aiTone = aiConfidence ? CONFIDENCE_TONES[aiConfidence] : null;
     const aiSparkleColor = aiTone ? aiSparkleColorByTone[aiTone] : textMuted;
-    const aiAccessibilityLabel = aiConfidence
-      ? `AI estimate (${OVERALL_CONFIDENCE_LABELS[aiConfidence]} confidence)`
-      : 'AI estimate';
+    const aiConfidenceLabel = localizeAiConfidence(t, aiConfidence);
+    const aiAccessibilityLabel = aiConfidenceLabel
+      ? t('foodUnit.aiEstimateWithConfidence', {
+          defaultValue: 'AI estimate ({{confidence}} confidence)',
+          confidence: aiConfidenceLabel,
+        })
+      : t('foodUnit.aiEstimate', { defaultValue: 'AI estimate' });
 
     return (
       <TouchableOpacity
@@ -400,9 +404,13 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
     const matchedAiSparkleColor = matchedAiTone
       ? aiSparkleColorByTone[matchedAiTone]
       : textMuted;
-    const matchedAiAccessibilityLabel = matchedAiConfidence
-      ? `AI estimate (${OVERALL_CONFIDENCE_LABELS[matchedAiConfidence]} confidence)`
-      : 'AI estimate';
+    const matchedAiConfidenceLabel = localizeAiConfidence(t, matchedAiConfidence);
+    const matchedAiAccessibilityLabel = matchedAiConfidenceLabel
+      ? t('foodUnit.aiEstimateWithConfidence', {
+          defaultValue: 'AI estimate ({{confidence}} confidence)',
+          confidence: matchedAiConfidenceLabel,
+        })
+      : t('foodUnit.aiEstimate', { defaultValue: 'AI estimate' });
     const compatible = canAutoConvertToUnit(variants, selectedVariant, unit);
     const isSelected = selectedUnitKey === normalizeUnitKey(unit);
 

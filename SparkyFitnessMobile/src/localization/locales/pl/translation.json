@@ -3641,7 +3641,9 @@
   },
   "foodUnit": {
     "updateFailed": "Nie udało się zaktualizować tej jednostki",
-    "savedCustomUnits": "Zapisane jednostki własne"
+    "savedCustomUnits": "Zapisane jednostki własne",
+    "aiEstimate": "Szacunek AI",
+    "aiEstimateWithConfidence": "Szacunek AI (ufność: {{confidence}})"
   },
   "charts": {
     "weight": {

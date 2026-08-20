@@ -6,28 +6,24 @@ import path from 'node:path';
  *
  * We scan the source tree for locale-less date/number formatting calls that
  * would silently use the device/runtime locale instead of the active Sparky
- * application locale. Valid uses that pass an app-derived locale are allowed;
- * the small set of intentional non-app-locale uses (debug logging and the
- * canonical locale helpers themselves) are in the explicit allowlist below.
+ * application locale. Only the clearly-suspicious patterns are flagged:
+ * toLocale{String,Date,Time} with an empty / undefined / [] locale argument.
+ * Uses that pass an app-derived locale (e.g. .toLocaleDateString(locale, ...))
+ * are not flagged, because they already honor the application locale.
  *
- * This is intentionally narrative/structural, not a full AST rewrite: it only
- * flags the clearly-suspicious patterns with individually justified
- * exclusions, mirroring the review's guidance.
+ * Exceptions are granted per call-site line (not whole files), so a new
+ * accidental implicit-locale call added to an otherwise-trusted file is still
+ * caught.
  */
 describe('locale-less presentation guard', () => {
   const srcRoot = path.join(__dirname, '..', '..', 'src');
 
-  // Explicit allowlist for intentional system-locale / non-presentation uses.
-  // Format: "relative/path.ts" -> reason.
-  const INTENTIONAL = {
-    'screens/LogScreen.tsx': 'debug/log clipboard display (category C)',
-    'services/api/healthDataApi.ts': 'device timezone resolution, not presentation',
-    'services/api/preferencesApi.ts': 'device timezone resolution, not presentation',
-    'services/healthkit/dataTransformation.ts': 'device timezone resolution, not presentation',
-    'utils/dateUtils.ts': 'receives an explicit app/locale parameter or derives from resolvedLanguage',
-    'utils/medicationScheduleLocalization.ts': 'locale parameter defaults to getAppLocale()',
-    'screens/ImportHistoryScreen.tsx': 'locale parameter derived from i18n.language (app locale)',
-    'components/wellness/CycleCalendarGrid.tsx': 'derives pl-PL/en-US from i18n.language (app locale)',
+  // Per-call-site exceptions for intentional system-locale / non-presentation
+  // uses. Format: "relative/path:line" -> reason. Only these exact lines are
+  // exempted; a new bad call elsewhere in the same file is still flagged.
+  const INTENTIONAL_LINES: Record<string, string> = {
+    'screens/LogScreen.tsx:223': 'debug/log clipboard display (category C)',
+    'screens/LogScreen.tsx:325': 'debug/log clipboard display (category C)',
   };
 
   const files: string[] = [];
@@ -44,7 +40,7 @@ describe('locale-less presentation guard', () => {
   }
   walk(srcRoot);
 
-  test('forbids implicit-locale toLocale* calls outside the justified allowlist', () => {
+  test('forbids implicit-locale toLocale* calls outside per-line exceptions', () => {
     const forbidden = new Set([
       '.toLocaleString()',
       '.toLocaleDateString()',
@@ -58,28 +54,55 @@ describe('locale-less presentation guard', () => {
     ]);
 
     const violations: string[] = [];
+    const appliedExceptions: string[] = [];
 
     for (const file of files) {
       const rel = path.relative(srcRoot, file).replaceAll('\\', '/');
-      if (Object.prototype.hasOwnProperty.call(INTENTIONAL, rel)) continue;
-
       const source = fs.readFileSync(file, 'utf8');
       source.split('\n').forEach((line, idx) => {
+        const lineNo = idx + 1;
         for (const needle of forbidden) {
-          if (line.includes(needle)) {
-            violations.push(`${rel}:${idx + 1}: ${line.trim()}`);
+          if (!line.includes(needle)) continue;
+
+          const key = `${rel}:${lineNo}`;
+          if (Object.prototype.hasOwnProperty.call(INTENTIONAL_LINES, key)) {
+            appliedExceptions.push(key);
+            continue;
           }
+          violations.push(`${rel}:${lineNo}: ${line.trim()}`);
         }
       });
     }
 
     expect(violations).toEqual([]);
+
+    // Every documented per-line exception must correspond to a real flagged
+    // call — otherwise the allowlist silently references an obsolete line.
+    for (const key of Object.keys(INTENTIONAL_LINES)) {
+      expect(appliedExceptions).toContain(key);
+    }
   });
 
-  test('documents the intended allowlist for remaining system-locale uses', () => {
-    // This test keeps the allowlist honest: every entry must be a real file.
-    for (const rel of Object.keys(INTENTIONAL)) {
-      expect(fs.existsSync(path.join(srcRoot, rel))).toBe(true);
+  test('intentional timezone-resolution files contain no implicit-locale toLocale* presentation', () => {
+    // These files legitimately read the device timezone via Intl.DateTimeFormat,
+    // which the scanner does not flag. Assert they have no empty-arg toLocale*
+    // presentation calls leaking through.
+    const tzFiles = [
+      'services/api/healthDataApi.ts',
+      'services/api/preferencesApi.ts',
+      'services/healthkit/dataTransformation.ts',
+    ];
+    for (const rel of tzFiles) {
+      const source = fs.readFileSync(path.join(srcRoot, rel), 'utf8');
+      const flagged = source
+        .split('\n')
+        .map((line, i) => ({ line, n: i + 1 }))
+        .filter(({ line }) =>
+          /\.toLocaleString\(\)|\.toLocaleDateString\(\)|\.toLocaleTimeString\(\)/.test(line),
+        );
+      expect(
+        flagged.map(({ line, n }) => `${rel}:${n}: ${line.trim()}`),
+      ).toEqual([]);
     }
   });
 });

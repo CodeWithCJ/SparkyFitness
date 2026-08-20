@@ -7,6 +7,7 @@ import type {
   FoodUnitVariant,
 } from '../types/foodUnitVariants';
 import type { CreateFoodVariantPayload } from '../services/api/foodsApi';
+import { formatLocalizedNumber } from '../localization';
 
 export interface FoodDisplayValues {
   servingSize: number;
@@ -56,10 +57,44 @@ function formatPreciseNumber(value: number, decimals: number): string {
   return trimTrailingZeros(rounded.toFixed(decimals));
 }
 
-export function formatServingSizeDisplay(value: number): string {
-  if (!Number.isFinite(value)) return '0';
-  return formatPreciseNumber(value, 4);
+/**
+ * Locale-aware variant of formatPreciseNumber for presentation-only labels.
+ * Keeps the same rounding and trailing-zero trimming but renders the decimal
+ * separator per the active application locale (EN "1.5" / PL "1,5"). Grouping
+ * is disabled so serving quantities keep compact presentation.
+ */
+function formatPreciseNumberForDisplay(value: number, decimals: number): string {
+  const rounded = roundTo(value, decimals);
+  if (Object.is(rounded, -0)) {
+    return '0';
+  }
+  return formatLocalizedNumber(rounded, {
+    maximumFractionDigits: decimals,
+    useGrouping: false,
+  });
 }
+
+export function formatServingSizeForDisplay(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  return formatPreciseNumberForDisplay(value, 4);
+}
+
+export function formatCaloriesForDisplay(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  if (Math.abs(value) >= 1) {
+    return formatLocalizedNumber(Math.round(value), { useGrouping: false });
+  }
+  return formatPreciseNumberForDisplay(value, 4);
+}
+
+export function formatMacroForDisplay(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  if (Math.abs(value) >= 1) {
+    return formatPreciseNumberForDisplay(value, 1);
+  }
+  return formatPreciseNumberForDisplay(value, 4);
+}
+
 
 export function convertEquivalentVariantQuantity(
   quantity: number,
@@ -92,6 +127,17 @@ export function formatMacroDisplay(value: number): string {
   if (Math.abs(value) >= 1) {
     return formatPreciseNumber(value, 1);
   }
+  return formatPreciseNumber(value, 4);
+}
+
+/**
+ * Locale-neutral formatters for editable numeric inputs / persisted values.
+ * These intentionally keep a dot decimal separator so the numeric parser stays
+ * deterministic regardless of the app language. Use the *ForDisplay variants
+ * for pure presentation labels.
+ */
+export function formatServingSizeDisplay(value: number): string {
+  if (!Number.isFinite(value)) return '0';
   return formatPreciseNumber(value, 4);
 }
 
@@ -360,13 +406,13 @@ export function formatVariantServingLabel(
     return formatServingDescription(values.servingDescription ?? '');
   }
 
-  const servingLabel = `${formatServingSizeDisplay(values.servingSize)} ${formatServingUnit(values.servingUnit)}`;
+  const servingLabel = `${formatServingSizeForDisplay(values.servingSize)} ${formatServingUnit(values.servingUnit)}`;
   const metricEquivalent = !isMetricUnit(values.servingUnit)
     ? findMetricEquivalent(equivalents)
     : undefined;
 
   if (metricEquivalent) {
-    return `${servingLabel} (${formatServingSizeDisplay(metricEquivalent.serving_size)} ${formatServingUnit(metricEquivalent.serving_unit)})`;
+    return `${servingLabel} (${formatServingSizeForDisplay(metricEquivalent.serving_size)} ${formatServingUnit(metricEquivalent.serving_unit)})`;
   }
 
   return servingLabel;
@@ -390,7 +436,7 @@ export function formatQuantityUnitLabel(
   const unitLabel = formatServingUnit(values.servingUnit);
 
   if (metricEquivalent) {
-    return `${unitLabel} (${formatServingSizeDisplay(metricEquivalent.serving_size)} ${formatServingUnit(metricEquivalent.serving_unit)})`;
+    return `${unitLabel} (${formatServingSizeForDisplay(metricEquivalent.serving_size)} ${formatServingUnit(metricEquivalent.serving_unit)})`;
   }
 
   return unitLabel;
@@ -404,7 +450,7 @@ export function formatVariantLabel(
   equivalents?: EquivalentUnit[],
 ): string {
   const servingLabel = formatVariantServingLabel(values, equivalents);
-  return `${servingLabel} (${formatCaloriesDisplay(values.calories)} cal)`;
+  return `${servingLabel} (${formatCaloriesForDisplay(values.calories)} cal)`;
 }
 
 function getVisibleLocalVariantGroups(groups: VariantGroup[]) {

@@ -3639,7 +3639,9 @@
   },
   "foodUnit": {
     "updateFailed": "Could not update that unit",
-    "savedCustomUnits": "Saved Custom Units"
+    "savedCustomUnits": "Saved Custom Units",
+    "aiEstimate": "AI estimate",
+    "aiEstimateWithConfidence": "AI estimate ({{confidence}} confidence)"
   },
   "charts": {
     "weight": {
