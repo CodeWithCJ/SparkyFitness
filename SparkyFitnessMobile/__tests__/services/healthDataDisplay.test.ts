@@ -336,8 +336,8 @@ describe('fetchHealthDisplayData', () => {
     it('formats zero-valued temperature, mass, height and glucose records', async () => {
       mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', temperature: { inCelsius: 0 } }]);
       expect(await displayFor('BodyTemperature')).toBe('0.0°C');
-      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', mass: { inKilograms: 0 } }]);
-      expect(await displayFor('Weight')).toBe(NO_DATA_DISPLAY);
+      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', weight: { inKilograms: 0 } }]);
+      expect(await displayFor('Weight')).toBe('0.0 kg');
       mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', height: { inMeters: 0 } }]);
       expect(await displayFor('Height')).toBe('0.0 cm');
       mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', level: { inMillimolesPerLiter: 0 } }]);
