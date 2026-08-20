@@ -4173,7 +4173,7 @@
       "w4": {
         "comparison": "Ziarenko maku",
         "baby": "Zarodek zagnieździł się w macicy, a łożysko zaczyna się kształtować.",
-        "mom": "Być może właśnie nie dostałaś miesiączki. Rośnie poziom wczesnych hormonów."
+        "mom": "Miesiączka mogła się właśnie nie pojawić. Poziom hormonów ciążowych zaczyna rosnąć."
       },
       "w5": {
         "comparison": "Ziarenko sezamu",
@@ -4227,7 +4227,7 @@
       },
       "w15": {
         "comparison": "Jabłko",
-        "baby": "Dziecko wyczuwa światło i porusza płynem owodniowym.",
+        "baby": "Dziecko wyczuwa światło i połyka płyn owodniowy.",
         "mom": "Możesz zauważyć pojawiający się mały brzuszek."
       },
       "w16": {
@@ -4292,7 +4292,7 @@
       },
       "w28": {
         "comparison": "Bakłażan",
-        "baby": "Dziecko potrafi mrugać, a jego rzęsy już wykształcone.",
+        "baby": "Dziecko potrafi mrugać, a jego rzęsy są już w pełni wykształcone.",
         "mom": "Wizyty prenatalne stają się teraz częstsze."
       },
       "w29": {
@@ -4337,7 +4337,7 @@
       },
       "w37": {
         "comparison": "Pęczek boćwiny",
-        "baby": "Dziecko uznawane jest za bliskie terminu porodu i ćwiczy oddychanie.",
+        "baby": "Dziecko jest już blisko terminu porodu (tzw. wczesny termin) i ćwiczy oddychanie.",
         "mom": "Obserwuj oznaki porodu i miej przygotowaną torbę do szpitala."
       },
       "w38": {
@@ -4364,7 +4364,7 @@
         },
         "tuna_canned_light": {
           "name": "Tuńczyk (lekki, w puszce)",
-          "note": "Ogranicz do ok. 2 porcji tygodniowo; wybieraj tuńczyka lekkiego zamiast białawego (albacore), który zawiera więcej rtęci."
+          "note": "Wybieraj tuńczyka jasnego typu „light” zamiast tuńczyka białego (albacore), który zawiera więcej rtęci. Ogranicz go do ok. 2 porcji tygodniowo."
         },
         "swordfish": {
           "name": "Miecznik",
@@ -4372,7 +4372,7 @@
         },
         "sushi_raw": {
           "name": "Sushi (surowe)",
-          "note": "Surowa ryba niesie ryzyko pasożytów i bakterii. Gotowane rolki są w porządku."
+          "note": "Surowa ryba niesie ryzyko pasożytów i bakterii. Gotowane rolki są bezpieczne."
         },
         "shrimp_cooked": {
           "name": "Krewetki (gotowane)",
@@ -4428,7 +4428,7 @@
         },
         "liver_pate": {
           "name": "Wątróbka / pasztet",
-          "note": "Bogaty w witaminę A, która w dużych ilościach może być szkodliwa."
+          "note": "Te produkty zawierają bardzo dużo witaminy A, która w dużych ilościach może być szkodliwa."
         },
         "peanuts": {
           "name": "Orzeszki ziemne",

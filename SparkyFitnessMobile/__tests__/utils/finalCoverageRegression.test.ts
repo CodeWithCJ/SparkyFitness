@@ -127,6 +127,22 @@ describe('baby development content (weeks 4-40)', () => {
     }
   });
 
+  test('curated PL final copy for reviewed weeks', async () => {
+    await i18n.changeLanguage('pl');
+    const w4 = localizeBabyWeek(4, i18n.t)!;
+    expect(w4.mom).toBe('Miesiączka mogła się właśnie nie pojawić. Poziom hormonów ciążowych zaczyna rosnąć.');
+    const w15 = localizeBabyWeek(15, i18n.t)!;
+    expect(w15.baby).toBe('Dziecko wyczuwa światło i połyka płyn owodniowy.');
+    const w20 = localizeBabyWeek(20, i18n.t)!;
+    expect(w20.comparison).toBe('Banan');
+    const w25 = localizeBabyWeek(25, i18n.t)!;
+    expect(w25.baby).toBe('Dziecku zaczynają rosnąć włosy, rozwija się odruch zaskoczenia.');
+    const w28 = localizeBabyWeek(28, i18n.t)!;
+    expect(w28.baby).toBe('Dziecko potrafi mrugać, a jego rzęsy są już w pełni wykształcone.');
+    const w37 = localizeBabyWeek(37, i18n.t)!;
+    expect(w37.baby).toBe('Dziecko jest już blisko terminu porodu (tzw. wczesny termin) i ćwiczy oddychanie.');
+  });
+
   test('out-of-range week returns null', () => {
     expect(localizeBabyWeek(3, i18n.t)).toBeNull();
     expect(localizeBabyWeek(41, i18n.t)).toBeNull();
@@ -212,6 +228,31 @@ describe('pregnancy safety content', () => {
   test("Polish alias 'makrela królewska' resolves to swordfish", async () => {
     await i18n.changeLanguage('pl');
     expect(lookupSafetyLocalized('makrela królewska', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key)).toContain('swordfish');
+  });
+
+  test('longer natural Polish queries resolve precise controlled keys', async () => {
+    await i18n.changeLanguage('pl');
+    const rawQuery = lookupSafetyLocalized('czy mogę jeść surową rybę', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(rawQuery).toContain('sushi_raw');
+    expect(rawQuery).not.toContain('undercooked_meat');
+    const ibuQuery = lookupSafetyLocalized('czy ibuprofen jest bezpieczny', MED_SAFETY, 'med', i18n.t).map((i) => i.key);
+    expect(ibuQuery).toContain('ibuprofen');
+    const softCheeseQuery = lookupSafetyLocalized('mam ser miękki niepasteryzowany', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(softCheeseQuery).toContain('soft_cheese_unpasteurized');
+  });
+
+  test('broad category words do not imply a single specific item', async () => {
+    await i18n.changeLanguage('pl');
+    const ryba = lookupSafetyLocalized('ryba', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(ryba).not.toContain('cooked_salmon');
+    const ser = lookupSafetyLocalized('ser', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    // A broad category word 'ser' must never imply a single wrong or non-cheese
+    // safety item (it may legally resolve to both cheeses or none, never to an
+    // unrelated item like fish/meat).
+    expect(ser).not.toContain('cooked_salmon');
+    expect(ser.every((k) => k === 'soft_cheese_unpasteurized' || k === 'hard_cheese')).toBe(true);
+    const mieso = lookupSafetyLocalized('mięso', FOOD_SAFETY, 'food', i18n.t).map((i) => i.key);
+    expect(mieso).not.toContain('undercooked_meat');
   });
 
   test('brand aliases work (Tylenol, Advil, Benadryl)', async () => {
