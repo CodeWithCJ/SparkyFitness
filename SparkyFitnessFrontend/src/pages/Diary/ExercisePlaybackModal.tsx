@@ -28,7 +28,10 @@ import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn } from '@/utils/logging';
 import { Exercise } from '@/types/exercises';
-import { resolveExerciseImageSrc } from '@/utils/exercises';
+import {
+  resolveExerciseImageSrc,
+  filterValidExerciseImages,
+} from '@/utils/exercises';
 
 interface ExercisePlaybackModalProps {
   isOpen: boolean;
@@ -58,7 +61,13 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     () => exercise?.instructions || [],
     [exercise?.instructions]
   );
-  const images = useMemo(() => exercise?.images || [], [exercise?.images]);
+  // Filtered at the source so length, indexing and the resolved src all agree:
+  // a legacy '[]' sentinel entry would otherwise count toward the slideshow and
+  // resolve to /uploads/exercises/[].
+  const images = useMemo(
+    () => filterValidExerciseImages(exercise?.images),
+    [exercise?.images]
+  );
 
   // Adjust state when props change (Render-adjust pattern)
   // This avoids the "Calling setState synchronously within an effect" lint error.
