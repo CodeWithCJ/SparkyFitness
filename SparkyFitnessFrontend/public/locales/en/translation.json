@@ -3249,6 +3249,7 @@
     "dailyAverages": "Daily Averages",
     "dailySteps": "Daily Steps",
     "daysCounted": "Counted {{counted}} days",
+    "daysCountedNoGoal": "Counted {{counted}} of {{total}} days — days without a {{nutrient}} goal, or with nothing logged, are excluded",
     "daysCountedPartial": "Counted {{counted}} of {{total}} days — days with nothing logged are excluded",
     "exerciseVarietyScore": "Exercise Variety Score",
     "failedToLoadCalorieBalance": "Failed to load calorie balance data.",

@@ -265,8 +265,47 @@ const NutritionPeriodSummary = ({
         : undefined,
     [calorieBalanceByDate]
   );
-  const hasUntrackedDays =
-    windowDayCount !== undefined && windowDayCount > validDaysCount;
+
+  /**
+   * Why the totals cover fewer days than the window, which is not always the same reason.
+   *
+   * `validDaysCount` counts days that contributed to the totals, and a day only
+   * contributes when the *primary* nutrient resolved a goal. So a day can be missing
+   * because nothing was logged, or because it was logged and simply has no goal for the
+   * selected nutrient — and for `sodium` the reduce skips every day, making the count
+   * zero outright. Attributing all of those to "nothing logged" is wrong for a caption
+   * whose whole purpose is telling a hand-reconciling reader which days were added.
+   *
+   * For calories — the case #2094 is about — `effectiveCalorieGoal` resolves whenever a
+   * balance row exists, and the range endpoint emits one per calendar day, so the only
+   * possible cause really is an unlogged day.
+   */
+  const loggedDayCount = filteredNutritionData.length;
+  const totalDayCount = windowDayCount ?? loggedDayCount;
+  const excludedForMissingGoal = loggedDayCount > validDaysCount;
+  const excludedAsUntracked = totalDayCount > loggedDayCount;
+  const primaryNutrientLabel = selectedOption?.label ?? primaryNutrient;
+
+  const coverageMessage = !excludedForMissingGoal
+    ? excludedAsUntracked
+      ? t(
+          'reports.daysCountedPartial',
+          'Counted {{counted}} of {{total}} days — days with nothing logged are excluded',
+          { counted: validDaysCount, total: totalDayCount }
+        )
+      : t('reports.daysCounted', 'Counted {{counted}} days', {
+          counted: validDaysCount,
+        })
+    : // Covers the both-causes case too, so it never names a reason that does not apply.
+      t(
+        'reports.daysCountedNoGoal',
+        'Counted {{counted}} of {{total}} days — days without a {{nutrient}} goal, or with nothing logged, are excluded',
+        {
+          counted: validDaysCount,
+          total: totalDayCount,
+          nutrient: primaryNutrientLabel,
+        }
+      );
 
   const getDisplayValue = (val: number) => {
     if (primaryNutrient === 'calories') {
@@ -411,17 +450,7 @@ const NutritionPeriodSummary = ({
                 {t('reports.totalGoal', 'Total Goal')}: {displayTotalGoal}{' '}
                 {unitStr}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {hasUntrackedDays
-                  ? t(
-                      'reports.daysCountedPartial',
-                      'Counted {{counted}} of {{total}} days — days with nothing logged are excluded',
-                      { counted: validDaysCount, total: windowDayCount }
-                    )
-                  : t('reports.daysCounted', 'Counted {{counted}} days', {
-                      counted: validDaysCount,
-                    })}
-              </p>
+              <p className="text-xs text-muted-foreground">{coverageMessage}</p>
             </CardContent>
           </Card>
 

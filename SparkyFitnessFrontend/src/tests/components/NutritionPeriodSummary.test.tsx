@@ -492,4 +492,61 @@ describe('NutritionPeriodSummary', () => {
 
     expect(screen.getByText('Counted 2 days')).toBeInTheDocument();
   });
+  /**
+   * `validDaysCount` only counts days where the *primary* nutrient resolved a goal, so a
+   * logged day with no goal for that nutrient drops out of the totals too. Blaming that
+   * on "nothing logged" tells a hand-reconciling reader the opposite of what happened.
+   */
+  it('blames a missing nutrient goal, not missing entries, when days were logged', async () => {
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[day('2026-08-01', 2000), day('2026-08-02', 2000)]}
+        customNutrients={[]}
+        // No goals map at all: both days are logged, neither resolves a protein goal.
+        goals={undefined}
+        calorieBalanceByDate={byDate([
+          balance({ date: '2026-08-01', eaten: 2000, goal: 1800 }),
+          balance({ date: '2026-08-02', eaten: 2000, goal: 1800 }),
+        ])}
+      />
+    );
+
+    // Radix opens its trigger on pointerdown/keyboard, not a bare click in jsdom.
+    fireEvent.keyDown(screen.getByRole('button', { name: /calories/i }), {
+      key: 'Enter',
+    });
+    fireEvent.click(
+      await screen.findByRole('menuitemcheckbox', { name: /protein/i })
+    );
+    fireEvent.click(
+      screen.getByRole('menuitemcheckbox', { name: /calories/i })
+    );
+
+    // Both days were logged; they drop out because protein has no goal, so the caption
+    // must not blame missing entries.
+    expect(
+      await screen.findByText(/days without a .*goal.*are excluded/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /^Counted \d+ of \d+ days . days with nothing logged are excluded$/i
+      )
+    ).toBeNull();
+  });
+
+  it('does not claim days were unlogged when the window is fully tracked', () => {
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[day('2026-08-01', 2000)]}
+        customNutrients={[]}
+        goals={{ '2026-08-01': goalFor(1800) }}
+        calorieBalanceByDate={byDate([
+          balance({ date: '2026-08-01', eaten: 2000, goal: 1800 }),
+        ])}
+      />
+    );
+
+    expect(screen.getByText('Counted 1 days')).toBeInTheDocument();
+    expect(screen.queryByText(/excluded/i)).toBeNull();
+  });
 });
