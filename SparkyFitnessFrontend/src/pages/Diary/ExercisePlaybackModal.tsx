@@ -382,7 +382,11 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     const nextIndex = currentInstructionIndex + 1;
     if (nextIndex < instructions.length) {
       setCurrentInstructionIndex(nextIndex);
-      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+      // Guarded: filtering can leave zero valid images while instructions
+      // remain, and `% 0` stores NaN in the index.
+      setCurrentImageIndex((prev) =>
+        images.length > 0 ? (prev + 1) % images.length : 0
+      );
     } else {
       info(
         loggingLevel,
@@ -411,8 +415,8 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     const prevIndex = currentInstructionIndex - 1;
     if (prevIndex >= 0) {
       setCurrentInstructionIndex(prevIndex);
-      setCurrentImageIndex(
-        (prev) => (prev - 1 + images.length) % images.length
+      setCurrentImageIndex((prev) =>
+        images.length > 0 ? (prev - 1 + images.length) % images.length : 0
       );
     } else {
       info(loggingLevel, '[handlePrevious] Already at the first instruction.');
