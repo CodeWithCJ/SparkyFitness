@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-08-06*
+*Last updated: 2026-08-22*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -264,6 +264,15 @@ All endpoints require auth headers, and proxy headers are injected before auth h
 - `ChatScreen.tsx` (transport) + `chatApi.ts` - streaming chat via `POST /api/chat/stream`, history load/clear.
 
 When reviewing an API issue, trace screen/hook -> API client -> server route -> service/repository -> shared schema before judging the fix. Deeper endpoint docs live in mobile `docs/` (`food_api.md`, `sync_api.md`, `measurements_api.md`, `external_providers.md`, `healthkit.md`, `bg_sync.md`).
+
+## Localization And Reactive Helpers
+
+- React UI gets `t` from `useTranslation()`; user-facing utility helpers accept an injected `TFunction` and never hide singleton `i18n.t()` fallbacks.
+- Pass `t` through every presentation helper and include it in `useMemo` / `useCallback` dependencies when the derived result contains localized text; this keeps mounted UI correct after a runtime language switch.
+- Translation keys are semantic and statically analyzable. Every static `defaultValue` is the English source fallback and must exactly match the EN catalog entry.
+- A key used with `count` is a plural family: EN requires `_one` and `_other`; PL requires `_one`, `_few`, `_many`, and `_other`. Use grammatically correct forms rather than duplicating suffixes blindly.
+- Run `pnpm run i18n:audit` after localization work. `pnpm run validate` includes typecheck, lint with zero warnings, and this audit.
+- Keep canonical storage/API values and user-generated content literal; localize only application-owned presentation labels.
 
 ## Testing Guidance
 
