@@ -23,6 +23,33 @@ import {
   CustomMeasurementsResponse,
 } from '@workspace/shared';
 import { CustomCategoriesResponse } from '@workspace/shared';
+import type { DailyCalorieBalanceRow } from '@workspace/shared';
+
+/**
+ * The day's real calorie budget from a server-computed balance row.
+ *
+ * `eaten + remaining` is the identity that reconciles the server's "remaining" with the
+ * Reports charts' "goal" framing. In dynamic mode it expands to `goal + exercise + bmr`,
+ * but it generalises to every adjustment mode without the caller knowing which is active
+ * -- which is the point: the browser must not re-derive this. See issue #2094.
+ *
+ * Shared because two Reports surfaces draw a calorie goal line and they have to agree.
+ *
+ * `eatenCalories` is the caller's own unrounded total for the day, and passing it makes
+ * the charts' `eaten - budget` land on exactly `-remaining`. The balance row carries a
+ * rounded `eaten`, so pairing it with an unrounded chart value left up to 0.5 kcal of
+ * daily residue that the cumulative series then accumulated -- around 90 kcal of drift
+ * across a year-long report, in a chart whose entire job is reconciling with the Diary.
+ * Both values come from the same nutrition query, so preferring the caller's costs
+ * nothing; it also means an entry logged between the two fetches moves the budget line
+ * rather than manufacturing a variance. Omit it and the row's own rounded figure is
+ * used, which is still correct to within that 0.5 kcal.
+ */
+export const effectiveCalorieGoal = (
+  balance: DailyCalorieBalanceRow | undefined,
+  eatenCalories?: number
+): number | undefined =>
+  balance ? (eatenCalories ?? balance.eaten) + balance.remaining : undefined;
 
 interface StressDataPoint {
   time: string;

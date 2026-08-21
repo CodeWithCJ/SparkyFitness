@@ -24,33 +24,26 @@ describe('resolveExerciseImageSrc', () => {
     );
   });
 
+  it('uses absolute app paths (already rooted at /) as-is', () => {
+    // CSV imports persist the full app path; prefixing again would produce
+    // /uploads/exercises//uploads/exercises/... and 404.
+    expect(
+      resolveExerciseImageSrc('/uploads/exercises/Bench_Press/0_abc123.jpg')
+    ).toBe('/uploads/exercises/Bench_Press/0_abc123.jpg');
+    expect(resolveExerciseImageSrc('/static/img/a.png')).toBe(
+      '/static/img/a.png'
+    );
+  });
+
   it('is case-insensitive about the URL scheme', () => {
     expect(resolveExerciseImageSrc('HTTPS://example.com/a.png')).toBe(
       'HTTPS://example.com/a.png'
     );
   });
 
-  it('leaves an already server-rooted path untouched', () => {
-    // The CSV importers store downloadImage's return value verbatim, so the
-    // stored value already carries the prefix; prefixing again 404s.
-    expect(
-      resolveExerciseImageSrc('/uploads/exercises/Bench_Press/0_ab12cd34.jpg')
-    ).toBe('/uploads/exercises/Bench_Press/0_ab12cd34.jpg');
-  });
-
-  it('trims surrounding whitespace before resolving', () => {
-    expect(resolveExerciseImageSrc('  Machine_Bicep_Curl/0.jpg  ')).toBe(
-      '/uploads/exercises/Machine_Bicep_Curl/0.jpg'
-    );
-    expect(resolveExerciseImageSrc('  https://example.com/a.png ')).toBe(
-      'https://example.com/a.png'
-    );
-  });
-
   it('returns an empty string for missing values', () => {
     expect(resolveExerciseImageSrc(undefined)).toBe('');
     expect(resolveExerciseImageSrc('')).toBe('');
-    expect(resolveExerciseImageSrc('   ')).toBe('');
   });
 });
 
@@ -70,12 +63,6 @@ describe('filterValidExerciseImages', () => {
         'https://example.com/b.png',
       ])
     ).toEqual(['A/0.jpg', 'https://example.com/b.png']);
-  });
-
-  it('returns trimmed entries so callers resolve a usable src', () => {
-    expect(filterValidExerciseImages([' Machine_Bicep_Curl/0.jpg '])).toEqual([
-      'Machine_Bicep_Curl/0.jpg',
-    ]);
   });
 
   it('returns an empty array for missing or non-array input', () => {

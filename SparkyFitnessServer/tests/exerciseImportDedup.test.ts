@@ -128,6 +128,62 @@ describe('external exercise import dedup', () => {
           source: 'free-exercise-db',
           source_id: 'Barbell_Bench_Press',
           user_id: userId,
+          // free-exercise-db's raw equipment is a bare string, not a
+          // one-item array; passing it through unwrapped means createExercise
+          // JSON.stringify's it into a JSON-encoded string that every later
+          // reader's `.join()`/`.map()` then crashes on (#reports export).
+          equipment: ['barbell'],
+          // Fields free-exercise-db already returns as arrays must round-trip
+          // unchanged, not get double-wrapped.
+          primary_muscles: ['chest'],
+          secondary_muscles: ['triceps'],
+          instructions: ['Lie on the bench.'],
+        })
+      );
+    });
+
+    it('wraps a bare instructions string into a one-item array', async () => {
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      exerciseDb.getExerciseBySourceAndSourceId.mockResolvedValueOnce(
+        undefined
+      );
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      freeExerciseDBService.getExerciseById.mockResolvedValueOnce({
+        id: 'Air_Bike',
+        name: 'Air Bike',
+        force: null,
+        level: 'beginner',
+        mechanic: null,
+        equipment: null,
+        primaryMuscles: ['abdominals'],
+        secondaryMuscles: [],
+        // A single-step exercise from the raw source: a bare string, not
+        // a one-item array.
+        instructions: 'Lie flat on the floor.',
+        category: 'strength',
+        images: [],
+      });
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValueOnce(
+        200
+      );
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      exerciseDb.createExercise.mockResolvedValueOnce({ id: 'created-uuid-2' });
+
+      await exerciseService.addFreeExerciseDBExerciseToUserExercises(
+        userId,
+        'Air_Bike'
+      );
+
+      expect(exerciseDb.createExercise).toHaveBeenCalledWith(
+        expect.objectContaining({
+          equipment: [],
+          secondary_muscles: [],
+          instructions: ['Lie flat on the floor.'],
+          // Must be the whole first instruction, not
+          // exerciseDetails.instructions[0] indexing the raw bare string
+          // (which would silently give just its first character, 'L').
+          description: 'Lie flat on the floor.',
         })
       );
     });

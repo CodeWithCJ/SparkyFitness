@@ -24,12 +24,12 @@ import { error } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUpdateExerciseMutation } from '@/hooks/Exercises/useExercises';
 import { Exercise } from '@/types/exercises';
-import { resolveExerciseImageSrc } from '@/utils/exercises';
 import {
   EXERCISE_CATEGORIES,
   EXERCISE_MODALITY_OPTIONS,
 } from '@/constants/exercises';
 import { isExerciseModality, resolveExerciseModality } from '@workspace/shared';
+import { resolveExerciseImageSrc } from '@/utils/exercises';
 
 interface EditExerciseDatabaseDialogProps {
   open: boolean;

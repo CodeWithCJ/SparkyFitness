@@ -4,6 +4,7 @@ import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
 import { fetchDailySummary } from '../../src/services/api/dailySummaryApi';
 import { fetchFoodEntryMealsByDate } from '../../src/services/api/foodEntryMealsApi';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
 
 jest.mock('../../src/services/api/dailySummaryApi', () => ({
   fetchDailySummary: jest.fn(),
@@ -75,6 +76,7 @@ const makeSummaryResponse = (overrides: Record<string, unknown> = {}) => ({
   waterIntake: (overrides.waterIntake ?? 0) as number,
   stepCalories: (overrides.stepCalories ?? 0) as number,
   calorieBalance: makeCalorieBalance(overrides.calorieBalance as Record<string, unknown>),
+  ...(overrides.supplementTotals ? { supplementTotals: overrides.supplementTotals } : {}),
 });
 
 describe('useDailySummary', () => {
@@ -345,6 +347,74 @@ describe('useDailySummary', () => {
       expect(result.current.summary?.remainingCalories).toBe(1500);
     });
 
+  });
+
+  // customNutrientTotals is what every screen reads for a nutrient with no fixed column,
+  // and that is most micronutrients: only six catalog entries map to one. Deriving it from
+  // food entries alone left a magnesium or vitamin D supplement contributing nothing
+  // anywhere on mobile, which is the larger half of #2145.
+  describe('supplement custom nutrients', () => {
+    const supplementTotals = {
+      ...EMPTY_SUPPLEMENT_TOTALS,
+      custom_nutrients: { Magnesium: 400, 'Vitamin D': 50 },
+    };
+
+    test('adds the dose onto the food total for the same nutrient', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        foodEntries: [
+          { id: '1', calories: 100, quantity: 2, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate, custom_nutrients: { Magnesium: 60 } },
+        ],
+        supplementTotals,
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      // 60 * 2 / 1 from food, plus the 400 the dose carried.
+      expect(result.current.summary?.customNutrientTotals.Magnesium).toBe(520);
+      // No food supplied vitamin D, which is the ordinary case for a supplement nutrient.
+      expect(result.current.summary?.customNutrientTotals['Vitamin D']).toBe(50);
+    });
+
+    test('reports the dose on a day with no food entries', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({ supplementTotals }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.customNutrientTotals).toEqual({
+        Magnesium: 400,
+        'Vitamin D': 50,
+      });
+    });
+
+    test('leaves food custom totals alone when the server sends no supplement arm', async () => {
+      mockFetchDailySummary.mockResolvedValue(makeSummaryResponse({
+        foodEntries: [
+          { id: '1', calories: 100, quantity: 1, serving_size: 1, meal_type: 'lunch', unit: 'g', entry_date: testDate, custom_nutrients: { Magnesium: 60 } },
+        ],
+      }));
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.customNutrientTotals).toEqual({ Magnesium: 60 });
+    });
   });
 
   describe('goal fallback defaults', () => {

@@ -1,18 +1,26 @@
 import goalService from './goalService.js';
 import reportRepository from '../models/reportRepository.js';
+import exerciseEntryRepository from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
-import bmrService from './bmrService.js';
 import { log } from '../config/logging.js';
+import { resolveBackgroundStepCalories } from '@workspace/shared';
 import {
-  CALORIE_CALCULATION_CONSTANTS,
-  userHourMinute,
-} from '@workspace/shared';
-import { userAge } from '../utils/dateHelpers.js';
+  computeCalorieBalance,
+  resolveDayFraction,
+} from './calorieBalanceService.js';
+
 /**
  * Aggregates stats for external dashboards (like gethomepage.dev).
- * matches logic in DailyProgress.tsx
+ *
+ * Delegates the arithmetic to `computeCalorieBalance`, the same function behind
+ * `/api/daily-summary` and `/api/daily-summary/range`, so a Homepage widget shows the
+ * number the Diary shows. This file used to hand-inline its own copy of that math, which
+ * had drifted in four ways: it never subtracted workout steps from check-in steps (its
+ * `activitySteps` was always 0 because the query it read does not select `steps`), it
+ * carried its own copy of the stride formula, it clamped progress to 100 where the app
+ * does not, and it read the wall clock even when asked for a past date.
  */
 async function getDashboardStats(
   userId: string,
@@ -23,31 +31,51 @@ async function getDashboardStats(
     const [
       goals,
       nutritionData,
-      exerciseEntries,
+      exerciseSplits,
       userProfile,
       userPreferences,
-      latestMeasurements,
+      measurements,
       checkInMeasurements,
+      latestWeightHeight,
     ] = await Promise.all([
-      goalService.getUserGoals(userId, date, undefined, includeCheckin),
+      // `adjust` is unconditionally true, matching `dailySummaryService` and
+      // `dailySummaryRangeService`. It used to be tied to `includeCheckin`, which made
+      // this endpoint the only one of the three to report an unadjusted goal for a
+      // family viewer holding `diary` but not `checkin` — the same class of
+      // surface-by-surface divergence as #2094, just one surface further out.
+      //
+      // Gating it bought no privacy either: `adjust` derives the goal from the target's
+      // own measurements, and that same actor can already read the adjusted number from
+      // GET /daily-summary and GET /daily-summary/range, both of which pass true.
+      goalService.getUserGoals(userId, date, undefined, true),
       reportRepository.getNutritionData(userId, date, date, []),
-      // @ts-expect-error TS(2554): Expected 6 arguments, but got 3.
-      reportRepository.getExerciseEntries(userId, date, date),
+      // Replaces a forEach over `reportRepository.getExerciseEntries`, whose SELECT omits
+      // `steps` — so the old `activitySteps` was always 0 and every step a logged workout
+      // already accounted for was charged a second time as "background".
+      exerciseEntryRepository.getDailyExerciseCalorieSplitRange(
+        userId,
+        date,
+        date
+      ),
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
       includeCheckin
-        ? measurementRepository.getLatestMeasurement(userId)
+        ? measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
+            userId,
+            date
+          )
         : null,
       includeCheckin
         ? measurementRepository.getCheckInMeasurementsByDate(userId, date)
         : null,
+      includeCheckin
+        ? measurementRepository.getLatestWeightHeight(userId)
+        : { weightKg: null, heightCm: null },
     ]);
 
-    // External BMR override — mirror dailySummaryService logic so /dashboard/stats stays consistent.
-    // Gated on includeCheckin for future delegated-access parity with dailySummaryService.
-    const useExternalBmr = userPreferences?.use_external_bmr || false;
+    // External BMR override — gated on includeCheckin, matching dailySummaryService.
     const externalBmr =
-      useExternalBmr && includeCheckin
+      userPreferences?.use_external_bmr && includeCheckin
         ? await measurementRepository
             .getExternalBmrForDate(userId, date)
             .catch((error: unknown) => {
@@ -59,148 +87,50 @@ async function getDashboardStats(
               return null;
             })
         : null;
-    // 1. Goal Calories (Base)
-    const rawGoalCalories = parseFloat((goals as any)?.calories) || 2000;
-    // 2. Eaten Calories
-    const eatenCalories =
-      nutritionData.length > 0 ? parseFloat(nutritionData[0].calories) || 0 : 0;
-    // 3. Exercise Calories
-    let activeCalories = 0;
-    let otherCalories = 0;
-    let activitySteps = 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    exerciseEntries.forEach((entry: any) => {
-      if (entry.exercise_name === 'Active Calories') {
-        activeCalories += parseFloat(entry.calories_burned || 0);
-      } else {
-        otherCalories += parseFloat(entry.calories_burned || 0);
-      }
-      activitySteps += parseInt(entry.steps || 0);
+
+    const split = exerciseSplits[0];
+    const exercise = {
+      activeCalories: Number(split?.active_calories) || 0,
+      otherCalories: Number(split?.other_calories) || 0,
+      activitySteps: Number(split?.activity_steps) || 0,
+    };
+
+    const steps = parseInt(String(checkInMeasurements?.steps ?? '0'), 10) || 0;
+    const stepCalories = includeCheckin
+      ? resolveBackgroundStepCalories({
+          totalSteps: steps,
+          activitySteps: exercise.activitySteps,
+          weightKg: latestWeightHeight.weightKg,
+          heightCm: latestWeightHeight.heightCm,
+        })
+      : 0;
+
+    const balance = computeCalorieBalance({
+      eatenCalories:
+        nutritionData.length > 0
+          ? parseFloat(nutritionData[0].calories) || 0
+          : 0,
+      exercise,
+      backgroundStepCalories: stepCalories,
+      adjustedGoalCalories:
+        parseFloat(String((goals as { calories?: unknown })?.calories)) || 2000,
+      userProfile,
+      userPreferences,
+      measurements,
+      externalBmr,
+      dayFraction: resolveDayFraction(date, userPreferences?.timezone || 'UTC'),
     });
-    // 4. Steps Calories
-    const stepsCount = parseInt(checkInMeasurements?.steps || 0);
-    const backgroundSteps = Math.max(0, stepsCount - activitySteps);
-    const weightKg =
-      parseFloat(latestMeasurements?.weight) ||
-      CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
-    const heightCm =
-      parseFloat(latestMeasurements?.height) ||
-      CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
-    // Distance-based step calorie calculation (Net calories above BMR)
-    // Formula matches frontend: steps * stride_length * weight * 0.4
-    const strideLengthM =
-      (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
-    const distanceKm = (backgroundSteps * strideLengthM) / 1000;
-    const backgroundStepCalories = Math.round(
-      distanceKm *
-        weightKg *
-        CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM
-    );
-    // 5. BMR & Activity Baselines
-    let bmr = 0;
-    const includeInNet = userPreferences?.include_bmr_in_net_calories || false;
-    const activityLevel = userPreferences?.activity_level || 'not_much';
-    const multiplier =
-      (bmrService.ActivityMultiplier as Record<string, number>)[
-        activityLevel
-      ] || 1.2;
-    if (userProfile && userPreferences) {
-      const tz = userPreferences?.timezone || 'UTC';
-      const age = userAge(userProfile.date_of_birth, tz) ?? 30;
-      const gender = userProfile.gender || 'male';
-      const bmrAlgorithm = userPreferences.bmr_algorithm || 'Mifflin-St Jeor';
-      const bodyFat = latestMeasurements?.body_fat_percentage;
-      try {
-        bmr = bmrService.calculateBmr(
-          bmrAlgorithm,
-          weightKg,
-          parseFloat(latestMeasurements?.height) || 170,
-          age,
-          gender,
-          bodyFat
-        );
-      } catch (error) {
-        const errMsg = error instanceof Error ? error.message : String(error);
-        log('warn', `DashboardService: BMR calc failed: ${errMsg}`);
-      }
-    }
-    if (
-      useExternalBmr &&
-      externalBmr !== null &&
-      externalBmr >= 600 &&
-      externalBmr <= 6000
-    ) {
-      bmr = externalBmr;
-    }
-    const sparkyfitnessBurned = Math.round(bmr * multiplier);
-    // 3-tier fallback to avoid double-counting
-    // We compare:
-    // 1. Device total "Active Calories" (which includes steps + workouts)
-    // 2. Individual workouts + background steps
-    // We take whichever is larger.
-    const workoutPlusSteps = otherCalories + backgroundStepCalories;
-    const exerciseCalories =
-      activeCalories >= workoutPlusSteps ? activeCalories : workoutPlusSteps;
-    const bmrToAdd = includeInNet ? bmr : 0;
-    const totalBurned = exerciseCalories + bmrToAdd;
-    const netCalories = eatenCalories - totalBurned;
-    // 6. Goal Adjustment Logic
-    let remaining = 0;
-    const finalGoalCalories = rawGoalCalories;
-    const adjustmentMode =
-      userPreferences?.calorie_goal_adjustment_mode || 'dynamic';
-    const exerciseCaloriePercentage =
-      userPreferences?.exercise_calorie_percentage ?? 100;
-    const allowNegativeAdjustment =
-      userPreferences?.tdee_allow_negative_adjustment ?? false;
-    if (adjustmentMode === 'dynamic') {
-      // 100% of all burned calories credited
-      remaining = finalGoalCalories - netCalories;
-    } else if (adjustmentMode === 'percentage') {
-      // Only a percentage of exercise calories are credited
-      const adjustedExerciseBurned =
-        exerciseCalories * (exerciseCaloriePercentage / 100);
-      const adjustedTotalBurned = adjustedExerciseBurned + bmrToAdd;
-      remaining = finalGoalCalories - (eatenCalories - adjustedTotalBurned);
-    } else if (adjustmentMode === 'tdee' || adjustmentMode === 'smart') {
-      // Device Projection (TDEE adjustment)
-      // For dashboard, we assume current time is "now" for projection
-      const tz = userPreferences?.timezone || 'UTC';
-      const { hour, minute } = userHourMinute(tz);
-      const minutesSinceMidnight = hour * 60 + minute;
-      const dayFraction = minutesSinceMidnight / (24 * 60);
-      const projectedDeviceCalories =
-        dayFraction >= 0.05 && exerciseCalories > 0
-          ? Math.round(exerciseCalories / dayFraction)
-          : exerciseCalories;
-      const projectedBurn = bmr + projectedDeviceCalories;
-      let tdeeAdjustment = projectedBurn - sparkyfitnessBurned;
-      if (!allowNegativeAdjustment) {
-        tdeeAdjustment = Math.max(0, tdeeAdjustment);
-      }
-      remaining = finalGoalCalories - eatenCalories + tdeeAdjustment;
-    } else if (adjustmentMode === 'adaptive') {
-      remaining = finalGoalCalories - eatenCalories;
-    } else {
-      // fixed: no exercise calories credited
-      remaining = finalGoalCalories - eatenCalories;
-    }
-    // effectiveConsumed = goalCalories - remaining (how much of the goal is "used up")
-    const effectiveConsumed = finalGoalCalories - remaining;
-    const progress =
-      finalGoalCalories > 0
-        ? Math.min((effectiveConsumed / finalGoalCalories) * 100, 100)
-        : 0;
+
     return {
-      eaten: Math.round(eatenCalories),
-      burned: Math.round(totalBurned),
-      remaining: Math.round(remaining),
-      goal: Math.round(finalGoalCalories),
-      net: Math.round(netCalories),
-      progress: Math.round(progress),
-      steps: stepsCount,
-      stepCalories: backgroundStepCalories,
-      bmr: Math.round(bmr),
+      eaten: balance.eaten,
+      burned: balance.burned,
+      remaining: balance.remaining,
+      goal: balance.goal,
+      net: balance.net,
+      progress: balance.progress,
+      steps,
+      stepCalories,
+      bmr: balance.bmr,
       unit: 'kcal',
     };
   } catch (error) {
@@ -212,6 +142,7 @@ async function getDashboardStats(
     throw error;
   }
 }
+
 export { getDashboardStats };
 export default {
   getDashboardStats,

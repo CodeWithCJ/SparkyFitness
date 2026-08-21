@@ -1,4 +1,6 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
+import type { FoodVariantNutrientField } from '@workspace/shared';
 import type { FoodEntrySnapshot } from '../types/nutrition.js';
 
 const DEFAULT_VARIANT_JSON_SQL = `
@@ -231,13 +233,37 @@ function supplementFixed(
 ): string {
   return `COALESCE((SELECT SUM(public.sf_try_numeric(me.nutrients_snapshot->>'${key}') * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) FROM medication_entries me WHERE me.user_id = ${userExpr} AND me.entry_date = ${dateExpr} AND me.status IN ('taken', 'prn_taken') AND me.nutrients_snapshot IS NOT NULL), 0)`;
 }
-function supplementCustomUnion(userExpr: string, dateExpr: string): string {
+// One scaled row per (custom nutrient, dose) pair. Kept apart from the UNION wrapper below
+// because the daily-summary query needs the supplement contribution on its own, not merged
+// into the food rows, and the two must not drift: a second copy of this SELECT is a second
+// place for the status filter or the dose clamp to be wrong.
+function supplementCustomRows(userExpr: string, dateExpr: string): string {
   return `
-                UNION ALL
                 SELECT key, public.sf_try_numeric(value) * GREATEST(COALESCE(me2.dose_amount_snapshot, 1), 0) AS scaled
                 FROM medication_entries me2
                 CROSS JOIN LATERAL jsonb_each_text(me2.nutrients_snapshot->'custom_nutrients')
                 WHERE me2.user_id = ${userExpr} AND me2.entry_date = ${dateExpr} AND me2.status IN ('taken', 'prn_taken') AND me2.nutrients_snapshot IS NOT NULL`;
+}
+function supplementCustomUnion(userExpr: string, dateExpr: string): string {
+  return `
+                UNION ALL${supplementCustomRows(userExpr, dateExpr)}`;
+}
+// The same rows aggregated by nutrient name and with no food arm, for the supplement-only
+// totals the Diary needs. Empty object rather than NULL on a day with no doses, so callers
+// can iterate unconditionally.
+function supplementCustomTotals(userExpr: string, dateExpr: string): string {
+  return `COALESCE(
+          (
+            SELECT jsonb_object_agg(key, value)
+            FROM (
+              SELECT key, SUM(scaled) AS value
+              FROM (${supplementCustomRows(userExpr, dateExpr)}
+              ) supplement_custom
+              GROUP BY key
+            ) supplement_custom_agg
+          ),
+          '{}'::jsonb
+        )`;
 }
 
 /**
@@ -249,28 +275,45 @@ function supplementCustomUnion(userExpr: string, dateExpr: string): string {
  * and once to show as its own line, so what is displayed still reconciles against the
  * food rows the user can see.
  *
- * Fields are exactly the set `supplementFixed` is applied to elsewhere. Returns zeros
+ * Fields are `FOOD_VARIANT_NUTRIENT_FIELDS`, the same list `reportRepository` applies
+ * `supplementFixed` to for the range query and the same fixed fields the Diary's summary
+ * card can render. This selected only the five macro fields until #2145, which is how a
+ * supplement's calcium reached Reports but not the Diary card beside it. Returns zeros
  * rather than nulls on a day with no supplements, so callers can add unconditionally.
+ *
+ * Custom nutrients come back alongside them, aggregated by name. Most micronutrients are
+ * custom: only six catalog entries have a fixed column, so magnesium, vitamin D, zinc and
+ * the B vitamins reach the client through `custom_nutrients` or not at all. This endpoint
+ * carried none of them until #2145; `getDailyNutritionSummary` already unions them into
+ * its food totals, but the Diary does not call that.
  */
 async function getDailySupplementTotals(userId: string, date: string) {
   const client = await getClient(userId);
   try {
+    const selects = FOOD_VARIANT_NUTRIENT_FIELDS.map(
+      (field) => `${supplementFixed(field, '$1', '$2')} AS ${field}`
+    ).join(',\n        ');
     const result = await client.query(
-      `SELECT
-        ${supplementFixed('calories', '$1', '$2')} AS calories,
-        ${supplementFixed('protein', '$1', '$2')} AS protein,
-        ${supplementFixed('carbs', '$1', '$2')} AS carbs,
-        ${supplementFixed('fat', '$1', '$2')} AS fat,
-        ${supplementFixed('dietary_fiber', '$1', '$2')} AS dietary_fiber`,
+      `SELECT\n        ${selects},\n        ${supplementCustomTotals('$1', '$2')} AS custom_nutrients`,
       [userId, date]
     );
     const row = result.rows[0] ?? {};
+    const customRow = (row.custom_nutrients ?? {}) as Record<string, unknown>;
     return {
-      calories: Number(row.calories) || 0,
-      protein: Number(row.protein) || 0,
-      carbs: Number(row.carbs) || 0,
-      fat: Number(row.fat) || 0,
-      dietary_fiber: Number(row.dietary_fiber) || 0,
+      ...(Object.fromEntries(
+        FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => [
+          field,
+          Number(row[field]) || 0,
+        ])
+      ) as Record<FoodVariantNutrientField, number>),
+      // A key whose every contribution failed `sf_try_numeric` sums to NULL and arrives as
+      // JSON null, so these are coerced the same way the fixed columns are.
+      custom_nutrients: Object.fromEntries(
+        Object.entries(customRow).map(([name, value]) => [
+          name,
+          Number(value) || 0,
+        ])
+      ),
     };
   } finally {
     client.release();

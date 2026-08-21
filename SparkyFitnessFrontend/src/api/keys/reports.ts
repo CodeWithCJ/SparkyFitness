@@ -6,6 +6,8 @@ export const reportKeys = {
   },
   core: (startDate: string, endDate: string, userId?: string) =>
     ['reports', 'core', startDate, endDate, { userId }] as const,
+  calorieBalance: (startDate: string, endDate: string, userId?: string) =>
+    ['reports', 'calorieBalance', startDate, endDate, { userId }] as const,
   exerciseDashboard: (
     startDate: string,
     endDate: string,

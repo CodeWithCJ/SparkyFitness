@@ -1,12 +1,15 @@
 import type { SupplementTotals } from '@workspace/shared';
-import { resolveSupplementTotals } from '@workspace/shared';
+import {
+  resolveSupplementTotals,
+  addSupplementCustomNutrients,
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+} from '@workspace/shared';
 import { getDietTemplate } from '@/constants/dietTemplates';
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
 import i18n from '@/i18n';
 import type { FoodEntry, FoodVariant } from '@/types/food';
 import { FoodEntryMeal, MealTotals } from '@/types/meal';
 import {
-  CALORIE_CALCULATION_CONSTANTS,
   ACTIVITY_MULTIPLIERS,
   calculateBmr,
   computeCalorieTarget,
@@ -17,25 +20,6 @@ import { getMealPercentage } from './goals';
 import { ExpandedGoals } from '@/types/goals';
 
 // Utility functions for nutrition calculations
-
-export const convertStepsToCalories = (
-  steps: number,
-  weightKg: number = CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
-  heightCm: number = CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM
-): number => {
-  // Stride length estimation
-  const strideLengthM =
-    (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
-  const distanceKm = (steps * strideLengthM) / 1000;
-
-  // Net calories burned per km is approx 0.39 - 0.45 kcal/kg above BMR
-  // We use a conservative "background" movement estimate
-  return Math.round(
-    distanceKm *
-      weightKg *
-      CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM
-  );
-};
 
 export const estimateStepsFromWalkingExercise = (
   durationMinutes: number,
@@ -313,28 +297,51 @@ export const calculateNutrition = (
 /**
  * Folds a day's logged supplement doses into its food totals.
  *
- * Limited to the five fields the server rolls up for supplements everywhere else
- * (`supplementFixed` in foodMisc). A supplement's sodium is not summed by the nutrition
- * summary or the chatbot either, so adding it here alone would trade one inconsistency for
- * a subtler one: the Diary would be the only surface that counted it.
+ * Covers every field in `FOOD_VARIANT_NUTRIENT_FIELDS`, not just the macros. It added only
+ * the five macro fields until #2145: a supplement carrying 10000mg of calcium showed its
+ * calcium in Reports, which sums all seventeen, and nothing in the Diary summary card
+ * beside it, which is the surface the user was actually looking at.
  *
- * Returns the food totals unchanged when there is no supplement arm, so a day with no
- * supplements is byte-for-byte what it was before supplements existed.
+ * The older reasoning for the narrow version was that no other surface summed a
+ * supplement's sodium either, so widening here alone would make the Diary the odd one out.
+ * That was already untrue of the range query in `reportRepository`, and the inconsistency
+ * it was avoiding is the one users hit.
+ *
+ * Custom nutrients are folded in as well, and they are where most micronutrients actually
+ * live: only six of the catalog's entries have a fixed column, so a magnesium or vitamin D
+ * supplement contributes nothing the loop below can reach. `NutritionSummaryCard` already
+ * falls back to `dayTotals.custom_nutrients` for a nutrient with no fixed field, so this
+ * needs no display change to become visible.
+ *
+ * Returns the argument itself when there is no supplement arm at all, which now means an
+ * older server or a failed fetch rather than a day without supplements: this server always
+ * sends the arm, so a supplement-free day arrives present-and-zero and takes the merge
+ * below instead. That path adds nothing to the seventeen, but it does leave a
+ * `custom_nutrients` key on totals that may not have carried one. Downstream reads it as
+ * `custom_nutrients?.[nutrient] ?? 0`, so an empty map and an absent one mean the same
+ * thing there.
  */
 export const addSupplementTotals = <T extends MealTotals>(
   foodTotals: T,
-  supplementTotals: SupplementTotals | undefined | null
+  supplementTotals: Partial<SupplementTotals> | undefined | null
 ): T => {
   if (!supplementTotals) return foodTotals;
+  // Merges against a full-width zero object, so an older server answering with only the
+  // five macro keys yields 0 for the rest rather than `number + undefined` = NaN.
   const supplements = resolveSupplementTotals(supplementTotals);
-  return {
-    ...foodTotals,
-    calories: foodTotals.calories + supplements.calories,
-    protein: foodTotals.protein + supplements.protein,
-    carbs: foodTotals.carbs + supplements.carbs,
-    fat: foodTotals.fat + supplements.fat,
-    dietary_fiber: foodTotals.dietary_fiber + supplements.dietary_fiber,
-  };
+  const combined = { ...foodTotals };
+  for (const field of FOOD_VARIANT_NUTRIENT_FIELDS) {
+    const food = Number(foodTotals[field]) || 0;
+    (combined as MealTotals)[field] = food + supplements[field];
+  }
+  // Replaced with a new map rather than mutated: `foodTotals.custom_nutrients` is the
+  // object the caller's food totals hold, and adding doses into it in place would
+  // double-count as soon as anything folds the same day again.
+  combined.custom_nutrients = addSupplementCustomNutrients(
+    foodTotals.custom_nutrients,
+    supplements
+  );
+  return combined;
 };
 
 export const calculateDayTotals = (

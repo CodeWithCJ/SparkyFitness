@@ -18,6 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
+import { normalizeToStringArray } from '../utils/exerciseJsonFields.js';
 import {
   deriveExerciseModality,
   canEditGroupedWorkout,
@@ -307,10 +308,10 @@ async function createExercise(authenticatedUserId: any, exerciseData: any) {
   try {
     // Ensure the exercise is created for the authenticated user
     exerciseData.user_id = authenticatedUserId;
-    // If images are provided, ensure they are stored as JSON string in the database
-    if (exerciseData.images && Array.isArray(exerciseData.images)) {
-      exerciseData.images = JSON.stringify(exerciseData.images);
-    }
+    // exerciseDb.createExercise (models/exercise.ts) is the single
+    // persistence chokepoint for JSON-encoding equipment/muscles/
+    // instructions/images — encoding images here too would double-encode it
+    // into a JSON string containing a JSON string.
     const newExercise = await exerciseDb.createExercise(exerciseData);
     return newExercise;
   } catch (error) {
@@ -736,10 +737,10 @@ async function updateExercise(
     if (!exerciseOwnerId) {
       throw new Error('Exercise not found.');
     }
-    // If images are provided, ensure they are stored as JSON string in the database
-    if (updateData.images && Array.isArray(updateData.images)) {
-      updateData.images = JSON.stringify(updateData.images);
-    }
+    // exerciseDb.updateExercise (models/exercise.ts) is the single
+    // persistence chokepoint for JSON-encoding equipment/muscles/
+    // instructions/images — encoding images here too would double-encode it
+    // into a JSON string containing a JSON string.
     const updatedExercise = await exerciseDb.updateExercise(
       id,
       authenticatedUserId,
@@ -1121,26 +1122,10 @@ async function searchExternalExercises(
         force: exercise.force,
         level: exercise.level,
         mechanic: exercise.mechanic,
-        equipment: Array.isArray(exercise.equipment)
-          ? exercise.equipment
-          : exercise.equipment
-            ? [exercise.equipment]
-            : [],
-        primary_muscles: Array.isArray(exercise.primaryMuscles)
-          ? exercise.primaryMuscles
-          : exercise.primaryMuscles
-            ? [exercise.primaryMuscles]
-            : [],
-        secondary_muscles: Array.isArray(exercise.secondaryMuscles)
-          ? exercise.secondaryMuscles
-          : exercise.secondaryMuscles
-            ? [exercise.secondaryMuscles]
-            : [],
-        instructions: Array.isArray(exercise.instructions)
-          ? exercise.instructions
-          : exercise.instructions
-            ? [exercise.instructions]
-            : [],
+        equipment: normalizeToStringArray(exercise.equipment),
+        primary_muscles: normalizeToStringArray(exercise.primaryMuscles),
+        secondary_muscles: normalizeToStringArray(exercise.secondaryMuscles),
+        instructions: normalizeToStringArray(exercise.instructions),
         images: exercise.images.map((img: string) =>
           freeExerciseDBService.getExerciseImageUrl(img)
         ),
@@ -1389,6 +1374,10 @@ async function addFreeExerciseDBExerciseToUserExercises(
       })
     );
     // Map free-exercise-db data to our generic Exercise model
+    const instructions = normalizeToStringArray(
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      exerciseDetails.instructions
+    );
     const exerciseData = {
       id: uuidv4(), // Generate a new UUID for the local exercise
       source: 'free-exercise-db',
@@ -1404,13 +1393,14 @@ async function addFreeExerciseDBExerciseToUserExercises(
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       mechanic: exerciseDetails.mechanic,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      equipment: exerciseDetails.equipment,
+      equipment: normalizeToStringArray(exerciseDetails.equipment),
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      primary_muscles: exerciseDetails.primaryMuscles,
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      secondary_muscles: exerciseDetails.secondaryMuscles,
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      instructions: exerciseDetails.instructions,
+      primary_muscles: normalizeToStringArray(exerciseDetails.primaryMuscles),
+      secondary_muscles: normalizeToStringArray(
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        exerciseDetails.secondaryMuscles
+      ),
+      instructions,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       category: exerciseDetails.category,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -1421,8 +1411,11 @@ async function addFreeExerciseDBExerciseToUserExercises(
           exerciseDetails,
           authenticatedUserId
         ), // Calculate calories
+      // Same normalized array the instructions field uses, not the raw
+      // (possibly bare-string) value — indexing a bare string here would
+      // silently take its first character instead of the first instruction.
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      description: exerciseDetails.instructions[0] || exerciseDetails.name, // Use first instruction as description or name
+      description: instructions[0] ?? exerciseDetails.name,
       user_id: authenticatedUserId,
       is_custom: true, // Imported exercises are custom to the user
       shared_with_public: false, // Imported exercises are private by default

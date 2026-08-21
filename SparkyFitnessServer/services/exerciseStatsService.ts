@@ -1,5 +1,13 @@
 import { getClient } from '../db/poolManager.js';
-import { addDays, daysBetween } from '@workspace/shared';
+import {
+  addDays,
+  daysBetween,
+  classifyActivitySport,
+  toPrSportGroup,
+  activitySportLabel,
+  PR_SPORT_GROUPS,
+} from '@workspace/shared';
+import type { ActivitySport, SportConfidence } from '@workspace/shared';
 import type {
   ExerciseStatsSummaryQuery,
   ExerciseStatsSummaryResponse,
@@ -14,6 +22,37 @@ import type {
 
 interface SqlRow {
   [key: string]: unknown;
+}
+
+/**
+ * How many of the fastest entries per distance band the PR query returns.
+ * Sport is derived per row rather than filtered in SQL, so the query cannot ask
+ * for "the best run" directly — it returns a shortlist and the reduction below
+ * picks the best of each sport out of it.
+ */
+const PR_CANDIDATES_PER_STANDARD = 25;
+
+/** A PR-query row, with the columns needed to recover its sport. */
+interface PrCandidateRow {
+  std_key?: string;
+  id: string;
+  exercise_name: string | null;
+  category: string | null;
+  notes: string | null;
+  entry_date: Date | string;
+  duration_minutes: string | number;
+  distance: string | number;
+  provider_name: string | null;
+  detail_data: unknown;
+  exercise_source_id: string | null;
+}
+
+interface PrCandidate {
+  row: PrCandidateRow;
+  sport: ActivitySport;
+  confidence: SportConfidence;
+  /** Seconds per km, unrounded — used to pick the winner within a band. */
+  paceSeconds: number;
 }
 
 /** Converts kilometers to km or miles based on unit system preference */
@@ -65,7 +104,14 @@ function toDayString(d: Date): string {
   return `${d.getFullYear()}-${month}-${day}`;
 }
 
-/** Distance standards in kilometers */
+/**
+ * Distance standards in kilometers.
+ *
+ * TODO(per-sport standards): these bands are running milestones. Cycling has
+ * its own (40 km TT, 100 km) and swimming is measured in pool splits, so a Ride
+ * section currently shows run distances. Correct within each sport, just not
+ * idiomatic for non-runners.
+ */
 const DISTANCE_STANDARDS: Record<
   string,
   { min: number; max: number; label: string }
@@ -593,18 +639,38 @@ async function getPersonalRecordMatrix(
           `($${i * 3 + 2}, $${i * 3 + 3}::numeric, $${i * 3 + 4}::numeric)`
       )
       .join(', ');
+    // Sport is not a column — it has to be recovered per row from the provider
+    // blob, notes, or name (see classifyActivitySport). So the LATERAL returns
+    // the fastest PR_CANDIDATES_PER_STANDARD rows per band instead of a single
+    // winner, and the best-per-sport is reduced in TS below. A sport would need
+    // that many faster efforts from other sports in the same band, with none of
+    // its own, to be crowded out.
     const prSql = `
       WITH standards(std_key, min_km, max_km) AS (VALUES ${standardsValues})
-      SELECT s.std_key, e.id, e.exercise_name, e.entry_date, e.duration_minutes, e.distance
+      SELECT s.std_key, e.id, e.exercise_name, e.category, e.notes, e.entry_date,
+             e.duration_minutes, e.distance, e.provider_name, e.detail_data,
+             e.exercise_source_id
       FROM standards s
       CROSS JOIN LATERAL (
-        SELECT id, exercise_name, entry_date, duration_minutes, distance
-        FROM public.exercise_entries
-        WHERE user_id = $1
-          AND distance >= s.min_km AND distance <= s.max_km
-          AND duration_minutes > 0
-        ORDER BY (duration_minutes * 60 / NULLIF(distance, 0)) ASC
-        LIMIT 1
+        SELECT ee.id, ee.exercise_name, ee.category, ee.notes, ee.entry_date,
+               ee.duration_minutes, ee.distance,
+               d.provider_name, d.detail_data,
+               x.source_id AS exercise_source_id
+        FROM public.exercise_entries ee
+        LEFT JOIN public.exercises x ON x.id = ee.exercise_id
+        LEFT JOIN LATERAL (
+          SELECT provider_name, detail_data
+          FROM public.exercise_entry_activity_details
+          WHERE exercise_entry_id = ee.id
+          ORDER BY CASE WHEN detail_type LIKE '%activity_data%' THEN 0 ELSE 1 END
+          LIMIT 1
+        ) d ON TRUE
+        WHERE ee.user_id = $1
+          AND ee.distance >= s.min_km AND ee.distance <= s.max_km
+          AND ee.duration_minutes > 0
+          AND ee.exercise_name != 'Active Calories'
+        ORDER BY (ee.duration_minutes * 60 / NULLIF(ee.distance, 0)) ASC
+        LIMIT ${PR_CANDIDATES_PER_STANDARD}
       ) e
     `;
     const prResult = await client.query(prSql, [
@@ -615,13 +681,47 @@ async function getPersonalRecordMatrix(
         config.max,
       ]),
     ]);
-    const bestByStandard = new Map<string, SqlRow>(
-      prResult.rows.map((row: SqlRow) => [String(row.std_key), row])
-    );
 
-    for (const [stdKey, stdConfig] of standardEntries) {
-      const bestRow = bestByStandard.get(stdKey);
-      if (bestRow) {
+    // Reduce to the fastest row per (sport group, standard) by comparing paces
+    // rather than trusting arrival order. The ORDER BY inside the LATERAL only
+    // decides which rows that invocation returns; the outer query has no
+    // ORDER BY, so Postgres may emit them in any order under a parallel or
+    // materialized plan. Taking "first row seen" would then record a slower
+    // effort as the PR — the exact class of wrong record this endpoint exists
+    // to stop.
+    const bestBySportAndStandard = new Map<string, PrCandidate>();
+    for (const row of prResult.rows as PrCandidateRow[]) {
+      const distKm = parseFloat(String(row.distance));
+      const durMins = parseFloat(String(row.duration_minutes));
+      // The SQL already excludes non-positive values; this also drops any row
+      // whose numerics fail to parse, so a NaN pace can never win a band.
+      if (!(distKm > 0) || !(durMins > 0)) continue;
+      const paceSeconds = (durMins * 60) / distKm;
+      const { sport, confidence } = classifyActivitySport({
+        exerciseName: row.exercise_name,
+        category: row.category,
+        notes: row.notes,
+        providerName: row.provider_name,
+        detailData: row.detail_data,
+        exerciseSourceId: row.exercise_source_id,
+      });
+      const key = `${toPrSportGroup(sport)}:${String(row.std_key)}`;
+      const current = bestBySportAndStandard.get(key);
+      if (!current || paceSeconds < current.paceSeconds) {
+        bestBySportAndStandard.set(key, {
+          row,
+          sport,
+          confidence,
+          paceSeconds,
+        });
+      }
+    }
+
+    for (const sportGroup of PR_SPORT_GROUPS) {
+      for (const [stdKey, stdConfig] of standardEntries) {
+        const candidate = bestBySportAndStandard.get(`${sportGroup}:${stdKey}`);
+        if (!candidate) continue;
+        const bestRow = candidate.row;
         const distKm = parseFloat(String(bestRow.distance));
         const durMins = parseFloat(String(bestRow.duration_minutes));
         const totalSecs = Math.round(durMins * 60);
@@ -647,8 +747,11 @@ async function getPersonalRecordMatrix(
             : stdConfig.label;
 
         cardioPRs.push({
-          id: `pr-${stdKey}`,
-          category: 'running',
+          id: `pr-${sportGroup}-${stdKey}`,
+          category: candidate.sport,
+          sport: candidate.sport,
+          sportGroup,
+          sportConfidence: candidate.confidence,
           distanceStandard:
             stdKey as ExercisePersonalRecordItem['distanceStandard'],
           label: prLabel,
@@ -657,24 +760,49 @@ async function getPersonalRecordMatrix(
           avgPaceSecondsPerKm: paceSecs,
           formattedPace: formatPace(paceSecs, unitSystem),
           activityId: String(bestRow.id),
-          activityName: String(bestRow.exercise_name || 'Run'),
+          activityName: String(
+            bestRow.exercise_name || activitySportLabel(candidate.sport)
+          ),
           achievedAt: entryDateStr,
         });
       }
     }
 
+    // Stays a single global card rather than one per sport: a user whose
+    // activities all fall outside every band wants one "longest effort", not
+    // five empty-ish sections.
     if (cardioPRs.length === 0) {
       const fallbackSql = `
-        SELECT id, exercise_name, entry_date, duration_minutes, distance
-        FROM public.exercise_entries
-        WHERE user_id = $1 AND distance > 0.5 AND duration_minutes > 0
-          AND exercise_name != 'Active Calories'
-        ORDER BY distance DESC, duration_minutes ASC
+        SELECT ee.id, ee.exercise_name, ee.category, ee.notes, ee.entry_date,
+               ee.duration_minutes, ee.distance,
+               d.provider_name, d.detail_data,
+               x.source_id AS exercise_source_id
+        FROM public.exercise_entries ee
+        LEFT JOIN public.exercises x ON x.id = ee.exercise_id
+        LEFT JOIN LATERAL (
+          SELECT provider_name, detail_data
+          FROM public.exercise_entry_activity_details
+          WHERE exercise_entry_id = ee.id
+          ORDER BY CASE WHEN detail_type LIKE '%activity_data%' THEN 0 ELSE 1 END
+          LIMIT 1
+        ) d ON TRUE
+        WHERE ee.user_id = $1 AND ee.distance > 0.5 AND ee.duration_minutes > 0
+          AND ee.exercise_name != 'Active Calories'
+        ORDER BY ee.distance DESC, ee.duration_minutes ASC
         LIMIT 1
       `;
       const fallbackRes = await client.query(fallbackSql, [targetUserId]);
       if (fallbackRes.rows.length > 0) {
-        const bestRow: SqlRow = fallbackRes.rows[0];
+        const bestRow: PrCandidateRow = fallbackRes.rows[0];
+        const { sport, confidence } = classifyActivitySport({
+          exerciseName: bestRow.exercise_name,
+          category: bestRow.category,
+          notes: bestRow.notes,
+          providerName: bestRow.provider_name,
+          detailData: bestRow.detail_data,
+          exerciseSourceId: bestRow.exercise_source_id,
+        });
+        const sportGroup = toPrSportGroup(sport);
         const distKm = parseFloat(String(bestRow.distance));
         const durMins = parseFloat(String(bestRow.duration_minutes));
         const totalSecs = Math.round(durMins * 60);
@@ -688,8 +816,11 @@ async function getPersonalRecordMatrix(
         const unitSuffix = unitSystem === 'imperial' ? 'mi' : 'km';
 
         cardioPRs.push({
-          id: 'pr-longest',
-          category: 'running',
+          id: `pr-${sportGroup}-longest`,
+          category: sport,
+          sport,
+          sportGroup,
+          sportConfidence: confidence,
           distanceStandard: 'custom',
           label: `Best Effort (${distVal} ${unitSuffix})`,
           bestTimeSeconds: totalSecs,
@@ -697,7 +828,9 @@ async function getPersonalRecordMatrix(
           avgPaceSecondsPerKm: paceSecs,
           formattedPace: formatPace(paceSecs, unitSystem),
           activityId: String(bestRow.id),
-          activityName: String(bestRow.exercise_name || 'Run'),
+          activityName: String(
+            bestRow.exercise_name || activitySportLabel(sport)
+          ),
           achievedAt: entryDateStr,
         });
       }
@@ -838,6 +971,12 @@ async function getMatchedCourses(
         courseId: `course-${courseKey.replace(/\s+/g, '-')}`,
         courseName: String(row.exercise_name || 'Course Loop'),
         category: row.category ? String(row.category) : 'running',
+        // Courses group by LOWER(exercise_name), so the group name is the best
+        // signal available here; notes are not in the GROUP BY.
+        sport: classifyActivitySport({
+          exerciseName: row.exercise_name ? String(row.exercise_name) : null,
+          category: row.category ? String(row.category) : null,
+        }).sport,
         totalDistanceMeters: Math.round(avgDistKm * 1000),
         avgDistanceFormatted: convertDistance(avgDistKm, unitSystem),
         activityCount: parseInt(String(row.activity_count), 10),

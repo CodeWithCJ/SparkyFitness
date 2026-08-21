@@ -1061,6 +1061,12 @@ async function processWithingsWorkouts(
         entry_date: entryDate,
         // @ts-expect-error TS(2339): Property 'data' does not exist on type 'never'.
         notes: `Logged from Withings workout: ${exercise.name}. Distance: ${workout.data.distance || 0}m, Steps: ${workout.data.steps || 0}. Intensity: ${workout.data.intensity || 0}/100.`,
+        // Withings reports metres; the column is kilometres.
+        // @ts-expect-error TS(2339): Property 'data' does not exist on type 'never'.
+        distance: workout.data.distance
+          ? // @ts-expect-error TS(2339): Property 'data' does not exist on type 'never'.
+            parseFloat((workout.data.distance / 1000).toFixed(2))
+          : null,
         // @ts-expect-error TS(2339): Property 'data' does not exist on type 'never'.
         avg_heart_rate: workout.data.hr_average || null,
         sets: [

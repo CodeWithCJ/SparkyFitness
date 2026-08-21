@@ -8,6 +8,11 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { ExternalProviderType } from 'types/externalProvider.ts';
+import {
+  exerciseWriteArrayFieldsSchema,
+  type ExerciseWriteArrayFields,
+} from '@workspace/shared';
+import { log } from '../config/logging.js';
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -22,9 +27,25 @@ const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
 const storage = multer.diskStorage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   destination: (req: any, file: any, cb: any) => {
-    const exerciseName = req.body.exerciseData
-      ? JSON.parse(req.body.exerciseData).name
-      : 'unknown-exercise';
+    // Runs per-file, before the route handler (and its exerciseData
+    // validation) ever executes — malformed/wrongly-shaped exerciseData must
+    // not throw here, or the request fails uncontrolled instead of getting
+    // the route handler's clean 400. Same 'unknown-exercise' fallback
+    // already used when exerciseData is absent; parseExerciseData in the
+    // route handler is what actually rejects the request, regardless of
+    // which folder this file landed in.
+    let exerciseName = 'unknown-exercise';
+    try {
+      if (req.body.exerciseData) {
+        const name = JSON.parse(req.body.exerciseData).name;
+        if (typeof name === 'string' && name.length > 0) {
+          exerciseName = name;
+        }
+      }
+    } catch {
+      // Malformed JSON, or .name isn't the shape expected, keep the
+      // fallback name.
+    }
     const uploadPath = path.join(
       baseUploadsDir,
       'exercises',
@@ -39,6 +60,64 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage: storage });
+
+type ParsedExerciseData =
+  | { ok: true; data: ExerciseWriteArrayFields }
+  | { ok: false; body: { error: string; details?: unknown } };
+
+/**
+ * Parses the multipart `exerciseData` JSON field and validates it against
+ * exerciseWriteArrayFieldsSchema. Returns the standard 400 body instead of
+ * writing the response itself, so callers can finish cleaning up rejected
+ * uploads before the client is told the request failed. Malformed/missing
+ * JSON gets the same clean 400 a shape validation failure does, instead of
+ * falling through to the generic error handler.
+ */
+function parseExerciseData(raw: unknown): ParsedExerciseData {
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(String(raw));
+  } catch {
+    return { ok: false, body: { error: 'Invalid exercise payload.' } };
+  }
+  const result = exerciseWriteArrayFieldsSchema.safeParse(parsedJson);
+  if (!result.success) {
+    return {
+      ok: false,
+      body: {
+        error: 'Invalid exercise payload.',
+        details: result.error.flatten(),
+      },
+    };
+  }
+  return { ok: true, data: result.data };
+}
+
+/**
+ * multer has already written any uploaded files to disk by the time
+ * parseExerciseData can reject the request (validation runs in the route
+ * handler, after the upload middleware). Delete them so a rejected request
+ * doesn't leave orphaned files under uploads/exercises/. Awaited by callers
+ * before they send the 400, so a client that has seen the response can rely
+ * on the orphans already being gone. Best-effort: a failed delete is logged,
+ * not surfaced to the client.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function cleanupUploadedFiles(files: any): Promise<void> {
+  if (!Array.isArray(files)) return;
+  await Promise.all(
+    files.map(async (file) => {
+      const filePath = file?.path;
+      if (typeof filePath !== 'string') return;
+      try {
+        await fs.promises.unlink(filePath);
+      } catch (err) {
+        log('warn', `Failed to clean up rejected upload ${filePath}:`, err);
+      }
+    })
+  );
+}
+
 /**
  * @swagger
  * tags:
@@ -925,13 +1004,20 @@ router.post(
   upload.array('images', 10),
   async (req, res, next) => {
     try {
-      const exerciseData = JSON.parse(req.body.exerciseData);
+      const parsed = parseExerciseData(req.body?.exerciseData);
+      if (!parsed.ok) {
+        // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
+        await cleanupUploadedFiles(req.files);
+        return res.status(400).json(parsed.body);
+      }
+      const exerciseData = parsed.data;
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const imagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
           req.files.map(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (file: any) =>
+              // @ts-expect-error TS(18046): 'exerciseData.name' is of type 'unknown' (passthrough field, not part of exerciseWriteArrayFieldsSchema).
               `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
           )
         : [];
@@ -1142,18 +1228,30 @@ router.put(
         .json({ error: 'Exercise ID is required and must be a valid UUID.' });
     }
     try {
-      const exerciseData = JSON.parse(req.body.exerciseData);
+      const parsed = parseExerciseData(req.body?.exerciseData);
+      if (!parsed.ok) {
+        // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
+        await cleanupUploadedFiles(req.files);
+        return res.status(400).json(parsed.body);
+      }
+      const exerciseData = parsed.data;
       // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
       const newImagePaths = req.files
         ? // @ts-expect-error TS(2339): Property 'files' does not exist on type 'Request<{... Remove this comment to see the full error message
           req.files.map(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (file: any) =>
+              // @ts-expect-error TS(18046): 'exerciseData.name' is of type 'unknown' (passthrough field, not part of exerciseWriteArrayFieldsSchema).
               `${exerciseData.name.replace(/[^a-zA-Z0-9]/g, '_')}/${file.filename}`
           )
         : [];
-      // Combine existing images with new images
-      const allImages = [...(exerciseData.images || []), ...newImagePaths];
+      // Combine existing images with new images. exerciseData.images is a
+      // real string[] here (exerciseWriteArrayFieldsSchema normalizes it),
+      // not a cast-away lie — a client-sent bare string is coerced to a
+      // one-item array before this point instead of spreading into one
+      // "image path" per character.
+      const existingImages = exerciseData.images ?? [];
+      const allImages = [...existingImages, ...newImagePaths];
       const updatedExercise = await exerciseService.updateExercise(
         req.userId,
         id,

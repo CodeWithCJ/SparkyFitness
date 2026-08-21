@@ -786,6 +786,10 @@ async function processOuraWorkouts(
         calories_burned: caloriesBurned,
         entry_date: entryDate,
         notes: noteParts.join(' '),
+        // Oura reports metres; the column is kilometres.
+        distance: workout.distance
+          ? parseFloat((workout.distance / 1000).toFixed(2))
+          : null,
         sets: [
           {
             set_number: 1,

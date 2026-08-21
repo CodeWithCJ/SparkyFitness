@@ -416,7 +416,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     const img = images[currentImageIndex];
     if (!img) return null;
 
-    return resolveExerciseImageSrc(img) || null;
+    return resolveExerciseImageSrc(img);
   }, [images, currentImageIndex]);
 
   useEffect(() => {

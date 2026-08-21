@@ -30,8 +30,11 @@ import {
   useSetPrimaryWaterContainerMutation,
 } from '@/hooks/Settings/useWaterContainers';
 import { getErrorMessage } from '@/utils/api';
-import { CalorieGoalAdjustmentMode } from '@/utils/calorieCalculations';
-import { GoalMode, GoalModeCalculationMethod } from '@workspace/shared';
+import {
+  CalorieGoalAdjustmentMode,
+  GoalMode,
+  GoalModeCalculationMethod,
+} from '@workspace/shared';
 
 import {
   kgToLbs,
@@ -59,12 +62,14 @@ export type WeightUnit = 'kg' | 'lbs' | 'st_lbs';
 export type MeasurementUnit = 'cm' | 'inches' | 'ft_in';
 export type DistanceUnit = 'km' | 'miles';
 export type LoggingLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'SILENT';
-export type calorieGoalAdjustmentMode =
-  | 'dynamic'
-  | 'fixed'
-  | 'percentage'
-  | 'tdee'
-  | 'adaptive';
+/**
+ * @deprecated Import `CalorieGoalAdjustmentMode` from `@workspace/shared` instead.
+ *
+ * Kept as an alias for the existing import sites. It used to be a hand-maintained union
+ * that omitted `'smart'` even though the server has always supported it -- which is part
+ * of why an incomplete mode switch could compile without TypeScript objecting.
+ */
+export type calorieGoalAdjustmentMode = CalorieGoalAdjustmentMode;
 export type WaterDisplayUnit = 'ml' | 'oz' | 'liter';
 
 // Conversion constant
@@ -278,9 +283,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
   const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10);
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] =
-    useState<'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive'>(
-      'dynamic'
-    );
+    useState<CalorieGoalAdjustmentMode>('dynamic');
   const [exerciseCaloriePercentage, setExerciseCaloriePercentageState] =
     useState<number>(100);
   const [activityLevel, setActivityLevelState] =
@@ -996,7 +999,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const setCalorieGoalAdjustmentMode = useCallback(
-    (mode: 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive') => {
+    (mode: CalorieGoalAdjustmentMode) => {
       setCalorieGoalAdjustmentModeState(mode);
       saveAllPreferences({ calorieGoalAdjustmentMode: mode });
     },
@@ -1122,9 +1125,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         const savedDateFormat = localStorage.getItem('dateFormat');
         const savedTimeFormat = localStorage.getItem('timeFormat');
         const savedLanguage = localStorage.getItem('language');
+        // The shared union, not another hand-maintained copy: the inline one here also
+        // omitted `'smart'`, so a stored `smart` was typed as impossible while flowing
+        // through at runtime — the same gap that hid the Diary's TDEE panel.
         const savedCalorieGoalAdjustmentMode = localStorage.getItem(
           'calorieGoalAdjustmentMode'
-        ) as 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive';
+        ) as CalorieGoalAdjustmentMode;
         const savedEnergyUnit = localStorage.getItem(
           'energyUnit'
         ) as EnergyUnit;

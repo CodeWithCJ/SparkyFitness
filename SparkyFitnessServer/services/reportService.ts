@@ -20,6 +20,7 @@ import {
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { parseJsonArrayField } from '../utils/exerciseJsonFields.js';
 
 interface CustomNutrientDefinition {
   id: string;
@@ -337,11 +338,13 @@ async function getReportsData(
         name: entry.exercise_name,
         category: entry.exercise_category,
         calories_per_hour: entry.exercise_calories_per_hour,
-        equipment: JSON.parse(entry.exercise_equipment || '[]'),
-        primary_muscles: JSON.parse(entry.exercise_primary_muscles || '[]'),
-        secondary_muscles: JSON.parse(entry.exercise_secondary_muscles || '[]'),
-        instructions: JSON.parse(entry.exercise_instructions || '[]'),
-        images: JSON.parse(entry.exercise_images || '[]'),
+        equipment: parseJsonArrayField(entry.exercise_equipment),
+        primary_muscles: parseJsonArrayField(entry.exercise_primary_muscles),
+        secondary_muscles: parseJsonArrayField(
+          entry.exercise_secondary_muscles
+        ),
+        instructions: parseJsonArrayField(entry.exercise_instructions),
+        images: parseJsonArrayField(entry.exercise_images),
         source: entry.exercise_source,
         source_id: entry.exercise_source_id,
         user_id: entry.exercise_user_id,

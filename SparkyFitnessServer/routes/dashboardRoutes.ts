@@ -26,8 +26,54 @@ router.use(checkPermissionMiddleware('diary'));
  *     responses:
  *       200:
  *         description: Statistics retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 eaten:
+ *                   type: integer
+ *                   description: Food and supplement kcal logged for the day.
+ *                 burned:
+ *                   type: integer
+ *                   description: >
+ *                     Resolved exercise calories plus BMR when the user enables
+ *                     "Include BMR in Net Calories". Exercise is
+ *                     max(device Active Calories, logged workouts + background steps),
+ *                     never their sum.
+ *                 remaining:
+ *                   type: integer
+ *                   description: Budget left, per the user's calorie goal adjustment mode.
+ *                 goal:
+ *                   type: integer
+ *                 net:
+ *                   type: integer
+ *                   description: eaten - burned.
+ *                 progress:
+ *                   type: integer
+ *                   minimum: 0
+ *                   description: >
+ *                     Percent of the goal consumed. Not capped at 100 — a day over
+ *                     budget reports above 100, matching the Diary.
+ *                 steps:
+ *                   type: integer
+ *                   description: Total step count from the day's check-in, or 0.
+ *                 stepCalories:
+ *                   type: integer
+ *                   description: >
+ *                     kcal from steps no logged workout already accounted for. 0 when
+ *                     the caller lacks checkin permission.
+ *                 bmr:
+ *                   type: integer
+ *                 unit:
+ *                   type: string
+ *                   example: kcal
  *       401:
  *         description: Authentication required.
+ *       403:
+ *         description: >
+ *           Family access denied — the caller lacks `diary` permission on the
+ *           requested user.
  */
 router.get('/stats', async (req, res, next) => {
   try {

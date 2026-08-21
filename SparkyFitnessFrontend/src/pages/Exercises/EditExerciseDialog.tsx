@@ -24,8 +24,8 @@ import {
   EXERCISE_MODALITY_OPTIONS,
 } from '@/constants/exercises';
 import { useEditExerciseForm } from '@/hooks/Exercises/useEditExerciseForm';
-import { resolveExerciseImageSrc } from '@/utils/exercises';
 import { isExerciseModality } from '@workspace/shared';
+import { resolveExerciseImageSrc } from '@/utils/exercises';
 
 interface EditExerciseDialogProps {
   form: ReturnType<typeof useEditExerciseForm>;
