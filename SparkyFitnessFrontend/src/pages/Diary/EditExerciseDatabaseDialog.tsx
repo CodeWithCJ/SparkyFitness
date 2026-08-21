@@ -29,6 +29,7 @@ import {
   EXERCISE_MODALITY_OPTIONS,
 } from '@/constants/exercises';
 import { isExerciseModality, resolveExerciseModality } from '@workspace/shared';
+import { resolveExerciseImageSrc } from '@/utils/exercises';
 
 interface EditExerciseDatabaseDialogProps {
   open: boolean;
@@ -398,11 +399,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
                 {(formData.images || []).map((url, index) => (
                   <div key={`existing-${index}`} className="relative w-20 h-20">
                     <img
-                      src={
-                        url.startsWith('http')
-                          ? url
-                          : `/uploads/exercises/${url}`
-                      }
+                      src={resolveExerciseImageSrc(url)}
                       className="w-full h-full object-cover rounded"
                       alt=""
                     />
