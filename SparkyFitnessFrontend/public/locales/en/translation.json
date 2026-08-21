@@ -249,7 +249,7 @@
     },
     "scheduleDesc": {
       "atTime": " at {{time}}",
-      "mealSuffix": " ({{meal}} meal)",
+      "mealSuffix": " ({{meal}})",
       "daily": "Daily",
       "weeklyOn": "Weekly on {{days}}",
       "everyNDays": "Every {{n}} days",
@@ -542,6 +542,7 @@
     },
     "mealRelation": {
       "after": "After meal",
+      "awayFromMeals": "Away from meals",
       "before": "Before meal",
       "none": "No specific food relation",
       "with": "With meal"

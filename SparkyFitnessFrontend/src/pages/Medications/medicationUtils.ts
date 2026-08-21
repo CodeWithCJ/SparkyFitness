@@ -266,8 +266,11 @@ export const formatScheduleDescription = (
       })
     : '';
   const mealStr = sched.with_meal
-    ? i18n.t('medications.scheduleDesc.mealSuffix', ' ({{meal}} meal)', {
-        meal: sched.with_meal,
+    ? i18n.t('medications.scheduleDesc.mealSuffix', ' ({{meal}})', {
+        meal:
+          sched.with_meal === 'away_from_meals'
+            ? 'away from meals'
+            : `${sched.with_meal} meal`,
       })
     : '';
 

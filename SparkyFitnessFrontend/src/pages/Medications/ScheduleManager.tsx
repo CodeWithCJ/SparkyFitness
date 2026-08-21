@@ -274,6 +274,12 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                     <SelectItem value="after">
                       {t('medications.mealRelation.after', 'After meal')}
                     </SelectItem>
+                    <SelectItem value="away_from_meals">
+                      {t(
+                        'medications.mealRelation.awayFromMeals',
+                        'Away from meals'
+                      )}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

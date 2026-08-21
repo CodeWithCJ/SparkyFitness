@@ -7,7 +7,7 @@ import type { SharedScheduleRule } from './schedules.ts';
 export type MedicationEntryStatus = 'taken' | 'skipped' | 'snoozed' | 'prn_taken';
 
 /** Meal timing for a scheduled dose, relative to the nearest meal. */
-export type MedicationWithMeal = 'before' | 'with' | 'after';
+export type MedicationWithMeal = 'before' | 'with' | 'after' | 'away_from_meals';
 
 export interface Medication {
   id: string;

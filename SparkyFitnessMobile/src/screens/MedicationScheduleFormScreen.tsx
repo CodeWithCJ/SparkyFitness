@@ -378,6 +378,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
       { label: formatWithMeal('before'), value: 'before' },
       { label: formatWithMeal('with'), value: 'with' },
       { label: formatWithMeal('after'), value: 'after' },
+      { label: formatWithMeal('away_from_meals'), value: 'away_from_meals' },
     ],
     [],
   );

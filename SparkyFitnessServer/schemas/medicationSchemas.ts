@@ -93,7 +93,10 @@ export const CreateScheduleBodySchema = z
     day_of_month: z.number().int().min(1).max(31).nullable().optional(),
     cycle_on_days: optionalNullableInt,
     cycle_off_days: optionalNullableInt,
-    with_meal: z.enum(['before', 'with', 'after']).nullable().optional(),
+    with_meal: z
+      .enum(['before', 'with', 'after', 'away_from_meals'])
+      .nullable()
+      .optional(),
     prn_reason: optionalNullableString,
     prn_max_per_day: optionalNullableInt,
     start_date: optionalDateString,
