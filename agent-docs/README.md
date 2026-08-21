@@ -31,6 +31,10 @@ This folder contains runbooks and architectural docs designed to answer complex 
 **Planning server work or refactoring?** → [`plan-review-checklist.md`](plan-review-checklist.md) (2 min)
 - Self-review checklist to catch architectural issues before code review
 
+**Reviewing an incoming pull request?** → [`pr-review-checklist.md`](pr-review-checklist.md) (3 min)
+- Supply-chain/trust pass first, then architecture alignment, logic, existing review threads, and how much to verify locally
+- Also wired up as the `pr-review` skill, so agents load it on their own (see Notes on Conventions)
+
 ## Docs at a Glance
 
 | Doc | Duration | When to Read | Key Takeaway |
@@ -43,18 +47,20 @@ This folder contains runbooks and architectural docs designed to answer complex 
 | `new-migration-checklist.md` | 2 min | Creating a table or altering migrations | 8 steps: migration, RLS, boot server, run backup script, Zod schema, docs, API contracts, validation |
 | `anti-patterns.md` | 10 min | Before committing server/frontend/mobile code | Common mistakes: getSystemClient(), missing cache invalidation, timezone bugs, incomplete cross-package updates |
 | `plan-review-checklist.md` | 2 min | Before presenting an implementation plan | Scope, layering, databases, contracts, auth, validation, rewrite guard, guide upkeep |
+| `pr-review-checklist.md` | 3 min | Reviewing an incoming PR | Trust and supply chain first (deps, egress, secrets, CI perms, RLS bypass), then `AGENTS.md` alignment, logic, and whether existing CodeRabbit/reviewer threads were actually resolved; report to chat, don't re-run green CI, don't execute an untrusted branch |
 
 ## For AI Tools: How to Use These Docs
 
 - **On startup:** If you see a term you don't understand (permission type, RLS, domain template), read the relevant section above.
 - **Before big changes:** Skim the anti-patterns doc. It answers "what do people get wrong here?"
 - **On cross-package changes:** Run the new-domain-template or data-flow-patterns to verify your plan covers all layers.
-- **On code review:** Use plan-review-checklist and anti-patterns as verification before saying "looks good."
+- **On code review:** Use pr-review-checklist for incoming PRs; plan-review-checklist and anti-patterns as verification before saying "looks good."
 - **When stuck:** Check the specific doc's "Common Gotchas" or "Exception" sections — usually you're asking one of the frequently-answered questions.
 
 ## Notes on Conventions
 
 - **Schema location isn't uniform** — most tables map to `shared/src/schemas/database/<Table>.zod.ts`, but some don't (medications live in `shared/src/medications/`). Follow the closest domain.
+- **Skills point here; they don't duplicate here** — `agent-docs/` holds the knowledge, and the skill files are just triggers that say "go read this doc." Canonical skill bodies live in `.agents/skills/<name>/SKILL.md` (the Agent Skills standard, read natively by Antigravity/Gemini); `.claude/skills/<name>/SKILL.md` is a stub pointing at it, the same way `CLAUDE.md` points at `AGENTS.md`. Only the frontmatter `description` is duplicated, because each tool routes on its own file — keep the two copies identical. Current skills: `pr-review`, `new-migration`.
 - **Permissions** — delegatable: `diary`, `checkin`, `medications`, `reports` (+ `*_read`); `goals`/`exercise`/`water`/`mood`/`fasting`/`sleep`/`symptoms` map onto diary/reports; cycle/pregnancy are owner-only. See [`architecture-permissions.md`](architecture-permissions.md).
 
 If you spot a discrepancy between a doc and the code, fix the doc as part of your change.
