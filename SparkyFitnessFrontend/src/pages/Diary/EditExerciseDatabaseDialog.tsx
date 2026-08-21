@@ -24,6 +24,7 @@ import { error } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useUpdateExerciseMutation } from '@/hooks/Exercises/useExercises';
 import { Exercise } from '@/types/exercises';
+import { resolveExerciseImageSrc } from '@/utils/exercises';
 import {
   EXERCISE_CATEGORIES,
   EXERCISE_MODALITY_OPTIONS,
@@ -398,11 +399,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
                 {(formData.images || []).map((url, index) => (
                   <div key={`existing-${index}`} className="relative w-20 h-20">
                     <img
-                      src={
-                        url.startsWith('http')
-                          ? url
-                          : `/uploads/exercises/${url}`
-                      }
+                      src={resolveExerciseImageSrc(url)}
                       className="w-full h-full object-cover rounded"
                       alt=""
                     />

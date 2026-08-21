@@ -24,6 +24,7 @@ import {
   EXERCISE_MODALITY_OPTIONS,
 } from '@/constants/exercises';
 import { useEditExerciseForm } from '@/hooks/Exercises/useEditExerciseForm';
+import { resolveExerciseImageSrc } from '@/utils/exercises';
 import { isExerciseModality } from '@workspace/shared';
 
 interface EditExerciseDialogProps {
@@ -357,11 +358,7 @@ export default function EditExerciseDialog({ form }: EditExerciseDialogProps) {
                       className="relative w-24 h-24 cursor-grab"
                     >
                       <img
-                        src={
-                          url.startsWith('http')
-                            ? url
-                            : `/uploads/exercises/${url}`
-                        }
+                        src={resolveExerciseImageSrc(url)}
                         alt={`existing ${index}`}
                         className="w-full h-full object-cover rounded"
                       />

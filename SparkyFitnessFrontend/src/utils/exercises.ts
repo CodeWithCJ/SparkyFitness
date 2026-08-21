@@ -72,22 +72,30 @@ export const generateUniqueId = () =>
 /**
  * Resolve an exercise `images` entry to a usable <img> src.
  *
- * Exercise image values come from two shapes:
- * - Absolute URLs (e.g. external provider search results) — used as-is.
- * - Relative paths for images stored under the server's uploads directory
- *   (e.g. imported wger / free-exercise-db exercises persist the relative
- *   path and the files are served from `/uploads/exercises/`).
+ * Exercise image values come from three shapes, and which one is stored
+ * depends on the importer rather than on `exercise.source`:
+ * - Absolute URLs (external provider search results) — used as-is.
+ * - Server-rooted paths (`/uploads/exercises/...`), stored by the CSV
+ *   importers, which persist `downloadImage`'s return value verbatim.
+ * - Bare relative paths (`Machine_Bicep_Curl/0_ab12cd34.jpg`), stored by the
+ *   wger and free-exercise-db importers, which strip the prefix first.
  *
  * The saved-exercise listing previously keyed this decision off
  * `exercise.source` being truthy, which skipped the `/uploads/exercises/`
  * prefix for every sourced exercise (wger, free-exercise-db, ...) and left
- * their thumbnails broken. Detecting an absolute URL instead is correct for
- * both search results and saved exercises regardless of source.
+ * their thumbnails broken. Inspecting the value itself is correct for search
+ * results and every importer's saved exercises regardless of source; keying
+ * off `source` cannot be, because CSV and wger both set it yet store
+ * different shapes.
  */
 export function resolveExerciseImageSrc(image: string | undefined): string {
-  if (!image) return '';
-  if (/^https?:\/\//i.test(image)) return image;
-  return `/uploads/exercises/${image}`;
+  const trimmed = image?.trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // Already server-rooted (CSV imports); prefixing again yields
+  // `/uploads/exercises//uploads/exercises/...`, which 404s.
+  if (trimmed.startsWith('/')) return trimmed;
+  return `/uploads/exercises/${trimmed}`;
 }
 
 /**
@@ -102,11 +110,14 @@ export function filterValidExerciseImages(
   images: string[] | undefined | null
 ): string[] {
   if (!Array.isArray(images)) return [];
-  return images.filter((img) => {
-    if (typeof img !== 'string') return false;
+  return images.reduce<string[]>((valid, img) => {
+    if (typeof img !== 'string') return valid;
+    // Return the trimmed value, not the original: a padded entry passes the
+    // check below but would resolve to an unusable src.
     const trimmed = img.trim();
-    return trimmed !== '' && trimmed !== '[]';
-  });
+    if (trimmed !== '' && trimmed !== '[]') valid.push(trimmed);
+    return valid;
+  }, []);
 }
 
 export function calcExerciseStatsFlat(entries: DailyExerciseEntry[]) {

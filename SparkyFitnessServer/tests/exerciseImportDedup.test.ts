@@ -4,6 +4,7 @@ import freeExerciseDBService from '../integrations/freeexercisedb/FreeExerciseDB
 import wgerService from '../integrations/wger/wgerService.js';
 import calorieCalculationService from '../services/CalorieCalculationService.js';
 import exerciseService from '../services/exerciseService.js';
+import { downloadImage } from '../utils/imageDownloader.js';
 
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
@@ -127,6 +128,99 @@ describe('external exercise import dedup', () => {
           source: 'free-exercise-db',
           source_id: 'Barbell_Bench_Press',
           user_id: userId,
+        })
+      );
+    });
+
+    it('persists the downloaded image paths, not the upstream ones', async () => {
+      // downloadImage appends a URL hash to the file name, so the upstream
+      // `Name/0.jpg` never exists on disk; storing it 404s every thumbnail.
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      exerciseDb.getExerciseBySourceAndSourceId.mockResolvedValueOnce(
+        undefined
+      );
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      freeExerciseDBService.getExerciseById.mockResolvedValueOnce({
+        id: 'Barbell_Bench_Press',
+        name: 'Barbell Bench Press',
+        force: 'push',
+        level: 'intermediate',
+        mechanic: 'compound',
+        equipment: 'barbell',
+        primaryMuscles: ['chest'],
+        secondaryMuscles: ['triceps'],
+        instructions: ['Lie on the bench.'],
+        category: 'strength',
+        images: ['Barbell_Bench_Press/0.jpg', 'Barbell_Bench_Press/1.jpg'],
+      });
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      freeExerciseDBService.getExerciseImageUrl.mockImplementation(
+        (imagePath: string) => `https://cdn.example.com/${imagePath}`
+      );
+      vi.mocked(downloadImage).mockImplementation(async (imageUrl: string) => {
+        const index = imageUrl.endsWith('0.jpg') ? '0' : '1';
+        return `/uploads/exercises/Barbell_Bench_Press/${index}_ab12cd34.jpg`;
+      });
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValueOnce(
+        300
+      );
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      exerciseDb.createExercise.mockResolvedValueOnce({ id: 'created-uuid' });
+
+      await exerciseService.addFreeExerciseDBExerciseToUserExercises(
+        userId,
+        'Barbell_Bench_Press'
+      );
+
+      expect(exerciseDb.createExercise).toHaveBeenCalledWith(
+        expect.objectContaining({
+          images: [
+            'Barbell_Bench_Press/0_ab12cd34.jpg',
+            'Barbell_Bench_Press/1_ab12cd34.jpg',
+          ],
+        })
+      );
+    });
+
+    it('skips an image whose download fails instead of failing the import', async () => {
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      exerciseDb.getExerciseBySourceAndSourceId.mockResolvedValueOnce(
+        undefined
+      );
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      freeExerciseDBService.getExerciseById.mockResolvedValueOnce({
+        id: 'Barbell_Bench_Press',
+        name: 'Barbell Bench Press',
+        primaryMuscles: [],
+        secondaryMuscles: [],
+        instructions: ['Lie on the bench.'],
+        category: 'strength',
+        images: ['Barbell_Bench_Press/0.jpg', 'Barbell_Bench_Press/1.jpg'],
+      });
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      freeExerciseDBService.getExerciseImageUrl.mockImplementation(
+        (imagePath: string) => `https://cdn.example.com/${imagePath}`
+      );
+      vi.mocked(downloadImage).mockImplementation(async (imageUrl: string) => {
+        if (imageUrl.endsWith('0.jpg')) throw new Error('upstream 404');
+        return '/uploads/exercises/Barbell_Bench_Press/1_ab12cd34.jpg';
+      });
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValueOnce(
+        300
+      );
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      exerciseDb.createExercise.mockResolvedValueOnce({ id: 'created-uuid' });
+
+      await exerciseService.addFreeExerciseDBExerciseToUserExercises(
+        userId,
+        'Barbell_Bench_Press'
+      );
+
+      expect(exerciseDb.createExercise).toHaveBeenCalledWith(
+        expect.objectContaining({
+          images: ['Barbell_Bench_Press/1_ab12cd34.jpg'],
         })
       );
     });

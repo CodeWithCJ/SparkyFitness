@@ -30,9 +30,27 @@ describe('resolveExerciseImageSrc', () => {
     );
   });
 
+  it('leaves an already server-rooted path untouched', () => {
+    // The CSV importers store downloadImage's return value verbatim, so the
+    // stored value already carries the prefix; prefixing again 404s.
+    expect(
+      resolveExerciseImageSrc('/uploads/exercises/Bench_Press/0_ab12cd34.jpg')
+    ).toBe('/uploads/exercises/Bench_Press/0_ab12cd34.jpg');
+  });
+
+  it('trims surrounding whitespace before resolving', () => {
+    expect(resolveExerciseImageSrc('  Machine_Bicep_Curl/0.jpg  ')).toBe(
+      '/uploads/exercises/Machine_Bicep_Curl/0.jpg'
+    );
+    expect(resolveExerciseImageSrc('  https://example.com/a.png ')).toBe(
+      'https://example.com/a.png'
+    );
+  });
+
   it('returns an empty string for missing values', () => {
     expect(resolveExerciseImageSrc(undefined)).toBe('');
     expect(resolveExerciseImageSrc('')).toBe('');
+    expect(resolveExerciseImageSrc('   ')).toBe('');
   });
 });
 
@@ -52,6 +70,12 @@ describe('filterValidExerciseImages', () => {
         'https://example.com/b.png',
       ])
     ).toEqual(['A/0.jpg', 'https://example.com/b.png']);
+  });
+
+  it('returns trimmed entries so callers resolve a usable src', () => {
+    expect(filterValidExerciseImages([' Machine_Bicep_Curl/0.jpg '])).toEqual([
+      'Machine_Bicep_Curl/0.jpg',
+    ]);
   });
 
   it('returns an empty array for missing or non-array input', () => {
