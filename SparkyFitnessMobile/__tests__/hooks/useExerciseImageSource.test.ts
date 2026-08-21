@@ -4,7 +4,10 @@ import {
   useExerciseImageSource,
   useImagePairAspectMatch,
 } from '../../src/hooks/useExerciseImageSource';
-import { getActiveServerConfig, proxyHeadersToRecord } from '../../src/services/storage';
+import {
+  getActiveServerConfig,
+  proxyHeadersToRecord,
+} from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
@@ -63,7 +66,9 @@ describe('useExerciseImageSource', () => {
 
     await act(async () => {});
 
-    const source = result.current.getImageSource('https://cdn.example.com/image.jpg');
+    const source = result.current.getImageSource(
+      'https://cdn.example.com/image.jpg',
+    );
     expect(source).toEqual({
       uri: 'https://cdn.example.com/image.jpg',
       headers: {},
@@ -81,7 +86,9 @@ describe('useExerciseImageSource', () => {
 
     await act(async () => {});
 
-    const source = result.current.getImageSource('http://example.com/image.jpg');
+    const source = result.current.getImageSource(
+      'http://example.com/image.jpg',
+    );
     expect(source).toEqual({
       uri: 'http://example.com/image.jpg',
       headers: {},
@@ -108,6 +115,30 @@ describe('useExerciseImageSource', () => {
     });
   });
 
+  it('does not double-prefix an already server-rooted path', async () => {
+    // CSV imports persist downloadImage's return value verbatim, so the stored
+    // value already carries `/uploads/exercises/`.
+    mockGetActiveServerConfig.mockResolvedValue({
+      id: 'test',
+      url: 'https://example.com/',
+      apiKey: 'key',
+      proxyHeaders: [{ key: 'X-Custom', value: 'test' }],
+    });
+    mockProxyHeadersToRecord.mockReturnValue({ 'X-Custom': 'test' });
+
+    const { result } = renderHook(() => useExerciseImageSource());
+
+    await act(async () => {});
+
+    const source = result.current.getImageSource(
+      '/uploads/exercises/Bench_Press/0_ab12cd34.jpg',
+    );
+    expect(source).toEqual({
+      uri: 'https://example.com/api/uploads/exercises/Bench_Press/0_ab12cd34.jpg',
+      headers: { 'X-Custom': 'test' },
+    });
+  });
+
   it('returns null for relative path when no config loaded', () => {
     mockGetActiveServerConfig.mockResolvedValue(null);
 
@@ -127,7 +158,7 @@ describe('useImagePairAspectMatch', () => {
   ];
 
   const makeRef = (width: number, height: number) =>
-    ({ width, height, release: jest.fn() }) as unknown as ImageRef;
+    ({ width, height, release: jest.fn() } as unknown as ImageRef);
 
   let loadSpy: jest.SpyInstance;
 
@@ -200,7 +231,7 @@ describe('useImagePairAspectMatch', () => {
     // Gate the new pair's measurements so the reset is observable before the
     // new verdict lands.
     let openGate!: () => void;
-    const gate = new Promise<void>((resolve) => {
+    const gate = new Promise<void>(resolve => {
       openGate = resolve;
     });
     const gatedRefs = [makeRef(1600, 900), makeRef(800, 600)];

@@ -1326,10 +1326,8 @@ async function addNutritionixExerciseToUserExercises(
   }
 }
 async function addFreeExerciseDBExerciseToUserExercises(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  freeExerciseDBId: any
+  authenticatedUserId: string,
+  freeExerciseDBId: string
 ) {
   const { default: freeExerciseDBService } =
     await import('../integrations/freeexercisedb/FreeExerciseDBService.js');
@@ -1350,14 +1348,37 @@ async function addFreeExerciseDBExerciseToUserExercises(
     if (!exerciseDetails) {
       throw new Error('Free-Exercise-DB exercise not found.');
     }
-    await Promise.all(
+    // Persist the path downloadImage actually wrote, not the upstream one:
+    // resolveImageFileName appends a URL hash (`0.jpg` -> `0_ab12cd34.jpg`), so
+    // storing the upstream `Name/0.jpg` pointed every thumbnail at a file that
+    // does not exist. Strip the `/uploads/exercises/` prefix to match the
+    // relative shape the wger importer stores.
+    const localImagePaths = await Promise.all(
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      exerciseDetails.images.map(async (imagePath: any) => {
+      exerciseDetails.images.map(async (imagePath: string) => {
         const imageUrl = freeExerciseDBService.getExerciseImageUrl(imagePath); // This now correctly forms the external URL
-        const exerciseIdFromPath = imagePath.split('/')[0]; // Extract exercise ID from path for download
-        await downloadImage(imageUrl, exerciseIdFromPath); // Download the image
-        return imagePath; // Store the original relative path in the database
+        // Sanitized before it reaches downloadImage, which path.join()s the
+        // value into the uploads dir without checking it: an upstream entry
+        // whose first segment is `..` would otherwise escape
+        // /uploads/exercises. The charset keeps `_` and `-` (unlike the wger
+        // and CSV callers' [^a-zA-Z0-9]) so a real id such as `3_4_Sit-Up`
+        // survives byte-for-byte — the /uploads/exercises/:exerciseId route
+        // re-downloads a missing file by looking the id up upstream, and a
+        // rewritten directory name would break that recovery.
+        const exerciseIdFromPath = imagePath
+          .split('/')[0]
+          .replace(/[^a-zA-Z0-9_-]/g, '_');
+        try {
+          const fullPath = await downloadImage(imageUrl, exerciseIdFromPath);
+          return fullPath.replace('/uploads/exercises/', '');
+        } catch (imgError) {
+          log(
+            'error',
+            `Failed to download image ${imageUrl} for free-exercise-db exercise ${freeExerciseDBId}:`,
+            imgError
+          );
+          return null;
+        }
       })
     );
     // Map free-exercise-db data to our generic Exercise model
@@ -1391,7 +1412,7 @@ async function addFreeExerciseDBExerciseToUserExercises(
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       category: exerciseDetails.category,
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      images: exerciseDetails.images, // Original relative paths — createExercise handles JSON.stringify
+      images: localImagePaths.filter((p): p is string => p !== null), // Local upload paths — createExercise handles JSON.stringify
       calories_per_hour:
         // @ts-expect-error TS(2554): Expected 3 arguments, but got 2.
         await calorieCalculationService.estimateCaloriesBurnedPerHour(

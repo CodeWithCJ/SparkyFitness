@@ -88,6 +88,10 @@ export const generateUniqueId = () =>
  * both search results and saved exercises regardless of source.
  */
 export function resolveExerciseImageSrc(image: string | undefined): string {
+  // Trimmed here rather than at each call site: filterValidExerciseImages
+  // validates a trimmed value but returns the original, so a padded entry
+  // reaches this function and would otherwise build a src containing spaces.
+  image = image?.trim();
   if (!image) return '';
   if (/^https?:\/\//i.test(image)) return image;
   if (image.startsWith('/')) return image;

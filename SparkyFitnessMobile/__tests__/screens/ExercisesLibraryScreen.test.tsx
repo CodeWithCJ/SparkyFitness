@@ -21,6 +21,15 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: jest.fn(() => 0),
 }));
 
+// The row thumbnail's hook calls useFocusEffect, which needs a navigation
+// context this screen's tests don't mount. Mocked the same way
+// ExerciseSearchScreen's tests do.
+jest.mock('../../src/hooks/useExerciseImageSource', () => ({
+  useExerciseImageSource: jest.fn(() => ({
+    getImageSource: jest.fn((path: string) => ({ uri: path, headers: {} })),
+  })),
+}));
+
 const mockUseExercisesLibrary = useExercisesLibrary as jest.MockedFunction<typeof useExercisesLibrary>;
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
 
