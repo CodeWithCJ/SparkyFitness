@@ -1183,6 +1183,58 @@ describe('chatService', () => {
       );
     });
 
+    // APICallError.requestBodyValues holds the whole request — the user's chat
+    // messages, the system prompt, tool args. It must never reach the logger,
+    // which forwards objects to console.error at a level that is on by default.
+    it('never logs the provider error object or the request body it carries', async () => {
+      const SENTINEL = 'SENSITIVE-CHAT-CONTENT-b7f3';
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai_compatible',
+          custom_url: 'http://localhost:1234/v1',
+          model_name: 'reasoning-1',
+          chat_tool_profile: 'core',
+        }
+      );
+      const model = new MockLanguageModelV3({
+        doStream: async () => {
+          throw new APICallError({
+            message: 'Provider rejected the request',
+            url: 'http://localhost:1234/v1/chat/completions',
+            requestBodyValues: {
+              messages: [{ role: 'user', content: SENTINEL }],
+              system: SENTINEL,
+            },
+            statusCode: 400,
+            responseBody: JSON.stringify({ error: { message: 'bad request' } }),
+          });
+        },
+      });
+      mockModelHolder.current = model;
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      const logged = vi.mocked(log).mock.calls.flat();
+      expect(logged.length).toBeGreaterThan(0);
+      for (const arg of logged) {
+        // No raw Error objects, and no sentinel anywhere in the rendered args.
+        expect(arg).not.toBeInstanceOf(Error);
+        expect(JSON.stringify(arg) ?? '').not.toContain(SENTINEL);
+      }
+      // The failure is still reported, just redacted.
+      expect(log).toHaveBeenCalledWith(
+        'error',
+        expect.stringContaining('stream error')
+      );
+    });
+
     it('injects an error chunk and skips the assistant save when the model errors out with an empty completion', async () => {
       // Gemini's MALFORMED_FUNCTION_CALL surfaces as finishReason 'error' with
       // no content instead of a thrown error.

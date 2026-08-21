@@ -996,6 +996,35 @@ async function runWithTemperatureFallback<T>(
   }
 }
 
+// Provider error text is safe to surface (providerDispatch already truncates it
+// into user-facing detail), but bounded so a verbose provider cannot flood the
+// log.
+const MAX_LOGGED_ERROR_CHARS = 300;
+
+/**
+ * Renders a provider error as a log-safe one-liner.
+ *
+ * Never log the error object itself: `APICallError` carries
+ * `requestBodyValues`, which for a chat call is the entire request — the user's
+ * messages, the system prompt, and tool arguments. The logger hands objects to
+ * `console.error`, so that would put health data into ERROR-level logs, which
+ * are on by default (see config/logging.ts, where full-payload logging is
+ * deliberately gated behind an explicit DEBUG opt-in).
+ */
+function describeProviderError(error: unknown): string {
+  const truncate = (text: string) =>
+    text.length > MAX_LOGGED_ERROR_CHARS
+      ? `${text.slice(0, MAX_LOGGED_ERROR_CHARS)}…`
+      : text;
+  if (APICallError.isInstance(error)) {
+    return `APICallError status=${error.statusCode ?? 'none'}: ${truncate(error.message)}`;
+  }
+  if (error instanceof Error) {
+    return `${error.name}: ${truncate(error.message)}`;
+  }
+  return 'unknown error';
+}
+
 /**
  * Records a parameter rejection reported through a stream rather than thrown.
  *
@@ -2071,7 +2100,10 @@ async function processChatMessageStream(
         // categories manually, so this path can be the first request a model
         // ever sees.
         noteStreamParameterRejection(aiService.service_type, modelName, error);
-        log('error', `[chat] stream error for user ${userId}:`, error);
+        log(
+          'error',
+          `[chat] stream error for user ${userId}: ${describeProviderError(error)}`
+        );
       },
       // Tighter retry ceiling for cache-less core-profile backends, where every
       // retry re-processes the full prefix.
