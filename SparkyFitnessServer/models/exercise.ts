@@ -6,6 +6,7 @@ import {
 
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import { normalizeExerciseImages } from '../utils/exerciseImages.js';
 import {
   buildSqlSearch,
   buildSqlExactMatchOrder,
@@ -25,7 +26,7 @@ async function getExerciseById(id: any, userId: any) {
     const exercise = result.rows[0];
     if (exercise && exercise.images) {
       try {
-        exercise.images = JSON.parse(exercise.images);
+        exercise.images = normalizeExerciseImages(exercise.images);
       } catch (e) {
         log('error', `Error parsing images for exercise ${exercise.id}:`, e);
         exercise.images = []; // Default to empty array on parse error
@@ -196,7 +197,7 @@ async function getExercisesWithPagination(
     return result.rows.map((row: any) => {
       if (row.images) {
         try {
-          row.images = JSON.parse(row.images);
+          row.images = normalizeExerciseImages(row.images);
         } catch (e) {
           log('error', `Error parsing images for exercise ${row.id}:`, e);
           row.images = [];
@@ -431,7 +432,7 @@ async function searchExercises(
       row.primary_muscles = parseJsonbField('primary_muscles');
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.images = normalizeExerciseImages(row.images);
       return row;
     });
   } finally {
@@ -533,7 +534,7 @@ async function searchExercisesPaginated(
       row.primary_muscles = parseJsonbField('primary_muscles');
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.images = normalizeExerciseImages(row.images);
       return row;
     });
     return { exercises, totalCount };
@@ -707,7 +708,7 @@ async function getRecentExercises(userId: any, limit: any) {
       row.primary_muscles = parseJsonbField('primary_muscles');
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.images = normalizeExerciseImages(row.images);
       return row;
     });
   } finally {
@@ -757,7 +758,7 @@ async function getTopExercises(userId: any, limit: any) {
       row.primary_muscles = parseJsonbField('primary_muscles');
       row.secondary_muscles = parseJsonbField('secondary_muscles');
       row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.images = normalizeExerciseImages(row.images);
       return row;
     });
   } finally {
@@ -785,7 +786,7 @@ async function getExerciseBySourceAndSourceId(
     const exercise = result.rows[0];
     if (exercise && exercise.images) {
       try {
-        exercise.images = JSON.parse(exercise.images);
+        exercise.images = normalizeExerciseImages(exercise.images);
       } catch (e) {
         log('error', `Error parsing images for exercise ${exercise.id}:`, e);
         exercise.images = []; // Default to empty array on parse error
@@ -992,7 +993,7 @@ async function findExerciseByNameAndUserId(name: any, userId: any) {
     const exercise = result.rows[0];
     if (exercise && exercise.images) {
       try {
-        exercise.images = JSON.parse(exercise.images);
+        exercise.images = normalizeExerciseImages(exercise.images);
       } catch (e) {
         log('error', `Error parsing images for exercise ${exercise.id}:`, e);
         exercise.images = []; // Default to empty array on parse error
