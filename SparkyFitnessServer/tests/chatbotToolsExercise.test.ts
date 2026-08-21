@@ -6,6 +6,7 @@ import workoutPresetService from '../services/workoutPresetService.js';
 import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
+import { getResolvedExerciseCaloriesRange } from '../services/exerciseCalorieRangeService.js';
 
 vi.mock('../services/exerciseService', () => ({
   default: {
@@ -46,6 +47,10 @@ vi.mock('../models/workoutPresetRepository', () => ({
     getWorkoutPresetByName: vi.fn(),
   },
 }));
+vi.mock('../services/exerciseCalorieRangeService', () => ({
+  getResolvedExerciseCaloriesRange: vi.fn(),
+  getResolvedExerciseCaloriesTotal: vi.fn(),
+}));
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
 }));
@@ -64,6 +69,9 @@ const PRESET_ID = '44444444-4444-4444-8444-444444444444';
 let tools: ReturnType<typeof buildExerciseTools>;
 
 beforeEach(() => {
+  // Default: no resolved rows, so the tool falls back to the raw per-day totals and the
+  // projection goldens below stay meaningful. Resolution itself is covered separately.
+  vi.mocked(getResolvedExerciseCaloriesRange).mockResolvedValue(new Map());
   vi.clearAllMocks();
   tools = buildExerciseTools('user-1', 'UTC');
 });

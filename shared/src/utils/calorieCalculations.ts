@@ -1,5 +1,6 @@
 import {
   ACTIVITY_MULTIPLIERS,
+  CALORIE_CALCULATION_CONSTANTS,
   ENERGY_DENSITY_KCAL_PER_KG,
 } from "../constants/calorieConstants.ts";
 
@@ -10,6 +11,25 @@ export type CalorieGoalAdjustmentMode =
   | "tdee"
   | "smart"
   | "adaptive";
+
+/**
+ * Collapses `smart` onto `tdee` for anything that branches on the mode.
+ *
+ * `smart` is not a separate calculation: `computeCaloriesRemaining` and
+ * `computeCalorieBalance` both branch `tdee`/`smart` together, and nothing else in the
+ * codebase tells them apart. It also has no UI of its own, so every `=== "tdee"` check
+ * silently excluded it and fell through to the *fixed*-mode branch -- which on the Diary
+ * meant hiding the TDEE projection the server had already computed and sent.
+ *
+ * Presentation-only. This never changes what is persisted, so a stored `smart` stays
+ * `smart` and keeps behaving as the server intends.
+ */
+export function normalizeCalorieGoalAdjustmentMode(
+  mode: CalorieGoalAdjustmentMode | string | null | undefined,
+): CalorieGoalAdjustmentMode {
+  if (!mode) return "dynamic";
+  return mode === "smart" ? "tdee" : (mode as CalorieGoalAdjustmentMode);
+}
 
 export type ExerciseCalorieSource = "logged" | "active" | "steps" | "none";
 
@@ -43,6 +63,81 @@ export function deriveActiveCalories(
  * It returns whichever is larger to ensure we don't under-count, but avoids
  * double-counting by not adding steps on top of a device-wide "Active Calories" summary.
  */
+export interface StepCalorieInputs {
+  /**
+   * Steps that no logged exercise entry already accounts for, i.e. the day's total
+   * steps minus the steps attributed to workouts. Passing raw total steps here would
+   * double-count the walking a logged workout already charged for.
+   */
+  backgroundSteps: number;
+  weightKg?: number;
+  heightCm?: number;
+}
+
+/**
+ * Net (above-BMR) kcal from background walking, estimated from step count.
+ *
+ * Stride length is approximated from height, distance from stride × steps, and energy
+ * from distance × body weight. The per-kg-per-km figure is deliberately conservative
+ * because these are incidental steps, not a workout.
+ *
+ * Shared because this arithmetic has to agree in four places that each used to carry
+ * their own copy: the Diary's per-date step calories, the ranged Reports path, the
+ * dashboard stats endpoint, and the frontend's own step estimate. When those drift, the
+ * same day's walking is worth a different number of calories depending on which screen
+ * is asking -- which is the class of bug this function exists to end.
+ */
+export function computeStepCalories({
+  backgroundSteps,
+  weightKg = CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
+  heightCm = CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+}: StepCalorieInputs): number {
+  if (!Number.isFinite(backgroundSteps) || backgroundSteps <= 0) return 0;
+
+  const strideLengthM =
+    (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
+  const distanceKm = (backgroundSteps * strideLengthM) / 1000;
+
+  return Math.round(
+    distanceKm *
+      weightKg *
+      CALORIE_CALCULATION_CONSTANTS.NET_CALORIES_PER_KG_PER_KM,
+  );
+}
+
+/**
+ * Background step kcal from a day's raw totals.
+ *
+ * Wraps the two rules that always travel together: steps a logged workout already
+ * accounted for are not background steps, and a missing or non-positive body
+ * measurement falls back to the default rather than zeroing the day. Both the per-date
+ * Diary path and the ranged Reports path call this, so they cannot drift apart.
+ */
+export function resolveBackgroundStepCalories({
+  totalSteps,
+  activitySteps,
+  weightKg,
+  heightCm,
+}: {
+  totalSteps: number;
+  activitySteps: number;
+  /** Non-positive or nullish values fall back to the default. */
+  weightKg?: number | null;
+  heightCm?: number | null;
+}): number {
+  return computeStepCalories({
+    backgroundSteps: Math.max(0, (totalSteps || 0) - (activitySteps || 0)),
+    weightKg:
+      weightKg && weightKg > 0
+        ? weightKg
+        : CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
+    heightCm:
+      heightCm && heightCm > 0
+        ? heightCm
+        : CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+  });
+}
+
 export function resolveExerciseCalories(
   loggedExerciseCalories: number,
   activeCaloriesFromExercise: number,

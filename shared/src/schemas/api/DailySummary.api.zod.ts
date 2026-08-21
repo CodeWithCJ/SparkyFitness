@@ -28,6 +28,33 @@ export const calorieBalanceSchema = z.object({
 
 export type CalorieBalance = z.infer<typeof calorieBalanceSchema>;
 
+/**
+ * One day of `GET /api/daily-summary/range`.
+ *
+ * Built by extending `calorieBalanceSchema` rather than restating its fields, so the
+ * ranged row can never drift from the single-day one. That drift is exactly what issue
+ * #2094 was: the Reports page carried its own idea of a day's calorie balance, and it
+ * disagreed with the Diary's on three separate inputs.
+ */
+export const dailyCalorieBalanceRowSchema = calorieBalanceSchema.extend({
+  /** Calendar day, not an instant. `z.iso.date()` also rejects impossible dates. */
+  date: z.iso.date(),
+  /** Background step kcal that fed this day. 0 when checkin access is not permitted. */
+  stepCalories: z.number(),
+});
+
+export type DailyCalorieBalanceRow = z.infer<
+  typeof dailyCalorieBalanceRowSchema
+>;
+
+export const dailySummaryRangeResponseSchema = z.object({
+  days: z.array(dailyCalorieBalanceRowSchema),
+});
+
+export type DailySummaryRangeResponse = z.infer<
+  typeof dailySummaryRangeResponseSchema
+>;
+
 export const adjustedGoalsSchema = z.object({
   calories: z.number(),
   protein: z.number(),

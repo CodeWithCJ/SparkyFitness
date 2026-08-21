@@ -1907,6 +1907,13 @@
       "adaptiveFormulaExplainer": "{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~9,441 kcal/kg) and lean tissue and water (~1,816 kcal/kg), and {{kcalPerKg}} reflects a typical blend.",
       "adjustment": "Adjustment",
       "goalAdjustmentLabel": "Goal Adjustment:"
+    },
+    "calorieBreakdown": {
+      "confidence": "Confidence: {{level}}",
+      "adaptiveConfidenceCaveat": "Based on {{days}} day(s) of calorie logs. Under-logging intake makes this estimate read high — log consistently to improve it.",
+      "bodyFatUsed": "The measured value above is used by this BMR formula; the estimate is shown for comparison.",
+      "bodyFatMissing": "{{algorithm}} uses body fat, but no measurement is logged — log one for an accurate target.",
+      "bodyFatUnused": "Shown for reference only — {{algorithm}} does not take body fat as an input."
     }
   },
   "admin": {
@@ -3241,7 +3248,11 @@
     "customMeasurementChartTitle": "{{categoryName}} ({{measurementType}})",
     "dailyAverages": "Daily Averages",
     "dailySteps": "Daily Steps",
+    "daysCounted": "Counted {{counted}} days",
+    "daysCountedNoGoal": "Counted {{counted}} of {{total}} days — days without a {{nutrient}} goal, or with nothing logged, are excluded",
+    "daysCountedPartial": "Counted {{counted}} of {{total}} days — days with nothing logged are excluded",
     "exerciseVarietyScore": "Exercise Variety Score",
+    "failedToLoadCalorieBalance": "Failed to load calorie balance data.",
     "failedToLoadCoreData": "Failed to load core reports data.",
     "failedToLoadExerciseDashboard": "Failed to load exercise dashboard data.",
     "failedToLoadStress": "Failed to load stress data.",
