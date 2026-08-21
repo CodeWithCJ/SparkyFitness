@@ -93,7 +93,7 @@ describe('getDailyNutritionTotalsRange select list', () => {
     const sql = await sqlOf();
     expect(sql).toMatch(/\bas fiber,?$/m);
     expect(sql).toMatch(/\bas sugar,?$/m);
-    expect(sql).not.toMatch(/\bas dietary_fiber,?$/m);
-    expect(sql).not.toMatch(/\bas sugars,?$/m);
+    expect(sql).not.toMatch(/\bas dietary_fiber,?$/im);
+    expect(sql).not.toMatch(/\bas sugars,?$/im);
   });
 });

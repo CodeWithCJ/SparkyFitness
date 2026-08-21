@@ -1,3 +1,5 @@
+import type { FoodVariantNutrientField } from '@workspace/shared';
+
 /**
  * SQL fragments for the supplement arm of a day's nutrition.
  *
@@ -49,7 +51,10 @@ function doseScale(alias: string): string {
  * total that is quietly low rather than as an error.
  */
 function supplementCountable(alias: string): string {
-  return `${alias}.status IN ('taken', 'prn_taken') AND ${alias}.nutrients_snapshot IS NOT NULL`;
+  // Parenthesised so the fragment means the same thing wherever it lands. Every caller
+  // today drops it into a flat AND chain, where bare `A AND B` is fine, but the first one
+  // to put it in an OR arm would get `x OR A AND B` and silently lose the second half.
+  return `(${alias}.status IN ('taken', 'prn_taken') AND ${alias}.nutrients_snapshot IS NOT NULL)`;
 }
 
 /** The full row filter for a single-date read: this user, this date, and countable. */
@@ -65,7 +70,10 @@ function supplementScanWhere(
  * The dose-scaled sum of one fixed nutrient field as a bare aggregate, for a caller that
  * supplies its own single `FROM medication_entries` scan and its own WHERE.
  */
-function supplementFixedAgg(key: string, alias: string): string {
+function supplementFixedAgg(
+  key: FoodVariantNutrientField,
+  alias: string
+): string {
   return `SUM(public.sf_try_numeric(${alias}.nutrients_snapshot->>'${key}') * ${doseScale(alias)})`;
 }
 
@@ -76,7 +84,7 @@ function supplementFixedAgg(key: string, alias: string): string {
  * unconditionally.
  */
 function supplementFixedSubquery(
-  key: string,
+  key: FoodVariantNutrientField,
   userExpr: string,
   dateExpr: string
 ): string {
