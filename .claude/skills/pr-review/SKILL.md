@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Use whenever the user asks to review, vet, or sanity-check a pull request — a GitHub PR URL pasted with little or no instruction, a bare PR number, "review this PR", "is this PR safe", "can I merge this", "check this contribution", "any issues with #1234". Runs the standing SparkyFitness review: supply-chain and data-exfiltration check first, then architecture alignment with AGENTS.md and agent-docs, then logic, then the state of existing CodeRabbit and reviewer comments. Reports to the terminal only.
+description: Use whenever the user asks to review, vet, or sanity-check a pull request, or to act on the review comments already on one — a GitHub PR URL pasted with little or no instruction, a bare PR number, "review this PR", "is this PR safe", "can I merge this", "check this contribution", "any issues with #1234", "check the bot comments", "fix the CodeRabbit findings", "address the review comments", "update the PR if required". Runs the standing SparkyFitness review: supply-chain, phishing and code-provenance checks first, then architecture alignment with AGENTS.md and agent-docs, then logic, then the state of existing review-bot and reviewer threads. Reports to the terminal only.
 ---
 
 # PR Review
