@@ -84,6 +84,25 @@ describe('getDailySupplementTotals reads the day in one pass', () => {
     }
   });
 
+  // Each inner aggregate must be published under the name of the nutrient it reads.
+  // Asserting the snapshot keys and the outer aliases separately leaves them unbound:
+  // swapping just the two inner `AS` names preserves every key and every outer alias, so a
+  // dose of 100 calories and 5g protein comes back as 5 calories and 100g protein with the
+  // assertions above still green. Pair them off the line that generates both.
+  it('publishes each inner aggregate under the nutrient it reads', async () => {
+    await getDailySupplementTotals(userId, '2026-08-19');
+    const pairs = sqlOf()
+      .split('\n')
+      .filter((line) => /nutrients_snapshot->>'/.test(line))
+      .map((line) => [
+        line.match(/nutrients_snapshot->>'(\w+)'/)?.[1],
+        line.match(/\bAS (\w+),?\s*$/)?.[1],
+      ]);
+    expect(pairs).toEqual(
+      FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => [field, field])
+    );
+  });
+
   // NOTE: this covers the JS coercion only, not the SQL. It feeds an all-NULL row through
   // the mock, and `Number(null) || 0` is 0 regardless of what the query said, so it passes
   // with or without the outer COALESCE. The SQL-level zeroing is asserted as a string by

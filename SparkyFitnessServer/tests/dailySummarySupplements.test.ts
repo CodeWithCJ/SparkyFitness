@@ -83,9 +83,18 @@ describe('daily-total aggregations include supplement snapshots', () => {
   // `toContain('FROM medication_entries')` is satisfied by the custom-nutrient subquery,
   // which supplies its own UNION ALL and its own scan, so deleting the date-set arm
   // outright left this green while a supplement-only day silently returned no row at all.
+  //
+  // The arm must also select the date the dose was LOGGED FOR. Accepting any date
+  // expression lets `me.created_at::date AS entry_date` through, which groups a dose
+  // logged for the 19th but entered on the 20th under the wrong day, or drops it from a
+  // request for the 19th alone.
   const expectUnionDrivenDates = (sql: string) => {
-    expect(sql).toMatch(
-      /\bUNION\s+SELECT DISTINCT[\s\S]{0,200}?FROM medication_entries/
+    const arm = sql.match(
+      /\bUNION\s+(SELECT DISTINCT[\s\S]{0,200}?FROM medication_entries\s+\w+)/
+    )?.[1];
+    expect(arm, 'no supplement date arm drives the date set').toBeTruthy();
+    expect(arm).toMatch(
+      /SELECT DISTINCT (?:\w+\.user_id, )?\w+\.entry_date\s+FROM medication_entries/
     );
     expect(sql).toContain('LEFT JOIN food_entries');
   };
@@ -167,6 +176,13 @@ describe('getDailySupplementTotals', () => {
     expect(sql).toContain("nutrients_snapshot->'custom_nutrients'");
     expect(sql).toContain('jsonb_object_agg(key, value)');
     expect(sql).toContain('AS custom_nutrients');
+    // The aggregate this test is NAMED for. Asserting only that a JSON aggregation exists
+    // leaves the aggregation itself unchecked: swapping SUM(scaled) for MAX(scaled) keeps
+    // every other assertion green, and two magnesium doses of 100mg and 200mg would then
+    // report 200 instead of 300. The mock hands back an already-aggregated row, so no
+    // downstream test notices either.
+    expect(sql).toMatch(/SELECT key, SUM\(scaled\) AS value/);
+    expect(sql).toContain('GROUP BY key');
     // Same status filter and dose clamp as the fixed arm, because the custom rows are the
     // shared fragment rather than a second copy that could drift from it.
     //
