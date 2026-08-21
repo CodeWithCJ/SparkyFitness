@@ -1,5 +1,6 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { MockLanguageModelV3 } from 'ai/test';
+import { APICallError } from 'ai';
 import { simulateReadableStream } from 'ai';
 import type { UIMessageChunk } from 'ai';
 import chatService, {
@@ -11,6 +12,7 @@ import chatRepository from '../models/chatRepository.js';
 import {
   recordRejectedParam,
   resetLearnedRejections,
+  supportsTemperature,
 } from '../ai/modelCapabilities.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
@@ -1125,6 +1127,59 @@ describe('chatService', () => {
       vi.mocked(chatRepository.saveChatHistory).mockResolvedValue(true);
       vi.mocked(measurementRepository.getCustomCategories).mockResolvedValue(
         []
+      );
+    });
+
+    // The streaming path cannot retry a rejected parameter in place, so the
+    // rejection has to be learned for the next turn. It is the first request a
+    // model sees more often than not: the intent classifier returns early on
+    // any keyword match and is skipped entirely for manual tool selection.
+    it('records a stream-time temperature rejection so later turns omit it', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai_compatible',
+          custom_url: 'http://localhost:1234/v1',
+          model_name: 'reasoning-1',
+          chat_tool_profile: 'core',
+        }
+      );
+      const model = new MockLanguageModelV3({
+        doStream: async () => {
+          throw new APICallError({
+            message: 'Unsupported value: temperature',
+            url: 'http://localhost:1234/v1/chat/completions',
+            requestBodyValues: {},
+            statusCode: 400,
+            responseBody: JSON.stringify({
+              error: {
+                message:
+                  "Unsupported value: 'temperature' does not support 0.2 with this model. Only the default (1) value is supported.",
+                type: 'invalid_request_error',
+                param: 'temperature',
+                code: 'unsupported_value',
+              },
+            }),
+          });
+        },
+      });
+      mockModelHolder.current = model;
+
+      expect(supportsTemperature('openai_compatible', 'reasoning-1')).toBe(
+        true
+      );
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      // Learned, so the next turn builds the request without it.
+      expect(supportsTemperature('openai_compatible', 'reasoning-1')).toBe(
+        false
       );
     });
 

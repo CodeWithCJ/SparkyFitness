@@ -96,28 +96,24 @@ describe('buildChatProviderOptions', () => {
     });
   });
 
-  // Regression for issue #2165: the gate used to enumerate gpt-5.1..gpt-5.5, so
-  // each new point release silently dropped off the end and lost cache hits.
-  it.each(['gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol', 'gpt-5.9'])(
-    'adds 24h retention for %s',
-    (model) => {
-      expect(buildChatProviderOptions('openai', 'user-1', model)).toEqual({
-        openai: {
-          promptCacheKey: 'sparky-chat-user-1',
-          promptCacheRetention: '24h',
-        },
-      });
-    }
-  );
-
-  it.each(['gpt-5', 'gpt-5.0', 'gpt-4o', 'gpt-4o-mini'])(
-    'withholds 24h retention from %s',
-    (model) => {
-      expect(buildChatProviderOptions('openai', 'user-1', model)).toEqual({
-        openai: { promptCacheKey: 'sparky-chat-user-1' },
-      });
-    }
-  );
+  // gpt-5.6 deprecated `prompt_cache_retention` in favor of
+  // `prompt_cache_options.ttl`, and the adapter forwards the field ungated, so
+  // sending it to 5.6+ risks a rejected chat turn. Omitting it only costs cache
+  // hits, so newer models must stay off the list until they're known to take it.
+  it.each([
+    'gpt-5.6-luna',
+    'gpt-5.6-terra',
+    'gpt-5.6-sol',
+    'gpt-5.9',
+    'gpt-5',
+    'gpt-5.0',
+    'gpt-4o',
+    'gpt-4o-mini',
+  ])('withholds 24h retention from %s', (model) => {
+    expect(buildChatProviderOptions('openai', 'user-1', model)).toEqual({
+      openai: { promptCacheKey: 'sparky-chat-user-1' },
+    });
+  });
 
   it('keeps system instructions as the system role for OpenAI-compatible backends', () => {
     expect(

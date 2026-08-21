@@ -755,14 +755,24 @@ export function getSystemPrompt(
     .replace(/\${customCategories}/g, customCategoriesList);
 }
 
-// OpenAI's 24h extended retention is only supported on the gpt-5.1+ families
-// (per @ai-sdk/openai), and the adapter forwards the field without gating, so
-// other models may reject it. Mirror the adapter's own family check.
+// OpenAI's 24h extended retention is supported on gpt-5.1 through gpt-5.5 only.
+// The adapter forwards `prompt_cache_retention` unchanged with no model gating,
+// so this list is the only thing standing between us and a rejected request.
 //
-// Matched as a family rather than enumerated point releases: an explicit list
-// silently drops each new model off the end (gpt-5.6 did exactly that), and a
-// missing retention hint is invisible — it just costs cache hits.
-const RETENTION_24H_MODEL_PATTERN = /^gpt-5\.[1-9]/;
+// Enumerated on purpose rather than matched as a family. Retention support is
+// shrinking, not growing: gpt-5.6 deprecated `prompt_cache_retention` in favor
+// of `prompt_cache_options.ttl`, so a `/^gpt-5\.[1-9]/`-style pattern would send
+// the field to exactly the models that reject it. The failure modes are not
+// symmetric — omitting the hint for a model that would have accepted it only
+// costs cache hits, while sending it to one that refuses breaks the chat turn.
+// New entries belong here only once that model is known to accept the field.
+const RETENTION_24H_MODEL_PREFIXES = [
+  'gpt-5.1',
+  'gpt-5.2',
+  'gpt-5.3',
+  'gpt-5.4',
+  'gpt-5.5',
+];
 
 // Only the canonical 'openai' service type receives prompt-cache options.
 // OpenAI-compatible services still need the SDK-only systemMessageMode override:
@@ -781,7 +791,7 @@ export function buildChatProviderOptions(
   const openai: Record<string, JSONValue> = {
     promptCacheKey: `sparky-chat-${userId}`,
   };
-  if (RETENTION_24H_MODEL_PATTERN.test(modelName)) {
+  if (RETENTION_24H_MODEL_PREFIXES.some((p) => modelName.startsWith(p))) {
     openai.promptCacheRetention = '24h';
   }
   return { openai };
@@ -983,6 +993,25 @@ async function runWithTemperatureFallback<T>(
     if (rejected !== 'temperature') throw error;
     recordRejectedParam(serviceType, modelName, rejected);
     return await run(false);
+  }
+}
+
+/**
+ * Records a parameter rejection reported through a stream rather than thrown.
+ *
+ * `streamText` cannot be retried in place — by the time the provider's 400
+ * arrives the call has already returned its stream — so the best available
+ * outcome is to remember the rejection and get the next turn right.
+ */
+function noteStreamParameterRejection(
+  serviceType: string,
+  modelName: string,
+  error: unknown
+): void {
+  if (!APICallError.isInstance(error) || error.statusCode !== 400) return;
+  const rejected = detectRejectedParam(400, error.responseBody ?? '');
+  if (rejected) {
+    recordRejectedParam(serviceType, modelName, rejected);
   }
 }
 
@@ -2027,15 +2056,23 @@ async function processChatMessageStream(
       // full-profile Ollama keep provider defaults, and models that reject the
       // parameter get none.
       //
-      // No retry wrapper here: streamText returns the stream synchronously and
-      // surfaces provider errors inside it, so a 400 cannot be caught and
-      // replayed. It does not need one — the intent classifier above runs
-      // against this same model first and records any rejection, so
-      // supportsTemperature is already correct by the time we get here.
+      // No retry wrapper here: streamText returns its stream synchronously and
+      // reports provider errors inside it, so a 400 is never thrown where we
+      // could catch and replay it. onError below records the rejection instead,
+      // which costs this turn but fixes every turn after it.
       ...(toolProfile === 'core' &&
         supportsTemperature(aiService.service_type, modelName) && {
           temperature: CORE_PROFILE_CHAT_TEMPERATURE,
         }),
+      onError({ error }) {
+        // The one place a stream-time parameter rejection can be learned. The
+        // intent classifier is not a reliable canary: it returns early on any
+        // keyword match, and is skipped entirely when the user picks tool
+        // categories manually, so this path can be the first request a model
+        // ever sees.
+        noteStreamParameterRejection(aiService.service_type, modelName, error);
+        log('error', `[chat] stream error for user ${userId}:`, error);
+      },
       // Tighter retry ceiling for cache-less core-profile backends, where every
       // retry re-processes the full prefix.
       stopWhen: buildChatStopConditions(toolProfile),
