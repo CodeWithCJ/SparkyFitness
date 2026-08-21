@@ -9,6 +9,11 @@ import {
   type DispatchErrorCategory,
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
+import {
+  detectRejectedParam,
+  recordRejectedParam,
+  supportsTemperature,
+} from '../ai/modelCapabilities.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { TtlCache } from '../utils/ttlCache.js';
 import {
@@ -57,7 +62,13 @@ interface ChatMessage {
   parts?: ChatMessagePart[];
 }
 
-import { generateText, streamText, stepCountIs, hasToolCall } from 'ai';
+import {
+  APICallError,
+  generateText,
+  streamText,
+  stepCountIs,
+  hasToolCall,
+} from 'ai';
 import type { JSONValue, LanguageModelUsage, UIMessageChunk } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
@@ -747,13 +758,11 @@ export function getSystemPrompt(
 // OpenAI's 24h extended retention is only supported on the gpt-5.1+ families
 // (per @ai-sdk/openai), and the adapter forwards the field without gating, so
 // other models may reject it. Mirror the adapter's own family check.
-const RETENTION_24H_MODEL_PREFIXES = [
-  'gpt-5.1',
-  'gpt-5.2',
-  'gpt-5.3',
-  'gpt-5.4',
-  'gpt-5.5',
-];
+//
+// Matched as a family rather than enumerated point releases: an explicit list
+// silently drops each new model off the end (gpt-5.6 did exactly that), and a
+// missing retention hint is invisible — it just costs cache hits.
+const RETENTION_24H_MODEL_PATTERN = /^gpt-5\.[1-9]/;
 
 // Only the canonical 'openai' service type receives prompt-cache options.
 // OpenAI-compatible services still need the SDK-only systemMessageMode override:
@@ -772,7 +781,7 @@ export function buildChatProviderOptions(
   const openai: Record<string, JSONValue> = {
     promptCacheKey: `sparky-chat-${userId}`,
   };
-  if (RETENTION_24H_MODEL_PREFIXES.some((p) => modelName.startsWith(p))) {
+  if (RETENTION_24H_MODEL_PATTERN.test(modelName)) {
     openai.promptCacheRetention = '24h';
   }
   return { openai };
@@ -939,6 +948,42 @@ function createChatModelInstance(
     return createOpenAI(providerOptions).chat(modelName);
   }
   throw new Error(`Unsupported service type: ${aiService.service_type}`);
+}
+
+/**
+ * Runs an AI SDK call, and if the provider rejects `temperature` with a 400,
+ * re-runs it once without one.
+ *
+ * The static gate in `supportsTemperature` covers model families we already
+ * know about; this covers the ones we don't, so a future model that drops the
+ * parameter starts working on first use instead of after a release. The
+ * rejection is recorded, so only the first call for a given model pays the
+ * extra round-trip.
+ *
+ * `run` receives whether to send a temperature this attempt.
+ *
+ * Only for awaited calls (`generateText`). `streamText` returns its stream
+ * synchronously and reports provider errors inside it, so nothing is thrown
+ * here to catch — that path relies on the gate alone, seeded by the intent
+ * classifier which runs against the same model first.
+ */
+async function runWithTemperatureFallback<T>(
+  serviceType: string,
+  modelName: string,
+  run: (sendTemperature: boolean) => Promise<T>
+): Promise<T> {
+  const allowed = supportsTemperature(serviceType, modelName);
+  try {
+    return await run(allowed);
+  } catch (error) {
+    if (!allowed) throw error;
+    if (!APICallError.isInstance(error) || error.statusCode !== 400)
+      throw error;
+    const rejected = detectRejectedParam(400, error.responseBody ?? '');
+    if (rejected !== 'temperature') throw error;
+    recordRejectedParam(serviceType, modelName, rejected);
+    return await run(false);
+  }
 }
 
 // The AI SDK part type for a sparky_ask_user tool call, as it comes back from
@@ -1216,6 +1261,8 @@ export function classifyByKeywords(text: string): ChatToolCategorySlug[] {
 async function classifyUserIntent(
   messages: ChatMessage[],
   modelInstance: Parameters<typeof generateText>[0]['model'],
+  serviceType: string,
+  modelName: string,
   providerOptions?: Record<string, Record<string, JSONValue>>
 ): Promise<ChatToolCategorySlug[]> {
   const lastUserMessage = [...messages]
@@ -1266,15 +1313,21 @@ Available domains:
 
 Your response must contain ONLY the matched domain names as a comma-separated list (e.g., "exercise, food" or "checkin" or "none"). Do not include any other text.`;
 
-    const { text: resultText } = await generateText({
-      model: modelInstance,
-      system: classificationPrompt,
-      messages: contextMessages,
-      providerOptions,
-      temperature: 0,
-      maxRetries: 0,
-      abortSignal: AbortSignal.timeout(10000), // 10s timeout to prevent hanging the chat turn
-    });
+    const { text: resultText } = await runWithTemperatureFallback(
+      serviceType,
+      modelName,
+      (sendTemperature) =>
+        generateText({
+          model: modelInstance,
+          system: classificationPrompt,
+          messages: contextMessages,
+          providerOptions,
+          // Reasoning models (gpt-5.x, o-series) accept only the default.
+          ...(sendTemperature && { temperature: 0 }),
+          maxRetries: 0,
+          abortSignal: AbortSignal.timeout(10000), // 10s timeout to prevent hanging the chat turn
+        })
+    );
 
     log(
       'info',
@@ -1373,6 +1426,8 @@ async function processChatMessage(
       activeCategories = await classifyUserIntent(
         messages,
         modelInstance,
+        aiService.service_type,
+        modelName,
         buildChatProviderOptions(
           aiService.service_type,
           authenticatedUserId,
@@ -1413,58 +1468,65 @@ async function processChatMessage(
     }> = [];
     const toolOutputs: string[] = [];
 
-    const result = await generateText({
-      model: modelInstance,
-      system: systemPromptContent,
-      messages: llmMessages as NonNullable<
-        Parameters<typeof generateText>[0]['messages']
-      >,
-      tools,
-      // Narrows the published/sent tool schemas to this turn's classified
-      // categories; sparky_enable_tools lets the model escalate mid-request
-      // via prepareStep if it turns out to need a dormant category.
-      activeTools: activeToolNames,
-      prepareStep,
-      providerOptions: chatProviderOptions,
-      // Low temperature only for small local models (core profile); cloud and
-      // full-profile Ollama keep provider defaults.
-      ...(toolProfile === 'core' && {
-        temperature: CORE_PROFILE_CHAT_TEMPERATURE,
-      }),
-      // Tighter retry ceiling for cache-less core-profile backends, where every
-      // retry re-processes the full prefix.
-      stopWhen: buildChatStopConditions(toolProfile),
-      maxRetries:
-        toolProfile === 'core'
-          ? CORE_PROFILE_MAX_PROVIDER_RETRIES
-          : MAX_PROVIDER_RETRIES,
-      abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
-      onStepFinish({ toolCalls, toolResults }) {
-        if (toolCalls && toolCalls.length > 0) {
-          toolCalls.forEach((call) => {
-            log(
-              'info',
-              `Agent executed tool call: ${call.toolName} with args: ${JSON.stringify(call.input)}`
-            );
-            executedToolsList.push({
-              name: call.toolName,
-              args: call.input as Record<string, unknown>,
-            });
-          });
-        }
-        if (toolResults && toolResults.length > 0) {
-          toolResults.forEach((r) => {
-            if (r.output && typeof r.output === 'string') {
-              toolOutputs.push(r.output);
+    const result = await runWithTemperatureFallback(
+      aiService.service_type,
+      modelName,
+      (sendTemperature) =>
+        generateText({
+          model: modelInstance,
+          system: systemPromptContent,
+          messages: llmMessages as NonNullable<
+            Parameters<typeof generateText>[0]['messages']
+          >,
+          tools,
+          // Narrows the published/sent tool schemas to this turn's classified
+          // categories; sparky_enable_tools lets the model escalate mid-request
+          // via prepareStep if it turns out to need a dormant category.
+          activeTools: activeToolNames,
+          prepareStep,
+          providerOptions: chatProviderOptions,
+          // Low temperature only for small local models (core profile); cloud and
+          // full-profile Ollama keep provider defaults. Skipped entirely for
+          // models that reject the parameter (see runWithTemperatureFallback).
+          ...(toolProfile === 'core' &&
+            sendTemperature && {
+              temperature: CORE_PROFILE_CHAT_TEMPERATURE,
+            }),
+          // Tighter retry ceiling for cache-less core-profile backends, where every
+          // retry re-processes the full prefix.
+          stopWhen: buildChatStopConditions(toolProfile),
+          maxRetries:
+            toolProfile === 'core'
+              ? CORE_PROFILE_MAX_PROVIDER_RETRIES
+              : MAX_PROVIDER_RETRIES,
+          abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
+          onStepFinish({ toolCalls, toolResults }) {
+            if (toolCalls && toolCalls.length > 0) {
+              toolCalls.forEach((call) => {
+                log(
+                  'info',
+                  `Agent executed tool call: ${call.toolName} with args: ${JSON.stringify(call.input)}`
+                );
+                executedToolsList.push({
+                  name: call.toolName,
+                  args: call.input as Record<string, unknown>,
+                });
+              });
             }
-          });
-          const sizes = toolResults
-            .map((r) => `${r.toolName}=${String(r.output ?? '').length}c`)
-            .join(' ');
-          log('info', `[chat] tool result sizes: ${sizes}`);
-        }
-      },
-    });
+            if (toolResults && toolResults.length > 0) {
+              toolResults.forEach((r) => {
+                if (r.output && typeof r.output === 'string') {
+                  toolOutputs.push(r.output);
+                }
+              });
+              const sizes = toolResults
+                .map((r) => `${r.toolName}=${String(r.output ?? '').length}c`)
+                .join(' ');
+              log('info', `[chat] tool result sizes: ${sizes}`);
+            }
+          },
+        })
+    );
 
     const usage = result.totalUsage ?? result.usage;
     log(
@@ -1903,6 +1965,8 @@ async function processChatMessageStream(
       activeCategories = await classifyUserIntent(
         messages,
         modelInstance,
+        aiService.service_type,
+        modelName,
         buildChatProviderOptions(
           aiService.service_type,
           authenticatedUserId,
@@ -1960,10 +2024,18 @@ async function processChatMessageStream(
       prepareStep,
       providerOptions: chatProviderOptions,
       // Low temperature only for small local models (core profile); cloud and
-      // full-profile Ollama keep provider defaults.
-      ...(toolProfile === 'core' && {
-        temperature: CORE_PROFILE_CHAT_TEMPERATURE,
-      }),
+      // full-profile Ollama keep provider defaults, and models that reject the
+      // parameter get none.
+      //
+      // No retry wrapper here: streamText returns the stream synchronously and
+      // surfaces provider errors inside it, so a 400 cannot be caught and
+      // replayed. It does not need one — the intent classifier above runs
+      // against this same model first and records any rejection, so
+      // supportsTemperature is already correct by the time we get here.
+      ...(toolProfile === 'core' &&
+        supportsTemperature(aiService.service_type, modelName) && {
+          temperature: CORE_PROFILE_CHAT_TEMPERATURE,
+        }),
       // Tighter retry ceiling for cache-less core-profile backends, where every
       // retry re-processes the full prefix.
       stopWhen: buildChatStopConditions(toolProfile),

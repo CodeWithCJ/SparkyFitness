@@ -7,6 +7,7 @@ import {
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
 import { OutboundUrlBlockedError } from '../utils/outboundUrlPolicy.js';
+import { resetLearnedRejections } from '../ai/modelCapabilities.js';
 import convert from 'heic-convert';
 
 // Fixed "JPEG" bytes returned by the mocked transcoder. Declared via vi.hoisted
@@ -1239,6 +1240,144 @@ describe('dispatchAiRequest — model defaulting', () => {
       })
     );
     expect(captured(m).body.model).toBe('llama3.2');
+  });
+});
+
+describe('dispatchAiRequest — models that reject temperature', () => {
+  // The exact body OpenAI returns for gpt-5.6, from issue #2165.
+  const REJECTION_BODY = JSON.stringify({
+    error: {
+      message:
+        "Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.",
+      type: 'invalid_request_error',
+      param: 'temperature',
+      code: 'unsupported_value',
+    },
+  });
+
+  function mockSequence(...responses: Array<Record<string, unknown>>) {
+    const m = vi.fn();
+    for (const r of responses) {
+      m.mockResolvedValueOnce({
+        ok: r.ok ?? true,
+        status: r.status ?? 200,
+        text: async () => (typeof r.body === 'string' ? r.body : ''),
+        json: async () => r.body,
+      });
+    }
+    global.fetch = m as typeof global.fetch;
+    return m;
+  }
+
+  function bodyOfCall(m: ReturnType<typeof vi.fn>, i: number) {
+    const init = m.mock.calls[i][1] as { body: string };
+    return JSON.parse(init.body) as Record<string, unknown>;
+  }
+
+  beforeEach(() => {
+    resetLearnedRejections();
+  });
+
+  // Static gate: no wasted round-trip for a family we already know about.
+  it('omits temperature on the first request for a known gpt-5 model', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({ model_name: 'gpt-5.6-luna' }),
+        temperature: 0,
+      })
+    );
+    expect(result.ok).toBe(true);
+    expect(m).toHaveBeenCalledTimes(1);
+    expect(captured(m).body.temperature).toBeUndefined();
+  });
+
+  it('still sends temperature to a model outside the known families', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(baseRequest({ temperature: 0 }));
+    expect(captured(m).body.temperature).toBe(0);
+  });
+
+  // Dynamic gate: this is what makes an unknown future model work on first use.
+  it('drops temperature and retries once when the provider rejects it', async () => {
+    const m = mockSequence(
+      { ok: false, status: 400, body: REJECTION_BODY },
+      { body: openAiBody(JSON.stringify(SAMPLE)) }
+    );
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'openai_compatible',
+          custom_url: 'https://gateway.example.com/v1',
+          model_name: 'mystery-1',
+        }),
+        temperature: 0,
+      })
+    );
+    expect(result.ok).toBe(true);
+    expect(m).toHaveBeenCalledTimes(2);
+    expect(bodyOfCall(m, 0).temperature).toBe(0);
+    expect(bodyOfCall(m, 1).temperature).toBeUndefined();
+  });
+
+  it('remembers the rejection so later requests cost no retry', async () => {
+    mockSequence(
+      { ok: false, status: 400, body: REJECTION_BODY },
+      { body: openAiBody(JSON.stringify(SAMPLE)) }
+    );
+    const req = () =>
+      dispatchAiRequest(
+        baseRequest({
+          provider: makeProvider({
+            service_type: 'openai_compatible',
+            custom_url: 'https://gateway.example.com/v1',
+            model_name: 'mystery-1',
+          }),
+          temperature: 0,
+        })
+      );
+    await req();
+
+    const second = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    const result = await req();
+    expect(result.ok).toBe(true);
+    expect(second).toHaveBeenCalledTimes(1);
+    expect(captured(second).body.temperature).toBeUndefined();
+  });
+
+  it('does not retry a 400 that is not a parameter rejection', async () => {
+    const body = JSON.stringify({
+      error: { message: 'Invalid API key.', code: 'invalid_api_key' },
+    });
+    const m = mockFetch(body, { ok: false, status: 400 });
+    const result = await dispatchAiRequest(baseRequest({ temperature: 0 }));
+    expect(result.ok).toBe(false);
+    expect(m).toHaveBeenCalledTimes(1);
+    if (!result.ok) expect(result.category).toBe('upstream_error');
+  });
+
+  it('does not retry when no temperature was sent in the first place', async () => {
+    const m = mockFetch(REJECTION_BODY, { ok: false, status: 400 });
+    const result = await dispatchAiRequest(baseRequest());
+    expect(result.ok).toBe(false);
+    expect(m).toHaveBeenCalledTimes(1);
+  });
+
+  // A parameter we refuse to drop must fail loudly, but readably.
+  it('explains an unsupported parameter instead of dumping raw JSON', async () => {
+    const body = JSON.stringify({
+      error: {
+        message: "Unsupported parameter: 'max_tokens' is not supported.",
+        param: 'max_tokens',
+        code: 'unsupported_parameter',
+      },
+    });
+    mockFetch(body, { ok: false, status: 400 });
+    const result = await dispatchAiRequest(baseRequest({ temperature: 0 }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.detail).toContain("rejected the 'max_tokens' parameter");
+    }
   });
 });
 

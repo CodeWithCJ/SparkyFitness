@@ -8,6 +8,10 @@ import chatService, {
 } from '../services/chatService.js';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import chatRepository from '../models/chatRepository.js';
+import {
+  recordRejectedParam,
+  resetLearnedRejections,
+} from '../ai/modelCapabilities.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodRepository.js';
@@ -76,6 +80,9 @@ describe('chatService', () => {
   const mockTargetUserId = 'user-456';
   beforeEach(() => {
     vi.clearAllMocks();
+    // Learned parameter rejections are module-level; keep them from leaking
+    // between tests.
+    resetLearnedRejections();
   });
   describe('handleAiServiceSettings', () => {
     it('should save AI service settings', async () => {
@@ -652,6 +659,55 @@ describe('chatService', () => {
         expect.stringMatching(/default 4096-token context/)
       );
       // Small local models get a low temperature for steadier tool JSON.
+      expect(model.doGenerateCalls[0].temperature).toBe(0.2);
+    });
+
+    // Regression for issue #2165: some models accept only the default
+    // temperature, so sending the core-profile 0.2 would 400 the turn. The core
+    // profile is honored only for self-hosted service types, so the rejection
+    // reaches this path through the learned gate rather than the static one.
+    it('withholds the core-profile temperature from a model that rejects it', async () => {
+      recordRejectedParam('openai_compatible', 'reasoning-1', 'temperature');
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai_compatible',
+          custom_url: 'http://localhost:1234/v1',
+          model_name: 'reasoning-1',
+          chat_tool_profile: 'core',
+        }
+      );
+      const model = scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(model.doGenerateCalls[0].temperature).toBeUndefined();
+    });
+
+    it('still applies the core-profile temperature to a model that accepts it', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai_compatible',
+          custom_url: 'http://localhost:1234/v1',
+          model_name: 'reasoning-1',
+          chat_tool_profile: 'core',
+        }
+      );
+      const model = scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
       expect(model.doGenerateCalls[0].temperature).toBe(0.2);
     });
 
