@@ -34,6 +34,7 @@ import {
   CalorieGoalAdjustmentMode,
   GoalMode,
   GoalModeCalculationMethod,
+  CalorieSafetyFloorMode,
 } from '@workspace/shared';
 
 import {
@@ -121,6 +122,8 @@ interface PreferencesContextType {
   goalMode: GoalMode;
   goalModeCalculationMethod: GoalModeCalculationMethod;
   goalModeCustomPercentage: number;
+  calorieSafetyFloorMode: CalorieSafetyFloorMode;
+  calorieSafetyFloorValue: number;
   setMeasurementDecimalPlaces: (places: number) => void;
   setGoalMode: (mode: GoalMode) => void;
   setGoalModeCalculationMethod: (method: GoalModeCalculationMethod) => void;
@@ -234,6 +237,8 @@ export interface DefaultPreferences {
   goal_mode: GoalMode;
   goal_mode_calculation_method: GoalModeCalculationMethod;
   goal_mode_custom_percentage: number;
+  calorie_safety_floor_mode: CalorieSafetyFloorMode;
+  calorie_safety_floor_value: number;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -341,6 +346,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<GoalModeCalculationMethod>('manual');
   const [goalModeCustomPercentage, setGoalModeCustomPercentageState] =
     useState<number>(0);
+  const [calorieSafetyFloorMode, setCalorieSafetyFloorModeState] =
+    useState<CalorieSafetyFloorMode>('standard');
+  const [calorieSafetyFloorValue, setCalorieSafetyFloorValueState] =
+    useState<number>(1200);
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -610,6 +619,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         first_day_of_week: 0,
         show_net_carbs: false,
         ai_assisted_conversions: true,
+        calorie_safety_floor_mode: 'standard',
+        calorie_safety_floor_value: 1200,
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -731,6 +742,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           data.goal_mode_calculation_method || 'manual'
         );
         setGoalModeCustomPercentageState(data.goal_mode_custom_percentage ?? 0);
+        setCalorieSafetyFloorModeState(
+          data.calorie_safety_floor_mode ?? 'standard'
+        );
+        setCalorieSafetyFloorValueState(
+          data.calorie_safety_floor_value ?? 1200
+        );
       } else {
         await createDefaultPreferences();
         await createDefaultWaterContainer();
@@ -902,6 +919,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.goalModeCalculationMethod ?? goalModeCalculationMethod,
         goal_mode_custom_percentage:
           newPrefs?.goalModeCustomPercentage ?? goalModeCustomPercentage,
+        calorie_safety_floor_mode:
+          newPrefs?.calorieSafetyFloorMode ?? calorieSafetyFloorMode,
+        calorie_safety_floor_value:
+          newPrefs?.calorieSafetyFloorValue ?? calorieSafetyFloorValue,
       };
 
       try {
@@ -960,6 +981,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalMode,
       goalModeCalculationMethod,
       goalModeCustomPercentage,
+      calorieSafetyFloorMode,
+      calorieSafetyFloorValue,
       updatePreferences,
       loadPreferences,
     ]
@@ -1206,6 +1229,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalMode,
       goalModeCalculationMethod,
       goalModeCustomPercentage,
+      calorieSafetyFloorMode,
+      calorieSafetyFloorValue,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setGoalMode,
       setGoalModeCalculationMethod,
@@ -1299,6 +1324,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalMode,
       goalModeCalculationMethod,
       goalModeCustomPercentage,
+      calorieSafetyFloorMode,
+      calorieSafetyFloorValue,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,

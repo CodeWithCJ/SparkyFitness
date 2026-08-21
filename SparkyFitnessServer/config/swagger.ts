@@ -1154,6 +1154,19 @@ const options = {
             timezone: { type: 'string' },
             unit_system: { type: 'string', enum: ['metric', 'imperial'] },
             meal_calorie_distribution: { type: 'object' },
+            calorie_safety_floor_mode: {
+              type: 'string',
+              enum: ['standard', 'custom', 'disabled'],
+              description:
+                'Controls adaptive calorie-target clamping. Standard uses the recommended RMR/clinical floor, custom uses calorie_safety_floor_value, and disabled only reports health warnings.',
+            },
+            calorie_safety_floor_value: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 10000,
+              description:
+                'Custom calorie safety floor in kcal/day. Used when calorie_safety_floor_mode is custom.',
+            },
           },
         },
         OnboardingStatus: {

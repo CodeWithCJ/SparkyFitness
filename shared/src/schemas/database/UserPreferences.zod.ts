@@ -51,6 +51,8 @@ export const userPreferencesSchema = z.object({
   ]),
   goal_mode_calculation_method: z.enum(["adaptive", "manual"]),
   goal_mode_custom_percentage: z.number().int().min(-40).max(40),
+  calorie_safety_floor_mode: z.enum(["standard", "custom", "disabled"]),
+  calorie_safety_floor_value: z.number().int().min(1).max(10000),
   measurement_decimal_places: z.number().int().min(0),
   // Manually added (file is ts-to-zod generated; precedent: MealFoods.zod.ts). Keep on regen.
   use_external_bmr: z.boolean(),
@@ -108,6 +110,10 @@ export const userPreferencesInitializerSchema = z.object({
     .optional(),
   goal_mode_calculation_method: z.enum(["adaptive", "manual"]).optional(),
   goal_mode_custom_percentage: z.number().int().min(-40).max(40).optional(),
+  calorie_safety_floor_mode: z
+    .enum(["standard", "custom", "disabled"])
+    .optional(),
+  calorie_safety_floor_value: z.number().int().min(1).max(10000).optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
@@ -164,6 +170,10 @@ export const userPreferencesMutatorSchema = z.object({
     .optional(),
   goal_mode_calculation_method: z.enum(["adaptive", "manual"]).optional(),
   goal_mode_custom_percentage: z.number().int().min(-40).max(40).optional(),
+  calorie_safety_floor_mode: z
+    .enum(["standard", "custom", "disabled"])
+    .optional(),
+  calorie_safety_floor_value: z.number().int().min(1).max(10000).optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),

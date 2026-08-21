@@ -44,6 +44,8 @@ const defaultProps = {
     wasClampedToFloor: false,
     clampedFloorSource: null,
     maxFeasibleDeficitPercent: null,
+    recommendedSafetyFloor: 1800,
+    effectiveSafetyFloor: 1800,
   },
   adaptiveTdeeData: {
     tdee: 2194,
@@ -300,5 +302,59 @@ describe('CalorieTargetBreakdown shown working', () => {
   it('prints weight at the precision the formula evaluates with', () => {
     render(<CalorieTargetBreakdown {...defaultProps} displayWeight={73.45} />);
     expect(screen.getByText(/73\.45/)).toBeInTheDocument();
+  });
+});
+
+describe('CalorieTargetBreakdown configured safety floor', () => {
+  it('shows a custom floor as the effective limit', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        previewResult={{
+          ...defaultProps.previewResult,
+          effectiveSafetyFloor: 1200,
+        }}
+      />
+    );
+
+    expect(screen.getByText(/Effective Safety Floor:/)).toHaveTextContent(
+      '1200 kcal'
+    );
+  });
+
+  it('shows that automatic clamping is disabled without hiding recommendations', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        previewResult={{
+          ...defaultProps.previewResult,
+          effectiveSafetyFloor: null,
+        }}
+      />
+    );
+
+    expect(screen.getByText(/Effective Safety Floor:/)).toHaveTextContent(
+      'Disabled'
+    );
+    expect(screen.getByText(/Clinical Absolute Floor:/)).toBeInTheDocument();
+  });
+
+  it('warns when a custom adaptive target remains below the recommendation', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        previewResult={{
+          ...defaultProps.previewResult,
+          finalTarget: 1300,
+          isBelowRmr: true,
+          effectiveSafetyFloor: 1200,
+          recommendedSafetyFloor: 1800,
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText(/below the recommended safety floor/i)
+    ).toBeInTheDocument();
   });
 });

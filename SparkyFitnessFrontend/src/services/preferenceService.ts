@@ -40,6 +40,8 @@ export interface UserPreferences {
     | string;
   goal_mode_calculation_method?: 'adaptive' | 'manual' | string;
   goal_mode_custom_percentage?: number;
+  calorie_safety_floor_mode?: 'standard' | 'custom' | 'disabled';
+  calorie_safety_floor_value?: number;
   calorie_goal_adjustment_mode:
     | 'dynamic'
     | 'fixed'

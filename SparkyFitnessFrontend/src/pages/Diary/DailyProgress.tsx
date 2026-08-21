@@ -47,6 +47,8 @@ import {
   calculateBmr,
   computeExerciseCredited,
   normalizeCalorieGoalAdjustmentMode,
+  resolveCalorieSafetyFloor,
+  getRecommendedCalorieSafetyFloor,
 } from '@workspace/shared';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
@@ -65,6 +67,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     goalMode,
     goalModeCalculationMethod,
     goalModeCustomPercentage,
+    calorieSafetyFloorMode,
+    calorieSafetyFloorValue,
     activityLevel,
     timezone,
   } = usePreferences();
@@ -222,10 +226,16 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   let adjustedManualGoal = rawManualGoal;
   if (calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-    adjustedManualGoal = Math.max(
-      1200,
-      Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
+    const adaptiveGoal = Math.round(adaptiveTdeeData.tdee + calorieGoalOffset);
+    const adaptiveGoalFloor = resolveCalorieSafetyFloor(
+      calorieSafetyFloorMode,
+      calorieSafetyFloorValue,
+      getRecommendedCalorieSafetyFloor(bmr, displayGender)
     );
+    adjustedManualGoal =
+      adaptiveGoalFloor === null
+        ? adaptiveGoal
+        : Math.max(adaptiveGoalFloor, adaptiveGoal);
   }
 
   const previewResult = computeCalorieTarget({
@@ -247,6 +257,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     bmrAlgorithm,
     currentGoalCalories: adjustedManualGoal,
     calculateBmrFn: calculateBmr,
+    calorieSafetyFloorMode,
+    calorieSafetyFloorValue,
   });
 
   debug(loggingLevel, 'DailyProgress: Calculated values', {

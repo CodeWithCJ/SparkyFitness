@@ -242,6 +242,37 @@ describe('AdaptiveTdeeService', () => {
     expect(resultLow.tdee).toBe(2290);
   });
 
+  test('does not impose a clinical calorie floor on the TDEE estimate itself', () => {
+    // The safety-floor preference belongs at the final calorie-goal boundary.
+    // Keeping 1200 here prevents custom/disabled goals from ever seeing a lower
+    // measured estimate, even when the plausibility window allows it.
+    // @ts-expect-error mocked service
+    bmrService.calculateBmr.mockReturnValue(900);
+    bmrService.ActivityMultiplier = { not_much: 1.2 };
+
+    const testData = {
+      profile: { date_of_birth: '1990-01-01', gender: 'female' },
+      preferences: {
+        bmr_algorithm: 'Mifflin-St Jeor',
+        activity_level: 'not_much',
+      },
+      latestMeasurement: { weight: 45, height: 145 },
+      checkInMeasurements: Array.from({ length: 70 }, (_, i) => ({
+        entry_date: format(subDays(calculationDate, 70 - i), 'yyyy-MM-dd'),
+        weight: 45,
+      })),
+      nutritionData: Array.from({ length: 91 }, (_, i) => ({
+        date: format(subDays(calculationDate, i), 'yyyy-MM-dd'),
+        calories: 500,
+      })),
+    };
+
+    const result = computeAdaptiveTdeeFromData(testData, calculationDateStr);
+
+    // fallback = 900 * 1.2 = 1080; plausibility lower bound = 1080 - 500.
+    expect(result.tdee).toBe(580);
+  });
+
   test('should downgrade confidence for recent trackers (< 6 weeks)', () => {
     // @ts-expect-error
     bmrService.calculateBmr.mockReturnValue(1800);

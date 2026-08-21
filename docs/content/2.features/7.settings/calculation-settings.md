@@ -96,21 +96,23 @@ Gain is deliberately much slower than loss. Muscle growth is limited by training
 
 ## 5. Metabolic Safety Floors
 
-To protect long-term metabolic health and avoid muscle wasting, SparkyFitness checks all calorie goals against safety limits:
+SparkyFitness shows two recommended safety limits for calorie goals:
 
 1.  **Resting Metabolism (RMR) Floor:** Your target should not fall below your resting metabolic rate.
 2.  **Absolute Clinical Floor:** $1,200$ kcal for biological females; $1,500$ kcal for biological males.
 
 > [!IMPORTANT]
-> **Enforcement Behavior:**
+> **Adaptive Safety Floor:**
 >
-> - Under the **Adaptive** method, if your calculated target falls below the safety floor, the system **automatically raises** your target to the effective floor. When this happens the app tells you which floor bound (your RMR or the absolute clinical minimum) and offers the largest deficit that still clears it.
+> - **Standard (default):** The higher of your estimated RMR and the sex-specific clinical minimum is enforced. If an Adaptive target falls below it, SparkyFitness raises the target and explains which limit bound.
+> - **Custom minimum:** Replaces the Standard floor with a calorie value you choose. This can be below or above the recommended limits; those recommendations and health warnings remain visible.
+> - **Disabled:** Does not automatically raise Adaptive targets. The calculated target is used as-is, while recommended limits and health warnings remain visible.
 > - Under the **Manual** method, the target is **not automatically raised**, but a prominent warning banner is displayed warning you that your budget is in an unsafe range.
 
 Safety floors only ever apply to deficits. A surplus can never trip them.
 
 > [!TIP]
-> If you are small-bodied, the floor can bind before you reach your chosen deficit — for example, a measured TDEE of $1{,}400$ kcal with a $15\%$ cut computes to $1{,}190$ kcal, below the $1{,}200$ floor. This is arithmetic, not a bug: there is simply less room to cut. The lever is raising expenditure through activity rather than cutting intake further. First, though, check that your **Activity Level** is accurate — an understated activity level lowers your estimated expenditure and makes the floor bind sooner than it should.
+> If you are small-bodied, the Standard floor can bind before you reach your chosen deficit — for example, a measured TDEE of $1{,}400$ kcal with a $15\%$ cut computes to $1{,}190$ kcal, below the $1{,}200$ floor. If that recommendation does not fit a target you have agreed with a qualified clinician, choose a **Custom minimum** or **Disabled**. First check that your **Activity Level** and profile data are accurate, because they affect the estimate. Very low calorie targets can carry health risks and may require medical supervision.
 
 ---
 
