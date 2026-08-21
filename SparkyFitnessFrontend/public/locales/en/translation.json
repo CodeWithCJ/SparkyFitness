@@ -249,7 +249,7 @@
     },
     "scheduleDesc": {
       "atTime": " at {{time}}",
-      "mealSuffix": " ({{meal}})",
+      "mealRelationSuffix": " ({{meal}})",
       "daily": "Daily",
       "weeklyOn": "Weekly on {{days}}",
       "everyNDays": "Every {{n}} days",

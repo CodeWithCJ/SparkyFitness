@@ -4,6 +4,7 @@ import {
   MACRO_PICKER_FIELDS,
   getMicronutrientById,
   normalizeNutrientName,
+  type MedicationWithMeal,
 } from '@workspace/shared';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import type { MedicationNutrients } from '@/types/medications';
@@ -256,6 +257,22 @@ export const formatDaysOfWeek = (days: number[] | null) => {
   return days.map((d) => names[d] ?? '').join(', ');
 };
 
+const translateMealRelation = (withMeal: MedicationWithMeal): string => {
+  switch (withMeal) {
+    case 'before':
+      return i18n.t('medications.mealRelation.before', 'Before meal');
+    case 'with':
+      return i18n.t('medications.mealRelation.with', 'With meal');
+    case 'after':
+      return i18n.t('medications.mealRelation.after', 'After meal');
+    case 'away_from_meals':
+      return i18n.t(
+        'medications.mealRelation.awayFromMeals',
+        'Away from meals'
+      );
+  }
+};
+
 export const formatScheduleDescription = (
   sched: MedicationSchedule,
   timeFormat: string
@@ -266,11 +283,8 @@ export const formatScheduleDescription = (
       })
     : '';
   const mealStr = sched.with_meal
-    ? i18n.t('medications.scheduleDesc.mealSuffix', ' ({{meal}})', {
-        meal:
-          sched.with_meal === 'away_from_meals'
-            ? 'away from meals'
-            : `${sched.with_meal} meal`,
+    ? i18n.t('medications.scheduleDesc.mealRelationSuffix', ' ({{meal}})', {
+        meal: translateMealRelation(sched.with_meal),
       })
     : '';
 
