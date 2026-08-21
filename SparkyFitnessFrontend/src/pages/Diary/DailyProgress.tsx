@@ -46,6 +46,7 @@ import {
   computeCalorieTarget,
   calculateBmr,
   computeExerciseCredited,
+  normalizeCalorieGoalAdjustmentMode,
 } from '@workspace/shared';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
@@ -55,7 +56,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const navigate = useNavigate();
   const {
     loggingLevel,
-    calorieGoalAdjustmentMode,
+    calorieGoalAdjustmentMode: storedCalorieGoalAdjustmentMode,
     energyUnit,
     convertEnergy,
     weightUnit,
@@ -67,6 +68,13 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     activityLevel,
     timezone,
   } = usePreferences();
+
+  // `smart` computes identically to `tdee` server-side and arrives with a populated
+  // `tdeeProjection`, but it has no UI of its own — so the untranslated value fell
+  // through the `=== 'tdee'` check below and hid the Daily Burn panel entirely.
+  const calorieGoalAdjustmentMode = normalizeCalorieGoalAdjustmentMode(
+    storedCalorieGoalAdjustmentMode
+  );
 
   const { user } = useAuth();
   const { data: userProfile } = useProfileQuery(user?.id);

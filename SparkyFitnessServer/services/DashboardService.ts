@@ -38,12 +38,16 @@ async function getDashboardStats(
       checkInMeasurements,
       latestWeightHeight,
     ] = await Promise.all([
-      // NOTE: `adjust` is deliberately tied to `includeCheckin`. An adjusted goal is
-      // derived from check-in measurements, so an actor without `checkin` permission
-      // gets the raw goal. `dailySummaryService` passes `true` unconditionally; that
-      // inconsistency predates this refactor and is left alone rather than changed
-      // silently inside a calculation fix.
-      goalService.getUserGoals(userId, date, undefined, includeCheckin),
+      // `adjust` is unconditionally true, matching `dailySummaryService` and
+      // `dailySummaryRangeService`. It used to be tied to `includeCheckin`, which made
+      // this endpoint the only one of the three to report an unadjusted goal for a
+      // family viewer holding `diary` but not `checkin` — the same class of
+      // surface-by-surface divergence as #2094, just one surface further out.
+      //
+      // Gating it bought no privacy either: `adjust` derives the goal from the target's
+      // own measurements, and that same actor can already read the adjusted number from
+      // GET /daily-summary and GET /daily-summary/range, both of which pass true.
+      goalService.getUserGoals(userId, date, undefined, true),
       reportRepository.getNutritionData(userId, date, date, []),
       // Replaces a forEach over `reportRepository.getExerciseEntries`, whose SELECT omits
       // `steps` — so the old `activitySteps` was always 0 and every step a logged workout

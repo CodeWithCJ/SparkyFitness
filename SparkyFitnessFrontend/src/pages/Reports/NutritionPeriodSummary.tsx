@@ -156,9 +156,11 @@ const NutritionPeriodSummary = ({
       : effectiveNutritionData;
   }, [effectiveNutritionData, config.excludeIncompleteDay]);
 
+  // `dayEaten` is this component's own unrounded total, so `dayEaten - budget` resolves
+  // to exactly `-remaining` and the cumulative series carries no rounding residue.
   const effectiveCalorieGoal = useCallback(
-    (date: string): number | undefined =>
-      calorieBudgetFor(calorieBalanceByDate?.[date]),
+    (date: string, dayEaten: number): number | undefined =>
+      calorieBudgetFor(calorieBalanceByDate?.[date], dayEaten),
     [calorieBalanceByDate]
   );
 
@@ -196,7 +198,7 @@ const NutritionPeriodSummary = ({
             // keeps its plain stored goal.
             const effectiveDayGoal =
               nutKey === 'calories'
-                ? (effectiveCalorieGoal(point.date) ?? dayGoal)
+                ? (effectiveCalorieGoal(point.date, dayEaten) ?? dayGoal)
                 : dayGoal;
 
             // Allow goal to be 0 (e.g. 0g sugar target)
@@ -246,6 +248,25 @@ const NutritionPeriodSummary = ({
     ]);
 
   const averageVariance = validDaysCount > 0 ? netBalance / validDaysCount : 0;
+
+  /**
+   * Length of the report window, taken from the balance map.
+   *
+   * `/daily-summary/range` emits a row for every calendar day it was asked for, whereas
+   * `nutritionData` only carries days that have entries. The difference is the number of
+   * untracked days, and it is worth naming: these totals are sums over *logged* days, so
+   * a reader reconciling them against the Diary by hand — which is how #2094 was
+   * reported — would otherwise be adding days this card never counted.
+   */
+  const windowDayCount = useMemo(
+    () =>
+      calorieBalanceByDate
+        ? Object.keys(calorieBalanceByDate).length
+        : undefined,
+    [calorieBalanceByDate]
+  );
+  const hasUntrackedDays =
+    windowDayCount !== undefined && windowDayCount > validDaysCount;
 
   const getDisplayValue = (val: number) => {
     if (primaryNutrient === 'calories') {
@@ -299,7 +320,7 @@ const NutritionPeriodSummary = ({
         newPoint[nutKey] = dayEaten;
         const effectiveDayGoal =
           nutKey === 'calories'
-            ? (effectiveCalorieGoal(point.date) ?? dayGoal)
+            ? (effectiveCalorieGoal(point.date, dayEaten) ?? dayGoal)
             : dayGoal;
         if (effectiveDayGoal !== undefined) {
           newPoint[`${nutKey}_goal`] = effectiveDayGoal;
@@ -389,6 +410,17 @@ const NutritionPeriodSummary = ({
               <p className="text-xs text-muted-foreground">
                 {t('reports.totalGoal', 'Total Goal')}: {displayTotalGoal}{' '}
                 {unitStr}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {hasUntrackedDays
+                  ? t(
+                      'reports.daysCountedPartial',
+                      'Counted {{counted}} of {{total}} days — days with nothing logged are excluded',
+                      { counted: validDaysCount, total: windowDayCount }
+                    )
+                  : t('reports.daysCounted', 'Counted {{counted}} days', {
+                      counted: validDaysCount,
+                    })}
               </p>
             </CardContent>
           </Card>

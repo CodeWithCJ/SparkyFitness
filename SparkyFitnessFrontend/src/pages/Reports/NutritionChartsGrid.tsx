@@ -97,9 +97,12 @@ const NutritionChartsGrid = ({
       result = result.map((point) => {
         const goalValue =
           chartKey === 'calories'
-            ? // Same identity NutritionPeriodSummary uses, so both charts agree.
-              (effectiveCalorieGoal(calorieBalanceByDate?.[point.date]) ??
-              storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals])
+            ? // Same identity, and the same unrounded `eaten`, as
+              // NutritionPeriodSummary — so both charts draw one goal line.
+              (effectiveCalorieGoal(
+                calorieBalanceByDate?.[point.date],
+                point.calories
+              ) ?? storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals])
             : storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals];
         return goalValue !== undefined
           ? { ...point, [`${chartKey}_goal`]: goalValue }

@@ -1125,9 +1125,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         const savedDateFormat = localStorage.getItem('dateFormat');
         const savedTimeFormat = localStorage.getItem('timeFormat');
         const savedLanguage = localStorage.getItem('language');
+        // The shared union, not another hand-maintained copy: the inline one here also
+        // omitted `'smart'`, so a stored `smart` was typed as impossible while flowing
+        // through at runtime — the same gap that hid the Diary's TDEE panel.
         const savedCalorieGoalAdjustmentMode = localStorage.getItem(
           'calorieGoalAdjustmentMode'
-        ) as 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive';
+        ) as CalorieGoalAdjustmentMode;
         const savedEnergyUnit = localStorage.getItem(
           'energyUnit'
         ) as EnergyUnit;

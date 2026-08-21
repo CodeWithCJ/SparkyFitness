@@ -3248,6 +3248,8 @@
     "customMeasurementChartTitle": "{{categoryName}} ({{measurementType}})",
     "dailyAverages": "Daily Averages",
     "dailySteps": "Daily Steps",
+    "daysCounted": "Counted {{counted}} days",
+    "daysCountedPartial": "Counted {{counted}} of {{total}} days — days with nothing logged are excluded",
     "exerciseVarietyScore": "Exercise Variety Score",
     "failedToLoadCalorieBalance": "Failed to load calorie balance data.",
     "failedToLoadCoreData": "Failed to load core reports data.",

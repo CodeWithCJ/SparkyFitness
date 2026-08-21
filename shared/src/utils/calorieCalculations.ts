@@ -12,6 +12,25 @@ export type CalorieGoalAdjustmentMode =
   | "smart"
   | "adaptive";
 
+/**
+ * Collapses `smart` onto `tdee` for anything that branches on the mode.
+ *
+ * `smart` is not a separate calculation: `computeCaloriesRemaining` and
+ * `computeCalorieBalance` both branch `tdee`/`smart` together, and nothing else in the
+ * codebase tells them apart. It also has no UI of its own, so every `=== "tdee"` check
+ * silently excluded it and fell through to the *fixed*-mode branch -- which on the Diary
+ * meant hiding the TDEE projection the server had already computed and sent.
+ *
+ * Presentation-only. This never changes what is persisted, so a stored `smart` stays
+ * `smart` and keeps behaving as the server intends.
+ */
+export function normalizeCalorieGoalAdjustmentMode(
+  mode: CalorieGoalAdjustmentMode | string | null | undefined,
+): CalorieGoalAdjustmentMode {
+  if (!mode) return "dynamic";
+  return mode === "smart" ? "tdee" : (mode as CalorieGoalAdjustmentMode);
+}
+
 export type ExerciseCalorieSource = "logged" | "active" | "steps" | "none";
 
 export interface ResolvedExerciseCalories {

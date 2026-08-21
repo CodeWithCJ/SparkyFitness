@@ -100,7 +100,7 @@ beforeEach(() => {
 });
 
 describe('getDashboardStats includeCheckin gate', () => {
-  test('includeCheckin=true reads measurements, steps, and passes adjust=true to goalService', async () => {
+  test('includeCheckin=true reads measurements and steps', async () => {
     await getDashboardStats('user1', '2026-06-13', true);
 
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
@@ -117,14 +117,16 @@ describe('getDashboardStats includeCheckin gate', () => {
     ).toHaveBeenCalledWith('user1', '2026-06-13');
   });
 
-  test('includeCheckin=false skips measurements, steps, and passes adjust=false to goalService', async () => {
+  // `adjust` stays true even here: /daily-summary and /daily-summary/range both pass
+  // true for the same actor, so gating it only made this endpoint disagree with them.
+  test('includeCheckin=false skips measurements and steps but still requests an adjusted goal', async () => {
     await getDashboardStats('user1', '2026-06-13', false);
 
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user1',
       '2026-06-13',
       undefined,
-      false
+      true
     );
     expect(
       measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate

@@ -67,6 +67,7 @@ import {
   calculateBmr,
   calculateAge,
   CalorieGoalAdjustmentMode,
+  normalizeCalorieGoalAdjustmentMode,
 } from '@workspace/shared';
 
 /**
@@ -89,10 +90,7 @@ const isCalorieGoalAdjustmentMode = (
 ): value is CalorieGoalAdjustmentMode =>
   (SELECTABLE_MODES as readonly string[]).includes(value);
 
-const toSelectableMode = (
-  mode: CalorieGoalAdjustmentMode | undefined
-): CalorieGoalAdjustmentMode =>
-  !mode ? 'dynamic' : mode === 'smart' ? 'tdee' : mode;
+const toSelectableMode = normalizeCalorieGoalAdjustmentMode;
 
 const CalculationSettings = () => {
   const { t } = useTranslation();

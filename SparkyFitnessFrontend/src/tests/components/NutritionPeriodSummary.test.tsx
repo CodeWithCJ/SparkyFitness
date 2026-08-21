@@ -24,14 +24,35 @@ jest.mock('@/i18n', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, defaultValueOrOpts?: string | Record<string, unknown>) => {
-      if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;
+    // Interpolates `{{var}}` from the options object, as i18next does, so assertions can
+    // read the rendered sentence rather than the raw template.
+    t: (
+      key: string,
+      defaultValueOrOpts?: string | Record<string, unknown>,
+      opts?: Record<string, unknown>
+    ) => {
+      const interpolate = (
+        template: string,
+        values?: Record<string, unknown>
+      ) =>
+        values
+          ? template.replace(/\{\{(\w+)\}\}/g, (match, name) =>
+              name in values ? String(values[name]) : match
+            )
+          : template;
+
+      if (typeof defaultValueOrOpts === 'string') {
+        return interpolate(defaultValueOrOpts, opts);
+      }
       if (
         defaultValueOrOpts &&
         typeof defaultValueOrOpts === 'object' &&
         'defaultValue' in defaultValueOrOpts
       ) {
-        return defaultValueOrOpts['defaultValue'] as string;
+        return interpolate(
+          defaultValueOrOpts['defaultValue'] as string,
+          defaultValueOrOpts
+        );
       }
       return key;
     },
@@ -385,5 +406,90 @@ describe('NutritionPeriodSummary', () => {
     expect(screen.getByText(/Total Eaten: 18320 kcal/i)).toBeInTheDocument();
     expect(screen.getByText(/Total Goal: 19724 kcal/i)).toBeInTheDocument();
     expect(screen.getByText('-1404 kcal')).toBeInTheDocument();
+  });
+
+  /**
+   * The server rounds `eaten` and `remaining` to whole kcal; `nutritionData` carries the
+   * unrounded total from the same query. Deriving the budget from the row's rounded
+   * `eaten` therefore left up to 0.5 kcal of residue per day, which the cumulative series
+   * accumulated -- roughly 90 kcal across a year, in the one chart whose job is agreeing
+   * with the Diary. Passing the caller's own unrounded figure makes `eaten - budget`
+   * resolve to exactly `-remaining`.
+   */
+  it('reports the exact negation of the summed remaining, without rounding residue', () => {
+    const dates = [
+      '2026-08-01',
+      '2026-08-02',
+      '2026-08-03',
+      '2026-08-04',
+      '2026-08-05',
+    ];
+
+    render(
+      <NutritionPeriodSummary
+        nutritionData={dates.map((date) => day(date, 2000.49))}
+        customNutrients={[]}
+        goals={Object.fromEntries(dates.map((date) => [date, goalFor(1800)]))}
+        calorieBalanceByDate={byDate(
+          // `eaten: 2000` is the rounded figure the server actually sends, so
+          // `remaining` here is the whole -200 the Diary displays for each day.
+          dates.map((date) => balance({ date, eaten: 2000, goal: 1800 }))
+        )}
+      />
+    );
+
+    // Five days at -200 remaining each. The Diary total is -1000, so Reports must show
+    // +1000 -- not the +1002 that accumulating five 0.49 kcal residues produces.
+    expect(screen.getByText('+1000 kcal')).toBeInTheDocument();
+    expect(screen.queryByText('+1002 kcal')).not.toBeInTheDocument();
+    expect(screen.getByText(/Total Goal: 9002 kcal/i)).toBeInTheDocument();
+  });
+
+  /**
+   * These totals sum only days that have entries, but the balance map spans every
+   * calendar day requested. Naming the gap matters because #2094 was reported by someone
+   * reconciling this card against the Diary by hand.
+   */
+  it('names how many days the totals cover when the window has untracked days', () => {
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[day('2026-08-01', 2000), day('2026-08-03', 2000)]}
+        customNutrients={[]}
+        goals={{
+          '2026-08-01': goalFor(1800),
+          '2026-08-03': goalFor(1800),
+        }}
+        calorieBalanceByDate={byDate([
+          balance({ date: '2026-08-01', eaten: 2000, goal: 1800 }),
+          balance({ date: '2026-08-02', eaten: 0, goal: 1800 }),
+          balance({ date: '2026-08-03', eaten: 2000, goal: 1800 }),
+        ])}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        /Counted 2 of 3 days . days with nothing logged are excluded/i
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('states the day count plainly when every day in the window was logged', () => {
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[day('2026-08-01', 2000), day('2026-08-02', 2000)]}
+        customNutrients={[]}
+        goals={{
+          '2026-08-01': goalFor(1800),
+          '2026-08-02': goalFor(1800),
+        }}
+        calorieBalanceByDate={byDate([
+          balance({ date: '2026-08-01', eaten: 2000, goal: 1800 }),
+          balance({ date: '2026-08-02', eaten: 2000, goal: 1800 }),
+        ])}
+      />
+    );
+
+    expect(screen.getByText('Counted 2 days')).toBeInTheDocument();
   });
 });
