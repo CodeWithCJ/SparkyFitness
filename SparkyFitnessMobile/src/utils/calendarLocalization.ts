@@ -1,5 +1,4 @@
-import { useTranslation } from 'react-i18next';
-import { getAppLocale } from '../localization';
+import { useAppLocale } from '../localization';
 import { usePreferences } from '../hooks/usePreferences';
 
 /**
@@ -83,21 +82,22 @@ export function resolveCalendarPresentation(
 }
 
 /**
- * Reactive hook used by calendar UIs. Reads the current app language (so the
- * calendar re-localizes when the language changes) and the canonical account
- * first-day-of-week preference.
+ * Calendar presentation derives from exactly one reactive app-locale snapshot
+ * plus the account-owned first-day-of-week preference. This lets retained
+ * bottom-sheet content re-render directly from i18n.languageChanged without
+ * resetting the selected or visible month.
  */
 export function useCalendarPresentation(): {
+  appLocale: 'pl-PL' | 'en-US';
   presentation: CalendarPresentation;
   isLoadingPreferences: boolean;
 } {
-  // Subscribes this component to app-language changes so getAppLocale() (which
-  // reads i18n.resolvedLanguage) stays reactive. Callers re-render on changes.
-  useTranslation();
+  const appLocale = useAppLocale();
   const { preferences, isLoading } = usePreferences();
   return {
+    appLocale,
     presentation: resolveCalendarPresentation(
-      getAppLocale(),
+      appLocale,
       preferences?.first_day_of_week,
     ),
     isLoadingPreferences: isLoading,

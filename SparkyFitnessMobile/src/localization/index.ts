@@ -7,6 +7,7 @@ export {
   SUPPORTED_LANGUAGES,
   formatLocalizedNumber,
   getAppLocale,
+  useAppLocale,
   getDeviceLanguage,
   getNativeIOSLanguage,
   initializeI18n,

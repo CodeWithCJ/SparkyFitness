@@ -12,7 +12,6 @@ import {
   getCalendarWeekdayShortNames,
   getCalendarMonthNames,
 } from '../utils/calendarLocalization';
-import { getAppLocale } from '../localization';
 
 export interface CalendarSheetRef {
   present: () => void;
@@ -27,7 +26,7 @@ interface CalendarSheetProps {
 const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
   ({ selectedDate, onSelectDate }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const { presentation } = useCalendarPresentation();
+    const { appLocale, presentation } = useCalendarPresentation();
     const { t } = useTranslation();
 
     const [
@@ -44,12 +43,9 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
       '--color-text-secondary',
     ]) as [string, string, string, string, string];
 
-    // Deterministic, app-locale driven names for the weekday/month labels.
-    // These are rebuilt on every render from the reactive getAppLocale() (the
-    // hook above subscribes this component to app-language changes), so the
-    // grid re-localizes immediately on a runtime language switch regardless of
-    // react-native-ui-datepicker's internal dayjs locale handling.
-    const appLocale = getAppLocale();
+    // Deterministic app-locale names for visible calendar labels. `appLocale`
+    // is a direct i18n external-store snapshot, so retained bottom-sheet
+    // content re-renders on languageChanged rather than waiting for remount.
     const weekdayLabels = useMemo(() => getCalendarWeekdayShortNames(appLocale), [appLocale]);
     const monthLabels = useMemo(() => getCalendarMonthNames(appLocale), [appLocale]);
 
@@ -137,10 +133,10 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
             </Pressable>
           </View>
 
-          {/* The datepicker caches its locale internally (dayjs global locale +
-              memoized labels). Keying by locale + firstDayOfWeek forces only this
-              picker instance to remount on a runtime language / week-start change
-              so weekday labels re-localize immediately. */}
+          {/* Datepicker locale/key support its internally cached grid. The custom
+              caption and weekday/month labels above independently derive from
+              the reactive appLocale snapshot, which guarantees live language
+              updates for the retained sheet. */}
           <DateTimePicker
             mode="single"
             date={selectedDateValue}

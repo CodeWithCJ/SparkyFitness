@@ -17,7 +17,7 @@ import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import { dateTypeToDate } from './TimeSheet';
 import Toast from 'react-native-toast-message';
-import { getAppLocale } from '../localization';
+import { useAppLocale } from '../localization';
 
 import Button from './ui/Button';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
@@ -61,6 +61,7 @@ function getPresetCopy(t: (key: string, options?: Record<string, unknown>) => st
 
 const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) => {
   const { t } = useTranslation();
+  const appLocale = useAppLocale();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] = useCSSVariable([
@@ -124,12 +125,12 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>((_props, ref) =
 
   const startLabel = useMemo(
     () =>
-      startDate.toLocaleString(getAppLocale(), {
+      startDate.toLocaleString(appLocale, {
         weekday: 'short',
         hour: 'numeric',
         minute: '2-digit',
       }),
-    [startDate],
+    [appLocale, startDate],
   );
 
   const handleStart = () => {

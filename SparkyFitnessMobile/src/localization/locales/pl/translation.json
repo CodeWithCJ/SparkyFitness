@@ -1630,19 +1630,19 @@
     },
     "presets": {
       "leangains": {
-        "name": "Post Leangains",
-        "description": "Pomiń śniadanie i jedz w ciągu 8-godzinnego okna."
+        "name": "Post 16:8 (Leangains)",
+        "description": "Pomiń śniadanie i jedz w 8-godzinnym oknie żywieniowym."
       },
       "warrior18": {
-        "name": "18:6 dieta wojownika",
-        "description": "Bardziej wymagający post z 6-godzinnym oknem jedzenia."
+        "name": "Post 18:6 (Warrior)",
+        "description": "Bardziej wymagający wariant postu z 6-godzinnym oknem żywieniowym."
       },
       "warrior20": {
-        "name": "20:4 dieta wojownika",
-        "description": "Zjedz jeden większy posiłek lub rozłóż kalorie na 4 godziny."
+        "name": "Post 20:4 (Warrior)",
+        "description": "Zjedz jeden większy posiłek lub rozłóż kalorie w 4-godzinnym oknie żywieniowym."
       },
       "circadian": {
-        "name": "Rytm dobowy",
+        "name": "Post zgodny z rytmem dobowym",
         "description": "Pość od zachodu słońca do rana."
       },
       "custom": {
