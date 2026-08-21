@@ -239,6 +239,48 @@ describe('external exercise import dedup', () => {
       );
     });
 
+    it('sanitizes the upload directory derived from the upstream path', async () => {
+      // downloadImage path.join()s this value into the uploads dir unchecked,
+      // so a `..` first segment would escape /uploads/exercises.
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      exerciseDb.getExerciseBySourceAndSourceId.mockResolvedValueOnce(
+        undefined
+      );
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      freeExerciseDBService.getExerciseById.mockResolvedValueOnce({
+        id: 'evil',
+        name: 'Evil',
+        primaryMuscles: [],
+        secondaryMuscles: [],
+        instructions: ['x'],
+        category: 'strength',
+        images: ['../../../etc/0.jpg', '3_4_Sit-Up/0.jpg'],
+      });
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      freeExerciseDBService.getExerciseImageUrl.mockImplementation(
+        (imagePath: string) => `https://cdn.example.com/${imagePath}`
+      );
+      vi.mocked(downloadImage).mockResolvedValue('/uploads/exercises/x/0.jpg');
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      calorieCalculationService.estimateCaloriesBurnedPerHour.mockResolvedValueOnce(
+        1
+      );
+      // @ts-expect-error TS(2339): mock method not on typed function.
+      exerciseDb.createExercise.mockResolvedValueOnce({ id: 'created-uuid' });
+
+      await exerciseService.addFreeExerciseDBExerciseToUserExercises(
+        userId,
+        'evil'
+      );
+
+      const dirs = vi.mocked(downloadImage).mock.calls.map((call) => call[1]);
+      expect(dirs).not.toContain('..');
+      expect(dirs[0]).toBe('__');
+      // A legitimate id keeps its underscores and hyphens, so the
+      // re-download-on-miss route can still resolve it upstream.
+      expect(dirs[1]).toBe('3_4_Sit-Up');
+    });
+
     it('skips an image whose download fails instead of failing the import', async () => {
       // @ts-expect-error TS(2339): mock method not on typed function.
       exerciseDb.getExerciseBySourceAndSourceId.mockResolvedValueOnce(

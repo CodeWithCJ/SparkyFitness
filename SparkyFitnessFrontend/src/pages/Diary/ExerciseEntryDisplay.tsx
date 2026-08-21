@@ -126,8 +126,14 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
   // old branch prefixed sourced entries that were already server-rooted and
   // left bare relative paths from source-less entries unprefixed.
   const snapshotImage = filterValidExerciseImages(snapshot?.images)[0];
-  const imageUrl = exerciseEntry.image_url
-    ? exerciseEntry.image_url
+  // Trimmed rather than passed through resolveExerciseImageSrc: image_url is a
+  // user-set column that already holds a complete src, so resolving it would
+  // prefix a relative value that previously rendered as-is. Trimming only stops
+  // a whitespace-only value from counting as present and suppressing the
+  // snapshot fallback.
+  const entryImageUrl = exerciseEntry.image_url?.trim();
+  const imageUrl = entryImageUrl
+    ? entryImageUrl
     : resolveExerciseImageSrc(snapshotImage) || null;
 
   const metaPills: string[] = [];
