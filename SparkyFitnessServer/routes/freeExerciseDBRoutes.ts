@@ -46,7 +46,9 @@ const router = express.Router();
 router.post('/add', authenticate, async (req, res, next) => {
   try {
     const { exerciseId } = req.body;
-    if (!exerciseId) {
+    // Checked for type, not just presence: the service now declares a string,
+    // and a JSON body can carry an object or array through a falsiness check.
+    if (typeof exerciseId !== 'string' || exerciseId.trim() === '') {
       return res.status(400).json({ message: 'Exercise ID is required.' });
     }
 

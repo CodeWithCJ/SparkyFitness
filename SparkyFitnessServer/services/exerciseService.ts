@@ -1326,10 +1326,8 @@ async function addNutritionixExerciseToUserExercises(
   }
 }
 async function addFreeExerciseDBExerciseToUserExercises(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  freeExerciseDBId: any
+  authenticatedUserId: string,
+  freeExerciseDBId: string
 ) {
   const { default: freeExerciseDBService } =
     await import('../integrations/freeexercisedb/FreeExerciseDBService.js');
