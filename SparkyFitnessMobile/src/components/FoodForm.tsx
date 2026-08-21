@@ -1105,7 +1105,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           {showMoreNutrients && (
             <>
               <View className="flex-row gap-3">
-                {renderNumericField(t('nutrients.saturatedFatShort', { defaultValue: 'Saturated Fat' } ), 'saturatedFat', 'g', false, 'transFat')}
+                {renderNumericField(t('nutrients.saturatedFatShort', { defaultValue: "Sat. Fat" } ), 'saturatedFat', 'g', false, 'transFat')}
                 {renderNumericField(t('nutrients.transFat', { defaultValue: 'Trans Fat' } ), 'transFat', 'g', false, 'cholesterol')}
               </View>
               <View className="flex-row gap-3">

@@ -18,7 +18,8 @@ import {
 } from '../../utils/cycleLocalization';
 
 const CycleInsightsView: React.FC = () => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [accentColor, dangerColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-danger',
@@ -119,7 +120,7 @@ const CycleInsightsView: React.FC = () => {
                     {index === 0 ? t('cycleInsights.upcomingCycle', { defaultValue: 'Upcoming Cycle' }) : t('cycleInsights.followingCycle', { defaultValue: 'Following Cycle' })}
                   </Text>
                   <Text className="text-text-secondary text-sm font-medium">
-                    {formatShortDate(c.periodStart)} – {formatShortDate(c.periodEnd)}
+                    {formatShortDate(c.periodStart, dateLocale)} – {formatShortDate(c.periodEnd, dateLocale)}
                   </Text>
                 </View>
 
@@ -134,7 +135,7 @@ const CycleInsightsView: React.FC = () => {
                         {t('cycleInsights.nextPeriod', { defaultValue: 'Next Period' })}
                       </Text>
                       <Text className="text-text-primary text-sm font-bold mt-0.5">
-                        {formatShortDate(c.periodStart)}
+                        {formatShortDate(c.periodStart, dateLocale)}
                       </Text>
                     </View>
                   </View>
@@ -150,7 +151,7 @@ const CycleInsightsView: React.FC = () => {
                           {t('cycleInsights.estimatedOvulation', { defaultValue: 'Est. Ovulation' })}
                         </Text>
                         <Text className="text-text-primary text-sm font-bold mt-0.5">
-                          {formatShortDate(c.ovulation)}
+                          {formatShortDate(c.ovulation, dateLocale)}
                         </Text>
                       </View>
                     </View>
@@ -200,7 +201,7 @@ const CycleInsightsView: React.FC = () => {
           <View className="gap-2">
             {forecastEntries.map((f) => (
               <View key={f.date} className="flex-row justify-between items-start py-1 gap-3">
-                <Text className="text-text-secondary text-sm font-semibold">{formatDate(f.date)}</Text>
+                <Text className="text-text-secondary text-sm font-semibold">{formatDate(f.date, dateLocale)}</Text>
                 <Text className="flex-1 text-right text-text-primary text-sm capitalize">
                   {f.symptoms.map((s) => localizeCycleSymptom(s, t)).join(', ')}
                 </Text>

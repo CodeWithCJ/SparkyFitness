@@ -1112,7 +1112,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const fatGoalPct = goalPercent(scaled(displayValues.fat), goals?.fat);
 
   const mealPickerOptions = mealTypes.map((mealType) => ({
-    label: getMealTypeDisplayLabel(mealType),
+    label: getMealTypeDisplayLabel(mealType, t),
     value: mealType.id,
   }));
 
@@ -1360,7 +1360,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           <View className="flex-row items-center mt-2">
             <Text className="text-text-secondary text-sm">
               {servings % 1 === 0 ? servings : servings.toFixed(1)}{' '}
-              {t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: servings })}
+              {t('foodEntryAdd.labels.serving', { defaultValue: 'servings', defaultValue_one: 'serving', defaultValue_other: 'servings', count: servings })}
             </Text>
             {/* Suppress the redundant "X serving per serving" suffix when the
                 unit is already 'serving' \u2014 that would just say e.g.
@@ -1420,7 +1420,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               item.source === 'meal' &&
               (item.mealTotalServings ?? 1) > 1 && (
                 <Text className="text-text-secondary text-sm">
-                  {' \u00b7 '}{t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} serving', count: item.mealTotalServings })}
+                  {' \u00b7 '}{t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} servings', defaultValue_one: 'meal makes {{count}} serving', defaultValue_other: 'meal makes {{count}} servings', count: item.mealTotalServings })}
                 </Text>
               )}
           </View>
@@ -1503,7 +1503,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                       className="flex-row items-center"
                     >
                       <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {getMealTypeDisplayLabel(selectedMealType)}
+                        {getMealTypeDisplayLabel(selectedMealType, t)}
                       </Text>
                       <Icon
                         name="chevron-down"

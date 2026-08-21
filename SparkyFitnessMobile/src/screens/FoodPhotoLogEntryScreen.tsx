@@ -59,7 +59,8 @@ function saveFoodPayloadToDisplayValues(p: SaveFoodPayload): FoodDisplayValues {
 type Props = FoodPhotoFlowScreenProps<'LogEntry'>;
 
 const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const { backColor } = useHeaderActionColors();
@@ -142,14 +143,14 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const mealPickerOptions = useMemo(
     () =>
       mealTypes.map((mt) => ({
-        label: getMealTypeDisplayLabel(mt),
+        label: getMealTypeDisplayLabel(mt, t),
         value: mt.id,
       })),
-    [mealTypes],
+    [mealTypes, t],
   );
   const selectedMealLabel = useMemo(() => {
     const found = mealTypes.find((mt) => mt.id === selectedMealTypeId);
-    return found ? getMealTypeDisplayLabel(found) : t('foodPhotoLogEntry.selectMeal', { defaultValue: 'Select Meal' });
+    return found ? getMealTypeDisplayLabel(found, t) : t('foodPhotoLogEntry.selectMeal', { defaultValue: 'Select Meal' });
   }, [mealTypes, selectedMealTypeId, t]);
 
   const handleSave = async () => {
@@ -263,7 +264,7 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
             className="flex-row items-center"
           >
             <Text className="text-text-primary text-base font-medium">
-              {formatDateLabel(entryDate)}
+              {formatDateLabel(entryDate, t, dateLocale)}
             </Text>
             <Icon
               name="chevron-down"

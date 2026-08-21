@@ -568,7 +568,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       [
         { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
         {
-          text: t('activeWorkout.bar.clearWorkout', { defaultValue: 'Clear' }),
+          text: t('activeWorkout.bar.clearWorkout', { defaultValue: "Clear workout" }),
           style: 'destructive',
           onPress: () => {
             void flushAndClear();

@@ -130,7 +130,7 @@ const FastingHistorySheet = forwardRef<FastingHistorySheetRef>((_props, ref) => 
               Toast.show({
                 type: 'error',
                 text1: t('fastingHistory.failedDelete', { defaultValue: 'Failed to delete fast' }),
-                text2: t('common.retry', { defaultValue: 'Please try again.' }),
+                text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
               });
             },
           });

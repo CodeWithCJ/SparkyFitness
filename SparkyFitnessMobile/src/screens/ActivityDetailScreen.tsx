@@ -47,7 +47,8 @@ type Props = RootStackScreenProps<'ActivityDetail'>;
 type EditableField = 'name' | 'duration' | 'calories' | 'distance' | 'avgHeartRate' | 'notes';
 
 const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [session, setSession] = useState(route.params.session);
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
@@ -70,7 +71,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const canEditSource = canEditGroupedWorkout(session.source);
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
-  const { name, duration, calories } = getWorkoutSummary(session);
+  const { name, duration, calories } = getWorkoutSummary(session, t);
 
   const firstImage = session.exercise_snapshot?.images?.[0];
   const firstImageSource = firstImage ? getImageSource(firstImage) : null;
@@ -572,12 +573,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   activeOpacity={0.7}
                 >
                   <Text className="text-sm" style={{ color: accentPrimary }}>
-                    {formatDateLabel(formState.entryDate)}
+                    {formatDateLabel(formState.entryDate, t, dateLocale)}
                   </Text>
                   <Icon name="chevron-down" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
                 </TouchableOpacity>
               ) : entryDate ? (
-                <Text className="text-sm text-text-muted">{formatDate(entryDate)}</Text>
+                <Text className="text-sm text-text-muted">{formatDate(entryDate, dateLocale)}</Text>
               ) : null}
             </View>
           </View>

@@ -177,7 +177,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
               onValueChange={(val) =>
                 setValues((prev) => ({ ...prev, showInQuickLog: val }))
               }
-              accessibilityLabel={t('mealTypeForm.accessibility.quickLog', { defaultValue: 'Quick log {{name}}', name: displayName || values.name || t('mealTypeForm.name', { defaultValue: 'meal type' }) })}
+              accessibilityLabel={t('mealTypeForm.accessibility.quickLog', { defaultValue: 'Quick log {{name}}', name: displayName || values.name || t('mealTypeForm.name', { defaultValue: "Name" }) })}
             />
           </View>
 
@@ -210,7 +210,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
               }}
               className="flex-row items-center justify-between rounded-lg border border-border-subtle bg-background px-3 py-3 mb-4"
               accessibilityRole="button"
-              accessibilityLabel={t('mealTypeForm.accessibility.defaultTime', { defaultValue: 'Default time for {{name}}{{time}}', name: displayName || values.name, time: hasDefaultTime ? `, ${values.defaultTime}` : `, ${t('mealTypeForm.notSet', { defaultValue: 'not set' })}` })}
+              accessibilityLabel={t('mealTypeForm.accessibility.defaultTime', { defaultValue: 'Default time for {{name}}{{time}}', name: displayName || values.name, time: hasDefaultTime ? `, ${values.defaultTime}` : `, ${t('mealTypeForm.notSet', { defaultValue: "Not set" })}` })}
               testID="edit-default-time-row"
             >
               <Text className="text-base text-text-primary">

@@ -13,6 +13,9 @@ import {
 import type { DailyGoals } from '../../src/types/goals';
 import type { FoodEntry } from '../../src/types/foodEntries';
 import type { MealType } from '../../src/types/mealTypes';
+import i18n from '../../src/localization/i18n';
+
+const t = i18n.t;
 
 const systemMealTypes: MealType[] = [
   { id: 'sys-b', name: 'breakfast', sort_order: 0, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
@@ -100,30 +103,30 @@ describe('groupFoodEntriesByMealType', () => {
 
 describe('getMealTypeDisplayLabel', () => {
   it('renders system meal types by ownership with canonical English labels', () => {
-    expect(getMealTypeDisplayLabel({ name: 'breakfast', user_id: null })).toBe('Breakfast');
-    expect(getMealTypeDisplayLabel({ name: 'LUNCH', user_id: null })).toBe('Lunch');
-    expect(getMealTypeDisplayLabel({ name: 'snacks', user_id: null })).toBe('Snacks');
-    expect(getMealTypeDisplayLabel({ name: 'other', user_id: null })).toBe('Other');
+    expect(getMealTypeDisplayLabel({ name: 'breakfast', user_id: null }, t)).toBe('Breakfast');
+    expect(getMealTypeDisplayLabel({ name: 'LUNCH', user_id: null }, t)).toBe('Lunch');
+    expect(getMealTypeDisplayLabel({ name: 'snacks', user_id: null }, t)).toBe('Snacks');
+    expect(getMealTypeDisplayLabel({ name: 'other', user_id: null }, t)).toBe('Other');
   });
 
   it('keeps a CUSTOM type named breakfast literal', () => {
-    expect(getMealTypeDisplayLabel({ name: 'breakfast', user_id: 'user-1' })).toBe('breakfast');
+    expect(getMealTypeDisplayLabel({ name: 'breakfast', user_id: 'user-1' }, t)).toBe('breakfast');
   });
 
   it('keeps custom types named lunch/dinner/snack/other literal', () => {
-    expect(getMealTypeDisplayLabel({ name: 'Lunch', user_id: 'user-1' })).toBe('Lunch');
-    expect(getMealTypeDisplayLabel({ name: 'DINNER', user_id: 'user-1' })).toBe('DINNER');
-    expect(getMealTypeDisplayLabel({ name: 'snack', user_id: 'user-1' })).toBe('snack');
-    expect(getMealTypeDisplayLabel({ name: 'other', user_id: 'user-1' })).toBe('other');
+    expect(getMealTypeDisplayLabel({ name: 'Lunch', user_id: 'user-1' }, t)).toBe('Lunch');
+    expect(getMealTypeDisplayLabel({ name: 'DINNER', user_id: 'user-1' }, t)).toBe('DINNER');
+    expect(getMealTypeDisplayLabel({ name: 'snack', user_id: 'user-1' }, t)).toBe('snack');
+    expect(getMealTypeDisplayLabel({ name: 'other', user_id: 'user-1' }, t)).toBe('other');
   });
 
   it('keeps custom meal type names literal', () => {
-    expect(getMealTypeDisplayLabel({ name: 'Brunch', user_id: 'user-1' })).toBe('Brunch');
-    expect(getMealTypeDisplayLabel({ name: 'Drugie śniadanie', user_id: 'user-1' })).toBe('Drugie śniadanie');
+    expect(getMealTypeDisplayLabel({ name: 'Brunch', user_id: 'user-1' }, t)).toBe('Brunch');
+    expect(getMealTypeDisplayLabel({ name: 'Drugie śniadanie', user_id: 'user-1' }, t)).toBe('Drugie śniadanie');
   });
 
   it('keeps a custom name that looks like a system key literal (never a static map)', () => {
-    expect(getMealTypeDisplayLabel({ name: 'mealTypes.breakfast', user_id: 'user-1' })).toBe('mealTypes.breakfast');
+    expect(getMealTypeDisplayLabel({ name: 'mealTypes.breakfast', user_id: 'user-1' }, t)).toBe('mealTypes.breakfast');
   });
 });
 
@@ -131,14 +134,14 @@ describe('getHistoricalMealTypeLabel', () => {
   it('returns the literal snapshot for a historical entry without a definition', () => {
     // No active definition exists, so even a snapshot reading "breakfast" is
     // never auto-translated; the safe contract prefers the literal name.
-    expect(getHistoricalMealTypeLabel('breakfast')).toBe('breakfast');
-    expect(getHistoricalMealTypeLabel('Old Meal')).toBe('Old Meal');
+    expect(getHistoricalMealTypeLabel('breakfast', t)).toBe('breakfast');
+    expect(getHistoricalMealTypeLabel('Old Meal', t)).toBe('Old Meal');
   });
 
   it('falls back to Other when the snapshot is missing', () => {
-    expect(getHistoricalMealTypeLabel(null)).toBe('Other');
-    expect(getHistoricalMealTypeLabel(undefined)).toBe('Other');
-    expect(getHistoricalMealTypeLabel('   ')).toBe('Other');
+    expect(getHistoricalMealTypeLabel(null, t)).toBe('Other');
+    expect(getHistoricalMealTypeLabel(undefined, t)).toBe('Other');
+    expect(getHistoricalMealTypeLabel('   ', t)).toBe('Other');
   });
 });
 
@@ -363,7 +366,7 @@ describe('getMealGroupLabel — historical groups stay literal', () => {
       isSystem: false,
       user_id: null,
     };
-    expect(getMealGroupLabel(group)).toBe('breakfast');
+    expect(getMealGroupLabel(group, t)).toBe('breakfast');
   });
 
   it('renders a system group through the canonical English label', () => {
@@ -375,7 +378,7 @@ describe('getMealGroupLabel — historical groups stay literal', () => {
       isSystem: true,
       user_id: null,
     };
-    expect(getMealGroupLabel(group)).toBe('Breakfast');
+    expect(getMealGroupLabel(group, t)).toBe('Breakfast');
   });
 });
 
@@ -404,10 +407,10 @@ describe('getFoodEntryMealTypeLabel — id-first label resolution', () => {
 
   it('resolves an active definition by id with ownership-aware display', () => {
     expect(
-      getFoodEntryMealTypeLabel({ meal_type_id: 'custom-b', meal_type: 'breakfast' }, types),
+      getFoodEntryMealTypeLabel({ meal_type_id: 'custom-b', meal_type: 'breakfast' }, types, t),
     ).toBe('breakfast');
     expect(
-      getFoodEntryMealTypeLabel({ meal_type_id: 'system-breakfast', meal_type: 'breakfast' }, types),
+      getFoodEntryMealTypeLabel({ meal_type_id: 'system-breakfast', meal_type: 'breakfast' }, types, t),
     ).toBe('Breakfast');
   });
 
@@ -415,7 +418,7 @@ describe('getFoodEntryMealTypeLabel — id-first label resolution', () => {
     // custom-old-1 no longer resolves; even though an active system "breakfast"
     // exists, the literal historical label wins.
     expect(
-      getFoodEntryMealTypeLabel({ meal_type_id: 'custom-old-1', meal_type: 'breakfast' }, types),
+      getFoodEntryMealTypeLabel({ meal_type_id: 'custom-old-1', meal_type: 'breakfast' }, types, t),
     ).toBe('breakfast');
   });
 
@@ -424,7 +427,7 @@ describe('getFoodEntryMealTypeLabel — id-first label resolution', () => {
     // to the canonical English label.
     const onlySystem: MealType[] = [types[0]];
     expect(
-      getFoodEntryMealTypeLabel({ meal_type_id: null, meal_type: 'breakfast' }, onlySystem),
+      getFoodEntryMealTypeLabel({ meal_type_id: null, meal_type: 'breakfast' }, onlySystem, t),
     ).toBe('Breakfast');
   });
 
@@ -438,7 +441,7 @@ describe('blank historical meal type compatibility', () => {
     expect(groups).toHaveLength(1);
     expect(groups[0].name).toBe('Other');
     expect(groups[0].isSystem).toBe(false);
-    expect(getMealGroupLabel(groups[0])).toBe('Other');
+    expect(getMealGroupLabel(groups[0], t)).toBe('Other');
   });
 
   it('detail filter matches a blank-name entry under the other bucket', () => {

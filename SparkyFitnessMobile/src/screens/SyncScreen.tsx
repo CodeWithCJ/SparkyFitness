@@ -70,7 +70,8 @@ interface TimeRangeOption {
 }
 
 const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const timeRangeOptions = useMemo<TimeRangeOption[]>(() => [
     { label: t('syncScreen.timeRanges.today', { defaultValue: 'Today' }), value: 'today' },
     { label: t('syncScreen.timeRanges.last24Hours', { defaultValue: 'Last 24 Hours' }), value: '24h' },
@@ -516,8 +517,8 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
           <Text className="text-text-muted text-center mb-2">
             {lastSyncedTimeLoaded
               ? (lastSyncedTime
-                ? <><Text className="font-bold">{t('syncScreen.lastSynced', { defaultValue: 'Last synced:' })}</Text> {formatRelativeTime(new Date(lastSyncedTime), t)}</>
-                : formatRelativeTime(null, t))
+                ? <><Text className="font-bold">{t('syncScreen.lastSynced', { defaultValue: 'Last synced:' })}</Text> {formatRelativeTime(new Date(lastSyncedTime), t, dateLocale)}</>
+                : formatRelativeTime(null, t, dateLocale))
               : ' '}
           </Text>
           <HealthSourceLabel className="text-center mb-2" />

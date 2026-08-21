@@ -34,7 +34,8 @@ import { addLog } from '../services/LogService';
 type MedicationDetailScreenProps = RootStackScreenProps<'MedicationDetail'>;
 
 const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, navigation }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { medicationId } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -98,7 +99,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         [
           { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
           {
-            text: t('medications.detail.removeDose', { defaultValue: 'Remove' }),
+            text: t('medications.detail.removeDose', { defaultValue: "Remove dose" }),
             style: 'destructive',
             onPress: () =>
               deleteEntryMutation.mutate(entry.id, {
@@ -163,7 +164,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
         {med.is_active && (
           <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
             <Text className="text-sm font-semibold text-text-secondary mb-1">
-              {formatDateLabel(selectedDate)}
+              {formatDateLabel(selectedDate, t, dateLocale)}
             </Text>
             {dueDoses.map((due) => (
               <DoseRow

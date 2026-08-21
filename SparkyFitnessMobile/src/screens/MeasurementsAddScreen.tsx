@@ -432,7 +432,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         return { kind: 'invalid' };
       }
       if (parsed < 0) {
-        Toast.show({ type: 'error', text1: t('measurements.validation.invalid', { defaultValue: 'Invalid {{label}}', label }), text2: t('measurements.validation.nonNegative', { defaultValue: 'Value must be 0 or greater.' }) });
+        Toast.show({ type: 'error', text1: t('measurements.validation.invalid', { defaultValue: 'Invalid {{label}}', label }), text2: t('measurements.validation.nonNegative', { defaultValue: "Values must be 0 or greater." }) });
         return { kind: 'invalid' };
       }
       if (opts?.integer && !Number.isInteger(parsed)) {
@@ -980,7 +980,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 </Text>
                 <Button variant="secondary" onPress={handleRetryCustomData} className="px-6">
                   <Text className="text-text-primary text-sm font-semibold">
-                    {t('common.tryAgain', { defaultValue: 'Try again' })}
+                    {t('common.tryAgain', { defaultValue: "Please try again." })}
                   </Text>
                 </Button>
               </View>
@@ -1006,8 +1006,8 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         accessibilityRole="button"
                         accessibilityState={{ expanded: showMoreCategories }}
                         accessibilityLabel={showMoreCategories
-                          ? t('measurements.custom.hideCategories', { defaultValue: 'Hide categories' })
-                          : t('measurements.custom.moreCategories', { defaultValue: 'More categories' })}
+                          ? t('measurements.custom.hideCategories', { defaultValue: "Hide categories ▴" })
+                          : t('measurements.custom.moreCategories', { defaultValue: "More categories ▾" })}
                       >
                         <Text style={{ color: accentPrimary }} className="text-sm font-medium">
                           {showMoreCategories

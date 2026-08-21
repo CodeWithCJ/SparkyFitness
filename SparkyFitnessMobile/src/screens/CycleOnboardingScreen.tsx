@@ -540,7 +540,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
           }}
         >
           <Button variant="primary" onPress={() => setStep(s => s + 1)}>
-            {t('common.next', { defaultValue: 'Next Step' })}
+            {t('common.next', { defaultValue: "Next" })}
           </Button>
         </View>
       )}

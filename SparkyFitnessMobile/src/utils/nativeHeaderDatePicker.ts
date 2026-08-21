@@ -11,6 +11,8 @@ export type NativeHeaderDatePickerOptions = {
   previousDayLabel?: string;
   nextDayLabel?: string;
   dateLabel?: string;
+  t: import('i18next').TFunction;
+  locale: string;
 };
 
 export type NativeHeaderDatePickerNavigation = {
@@ -39,6 +41,8 @@ export function createNativeHeaderDatePickerItems({
   previousDayLabel,
   nextDayLabel,
   dateLabel,
+  t,
+  locale,
 }: NativeHeaderDatePickerOptions): NativeStackHeaderItem[] {
   return [
     {
@@ -55,7 +59,7 @@ export function createNativeHeaderDatePickerItems({
     },
     {
       type: 'button',
-      label: dateLabel ?? `${formatDateLabel(selectedDate)} ▾`,
+      label: dateLabel ?? `${formatDateLabel(selectedDate, t, locale)} ▾`,
       onPress: onDatePress,
       tintColor,
       labelStyle: { fontSize: 15, fontWeight: '600', color: tintColor },

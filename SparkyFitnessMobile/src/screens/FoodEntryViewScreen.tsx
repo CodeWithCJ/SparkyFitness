@@ -123,7 +123,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [entry, setEntry] = useState(route.params.entry);
   const [createdVariantOverride, setCreatedVariantOverride] =
     useState<FoodUnitVariant | null>(null);
@@ -776,7 +777,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     servings % 1 === 0 ? servings : parseFloat(servings.toFixed(2));
   const formattedEntryUnit = formatServingUnit(entry.unit || '');
   const servingsDisplay = `${servingsCount} ${t('foodEntryAdd.labels.serving', {
-    defaultValue: 'serving',
+    defaultValue: 'servings',
+    defaultValue_one: 'serving',
+    defaultValue_other: 'servings',
     count: servings,
   })} · ${entry.serving_size} ${formattedEntryUnit} ${t('foodEntryAdd.labels.perServing', {
     defaultValue: 'per serving',
@@ -898,7 +901,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                     {editServings % 1 === 0
                       ? editServings
                       : parseFloat(editServings.toFixed(2))}{' '}
-                    {t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: editServings })}
+                    {t('foodEntryAdd.labels.serving', { defaultValue: 'servings', defaultValue_one: 'serving', defaultValue_other: 'servings', count: editServings })}
                   </Text>
                   {variantPickerOptions.length > 1 ? (
                     <BottomSheetPicker
@@ -1151,8 +1154,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 >
                   <Text style={{ color: accentColor }} className="text-sm font-medium">
                     {showMoreNutrients
-                      ? t('foodNutrition.hideExtra', { defaultValue: 'Hide extra nutrients' })
-                      : t('foodNutrition.showMore', { defaultValue: 'Show more nutrients' })}
+                      ? t('foodNutrition.hideExtra', { defaultValue: "Hide extra nutrients ▴" })
+                      : t('foodNutrition.showMore', { defaultValue: "Show more nutrients ▾" })}
                   </Text>
                 </Button>
               </Animated.View>
@@ -1175,7 +1178,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 accessibilityLabel={t('foodEntryView.dateSelectorHint', { defaultValue: 'Opens date selection' })}
               >
                 <Text className="text-text-primary text-base font-medium">
-                  {formatDateLabel(selectedDate)}
+                  {formatDateLabel(selectedDate, t, dateLocale)}
                 </Text>
                 <Icon
                   name="chevron-down"
@@ -1187,7 +1190,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               </TouchableOpacity>
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {formatDateLabel(normalizeDate(entry.entry_date))}
+                {formatDateLabel(normalizeDate(entry.entry_date), t, dateLocale)}
               </Text>
             )}
           </View>

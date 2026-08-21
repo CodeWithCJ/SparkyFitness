@@ -1,6 +1,5 @@
 import { localDateToDay } from '@workspace/shared';
 import type { TFunction } from 'i18next';
-import i18n from '../localization/i18n';
 
 /**
  * Converts a timestamp to a local date string (YYYY-MM-DD).
@@ -38,30 +37,29 @@ export const addDays = (dateString: string, days: number): string => {
 export const normalizeDate = (dateString: string): string => dateString.split('T')[0];
 
 // Format a YYYY-MM-DD date for display ("Mon, Jan 6")
-export const formatDate = (dateString: string, locale = (i18n.resolvedLanguage === 'pl' ? 'pl-PL' : 'en-US')): string => {
+export const formatDate = (dateString: string, locale: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   return date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
 // Format a YYYY-MM-DD date for short display ("Jun 30")
-export const formatShortDate = (dateString: string): string => {
+export const formatShortDate = (dateString: string, locale: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString(i18n.resolvedLanguage === 'pl' ? 'pl-PL' : 'en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 };
 
 // Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
 export const formatDateLabel = (
   dateString: string,
-  t?: TFunction,
-  locale?: string,
+  t: TFunction,
+  locale: string,
 ): string => {
-  const translate = t ?? i18n.t.bind(i18n);
   const normalized = normalizeDate(dateString);
   const today = getTodayDate();
-  if (normalized === today) return translate('date.today', { defaultValue: 'Today' });
-  if (normalized === addDays(today, -1)) return translate('date.yesterday', { defaultValue: 'Yesterday' });
+  if (normalized === today) return t('date.today', { defaultValue: 'Today' });
+  if (normalized === addDays(today, -1)) return t('date.yesterday', { defaultValue: 'Yesterday' });
   return formatDate(normalized, locale);
 };
 
@@ -70,19 +68,7 @@ export interface RelativeTimeTranslator {
   (key: string, options: Record<string, unknown>): string;
 }
 
-export const formatRelativeTime = (timestamp: Date | null, t?: RelativeTimeTranslator): string => {
-  const translate = t ?? ((key: string, options: Record<string, unknown>) => {
-    // i18n-audit-ignore-next-line dynamic-i18n-key -- translator is injected by callers or uses the closed date key set
-    const value = i18n.t(key, options);
-    if (value !== key) return value;
-    const count = Number(options.count);
-    if (key === 'date.minutesAgo') return `${count} minute${count === 1 ? '' : 's'} ago`;
-    if (key === 'date.hoursAgo') return `${count} hour${count === 1 ? '' : 's'} ago`;
-    const defaults: Record<string, string> = { 'date.neverSynced': 'Never synced', 'date.justNow': 'Just now', 'date.yesterdayAt': 'Yesterday at {{time}}', 'date.onDateAt': '{{date}} at {{time}}' };
-    let result = defaults[key] ?? key;
-    for (const [name, replacement] of Object.entries(options)) result = result.replace(`{{${name}}}`, String(replacement));
-    return result;
-  });
+export const formatRelativeTime = (timestamp: Date | null, translate: RelativeTimeTranslator, locale: string): string => {
   if (!timestamp) return translate('date.neverSynced', { defaultValue: 'Never synced' });
 
   const now = new Date();
@@ -90,7 +76,6 @@ export const formatRelativeTime = (timestamp: Date | null, t?: RelativeTimeTrans
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
-  const locale = i18n.resolvedLanguage === 'pl' ? 'pl-PL' : 'en-US';
   const time = timestamp.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 
   if (diffSeconds < 60) return translate('date.justNow', { defaultValue: 'Just now' });

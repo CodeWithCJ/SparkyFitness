@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseSessionResponse } from '@workspace/shared';
@@ -18,14 +19,15 @@ interface WorkoutCardProps {
 export { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
 
 const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource, weightUnit = 'kg', distanceUnit = 'km' }) => {
+  const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
   const textSecondary = useCSSVariable('--color-text-secondary') as string;
   const iconName = getWorkoutIcon(session);
-  const { name, duration, calories } = getWorkoutSummary(session);
+  const { name, duration, calories } = getWorkoutSummary(session, t);
   const source = session.source;
 
-  const subtitle = buildSessionSubtitle(session, duration, calories, weightUnit, distanceUnit);
+  const subtitle = buildSessionSubtitle(session, duration, calories, t, weightUnit, distanceUnit);
 
   const sourceLabel = getSourceLabel(source);
   const canEdit = canEditGroupedWorkout(source);

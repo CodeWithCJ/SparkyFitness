@@ -119,7 +119,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
                 {entry.food_name || t('foodRow.unknownFood', { defaultValue: 'Unknown food' })}
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
-                {entry.serving_size} {formatServingUnit(entry.unit)} = {entry.calories} {t('nutrition.caloriesShort', { defaultValue: 'Cal' })}
+                {entry.serving_size} {formatServingUnit(entry.unit)} = {entry.calories} {t('nutrition.caloriesShort', { defaultValue: "cal" })}
               </Text>
             </View>
 
@@ -141,7 +141,7 @@ const ServingAdjustSheet = forwardRef<ServingAdjustSheetRef, ServingAdjustSheetP
             {/* Calories */}
             <View className="items-center mb-6">
               <Text className="text-text-primary text-2xl font-semibold">
-                {totalCalories} {t('nutrition.caloriesShort', { defaultValue: 'Cal' })}
+                {totalCalories} {t('nutrition.caloriesShort', { defaultValue: "cal" })}
               </Text>
             </View>
 

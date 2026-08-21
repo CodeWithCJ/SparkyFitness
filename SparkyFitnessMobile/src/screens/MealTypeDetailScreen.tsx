@@ -28,7 +28,8 @@ import { getLocalizedMealLabel } from '../constants/meals';
 type MealTypeDetailScreenProps = RootStackScreenProps<'MealTypeDetail'>;
 
 const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation, route }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { date, mealType, mealTypeId, mealLabel } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -65,7 +66,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       ? resolvedType.user_id == null
         ? getLocalizedMealLabel(t, resolvedType.name.toLowerCase() === 'snack' ? 'snacks' : resolvedType.name.toLowerCase())
         : resolvedType.name
-      : getHistoricalMealTypeLabel(mealTypeName));
+      : getHistoricalMealTypeLabel(mealTypeName, t));
 
   const entries = useMemo(
     () =>
@@ -140,7 +141,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           iconTone="muted"
           iconSize={64}
           title={t('mealTypeDetail.states.noFoods', { defaultValue: 'No {{meal}} foods', meal: label.toLowerCase() })}
-          subtitle={t('mealTypeDetail.states.noFoodsHint', { defaultValue: '{{date}} has no foods logged for this meal.', date: formatDateLabel(date) })}
+          subtitle={t('mealTypeDetail.states.noFoodsHint', { defaultValue: '{{date}} has no foods logged for this meal.', date: formatDateLabel(date, t, dateLocale) })}
         />
       );
     }
@@ -157,7 +158,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       >
         <FoodNutritionSummary
           name={label}
-          brand={targetCalories > 0 ? `${formatDateLabel(date)} · ${t('mealTypeDetail.targetCalories', { defaultValue: 'Target: {{calories}} kcal', calories: targetCalories })}` : formatDateLabel(date)}
+          brand={targetCalories > 0 ? `${formatDateLabel(date, t, dateLocale)} · ${t('mealTypeDetail.targetCalories', { defaultValue: 'Target: {{calories}} kcal', calories: targetCalories })}` : formatDateLabel(date, t, dateLocale)}
           values={nutrition.values}
           showNetCarbs={showNetCarbs}
           customNutrients={Object.keys(nutrition.customNutrients).length > 0 ? nutrition.customNutrients : null}

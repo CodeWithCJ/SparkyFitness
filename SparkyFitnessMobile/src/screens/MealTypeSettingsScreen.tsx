@@ -362,11 +362,11 @@ const SystemMealTypeRow: React.FC<{
         className="flex-1 py-3 flex-shrink"
         onPress={() => onEdit(mt)}
         activeOpacity={0.6}
-        accessibilityLabel={t('mealTypeSettings.edit', { defaultValue: 'Edit {{name}}', name: getMealTypeDisplayLabel(mt) })}
+        accessibilityLabel={t('mealTypeSettings.edit', { defaultValue: 'Edit {{name}}', name: getMealTypeDisplayLabel(mt, t) })}
         testID={`edit-system-${mt.id}`}
       >
         <Text className="text-base text-text-primary font-medium" numberOfLines={1}>
-          {getMealTypeDisplayLabel(mt)}
+          {getMealTypeDisplayLabel(mt, t)}
         </Text>
       </TouchableOpacity>
       <MealTypeTimeCell mealType={mt} onPress={() => onTime(mt)} textSecondary={textSecondary} t={t} />
@@ -374,7 +374,7 @@ const SystemMealTypeRow: React.FC<{
         <Switch
           value={mt.is_visible}
           onValueChange={(val) => onToggleVisibility(mt, val)}
-          accessibilityLabel={t('mealTypeSettings.visible', { defaultValue: 'Visible {{name}}', name: getMealTypeDisplayLabel(mt) })}
+          accessibilityLabel={t('mealTypeSettings.visible', { defaultValue: 'Visible {{name}}', name: getMealTypeDisplayLabel(mt, t) })}
         />
       </View>
     </Animated.View>
@@ -1167,7 +1167,7 @@ const MealTypeTimeCell: React.FC<{
       onPress={onPress}
       className="px-3 py-3"
       accessibilityRole="button"
-      accessibilityLabel={t('mealTypeSettings.defaultTime', { defaultValue: 'Default time for {{name}}{{time}}', name: getMealTypeDisplayLabel(mealType), time: time ? `, ${time}` : `, ${t('mealTypeSettings.notSet', { defaultValue: 'not set' })}` })}
+      accessibilityLabel={t('mealTypeSettings.defaultTime', { defaultValue: 'Default time for {{name}}{{time}}', name: getMealTypeDisplayLabel(mealType, t), time: time ? `, ${time}` : `, ${t('mealTypeSettings.notSet', { defaultValue: "Not set" })}` })}
       testID={`time-cell-${mealType.id}`}
     >
       <Text className="text-sm text-text-secondary" style={{ minWidth: 44, textAlign: 'right' }}>

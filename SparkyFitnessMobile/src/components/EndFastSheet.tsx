@@ -133,7 +133,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
           Toast.show({
             type: 'error',
             text1: t('fastingEdit.failedEnd', { defaultValue: 'Failed to end fast' }),
-            text2: t('common.retry', { defaultValue: 'Please try again.' }),
+            text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
           });
         },
       },

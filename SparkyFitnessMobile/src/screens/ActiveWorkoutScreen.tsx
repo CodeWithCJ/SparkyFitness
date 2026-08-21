@@ -514,12 +514,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         .getState()
         .session?.exercises.find((e) => e.id === entryId);
       if (entry == null) return;
-      const exercise = exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id);
+      const exercise = exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id, t);
       runNavigationAction(() => {
         navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true });
       });
     },
-    [navigation, runNavigationAction],
+    [navigation, runNavigationAction, t],
   );
 
   // Exercise rest drawer (All / per-set rest editing, committed on Done).

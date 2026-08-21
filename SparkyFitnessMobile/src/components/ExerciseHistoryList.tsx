@@ -85,7 +85,8 @@ const SessionCard: React.FC<{
   modality?: ExerciseModality;
   bestSet?: ExerciseSetStats | null;
 }> = ({ session, exerciseId, weightUnit, distanceUnit, modality, bestSet }) => {
-  const { t } = useTranslation();
+  const { t, i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   // The history endpoint filters at the session level, so a preset session
   // still carries every exercise it contains — show only this exercise's sets.
   const entries =
@@ -107,7 +108,7 @@ const SessionCard: React.FC<{
     <View className="bg-surface rounded-xl p-4">
       <View className="flex-row items-center justify-between">
         <Text className="text-text-primary text-base font-semibold">
-          {session.entry_date ? formatDateLabel(session.entry_date) : t('common.unknownDate', { defaultValue: 'Unknown date' })}
+          {session.entry_date ? formatDateLabel(session.entry_date, t, dateLocale) : t('common.unknownDate', { defaultValue: 'Unknown date' })}
         </Text>
         {presetName ? (
           <Text className="text-text-muted text-sm flex-shrink ml-3" numberOfLines={1}>
@@ -194,7 +195,7 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
       ))}
       {hasMore ? (
         <Button variant="ghost" onPress={loadMore} disabled={isLoadingMore}>
-          {isLoadingMore ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.loadMore', { defaultValue: 'Load more' })}
+          {isLoadingMore ? t('common.loading', { defaultValue: "Loading..." }) : t('common.loadMore', { defaultValue: 'Load more' })}
         </Button>
       ) : null}
     </>

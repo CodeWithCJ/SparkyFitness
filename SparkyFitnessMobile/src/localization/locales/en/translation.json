@@ -38,8 +38,8 @@
     "loading": "Loading...",
     "pleaseTryAgain": "Please try again.",
     "ok": "OK",
-    "collapse": "Collapse",
-    "expand": "Expand",
+    "collapse": "collapse",
+    "expand": "expand",
     "removeFromFavorites": "Remove from favorites",
     "addToFavorites": "Add to favorites",
     "goToSettings": "Go to Settings",
@@ -230,7 +230,7 @@
       "addNote": "Add a note for this exercise…",
       "addSetFallback": "Add set to exercise",
       "addSetTo": "Add set to {{exerciseName}}",
-      "addSet": "Add set",
+      "addSet": "Add Set",
       "best": "Best {{value}}",
       "caloriesBurnedFallback": "Calories burned for exercise",
       "caloriesBurnedFor": "Calories burned for {{exerciseName}}",
@@ -258,8 +258,8 @@
       "addExercise": "Add exercise"
     },
     "rest": {
-      "addSecondsShort": "+{{seconds}} s",
-      "subtractSecondsShort": "−{{seconds}} s",
+      "addSecondsShort": "+{{seconds}}s",
+      "subtractSecondsShort": "−{{seconds}}s",
       "completeSet": "Complete set",
       "completeSetTitle": "Complete Set",
       "extendBySeconds": "Extend rest by {{seconds}} seconds",
@@ -744,7 +744,7 @@
     "netEnergy": "Net Energy",
     "remainingCalories": "Remaining Calories",
     "useExternal": "Use {{metric}} from {{source}}",
-    "externalDescription": "Uses {{source}} {{metric}} when available. Otherwise, the selected formula will be used.",
+    "externalDescription": "Uses {{source}} {{metric}} when available. Otherwise, the selected {{formula}}",
     "iosNote": "The synced value already includes light daily activity, so you may want to set",
     "iosNoteContinuation": "your Activity Level to None (×1.0) to avoid counting it twice.",
     "updateFailed": "Failed to update setting.",
@@ -801,13 +801,14 @@
   "diarySettings": {
     "updateFailed": "Failed to update setting.",
     "limitReached": "Limit reached",
-    "limitDescription": "Up to {{count}} custom nutrients can be shown here.",
     "noCustomNutrients": "No custom nutrients",
     "customNutrientsDescription": "Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Diary.",
     "title": "Diary Settings",
     "summary": "Diary Summary",
     "summarySubtitle": "Show calories and macronutrients",
-    "customNutrientDisplay": "Custom Nutrient Display"
+    "customNutrientDisplay": "Custom Nutrient Display",
+    "limitDescription_one": "Up to {{count}} custom nutrients can be shown here.",
+    "limitDescription_other": "Up to {{count}} custom nutrients can be shown here."
   },
   "about": {
     "title": "About",
@@ -830,7 +831,7 @@
     "title": "Notifications",
     "allow": "Allow Notifications",
     "allowSubtitle": "Master switch for all alerts from SparkyFitness.",
-    "alerts": "Notification types",
+    "alerts": "Alerts",
     "restTimer": "Rest Timer",
     "restTimerSubtitle": "Alert when a rest period ends, even in the background.",
     "fastingGoals": "Fasting Goals",
@@ -844,13 +845,13 @@
     "hideMedicationNamesSubtitle": "Show a generic reminder instead of the medication name and dose.",
     "enableNotifications": "Enable Notifications",
     "openSettings": "Open Settings",
-    "permissionTitle": "Enable notifications",
-    "permissionBody": "SparkyFitness notifications (rest timers, fasting goals, medication reminders) won't fire.",
+    "permissionTitle": "Grant permissions",
+    "permissionBody": "SparkyFitness alerts (rest timers, fasting goals, medication reminders) won't fire.",
     "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}."
   },
   "workoutSettings": {
     "title": "Workout Settings",
-    "defaultRest": "Default rest time",
+    "defaultRest": "Default rest period",
     "defaultRestSubtitle": "Rest between sets for newly added exercises.",
     "defaultRestAccessibility": "Default rest period, {{duration}}",
     "restSound": "Rest timer sound",
@@ -895,8 +896,6 @@
     "emptyDescription": "Add your first medication to start tracking.",
     "retry": "Retry",
     "inactive": "Inactive",
-    "inactiveCount": "Inactive ({{count}})",
-    "inactiveA11y": "Inactive medications ({{count}})",
     "form": {
       "newTitle": "New Medication",
       "editTitle": "Edit Medication",
@@ -1080,7 +1079,6 @@
     "scheduleSummary": {
       "daily": "Daily",
       "weekly": "Weekly",
-      "everyNDays": "Every {{count}} days",
       "monthlyOnDay": "Monthly on day {{day}}",
       "monthly": "Monthly",
       "cycle": "{{on}}, {{off}}",
@@ -1091,10 +1089,16 @@
       "cycleOn_one": "{{count}} day on",
       "cycleOn_other": "{{count}} days on",
       "cycleOff_one": "{{count}} day off",
-      "cycleOff_other": "{{count}} days off"
+      "cycleOff_other": "{{count}} days off",
+      "everyNDays_one": "Every {{count}} day",
+      "everyNDays_other": "Every {{count}} days"
     },
     "notificationScheduledDose": "You have a scheduled dose",
-    "notificationScheduledDoseNamed": "Scheduled dose: {{name}}{{dose}}"
+    "notificationScheduledDoseNamed": "Scheduled dose: {{name}}{{dose}}",
+    "inactiveA11y_one": "Inactive medication ({{count}})",
+    "inactiveA11y_other": "Inactive medications ({{count}})",
+    "inactiveCount_one": "Inactive ({{count}})",
+    "inactiveCount_other": "Inactive ({{count}})"
   },
   "scheduleSummary": {
     "daily": "Daily",
@@ -1128,7 +1132,7 @@
       "richWorkoutDetail": "(Route+HR+Laps)",
       "richWorkoutIosDetail": "(Route+HR)",
       "richStrength": "Rich Strength",
-      "richStrengthDetail": "(Variable HR)"
+      "richStrengthDetail": "(Spiky HR)"
     },
     "healthConnect": {
       "title": "Health Connect",
@@ -1189,8 +1193,8 @@
       "seedOldFailed": "Failed to seed old health data.",
       "richWorkoutSeeded": "Seeded a 12-minute walk with route, HR, speed and laps. Run a foreground sync to pull it in.",
       "richWorkoutIosSeeded": "Seeded a 12-minute walk with route and HR. Run a foreground sync to pull it in.",
-      "richStrengthSeeded": "Seeded a 35-minute strength session with variable HR (no route/reps — devices never report those). Run a foreground sync to pull it in.",
-      "richStrengthIosSeeded": "Seeded a 35-minute strength session with variable HR (no route/laps/reps — devices never report those). Run a foreground sync to pull it in.",
+      "richStrengthSeeded": "Seeded a 35-minute strength session with spiky HR (no route/reps — devices never report those). Run a foreground sync to pull it in.",
+      "richStrengthIosSeeded": "Seeded a 35-minute strength session with spiky HR (no route/laps/reps — devices never report those). Run a foreground sync to pull it in.",
       "richWorkoutFailed": "Failed to seed rich workout.",
       "richWorkoutFailedWithMessage": "Failed to seed rich workout: {{message}}",
       "richStrengthFailed": "Failed to seed rich strength workout.",
@@ -1282,7 +1286,7 @@
     "duration": "Duration (min)",
     "distance": "Distance",
     "calories": "Calories",
-    "custom": "Custom",
+    "custom": "Custom…",
     "autoCalculated": "Auto-calculated",
     "avgHeartRate": "Avg Heart Rate (bpm)",
     "optionalNotes": "Optional notes...",
@@ -1498,7 +1502,6 @@
     "searchWorkoutPresets": "Search workout presets...",
     "workoutPresetCount_one": "{{formattedCount}} exercise",
     "workoutPresetCount_other": "{{formattedCount}} exercises",
-    "setOf": "Set {{number}} of {{count}}",
     "metricVolumeShort": "Vol",
     "metricE1rmShort": "1RM",
     "metricTenrmShort": "10RM",
@@ -1518,7 +1521,9 @@
     "setCount_other": "{{formattedCount}} sets",
     "caloriesShort": "Cal",
     "unknownExercise": "Unknown exercise",
-    "addNotePlaceholder": "Add a note…"
+    "addNotePlaceholder": "Add a note…",
+    "setOf_one": "Set {{number}} of {{count}}",
+    "setOf_other": "Set {{number}} of {{count}}"
   },
   "cycleCard": {
     "mode": {
@@ -1558,9 +1563,9 @@
     "day": "Day {{day}}",
     "active": "Active",
     "periodLate_one": "Period {{count}} day late",
-    "periodLate_other": "Period {{count}} days late",
+    "periodLate_other": "Period {{count}} day late",
     "daysToDue_one": "{{count}} day to due date",
-    "daysToDue_other": "{{count}} days to due date"
+    "daysToDue_other": "{{count}}d to due date"
   },
   "syncHealth": {
     "unknownError": "Unknown sync error",
@@ -1751,7 +1756,7 @@
     "protein": "protein",
     "carbs": "carbs",
     "fat": "fat",
-    "caloriesShort": "kcal",
+    "caloriesShort": "cal",
     "proteinAmount": "protein",
     "carbsAmount": "carbs",
     "fatAmount": "fat",
@@ -1839,7 +1844,7 @@
       "calculations": "Cycle Calculations Overrides",
       "conditions": "Conditions",
       "conditionsSubtitle": "Select applicable conditions to personalize your tracking.",
-      "display": "Display",
+      "display": "Display Options",
       "actions": "Actions"
     },
     "fields": {
@@ -1851,8 +1856,8 @@
       "showFertileWindow": "Show Fertile Window",
       "discreetMode": "Discreet Mode",
       "terminology": "Terminology",
-      "export": "Export Data",
-      "reset": "Reset Onboarding"
+      "export": "Export Cycle & Pregnancy Data",
+      "reset": "Reset Onboarding Wizard"
     },
     "pickers": {
       "mode": "Select Mode",
@@ -1863,10 +1868,10 @@
       "custom": "Custom override",
       "defaultHistory": "Default/History",
       "lutealSubtitle": "Days post-ovulation (default 14)",
-      "fertileSubtitle": "Show fertile window on the calendar",
-      "discreetSubtitle": "Use neutral labels and icons",
-      "exportSubtitle": "Download your cycle and wellness data",
-      "resetSubtitle": "Clear setup progress while keeping logged days"
+      "fertileSubtitle": "Highlight fertile days on calendar",
+      "discreetSubtitle": "Hides \"Cycle\" or \"Pregnancy\" labels in UI",
+      "exportSubtitle": "Download JSON data export",
+      "resetSubtitle": "Restart setup walkthrough"
     }
   },
   "measurements": {
@@ -2174,7 +2179,6 @@
     "empty": "No logged cycles yet.",
     "startedAccessibility": "Cycle started {{date}}",
     "started": "Started {{date}}",
-    "dayCycle": "{{count}} day cycle",
     "currentCycle": "Current cycle",
     "toast": {
       "success": "Success",
@@ -2187,7 +2191,9 @@
       "deleteFailed": "Could not delete cycle entry."
     },
     "dayPeriod_one": "{{count}} day period",
-    "dayPeriod_other": "{{count}} day periods"
+    "dayPeriod_other": "{{count}} day periods",
+    "dayCycle_one": "{{count}} day cycle",
+    "dayCycle_other": "{{count}} day cycle"
   },
   "nutrients": {
     "calories": "Calories",
@@ -2583,9 +2589,10 @@
     },
     "time": {
       "underMinute": "Under a minute",
-      "minutes": "{{formattedCount}} min",
       "hoursMinutes": "{{formattedHours}}h {{formattedMinutes}}m",
-      "hours": "{{formattedHours}}h"
+      "hours": "{{formattedHours}}h",
+      "minutes_one": "{{formattedCount}} min",
+      "minutes_other": "{{formattedCount}} min"
     },
     "progress": {
       "recordsWritten": "Records written",
@@ -2747,13 +2754,11 @@
     "loadFailed": "Failed to load meal",
     "perServing": "Per serving",
     "total": "Total",
-    "makesSummary": "Makes {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
     "serving": "serving",
     "servings": "servings",
     "ingredient": "ingredient",
     "ingredients": "ingredients",
     "foodsInMeal": "Foods in Meal",
-    "items": "{{formattedCount}} items",
     "linkedMeal": "Linked meal",
     "protein": "protein",
     "carbs": "carbs",
@@ -2762,7 +2767,11 @@
     "viewLinkedMeal": "View linked meal {{name}}",
     "logMeal": "Log Meal",
     "deleting": "Deleting...",
-    "deleteMeal": "Delete Meal"
+    "deleteMeal": "Delete Meal",
+    "makesSummary_one": "Makes {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
+    "makesSummary_other": "Makes {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
+    "items_one": "{{formattedCount}} item",
+    "items_other": "{{formattedCount}} items"
   },
   "dailyNutritionDetails": {
     "title": "Nutrition Details",
@@ -2867,7 +2876,7 @@
       "family": "Family",
       "public": "Public",
       "show": "Show",
-      "accessibility": "Filter {{noun}}",
+      "accessibility": "Filter {{noun}}, filtered to {{filter}}",
       "emptyTitle": "No {{noun}} in {{filter}}",
       "emptySubtitle": "Change the filter to see your other {{noun}}.",
       "showAll": "Show All"
@@ -2894,10 +2903,11 @@
       "sourceChange": "Source {{source}}, tap to change",
       "providerError": "{{provider}}, could not load, tap to retry",
       "providerNoResults": "{{provider}}, no results",
-      "providerExpand": "{{provider}}, {{count}} results, tap to {{action}}",
       "favorite": "Favorite",
       "viewPhoto": "View photo",
-      "verifiedFood": "Verified food"
+      "verifiedFood": "Verified food",
+      "providerExpand_one": "{{provider}}, {{count}} result, tap to {{action}}",
+      "providerExpand_other": "{{provider}}, {{count}} results, tap to {{action}}"
     },
     "errors": {
       "detailsUnavailable": "Details unavailable",
@@ -2936,10 +2946,12 @@
       "showAll": "Show All"
     },
     "actions": {
-      "showAllProviderResults": "Show all {{count}} {{provider}} results",
-      "showAllLocalResults": "Show all {{count}} {{itemType}}",
       "loadMoreFailed": "Failed to load more. Tap to retry",
-      "loadMore": "Load More"
+      "loadMore": "Load More",
+      "showAllProviderResults_one": "Show all {{count}} {{provider}} result",
+      "showAllProviderResults_other": "Show all {{count}} {{provider}} results",
+      "showAllLocalResults_one": "Show all {{count}} {{itemType}}",
+      "showAllLocalResults_other": "Show all {{count}} {{itemType}}"
     },
     "pickers": {
       "onlineProvider": "Online provider"
@@ -2949,7 +2961,8 @@
       "foods": "foods",
       "meals": "meals",
       "meal": "Meal",
-      "itemCount": "{{count}} item"
+      "itemCount_one": "{{count}} item",
+      "itemCount_other": "{{count}} items"
     }
   },
   "editBarcode": {
@@ -3098,7 +3111,6 @@
     "labels": {
       "todayAt": " · Today at ",
       "skipped": "skipped",
-      "sets": "{{count}} sets",
       "all": "All",
       "of": "of",
       "top": "top",
@@ -3106,7 +3118,9 @@
       "partialSets": "{{completed}} of {{total}} sets",
       "allSetsOne": "1 set",
       "allSets_one": "{{count}} set",
-      "allSets_other": "{{count}} sets"
+      "allSets_other": "{{count}} sets",
+      "sets_one": "{{count}} set",
+      "sets_other": "{{count}} sets"
     },
     "accessibility": {
       "calculating": "Calculating"
@@ -3236,7 +3250,7 @@
     "emptySubtitle": "Change the filter to see your other {{noun}}."
   },
   "workoutPresetCount_one": "{{formattedCount}} exercise",
-  "workoutPresetCount_other": "{{formattedCount}} exercises",
+  "workoutPresetCount_other": "{{formattedCount}} exercise",
   "workoutPresetForm": {
     "nameRequired": "Name *",
     "namePlaceholder": "e.g. Push Day",
@@ -3266,7 +3280,7 @@
     "noLogs": "No logs yet.",
     "noMatchingLogs": "No logs match the current filter.",
     "showingLogs_one": "Showing {{count}} log",
-    "showingLogs_other": "Showing {{count}} logs",
+    "showingLogs_other": "Showing {{count}} log",
     "status": {
       "error": "Error",
       "warning": "Warning",
@@ -3795,7 +3809,7 @@
     },
     "bbt": {
       "tooltip": "Press the line for details",
-      "empty": "Log daily temperature readings to view your BBT chart."
+      "empty": "Log daily temperature logs to view your BBT chart."
     }
   },
   "exerciseLibrary": {
@@ -3922,7 +3936,7 @@
     "copy": "Copy",
     "copying": "Copying...",
     "duplicateTitle": "Can't copy meal",
-    "duplicateMessage": "Copying is not currently possible because meal types have duplicate names."
+    "duplicateMessage": "Duplicate meal-type names cannot currently be used for Copy Meal."
   },
   "ingredientRow": {
     "lastWarning": "This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.",
@@ -4444,7 +4458,8 @@
     "history": "History",
     "ring": {
       "day": "Day {{day}}",
-      "dayCycle": "{{count}}-day cycle"
+      "dayCycle_one": "{{count}}-day cycle",
+      "dayCycle_other": "{{count}}-day cycle"
     }
   },
   "workoutPresetLibrary": {

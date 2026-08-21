@@ -240,7 +240,7 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     // No expand tap needed — preset cards default expanded.
-    expect(screen.getByText('KG')).toBeTruthy();
+    expect(screen.getByText('kg')).toBeTruthy();
     expect(screen.getByText('100')).toBeTruthy();
     expect(screen.getByText('5')).toBeTruthy();
   });
@@ -291,7 +291,7 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     // 100kg → ~220.5 lbs
-    expect(screen.getByText('LBS')).toBeTruthy();
+    expect(screen.getByText('lbs')).toBeTruthy();
     expect(screen.getByText('220.5')).toBeTruthy();
   });
 

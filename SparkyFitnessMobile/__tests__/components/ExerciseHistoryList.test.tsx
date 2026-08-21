@@ -268,7 +268,7 @@ describe('ExerciseHistoryList', () => {
 
     const screen = renderList();
 
-    fireEvent.press(screen.getByText('Loading…'));
+    fireEvent.press(screen.getByText('Loading...'));
     expect(loadMore).not.toHaveBeenCalled();
   });
 });

@@ -83,8 +83,8 @@ describe('device-testing fix regression (calendar + meal types)', () => {
         ['other', 'Other'],
       ];
       for (const [raw, expected] of systemTypes) {
-        expect(getMealTypeDisplayLabel(system(raw))).toBe(expected);
-        expect(getMealGroupLabel({ name: raw, isSystem: true, mealTypeId: null, sortOrder: 0, entries: [] })).toBe(expected);
+        expect(getMealTypeDisplayLabel(system(raw), i18n.t)).toBe(expected);
+        expect(getMealGroupLabel({ name: raw, isSystem: true, mealTypeId: null, sortOrder: 0, entries: [] }, i18n.t)).toBe(expected);
       }
     });
 
@@ -99,8 +99,8 @@ describe('device-testing fix regression (calendar + meal types)', () => {
         ['other', 'Inne'],
       ];
       for (const [raw, expected] of systemTypes) {
-        expect(getMealTypeDisplayLabel(system(raw))).toBe(expected);
-        expect(getMealGroupLabel({ name: raw, isSystem: true, mealTypeId: null, sortOrder: 0, entries: [] })).toBe(expected);
+        expect(getMealTypeDisplayLabel(system(raw), i18n.t)).toBe(expected);
+        expect(getMealGroupLabel({ name: raw, isSystem: true, mealTypeId: null, sortOrder: 0, entries: [] }, i18n.t)).toBe(expected);
       }
     });
 
@@ -115,16 +115,16 @@ describe('device-testing fix regression (calendar + meal types)', () => {
         is_visible: true,
         show_in_quick_log: true,
       };
-      expect(getMealTypeDisplayLabel(custom)).toBe('Posiłek po treningu');
+      expect(getMealTypeDisplayLabel(custom, i18n.t)).toBe('Posiłek po treningu');
       // A custom type named like a system key must stay literal.
       const customBreakfast: MealType = { ...custom, name: 'breakfast' };
-      expect(getMealTypeDisplayLabel(customBreakfast)).toBe('breakfast');
+      expect(getMealTypeDisplayLabel(customBreakfast, i18n.t)).toBe('breakfast');
     });
 
     test('raw canonical value is not mutated', async () => {
       await i18n.changeLanguage('pl');
       const mt = system('breakfast');
-      getMealTypeDisplayLabel(mt);
+      getMealTypeDisplayLabel(mt, i18n.t);
       expect(mt.name).toBe('breakfast');
       expect(mt.user_id).toBeNull();
     });

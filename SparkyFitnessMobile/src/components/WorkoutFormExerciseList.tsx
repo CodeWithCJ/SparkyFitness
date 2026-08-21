@@ -400,9 +400,9 @@ const WorkoutFormExerciseList = forwardRef<
     (clientId: string) => {
       if (!onViewExercise) return;
       const draft = exercises.find(e => e.clientId === clientId);
-      if (draft) onViewExercise(exerciseFromDraft(draft));
+      if (draft) onViewExercise(exerciseFromDraft(draft, t));
     },
-    [exercises, onViewExercise],
+    [exercises, onViewExercise, t],
   );
 
   // Rest sheet (All/per-set rest duration, committed on Done).

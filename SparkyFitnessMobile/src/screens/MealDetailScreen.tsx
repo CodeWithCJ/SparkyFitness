@@ -304,7 +304,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
           <View className="flex-row items-center mb-3">
             <Text className="text-base font-bold text-text-secondary flex-1">{t('mealDetail.foodsInMeal', { defaultValue: 'Foods in Meal' })}</Text>
             <Text className="text-xs text-text-muted font-medium">
-              {t('mealDetail.items', { defaultValue: '{{count}} items', count: meal.foods.length, formattedCount: formatLocalizedNumber(meal.foods.length) })}
+              {t('mealDetail.items', { defaultValue: "{{formattedCount}} items", count: meal.foods.length, formattedCount: formatLocalizedNumber(meal.foods.length) })}
             </Text>
           </View>
           {meal.foods.map((food, index) => {

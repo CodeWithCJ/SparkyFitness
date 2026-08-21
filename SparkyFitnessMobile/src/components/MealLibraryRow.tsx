@@ -112,7 +112,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
             {foodInfo.calories} {t('foodSearch.labels.caloriesShort', { defaultValue: 'cal' })}
           </Text>
           <Text className="text-text-secondary text-xs">
-            {t('foodSearch.labels.itemCount', { defaultValue: '{{count}} item', defaultValue_one: '{{count}} item', defaultValue_other: '{{count}} items', count: itemCount })}
+            {t('foodSearch.labels.itemCount', { defaultValue: "{{count}} items", defaultValue_one: "{{count}} item", defaultValue_other: "{{count}} items", count: itemCount })}
           </Text>
         </View>
       </View>

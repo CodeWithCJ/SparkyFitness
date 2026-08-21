@@ -5,8 +5,8 @@ import {
   formatDuration,
   getFirstImage,
   getSessionCalories,
-  getWorkoutSummary,
-  buildSessionSubtitle,
+  getWorkoutSummary as getWorkoutSummaryWithTranslation,
+  buildSessionSubtitle as buildSessionSubtitleWithTranslation,
   calculateExerciseStats,
   calculateCaloriesBurned,
   calculateActiveCalories,
@@ -70,6 +70,7 @@ import {
   workoutPresetExerciseRequestSchema,
 } from '@workspace/shared';
 import { weightFromKg } from '../../src/utils/unitConversions';
+import i18n from '../../src/localization/i18n';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
 import type {
   WorkoutPreset,
@@ -82,6 +83,17 @@ type PresetSession = Extract<ExerciseSessionResponse, { type: 'preset' }>;
 
 /** Format a number the same way the source does (runtime-locale toLocaleString). */
 const fmt = (n: number) => n.toLocaleString();
+
+const getWorkoutSummary = (session: ExerciseSessionResponse) =>
+  getWorkoutSummaryWithTranslation(session, i18n.t);
+
+const buildSessionSubtitle = (
+  session: ExerciseSessionResponse,
+  duration: number,
+  calories: number,
+  weightUnit: 'kg' | 'lbs' = 'kg',
+  distanceUnit: 'km' | 'miles' = 'km',
+) => buildSessionSubtitleWithTranslation(session, duration, calories, i18n.t, weightUnit, distanceUnit);
 
 const makeIndividual = (overrides?: Partial<IndividualSession>): IndividualSession => ({
   type: 'individual',
@@ -2464,7 +2476,7 @@ describe('workoutSession', () => {
     const completed = { '101': 1_000, '102': 2_000, '201': 3_000 };
 
     it('counts sets, excludes warmups and skipped sets from volume, and averages logged RPE', () => {
-      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {});
+      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {}, i18n.t);
 
       expect(summary.totalSetCount).toBe(4);
       expect(summary.completedSetCount).toBe(3);
@@ -2500,12 +2512,12 @@ describe('workoutSession', () => {
         ],
       } as unknown as PresetSession;
 
-      const summary = buildWorkoutCompletionSummary(session, { '301': 1_000 }, {});
+      const summary = buildWorkoutCompletionSummary(session, { '301': 1_000 }, {}, i18n.t);
       expect(summary.totalDistanceKm).toBe(5.2);
     });
 
     it('builds per-exercise rows with top completed working set and notes', () => {
-      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {});
+      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {}, i18n.t);
 
       const [bench, squat] = summary.exercises;
       expect(bench).toMatchObject({
@@ -2543,7 +2555,7 @@ describe('workoutSession', () => {
 
     it('returns a null average RPE when no completed set logged one', () => {
       const session = makeSummarySession();
-      const summary = buildWorkoutCompletionSummary(session, { '201': 3_000 }, {});
+      const summary = buildWorkoutCompletionSummary(session, { '201': 3_000 }, {}, i18n.t);
 
       expect(summary.averageRpe).toBeNull();
     });
@@ -3923,7 +3935,7 @@ describe('workoutSession', () => {
         name: 'Bench Press',
         category: 'Strength',
         images: ['bench.png'],
-      });
+      }, i18n.t);
       expect(exercise).toMatchObject({
         id: 'ex-1',
         name: 'Bench Press',
@@ -3940,7 +3952,7 @@ describe('workoutSession', () => {
     });
 
     it('defaults name and nullable/array fields when omitted', () => {
-      const exercise = makeSparseExercise({ id: 'ex-2' });
+      const exercise = makeSparseExercise({ id: 'ex-2' }, i18n.t);
       expect(exercise.name).toBe('Exercise');
       expect(exercise.category).toBeNull();
       expect(exercise.images).toEqual([]);
@@ -3964,7 +3976,7 @@ describe('workoutSession', () => {
         secondary_muscles: ['glutes'],
         instructions: ['Stand with the bar on your back.', 'Squat down.'],
         images: ['https://wger.de/media/squat.png'],
-      });
+      }, i18n.t);
       expect(exercise).toMatchObject({
         id: '123',
         name: 'Wger Squat',
@@ -4021,7 +4033,7 @@ describe('workoutSession', () => {
     };
 
     it('maps a snapshotless draft to a sparse Exercise keyed by exerciseId', () => {
-      const exercise = exerciseFromDraft(baseDraft);
+      const exercise = exerciseFromDraft(baseDraft, i18n.t);
       expect(exercise).toMatchObject({
         id: 'ex-9',
         name: 'Squat',
@@ -4045,7 +4057,7 @@ describe('workoutSession', () => {
         level: null,
         mechanic: null,
       };
-      const exercise = exerciseFromDraft({ ...baseDraft, snapshot });
+      const exercise = exerciseFromDraft({ ...baseDraft, snapshot }, i18n.t);
       expect(exercise).toMatchObject({
         id: 'snap-9',
         name: 'Barbell Squat',

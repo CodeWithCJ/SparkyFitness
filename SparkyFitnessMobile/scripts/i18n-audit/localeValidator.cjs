@@ -153,7 +153,7 @@ class LocaleValidator {
         path: this.enPath,
         message: `Invalid JSON in ${this.enPath}: ${err.message}`,
       });
-      return { errors, enKeys: [], plKeys: [] };
+      return { errors, enKeys: [], plKeys: [], enValues: {}, plValues: {} };
     }
 
     try {
@@ -164,7 +164,7 @@ class LocaleValidator {
         path: this.plPath,
         message: `Invalid JSON in ${this.plPath}: ${err.message}`,
       });
-      return { errors, enKeys: [], plKeys: [] };
+      return { errors, enKeys: [], plKeys: [], enValues: {}, plValues: {} };
     }
 
     const enGroups = groupPluralKeys(Object.keys(enData));
@@ -387,7 +387,7 @@ class LocaleValidator {
       }
     }
 
-    return { errors, enKeys: Object.keys(enData), plKeys: Object.keys(plData) };
+    return { errors, enKeys: Object.keys(enData), plKeys: Object.keys(plData), enValues: enData, plValues: plData };
   }
 }
 

@@ -274,8 +274,8 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
   const prColor = String(useCSSVariable('--color-pr'));
 
   const summary = useMemo(
-    () => buildWorkoutCompletionSummary(session, completedSetIds, prSetIds),
-    [session, completedSetIds, prSetIds],
+    () => buildWorkoutCompletionSummary(session, completedSetIds, prSetIds, t),
+    [session, completedSetIds, prSetIds, t],
   );
   const hasRecords = summary.prRows.length > 0;
 
@@ -492,7 +492,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             </StatTile>
             <StatTile icon="flame" label={t('workoutComplete.stats.calories', { defaultValue: 'Calories' })}>
               {caloriesValue != null ? (
-                <StatValue value={formatLocalizedNumber(Math.round(caloriesValue))} unit={t('nutrition.caloriesShort', { defaultValue: 'kcal' })} />
+                <StatValue value={formatLocalizedNumber(Math.round(caloriesValue))} unit={t('nutrition.caloriesShort', { defaultValue: "cal" })} />
               ) : caloriesFailed ? (
                 <StatValue value="—" />
               ) : (

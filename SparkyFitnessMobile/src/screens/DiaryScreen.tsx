@@ -46,7 +46,8 @@ type DiaryScreenProps = CompositeScreenProps<
 >;
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
@@ -98,7 +99,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         accessibilityLabel: t('diary.chooseDate', { defaultValue: 'Choose diary date' }),
         previousDayLabel: t('common.previousDay', { defaultValue: ': previous day' }),
         nextDayLabel: t('common.nextDay', { defaultValue: ': next day' }),
-        dateLabel: `${formatDateLabel(selectedDate)} ▾`,
+        dateLabel: `${formatDateLabel(selectedDate, t, dateLocale)} ▾`,
+        t,
+        locale: dateLocale,
       },
     );
   }, [
@@ -110,6 +113,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     selectedDate,
     usesNativeTabs,
     t,
+    dateLocale,
   ]);
 
   useLayoutEffect(() => {
@@ -135,8 +139,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       // a deleted/hidden type fall back to the literal historical name.
       const definition = mealTypes.find((mt) => mt.id === mealTypeId) ?? null;
       const mealLabel = definition
-        ? getMealTypeDisplayLabel(definition)
-        : getHistoricalMealTypeLabel(mealTypeName);
+        ? getMealTypeDisplayLabel(definition, t)
+        : getHistoricalMealTypeLabel(mealTypeName, t);
       navigation.navigate('MealTypeDetail', {
         date: selectedDate,
         mealTypeId: mealTypeId ?? undefined,
@@ -144,7 +148,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         mealLabel,
       });
     },
-    [navigation, selectedDate, mealTypes],
+    [navigation, selectedDate, mealTypes, t],
   );
 
   const { preferences } = usePreferences();

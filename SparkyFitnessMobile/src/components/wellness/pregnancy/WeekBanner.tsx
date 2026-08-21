@@ -18,7 +18,8 @@ interface WeekBannerProps {
 
 /** Gestational-age header: current week/day, trimester, term progress, due date. */
 const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const tokens = useWellnessTokens();
   const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
   const { discreetMode } = useDiscreetMode();
@@ -31,7 +32,7 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
 
   const dueLabel = !discreetMode && (
     <Text className="text-text-secondary text-sm">
-      {t('pregnancy.weekBanner.due', { defaultValue: 'Due' })} <Text className="text-accent-primary font-semibold">{formatDate(dueDate)}</Text>
+      {t('pregnancy.weekBanner.due', { defaultValue: 'Due' })} <Text className="text-accent-primary font-semibold">{formatDate(dueDate, dateLocale)}</Text>
     </Text>
   );
 
@@ -73,7 +74,7 @@ const WeekBanner: React.FC<WeekBannerProps> = ({ ga, dueDate, onEdit }) => {
 
       {!discreetMode && (
         <Text className="text-text-secondary text-base">
-          {ga.daysRemaining > 0 ? t('pregnancy.weekBanner.daysToGo', { defaultValue: '{{days}} days to go', days: ga.daysRemaining }) : t('pregnancy.weekBanner.anyDayNow', { defaultValue: 'Any day now' })}
+          {ga.daysRemaining > 0 ? t('pregnancy.weekBanner.daysToGo', { defaultValue: '{{days}} days to go', days: ga.daysRemaining, count: ga.daysRemaining }) : t('pregnancy.weekBanner.anyDayNow', { defaultValue: 'Any day now' })}
         </Text>
       )}
     </View>

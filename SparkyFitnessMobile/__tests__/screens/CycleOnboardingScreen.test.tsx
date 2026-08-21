@@ -94,7 +94,7 @@ function renderScreen() {
 function stepIntoPregnancyDates(screen: ReturnType<typeof renderScreen>) {
   const { getByText, UNSAFE_getAllByType } = screen;
   fireEvent.press(getByText('Pregnancy Tracking'));
-  fireEvent.press(getByText('Next Step'));
+  fireEvent.press(getByText('Next'));
   const CalendarSheet = require('../../src/components/CalendarSheet').default;
   const formSheet = UNSAFE_getAllByType(CalendarSheet).find(
     (sheet) => sheet.props.selectedDate === addDays(getTodayDate(), 280),
@@ -105,8 +105,8 @@ function stepIntoPregnancyDates(screen: ReturnType<typeof renderScreen>) {
 
 function completeSetup(screen: ReturnType<typeof renderScreen>) {
   const { getByText } = screen;
-  fireEvent.press(getByText('Next Step'));
-  fireEvent.press(getByText('Next Step'));
+  fireEvent.press(getByText('Next'));
+  fireEvent.press(getByText('Next'));
   fireEvent.press(getByText('Accept & Initialize Profile'));
 }
 
@@ -119,7 +119,7 @@ describe('CycleOnboardingScreen', () => {
     const { getByText } = renderScreen();
     expect(getByText('What is your tracking goal?')).toBeTruthy();
     expect(getByText('Standard Menstrual Cycle')).toBeTruthy();
-    expect(getByText('Next Step')).toBeTruthy();
+    expect(getByText('Next')).toBeTruthy();
   });
 
   it('creates a pregnancy from a directly entered due date', async () => {

@@ -1,13 +1,18 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { act, render, fireEvent } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NavigationContainer } from '@react-navigation/native';
 import CycleHubScreen from '../../src/screens/CycleHubScreen';
+import type { RootStackScreenProps } from '../../src/types/navigation';
 import { getTodayDate } from '../../src/utils/dateUtils';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="bottom-sheet-picker" /> };
+  return {
+    __esModule: true,
+    default: () => <View testID="bottom-sheet-picker" />,
+  };
 });
 
 jest.mock('../../src/components/Icon', () => {
@@ -33,16 +38,24 @@ jest.mock('../../src/hooks/useCycleMode', () => ({
 
 jest.mock('../../src/components/wellness/CycleInsightsView', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="cycle-insights-view" /> };
-});
-
-jest.mock('../../src/components/wellness/pregnancy/PregnancyOverviewView', () => {
-  const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ section }: { section: string }) => <View testID={`pregnancy-view-${section}`} />,
+    default: () => <View testID="cycle-insights-view" />,
   };
 });
+
+jest.mock(
+  '../../src/components/wellness/pregnancy/PregnancyOverviewView',
+  () => {
+    const { View } = require('react-native');
+    return {
+      __esModule: true,
+      default: ({ section }: { section: string }) => (
+        <View testID={`pregnancy-view-${section}`} />
+      ),
+    };
+  },
+);
 
 jest.mock('../../src/hooks/useCycleSettings', () => ({
   useCycleSettings: () => ({
@@ -105,8 +118,17 @@ jest.mock('../../src/hooks/useSymptoms', () => ({
   }),
 }));
 
-const mockNavigation = { goBack: jest.fn(), navigate: jest.fn(), replace: jest.fn(), setOptions: jest.fn() } as any;
-const mockRoute = { params: {} } as any;
+const mockNavigation = {
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  replace: jest.fn(),
+  setOptions: jest.fn(),
+} as unknown as RootStackScreenProps<'CycleHub'>['navigation'];
+const mockRoute: RootStackScreenProps<'CycleHub'>['route'] = {
+  key: 'cycle-hub',
+  name: 'CycleHub',
+  params: undefined,
+};
 
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -130,7 +152,9 @@ function renderScreen() {
 }
 
 describe('CycleHubScreen', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     mockNavigation.navigate.mockClear();
     mockLogs.length = 0;
     mockMode = 'standard';
@@ -142,6 +166,29 @@ describe('CycleHubScreen', () => {
     expect(getByText('Trends')).toBeTruthy();
     expect(getByText('History')).toBeTruthy();
     expect(queryByText('Tools')).toBeNull();
+  });
+
+  it('updates tab labels when the mounted screen changes languages', async () => {
+    await i18n.changeLanguage('pl');
+    const screen = renderScreen();
+
+    expect(screen.getByText('Przegląd')).toBeTruthy();
+    expect(screen.getByText('Trendy')).toBeTruthy();
+    expect(screen.getByText('Historia')).toBeTruthy();
+
+    await act(async () => {
+      await i18n.changeLanguage('en');
+    });
+    expect(screen.getByText('Overview')).toBeTruthy();
+    expect(screen.getByText('Trends')).toBeTruthy();
+    expect(screen.getByText('History')).toBeTruthy();
+
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
+    expect(screen.getByText('Przegląd')).toBeTruthy();
+    expect(screen.getByText('Trendy')).toBeTruthy();
+    expect(screen.getByText('Historia')).toBeTruthy();
   });
 
   it('renders Overview, Tools, and History tabs in pregnancy mode', () => {

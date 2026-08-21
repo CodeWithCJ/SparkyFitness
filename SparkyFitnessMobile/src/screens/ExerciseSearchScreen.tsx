@@ -181,7 +181,7 @@ useEffect(() => {
   const handlePreviewExternalExercise = useCallback((item: ExternalExerciseItem) => {
     runNavigationAction(() => {
       navigation.navigate('ExerciseDetail', {
-        item: exerciseFromExternalItem(item),
+        item: exerciseFromExternalItem(item, t),
         hideWorkoutActions: true,
         // Only importable sources get the Add action; a nutritionix preview
         // is read-only because mobile has no import path for it.
@@ -190,7 +190,7 @@ useEffect(() => {
           : {}),
       });
     });
-  }, [runNavigationAction, navigation, returnKey]);
+  }, [runNavigationAction, navigation, returnKey, t]);
 
   // --- Shared renderers ---
 

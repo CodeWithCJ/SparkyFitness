@@ -115,23 +115,44 @@ function isDynamicTranslationKey(node) {
  * satisfy the contract — the fallback must be readable by the audit so a
  * missing key can never leak a raw translation key into the UI.
  */
-function hasExplicitFallback(node) {
+function staticLiteralText(node) {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return node.text;
+  }
+  return null;
+}
+
+function getExplicitFallbacks(node) {
   const args = node.arguments;
-  if (args.length < 2) return false;
+  if (args.length < 2) return {};
 
   const second = args[1];
-  if (ts.isStringLiteral(second) || ts.isNoSubstitutionTemplateLiteral(second)) {
-    return true;
+  const positionalFallback = staticLiteralText(second);
+  if (positionalFallback !== null) return { defaultValue: positionalFallback };
+  if (!ts.isObjectLiteralExpression(second)) return {};
+
+  const fallbacks = {};
+  for (const prop of second.properties) {
+    if (!ts.isPropertyAssignment(prop)) continue;
+    const name = propertyNameText(prop.name);
+    if (!name || (name !== 'defaultValue' && !/^defaultValue_(?:zero|one|two|few|many|other)$/.test(name))) continue;
+    const value = staticLiteralText(prop.initializer);
+    if (value !== null) fallbacks[name] = value;
   }
-  if (ts.isObjectLiteralExpression(second)) {
-    return second.properties.some((prop) => {
-      if (!ts.isPropertyAssignment(prop) || propertyNameText(prop.name) !== 'defaultValue') {
-        return false;
-      }
-      return literalText(prop.initializer) !== null;
-    });
-  }
-  return false;
+  return fallbacks;
+}
+
+function hasExplicitFallback(node) {
+  return Object.hasOwn(getExplicitFallbacks(node), 'defaultValue');
+}
+
+function hasCountOption(node) {
+  const second = node.arguments[1];
+  if (!second || !ts.isObjectLiteralExpression(second)) return false;
+  return second.properties.some((prop) =>
+    (ts.isPropertyAssignment(prop) && propertyNameText(prop.name) === 'count') ||
+    (ts.isShorthandPropertyAssignment(prop) && prop.name.text === 'count'),
+  );
 }
 
 /**
@@ -355,7 +376,9 @@ function visitSourceFile(filePath, rootDir) {
           const key = resolveStaticTranslationKeyArg(node.arguments[0]);
           const line = getLinePosition(node, sourceFile);
           if (key !== null) {
-            recordFinding(relPath, line, key, 'static-t-key', { key });
+            const fallbacks = getExplicitFallbacks(node);
+            const hasCount = hasCountOption(node);
+            recordFinding(relPath, line, key, 'static-t-key', { key, fallbacks, hasCount });
             if (!hasExplicitFallback(node)) {
               recordFinding(relPath, line, key, 'missing-fallback-key', { key });
             }
@@ -570,6 +593,8 @@ module.exports = {
   getAllSuppressionIssues,
   resolveStaticTranslationKeyArg,
   hasExplicitFallback,
+  getExplicitFallbacks,
+  hasCountOption,
   isLikelyRoute,
   isLikelyCss,
   isLikelyTechnical,

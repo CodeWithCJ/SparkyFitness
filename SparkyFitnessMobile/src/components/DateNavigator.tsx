@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { formatDateLabel, formatDate } from '../utils/dateUtils';
-import { getAppLocale } from '../localization';
 
 interface DateNavigatorProps {
   title: string;
@@ -36,15 +35,15 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
 }) => {
   // Subscribe to the reactive app language so the date label re-localizes
   // immediately on a runtime PL <-> EN switch without an app restart.
-  useTranslation();
-  const locale = getAppLocale();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const secondaryTextColor = useCSSVariable('--color-text-secondary') as string;
   const primaryTextColor = useCSSVariable('--color-text-primary') as string;
 
   const dateLabel = showDateAlways
     ? formatDate(selectedDate, locale)
-    : formatDateLabel(selectedDate, undefined, locale);
+    : formatDateLabel(selectedDate, t, locale);
 
   const paddingTop = compact ? 0 : skipTopInset ? 16 : insets.top + 16;
 

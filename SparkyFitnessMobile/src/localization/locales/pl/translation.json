@@ -744,7 +744,7 @@
     "netEnergy": "Energia netto",
     "remainingCalories": "Pozostałe kalorie",
     "useExternal": "Używaj wartości {{metric}} z {{source}}",
-    "externalDescription": "Jeśli dostępne, używaj wartości {{metric}} z {{source}}. W przeciwnym razie zostanie użyty wybrany wzór.",
+    "externalDescription": "Jeśli dostępne, używaj wartości {{metric}} z {{source}}. W przeciwnym razie zostanie użyty wybrany wzór: {{formula}}.",
     "iosNote": "Zsynchronizowana wartość obejmuje już lekką codzienną aktywność, dlatego możesz ustawić",
     "iosNoteContinuation": "poziom aktywności na Brak (×1,0), aby uniknąć podwójnego naliczania.",
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -801,13 +801,16 @@
   "diarySettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
     "limitReached": "Osiągnięto limit",
-    "limitDescription": "Możesz wyświetlić tutaj maksymalnie {{count}} własnych składników odżywczych.",
     "noCustomNutrients": "Brak własnych składników odżywczych",
     "customNutrientsDescription": "Własne składniki odżywcze są tworzone w aplikacji SparkyFitness w przeglądarce. Po ich dodaniu pojawią się tutaj i będzie można wybrać, które mają być widoczne w dzienniku.",
     "title": "Ustawienia dziennika",
     "summary": "Podsumowanie dziennika",
     "summarySubtitle": "Pokaż kalorie i makroskładniki",
-    "customNutrientDisplay": "Wyświetlanie własnych składników odżywczych"
+    "customNutrientDisplay": "Wyświetlanie własnych składników odżywczych",
+    "limitDescription_one": "Możesz wyświetlić tutaj maksymalnie {{count}} własny składnik odżywczy.",
+    "limitDescription_few": "Możesz wyświetlić tutaj maksymalnie {{count}} własne składniki odżywcze.",
+    "limitDescription_many": "Możesz wyświetlić tutaj maksymalnie {{count}} własnych składników odżywczych.",
+    "limitDescription_other": "Możesz wyświetlić tutaj maksymalnie {{count}} własnego składnika odżywczego."
   },
   "about": {
     "title": "Informacje",
@@ -895,8 +898,6 @@
     "emptyDescription": "Dodaj pierwszy lek, aby rozpocząć śledzenie.",
     "retry": "Spróbuj ponownie",
     "inactive": "Nieaktywny",
-    "inactiveCount": "Nieaktywne ({{count}})",
-    "inactiveA11y": "Nieaktywne leki ({{count}})",
     "form": {
       "newTitle": "Nowy lek",
       "editTitle": "Edytuj lek",
@@ -1080,7 +1081,6 @@
     "scheduleSummary": {
       "daily": "Codziennie",
       "weekly": "Co tydzień",
-      "everyNDays": "Co {{count}} dni",
       "monthlyOnDay": "Co miesiąc, {{day}}. dnia",
       "monthly": "Co miesiąc",
       "cycle": "{{on}}, {{off}}",
@@ -1095,10 +1095,22 @@
       "cycleOff_one": "{{count}} dzień przerwy",
       "cycleOff_few": "{{count}} dni przerwy",
       "cycleOff_many": "{{count}} dni przerwy",
-      "cycleOff_other": "{{count}} dni przerwy"
+      "cycleOff_other": "{{count}} dni przerwy",
+      "everyNDays_one": "Co {{count}} dzień",
+      "everyNDays_few": "Co {{count}} dni",
+      "everyNDays_many": "Co {{count}} dni",
+      "everyNDays_other": "Co {{count}} dnia"
     },
     "notificationScheduledDose": "Zaplanowano przyjęcie dawki",
-    "notificationScheduledDoseNamed": "Zaplanowana dawka: {{name}}{{dose}}"
+    "notificationScheduledDoseNamed": "Zaplanowana dawka: {{name}}{{dose}}",
+    "inactiveA11y_one": "Nieaktywny lek ({{count}})",
+    "inactiveA11y_few": "Nieaktywne leki ({{count}})",
+    "inactiveA11y_many": "Nieaktywnych leków ({{count}})",
+    "inactiveA11y_other": "Nieaktywnego leku ({{count}})",
+    "inactiveCount_one": "Nieaktywna ({{count}})",
+    "inactiveCount_few": "Nieaktywne ({{count}})",
+    "inactiveCount_many": "Nieaktywnych ({{count}})",
+    "inactiveCount_other": "Nieaktywnego ({{count}})"
   },
   "scheduleSummary": {
     "daily": "Codziennie",
@@ -1510,7 +1522,6 @@
     "tryConnection": "Sprawdź połączenie i spróbuj ponownie.",
     "tryOwnership": "Zmień filtr własności.",
     "durationSpan": "Czas trwania treningu: {{span}}",
-    "setOf": "Seria {{number}} z {{count}}",
     "metricVolumeShort": "Obj.",
     "metricE1rmShort": "1RM",
     "metricTenrmShort": "10RM",
@@ -1526,7 +1537,11 @@
     "setCount_other": "{{formattedCount}} serii",
     "caloriesShort": "kcal",
     "unknownExercise": "Nieznane ćwiczenie",
-    "addNotePlaceholder": "Dodaj notatkę…"
+    "addNotePlaceholder": "Dodaj notatkę…",
+    "setOf_one": "Seria {{number}} z {{count}}",
+    "setOf_few": "Seria {{number}} z {{count}}",
+    "setOf_many": "Seria {{number}} z {{count}}",
+    "setOf_other": "Seria {{number}} z {{count}}"
   },
   "cycleCard": {
     "mode": {
@@ -2196,7 +2211,6 @@
     "empty": "Brak zapisanych cykli.",
     "startedAccessibility": "Cykl rozpoczęty {{date}}",
     "started": "Rozpoczęto {{date}}",
-    "dayCycle": "{{count}}-dniowy cykl",
     "currentCycle": "Bieżący cykl",
     "toast": {
       "success": "Sukces",
@@ -2211,7 +2225,11 @@
     "dayPeriod_one": "{{count}} dzień miesiączki",
     "dayPeriod_few": "{{count}} dni miesiączki",
     "dayPeriod_many": "{{count}} dni miesiączki",
-    "dayPeriod_other": "{{count}} dni miesiączki"
+    "dayPeriod_other": "{{count}} dni miesiączki",
+    "dayCycle_one": "{{count}}-dniowy cykl",
+    "dayCycle_few": "{{count}}-dniowy cykl",
+    "dayCycle_many": "{{count}}-dniowy cykl",
+    "dayCycle_other": "{{count}}-dniowego cyklu"
   },
   "nutrients": {
     "calories": "Kalorie",
@@ -2607,9 +2625,12 @@
     },
     "time": {
       "underMinute": "Mniej niż minuta",
-      "minutes": "{{formattedCount}} min",
       "hoursMinutes": "{{formattedHours}} godz. {{formattedMinutes}} min",
-      "hours": "{{formattedHours}} godz."
+      "hours": "{{formattedHours}} godz.",
+      "minutes_one": "{{formattedCount}} min",
+      "minutes_few": "{{formattedCount}} min",
+      "minutes_many": "{{formattedCount}} min",
+      "minutes_other": "{{formattedCount}} min"
     },
     "progress": {
       "recordsWritten": "Zapisane rekordy",
@@ -2771,13 +2792,11 @@
     "loadFailed": "Nie udało się wczytać posiłku",
     "perServing": "Na porcję",
     "total": "Łącznie",
-    "makesSummary": "Przygotowano: {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
     "serving": "porcja",
     "servings": "porcji",
     "ingredient": "składnik",
     "ingredients": "składniki",
     "foodsInMeal": "Składniki posiłku",
-    "items": "{{formattedCount}} elementów",
     "linkedMeal": "Połączony posiłek",
     "protein": "białko",
     "carbs": "węglowodany",
@@ -2786,7 +2805,15 @@
     "viewLinkedMeal": "Wyświetl połączony posiłek {{name}}",
     "logMeal": "Zarejestruj posiłek",
     "deleting": "Usuwanie…",
-    "deleteMeal": "Usuń posiłek"
+    "deleteMeal": "Usuń posiłek",
+    "makesSummary_one": "Przygotowano: {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
+    "makesSummary_few": "Przygotowano: {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
+    "makesSummary_many": "Przygotowano: {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
+    "makesSummary_other": "Przygotowano: {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
+    "items_one": "{{formattedCount}} element",
+    "items_few": "{{formattedCount}} elementy",
+    "items_many": "{{formattedCount}} elementów",
+    "items_other": "{{formattedCount}} elementu"
   },
   "dailyNutritionDetails": {
     "title": "Szczegóły wartości odżywczych",
@@ -2891,7 +2918,7 @@
       "family": "Rodzina",
       "public": "Publiczne",
       "show": "Pokaż",
-      "accessibility": "Filtruj: {{noun}}",
+      "accessibility": "Filtruj {{noun}}, filtrowanie: {{filter}}",
       "emptyTitle": "Brak: {{noun}} — {{filter}}",
       "emptySubtitle": "Zmień filtr, aby zobaczyć pozostałe {{noun}}.",
       "showAll": "Pokaż wszystkie"
@@ -2918,10 +2945,13 @@
       "sourceChange": "Źródło: {{source}}, dotknij, aby zmienić",
       "providerError": "{{provider}}, nie udało się wczytać, dotknij, aby spróbować ponownie",
       "providerNoResults": "{{provider}}, brak wyników",
-      "providerExpand": "{{provider}}, wyników: {{count}}, dotknij, aby {{action}}",
       "favorite": "Ulubione",
       "viewPhoto": "Wyświetl zdjęcie",
-      "verifiedFood": "Zweryfikowany produkt"
+      "verifiedFood": "Zweryfikowany produkt",
+      "providerExpand_one": "{{provider}}, {{count}} wynik, dotknij, aby {{action}}",
+      "providerExpand_few": "{{provider}}, {{count}} wyniki, dotknij, aby {{action}}",
+      "providerExpand_many": "{{provider}}, {{count}} wyników, dotknij, aby {{action}}",
+      "providerExpand_other": "{{provider}}, {{count}} wyniku, dotknij, aby {{action}}"
     },
     "errors": {
       "detailsUnavailable": "Szczegóły niedostępne",
@@ -2960,10 +2990,16 @@
       "showAll": "Pokaż wszystkie"
     },
     "actions": {
-      "showAllProviderResults": "Pokaż wszystkie wyniki ({{count}}) z usługi {{provider}}",
-      "showAllLocalResults": "Pokaż wszystkie: {{count}} {{itemType}}",
       "loadMoreFailed": "Nie udało się wczytać więcej. Dotknij, aby spróbować ponownie",
-      "loadMore": "Wczytaj więcej"
+      "loadMore": "Wczytaj więcej",
+      "showAllProviderResults_one": "Pokaż {{count}} wynik z usługi {{provider}}",
+      "showAllProviderResults_few": "Pokaż wszystkie {{count}} wyniki z usługi {{provider}}",
+      "showAllProviderResults_many": "Pokaż wszystkie {{count}} wyników z usługi {{provider}}",
+      "showAllProviderResults_other": "Pokaż {{count}} wyniku z usługi {{provider}}",
+      "showAllLocalResults_one": "Pokaż wszystkie: {{count}} {{itemType}}",
+      "showAllLocalResults_few": "Pokaż wszystkie: {{count}} {{itemType}}",
+      "showAllLocalResults_many": "Pokaż wszystkie: {{count}} {{itemType}}",
+      "showAllLocalResults_other": "Pokaż wszystkie: {{count}} {{itemType}}"
     },
     "pickers": {
       "onlineProvider": "Dostawca online"
@@ -2973,7 +3009,10 @@
       "foods": "produkty",
       "meals": "posiłki",
       "meal": "Posiłek",
-      "itemCount": "{{count}} element"
+      "itemCount_one": "{{count}} element",
+      "itemCount_few": "{{count}} elementy",
+      "itemCount_many": "{{count}} elementów",
+      "itemCount_other": "{{count}} elementu"
     }
   },
   "editBarcode": {
@@ -3122,7 +3161,6 @@
     "labels": {
       "todayAt": " · Dzisiaj o ",
       "skipped": "pominięto",
-      "sets": "{{count}} serii",
       "all": "Wszystkie",
       "of": "z",
       "top": "najlepszy wynik",
@@ -3132,7 +3170,11 @@
       "allSets_one": "{{count}} seria",
       "allSets_few": "{{count}} serie",
       "allSets_many": "{{count}} serii",
-      "allSets_other": "{{count}} serii"
+      "allSets_other": "{{count}} serii",
+      "sets_one": "{{count}} seria",
+      "sets_few": "{{count}} serie",
+      "sets_many": "{{count}} serii",
+      "sets_other": "{{count}} serii"
     },
     "accessibility": {
       "calculating": "Obliczanie"
@@ -4514,7 +4556,10 @@
     "history": "Historia",
     "ring": {
       "day": "Dzień {{day}}",
-      "dayCycle": "{{count}}-dniowy cykl"
+      "dayCycle_one": "{{count}}-dniowy cykl",
+      "dayCycle_few": "{{count}}-dniowy cykl",
+      "dayCycle_many": "{{count}}-dniowy cykl",
+      "dayCycle_other": "{{count}}-dniowego cyklu"
     }
   },
   "workoutPresetLibrary": {

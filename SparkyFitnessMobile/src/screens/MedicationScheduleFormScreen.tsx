@@ -135,7 +135,8 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
   route,
   navigation,
 }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { medicationId, scheduleId } = route.params;
   const isEditing = !!scheduleId;
   const insets = useSafeAreaInsets();
@@ -633,7 +634,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                   </TouchableOpacity>
                 )}
                 <Text className="text-base text-text-secondary">
-                  {form.startDate ? formatDateLabel(form.startDate) : t('medications.schedule.none', { defaultValue: 'None' })}
+                  {form.startDate ? formatDateLabel(form.startDate, t, dateLocale) : t('medications.schedule.none', { defaultValue: 'None' })}
                 </Text>
               </View>
             }
@@ -655,7 +656,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
                   </TouchableOpacity>
                 )}
                 <Text className="text-base text-text-secondary">
-                  {form.endDate ? formatDateLabel(form.endDate) : t('medications.schedule.none', { defaultValue: 'None' })}
+                  {form.endDate ? formatDateLabel(form.endDate, t, dateLocale) : t('medications.schedule.none', { defaultValue: 'None' })}
                 </Text>
               </View>
             }

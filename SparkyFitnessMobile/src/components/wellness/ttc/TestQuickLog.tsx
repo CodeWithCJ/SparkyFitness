@@ -51,7 +51,8 @@ function getTestTypeLabel(t: (key: string, options: { defaultValue: string }) =>
 }
 
 const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [testType, setTestType] = useState<TestType>('opk');
 
@@ -123,7 +124,7 @@ const TestQuickLog: React.FC<TestQuickLogProps> = ({ date }) => {
                 }`}
               >
                 <Text className="text-text-secondary text-xs w-24">
-                  {formatDate(entry.entry_date)}
+                  {formatDate(entry.entry_date, dateLocale)}
                 </Text>
                 <Text className="text-text-primary text-xs font-semibold flex-1 text-center uppercase">
                   {entry.test_type}

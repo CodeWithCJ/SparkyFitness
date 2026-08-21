@@ -80,7 +80,8 @@ function computeBaseTotals(ingredients: MealIngredientDraft[]): IngredientTotals
 }
 
 const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation, route }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { foodEntryMealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -191,7 +192,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   );
   const entryMealTypeLabel = selectedMealType
     ? mealTypeLabel(selectedMealType)
-    : meal ? getFoodEntryMealTypeLabel(meal, mealTypes) : t('mealTypes.other', { defaultValue: 'Other' });
+    : meal ? getFoodEntryMealTypeLabel(meal, mealTypes, t) : t('mealTypes.other', { defaultValue: 'Other' });
 
   const initialDate = meal ? normalizeDate(meal.entry_date) : null;
   const dirty =
@@ -445,7 +446,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               accessibilityLabel={t('editLoggedMeal.accessibility.date', { defaultValue: 'Select date: {{date}}', date: effectiveDate ?? '' })}
             >
               <Text className="text-text-primary text-base font-medium">
-                {effectiveDate ? formatDateLabel(effectiveDate) : ''}
+                {effectiveDate ? formatDateLabel(effectiveDate, t, dateLocale) : ''}
               </Text>
               <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
             </TouchableOpacity>
@@ -527,7 +528,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
                     key={`${food.food_id}-${food.variant_id}-${index}`}
                     foodName={food.food_name ?? t('common.food', { defaultValue: 'Food' })}
                     quantityLabel={`${formatServingSizeDisplay(scaledQty)} ${food.unit}`}
-                    caloriesLabel={`${foodCals} ${t('nutrition.caloriesShort', { defaultValue: 'kcal' })}`}
+                    caloriesLabel={`${foodCals} ${t('nutrition.caloriesShort', { defaultValue: "cal" })}`}
                     showBottomBorder={index < ingredients.length - 1}
                     isLastIngredient={ingredients.length === 1}
                     disabled={isRowBusy}

@@ -291,7 +291,7 @@ function ActiveWorkoutExerciseCard({
       case 'tenrm': return t('workout.metricTenrmShort', { defaultValue: '10RM' });
     }
   };
-  const unitLabel = weightUnit === 'kg' ? t('workout.kg', { defaultValue: 'KG' }) : t('workout.lbs', { defaultValue: 'LBS' });
+  const unitLabel = weightUnit === 'kg' ? t('workout.kg', { defaultValue: 'kg' }) : t('workout.lbs', { defaultValue: 'lbs' });
   // Resolved once per exercise; every row and the column header derive from it.
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const durationLike = isDurationModality(modality);
@@ -830,7 +830,7 @@ function ActiveWorkoutExerciseCard({
                     cell, so the column only exists in view mode. */}
                 {readOnly && modality === 'duration_distance' && (
                   <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-                    {distanceUnit === 'miles' ? t('workout.mi', { defaultValue: 'Mi' }) : t('workout.km', { defaultValue: 'Km' })}
+                    {distanceUnit === 'miles' ? t('workout.mi', { defaultValue: 'mi' }) : t('workout.km', { defaultValue: 'km' })}
                   </Text>
                 )}
               </>

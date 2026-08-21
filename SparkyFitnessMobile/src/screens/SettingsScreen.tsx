@@ -29,7 +29,8 @@ type SettingsScreenProps = CompositeScreenProps<
 >;
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const usesNativeTabs = useNativeIOSTabsActive();
@@ -56,7 +57,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   );
 
   const syncSubtitle = lastSyncedTime
-    ? t('settings.lastSynced', { defaultValue: 'Last synced {{time}}', time: formatRelativeTime(new Date(lastSyncedTime), t) })
+    ? t('settings.lastSynced', { defaultValue: 'Last synced {{time}}', time: formatRelativeTime(new Date(lastSyncedTime), t, dateLocale) })
     : t('date.neverSynced', { defaultValue: 'Never synced' });
 
   const [success, danger, catSlate, catPink, catViolet, catOrange, catCalories, hydration, macroGreen, catTeal, catBlue] = useCSSVariable([

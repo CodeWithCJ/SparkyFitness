@@ -62,7 +62,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           <Text className="text-base font-semibold text-text-primary">{title}</Text>
         </View>
         <Text className="text-sm text-text-muted">
-          ({itemCount} {t('common.itemCount', { count: itemCount, defaultValue: '{{count}} item' })})
+          ({itemCount} {t('common.itemCount', { count: itemCount, defaultValue: "{{count}} items" })})
         </Text>
       </TouchableOpacity>
       {expanded && <View className="mt-1">{children}</View>}

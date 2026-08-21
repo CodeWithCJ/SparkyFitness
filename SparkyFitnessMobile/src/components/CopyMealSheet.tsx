@@ -35,7 +35,8 @@ interface CopyMealSheetProps {
 
 const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
   ({ isPending = false, onCopy }, ref) => {
-    const { t } = useTranslation();
+    const { t, i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
     const { presentation } = useCalendarPresentation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
 
@@ -115,8 +116,8 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
         const mt = mealTypes.find((m) => m.id === source.mealTypeId);
         if (mt) return displayMealType(mt);
       }
-      return getHistoricalMealTypeLabel(source.mealTypeName);
-    }, [source, mealTypes, displayMealType]);
+      return getHistoricalMealTypeLabel(source.mealTypeName, t);
+    }, [source, mealTypes, displayMealType, t]);
 
     const handleCopy = useCallback(() => {
       if (!source || !targetDate || !targetMealTypeId) return;
@@ -168,7 +169,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                   {t('copyMeal.title', { defaultValue: 'Copy meal: {{meal}}', meal: sourceTitle })}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-1 text-center">
-                  {t('copyMeal.sourceDate', { defaultValue: 'Source date: {{date}}', date: formatDateLabel(source.date) })}
+                  {t('copyMeal.sourceDate', { defaultValue: 'Source date: {{date}}', date: formatDateLabel(source.date, t, dateLocale) })}
                 </Text>
               </View>
 

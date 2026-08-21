@@ -11,7 +11,8 @@ import CalendarSheet, { type CalendarSheetRef } from '../CalendarSheet';
 import { getTodayDate, formatDate } from '../../utils/dateUtils';
 
 const CycleHistoryList: React.FC = () => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { cycles, createCycle, deleteCycle } = useCycleHistory();
   const maxCycleLength = cycles.reduce((max, c) => Math.max(max, c.cycle_length || 0), 0);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -66,7 +67,7 @@ const CycleHistoryList: React.FC = () => {
               className="bg-raised rounded-lg p-2.5 text-text-primary border border-border-subtle flex-row justify-between items-center"
             >
               <Text className="text-text-primary">
-                {startDate ? formatDate(startDate) : t('cycleHistory.selectDate', { defaultValue: 'Select Date' })}
+                {startDate ? formatDate(startDate, dateLocale) : t('cycleHistory.selectDate', { defaultValue: 'Select Date' })}
               </Text>
               <Icon name="calendar" size={18} color={accentColor} />
             </TouchableOpacity>
@@ -124,7 +125,7 @@ const CycleHistoryList: React.FC = () => {
                 {t('cycleHistory.started', { defaultValue: 'Started {{date}}', date: c.start_date })}
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
-                {c.cycle_length ? t('cycleHistory.dayCycle', { defaultValue: '{{count}} day cycle', count: c.cycle_length }) : t('cycleHistory.currentCycle', { defaultValue: 'Current cycle' })} • {t('cycleHistory.dayPeriod', { defaultValue: '{{count}} day period', count: c.period_length || 5 })}
+                {c.cycle_length ? t('cycleHistory.dayCycle', { defaultValue: '{{count}} day cycle', count: c.cycle_length }) : t('cycleHistory.currentCycle', { defaultValue: 'Current cycle' })} • {t('cycleHistory.dayPeriod', { defaultValue: '{{count}} day periods', defaultValue_one: '{{count}} day period', defaultValue_other: '{{count}} day periods', count: c.period_length || 5 })}
               </Text>
               {c.cycle_length && c.period_length && (
                 <View className="mt-2">

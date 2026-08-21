@@ -19,7 +19,8 @@ interface BumpPhotoJournalProps {
 }
 
 const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, currentWeek }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { photos, isLoading } = usePregnancyPhotos(pregnancyId);
   const { uploadAsync, isUploading, deleteAsync } = usePregnancyPhotoMutations();
   const { activeConfig } = useServerConfigs();
@@ -146,7 +147,7 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
 
       {selectedPhoto?.entry_date && (
         <Text className="text-text-secondary text-xs">
-          {t('bumpPhotos.taken', { defaultValue: 'Taken {{date}}', date: formatDate(selectedPhoto.entry_date) })}
+          {t('bumpPhotos.taken', { defaultValue: 'Taken {{date}}', date: formatDate(selectedPhoto.entry_date, dateLocale) })}
         </Text>
       )}
 

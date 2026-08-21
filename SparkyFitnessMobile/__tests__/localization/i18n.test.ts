@@ -465,7 +465,7 @@ describe('WorkoutComplete localization', () => {
       await initializeI18n('pl');
       expect(i18n.t('workoutComplete.title', { defaultValue: 'Workout Complete' })).toBe('Trening ukończony');
       expect(i18n.t('workoutComplete.rpe.hard', { defaultValue: 'Hard' })).toBe('Trudny');
-      expect(i18n.t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', count: 1 })).toBe('1 serii');
+      expect(i18n.t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', count: 1 })).toBe('1 seria');
       expect(i18n.t('workoutComplete.actions.done', { defaultValue: 'Done' })).toBe('Gotowe');
     });
   });

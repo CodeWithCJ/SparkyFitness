@@ -46,7 +46,8 @@ const DetailRow: React.FC<{ label: string; value: string; isLast?: boolean }> = 
 );
 
 const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const protocolSheetRef = useRef<FastingProtocolSheetRef>(null);
@@ -234,7 +235,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
               />
               <DetailRow
                 label={t('fastingDetail.started', { defaultValue: 'Started' })}
-                value={`${formatDateLabel(toLocalDateString(currentFast.start_time))}, ${formatTime(
+                value={`${formatDateLabel(toLocalDateString(currentFast.start_time), t, dateLocale)}, ${formatTime(
                   currentFast.start_time,
                 )}`}
               />
@@ -251,7 +252,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                 className="items-center justify-center py-5"
                 style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
                 accessibilityRole="button"
-                accessibilityLabel={t('fastingDetail.endFast', { defaultValue: 'End fast' })}
+                accessibilityLabel={t('fastingDetail.endFast', { defaultValue: "End Fast" })}
               >
                 <Text className="text-base font-semibold text-icon-danger">{t('fastingDetail.endFast', { defaultValue: 'End Fast' })}</Text>
               </Pressable>

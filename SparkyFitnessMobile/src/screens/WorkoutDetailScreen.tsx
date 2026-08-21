@@ -67,7 +67,8 @@ import { canEditGroupedWorkout } from '@workspace/shared';
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [session, setSession] = useState(route.params.session);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -127,7 +128,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
 
-  const { name } = getWorkoutSummary(session);
+  const { name } = getWorkoutSummary(session, t);
 
   const deleteWorkout = useDeleteWorkout({
     sessionId: session.id,
@@ -374,11 +375,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       const entry = session.exercises.find((e) => e.id === entryId);
       if (!entry) return;
       navigation.navigate('ExerciseDetail', {
-        item: exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id),
+        item: exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id, t),
         hideWorkoutActions: true,
       });
     },
-    [session, navigation],
+    [session, navigation, t],
   );
 
   // --- Save ---
@@ -682,12 +683,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 activeOpacity={0.7}
               >
                 <Text className="text-sm" style={{ color: accentPrimary }}>
-                  {formatDateLabel(formState.entryDate)}
+                  {formatDateLabel(formState.entryDate, t, dateLocale)}
                 </Text>
                 <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
               </TouchableOpacity>
             ) : entryDate ? (
-              <Text className="text-sm text-text-muted">{formatDate(entryDate)}</Text>
+              <Text className="text-sm text-text-muted">{formatDate(entryDate, dateLocale)}</Text>
             ) : null}
           </View>
         </View>

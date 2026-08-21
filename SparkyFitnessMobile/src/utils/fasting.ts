@@ -110,7 +110,7 @@ export function relativeDayLabel(dateString: string, t?: TFunction): string {
   if (date === toLocalDateString(today)) {
     return translate('fastingCard.yesterday', { defaultValue: 'yesterday' });
   }
-  return formatDateLabel(date, translate);
+  return formatDateLabel(date, translate, getAppLocale());
 }
 /**
  * "Last fast 16h 4m · yesterday" line for the idle card, built from the newest

@@ -170,7 +170,7 @@ export default function OnboardingScreen({ navigation }: Props) {
       return;
     }
 
-    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required to securely register passkeys, access your camera, and sync health data.' }));
+    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: "HTTPS is required for server connections." }));
     if (validationError) {
       setError(validationError);
       return;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { View, Text } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { useCycleCorrelations } from '../../hooks/useCycleInsights';
@@ -25,14 +26,30 @@ export function formatMetricWithUnit(value: number, unit: string): string {
 }
 
 /** Resolves the sentence-safe phase label for the peak sentence. */
-function sentencePhase(t: (k: string, o?: Record<string, unknown>) => string, phase: string): string {
+function sentencePhase(t: TFunction, phase: string): string {
   switch (phase) {
-    case 'menstrual': return t('cycleCorrelations.phasesSentence.menstrual', { defaultValue: 'Menstrual phase' });
-    case 'follicular': return t('cycleCorrelations.phasesSentence.follicular', { defaultValue: 'Follicular phase' });
-    case 'fertile': return t('cycleCorrelations.phasesSentence.fertile', { defaultValue: 'Fertile phase' });
-    case 'ovulation': return t('cycleCorrelations.phasesSentence.ovulation', { defaultValue: 'Ovulation' });
-    case 'luteal': return t('cycleCorrelations.phasesSentence.luteal', { defaultValue: 'Luteal phase' });
-    default: return phase;
+    case 'menstrual':
+      return t('cycleCorrelations.phasesSentence.menstrual', {
+        defaultValue: 'Menstrual phase',
+      });
+    case 'follicular':
+      return t('cycleCorrelations.phasesSentence.follicular', {
+        defaultValue: 'Follicular phase',
+      });
+    case 'fertile':
+      return t('cycleCorrelations.phasesSentence.fertile', {
+        defaultValue: 'Fertile phase',
+      });
+    case 'ovulation':
+      return t('cycleCorrelations.phasesSentence.ovulation', {
+        defaultValue: 'Ovulation',
+      });
+    case 'luteal':
+      return t('cycleCorrelations.phasesSentence.luteal', {
+        defaultValue: 'Luteal phase',
+      });
+    default:
+      return phase;
   }
 }
 
@@ -44,29 +61,57 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
   const { t } = useTranslation();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   if (!c.hasEnoughData) return null;
-  const label = c.metric === 'weight' ? t('cycleCorrelations.metrics.weight', { defaultValue: 'Weight' })
-    : c.metric === 'mood' ? t('cycleCorrelations.metrics.mood', { defaultValue: 'Mood' })
-      : c.metric === 'sleep' ? t('cycleCorrelations.metrics.sleep', { defaultValue: 'Sleep' })
-        : c.metric === 'energy' ? t('cycleCorrelations.metrics.energy', { defaultValue: 'Energy' })
-          : c.metric;
+  const label =
+    c.metric === 'weight'
+      ? t('cycleCorrelations.metrics.weight', { defaultValue: 'Weight' })
+      : c.metric === 'mood'
+      ? t('cycleCorrelations.metrics.mood', { defaultValue: 'Mood' })
+      : c.metric === 'sleep'
+      ? t('cycleCorrelations.metrics.sleep', { defaultValue: 'Sleep' })
+      : c.metric === 'energy'
+      ? t('cycleCorrelations.metrics.energy', { defaultValue: 'Energy' })
+      : c.metric;
   const unit = METRIC_UNITS[c.metric] || '';
-  const max = Math.max(...c.byPhase.map((p) => p.mean), 1);
+  const max = Math.max(...c.byPhase.map(p => p.mean), 1);
 
   return (
     <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3 mb-3">
       <View className="flex-row items-center gap-1.5">
         <Icon name="measurements" size={18} color={accentColor} />
         <Text className="text-text-primary text-sm font-semibold">
-          {t('cycleCorrelations.byPhase', { defaultValue: '{{metric}} by cycle phase', metric: label })}
+          {t('cycleCorrelations.byPhase', {
+            defaultValue: '{{metric}} by cycle phase',
+            metric: label,
+          })}
         </Text>
       </View>
       <View className="gap-2">
-        {c.byPhase.map((p) => {
+        {c.byPhase.map(p => {
           const percentage = p.count ? Math.round((p.mean / max) * 100) : 0;
           return (
             <View key={p.phase} className="flex-row items-center gap-2">
               <Text className="w-20 text-text-secondary text-sm">
-                {p.phase === 'menstrual' ? t('cycleCorrelations.phases.menstrual', { defaultValue: 'Menstrual' }) : p.phase === 'follicular' ? t('cycleCorrelations.phases.follicular', { defaultValue: 'Follicular' }) : p.phase === 'fertile' ? t('cycleCorrelations.phases.fertile', { defaultValue: 'Fertile' }) : p.phase === 'ovulation' ? t('cycleCorrelations.phases.ovulation', { defaultValue: 'Ovulation' }) : p.phase === 'luteal' ? t('cycleCorrelations.phases.luteal', { defaultValue: 'Luteal' }) : p.phase}
+                {p.phase === 'menstrual'
+                  ? t('cycleCorrelations.phases.menstrual', {
+                      defaultValue: 'Menstrual',
+                    })
+                  : p.phase === 'follicular'
+                  ? t('cycleCorrelations.phases.follicular', {
+                      defaultValue: 'Follicular',
+                    })
+                  : p.phase === 'fertile'
+                  ? t('cycleCorrelations.phases.fertile', {
+                      defaultValue: 'Fertile',
+                    })
+                  : p.phase === 'ovulation'
+                  ? t('cycleCorrelations.phases.ovulation', {
+                      defaultValue: 'Ovulation',
+                    })
+                  : p.phase === 'luteal'
+                  ? t('cycleCorrelations.phases.luteal', {
+                      defaultValue: 'Luteal',
+                    })
+                  : p.phase}
               </Text>
               <View className="flex-1 h-2 rounded-full bg-progress-rail overflow-hidden">
                 <View
@@ -83,7 +128,21 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
       </View>
       {c.peakPhase ? (
         <Text className="text-sm text-text-secondary leading-relaxed border-t border-border-subtle pt-2">
-          {t('cycleCorrelations.peak', { defaultValue: '{{metric}} tends to be {{direction}} in your {{phase}} phase ({{delta}}{{unit}} vs your average).', metric: label, direction: c.peakDelta > 0 ? t('cycleCorrelations.higher', { defaultValue: 'higher' }) : t('cycleCorrelations.lower', { defaultValue: 'lower' }), phase: sentencePhase(t as any, c.peakPhase), delta: c.peakDelta > 0 ? `+${formatLocalizedNumber(c.peakDelta)}` : formatLocalizedNumber(c.peakDelta), unit: unit ? ` ${unit}` : '' })}
+          {t('cycleCorrelations.peak', {
+            defaultValue:
+              '{{phase}}: {{metric}} tends to be {{direction}} ({{delta}}{{unit}} vs. your average).',
+            metric: label,
+            direction:
+              c.peakDelta > 0
+                ? t('cycleCorrelations.higher', { defaultValue: 'higher' })
+                : t('cycleCorrelations.lower', { defaultValue: 'lower' }),
+            phase: sentencePhase(t, c.peakPhase),
+            delta:
+              c.peakDelta > 0
+                ? `+${formatLocalizedNumber(c.peakDelta)}`
+                : formatLocalizedNumber(c.peakDelta),
+            unit: unit ? ` ${unit}` : '',
+          })}
         </Text>
       ) : null}
     </View>
@@ -100,17 +159,22 @@ const CorrelationCards: React.FC = () => {
   if (!correlations) return null;
 
   const flags = correlations.conditionFlags;
-  const usable = correlations.correlations.filter((c) => c.hasEnoughData);
+  const usable = correlations.correlations.filter(c => c.hasEnoughData);
 
   if (usable.length === 0 && flags.length === 0) {
     return (
       <View className="bg-surface rounded-xl p-6 border-none items-center gap-2">
         <Icon name="wellness" size={24} color={textMuted} />
         <Text className="text-text-primary font-semibold text-sm">
-          {t('cycleCorrelations.noDataTitle', { defaultValue: 'Correlations unlock with more data' })}
+          {t('cycleCorrelations.noDataTitle', {
+            defaultValue: 'Correlations unlock with more data',
+          })}
         </Text>
         <Text className="text-text-secondary text-xs text-center max-w-[260px] leading-relaxed">
-          {t('cycleCorrelations.noDataHint', { defaultValue: 'Keep logging weight, mood, sleep and energy across a few cycles to see how they move with your phases.' })}
+          {t('cycleCorrelations.noDataHint', {
+            defaultValue:
+              'Keep logging weight, mood, sleep and energy across a few cycles to see how they move with your phases.',
+          })}
         </Text>
       </View>
     );
@@ -118,7 +182,7 @@ const CorrelationCards: React.FC = () => {
 
   return (
     <View className="gap-3">
-      {flags.map((f) => (
+      {flags.map(f => (
         <View
           key={f.key}
           className="flex-row items-start p-3 bg-surface rounded-xl border-none shadow-sm"
@@ -127,11 +191,26 @@ const CorrelationCards: React.FC = () => {
             <Icon name="warning" size={18} color={warningColor} />
           </View>
           <Text className="flex-1 text-sm text-text-primary leading-normal">
-            {f.key === 'long_cycles' ? t('cycleCorrelations.conditions.longCycles', { defaultValue: 'Your cycles average over 35 days. If this is new for you, it may be worth discussing with a clinician.' }) : f.key === 'irregular_cycles' ? t('cycleCorrelations.conditions.irregularCycles', { defaultValue: 'Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.' }) : f.key === 'short_cycles' ? t('cycleCorrelations.conditions.shortCycles', { defaultValue: 'Your cycles are shorter than typical. If this is new, it may be worth a clinician’s input.' }) : f.key}
+            {f.key === 'long_cycles'
+              ? t('cycleCorrelations.conditions.longCycles', {
+                  defaultValue:
+                    'Your cycles average over 35 days. If this is new for you, it may be worth discussing with a clinician.',
+                })
+              : f.key === 'irregular_cycles'
+              ? t('cycleCorrelations.conditions.irregularCycles', {
+                  defaultValue:
+                    'Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.',
+                })
+              : f.key === 'short_cycles'
+              ? t('cycleCorrelations.conditions.shortCycles', {
+                  defaultValue:
+                    'Your cycles are shorter than typical. If this is new, it may be worth a clinician’s input.',
+                })
+              : f.key}
           </Text>
         </View>
       ))}
-      {usable.map((c) => (
+      {usable.map(c => (
         <CorrelationCard key={c.metric} c={c} />
       ))}
     </View>

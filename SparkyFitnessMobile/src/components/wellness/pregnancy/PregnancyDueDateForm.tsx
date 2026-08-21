@@ -113,7 +113,8 @@ interface PregnancyDueDateFormProps {
  * `usePregnancyDueDateForm` so they can validate and build the save payload.
  */
 const PregnancyDueDateForm: React.FC<PregnancyDueDateFormProps> = ({ form, children }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const calendarRef = useRef<CalendarSheetRef>(null);
 
   return (
@@ -136,7 +137,7 @@ const PregnancyDueDateForm: React.FC<PregnancyDueDateFormProps> = ({ form, child
           rightAccessory={
             <TouchableOpacity onPress={() => calendarRef.current?.present()}>
               <Text className="text-accent-primary text-base font-semibold">
-                {formatDate(form.date)}
+                {formatDate(form.date, dateLocale)}
               </Text>
             </TouchableOpacity>
           }
@@ -147,7 +148,7 @@ const PregnancyDueDateForm: React.FC<PregnancyDueDateFormProps> = ({ form, child
       <View className="bg-surface rounded-2xl p-4 mt-4 border border-border-subtle shadow-sm">
         <Text className="text-text-secondary text-xs">{t('pregnancyDueDate.estimated', { defaultValue: 'Estimated due date' })}</Text>
         <Text className="text-text-primary text-lg font-bold">
-          {formatDate(form.computedDueDate)}
+          {formatDate(form.computedDueDate, dateLocale)}
         </Text>
       </View>
 

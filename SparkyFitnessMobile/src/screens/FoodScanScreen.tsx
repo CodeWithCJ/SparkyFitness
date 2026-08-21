@@ -776,7 +776,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
                 className="rounded-lg"
                 textClassName="text-sm"
               >
-                {t('common.later', { defaultValue: 'Not now' })}
+                {t('common.later', { defaultValue: "Later" })}
               </UIButton>
             </View>
           </View>

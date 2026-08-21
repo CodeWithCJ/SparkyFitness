@@ -141,7 +141,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
             Toast.show({
               type: 'error',
               text1: t('fastingEdit.failedUpdate', { defaultValue: 'Failed to update fast' }),
-              text2: t('common.retry', { defaultValue: 'Please try again.' }),
+              text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
             });
           },
         },
@@ -167,7 +167,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
                 Toast.show({
                   type: 'error',
                   text1: t('fastingEdit.failedDelete', { defaultValue: 'Failed to delete fast' }),
-                  text2: t('common.retry', { defaultValue: 'Please try again.' }),
+                  text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
                 });
               },
             });

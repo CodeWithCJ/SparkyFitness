@@ -12,7 +12,6 @@ import {
   calculateEntryNutrition,
   calculateMealNutrition,
   getMealGroupLabel,
-  getLocalizedMealGroupLabel,
   groupFoodEntriesByMealType,
   getMealPercentage,
   type MealGroup,
@@ -60,9 +59,7 @@ const MealSection: React.FC<MealSectionProps> = ({
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
-  const label = group.isSystem
-    ? getLocalizedMealGroupLabel(group, t)
-    : getMealGroupLabel(group);
+  const label = getMealGroupLabel(group, t);
   // Single canonical MEAL_CONFIG lookup (read once, reuse both fields). A
   // custom category named "breakfast" still gets the neutral icon, never the
   // system one — ownership is decided by isSystem, not by the name.

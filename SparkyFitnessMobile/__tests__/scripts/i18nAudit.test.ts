@@ -447,6 +447,28 @@ export function Test() {
     expect(result.report.missingFallbackFindings.length).toBe(0);
   });
 
+  it('flags a static defaultValue that differs from the English catalog', () => {
+    const source = `
+import { useTranslation } from 'react-i18next';
+export function Test() {
+  const { t } = useTranslation();
+  return t('example.greeting', { defaultValue: 'Hi, {{name}}' });
+}
+`;
+    const tmpDir = createFixtureStructure(
+      {
+        en: '{"example": {"greeting": "Hello, {{name}}"}}',
+        pl: '{"example": {"greeting": "Cześć, {{name}}"}}',
+      },
+      { 'test.ts': source },
+    );
+
+    const result = auditRun(tmpDir);
+
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.missingFallbackFindings.some((e) => e.key === 'example.greeting')).toBe(true);
+  });
+
   it('rejects a dynamic defaultValue variable', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
@@ -771,6 +793,39 @@ describe('Static key resolution', () => {
     );
     const result = auditRun(tmpDir);
     expect(result.report.missingStaticKeys.length).toBe(0);
+  });
+
+  it('flags a count lookup backed only by singular catalog keys', () => {
+    const src = `export function F(t, count){ return t('measurement', { count, defaultValue: '{{count}} measurement' }); }`;
+    const tmpDir = createFixtureStructure(
+      {
+        en: '{"measurement":"{{count}} measurement"}',
+        pl: '{"measurement":"{{count}} pomiar"}',
+      },
+      { 'x.ts': src },
+    );
+
+    const result = auditRun(tmpDir);
+
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'en')).toBe(true);
+    expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'pl')).toBe(true);
+  });
+
+  it('flags a plural fallback that differs from the English _other form', () => {
+    const src = `export function F(t, count){ return t('measurement', { count, defaultValue: '{{count}} measure', defaultValue_one: '{{count}} measurement', defaultValue_other: '{{count}} measurements' }); }`;
+    const tmpDir = createFixtureStructure(
+      {
+        en: '{"measurement_one":"{{count}} measurement","measurement_other":"{{count}} measurements"}',
+        pl: '{"measurement_one":"{{count}} pomiar","measurement_few":"{{count}} pomiary","measurement_many":"{{count}} pomiarów","measurement_other":"{{count}} pomiarów"}',
+      },
+      { 'x.ts': src },
+    );
+
+    const result = auditRun(tmpDir);
+
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.missingFallbackFindings.some((e) => e.key === 'measurement')).toBe(true);
   });
 
   it('static template literal `common.save` is static', () => {

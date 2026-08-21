@@ -83,13 +83,13 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
     <DeleteRowAction onPress={confirmAndDelete} accessibilityLabel={t('exerciseRow.deleteExercise', { defaultValue: 'Delete exercise' })} />
   );
 
-  const { name, duration, calories } = getWorkoutSummary(session);
+  const { name, duration, calories } = getWorkoutSummary(session, t);
   const sourceLabel = getSourceLabel(session.source);
   const canEdit = canEditGroupedWorkout(session.source);
   const iconName = getWorkoutIcon(session);
   const firstImage = getFirstImage(session);
   const imageSource = firstImage && getImageSource ? getImageSource(firstImage) : null;
-  const subtitle = buildSessionSubtitle(session, duration, calories, weightUnit, distanceUnit);
+  const subtitle = buildSessionSubtitle(session, duration, calories, t, weightUnit, distanceUnit);
 
   const handleLongPress = () => {
     Alert.alert(name, undefined, [

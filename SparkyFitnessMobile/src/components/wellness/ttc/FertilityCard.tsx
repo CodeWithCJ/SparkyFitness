@@ -18,7 +18,8 @@ interface FertilityCardProps {
  * with client-side prediction fallback.
  */
 const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const referenceDate = date ?? getTodayDate();
   const { fertility, isLoading } = useCycleFertility(referenceDate);
   const predictionData = useCyclePredictionData(referenceDate);
@@ -87,7 +88,7 @@ const FertilityCard: React.FC<FertilityCardProps> = ({ date }) => {
         <View>
           <Text className="text-text-secondary text-sm">{t('fertility.ovulation', { defaultValue: 'Est. ovulation' })}</Text>
           <Text className="text-text-primary text-base font-bold">
-            {effectiveOvulationDate ? formatDate(effectiveOvulationDate) : '—'}
+            {effectiveOvulationDate ? formatDate(effectiveOvulationDate, dateLocale) : '—'}
           </Text>
         </View>
         <View className="items-end">

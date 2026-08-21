@@ -98,7 +98,8 @@ const StatTile: React.FC<{ label: string; value: string; sub?: string }> = ({
 );
 
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation, route }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { item, updatedItem, hideWorkoutActions, selectionReturnKey } = route.params;
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -569,7 +570,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                         weightUnit,
                         resolveSnapshotModality(exercise),
                       )}
-                      sub={formatDateLabel(bestSet.entryDate)}
+                      sub={formatDateLabel(bestSet.entryDate, t, dateLocale)}
                     />
                   ) : null}
                   {lastSet ? (
@@ -585,7 +586,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                         weightUnit,
                         resolveSnapshotModality(exercise),
                       )}
-                      sub={formatDateLabel(lastSet.entryDate)}
+                      sub={formatDateLabel(lastSet.entryDate, t, dateLocale)}
                     />
                   ) : null}
                   {exercise.calories_per_hour > 0 ? (

@@ -51,7 +51,8 @@ type CreateFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 
 const CREATE_FORM_SOURCE_VARIANT_ID = '__create-form-source-variant__';
 
 export function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation']; routeKey: string }) {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [textPrimary, textSecondary] = useCSSVariable(['--color-text-primary', '--color-text-secondary']) as [string, string];
@@ -426,7 +427,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
             >
               <Text className="text-text-secondary text-base mr-3">{t('common.date', { defaultValue: 'Date' })}</Text>
               <Text className="text-text-primary text-base font-medium mx-1.5">
-                {formatDateLabel(selectedDate)}
+                {formatDateLabel(selectedDate, t, dateLocale)}
               </Text>
               <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
             </TouchableOpacity>
@@ -471,7 +472,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
               </Text>
             </View>
             <Text className="text-text-secondary text-sm mt-2">
-              {t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} serving', count: servings, formattedCount: servings % 1 === 0 ? servings : servings.toFixed(1) })}
+              {t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} servings', defaultValue_one: 'meal makes {{count}} serving', defaultValue_other: 'meal makes {{count}} servings', count: servings, formattedCount: servings % 1 === 0 ? servings : servings.toFixed(1) })}
               {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} {t('foodEntryAdd.labels.perServing', { defaultValue: 'per serving' })}
             </Text>
           </View>

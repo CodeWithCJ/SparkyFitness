@@ -108,8 +108,8 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   }, [selectedDate, sharedPrediction, settings]);
 
   const activeSegmentLabel = useMemo(() => {
-    return getPhaseDisplayName(dayStats.phase, discreetMode);
-  }, [dayStats, discreetMode]);
+    return getPhaseDisplayName(dayStats.phase, discreetMode, t);
+  }, [dayStats, discreetMode, t]);
 
   const hubTitle = discreetMode ? t('cycleHub.wellness', { defaultValue: 'Wellness' }) : mode === 'pregnant' ? t('cycleHub.pregnancyHub', { defaultValue: 'Pregnancy Hub' }) : t('cycleHub.cycleHub', { defaultValue: 'Cycle Hub' });
 

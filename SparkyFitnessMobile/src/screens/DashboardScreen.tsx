@@ -64,7 +64,8 @@ type DashboardScreenProps = CompositeScreenProps<
 >;
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
-  const { t } = useTranslation();
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const queryClient = useQueryClient();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
@@ -112,7 +113,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         accessibilityLabel: t('dashboard.chooseDate', { defaultValue: 'Choose dashboard date' }),
         previousDayLabel: t('common.previousDay', { defaultValue: ': previous day' }),
         nextDayLabel: t('common.nextDay', { defaultValue: ': next day' }),
-        dateLabel: `${formatDateLabel(selectedDate)} ▾`,
+        dateLabel: `${formatDateLabel(selectedDate, t, dateLocale)} ▾`,
+        t,
+        locale: dateLocale,
       },
     );
   }, [
@@ -124,6 +127,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     selectedDate,
     usesNativeTabs,
     t,
+    dateLocale,
   ]);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
