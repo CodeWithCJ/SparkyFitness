@@ -13,7 +13,7 @@ Read `agent-docs/pr-review-checklist.md` at the repo root and work it in order â
 
 Two rules that override the urge to be helpful:
 
-- **Report only.** Never post a comment, approve, request changes, or merge unless the user asks in that same message.
+- **Report only.** Never post a comment, approve, request changes, or merge unless the user asks in that same message. On someone else's PR, end with a paste-ready comment for the contributor (section F) â€” drafting it in chat is not posting it. On the user's own PR, skip the draft and just list what needs action.
 - **Never execute an untrusted branch.** Reading a contributor's diff is safe; running it is not. Prefer `gh pr checks` as the test signal, and ask before checking anything out.
 
 Read the surrounding files, not just the diff hunks. Most real findings in this repo are about what the diff *didn't* update: the missing RLS policy, the mobile consumer left behind, the write path that never invalidates the cache.

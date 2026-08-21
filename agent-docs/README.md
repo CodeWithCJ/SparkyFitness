@@ -47,7 +47,7 @@ This folder contains runbooks and architectural docs designed to answer complex 
 | `new-migration-checklist.md` | 2 min | Creating a table or altering migrations | 8 steps: migration, RLS, boot server, Zod schema, docs, API contracts, validation. Do **not** edit or regenerate `db_schema_backup.sql` — CI syncs it after merge |
 | `anti-patterns.md` | 10 min | Before committing server/frontend/mobile code | Common mistakes: getSystemClient(), missing cache invalidation, timezone bugs, incomplete cross-package updates |
 | `plan-review-checklist.md` | 2 min | Before presenting an implementation plan | Scope, layering, databases, contracts, auth, validation, rewrite guard, guide upkeep |
-| `pr-review-checklist.md` | 3 min | Reviewing an incoming PR | Trust and supply chain first (deps, egress, secrets, CI perms, RLS bypass), then `AGENTS.md` alignment, logic, and whether existing bot/reviewer threads were actually resolved (verify bot findings before acting — they are input, not verdicts); report to chat, don't re-run green CI, don't execute an untrusted branch |
+| `pr-review-checklist.md` | 3 min | Reviewing an incoming PR | Trust and supply chain first (deps, egress, secrets, CI perms, RLS bypass), then `AGENTS.md` alignment, logic, and whether existing bot/reviewer threads were actually resolved (verify bot findings before acting — they are input, not verdicts); report to chat plus a paste-ready contributor comment on others' PRs, don't re-run green CI, don't execute an untrusted branch |
 
 ## For AI Tools: How to Use These Docs
 

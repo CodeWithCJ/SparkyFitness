@@ -127,9 +127,7 @@ Don't re-run what CI already ran.
 
 ## F. Report Format
 
-Report to the terminal/chat. Do not post to GitHub, comment, approve, or merge unless asked in that same message.
-
-If you *are* asked to post it, write it as the maintainer: no AI attribution, no assistant name, no "Generated with", no 🤖. See **Commit & PR Conventions** in the root `AGENTS.md`.
+Always report to the terminal/chat first, in this shape:
 
 ```text
 Verdict: SAFE TO MERGE / CHANGES REQUESTED / DO NOT MERGE
@@ -141,6 +139,61 @@ Not verified: <what you did not check, and why>
 ```
 
 Trust findings outrank style findings. If nothing blocking turned up, say that plainly — don't manufacture filler findings to look thorough. If you couldn't verify something, list it under "Not verified" rather than implying you did.
+
+Never post, comment, approve, or merge on GitHub unless asked in that same message.
+
+### Whose PR is it?
+
+```bash
+gh api user --jq .login                       # you
+gh pr view <n> --json author,isCrossRepository
+```
+
+**Your own PR** (you are the author) — the terminal report is the whole output. Skip the draft comment; you don't need to write to yourself. Just list what needs action and stop.
+
+**Someone else's PR** — after the terminal report, add a copy-paste-ready comment for the contributor in a fenced block, so it can be pasted into GitHub untouched.
+
+### Drafting the contributor comment
+
+It must read as if the maintainer typed it. That means specific, short, and a little blunt — not assistant prose.
+
+Do:
+
+- Lead with what needs to change. One line of context at most.
+- Cite `path/to/file.ts:42` for every point, so it's actionable without hunting.
+- Say why it breaks, in one sentence, in plain language.
+- Separate what blocks merge from what doesn't, and say which is which.
+- Ask a real question when you're genuinely unsure rather than asserting.
+- Keep it short. Three tight points beat ten padded ones.
+
+Don't:
+
+- Open with "Thanks for the PR!", "Great work!", or any warm-up paragraph.
+- Add "Summary", "Strengths", "Suggestions", or "Overall" sections, or emoji/severity badges.
+- Restate what the PR does — the contributor wrote it and already knows.
+- Hedge ("you may want to consider possibly"). Either it needs changing or it doesn't.
+- Close with "Let me know if you have any questions!" or similar sign-off.
+- Mention AI, a review bot, or any assistant by name, and never include attribution, "Generated with", or 🤖. See **Commit & PR Conventions** in the root `AGENTS.md`.
+
+If a bot already made a point correctly, don't repeat it — the contributor can read it. Add only what the bots missed, or say which bot findings you actually agree with so they know what to prioritize.
+
+Shape it like this:
+
+```text
+Two things before this can go in:
+
+1. `SparkyFitnessServer/services/foo.ts:88` — this uses getSystemClient(), which
+   bypasses RLS, so any user id reaching it can read another user's rows. Needs
+   getClient(userId, authenticatedUserId).
+2. `shared/src/schemas/api/Foo.api.zod.ts` — the response shape changed but the
+   mobile client at `SparkyFitnessMobile/api/foo.ts:31` still expects the old
+   field. Old app builds will break against this.
+
+Non-blocking: the date handling in `utils/day.ts:12` works, but the shared
+timezone helper would be more consistent with the rest of the repo.
+```
+
+When nothing needs changing, say so in one or two lines and don't invent filler.
 
 ## Depth
 
