@@ -5,6 +5,7 @@ import {
   LATEST_PROTOCOL_VERSION,
   SUPPORTED_PROTOCOL_VERSIONS,
 } from '@modelcontextprotocol/sdk/types.js';
+import { isDayString } from '@workspace/shared';
 import { log } from '../config/logging.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
@@ -33,14 +34,27 @@ const router = express.Router();
  *
  * The spec says the client MUST send the negotiated version, so that is a
  * client-side fault — but 400ing every call is a poor way to meet it, and the
- * request is otherwise perfectly serviceable at our version. Only *newer*
- * versions are clamped: an unrecognised *older* one is left alone so it still
- * fails loudly rather than being silently upgraded.
+ * request is otherwise perfectly serviceable at our version.
+ *
+ * Only a well-formed version that genuinely post-dates this SDK is clamped.
+ * An unrecognised *older* version, and anything that is not a real date, are
+ * both left alone so they still fail loudly rather than being silently
+ * upgraded — the spec requires a 400 for a malformed version.
  */
 export function clampFutureProtocolVersion(req: express.Request): void {
-  const raw = req.headers['mcp-protocol-version'];
-  const version = Array.isArray(raw) ? raw[0] : raw;
-  if (!version || SUPPORTED_PROTOCOL_VERSIONS.includes(version)) return;
+  const version = req.headers['mcp-protocol-version'];
+  // Node collapses a repeated non-`set-cookie` header into a single
+  // comma-joined string, so this is a string or undefined — never an array.
+  // A repeated header therefore arrives as "2026-07-28, 2026-07-28", fails the
+  // date check below, and is left for the transport to reject with the same 400
+  // it already returned before this clamp existed.
+  if (typeof version !== 'string') return;
+  if (SUPPORTED_PROTOCOL_VERSIONS.includes(version)) return;
+  // The comparison below is lexicographic, so it is only a version comparison
+  // for real dates. Without this guard a value like "latest" or "foo" sorts
+  // above LATEST_PROTOCOL_VERSION and would be silently accepted as a future
+  // version instead of being rejected.
+  if (!isDayString(version)) return;
   // Versions are ISO dates, so a lexicographic compare is a date compare.
   if (version <= LATEST_PROTOCOL_VERSION) return;
   log(
@@ -57,6 +71,9 @@ export function clampFutureProtocolVersion(req: express.Request): void {
     for (let i = 0; i < rawHeaders.length; i += 2) {
       if (rawHeaders[i]?.toLowerCase() === 'mcp-protocol-version') {
         rawHeaders[i + 1] = LATEST_PROTOCOL_VERSION;
+        // Exactly one occurrence can reach here: a repeated header would have
+        // been comma-joined and rejected by the date check above.
+        break;
       }
     }
   }

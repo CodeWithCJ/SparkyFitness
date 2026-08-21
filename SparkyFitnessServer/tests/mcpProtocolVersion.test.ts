@@ -101,15 +101,60 @@ describe('clampFutureProtocolVersion', () => {
     ).toBeUndefined();
   });
 
-  it('handles a repeated header (array form) without throwing', () => {
+  it.each([
+    'latest',
+    'foo',
+    'invalid-version',
+    'z',
+    '2025-13-01',
+    '2025-02-30',
+  ])(
+    'leaves the malformed version %s alone so the transport can 400 it',
+    (version) => {
+      // These all sort above LATEST_PROTOCOL_VERSION under a lexicographic
+      // compare, so without a date check they would be silently accepted as
+      // "newer" versions. The spec requires a 400 for a malformed version.
+      const req = reqWith(version);
+      clampFutureProtocolVersion(req);
+      expect(
+        (req as unknown as { headers: Record<string, string> }).headers[
+          'mcp-protocol-version'
+        ]
+      ).toBe(version);
+      expect((req as unknown as { rawHeaders: string[] }).rawHeaders[1]).toBe(
+        version
+      );
+      expect(logSpy).not.toHaveBeenCalled();
+    }
+  );
+
+  it('leaves a repeated header alone rather than half-rewriting it', () => {
+    // Node collapses duplicates of a non-set-cookie header into one
+    // comma-joined string, so req.headers never holds an array here. Rewriting
+    // each rawHeaders occurrence would just produce
+    // "2025-11-25, 2025-11-25" — still unsupported — so the clamp declines the
+    // value and leaves the transport to reject it exactly as it did before.
     const req = {
-      headers: { 'mcp-protocol-version': ['2026-07-28', '2026-07-28'] },
+      headers: { 'mcp-protocol-version': '2026-07-28, 2026-07-28' },
+      rawHeaders: [
+        'MCP-Protocol-Version',
+        '2026-07-28',
+        'MCP-Protocol-Version',
+        '2026-07-28',
+      ],
     } as never;
-    expect(() => clampFutureProtocolVersion(req)).not.toThrow();
-    expect(
-      (req as unknown as { headers: Record<string, string> }).headers[
-        'mcp-protocol-version'
-      ]
-    ).toBe(LATEST_PROTOCOL_VERSION);
+    clampFutureProtocolVersion(req);
+    const { headers, rawHeaders } = req as unknown as {
+      headers: Record<string, string>;
+      rawHeaders: string[];
+    };
+    expect(headers['mcp-protocol-version']).toBe('2026-07-28, 2026-07-28');
+    expect(rawHeaders).toEqual([
+      'MCP-Protocol-Version',
+      '2026-07-28',
+      'MCP-Protocol-Version',
+      '2026-07-28',
+    ]);
+    expect(logSpy).not.toHaveBeenCalled();
   });
 });
