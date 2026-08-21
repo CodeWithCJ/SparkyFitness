@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, warn } from '@/utils/logging';
 import { Exercise } from '@/types/exercises';
+import { resolveExerciseImageSrc } from '@/utils/exercises';
 
 interface ExercisePlaybackModalProps {
   isOpen: boolean;
@@ -415,11 +416,7 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
     const img = images[currentImageIndex];
     if (!img) return null;
 
-    // If it's already a full URL (starts with http), use it as is
-    if (img.startsWith('http')) return img;
-
-    // Otherwise, it's a local upload, so we MUST prefix it
-    return `/uploads/exercises/${img}`;
+    return resolveExerciseImageSrc(img);
   }, [images, currentImageIndex]);
 
   useEffect(() => {

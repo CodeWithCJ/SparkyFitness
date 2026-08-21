@@ -24,6 +24,17 @@ describe('resolveExerciseImageSrc', () => {
     );
   });
 
+  it('uses absolute app paths (already rooted at /) as-is', () => {
+    // CSV imports persist the full app path; prefixing again would produce
+    // /uploads/exercises//uploads/exercises/... and 404.
+    expect(
+      resolveExerciseImageSrc('/uploads/exercises/Bench_Press/0_abc123.jpg')
+    ).toBe('/uploads/exercises/Bench_Press/0_abc123.jpg');
+    expect(resolveExerciseImageSrc('/static/img/a.png')).toBe(
+      '/static/img/a.png'
+    );
+  });
+
   it('is case-insensitive about the URL scheme', () => {
     expect(resolveExerciseImageSrc('HTTPS://example.com/a.png')).toBe(
       'HTTPS://example.com/a.png'

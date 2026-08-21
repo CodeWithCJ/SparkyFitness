@@ -29,6 +29,7 @@ import {
   setsDurationMinutes,
 } from '@workspace/shared';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
+import { resolveExerciseImageSrc } from '@/utils/exercises';
 
 interface ExerciseEntryDisplayProps {
   exerciseEntry: ExerciseEntry;
@@ -120,9 +121,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
   const imageUrl = exerciseEntry.image_url
     ? exerciseEntry.image_url
     : snapshot?.images && snapshot.images.length > 0
-      ? exerciseEntry.source
-        ? `/uploads/exercises/${snapshot.images[0]}`
-        : snapshot.images[0]
+      ? resolveExerciseImageSrc(snapshot.images[0])
       : null;
 
   const metaPills: string[] = [];

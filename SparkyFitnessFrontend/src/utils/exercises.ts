@@ -72,8 +72,11 @@ export const generateUniqueId = () =>
 /**
  * Resolve an exercise `images` entry to a usable <img> src.
  *
- * Exercise image values come from two shapes:
+ * Exercise image values come from three shapes:
  * - Absolute URLs (e.g. external provider search results) — used as-is.
+ * - Absolute app paths already rooted at `/` (e.g. CSV imports persist the
+ *   full `/uploads/exercises/Name/0_hash.jpg`) — used as-is; prefixing them
+ *   again would produce `/uploads/exercises//uploads/exercises/...` and 404.
  * - Relative paths for images stored under the server's uploads directory
  *   (e.g. imported wger / free-exercise-db exercises persist the relative
  *   path and the files are served from `/uploads/exercises/`).
@@ -87,6 +90,7 @@ export const generateUniqueId = () =>
 export function resolveExerciseImageSrc(image: string | undefined): string {
   if (!image) return '';
   if (/^https?:\/\//i.test(image)) return image;
+  if (image.startsWith('/')) return image;
   return `/uploads/exercises/${image}`;
 }
 
