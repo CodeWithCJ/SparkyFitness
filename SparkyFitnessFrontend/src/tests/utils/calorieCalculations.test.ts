@@ -7,7 +7,8 @@ import {
   computeCaloriesRemaining,
   computeExerciseCredited,
   computeCalorieProgress,
-} from '@/utils/calorieCalculations';
+  normalizeCalorieGoalAdjustmentMode,
+} from '@workspace/shared';
 import {
   computeCalorieTarget,
   getGoalModeAdjustment,
@@ -556,5 +557,45 @@ describe('computeCalorieTarget safety floor reporting', () => {
     expect(result.wasClampedToFloor).toBe(false);
     expect(result.finalTarget).toBe(1190); // the user gets what they asked for
     expect(result.isBelowAbsoluteFloor).toBe(true);
+  });
+});
+
+describe('normalizeCalorieGoalAdjustmentMode', () => {
+  it("maps 'smart' onto 'tdee' so mode branches can't silently exclude it", () => {
+    expect(normalizeCalorieGoalAdjustmentMode('smart')).toBe('tdee');
+  });
+
+  it.each(['dynamic', 'fixed', 'percentage', 'tdee', 'adaptive'] as const)(
+    'leaves %s untouched',
+    (mode) => {
+      expect(normalizeCalorieGoalAdjustmentMode(mode)).toBe(mode);
+    }
+  );
+
+  it.each([undefined, null, ''])(
+    'falls back to dynamic for %p, matching the server default',
+    (mode) => {
+      expect(normalizeCalorieGoalAdjustmentMode(mode)).toBe('dynamic');
+    }
+  );
+
+  /**
+   * `smart` and `tdee` share a branch in `computeCaloriesRemaining`, which is what makes
+   * collapsing them safe. If that ever stops being true, normalizing becomes a bug.
+   */
+  it('is only safe because smart and tdee compute the same remaining', () => {
+    const params = {
+      goalCalories: 2000,
+      eatenCalories: 1800,
+      netCalories: 1500,
+      exerciseCaloriesBurned: 300,
+      bmrCalories: 0,
+      exerciseCaloriePercentage: 100,
+      tdeeAdjustment: 250,
+    };
+
+    expect(computeCaloriesRemaining({ ...params, mode: 'smart' })).toBe(
+      computeCaloriesRemaining({ ...params, mode: 'tdee' })
+    );
   });
 });

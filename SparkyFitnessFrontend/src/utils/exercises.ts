@@ -69,6 +69,54 @@ export const parseCSV = (
 export const generateUniqueId = () =>
   `temp_${Math.random().toString(36).slice(2, 11)}`;
 
+/**
+ * Resolve an exercise `images` entry to a usable <img> src.
+ *
+ * Exercise image values come from three shapes:
+ * - Absolute URLs (e.g. external provider search results) — used as-is.
+ * - Absolute app paths already rooted at `/` (e.g. CSV imports persist the
+ *   full `/uploads/exercises/Name/0_hash.jpg`) — used as-is; prefixing them
+ *   again would produce `/uploads/exercises//uploads/exercises/...` and 404.
+ * - Relative paths for images stored under the server's uploads directory
+ *   (e.g. imported wger / free-exercise-db exercises persist the relative
+ *   path and the files are served from `/uploads/exercises/`).
+ *
+ * The saved-exercise listing previously keyed this decision off
+ * `exercise.source` being truthy, which skipped the `/uploads/exercises/`
+ * prefix for every sourced exercise (wger, free-exercise-db, ...) and left
+ * their thumbnails broken. Detecting an absolute URL instead is correct for
+ * both search results and saved exercises regardless of source.
+ */
+export function resolveExerciseImageSrc(image: string | undefined): string {
+  // Trimmed here rather than at each call site: filterValidExerciseImages
+  // validates a trimmed value but returns the original, so a padded entry
+  // reaches this function and would otherwise build a src containing spaces.
+  image = image?.trim();
+  if (!image) return '';
+  if (/^https?:\/\//i.test(image)) return image;
+  if (image.startsWith('/')) return image;
+  return `/uploads/exercises/${image}`;
+}
+
+/**
+ * Return only the usable image entries from an exercise's `images` array.
+ *
+ * Persisted `images` can contain unusable entries: empty strings, whitespace,
+ * or the `'[]'` sentinel produced when an exercise has no images. Callers must
+ * drive presence checks, `<img>` sources, and gallery navigation off the same
+ * filtered list so they never disagree and render a broken thumbnail.
+ */
+export function filterValidExerciseImages(
+  images: string[] | undefined | null
+): string[] {
+  if (!Array.isArray(images)) return [];
+  return images.filter((img) => {
+    if (typeof img !== 'string') return false;
+    const trimmed = img.trim();
+    return trimmed !== '' && trimmed !== '[]';
+  });
+}
+
 export function calcExerciseStatsFlat(entries: DailyExerciseEntry[]) {
   return {
     otherCalories: entries.reduce(

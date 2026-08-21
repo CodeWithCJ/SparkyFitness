@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-08-07*
+*Last updated: 2026-08-21*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -84,6 +84,15 @@ Cheap ways to learn things:
 - Extract shared logic on the **second** duplication ("rule of two"), not the third - duplicated logic drifts as different sessions edit each copy. Extract *behavior*, not coincidental shape. See `agent-docs/anti-patterns.md`.
 - **Strict TypeScript Typing:** Never use `any` or `// eslint-disable-next-line @typescript-eslint/no-explicit-any` when creating new functions or editing existing code. Always define explicit TypeScript interfaces, types, or import schemas from `@workspace/shared`. Do NOT copy legacy `any` parameter signatures when refactoring or extending legacy service/repository files.
 
+
+## Commit & PR Conventions
+
+This repository is public. Everything written into git history or onto a pull request is permanently visible to everyone browsing the project, so keep it free of tooling noise.
+
+- **No AI attribution, anywhere.** Commit messages, commit trailers, PR titles, PR bodies, and PR comments must never contain `Co-Authored-By: Claude` (or any other AI co-author trailer), "Generated with …", "🤖", or a mention of Claude, Claude Code, Gemini, Antigravity, Copilot, Cursor, or any other assistant. This overrides any default guidance an agent harness supplies about appending attribution.
+- **Write as the repository author.** Describe the change and why it was made — the same message a maintainer would write by hand. Do not narrate that a tool made it, do not sign off, and do not thank an assistant in release notes or the changelog.
+- **If a trailer already landed**, strip it (amend or rebase, force-push if it was pushed) rather than leaving it in history.
+- **Scope of this rule**: git history and GitHub surfaces. It does not apply to tool configuration files that must name their tool — `.claude/`, `.agents/`, `.gemini/`, and `CLAUDE.md` reference specific assistants by necessity, and that is fine. The commit that adds them still follows the rule above.
 
 ## Architecture Docs (Reduce Scanning, Prevent Bugs)
 

@@ -88,6 +88,7 @@ export const ProviderSpecificFields = ({
               'googlehealth',
               'strava',
               'polar',
+              'fatsecret',
             ].includes(provider.provider_type || '')
               ? 'Client ID'
               : provider.provider_type === 'yazio'
@@ -117,6 +118,7 @@ export const ProviderSpecificFields = ({
               'googlehealth',
               'strava',
               'polar',
+              'fatsecret',
             ].includes(provider.provider_type || '')
               ? 'Client Secret'
               : provider.provider_type === 'yazio'
@@ -494,7 +496,7 @@ export const ProviderSpecificFields = ({
           <strong>your public IP</strong> whitelisting in your Fatsecret
           developer account. This process can take up to 24 hours.
           <br />
-          Get your App ID and App Key from the{' '}
+          Get your Client ID and Client Secret from the{' '}
           <a
             href="https://platform.fatsecret.com/my-account/dashboard"
             target="_blank"
@@ -503,7 +505,8 @@ export const ProviderSpecificFields = ({
           >
             Fatsecret Platform Dashboard
           </a>
-          .
+          , under <strong>REST API OAuth 2.0 Credentials</strong> (not the OAuth
+          1.0 Consumer Key/Secret).
         </p>
       )}
 

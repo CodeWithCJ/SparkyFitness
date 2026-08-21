@@ -14,6 +14,11 @@ import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import NutritionMacroCard from '../components/NutritionMacroCard';
 import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
+import {
+  resolveSupplementTotals,
+  FOOD_VARIANT_NUTRIENT_FIELDS,
+} from '@workspace/shared';
+import type { FoodVariantNutrientField } from '@workspace/shared';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodEntry } from '../types/foodEntries';
 import { formatLocalizedNumber } from '../localization';
@@ -125,6 +130,12 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
       goal?: number;
     }[] = [];
 
+    // Logged supplement doses, full width and zero-filled, so a fixed nutrient computed
+    // from food entries below can have its supplement contribution added back (#2145).
+    const supplements = resolveSupplementTotals(summary.supplementTotals);
+    const isFixedNutrient = (key: string): key is FoodVariantNutrientField =>
+      (FOOD_VARIANT_NUTRIENT_FIELDS as readonly string[]).includes(key);
+
     // Filter and compute standard nutrients in order of visibleKeys
     for (const key of visibleKeys) {
       // Exclude base macros from the detailed breakdown if they are already visible in top card
@@ -156,9 +167,14 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
           fat: summary.fat.consumed,
           dietary_fiber: summary.fiber.consumed,
         };
+        // Anything not already rolled up is derived from food entries here, which is
+        // food-only. Every fixed nutrient a supplement can carry has to have its dose
+        // contribution added back, or this screen shows a smaller calcium than Reports
+        // does for the same day.
         const consumed =
           rolledUp[key] ??
-          calculateNutrientTotal(summary.foodEntries, key as keyof FoodEntry);
+          calculateNutrientTotal(summary.foodEntries, key as keyof FoodEntry) +
+            (isFixedNutrient(key) ? supplements[key] : 0);
         const goal = summary.goals[key as keyof typeof summary.goals] as number | undefined;
 
         standardItems.push({

@@ -1,7 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Image } from 'expo-image';
 import { useFocusEffect } from '@react-navigation/native';
-import { getActiveServerConfig, proxyHeadersToRecord } from '../services/storage';
+import {
+  getActiveServerConfig,
+  proxyHeadersToRecord,
+} from '../services/storage';
 import { normalizeUrl } from '../services/api/apiClient';
 import type { ServerConfig } from '../services/storage';
 
@@ -42,6 +45,14 @@ export function useExerciseImageSource() {
       // Absolute URLs (external sources) — use directly
       if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
         source = { uri: imagePath, headers: {} };
+      } else if (imagePath.startsWith('/') && config) {
+        // Already server-rooted: the CSV importers persist downloadImage's
+        // return value (`/uploads/exercises/...`) verbatim, so appending it to
+        // the prefix below yields `/api/uploads/exercises//uploads/...`.
+        source = {
+          uri: `${normalizeUrl(config.url)}/api${imagePath}`,
+          headers: proxyHeadersToRecord(config.proxyHeaders),
+        };
       } else if (!config) {
         // Don't cache until config resolves, so the path resolves once ready.
         return null;
@@ -94,12 +105,12 @@ export function useImagePairAspectMatch(
     // same pipeline means one download and one disk-cache entry serve both the
     // probe and the render. A failed load leaves its ratio at 0, keeping the
     // verdict undefined per the contract above.
-    Promise.allSettled(sources.map((source) => Image.loadAsync(source))).then(
-      (results) => {
-        const refs = results.map((result) =>
+    Promise.allSettled(sources.map(source => Image.loadAsync(source))).then(
+      results => {
+        const refs = results.map(result =>
           result.status === 'fulfilled' ? result.value : null,
         );
-        const [a, b] = refs.map((ref) =>
+        const [a, b] = refs.map(ref =>
           ref && ref.height > 0 ? ref.width / ref.height : 0,
         );
         if (!cancelled && a > 0 && b > 0) {

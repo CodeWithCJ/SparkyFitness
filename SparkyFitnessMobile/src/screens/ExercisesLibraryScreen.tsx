@@ -1,6 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import React, { useCallback, useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import LibrarySearchBar from '../components/LibrarySearchBar';
@@ -15,6 +21,10 @@ import {
   ownershipFilterHeaderMenu,
 } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
+import SafeImage from '../components/SafeImage';
+import Icon from '../components/Icon';
+import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
+import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -23,7 +33,9 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 
-const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigation }) => {
+const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -34,11 +46,16 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const ownershipFilter = useAppPreferencesStore((s) => s.exercisesLibraryOwnershipFilter);
-  const setOwnershipFilter = useAppPreferencesStore((s) => s.setExercisesLibraryOwnershipFilter);
+  const ownershipFilter = useAppPreferencesStore(
+    s => s.exercisesLibraryOwnershipFilter,
+  );
+  const setOwnershipFilter = useAppPreferencesStore(
+    s => s.setExercisesLibraryOwnershipFilter,
+  );
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { profile } = useProfile();
+  const { getImageSource } = useExerciseImageSource();
 
   const {
     exercises,
@@ -51,7 +68,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     loadMore,
     refetch,
   } = useExercisesLibrary(searchText, { enabled: isConnected });
-  const filteredExercises = useMemo(() => filterByOwnership(exercises, ownershipFilter, profile?.id), [exercises, ownershipFilter, profile?.id]);
+  const filteredExercises = useMemo(
+    () => filterByOwnership(exercises, ownershipFilter, profile?.id),
+    [exercises, ownershipFilter, profile?.id],
+  );
 
   const handleExercisePress = useCallback(
     (exercise: Exercise) => {
@@ -61,7 +81,11 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   );
 
   const renderEmpty = () => {
-    if (ownershipFilter !== 'all' && exercises.length > 0 && filteredExercises.length === 0) {
+    if (
+      ownershipFilter !== 'all' &&
+      exercises.length > 0 &&
+      filteredExercises.length === 0
+    ) {
       return (
         <StatusView
           inline
@@ -85,33 +109,69 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     return (
       <StatusView
         inline
-        title={searchText.trim().length > 0 ? t('exerciseLibrary.noMatch', { defaultValue: 'No matching exercises found' }) : t('exerciseLibrary.noItems', { defaultValue: 'No exercises found' })}
-        subtitle={searchText.trim().length > 0
-          ? t('exerciseLibrary.trySearch', { defaultValue: 'Try a different search term to find saved exercises.' })
-          : t('exerciseLibrary.empty', { defaultValue: 'Exercises you save or log will appear here.' })}
+        title={
+          searchText.trim().length > 0
+            ? t('exerciseLibrary.noMatch', { defaultValue: 'No matching exercises found' })
+            : t('exerciseLibrary.noItems', { defaultValue: 'No exercises found' })
+        }
+        subtitle={
+          searchText.trim().length > 0
+            ? t('exerciseLibrary.trySearch', { defaultValue: 'Try a different search term to find saved exercises.' })
+            : t('exerciseLibrary.empty', { defaultValue: 'Exercises you save or log will appear here.' })
+        }
       />
     );
   };
 
   const renderRow = ({ item, index }: { item: Exercise; index: number }) => {
-    const status = deriveShareStatus(item.userId, item.sharedWithPublic, profile?.id);
+    const status = deriveShareStatus(
+      item.userId,
+      item.sharedWithPublic,
+      profile?.id,
+    );
+    const image = item.images?.[0] ?? null;
+    const fallbackIcon =
+      (item.category && CATEGORY_ICON_MAP[item.category]) || 'exercise-weights';
     return (
       <TouchableOpacity
-        className={`px-4 py-3 ${index < filteredExercises.length - 1 ? 'border-b border-border-subtle' : ''}`}
+        className={`px-4 py-3 ${
+          index < filteredExercises.length - 1
+            ? 'border-b border-border-subtle'
+            : ''
+        }`}
         activeOpacity={0.7}
         onPress={() => handleExercisePress(item)}
       >
-        <View className="flex-row items-center gap-1.5">
-          <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
-            {item.name}
-          </Text>
-          <ShareStatusBadge status={status} />
+        <View className="flex-row items-center gap-3">
+          <SafeImage
+            source={image ? getImageSource(image) : null}
+            style={{ width: 44, height: 44, borderRadius: 8 }}
+            fallback={
+              <View
+                className="bg-raised items-center justify-center"
+                style={{ width: 44, height: 44, borderRadius: 8 }}
+              >
+                <Icon name={fallbackIcon} size={22} color={textSecondary} />
+              </View>
+            }
+          />
+          <View className="flex-1">
+            <View className="flex-row items-center gap-1.5">
+              <Text
+                className="text-text-primary text-base font-medium flex-shrink"
+                numberOfLines={1}
+              >
+                {item.name}
+              </Text>
+              <ShareStatusBadge status={status} />
+            </View>
+            {item.category ? (
+              <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
+                {item.category}
+              </Text>
+            ) : null}
+          </View>
         </View>
-        {item.category ? (
-          <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-            {item.category}
-          </Text>
-        ) : null}
       </TouchableOpacity>
     );
   };
@@ -160,7 +220,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
     return (
       <FlatList
         data={filteredExercises}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         renderItem={renderRow}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={
@@ -185,7 +245,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
             tintColor={textPrimary}
           />
         }
-        contentContainerStyle={{ paddingBottom: scrollBottomPadding, flexGrow: 1 }}
+        contentContainerStyle={{
+          paddingBottom: scrollBottomPadding,
+          flexGrow: 1,
+        }}
       />
     );
   };
@@ -210,7 +273,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({ navigat
   });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       {isConnected ? (
         <LibrarySearchBar

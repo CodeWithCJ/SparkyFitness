@@ -178,6 +178,15 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     (h) => !textFields.has(h) && !booleanFields.has(h) && h !== 'serving_unit'
   );
 
+  // Nutrient columns: the numeric ones a row can simply not carry. Unlike
+  // serving_size (the divisor in the consumed-nutrition formula, which always
+  // needs a usable value), a nutrient the file never supplied is unknown
+  // rather than zero, and is left off the row entirely — see the mapping
+  // branch in parseCSV below.
+  const nutrientColumns = new Set(
+    numericColumns.filter((h) => h !== 'serving_size')
+  );
+
   // parseCsv (shared, not a raw Papa.parse call) so delimiter/quote-char are
   // driven by the user's format choice instead of Papa's silent auto-detect.
   // When `mapping` is given, rows are built from requiredHeaders (using the
@@ -228,6 +237,15 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       if (mapping) {
         requiredHeaders.forEach((header) => {
           const fileColumn = mapping[header];
+          // A nutrient with no column mapped to it is absent from the file,
+          // not zero in it. Leaving the key off the row keeps the two parse
+          // paths consistent — the unmapped branch below builds rows from the
+          // file's own columns, so it already omits what the file lacks — and
+          // stops a partial CSV from asserting "0 g" for every nutrient it
+          // simply never carried, which on an overwrite import would replace
+          // real stored values with confident zeros. A mapped-but-blank cell
+          // still parses to 0, so clearing a value on purpose is unaffected.
+          if (!fileColumn && nutrientColumns.has(header)) return;
           row[header] = buildValue(
             header,
             fileColumn ? (rawRow[fileColumn] ?? '') : ''

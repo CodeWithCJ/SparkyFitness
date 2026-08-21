@@ -155,6 +155,78 @@ describe('Exercises API schemas', () => {
     expect(result.success).toBe(false);
   });
 
+  describe('exerciseWriteArrayFieldsSchema', () => {
+    it('passes an already-correct array through unchanged', () => {
+      const result = runSchema('exerciseWriteArrayFieldsSchema', {
+        equipment: ['Barbell', 'Dumbbell'],
+      });
+      expect(result).toEqual({
+        success: true,
+        data: { equipment: ['Barbell', 'Dumbbell'] },
+      });
+    });
+
+    // Normalization
+    it('wraps a bare string into a one-item array instead of rejecting it', () => {
+      const result = runSchema('exerciseWriteArrayFieldsSchema', {
+        equipment: 'Barbell',
+        primary_muscles: 'chest',
+        secondary_muscles: ['triceps'],
+        instructions: 'Lie on the bench.',
+      });
+      expect(result).toEqual({
+        success: true,
+        data: {
+          equipment: ['Barbell'],
+          primary_muscles: ['chest'],
+          secondary_muscles: ['triceps'],
+          instructions: ['Lie on the bench.'],
+        },
+      });
+    });
+
+    it('leaves null and missing fields alone rather than coercing to []', () => {
+      const result = runSchema('exerciseWriteArrayFieldsSchema', {
+        equipment: null,
+      });
+      expect(result).toEqual({ success: true, data: { equipment: null } });
+      expect(result.data).not.toHaveProperty('primary_muscles');
+    });
+
+    it('rejects a genuinely wrong type (not a string/array formatting quirk)', () => {
+      expect(
+        runSchema('exerciseWriteArrayFieldsSchema', { equipment: 5 }).success
+      ).toBe(false);
+      expect(
+        runSchema('exerciseWriteArrayFieldsSchema', { equipment: true }).success
+      ).toBe(false);
+      expect(
+        runSchema('exerciseWriteArrayFieldsSchema', {
+          equipment: { not: 'valid' },
+        }).success
+      ).toBe(false);
+    });
+
+    it('rejects an array containing a non-string element', () => {
+      const result = runSchema('exerciseWriteArrayFieldsSchema', {
+        equipment: ['Barbell', 5],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it('lets unrelated fields through via passthrough', () => {
+      const result = runSchema('exerciseWriteArrayFieldsSchema', {
+        name: 'Bench Press',
+        category: 'Strength',
+        is_public: true,
+      });
+      expect(result).toEqual({
+        success: true,
+        data: { name: 'Bench Press', category: 'Strength', is_public: true },
+      });
+    });
+  });
+
   it('round-trips the paginated response envelope', () => {
     const payload = {
       exercises: [],

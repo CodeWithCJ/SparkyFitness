@@ -46,6 +46,7 @@ vi.mock('../models/exercisePresetEntryRepository.js', () => ({
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 import { processHevyWorkouts } from '../integrations/hevy/hevyDataProcessor.js';
+import type { HevyWorkout } from '../integrations/hevy/hevyDataProcessor.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
@@ -55,7 +56,7 @@ const UID = 'user-1';
 const CID = 'user-1';
 
 // A workout with three exercises: two untimed, one with per-set durations.
-function sampleWorkout() {
+function sampleWorkout(): HevyWorkout {
   return {
     id: 'workout-abc',
     title: 'Vid plan A',
@@ -206,6 +207,83 @@ describe('processHevyWorkouts — field mapping', () => {
     await processHevyWorkouts(UID, CID, [sampleWorkout()], 'UTC');
     // 90 + 90 = 180s → 3 min
     expect(entryArgForExercise('Plank').duration_minutes).toBe(3);
+  });
+
+  it('converts Hevy metres to the kilometres the distance column stores', async () => {
+    // The Hevy API always reports `distance_meters` in metres regardless of the
+    // user's display units, while exercise_entries.distance is kilometres like
+    // every other integration writes it. Storing the raw sum made a 500 m row
+    // read as 500 km.
+    const workout = sampleWorkout();
+    workout.exercises = [
+      ...(workout.exercises ?? []),
+      {
+        index: 3,
+        title: 'Rowing Machine',
+        notes: '',
+        exercise_template_id: 'ROW001',
+        superset_id: null,
+        sets: [
+          {
+            index: 0,
+            type: 'normal',
+            weight_kg: null,
+            reps: null,
+            duration_seconds: 120,
+            distance_meters: 500,
+            rpe: null,
+          },
+          {
+            index: 1,
+            type: 'normal',
+            weight_kg: null,
+            reps: null,
+            duration_seconds: 120,
+            distance_meters: 750,
+            rpe: null,
+          },
+        ],
+      },
+    ];
+
+    await processHevyWorkouts(UID, CID, [workout], 'UTC');
+
+    // 500 m + 750 m = 1250 m = 1.25 km, not 1250.
+    expect(entryArgForExercise('Rowing Machine').distance).toBe(1.25);
+  });
+
+  it('keeps short Hevy distances from rounding away to zero', async () => {
+    const workout = sampleWorkout();
+    workout.exercises = [
+      ...(workout.exercises ?? []),
+      {
+        index: 3,
+        title: "Farmer's Walk",
+        notes: '',
+        exercise_template_id: 'FARM01',
+        superset_id: null,
+        sets: [
+          {
+            index: 0,
+            type: 'normal',
+            weight_kg: 80,
+            reps: null,
+            duration_seconds: null,
+            distance_meters: 50,
+            rpe: null,
+          },
+        ],
+      },
+    ];
+
+    await processHevyWorkouts(UID, CID, [workout], 'UTC');
+
+    expect(entryArgForExercise("Farmer's Walk").distance).toBe(0.05);
+  });
+
+  it('leaves distance null for exercises with no distance sets', async () => {
+    await processHevyWorkouts(UID, CID, [sampleWorkout()], 'UTC');
+    expect(entryArgForExercise('Pull Up').distance).toBeNull();
   });
 
   it('stores per-set duration in integer seconds (issue #1903)', async () => {

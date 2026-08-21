@@ -10,6 +10,10 @@ import {
   buildSqlSearch,
   buildSqlExactMatchOrder,
 } from '../utils/dbSearchHelper.js';
+import {
+  parseJsonArrayField,
+  normalizeToStringArray,
+} from '../utils/exerciseJsonFields.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getExerciseById(id: any, userId: any) {
   const client = await getClient(userId);
@@ -413,25 +417,26 @@ async function searchExercises(
     const result = await client.query(finalQuery, selectQueryParams);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return result.rows.map((row: any) => {
-      // Helper function to safely parse JSONB fields into arrays
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parseJsonbField = (field: any) => {
-        if (row[field]) {
-          try {
-            const parsed = JSON.parse(row[field]);
-            return Array.isArray(parsed) ? parsed : [parsed]; // Ensure it's an array
-          } catch (e) {
-            log('error', `Error parsing ${field} for exercise ${row.id}:`, e);
-            return [];
-          }
-        }
-        return [];
-      };
-      row.equipment = parseJsonbField('equipment');
-      row.primary_muscles = parseJsonbField('primary_muscles');
-      row.secondary_muscles = parseJsonbField('secondary_muscles');
-      row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.equipment = parseJsonArrayField(
+        row.equipment,
+        `equipment for exercise ${row.id}`
+      );
+      row.primary_muscles = parseJsonArrayField(
+        row.primary_muscles,
+        `primary_muscles for exercise ${row.id}`
+      );
+      row.secondary_muscles = parseJsonArrayField(
+        row.secondary_muscles,
+        `secondary_muscles for exercise ${row.id}`
+      );
+      row.instructions = parseJsonArrayField(
+        row.instructions,
+        `instructions for exercise ${row.id}`
+      );
+      row.images = parseJsonArrayField(
+        row.images,
+        `images for exercise ${row.id}`
+      );
       return row;
     });
   } finally {
@@ -516,24 +521,26 @@ async function searchExercisesPaginated(
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exercises = result.rows.map((row: any) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parseJsonbField = (field: any) => {
-        if (row[field]) {
-          try {
-            const parsed = JSON.parse(row[field]);
-            return Array.isArray(parsed) ? parsed : [parsed];
-          } catch (e) {
-            log('error', `Error parsing ${field} for exercise ${row.id}:`, e);
-            return [];
-          }
-        }
-        return [];
-      };
-      row.equipment = parseJsonbField('equipment');
-      row.primary_muscles = parseJsonbField('primary_muscles');
-      row.secondary_muscles = parseJsonbField('secondary_muscles');
-      row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.equipment = parseJsonArrayField(
+        row.equipment,
+        `equipment for exercise ${row.id}`
+      );
+      row.primary_muscles = parseJsonArrayField(
+        row.primary_muscles,
+        `primary_muscles for exercise ${row.id}`
+      );
+      row.secondary_muscles = parseJsonArrayField(
+        row.secondary_muscles,
+        `secondary_muscles for exercise ${row.id}`
+      );
+      row.instructions = parseJsonArrayField(
+        row.instructions,
+        `instructions for exercise ${row.id}`
+      );
+      row.images = parseJsonArrayField(
+        row.images,
+        `images for exercise ${row.id}`
+      );
       return row;
     });
     return { exercises, totalCount };
@@ -565,18 +572,28 @@ async function createExercise(exerciseData: any) {
         exerciseData.force,
         exerciseData.level,
         exerciseData.mechanic,
-        exerciseData.equipment ? JSON.stringify(exerciseData.equipment) : null,
+        // normalizeToStringArray is applied here, right before encoding,
+        // so every write path (route JSON body, CSV import, external
+        // provider import) lands on the same JSON-array-of-strings shape
+        // regardless of whether the caller already normalized it.
+        exerciseData.equipment
+          ? JSON.stringify(normalizeToStringArray(exerciseData.equipment))
+          : null,
         exerciseData.primary_muscles
-          ? JSON.stringify(exerciseData.primary_muscles)
+          ? JSON.stringify(normalizeToStringArray(exerciseData.primary_muscles))
           : null,
         exerciseData.secondary_muscles
-          ? JSON.stringify(exerciseData.secondary_muscles)
+          ? JSON.stringify(
+              normalizeToStringArray(exerciseData.secondary_muscles)
+            )
           : null,
         exerciseData.instructions
-          ? JSON.stringify(exerciseData.instructions)
+          ? JSON.stringify(normalizeToStringArray(exerciseData.instructions))
           : null,
         exerciseData.category,
-        exerciseData.images ? JSON.stringify(exerciseData.images) : null,
+        exerciseData.images
+          ? JSON.stringify(normalizeToStringArray(exerciseData.images))
+          : null,
         exerciseData.calories_per_hour || 0, // Ensure calories_per_hour is a number, default to 0
         exerciseData.description,
         exerciseData.is_custom,
@@ -627,17 +644,23 @@ async function updateExercise(id: any, userId: any, updateData: any) {
         updateData.force,
         updateData.level,
         updateData.mechanic,
-        updateData.equipment ? JSON.stringify(updateData.equipment) : null,
+        // See createExercise: normalize right before encoding so this
+        // chokepoint holds the invariant regardless of caller.
+        updateData.equipment
+          ? JSON.stringify(normalizeToStringArray(updateData.equipment))
+          : null,
         updateData.primary_muscles
-          ? JSON.stringify(updateData.primary_muscles)
+          ? JSON.stringify(normalizeToStringArray(updateData.primary_muscles))
           : null,
         updateData.secondary_muscles
-          ? JSON.stringify(updateData.secondary_muscles)
+          ? JSON.stringify(normalizeToStringArray(updateData.secondary_muscles))
           : null,
         updateData.instructions
-          ? JSON.stringify(updateData.instructions)
+          ? JSON.stringify(normalizeToStringArray(updateData.instructions))
           : null,
-        updateData.images ? JSON.stringify(updateData.images) : null,
+        updateData.images
+          ? JSON.stringify(normalizeToStringArray(updateData.images))
+          : null,
         typeof updateData.is_quick_exercise === 'boolean'
           ? updateData.is_quick_exercise
           : null,
@@ -689,25 +712,26 @@ async function getRecentExercises(userId: any, limit: any) {
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return result.rows.map((row: any) => {
-      // Helper function to safely parse JSONB fields into arrays
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parseJsonbField = (field: any) => {
-        if (row[field]) {
-          try {
-            const parsed = JSON.parse(row[field]);
-            return Array.isArray(parsed) ? parsed : [parsed]; // Ensure it's an array
-          } catch (e) {
-            log('error', `Error parsing ${field} for exercise ${row.id}:`, e);
-            return [];
-          }
-        }
-        return [];
-      };
-      row.equipment = parseJsonbField('equipment');
-      row.primary_muscles = parseJsonbField('primary_muscles');
-      row.secondary_muscles = parseJsonbField('secondary_muscles');
-      row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.equipment = parseJsonArrayField(
+        row.equipment,
+        `equipment for exercise ${row.id}`
+      );
+      row.primary_muscles = parseJsonArrayField(
+        row.primary_muscles,
+        `primary_muscles for exercise ${row.id}`
+      );
+      row.secondary_muscles = parseJsonArrayField(
+        row.secondary_muscles,
+        `secondary_muscles for exercise ${row.id}`
+      );
+      row.instructions = parseJsonArrayField(
+        row.instructions,
+        `instructions for exercise ${row.id}`
+      );
+      row.images = parseJsonArrayField(
+        row.images,
+        `images for exercise ${row.id}`
+      );
       return row;
     });
   } finally {
@@ -739,25 +763,26 @@ async function getTopExercises(userId: any, limit: any) {
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return result.rows.map((row: any) => {
-      // Helper function to safely parse JSONB fields into arrays
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parseJsonbField = (field: any) => {
-        if (row[field]) {
-          try {
-            const parsed = JSON.parse(row[field]);
-            return Array.isArray(parsed) ? parsed : [parsed]; // Ensure it's an array
-          } catch (e) {
-            log('error', `Error parsing ${field} for exercise ${row.id}:`, e);
-            return [];
-          }
-        }
-        return [];
-      };
-      row.equipment = parseJsonbField('equipment');
-      row.primary_muscles = parseJsonbField('primary_muscles');
-      row.secondary_muscles = parseJsonbField('secondary_muscles');
-      row.instructions = parseJsonbField('instructions');
-      row.images = parseJsonbField('images');
+      row.equipment = parseJsonArrayField(
+        row.equipment,
+        `equipment for exercise ${row.id}`
+      );
+      row.primary_muscles = parseJsonArrayField(
+        row.primary_muscles,
+        `primary_muscles for exercise ${row.id}`
+      );
+      row.secondary_muscles = parseJsonArrayField(
+        row.secondary_muscles,
+        `secondary_muscles for exercise ${row.id}`
+      );
+      row.instructions = parseJsonArrayField(
+        row.instructions,
+        `instructions for exercise ${row.id}`
+      );
+      row.images = parseJsonArrayField(
+        row.images,
+        `images for exercise ${row.id}`
+      );
       return row;
     });
   } finally {

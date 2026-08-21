@@ -1,9 +1,14 @@
 import { tool } from 'ai';
-import { todayInZone, ENERGY_DENSITY_KCAL_PER_KG } from '@workspace/shared';
+import {
+  addDays,
+  todayInZone,
+  ENERGY_DENSITY_KCAL_PER_KG,
+} from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import coachRepository from '../../models/coachRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { normalizeDayKeywords } from './dates.js';
+import { getResolvedExerciseCaloriesTotal } from '../../services/exerciseCalorieRangeService.js';
 import { dayString, formatSuccess } from './formatting.js';
 import {
   GetHealthSummarySchema,
@@ -15,6 +20,16 @@ import {
 
 // Trend math and pattern classification ported from MCP's coachService; the
 // SQL lives in models/coachRepository.ts.
+
+/**
+ * Inclusive start of the 30-day window `get30DayExerciseAggregates` uses.
+ *
+ * That query bounds on `entry_date > (end - INTERVAL '30 days') AND entry_date <= end`,
+ * i.e. 30 days ending on `end`, so the first included day is `end - 29`.
+ */
+function thirtyDayWindowStart(end: string): string {
+  return addDays(end, -29);
+}
 
 async function getHealthSummary(
   userId: string,
@@ -43,6 +58,13 @@ async function getHealthSummary(
     startDate,
     end
   );
+  // Resolved rather than summed: a device "Active Calories" row already contains the
+  // logged workouts beside it, so SUM(calories_burned) overstates the period.
+  const resolvedBurned = await getResolvedExerciseCaloriesTotal(
+    userId,
+    startDate,
+    end
+  );
 
   return {
     period: { start_date: startDate, end_date: end },
@@ -54,7 +76,7 @@ async function getHealthSummary(
       entry_count: nutrition.entry_count,
     },
     fitness: {
-      total_calories_burned: Number(exercise.total_calories_burned),
+      total_calories_burned: resolvedBurned,
       workout_count: exercise.workout_count,
     },
     vitals: {
@@ -148,6 +170,13 @@ async function get30DayTrends(
   const mood = await coachRepository.get30DayMoodAggregates(userId, end);
   const sleep = await coachRepository.get30DaySleepAggregates(userId, end);
   const weightRows = await coachRepository.get30DayWeightSeries(userId, end);
+  // Same resolution as the health summary; the 30-day window starts the day after
+  // `end - 30 days`, matching get30DayExerciseAggregates' own bounds.
+  const resolvedBurned = await getResolvedExerciseCaloriesTotal(
+    userId,
+    thirtyDayWindowStart(end),
+    end
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const weights = weightRows.map((r: any) => ({
@@ -165,7 +194,7 @@ async function get30DayTrends(
     exercise: {
       total_workouts: exercise.total_workouts,
       active_days: exercise.active_days,
-      total_calories_burned: Number(exercise.total_calories_burned),
+      total_calories_burned: resolvedBurned,
     },
     mood: {
       entries: mood.entries,

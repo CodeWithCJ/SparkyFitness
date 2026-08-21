@@ -14,7 +14,7 @@ import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
 import type { ExerciseSessionResponse, CalorieBalance, SupplementTotals } from '@workspace/shared';
-import { resolveSupplementTotals } from '@workspace/shared';
+import { resolveSupplementTotals, addSupplementCustomNutrients } from '@workspace/shared';
 import type { WaterIntake } from '../types/measurements';
 
 import { useRefetchOnFocus } from './useRefetchOnFocus';
@@ -122,7 +122,14 @@ export function useDailySummary({ date, enabled = true }: UseDailySummaryOptions
         exerciseEntries,
         calorieBalance: resolvedCalorieBalance,
         goals,
-        customNutrientTotals: calculateCustomNutrientTotals(foodEntries),
+        // Food entries plus the day's doses. Most micronutrients are custom nutrients
+        // rather than fixed columns, so for a magnesium or vitamin D supplement this is
+        // the only place its contribution can land; the fixed-field arm above cannot
+        // carry it (#2145). Every screen reading customNutrientTotals gets it from here.
+        customNutrientTotals: addSupplementCustomNutrients(
+          calculateCustomNutrientTotals(foodEntries),
+          supplements,
+        ),
         // Per-custom-nutrient goals (keyed by name, matching customNutrientTotals).
         // Normalized to numbers; absent/zero goals are simply not tracked.
         customNutrientGoals: goals.custom_nutrients

@@ -66,7 +66,31 @@ import {
   GoalModeCalculationMethod,
   calculateBmr,
   calculateAge,
+  CalorieGoalAdjustmentMode,
+  normalizeCalorieGoalAdjustmentMode,
 } from '@workspace/shared';
+
+/**
+ * This screen offers radio items for five of the six adjustment modes. `smart` has no
+ * item of its own and behaves identically to `tdee` in `computeCaloriesRemaining`, so it
+ * is presented as `tdee` rather than leaving the RadioGroup with nothing selected and the
+ * explanation falling through to the `fixed` copy. Mirrors the same normalisation mobile
+ * already does in CalorieSettingsScreen.
+ */
+const SELECTABLE_MODES = [
+  'adaptive',
+  'dynamic',
+  'fixed',
+  'percentage',
+  'tdee',
+] as const satisfies readonly CalorieGoalAdjustmentMode[];
+
+const isCalorieGoalAdjustmentMode = (
+  value: string
+): value is CalorieGoalAdjustmentMode =>
+  (SELECTABLE_MODES as readonly string[]).includes(value);
+
+const toSelectableMode = normalizeCalorieGoalAdjustmentMode;
 
 const CalculationSettings = () => {
   const { t } = useTranslation();
@@ -100,9 +124,10 @@ const CalculationSettings = () => {
   } = usePreferences();
 
   const invalidateDailyProgress = useDailyProgressInvalidation();
-  const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] = useState<
-    'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive'
-  >(contextCalorieGoalAdjustmentMode || 'dynamic');
+  const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentMode] =
+    useState<CalorieGoalAdjustmentMode>(
+      toSelectableMode(contextCalorieGoalAdjustmentMode)
+    );
   const [exerciseCaloriePercentage, setExerciseCaloriePercentage] =
     useState<number>(contextExerciseCaloriePercentage ?? 100);
   const [tdeeAllowNegativeAdjustment, setTdeeAllowNegativeAdjustment] =
@@ -192,7 +217,9 @@ const CalculationSettings = () => {
       setAddedSugarAlgorithm(contextAddedSugarAlgorithm);
     }
     if (contextCalorieGoalAdjustmentMode) {
-      setCalorieGoalAdjustmentMode(contextCalorieGoalAdjustmentMode);
+      setCalorieGoalAdjustmentMode(
+        toSelectableMode(contextCalorieGoalAdjustmentMode)
+      );
     }
     if (contextExerciseCaloriePercentage !== undefined) {
       setExerciseCaloriePercentage(contextExerciseCaloriePercentage);
@@ -705,9 +732,14 @@ const CalculationSettings = () => {
         </Label>
         <RadioGroup
           value={calorieGoalAdjustmentMode}
-          onValueChange={(
-            value: 'dynamic' | 'fixed' | 'percentage' | 'tdee' | 'adaptive'
-          ) => setCalorieGoalAdjustmentMode(value)}
+          // RadioGroup's contract is `(value: string) => void`; annotating the
+          // parameter as the narrower union would be unsound. Narrow explicitly and
+          // ignore anything that is not a mode.
+          onValueChange={(value: string) => {
+            if (isCalorieGoalAdjustmentMode(value)) {
+              setCalorieGoalAdjustmentMode(value);
+            }
+          }}
           className="flex flex-col space-y-2 mb-4"
         >
           <div className="flex items-center space-x-2">

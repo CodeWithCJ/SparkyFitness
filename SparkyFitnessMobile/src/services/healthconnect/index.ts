@@ -15,7 +15,7 @@ import {
   type HCZoneOffset,
   type ReadResult,
 } from '../../types/healthRecords';
-import { getSyncStartDate } from '../../utils/syncUtils';
+import { ceilToLocalDayStart, getSyncStartDate } from '../../utils/syncUtils';
 import { isQuotaExceededError } from '../shared/quotaError';
 import {
   createTelemetryRunContext,
@@ -544,9 +544,11 @@ const dayLabelAt = (parts: WallClockParts, dayShift: number): string => {
   return `${y}-${m}-${d}`;
 };
 
-/** Index of endDate's calendar day relative to the parts' day (day 0). */
+/** Index of the last included calendar day relative to the parts' day (day 0). */
 const dayIndexSpan = (parts: WallClockParts, endDate: Date): number => {
-  const end = wallClockParts(endDate);
+  // Health Connect time ranges are end-exclusive. Looking one millisecond back
+  // keeps an end already at midnight from opening a bucket for the next day.
+  const end = wallClockParts(new Date(endDate.getTime() - 1));
   return Math.round(
     (Date.UTC(end.year, end.month, end.day) - Date.UTC(parts.year, parts.month, parts.day)) /
       DAY_MS,
@@ -834,7 +836,12 @@ export const aggregateCumulativeMetricByDayDetailed = async (
       return { records: [], error: rangeError };
     }
 
-    const firstProbe = await readEdgeRecord(spec.recordType, startDate, endDate, true);
+    // HC prorates interval records to the requested overlap. Some providers expose
+    // a daily total as a midnight-to-midnight record, so querying only through
+    // "now" returns a partial value. An existing midnight remains unchanged.
+    const queryEndDate = ceilToLocalDayStart(endDate);
+
+    const firstProbe = await readEdgeRecord(spec.recordType, startDate, queryEndDate, true);
     if (firstProbe.outcome === 'empty') {
       addLog(
         `[HealthConnectService] ${spec.recordType} aggregation: no records in range`,
@@ -851,7 +858,7 @@ export const aggregateCumulativeMetricByDayDetailed = async (
       const segments = await buildOffsetSegments(
         spec.recordType,
         startDate,
-        endDate,
+        queryEndDate,
         firstProbe.offsetMinutes,
       );
       if (segments) {
@@ -865,7 +872,7 @@ export const aggregateCumulativeMetricByDayDetailed = async (
 
     const rangeOffsetMinutes =
       firstProbe.outcome === 'record' ? firstProbe.offsetMinutes : undefined;
-    return await aggregateByDeviceZone(spec, startDate, endDate, rangeOffsetMinutes);
+    return await aggregateByDeviceZone(spec, startDate, queryEndDate, rangeOffsetMinutes);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`[HealthConnectService] Error aggregating ${spec.recordType}: ${message}`, 'ERROR');

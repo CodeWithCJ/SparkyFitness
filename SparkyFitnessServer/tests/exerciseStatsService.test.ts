@@ -316,10 +316,246 @@ describe('exerciseStatsService', () => {
       expect(res.cardioPRs.length).toBe(1);
       expect(res.cardioPRs[0].distanceStandard).toBe('half_marathon');
       expect(res.cardioPRs[0].formattedTime).toBe('1:40:00');
+      expect(res.cardioPRs[0].sportGroup).toBe('run');
+      expect(res.cardioPRs[0].id).toBe('pr-run-half_marathon');
       expect(res.strength1RMs.length).toBe(1);
       expect(res.strength1RMs[0].exerciseName).toBe('Bench Press');
       expect(res.strength1RMs[0].estimatedOneRMKg).toBe(120.5);
       expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    // Regression for #2137: the PR query has no sport filter, so a walk or a
+    // bike ride could take a band that belongs to runs. Rows arrive ordered by
+    // pace, so the polluting activity is deliberately listed first.
+    it('does not let a walk take the 1 km record from a run', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            std_key: '1k',
+            id: 'run-1',
+            exercise_name: 'Morning Run',
+            category: 'cardio',
+            notes: 'Garmin Activity: Morning Run (running)',
+            entry_date: new Date('2026-08-05'),
+            duration_minutes: 4.5,
+            distance: 1.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+          {
+            std_key: '1k',
+            id: 'walk-1',
+            exercise_name: 'Antwerp Walking',
+            category: 'cardio',
+            notes: 'Garmin Activity: Antwerp Walking (walking)',
+            entry_date: new Date('2026-08-16'),
+            duration_minutes: 13.13,
+            distance: 1.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'walking' } },
+            exercise_source_id: null,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      const runPr = res.cardioPRs.find(
+        (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '1k'
+      );
+      const walkPr = res.cardioPRs.find(
+        (pr) => pr.sportGroup === 'walk' && pr.distanceStandard === '1k'
+      );
+      expect(runPr?.activityName).toBe('Morning Run');
+      expect(runPr?.sport).toBe('running');
+      expect(runPr?.sportConfidence).toBe('declared');
+      expect(walkPr?.activityName).toBe('Antwerp Walking');
+      // The walk keeps its own record instead of overwriting the run's.
+      expect(runPr?.bestTimeSeconds).not.toBe(walkPr?.bestTimeSeconds);
+    });
+
+    it('does not let a bike ride take the 5 km record from a run', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            std_key: '5k',
+            id: 'ride-1',
+            exercise_name: 'Cycling',
+            category: 'Cardio',
+            notes: 'Source: HealthKit, Activity Type: Cycling',
+            entry_date: new Date('2026-07-09'),
+            duration_minutes: 16.33, // 3:16 /km — bike pace
+            distance: 5.0,
+            provider_name: 'HealthKit',
+            detail_data: JSON.stringify({ activityType: 'Cycling' }),
+            exercise_source_id: null,
+          },
+          {
+            std_key: '5k',
+            id: 'run-5k',
+            exercise_name: 'Parkrun',
+            category: 'cardio',
+            notes: 'Garmin Activity: Parkrun (running)',
+            entry_date: new Date('2026-07-12'),
+            duration_minutes: 27.5,
+            distance: 5.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      const runPr = res.cardioPRs.find(
+        (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '5k'
+      );
+      expect(runPr?.activityName).toBe('Parkrun');
+      expect(
+        res.cardioPRs.find((pr) => pr.sportGroup === 'ride')?.activityName
+      ).toBe('Cycling');
+    });
+
+    // The reporter's proof that the old behaviour was wrong: a 1 km best can
+    // never be slower than a 1 mile best within one sport.
+    it('keeps run records monotonic across distances', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            std_key: '1k',
+            id: 'walk-1k',
+            exercise_name: 'Antwerp Walking',
+            category: 'cardio',
+            notes: 'Garmin Activity: Antwerp Walking (walking)',
+            entry_date: new Date('2026-08-16'),
+            duration_minutes: 13.13,
+            distance: 1.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'walking' } },
+            exercise_source_id: null,
+          },
+          {
+            std_key: '1k',
+            id: 'run-1k',
+            exercise_name: 'Morning Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-08-05'),
+            duration_minutes: 5.0,
+            distance: 1.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+          {
+            std_key: '1mi',
+            id: 'run-1mi',
+            exercise_name: 'Running',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-08-05'),
+            duration_minutes: 11.5,
+            distance: 1.61,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      const oneK = res.cardioPRs.find(
+        (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '1k'
+      );
+      const oneMile = res.cardioPRs.find(
+        (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '1mi'
+      );
+      expect(oneK).toBeDefined();
+      expect(oneMile).toBeDefined();
+      expect(oneK!.bestTimeSeconds).toBeLessThan(oneMile!.bestTimeSeconds);
+    });
+
+    // The PR query's ORDER BY lives inside a LATERAL; the outer query has none,
+    // so Postgres may hand back rows in any order. Selection must not care.
+    it('picks the fastest entry in a band regardless of row order', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            std_key: '5k',
+            id: 'slow-run',
+            exercise_name: 'Slow Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-07-01'),
+            duration_minutes: 40,
+            distance: 5.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+          {
+            std_key: '5k',
+            id: 'fast-run',
+            exercise_name: 'Fast Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-07-15'),
+            duration_minutes: 22,
+            distance: 5.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      const runPr = res.cardioPRs.find(
+        (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '5k'
+      );
+      expect(runPr?.activityName).toBe('Fast Run');
+      expect(runPr?.bestTimeSeconds).toBe(22 * 60);
+    });
+
+    it('labels the no-banded-records fallback with the entry sport', async () => {
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'walk-long',
+            exercise_name: 'Antwerp Walking',
+            category: 'cardio',
+            notes: 'Garmin Activity: Antwerp Walking (walking)',
+            entry_date: new Date('2026-08-16'),
+            duration_minutes: 40,
+            distance: 3.2,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'walking' } },
+            exercise_source_id: null,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      expect(res.cardioPRs.length).toBe(1);
+      expect(res.cardioPRs[0].id).toBe('pr-walk-longest');
+      expect(res.cardioPRs[0].sport).toBe('walking');
+      expect(res.cardioPRs[0].activityName).toBe('Antwerp Walking');
     });
   });
 
@@ -356,8 +592,29 @@ describe('exerciseStatsService', () => {
       expect(res.courses.length).toBe(1);
       expect(res.courses[0].courseName).toBe('Central Park Loop');
       expect(res.courses[0].activityCount).toBe(4);
+      expect(res.courses[0].sport).toBe('running');
       expect(res.courses[0].recentActivities.length).toBe(1);
       expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    it('no longer labels every course as running', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            course_key: 'antwerp walking',
+            exercise_name: 'Antwerp Walking',
+            category: null,
+            activity_count: '3',
+            avg_distance_km: 1.0,
+            min_duration: 13,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res = await exerciseStatsService.getMatchedCourses('user-123');
+
+      expect(res.courses[0].sport).toBe('walking');
     });
   });
 });

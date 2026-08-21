@@ -1,5 +1,6 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { MockLanguageModelV3 } from 'ai/test';
+import { APICallError } from 'ai';
 import { simulateReadableStream } from 'ai';
 import type { UIMessageChunk } from 'ai';
 import chatService, {
@@ -8,6 +9,11 @@ import chatService, {
 } from '../services/chatService.js';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import chatRepository from '../models/chatRepository.js';
+import {
+  recordRejectedParam,
+  resetLearnedRejections,
+  supportsTemperature,
+} from '../ai/modelCapabilities.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodRepository.js';
@@ -76,6 +82,9 @@ describe('chatService', () => {
   const mockTargetUserId = 'user-456';
   beforeEach(() => {
     vi.clearAllMocks();
+    // Learned parameter rejections are module-level; keep them from leaking
+    // between tests.
+    resetLearnedRejections();
   });
   describe('handleAiServiceSettings', () => {
     it('should save AI service settings', async () => {
@@ -655,6 +664,55 @@ describe('chatService', () => {
       expect(model.doGenerateCalls[0].temperature).toBe(0.2);
     });
 
+    // Regression for issue #2165: some models accept only the default
+    // temperature, so sending the core-profile 0.2 would 400 the turn. The core
+    // profile is honored only for self-hosted service types, so the rejection
+    // reaches this path through the learned gate rather than the static one.
+    it('withholds the core-profile temperature from a model that rejects it', async () => {
+      recordRejectedParam('openai_compatible', 'reasoning-1', 'temperature');
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai_compatible',
+          custom_url: 'http://localhost:1234/v1',
+          model_name: 'reasoning-1',
+          chat_tool_profile: 'core',
+        }
+      );
+      const model = scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(model.doGenerateCalls[0].temperature).toBeUndefined();
+    });
+
+    it('still applies the core-profile temperature to a model that accepts it', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai_compatible',
+          custom_url: 'http://localhost:1234/v1',
+          model_name: 'reasoning-1',
+          chat_tool_profile: 'core',
+        }
+      );
+      const model = scriptModel([textStep('Hi there!')]);
+
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      expect(model.doGenerateCalls[0].temperature).toBe(0.2);
+    });
+
     it('ships the full tool set for an Ollama service left on the full profile', async () => {
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         {
@@ -1069,6 +1127,111 @@ describe('chatService', () => {
       vi.mocked(chatRepository.saveChatHistory).mockResolvedValue(true);
       vi.mocked(measurementRepository.getCustomCategories).mockResolvedValue(
         []
+      );
+    });
+
+    // The streaming path cannot retry a rejected parameter in place, so the
+    // rejection has to be learned for the next turn. It is the first request a
+    // model sees more often than not: the intent classifier returns early on
+    // any keyword match and is skipped entirely for manual tool selection.
+    it('records a stream-time temperature rejection so later turns omit it', async () => {
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai_compatible',
+          custom_url: 'http://localhost:1234/v1',
+          model_name: 'reasoning-1',
+          chat_tool_profile: 'core',
+        }
+      );
+      const model = new MockLanguageModelV3({
+        doStream: async () => {
+          throw new APICallError({
+            message: 'Unsupported value: temperature',
+            url: 'http://localhost:1234/v1/chat/completions',
+            requestBodyValues: {},
+            statusCode: 400,
+            responseBody: JSON.stringify({
+              error: {
+                message:
+                  "Unsupported value: 'temperature' does not support 0.2 with this model. Only the default (1) value is supported.",
+                type: 'invalid_request_error',
+                param: 'temperature',
+                code: 'unsupported_value',
+              },
+            }),
+          });
+        },
+      });
+      mockModelHolder.current = model;
+
+      expect(supportsTemperature('openai_compatible', 'reasoning-1')).toBe(
+        true
+      );
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      // Learned, so the next turn builds the request without it.
+      expect(supportsTemperature('openai_compatible', 'reasoning-1')).toBe(
+        false
+      );
+    });
+
+    // APICallError.requestBodyValues holds the whole request — the user's chat
+    // messages, the system prompt, tool args. It must never reach the logger,
+    // which forwards objects to console.error at a level that is on by default.
+    it('never logs the provider error object or the request body it carries', async () => {
+      const SENTINEL = 'SENSITIVE-CHAT-CONTENT-b7f3';
+      vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
+        {
+          ...aiServiceSetting,
+          service_type: 'openai_compatible',
+          custom_url: 'http://localhost:1234/v1',
+          model_name: 'reasoning-1',
+          chat_tool_profile: 'core',
+        }
+      );
+      const model = new MockLanguageModelV3({
+        doStream: async () => {
+          throw new APICallError({
+            message: 'Provider rejected the request',
+            url: 'http://localhost:1234/v1/chat/completions',
+            requestBodyValues: {
+              messages: [{ role: 'user', content: SENTINEL }],
+              system: SENTINEL,
+            },
+            statusCode: 400,
+            responseBody: JSON.stringify({ error: { message: 'bad request' } }),
+          });
+        },
+      });
+      mockModelHolder.current = model;
+
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'hello' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
+
+      const logged = vi.mocked(log).mock.calls.flat();
+      expect(logged.length).toBeGreaterThan(0);
+      for (const arg of logged) {
+        // No raw Error objects, and no sentinel anywhere in the rendered args.
+        expect(arg).not.toBeInstanceOf(Error);
+        expect(JSON.stringify(arg) ?? '').not.toContain(SENTINEL);
+      }
+      // The failure is still reported, just redacted.
+      expect(log).toHaveBeenCalledWith(
+        'error',
+        expect.stringContaining('stream error')
       );
     });
 

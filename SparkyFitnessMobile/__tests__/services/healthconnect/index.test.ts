@@ -696,17 +696,30 @@ describe('getAggregatedStepsByDate', () => {
     expect(mockReadRecords).not.toHaveBeenCalled();
   });
 
-  test('preserves rolling-window start times by default for display callers', async () => {
+  test('preserves the rolling start but queries through local midnight for display callers', async () => {
     mockAggregateGroupByPeriod.mockResolvedValue([]);
 
     const rollingStart = new Date(2024, 0, 15, 14, 30, 0, 0);
     const now = new Date(2024, 0, 16, 14, 30, 0, 0);
+    const nextLocalMidnight = new Date(2024, 0, 17, 0, 0, 0, 0);
 
     await getAggregatedStepsByDateDetailed(rollingStart, now);
 
     const call = mockAggregateGroupByPeriod.mock.calls[0][0];
     expect(call.timeRangeFilter.startTime).toBe(rollingStart.toISOString());
-    expect(call.timeRangeFilter.endTime).toBe(now.toISOString());
+    expect(call.timeRangeFilter.endTime).toBe(nextLocalMidnight.toISOString());
+  });
+
+  test('does not push an end time already at local midnight into the next day', async () => {
+    mockAggregateGroupByPeriod.mockResolvedValue([]);
+
+    const start = new Date(2024, 0, 15, 0, 0, 0, 0);
+    const endAtLocalMidnight = new Date(2024, 0, 17, 0, 0, 0, 0);
+
+    await getAggregatedStepsByDateDetailed(start, endAtLocalMidnight);
+
+    const call = mockAggregateGroupByPeriod.mock.calls[0][0];
+    expect(call.timeRangeFilter.endTime).toBe(endAtLocalMidnight.toISOString());
   });
 
   test('queries HC with the caller-aligned start when sync callers pre-snap to local midnight', async () => {
@@ -729,8 +742,9 @@ describe('getAggregatedStepsByDate', () => {
     expect(queriedStart.getFullYear()).toBe(2024);
     expect(queriedStart.getMonth()).toBe(0);
     expect(queriedStart.getDate()).toBe(15);
-    // End time is left as the caller provided it.
-    expect(call.timeRangeFilter.endTime).toBe(now.toISOString());
+    expect(call.timeRangeFilter.endTime).toBe(
+      new Date(2024, 0, 17, 0, 0, 0, 0).toISOString(),
+    );
   });
 });
 
@@ -762,6 +776,7 @@ describe('cumulative aggregation timezone-change attribution (#1712)', () => {
     ]);
 
     const endDate = localEndOfDay(2024, 1, 16);
+    const queryEndDate = localMidnight(2024, 1, 17);
     const result = await getAggregatedStepsByDate(localMidnight(2024, 1, 15), endDate);
 
     expect(result).toEqual([
@@ -772,7 +787,7 @@ describe('cumulative aggregation timezone-change attribution (#1712)', () => {
     expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(1);
     const call = mockAggregateGroupByDuration.mock.calls[0][0];
     expect(call.timeRangeFilter.startTime).toBe(new Date(anchor).toISOString());
-    expect(call.timeRangeFilter.endTime).toBe(endDate.toISOString());
+    expect(call.timeRangeFilter.endTime).toBe(queryEndDate.toISOString());
     expect(call.timeRangeSlicer).toEqual({ duration: 'DAYS', length: 1 });
     // No dataOriginFilter — that would defeat HC's native cross-origin dedup.
     expect(call).not.toHaveProperty('dataOriginFilter');
@@ -806,6 +821,7 @@ describe('cumulative aggregation timezone-change attribution (#1712)', () => {
       ]);
 
     const endDate = localEndOfDay(2024, 1, 18);
+    const queryEndDate = localMidnight(2024, 1, 19);
     const result = await getAggregatedStepsByDate(localMidnight(2024, 1, 15), endDate);
 
     expect(result).toEqual([
@@ -822,7 +838,7 @@ describe('cumulative aggregation timezone-change attribution (#1712)', () => {
     expect(first.timeRangeFilter.startTime).toBe(new Date(anchor).toISOString());
     expect(first.timeRangeFilter.endTime).toBe(new Date(boundary).toISOString());
     expect(second.timeRangeFilter.startTime).toBe(new Date(boundary).toISOString());
-    expect(second.timeRangeFilter.endTime).toBe(endDate.toISOString());
+    expect(second.timeRangeFilter.endTime).toBe(queryEndDate.toISOString());
     // 2 edge probes + 2 binary-search probes for a 4-day window.
     expect(mockReadRecords).toHaveBeenCalledTimes(4);
   });
@@ -843,6 +859,7 @@ describe('cumulative aggregation timezone-change attribution (#1712)', () => {
     ]);
 
     const endDate = new Date(2024, 0, 16, 20, 0, 0, 0);
+    const queryEndDate = localMidnight(2024, 1, 17);
     const result = await getAggregatedStepsByDate(localMidnight(2024, 1, 15), endDate);
 
     expect(result).toEqual([
@@ -852,7 +869,7 @@ describe('cumulative aggregation timezone-change attribution (#1712)', () => {
     expect(mockAggregateGroupByDuration).toHaveBeenCalledTimes(1);
     const call = mockAggregateGroupByDuration.mock.calls[0][0];
     expect(call.timeRangeFilter.startTime).toBe(new Date(anchor).toISOString());
-    expect(call.timeRangeFilter.endTime).toBe(endDate.toISOString());
+    expect(call.timeRangeFilter.endTime).toBe(queryEndDate.toISOString());
   });
 
   test('falls back to device-zone buckets when offsets diverge without ending in the device zone', async () => {

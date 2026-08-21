@@ -34,7 +34,7 @@ interface HevyExercise {
 }
 
 /** A logged Hevy workout (one session). */
-interface HevyWorkout {
+export interface HevyWorkout {
   id: string;
   title: string;
   routine_id?: string | null;
@@ -293,11 +293,18 @@ async function processSingleWorkout(
         : exerciseIndex === 0
           ? workoutDurationMinutes
           : 0;
-    // Sum any per-set distances (meters) Hevy reports; null when none.
+    // Sum any per-set distances Hevy reports. The Hevy API reports metres
+    // (`distance_meters`) regardless of the user's display units, while
+    // exercise_entries.distance is kilometres like every other integration
+    // writes it, so this must be converted rather than stored raw.
     const distanceMeters = sets.reduce(
       (sum, set) => sum + (set.distance_meters || 0),
       0
     );
+    const distanceKm =
+      distanceMeters > 0
+        ? parseFloat((distanceMeters / 1000).toFixed(3))
+        : null;
     // Map the Hevy superset id to a numeric per-workout group.
     let supersetGroup: number | null = null;
     if (
@@ -321,7 +328,7 @@ async function processSingleWorkout(
       entry_time: entryTime,
       duration_minutes: durationMinutes,
       calories_burned: 0, // Hevy typically doesn't provide per-exercise calories
-      distance: distanceMeters > 0 ? distanceMeters : null,
+      distance: distanceKm,
       superset_group: supersetGroup,
       source_id: sourceId,
       exercise_preset_entry_id: presetEntry.id,

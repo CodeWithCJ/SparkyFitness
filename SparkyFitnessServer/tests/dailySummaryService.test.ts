@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { ExerciseSessionResponse } from '@workspace/shared';
+import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
 import { getDailySummary } from '../services/dailySummaryService.js';
 import goalService from '../services/goalService.js';
 import foodEntryService from '../services/foodEntryService.js';
@@ -125,6 +126,7 @@ describe('dailySummaryService', () => {
       },
     ]);
     vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 0,
       protein: 0,
       carbs: 0,
@@ -527,6 +529,7 @@ describe('dailySummaryService supplement calories', () => {
     vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(null);
     vi.mocked(bmrService.calculateBmr).mockReturnValue(0);
     vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 0,
       protein: 0,
       carbs: 0,
@@ -549,6 +552,7 @@ describe('dailySummaryService supplement calories', () => {
 
   test('adds logged supplement calories to eaten', async () => {
     vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 15,
       protein: 0,
       carbs: 0,
@@ -571,6 +575,7 @@ describe('dailySummaryService supplement calories', () => {
     const withoutSupplements = (await run()).calorieBalance.remaining;
 
     vi.mocked(foodRepository.getDailySupplementTotals).mockResolvedValue({
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 15,
       protein: 0,
       carbs: 0,
@@ -584,6 +589,7 @@ describe('dailySummaryService supplement calories', () => {
 
   test('returns the supplement totals separately, so the Diary can show what they were', async () => {
     const totals = {
+      ...EMPTY_SUPPLEMENT_TOTALS,
       calories: 15,
       protein: 0,
       carbs: 0,
@@ -616,5 +622,24 @@ describe('dailySummaryService supplement calories', () => {
 
     expect(summary.calorieBalance.eaten).toBe(500);
     expect(summary.supplementTotals.calories).toBe(0);
+  });
+
+  test('degraded path does not hand out the shared empty constant', async () => {
+    vi.mocked(foodRepository.getDailySupplementTotals).mockRejectedValue(
+      new Error('supplement totals unavailable')
+    );
+
+    const first = await run();
+    // A caller folding into what it was given must not reach the constant behind it,
+    // which every later degraded response would otherwise carry.
+    first.supplementTotals.calories = 999;
+    first.supplementTotals.custom_nutrients.Magnesium = 400;
+
+    const second = await run();
+
+    expect(second.supplementTotals.calories).toBe(0);
+    expect(second.supplementTotals.custom_nutrients).toEqual({});
+    expect(EMPTY_SUPPLEMENT_TOTALS.calories).toBe(0);
+    expect(EMPTY_SUPPLEMENT_TOTALS.custom_nutrients).toEqual({});
   });
 });
