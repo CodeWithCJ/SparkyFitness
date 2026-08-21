@@ -94,6 +94,11 @@ interface PreferencesContextType {
   defaultFoodDataProviderId: string | null;
   defaultBarcodeProviderId: string | null;
   barcodeFallbackOpenFoodFacts: boolean;
+  // Whether food search defaults to the aggregated "All Providers" mode. Kept
+  // separate from defaultFoodDataProviderId (a uuid column that cannot hold the
+  // ALL_PROVIDERS_VALUE sentinel) so the single-provider choice survives
+  // turning this off.
+  foodSearchAllProvidersDefault: boolean;
   timezone: string;
   foodDisplayLimit: number;
   itemDisplayLimit: number;
@@ -140,6 +145,7 @@ interface PreferencesContextType {
   setDefaultFoodDataProviderId: (id: string | null) => void;
   setDefaultBarcodeProviderId: (id: string | null) => void;
   setBarcodeFallbackOpenFoodFacts: (enabled: boolean) => void;
+  setFoodSearchAllProvidersDefault: (enabled: boolean) => void;
   setTimezone: (timezone: string) => void;
   setItemDisplayLimit: (limit: number) => void;
   setCalorieGoalAdjustmentMode: (mode: CalorieGoalAdjustmentMode) => void;
@@ -221,6 +227,7 @@ export interface DefaultPreferences {
   default_food_data_provider_id: string | null;
   default_barcode_provider_id: string | null;
   barcode_fallback_open_food_facts: boolean;
+  food_search_all_providers_default: boolean;
   exercise_calorie_percentage: number;
   activity_level: ActivityLevel;
   tdee_allow_negative_adjustment: boolean;
@@ -283,6 +290,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     string | null
   >(null);
   const [barcodeFallbackOpenFoodFacts, setBarcodeFallbackOpenFoodFactsState] =
+    useState<boolean>(false);
+  const [foodSearchAllProvidersDefault, setFoodSearchAllProvidersDefaultState] =
     useState<boolean>(false);
   const [timezone, setTimezoneState] = useState<string>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -680,6 +689,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setBarcodeFallbackOpenFoodFactsState(
           data.barcode_fallback_open_food_facts ?? false
         );
+        setFoodSearchAllProvidersDefaultState(
+          data.food_search_all_providers_default ?? false
+        );
         setTimezoneState(
           data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
         );
@@ -875,6 +887,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         barcode_fallback_open_food_facts:
           newPrefs?.barcodeFallbackOpenFoodFacts ??
           barcodeFallbackOpenFoodFacts,
+        food_search_all_providers_default:
+          newPrefs?.foodSearchAllProvidersDefault ??
+          foodSearchAllProvidersDefault,
         timezone: newPrefs?.timezone ?? timezone,
         item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
         food_display_limit: foodDisplayLimit,
@@ -954,6 +969,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
       barcodeFallbackOpenFoodFacts,
+      foodSearchAllProvidersDefault,
       timezone,
       itemDisplayLimit,
       foodDisplayLimit,
@@ -1066,6 +1082,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [saveAllPreferences]
   );
+
+  // State-only, like setDefaultFoodDataProviderId: this preference is always
+  // changed alongside the single-provider default, and the caller persists both
+  // in one saveAllPreferences rather than firing two racing writes.
+  const setFoodSearchAllProvidersDefault = useCallback((enabled: boolean) => {
+    setFoodSearchAllProvidersDefaultState(enabled);
+  }, []);
 
   const setTimezone = useCallback((newTimezone: string) => {
     setTimezoneState(newTimezone);
@@ -1201,6 +1224,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
       barcodeFallbackOpenFoodFacts,
+      foodSearchAllProvidersDefault,
       timezone,
       itemDisplayLimit,
       foodDisplayLimit,
@@ -1247,6 +1271,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setDefaultFoodDataProviderId,
       setDefaultBarcodeProviderId,
       setBarcodeFallbackOpenFoodFacts,
+      setFoodSearchAllProvidersDefault,
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,
@@ -1296,6 +1321,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
       barcodeFallbackOpenFoodFacts,
+      foodSearchAllProvidersDefault,
       timezone,
       itemDisplayLimit,
       foodDisplayLimit,
@@ -1341,6 +1367,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setDefaultFoodDataProviderId,
       setDefaultBarcodeProviderId,
       setBarcodeFallbackOpenFoodFacts,
+      setFoodSearchAllProvidersDefault,
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,

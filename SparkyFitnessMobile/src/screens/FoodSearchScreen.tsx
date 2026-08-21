@@ -73,6 +73,7 @@ import {
 } from '../utils/nativeHeaderItems';
 import type { NativeStackHeaderItemMenu } from '@react-navigation/native-stack';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { ALL_PROVIDERS_VALUE } from '../constants/foodProviders';
 
 type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 
@@ -82,9 +83,6 @@ type LandingSection = {
   title: string;
   data: LandingEntry[];
 };
-
-// Sentinel provider id for the aggregated "All Providers" mode.
-const ALL_PROVIDERS_VALUE = '__all__';
 
 // How many local rows to show per section before the "Show all" expander, while
 // online results are also on screen.
@@ -212,12 +210,30 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     ) {
       return;
     }
+    // Persisted "All Providers" default. It has its own boolean preference rather
+    // than living in default_food_data_provider_id, which is a uuid column and
+    // cannot hold the sentinel. Applied only above one provider, matching the
+    // option list below: with a single provider the aggregated option is not
+    // offered, so fall through to that provider without clearing the stored
+    // preference, and re-activating a second provider restores the default.
+    if (
+      preferences?.food_search_all_providers_default &&
+      providers.length > 1
+    ) {
+      setSelectedProvider(ALL_PROVIDERS_VALUE);
+      return;
+    }
     const defaultId = preferences?.default_food_data_provider_id;
     const defaultProvider = defaultId
       ? providers.find((provider) => provider.id === defaultId)
       : undefined;
     setSelectedProvider(defaultProvider?.id ?? providers[0].id);
-  }, [preferences?.default_food_data_provider_id, providers, selectedProvider]);
+  }, [
+    preferences?.default_food_data_provider_id,
+    preferences?.food_search_all_providers_default,
+    providers,
+    selectedProvider,
+  ]);
 
   const providerOptions = useMemo(() => {
     const opts = providers.map((p) => ({
@@ -226,7 +242,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }));
     // Offer the aggregated view only when there is more than one provider.
     if (providers.length > 1) {
-      opts.unshift({ label: t('foodSearch.menu.allSources', { defaultValue: 'All Sources' }), value: ALL_PROVIDERS_VALUE });
+      opts.unshift({
+        // Literal fallback, not the shared constant: the i18n audit resolves
+        // defaultValue statically and treats a constant reference as a missing
+        // English fallback.
+        label: t('foodSearch.menu.allProviders', {
+          defaultValue: 'All Providers',
+        }),
+        value: ALL_PROVIDERS_VALUE,
+      });
     }
     return opts;
   }, [providers, t]);
@@ -246,7 +270,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   );
 
   const isAllProviders = selectedProvider === ALL_PROVIDERS_VALUE;
-  // Which By Source provider accordions are expanded (All Providers mode).
+  // Which By Provider accordions are expanded (All Providers mode).
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
     () => new Set(),
   );
@@ -721,7 +745,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     }
 
     if (isAllProviders && onlineAllowedByOwnership) {
-      // Aggregated "All Providers" view: Top Matches then a By Source
+      // Aggregated "All Providers" view: Top Matches then a By Provider
       // accordion per provider, each streaming in independently. Gate on the
       // hook's debounced active flag (not raw text length) so the sections do
       // not flash "No results" during the debounce window before queries fire.
@@ -740,7 +764,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         sections.push({
           key: 'by-source-label',
           kind: 'label',
-          title: t('foodSearch.sections.bySource', { defaultValue: 'By Source' }),
+          title: t('foodSearch.sections.byProvider', { defaultValue: 'By Provider' }),
           data: [],
         });
         for (const r of providerResults) {
