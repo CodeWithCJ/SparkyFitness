@@ -79,7 +79,7 @@ describe('semantic pluralization (final coverage)', () => {
   });
 
   test('medication cyclic schedule dual counts (PL)', async () => {
-    const cases: Array<[number, number, string]> = [
+    const cases: [number, number, string][] = [
       [1, 1, '1 dzień stosowania, 1 dzień przerwy'],
       [2, 1, '2 dni stosowania, 1 dzień przerwy'],
       [1, 2, '1 dzień stosowania, 2 dni przerwy'],
@@ -167,11 +167,11 @@ describe('pregnancy safety content', () => {
 
   test('every FOOD_SAFETY and MED_SAFETY item has EN and PL name/note (PL != EN)', async () => {
     await i18n.changeLanguage('en');
-    const lists: Array<[typeof FOOD_SAFETY, 'food' | 'med']> = [
+    const lists: [typeof FOOD_SAFETY, 'food' | 'med'][] = [
       [FOOD_SAFETY, 'food'],
       [MED_SAFETY, 'med'],
     ];
-    const enSnapshot: Array<{ name: string; note: string }> = [];
+    const enSnapshot: { name: string; note: string }[] = [];
     for (const [list, group] of lists) {
       for (const item of list) {
         const name = localizeSafetyName(item, group, i18n.t);

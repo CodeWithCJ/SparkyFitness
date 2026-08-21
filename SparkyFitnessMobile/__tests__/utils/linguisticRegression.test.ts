@@ -73,7 +73,7 @@ describe('linguistic correctness regression (cycle / EN contamination)', () => {
   });
 
   describe('cycleInsights.days pluralization', () => {
-    const enCases: Array<[number, string]> = [
+    const enCases: [number, string][] = [
       [1, '1 day'],
       [2, '2 days'],
       [5, '5 days'],
@@ -81,7 +81,7 @@ describe('linguistic correctness regression (cycle / EN contamination)', () => {
       [22, '22 days'],
       [25, '25 days'],
     ];
-    const plCases: Array<[number, string]> = [
+    const plCases: [number, string][] = [
       [1, '1 dzień'],
       [2, '2 dni'],
       [5, '5 dni'],
@@ -104,12 +104,12 @@ describe('linguistic correctness regression (cycle / EN contamination)', () => {
   });
 
   describe('cycleHistory.dayPeriod pluralization', () => {
-    const enCases: Array<[number, string]> = [
+    const enCases: [number, string][] = [
       [1, '1 day period'],
       [2, '2 day periods'],
       [5, '5 day periods'],
     ];
-    const plCases: Array<[number, string]> = [
+    const plCases: [number, string][] = [
       [1, '1 dzień miesiączki'],
       [2, '2 dni miesiączki'],
       [5, '5 dni miesiączki'],
@@ -206,12 +206,12 @@ describe('cycle controlled server/shared presentation', () => {
   });
 
   describe('localizeCycleAlert day counts', () => {
-    const enLate: Array<[number, string]> = [
+    const enLate: [number, string][] = [
       [1, 'Your period is 1 day late.'],
       [2, 'Your period is 2 days late.'],
       [5, 'Your period is 5 days late.'],
     ];
-    const plLate: Array<[number, string]> = [
+    const plLate: [number, string][] = [
       [1, 'Miesiączka jest opóźniona o 1 dzień.'],
       [2, 'Miesiączka jest opóźniona o 2 dni.'],
       [5, 'Miesiączka jest opóźniona o 5 dni.'],
@@ -219,7 +219,7 @@ describe('cycle controlled server/shared presentation', () => {
       [22, 'Miesiączka jest opóźniona o 22 dni.'],
       [25, 'Miesiączka jest opóźniona o 25 dni.'],
     ];
-    const plUpcoming: Array<[number, string]> = [
+    const plUpcoming: [number, string][] = [
       [0, 'Miesiączka jest spodziewana dziś.'],
       [1, 'Miesiączka jest spodziewana za 1 dzień.'],
       [2, 'Miesiączka jest spodziewana za 2 dni.'],
@@ -244,7 +244,7 @@ describe('cycle controlled server/shared presentation', () => {
       }
     });
     test('upcoming_period days 0/1/2/5 in EN (days=0 -> today)', async () => {
-      const enCases: Array<[number, string]> = [
+      const enCases: [number, string][] = [
         [0, 'Period is expected today.'],
         [1, 'Period is expected in 1 day.'],
         [2, 'Period is expected in 2 days.'],

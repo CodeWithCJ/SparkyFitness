@@ -69,7 +69,7 @@ describe('food unit presentation localization', () => {
     });
 
     test('quantity-style units localize in PL', async () => {
-      const plCases: Array<[string, string]> = [
+      const plCases: [string, string][] = [
         ['piece', 'sztuka'],
         ['slice', 'plaster'],
         ['serving', 'porcja'],

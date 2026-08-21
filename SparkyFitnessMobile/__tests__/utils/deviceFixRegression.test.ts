@@ -74,7 +74,7 @@ describe('device-testing fix regression (calendar + meal types)', () => {
 
     test('EN system meal types render approved English labels', async () => {
       await i18n.changeLanguage('en');
-      const systemTypes: Array<[string, string]> = [
+      const systemTypes: [string, string][] = [
         ['breakfast', 'Breakfast'],
         ['lunch', 'Lunch'],
         ['dinner', 'Dinner'],
@@ -90,7 +90,7 @@ describe('device-testing fix regression (calendar + meal types)', () => {
 
     test('PL system meal types render approved Polish labels', async () => {
       await i18n.changeLanguage('pl');
-      const systemTypes: Array<[string, string]> = [
+      const systemTypes: [string, string][] = [
         ['breakfast', 'Śniadanie'],
         ['lunch', 'Obiad'],
         ['dinner', 'Kolacja'],
