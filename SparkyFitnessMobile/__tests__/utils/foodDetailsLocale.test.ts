@@ -1,4 +1,5 @@
 import i18n, { initializeI18n } from '../../src/localization/i18n';
+import type { FoodVariantDetail } from '../../src/types/foods';
 import {
   formatFoodFormNumber,
   formatServingSizeDisplay,
@@ -94,7 +95,7 @@ describe('foodDetails: INPUT vs DISPLAY formatting split', () => {
           fat: 3,
           dietary_fiber: 0,
           is_default: true,
-        } as any,
+        } satisfies FoodVariantDetail,
       ];
 
       await i18n.changeLanguage('en');
