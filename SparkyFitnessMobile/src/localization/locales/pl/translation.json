@@ -1062,7 +1062,8 @@
       "other": "Inne",
       "beforeMeal": "Przed posiłkiem",
       "withMeal": "W trakcie posiłku",
-      "afterMeal": "Po posiłku"
+      "afterMeal": "Po posiłku",
+      "awayFromMeals": "Z dala od posiłków"
     },
     "weekdays": {
       "title": "Dni tygodnia",

@@ -1060,7 +1060,8 @@
       "other": "Other",
       "beforeMeal": "Before meal",
       "withMeal": "With meal",
-      "afterMeal": "After meal"
+      "afterMeal": "After meal",
+      "awayFromMeals": "Away from meals"
     },
     "weekdays": {
       "title": "Days of Week",
