@@ -45,13 +45,13 @@ describe('formatElapsedClock', () => {
 
 describe('formatHoursMinutes', () => {
   test('drops the hours when zero', () => {
-    expect(formatHoursMinutes(0)).toBe('0m');
-    expect(formatHoursMinutes(47 * 60 * 1000)).toBe('47m');
+    expect(formatHoursMinutes(0, i18n.t)).toBe('0m');
+    expect(formatHoursMinutes(47 * 60 * 1000, i18n.t)).toBe('47m');
   });
 
   test('renders hours and minutes', () => {
-    expect(formatHoursMinutes(107 * 60 * 1000)).toBe('1h 47m');
-    expect(formatHoursMinutes(964 * 60 * 1000)).toBe('16h 4m');
+    expect(formatHoursMinutes(107 * 60 * 1000, i18n.t)).toBe('1h 47m');
+    expect(formatHoursMinutes(964 * 60 * 1000, i18n.t)).toBe('16h 4m');
   });
 
   test('uses the supplied translator for localized duration labels', () => {
@@ -65,7 +65,7 @@ describe('formatHoursMinutes', () => {
   });
 
   test('clamps negative input to zero', () => {
-    expect(formatHoursMinutes(-1000)).toBe('0m');
+    expect(formatHoursMinutes(-1000, i18n.t)).toBe('0m');
   });
 });
 
@@ -136,7 +136,7 @@ describe('formatFastingStats', () => {
   });
 
   test('handles a fully undefined stats object', () => {
-    const display = formatFastingStats(undefined);
+    const display = formatFastingStats(undefined, i18n.t);
     expect(display.fastsCount).toBe('0');
     expect(display.avgFastValue).toBe('-');
     expect(display.totalValue).toBe('-');
@@ -193,12 +193,12 @@ describe('formatFastingStats', () => {
 
 describe('formatLastFast', () => {
   test('returns null with no log', () => {
-    expect(formatLastFast(undefined)).toBeNull();
-    expect(formatLastFast(null)).toBeNull();
+    expect(formatLastFast(undefined, i18n.t)).toBeNull();
+    expect(formatLastFast(null, i18n.t)).toBeNull();
   });
 
   test('returns null when the newest row has a null duration', () => {
-    expect(formatLastFast(buildFast({ duration_minutes: null }))).toBeNull();
+    expect(formatLastFast(buildFast({ duration_minutes: null }), i18n.t)).toBeNull();
   });
 
   test('formats a completed fast that ended yesterday', async () => {
