@@ -1759,7 +1759,7 @@
     "protein": "protein",
     "carbs": "carbs",
     "fat": "fat",
-    "caloriesShort": "cal",
+    "caloriesShort": "kcal",
     "proteinAmount": "protein",
     "carbsAmount": "carbs",
     "fatAmount": "fat",
@@ -2960,7 +2960,7 @@
       "onlineProvider": "Online provider"
     },
     "labels": {
-      "caloriesShort": "cal",
+      "caloriesShort": "kcal",
       "foods": "foods",
       "meals": "meals",
       "meal": "Meal",

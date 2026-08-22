@@ -84,7 +84,7 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
               {t('nutrition.goalSeparator', { defaultValue: ' / {{value}}', value: formatLocalizedNumber(Math.round(goal)) })}
             </Text>
           )}
-          <Text className="text-sm font-normal text-text-muted"> {t('nutrition.caloriesShort', { defaultValue: "cal" })}</Text>
+          <Text className="text-sm font-normal text-text-muted"> {t('nutrition.caloriesShort', { defaultValue: "kcal" })}</Text>
         </Text>
         {hasGoal && (
           <Text className="text-sm font-bold text-text-primary">

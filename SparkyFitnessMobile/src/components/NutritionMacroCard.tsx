@@ -153,17 +153,17 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                   {hasCalorieGoal ? formatLocalizedNumber(Math.max(0, Math.round(calorieGoal - calories))) : formatLocalizedNumber(Math.round(calories))}
                 </Text>
                 <Text className="text-text-muted text-[10px] uppercase font-semibold mt-0.5">
-                  {hasCalorieGoal ? t('nutrition.left', { defaultValue: 'left' }) : t('nutrition.caloriesShort', { defaultValue: 'cal' })}
+                  {hasCalorieGoal ? t('nutrition.left', { defaultValue: 'left' }) : t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
                 </Text>
               </View>
             </View>
             {hasCalorieGoal ? (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} {t('nutrition.caloriesShort', { defaultValue: "cal" })} ({goalPercentages?.calories}%)
+                {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} {t('nutrition.caloriesShort', { defaultValue: "kcal" })} ({goalPercentages?.calories}%)
               </Text>
             ) : (
               <Text className="text-text-muted text-xs mt-2 text-center">
-                {formatLocalizedNumber(Math.round(calories))} {t('nutrition.caloriesShort', { defaultValue: "cal" })}
+                {formatLocalizedNumber(Math.round(calories))} {t('nutrition.caloriesShort', { defaultValue: "kcal" })}
               </Text>
             )}
           </View>
@@ -237,7 +237,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
             </View>
             {hasCalorieGoal ? (
               <Text className="text-text-secondary text-xs font-medium mt-2 text-center">
-                {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} {t('nutrition.caloriesShort', { defaultValue: "cal" })}
+                {formatLocalizedNumber(Math.round(calories))} / {formatLocalizedNumber(Math.round(calorieGoal))} {t('nutrition.caloriesShort', { defaultValue: "kcal" })}
               </Text>
             ) : null}
           </View>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAppLocale } from '../localization';
 import { View, Text, Image, ScrollView, Platform, Alert, ActivityIndicator, AppState } from 'react-native';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
@@ -70,8 +71,9 @@ interface TimeRangeOption {
 }
 
 const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
-  const { t , i18n: translationI18n } = useTranslation();
-  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+  const { t } = useTranslation();
+  const appLocale = useAppLocale();
+  const dateLocale = appLocale;
   const timeRangeOptions = useMemo<TimeRangeOption[]>(() => [
     { label: t('syncScreen.timeRanges.today', { defaultValue: 'Today' }), value: 'today' },
     { label: t('syncScreen.timeRanges.last24Hours', { defaultValue: 'Last 24 Hours' }), value: '24h' },
@@ -184,7 +186,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
       }
     });
     return () => { cancelled = true; };
-  }, [isHealthConnectInitialized, selectedTimeRange, healthDataRefreshKey]);
+  }, [isHealthConnectInitialized, selectedTimeRange, healthDataRefreshKey, appLocale]);
 
   const handleToggleBackgroundSync = async (newValue: boolean): Promise<void> => {
     if (newValue && Platform.OS === 'android') {
