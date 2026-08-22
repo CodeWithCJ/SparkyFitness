@@ -1060,8 +1060,7 @@
       "other": "Other",
       "beforeMeal": "Before meal",
       "withMeal": "With meal",
-      "afterMeal": "After meal",
-      "awayFromMeals": "Away from meals"
+      "afterMeal": "After meal"
     },
     "weekdays": {
       "title": "Days of Week",
@@ -1099,7 +1098,10 @@
     "inactiveA11y_one": "Inactive medication ({{count}})",
     "inactiveA11y_other": "Inactive medications ({{count}})",
     "inactiveCount_one": "Inactive ({{count}})",
-    "inactiveCount_other": "Inactive ({{count}})"
+    "inactiveCount_other": "Inactive ({{count}})",
+    "mealRelation": {
+      "awayFromMeals": "Away from meals"
+    }
   },
   "scheduleSummary": {
     "daily": "Daily",

@@ -1062,8 +1062,7 @@
       "other": "Inne",
       "beforeMeal": "Przed posiłkiem",
       "withMeal": "W trakcie posiłku",
-      "afterMeal": "Po posiłku",
-      "awayFromMeals": "Z dala od posiłków"
+      "afterMeal": "Po posiłku"
     },
     "weekdays": {
       "title": "Dni tygodnia",
@@ -1111,7 +1110,10 @@
     "inactiveCount_one": "Nieaktywna ({{count}})",
     "inactiveCount_few": "Nieaktywne ({{count}})",
     "inactiveCount_many": "Nieaktywnych ({{count}})",
-    "inactiveCount_other": "Nieaktywnego ({{count}})"
+    "inactiveCount_other": "Nieaktywnego ({{count}})",
+    "mealRelation": {
+      "awayFromMeals": "Z dala od posiłków"
+    }
   },
   "scheduleSummary": {
     "daily": "Codziennie",
