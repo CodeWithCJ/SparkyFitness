@@ -1194,11 +1194,21 @@ const CalculationSettings = () => {
             </Select>
             {deficitCeilingPercent != null && (
               <p className="text-xs text-muted-foreground mt-1.5">
-                {t(
-                  'settings.goalMode.deficitCeilingHint',
-                  'At your current activity level the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
-                  { percent: deficitCeilingPercent.toFixed(0) }
-                )}
+                {/* Name the lever that actually sets the ceiling. Activity level
+                    only feeds the baseline while history is insufficient; once
+                    adaptive is calibrated the baseline is measured expenditure
+                    and the setting no longer enters the calculation. */}
+                {previewResult.insufficientHistory
+                  ? t(
+                      'settings.goalMode.deficitCeilingHintEstimated',
+                      'At your current activity level the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
+                      { percent: deficitCeilingPercent.toFixed(0) }
+                    )
+                  : t(
+                      'settings.goalMode.deficitCeilingHintMeasured',
+                      'Based on your measured TDEE, the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
+                      { percent: deficitCeilingPercent.toFixed(0) }
+                    )}
               </p>
             )}
           </div>
@@ -1686,10 +1696,15 @@ const CalculationSettings = () => {
                       <span className="font-semibold">
                         {previewResult.maxFeasibleDeficitPercent.toFixed(0)}%
                       </span>
-                      {t(
-                        'settings.goalMode.clampAdvice',
-                        '. To lose faster than that, raise your actual expenditure rather than cutting intake further — and if you are still on the estimated baseline, check that your Activity Level is not understated.'
-                      )}
+                      {previewResult.insufficientHistory
+                        ? t(
+                            'settings.goalMode.clampAdviceEstimated',
+                            '. To lose faster than that, raise your expenditure through activity, or check that your Activity Level is not understated — it sets this ceiling until you have enough history for a measured baseline.'
+                          )
+                        : t(
+                            'settings.goalMode.clampAdviceMeasured',
+                            '. To lose faster than that, raise your actual expenditure rather than cutting intake further; your baseline is measured, so the Activity Level setting no longer affects it.'
+                          )}
                     </>
                   )}
                 </p>
