@@ -117,11 +117,12 @@ export function formatTimeOfDay(timeOfDay: string): string {
   });
 }
 
-/** Formats a schedule's meal-timing value ('before' | 'with' | 'after') for display. */
+/** Formats a schedule's meal-timing value ('before' | 'with' | 'after' | 'away_from_meals') for display. */
 export function formatWithMeal(withMeal: string): string {
   if (withMeal === "before") return "Before meal";
   if (withMeal === "with") return "With meal";
   if (withMeal === "after") return "After meal";
+  if (withMeal === "away_from_meals") return "Away from meals";
   return withMeal;
 }
 

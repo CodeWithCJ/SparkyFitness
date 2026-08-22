@@ -119,6 +119,7 @@ describe('formatWithMeal', () => {
     ['before', 'Before meal'],
     ['with', 'With meal'],
     ['after', 'After meal'],
+    ['away_from_meals', 'Away from meals'],
   ])('formats %s as %s', (value, expected) => {
     expect(formatWithMeal(value)).toBe(expected);
   });

@@ -383,6 +383,7 @@ const MedicationScheduleFormScreen: React.FC<MedicationScheduleFormScreenProps> 
       { label: localizedMealTimingLabel(t, 'before'), value: 'before' },
       { label: localizedMealTimingLabel(t, 'with'), value: 'with' },
       { label: localizedMealTimingLabel(t, 'after'), value: 'after' },
+      { label: localizedMealTimingLabel(t, 'away_from_meals'), value: 'away_from_meals' },
     ],
     [t],
   );

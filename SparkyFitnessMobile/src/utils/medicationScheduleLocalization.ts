@@ -33,6 +33,8 @@ export function localizedMealTimingLabel(t: TFunction, value: string): string {
       return t('medications.types.withMeal', { defaultValue: 'With meal' });
     case 'after':
       return t('medications.types.afterMeal', { defaultValue: 'After meal' });
+    case 'away_from_meals':
+      return t('medications.mealRelation.awayFromMeals', { defaultValue: 'Away from meals' });
     default:
       return value;
   }
