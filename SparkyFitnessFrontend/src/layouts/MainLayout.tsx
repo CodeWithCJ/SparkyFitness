@@ -1,5 +1,11 @@
 import type React from 'react';
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { debug, info, error } from '@/utils/logging';
@@ -79,6 +85,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const { data: appVersion } = useCurrentVersionQuery();
   const [isAddCompOpen, setIsAddCompOpen] = useState(false);
   const [isMealTypeSelectOpen, setIsMealTypeSelectOpen] = useState(false);
+
+  const minimalTopBar = useSyncExternalStore(
+    (callback) => {
+      window.addEventListener('minimalTopBarChanged', callback);
+      return () => window.removeEventListener('minimalTopBarChanged', callback);
+    },
+    () => localStorage.getItem('minimalTopBar') === 'true',
+    () => false
+  );
 
   // Fetch meal types for quick log menu
   const { data: mealTypes } = useMealTypes();
@@ -436,18 +451,23 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        <div className="flex justify-between items-center mb-6">
+        <div
+          className={`flex justify-between items-center ${minimalTopBar ? 'mb-2' : 'mb-6'}`}
+        >
           <div className="flex items-center gap-1">
             <img
               src="/images/SparkyFitness.webp"
               alt="SparkyFitness Logo"
-              width={54}
-              height={72}
+              width={minimalTopBar ? 32 : 54}
+              height={minimalTopBar ? 32 : 72}
+              className={minimalTopBar ? 'object-contain' : ''}
             />
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground dark:text-slate-300">
+            <h1
+              className={`${minimalTopBar ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-bold text-foreground dark:text-slate-300`}
+            >
               SparkyFitness
             </h1>
-            {!isMobile && (
+            {!isMobile && !minimalTopBar && (
               <>
                 <GitHubStarCounter owner="CodeWithCJ" repo="SparkyFitness" />
                 <GitHubSponsorButton owner="CodeWithCJ" />
