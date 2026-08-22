@@ -534,7 +534,11 @@ export interface CalorieTargetResult {
   effectiveSafetyFloor: number | null;
   /**
    * Largest deficit, in percent, that still clears the safety floor.
-   * Null when the goal is not a deficit or the floor never binds.
+   *
+   * Always present under the adaptive method, whether or not the current goal
+   * mode trips the floor, so the UI can mark unreachable modes *before* one is
+   * chosen rather than explaining the override afterwards. Null under manual,
+   * which never clamps, and when the baseline is unknown.
    */
   maxFeasibleDeficitPercent: number | null;
 }
@@ -567,11 +571,21 @@ export function getClinicalCalorieMinimum(gender: "male" | "female"): number {
   return gender === "female" ? 1200 : 1500;
 }
 
-export function shouldShowCalorieSafetyWarning(
-  goalMode: string,
-  calculationMethod: string,
-): boolean {
-  return goalMode !== "maintain" && calculationMethod === "manual";
+/**
+ * Whether a low-target warning is worth showing at all.
+ *
+ * Deliberately not gated on the calculation method. The floor only ever clamps
+ * under `adaptive`, so gating on `manual` silenced the warning in exactly the
+ * configurations that can land below RMR: a custom floor, or a disabled one.
+ * Those are also the settings the smallest users depend on, because a clinical
+ * minimum of 1200/1500 can sit above their entire maintenance.
+ *
+ * Callers pair this with the outcome (`finalTarget < rmr` and friends), which is
+ * self-limiting: an unclamped adaptive target sits at or above its floor, so the
+ * comparison is false and nothing renders.
+ */
+export function shouldShowCalorieSafetyWarning(goalMode: string): boolean {
+  return goalMode !== "maintain";
 }
 
 export function computeCalorieTarget({
@@ -676,10 +690,14 @@ export function computeCalorieTarget({
           : "absolute"
       : null;
 
-  // The largest deficit that still clears the floor. Surfaced so a user who asked
-  // for more than is feasible gets an actionable number instead of a silent override.
+  // The largest deficit that still clears the floor. Computed whenever the floor
+  // could bind — not only once it has — so a goal-mode picker can say which modes
+  // are out of reach up front. Depends on the baseline and the floor, both of
+  // which are independent of the goal mode, so it is the same for every mode.
   const maxFeasibleDeficitPercent =
-    wasClampedToFloor && baselineTdee > 0 && effectiveSafetyFloor !== null
+    calculationMethod === "adaptive" &&
+    baselineTdee > 0 &&
+    effectiveSafetyFloor !== null
       ? Math.max(0, (1 - effectiveSafetyFloor / baselineTdee) * 100)
       : null;
 

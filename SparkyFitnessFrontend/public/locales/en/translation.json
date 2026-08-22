@@ -1864,7 +1864,13 @@
       "safetyFloorStandard": "Standard (RMR / clinical minimum)",
       "safetyFloorStandardHint": "Uses the higher of your estimated RMR and the clinical minimum (1,200 kcal for females, 1,500 kcal for males).",
       "safetyFloorValueLabel": "Custom minimum",
-      "awaitingCalibrationTitle": "Awaiting Adaptive TDEE Calibration"
+      "awaitingCalibrationTitle": "Awaiting Adaptive TDEE Calibration",
+      "modeUnreachableSuffix": "not reachable",
+      "customPercentageUnreachable": "Deeper than the ~{{percent}}% your safety floor allows; the target will be raised to that floor.",
+      "deficitCeilingHintEstimated": "At your current activity level the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.",
+      "deficitCeilingHintMeasured": "Based on your measured TDEE, the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.",
+      "clampAdviceEstimated": ". To lose faster than that, raise your expenditure through activity, or check that your Activity Level is not understated — it sets this ceiling until you have enough history for a measured baseline.",
+      "clampAdviceMeasured": ". To lose faster than that, raise your actual expenditure rather than cutting intake further; your baseline is measured, so the Activity Level setting no longer affects it."
     },
     "mfa": {
       "confirmPassword": "Confirm Password to Continue",
