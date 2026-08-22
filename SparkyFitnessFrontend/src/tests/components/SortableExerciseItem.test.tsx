@@ -154,3 +154,50 @@ describe('SortableExerciseItem set table columns', () => {
     expect(container.querySelector('input[step="1"]')).toHaveValue(45);
   });
 });
+
+describe('SortableExerciseItem replace/duplicate exercise actions', () => {
+  it('fires the replace and duplicate handlers with the entry index when clicked', () => {
+    const onReplaceExercise = jest.fn();
+    const onDuplicateExercise = jest.fn();
+    render(
+      <SortableExerciseItem
+        ex={createExercise({
+          category: 'strength',
+          modality: 'weight_reps',
+          sets: [{ set_number: 1, reps: 10, weight: 60 }],
+        })}
+        exerciseIndex={2}
+        onRemoveExercise={() => {}}
+        onSetChange={() => {}}
+        onDuplicateSet={() => {}}
+        onRemoveSet={() => {}}
+        onReplaceExercise={onReplaceExercise}
+        onDuplicateExercise={onDuplicateExercise}
+        weightUnit="kg"
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace exercise' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate exercise' }));
+
+    expect(onReplaceExercise).toHaveBeenCalledWith(2);
+    expect(onDuplicateExercise).toHaveBeenCalledWith(2);
+  });
+
+  it('omits the replace and duplicate buttons when their handlers are not provided', () => {
+    renderItem(
+      createExercise({
+        category: 'strength',
+        modality: 'weight_reps',
+        sets: [{ set_number: 1, reps: 10, weight: 60 }],
+      })
+    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Replace exercise' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Duplicate exercise' })
+    ).not.toBeInTheDocument();
+  });
+});

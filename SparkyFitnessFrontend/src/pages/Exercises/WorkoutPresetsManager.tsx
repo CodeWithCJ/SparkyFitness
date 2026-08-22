@@ -22,6 +22,7 @@ import {
   Play,
   X,
   MoreHorizontal,
+  CopyPlus,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -131,6 +132,27 @@ const WorkoutPresetsManager = () => {
     await createPreset({ ...newPresetData, user_id: user.id });
     setIsAddPresetDialogOpen(false);
   };
+
+  const handleDuplicatePreset = React.useCallback(
+    async (preset: WorkoutPreset) => {
+      if (!user?.id) return;
+      // The server always inserts fresh rows for exercises/sets on create and
+      // ignores any incoming id (see workoutPresetRepository.createWorkoutPreset),
+      // so the original's exercises/sets can be sent as-is. Defaults to
+      // private regardless of the source's visibility — duplicating someone
+      // else's public preset shouldn't silently re-share it under this user.
+      await createPreset({
+        user_id: user.id,
+        name: t('workoutPresetsManager.duplicateNameSuffix', {
+          name: preset.name,
+        }),
+        description: preset.description,
+        is_public: false,
+        exercises: preset.exercises,
+      });
+    },
+    [createPreset, user?.id, t]
+  );
 
   const handleUpdatePreset = async (
     presetId: string,
@@ -305,6 +327,10 @@ const WorkoutPresetsManager = () => {
                   <CalendarPlus className="mr-2 h-4 w-4" />
                   {t('workoutPresetsManager.logToDiary', 'Log to Diary')}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDuplicatePreset(preset)}>
+                  <CopyPlus className="mr-2 h-4 w-4" />
+                  {t('workoutPresetsManager.duplicate', 'Duplicate')}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!isOwned}
                   onClick={() => {
@@ -335,6 +361,7 @@ const WorkoutPresetsManager = () => {
       user?.id,
       weightUnit,
       handleLogPresetToDiary,
+      handleDuplicatePreset,
       handleDeletePreset,
       handleStartWorkoutPlayback,
     ]

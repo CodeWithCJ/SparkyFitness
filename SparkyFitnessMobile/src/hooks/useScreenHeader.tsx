@@ -723,12 +723,26 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     <View
       className={`flex-row items-center px-4 py-3 ${borderless ? '' : 'border-b border-border-subtle'}`}
     >
-      {/* Equal-width side cells keep the title cell geometrically centered in
-          the bar even when the left/right actions have different widths; the
-          title stays content-sized (shrinking to truncate) so it can use more
-          than a third of the width when the sides are light. */}
-      <View className="flex-1 flex-row items-center gap-4">{leftCustom}</View>
-      <View className="shrink px-2">
+      {/* The side cells are content-sized (no flex-grow/shrink) and the title
+          is the one flexible cell (flexGrow/flexShrink with flexBasis: 0,
+          matching CSS's `flex: 1 1 0%`). A `flex-1` (flexBasis: 0%) side cell
+          next to a flexShrink-only (flexBasis: auto/content) title starves
+          under CSS/Yoga's shrink algorithm: each sibling's share of shrinkage
+          is scaled by `flexShrink × flexBasis`, and flexBasis: 0% siblings
+          always compute a scaled shrink factor of 0 — so a long title claims
+          the entire row and the side cells render at 0 width (confirmed via
+          on-device onLayout measurement). Giving every cell in this row the
+          same flexBasis: 0 floor puts them on equal footing. Centering is
+          relative to the leftover space between the two content-sized side
+          cells rather than screen-true-center when their widths differ — an
+          accepted trade-off for buttons that are never hidden. */}
+      <View className="flex-row items-center gap-4" style={{ flexShrink: 0 }}>
+        {leftCustom}
+      </View>
+      <View
+        className="px-2"
+        style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, overflow: 'hidden' }}
+      >
         {center ?? (
           <Text
             numberOfLines={1}
@@ -738,7 +752,9 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
           </Text>
         )}
       </View>
-      <View className="flex-1 flex-row items-center justify-end gap-4">{rightCustom}</View>
+      <View className="flex-row items-center justify-end gap-4" style={{ flexShrink: 0 }}>
+        {rightCustom}
+      </View>
     </View>
   );
 

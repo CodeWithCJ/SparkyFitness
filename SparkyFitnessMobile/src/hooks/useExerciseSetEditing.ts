@@ -11,11 +11,12 @@ interface ExerciseSetEditingActions {
   removeExercise: (clientId: string) => void;
   addSet: (exerciseClientId: string) => string;
   /** Enables replace routing: while a replace target is set, the next selected
-   *  exercise swaps in place instead of appending. */
+   *  exercise swaps in place instead of appending. A null setClientId means
+   *  the replace preserved the existing sets, so there's nothing new to focus. */
   replaceExercise?: (
     clientId: string,
     exercise: Exercise,
-  ) => { exerciseClientId: string; setClientId: string };
+  ) => { exerciseClientId: string; setClientId: string | null };
 }
 
 export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
@@ -56,7 +57,10 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
       replaceTarget != null && actions.replaceExercise
         ? actions.replaceExercise(replaceTarget, exercise)
         : actions.addExercise(exercise);
-    pendingActivationRef.current = `${exerciseClientId}:${setClientId}`;
+    // null means a replace preserved the existing sets — nothing new to focus.
+    if (setClientId != null) {
+      pendingActivationRef.current = `${exerciseClientId}:${setClientId}`;
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-properties; spreading `actions` would break memoization
   }, [actions.addExercise, actions.replaceExercise]);
 

@@ -10,6 +10,7 @@ import { type AnchorRect } from '../components/AnchoredMenu';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { clearDraft, loadActiveDraft } from '../services/workoutDraftService';
 import {
+  useCreateWorkoutPreset,
   useDeleteWorkoutPreset,
   usePreferences,
   useProfile,
@@ -211,31 +212,63 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     });
   }, [navigation, preset, route.key]);
 
-  const rightItems: HeaderItem[] = [
-    ...(canManagePreset
-      ? [
-          {
-            kind: 'icon',
-            sfSymbol: isPublic ? 'lock.fill' : 'square.and.arrow.up',
-            ionicon: isPublic ? 'lock-closed-outline' : 'share-social-outline',
-            role: 'secondary',
-            useIoniconOnIOS: !isPublic,
-            disabled: isSharePending,
-            onPress: handleToggleShare,
-            accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
-            identifier: 'workout-preset-detail-share',
-          } as const,
-          {
-            kind: 'text',
-            label: 'Edit',
-            role: 'secondary',
-            onPress: handleEdit,
-            accessibilityLabel: 'Edit workout preset',
-            identifier: 'workout-preset-detail-edit',
-          } as const,
-        ]
-      : []),
-  ];
+  // Available regardless of ownership (unlike Share/Edit below) — duplicating
+  // someone else's public preset is exactly how you'd fork it into your own
+  // library.
+  const { createPresetAsync, isPending: isDuplicatePending } = useCreateWorkoutPreset();
+  const handleDuplicatePreset = useCallback(async () => {
+    try {
+      const created = await createPresetAsync({
+        name: `${preset.name} (Copy)`,
+        description: preset.description,
+        is_public: false,
+        exercises: preset.exercises.map(exercise => ({
+          exercise_id: exercise.exercise_id,
+          image_url: exercise.image_url,
+          sort_order: exercise.sort_order ?? undefined,
+          superset_group: exercise.superset_group,
+          sets: exercise.sets.map(set => ({
+            set_number: set.set_number,
+            set_type: set.set_type,
+            reps: set.reps,
+            weight: set.weight,
+            duration: set.duration,
+            distance: set.distance,
+            rest_time: set.rest_time,
+            notes: set.notes,
+          })),
+        })),
+      });
+      Toast.show({ type: 'success', text1: 'Workout preset duplicated' });
+      navigation.navigate('WorkoutPresetDetail', { preset: created });
+    } catch {
+      // useCreateWorkoutPreset already shows an error Toast on failure.
+    }
+  }, [createPresetAsync, preset, navigation]);
+
+  const rightItems: HeaderItem[] = canManagePreset
+    ? [
+        {
+          kind: 'icon',
+          sfSymbol: isPublic ? 'lock.fill' : 'square.and.arrow.up',
+          ionicon: isPublic ? 'lock-closed-outline' : 'share-social-outline',
+          role: 'secondary',
+          useIoniconOnIOS: !isPublic,
+          disabled: isSharePending,
+          onPress: handleToggleShare,
+          accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+          identifier: 'workout-preset-detail-share',
+        } as const,
+        {
+          kind: 'text',
+          label: 'Edit',
+          role: 'secondary',
+          onPress: handleEdit,
+          accessibilityLabel: 'Edit workout preset',
+          identifier: 'workout-preset-detail-edit',
+        } as const,
+      ]
+    : [];
 
   const header = useScreenHeader({
     title: preset.name,
@@ -331,6 +364,17 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           textClassName="text-text-secondary font-medium"
         >
           Log past workout
+        </Button>
+
+        <Button
+          variant="ghost"
+          onPress={() => void handleDuplicatePreset()}
+          disabled={isDuplicatePending}
+          className="mt-3"
+          textClassName="text-text-secondary font-medium"
+          accessibilityLabel="Duplicate workout preset"
+        >
+          {isDuplicatePending ? 'Duplicating...' : 'Duplicate preset'}
         </Button>
 
         {canManagePreset && (
