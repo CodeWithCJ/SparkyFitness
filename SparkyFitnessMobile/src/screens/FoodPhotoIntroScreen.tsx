@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, View, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -36,6 +37,7 @@ const Bullet: React.FC<{
 );
 
 const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [textPrimary, accentPrimary, catViolet, catOrange] = useCSSVariable([
@@ -73,36 +75,35 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
 
       <View className="flex-1 px-6">
         <Text className="text-text-primary text-2xl font-semibold">
-          Estimate nutrition from a photo
+          {t('foodPhotoIntro.title', { defaultValue: 'Estimate nutrition from a photo' })}
         </Text>
         <Text className="text-text-secondary text-base mt-2 mb-6">
-          Turn a meal photo into an editable nutrition estimate.
+          {t('foodPhotoIntro.subtitle', { defaultValue: 'Turn a meal photo into an editable nutrition estimate.' })}
         </Text>
 
         <Bullet
           icon="scale"
           iconColor={accentPrimary}
           iconBackground={`${accentPrimary}1F`}
-          title="Add weight when you know it"
+          title={t('foodPhotoIntro.weight', { defaultValue: 'Add weight when you know it' })}
         >
-          A total meal weight helps with portions, calories, and macros.
+          {t('foodPhotoIntro.weightHelp', { defaultValue: 'A total meal weight helps with portions, calories, and macros.' })}
         </Bullet>
         <Bullet
           icon="document-text"
           iconColor={catViolet}
           iconBackground={`${catViolet}1F`}
-          title="Add a short description"
+          title={t('foodPhotoIntro.description', { defaultValue: 'Add a short description' })}
         >
-          Mention sauces, oils, toppings, restaurant names, or anything hidden.
+          {t('foodPhotoIntro.descriptionHelp', { defaultValue: 'Mention sauces, oils, toppings, restaurant names, or anything hidden.' })}
         </Bullet>
         <Bullet
           icon="pencil"
           iconColor={catOrange}
           iconBackground={`${catOrange}1F`}
-          title="Review before saving"
+          title={t('foodPhotoIntro.review', { defaultValue: 'Review before saving' })}
         >
-          Photo estimates are a starting point. You&apos;ll be able to edit
-          everything before it&apos;s logged.
+          {t('foodPhotoIntro.reviewHelp', { defaultValue: "Photo estimates are a starting point. You'll be able to edit everything before it's logged." })}
         </Bullet>
 
       </View>
@@ -112,10 +113,10 @@ const FoodPhotoIntroScreen: React.FC<Props> = ({ navigation, route }) => {
         style={{ paddingBottom: Math.max(insets.bottom, 16) }}
       >
         <Button variant="primary" onPress={handleContinue}>
-          Continue
+          {t('common.continue', { defaultValue: 'Continue' })}
         </Button>
         <Button variant="ghost" onPress={handleLogManually}>
-          Log manually instead
+          {t('foodPhotoIntro.logManually', { defaultValue: 'Log manually instead' })}
         </Button>
       </View>
     </View>

@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -45,6 +46,7 @@ function clampRestSeconds(seconds: number): number {
 
 const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRestSheetProps>(
   ({ onApply }, ref) => {
+    const { t } = useTranslation();
     const sheetRef = useRef<BottomSheetModal>(null);
     const [surfaceBg, textMuted, accentPrimary] = useCSSVariable([
       '--color-surface',
@@ -52,7 +54,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
       '--color-accent-primary',
     ]) as [string, string, string];
 
-    const [title, setTitle] = useState('Exercise');
+    const [title, setTitle] = useState('');
     const [sets, setSets] = useState<ExerciseSetRestItem[]>([]);
     const [selectedKey, setSelectedKey] = useState<string>(ALL_KEY);
     const [initialBySetId, setInitialBySetId] = useState<Record<string, number>>({});
@@ -91,6 +93,12 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
     }));
 
     const renderBackdrop = useSheetBackdrop();
+    const restTitle = isSupersetRound
+      ? t('exerciseSetRest.roundRest', { defaultValue: 'Round Rest' })
+      : t('exerciseSetRest.rest', { defaultValue: 'Rest' });
+    const itemTitle = isSupersetRound
+      ? t('exerciseSetRest.round', { defaultValue: 'Round' })
+      : t('exerciseSetRest.set', { defaultValue: 'Set' });
 
     const selectedSeconds = useMemo(() => {
       if (selectedKey === ALL_KEY) {
@@ -121,11 +129,11 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
         // If changing all sets from a currently-mixed state, confirm once.
         if (selectedKey === ALL_KEY && restTimesMixed && !allOverwriteConfirmed) {
           Alert.alert(
-            'Overwrite rest times?',
-            `These sets have different rest times. Set all to ${formatRestLabel(next)}?`,
+            t('exerciseSetRest.overwriteTitle', { defaultValue: 'Overwrite rest times?' }),
+            t('exerciseSetRest.overwriteMessage', { defaultValue: 'These sets have different rest times. Set all to {{rest}}?', rest: formatRestLabel(next, t('restPeriod.off', { defaultValue: 'Off' })) }),
             [
               {
-                text: 'Cancel',
+                text: t('common.cancel', { defaultValue: 'Cancel' }),
                 style: 'cancel',
                 onPress: () => {
                   // Reset wheel position to the current selected value.
@@ -133,7 +141,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                 },
               },
               {
-                text: 'Overwrite',
+                text: t('common.overwrite', { defaultValue: 'Overwrite' }),
                 onPress: () => {
                   setAllOverwriteConfirmed(true);
                   applyChange();
@@ -146,7 +154,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
 
         applyChange();
       },
-      [selectedKey, sets, restTimesMixed, allOverwriteConfirmed],
+      [selectedKey, sets, restTimesMixed, allOverwriteConfirmed, t],
     );
 
     const handleDone = useCallback(() => {
@@ -174,7 +182,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
       >
         <BottomSheetView className="px-5 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-3">
-            {isSupersetRound ? 'Round Rest' : 'Rest'} — {title}
+            {restTitle} — {title}
           </Text>
 
           <View className="flex-row flex-wrap" style={{ gap: 8 }}>
@@ -194,7 +202,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                 }
                 style={selectedKey === ALL_KEY ? { color: accentPrimary } : undefined}
               >
-                All
+                {t('exerciseSetRest.all', { defaultValue: 'All' })}
               </Text>
               <Text
                 className={
@@ -204,7 +212,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                 }
                 style={selectedKey === ALL_KEY ? { color: accentPrimary } : undefined}
               >
-                {formatRestRangeLabel(allSetRests, getDefaultRestSec())}
+                {formatRestRangeLabel(allSetRests, getDefaultRestSec(), t('restPeriod.off', { defaultValue: 'Off' }))}
               </Text>
             </Pressable>
             {sets.map((set) => {
@@ -224,7 +232,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                       className={selected ? 'font-semibold text-text-primary' : 'text-text-secondary'}
                       style={selected ? { color: accentPrimary } : undefined}
                     >
-                      {isSupersetRound ? 'Round' : 'Set'} {set.setNumber}
+                      {itemTitle} {set.setNumber}
                     </Text>
                     <Text
                       className={
@@ -234,7 +242,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
                       }
                       style={selected ? { color: accentPrimary } : undefined}
                     >
-                    {formatRestLabel(setRest)}
+                    {formatRestLabel(setRest, t('restPeriod.off', { defaultValue: 'Off' }))}
                     </Text>
                 </Pressable>
               );
@@ -251,7 +259,7 @@ const ExerciseSetRestSheet = forwardRef<ExerciseSetRestSheetRef, ExerciseSetRest
           </View>
 
           <Button variant="primary" onPress={handleDone}>
-            Done
+            {t('common.done', { defaultValue: 'Done' })}
           </Button>
         </BottomSheetView>
       </BottomSheetModal>

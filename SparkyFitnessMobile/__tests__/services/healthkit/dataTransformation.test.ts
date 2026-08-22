@@ -767,7 +767,7 @@ describe('mapDietarySample (dietary reverse mapper)', () => {
   });
 
   test('treats Cal (food Calorie) as kcal — the unit MFP/Cronometer return', () => {
-    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed', quantity: 500, unit: 'Cal' }))
+    expect(mapDietarySample({ quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed', quantity: 500, unit: 'kcal' }))
       .toEqual({ column: 'calories', value: 500 });
   });
 

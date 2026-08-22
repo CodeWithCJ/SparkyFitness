@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import {
@@ -112,6 +113,7 @@ async function resolveSelectedVariant(
 }
 
 export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -172,9 +174,9 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
     onError: (error) => {
       const text2 =
         error instanceof Error && error.message === SELECTED_VARIANT_RESOLUTION_ERROR
-          ? 'Choose a different serving.'
-          : 'Please try again.';
-      Toast.show({ type: 'error', text1: 'Failed to add food', text2 });
+          ? t('foodEntryAdd.errors.chooseDifferentServing', { defaultValue: 'Choose a different serving.' })
+          : t('foodEntryAdd.errors.tryAgain', { defaultValue: 'Please try again.' });
+      Toast.show({ type: 'error', text1: t('foodEntryAdd.errors.failedToAddFood', { defaultValue: 'Failed to add food' }), text2 });
     },
   });
 

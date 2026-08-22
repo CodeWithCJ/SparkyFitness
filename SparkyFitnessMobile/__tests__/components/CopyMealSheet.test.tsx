@@ -1,11 +1,24 @@
 import React, { createRef } from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
-import CopyMealSheet, { type CopyMealSheetRef } from '../../src/components/CopyMealSheet';
+import CopyMealSheet, {
+  type CopyMealSheetRef,
+} from '../../src/components/CopyMealSheet';
 import { getTodayDate, addDays } from '../../src/utils/dateUtils';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('../../src/hooks/useMealTypes', () => ({
   useMealTypes: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({
+    preferences: { first_day_of_week: 0 },
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: jest.fn(),
+  }),
 }));
 
 const defaultMealTypes = [
@@ -20,9 +33,12 @@ const ambiguousMealTypes = [
 ];
 
 describe('CopyMealSheet', () => {
-  const useMealTypesMock = require('../../src/hooks/useMealTypes').useMealTypes as jest.Mock;
+  const useMealTypesMock = require('../../src/hooks/useMealTypes')
+    .useMealTypes as jest.Mock;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     jest.clearAllMocks();
     useMealTypesMock.mockReturnValue({ mealTypes: defaultMealTypes });
   });
@@ -30,13 +46,43 @@ describe('CopyMealSheet', () => {
   it('renders the meal copy controls with English labels', () => {
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
-    act(() => ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'));
+    act(() =>
+      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'),
+    );
     expect(view.getByText('Copy meal: Breakfast')).toBeTruthy();
     expect(view.getByText(/^Source date:/)).toBeTruthy();
     expect(view.getByText('Target date')).toBeTruthy();
     expect(view.getByText('Target meal')).toBeTruthy();
     expect(view.getByText('Brunch')).toBeTruthy();
     expect(view.getByText('Copy')).toBeTruthy();
+  });
+
+  it('updates copy controls when the mounted sheet changes languages', async () => {
+    await i18n.changeLanguage('pl');
+    const ref = createRef<CopyMealSheetRef>();
+    const screen = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
+    act(() =>
+      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'),
+    );
+
+    expect(screen.getByText('Kopiuj posiłek: Śniadanie')).toBeTruthy();
+    expect(screen.getByText('Data docelowa')).toBeTruthy();
+    expect(screen.getByText('Posiłek docelowy')).toBeTruthy();
+    expect(screen.getByText('Kopiuj')).toBeTruthy();
+
+    await act(async () => {
+      await i18n.changeLanguage('en');
+    });
+    expect(screen.getByText('Copy meal: Breakfast')).toBeTruthy();
+    expect(screen.getByText('Target date')).toBeTruthy();
+    expect(screen.getByText('Target meal')).toBeTruthy();
+    expect(screen.getByText('Copy')).toBeTruthy();
+
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
+    expect(screen.getByText('Kopiuj posiłek: Śniadanie')).toBeTruthy();
+    expect(screen.getByText('Kopiuj')).toBeTruthy();
   });
 
   it('keeps custom meal types literal and preserves the copy payload and disabled same slot', () => {
@@ -62,8 +108,12 @@ describe('CopyMealSheet', () => {
 
   it('renders the pending label while copying', () => {
     const ref = createRef<CopyMealSheetRef>();
-    const view = render(<CopyMealSheet ref={ref} isPending onCopy={jest.fn()} />);
-    act(() => ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'));
+    const view = render(
+      <CopyMealSheet ref={ref} isPending onCopy={jest.fn()} />,
+    );
+    act(() =>
+      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'),
+    );
     expect(view.getByText('Copying...')).toBeTruthy();
   });
 
@@ -73,7 +123,9 @@ describe('CopyMealSheet', () => {
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
     const sourceDate = getTodayDate();
-    act(() => ref.current?.present(sourceDate, 'breakfast-custom', 'Breakfast'));
+    act(() =>
+      ref.current?.present(sourceDate, 'breakfast-custom', 'Breakfast'),
+    );
 
     // Target Brunch is unambiguous but the SOURCE name "Breakfast" maps to two
     // distinct ids — the copy must be blocked, never silently ambiguous.
@@ -118,7 +170,9 @@ describe('CopyMealSheet', () => {
     const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
     // Source id = the CUSTOM type -> its literal name wins, never the system
     // "Breakfast" label, and never the first same-named item.
-    act(() => ref.current?.present(getTodayDate(), 'breakfast-custom', 'breakfast'));
+    act(() =>
+      ref.current?.present(getTodayDate(), 'breakfast-custom', 'breakfast'),
+    );
     expect(view.getByText('Copy meal: breakfast')).toBeTruthy();
     expect(view.queryByText('Copy meal: Breakfast')).toBeNull();
   });
@@ -126,8 +180,9 @@ describe('CopyMealSheet', () => {
   it('resolves a historical (unresolved) source id to the literal snapshotted name', () => {
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
-    act(() => ref.current?.present(getTodayDate(), 'deleted-custom-id', 'my old meal'));
+    act(() =>
+      ref.current?.present(getTodayDate(), 'deleted-custom-id', 'my old meal'),
+    );
     expect(view.getByText('Copy meal: my old meal')).toBeTruthy();
   });
-
 });

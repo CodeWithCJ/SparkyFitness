@@ -1,26 +1,24 @@
-// UI-only medication constants. The API contract types live in
-// @workspace/shared (shared/src/medications/contracts.ts).
-
+// Persisted identifiers only. User-visible labels are resolved at render time
+// through medicationLocalization so language changes do not leave stale labels.
 export const SCHEDULE_TYPES = [
-  { id: 'daily', label: 'Daily' },
-  { id: 'weekly', label: 'Specific days' },
-  { id: 'every_n_days', label: 'Every N days' },
-  { id: 'monthly', label: 'Monthly' },
-  { id: 'cyclic', label: 'Cycle (on/off)' },
-  { id: 'prn', label: 'As needed' },
+  'daily', 'weekly', 'every_n_days', 'monthly', 'cyclic', 'prn',
 ] as const;
 
 export const MEDICATION_TYPES = [
-  { id: 'pill', label: 'Pill' },
-  { id: 'tablet', label: 'Tablet' },
-  { id: 'capsule', label: 'Capsule' },
-  { id: 'liquid', label: 'Liquid' },
-  { id: 'injection', label: 'Injection' },
-  { id: 'patch', label: 'Patch' },
-  { id: 'inhaler', label: 'Inhaler' },
-  { id: 'drops', label: 'Drops' },
-  { id: 'nasal_spray', label: 'Nasal Spray' },
-  { id: 'cream', label: 'Cream' },
-  { id: 'suppository', label: 'Suppository' },
-  { id: 'other', label: 'Other' },
+  'pill', 'tablet', 'capsule', 'liquid', 'injection', 'patch', 'inhaler', 'drops',
+  'nasal_spray', 'cream', 'suppository', 'other',
 ] as const;
+
+export type MedicationTypeId = (typeof MEDICATION_TYPES)[number];
+export type ScheduleTypeId = (typeof SCHEDULE_TYPES)[number];
+
+export const medicationTypeFallbacks: Record<string, string> = {
+  pill: 'Pill', tablet: 'Tablet', capsule: 'Capsule', liquid: 'Liquid', injection: 'Injection',
+  patch: 'Patch', inhaler: 'Inhaler', drops: 'Drops', nasal_spray: 'Nasal Spray', cream: 'Cream',
+  suppository: 'Suppository', other: 'Other',
+};
+
+export const scheduleTypeFallbacks: Record<string, string> = {
+  daily: 'Daily', weekly: 'Specific days', every_n_days: 'Every N days', monthly: 'Monthly',
+  cyclic: 'Cycle (on/off)', prn: 'As needed',
+};

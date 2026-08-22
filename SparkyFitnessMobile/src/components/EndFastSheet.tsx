@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
@@ -31,6 +32,7 @@ interface EndFastSheetProps {
 }
 
 const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }, ref) => {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] = useCSSVariable([
@@ -74,8 +76,9 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
 
   const isValid = startDate.getTime() < endDate.getTime();
   const durationLabel = useMemo(
-    () => formatHoursMinutes(Math.max(0, endDate.getTime() - startDate.getTime())),
-    [startDate, endDate],
+    () =>
+      formatHoursMinutes(Math.max(0, endDate.getTime() - startDate.getTime()), t),
+    [startDate, endDate, t],
   );
 
   const pickerStyles = useMemo(
@@ -122,15 +125,15 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
       {
         onSuccess: () => {
           bottomSheetRef.current?.dismiss();
-          Toast.show({ type: 'success', text1: 'Fast ended' });
+          Toast.show({ type: 'success', text1: t('fastingEdit.fastEnded', { defaultValue: 'Fast ended' }) });
           onEnded?.();
         },
         onError: (error) => {
           addLog(`Failed to end fast: ${error}`, 'ERROR');
           Toast.show({
             type: 'error',
-            text1: 'Failed to end fast',
-            text2: 'Please try again.',
+            text1: t('fastingEdit.failedEnd', { defaultValue: 'Failed to end fast' }),
+            text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
           });
         },
       },
@@ -184,7 +187,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
       {/* Dedicated time wheel below the calendar, sharing the same value. */}
       <View className="border-t border-border-subtle mt-1 pt-2">
         <Text className="text-xs font-semibold uppercase text-text-muted tracking-wide mb-1 px-1">
-          Time
+          {t('fastingEdit.time', { defaultValue: 'Time' })}
         </Text>
         <DateTimePicker
           mode="single"
@@ -220,19 +223,19 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
           container absorb them. */}
       <BottomSheetScrollView contentContainerClassName="bg-surface px-5 pb-safe-or-8">
         <Text className="text-lg font-semibold text-text-primary text-center mb-1">
-          End fast
+          {t('fastingEdit.endTitle', { defaultValue: 'End fast' })}
         </Text>
-        <Text className="text-center text-text-secondary mb-4">{durationLabel} fasted</Text>
+        <Text className="text-center text-text-secondary mb-4">{t('fastingEdit.fasted', { defaultValue: '{{duration}} fasted', duration: durationLabel })}</Text>
 
-        {renderRow('Started', formatDateTime(startDate), 'start')}
+        {renderRow(t('fastingEdit.started', { defaultValue: 'Started' }), formatDateTime(startDate), 'start')}
         {openPicker === 'start' && renderInlinePicker(startDate, handleStartChange)}
 
-        {renderRow('Ended', formatDateTime(endDate), 'end')}
+        {renderRow(t('fastingEdit.ended', { defaultValue: 'Ended' }), formatDateTime(endDate), 'end')}
         {openPicker === 'end' && renderInlinePicker(endDate, handleEndChange)}
 
         {!isValid && (
           <Text className="text-text-danger-subtle text-sm mt-3 text-center">
-            Start time must be before the end time.
+            {t('fastingEdit.beforeEnd', { defaultValue: 'Start time must be before the end time.' })}
           </Text>
         )}
 
@@ -245,7 +248,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(({ onEnded }
         >
           <Icon name="stop" size={15} color="#FFFFFF" />
           <Text className="text-white text-base font-semibold ml-2">
-            {isPending ? 'Ending...' : 'End Fast'}
+            {isPending ? t('fastingEdit.ending', { defaultValue: 'Ending...' }) : t('fastingEdit.endAction', { defaultValue: 'End Fast' })}
           </Text>
         </Pressable>
       </BottomSheetScrollView>

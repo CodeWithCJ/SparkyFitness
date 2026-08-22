@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { putLog, deleteLog } from '../services/api/cycleApi';
@@ -17,6 +18,7 @@ interface UpsertCycleLogVars {
 }
 
 export function useUpsertCycleLog() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const invalidateCaches = (date: string) => {
@@ -35,16 +37,16 @@ export function useUpsertCycleLog() {
       invalidateCaches(vars.date);
       Toast.show({
         type: 'success',
-        text1: 'Saved',
-        text2: 'Daily log updated successfully.',
+        text1: t('cycleLog.saved', { defaultValue: 'Saved' }),
+        text2: t('cycleLog.updated', { defaultValue: 'Daily log updated successfully.' }),
       });
     },
     onError: (error) => {
       addLog(`Failed to save cycle daily log: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Save failed',
-        text2: 'Could not save log entry. Please try again.',
+        text1: t('cycleLog.saveFailed', { defaultValue: 'Save failed' }),
+        text2: t('cycleLog.saveError', { defaultValue: 'Could not save log entry. Please try again.' }),
       });
     },
   });
@@ -56,16 +58,16 @@ export function useUpsertCycleLog() {
       invalidateCaches(date);
       Toast.show({
         type: 'success',
-        text1: 'Deleted',
-        text2: 'Daily log cleared.',
+        text1: t('cycleLog.deleted', { defaultValue: 'Deleted' }),
+        text2: t('cycleLog.cleared', { defaultValue: 'Daily log cleared.' }),
       });
     },
     onError: (error) => {
       addLog(`Failed to delete cycle daily log: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Delete failed',
-        text2: 'Could not clear log entry. Please try again.',
+        text1: t('cycleLog.deleteFailed', { defaultValue: 'Delete failed' }),
+        text2: t('cycleLog.deleteError', { defaultValue: 'Could not clear log entry. Please try again.' }),
       });
     },
   });

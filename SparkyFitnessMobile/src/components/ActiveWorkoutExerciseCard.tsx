@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   FadeInDown,
@@ -25,6 +26,7 @@ import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
+import { formatLocalizedNumber } from '../localization';
 import {
   CATEGORY_ICON_MAP,
   compareSetRecords,
@@ -269,6 +271,7 @@ function ActiveWorkoutExerciseCard({
   onEditFieldChange,
   onRegisterAccessoryHandle,
 }: ActiveWorkoutExerciseCardProps) {
+  const { t } = useTranslation();
   const readOnly = mode === 'view';
   const isEdit = mode === 'edit';
   const isLive = mode === 'live';
@@ -279,7 +282,16 @@ function ActiveWorkoutExerciseCard({
     '--color-pr',
   ]) as [string, string, string, string];
 
-  const name = exercise.exercise_snapshot?.name ?? 'Exercise';
+  const name = exercise.exercise_snapshot?.name ?? t('workout.exercise', { defaultValue: 'Exercise' });
+  const metricColumnLabel = (column: ActiveWorkoutMetricColumn): string => {
+    switch (column) {
+      case 'rpe': return t('workout.metricRpe', { defaultValue: 'RPE' });
+      case 'volume': return t('workout.metricVolumeShort', { defaultValue: 'Vol' });
+      case 'e1rm': return t('workout.metricE1rmShort', { defaultValue: '1RM' });
+      case 'tenrm': return t('workout.metricTenrmShort', { defaultValue: '10RM' });
+    }
+  };
+  const unitLabel = weightUnit === 'kg' ? t('workout.kg', { defaultValue: 'kg' }) : t('workout.lbs', { defaultValue: 'lbs' });
   // Resolved once per exercise; every row and the column header derive from it.
   const modality = resolveSnapshotModality(exercise.exercise_snapshot);
   const durationLike = isDurationModality(modality);
@@ -374,7 +386,7 @@ function ActiveWorkoutExerciseCard({
   const bestIsPr = stampedBest != null && bestDisplay === stampedBest;
   const bestText =
     bestDisplay != null
-      ? `${parseFloat(weightFromKg(bestDisplay.weight, weightUnit).toFixed(1))}${
+      ? `${formatLocalizedNumber(weightFromKg(bestDisplay.weight, weightUnit), { maximumFractionDigits: 1 })}${
           bestDisplay.reps != null ? ` × ${bestDisplay.reps}` : ''
         }`
       : null;
@@ -506,12 +518,10 @@ function ActiveWorkoutExerciseCard({
     if (cardioForm) {
       const firstCardioSet = exercise.sets[0];
       if (firstCardioSet?.duration != null) {
-        cardioParts.push(`${parseFloat((firstCardioSet.duration / 60).toFixed(1))} min`);
+        cardioParts.push(`${formatLocalizedNumber(firstCardioSet.duration / 60, { maximumFractionDigits: 1 })} min`);
       }
       if (firstCardioSet?.distance != null) {
-        const dist = parseFloat(
-          distanceFromKm(firstCardioSet.distance, distanceUnit).toFixed(2),
-        );
+        const dist = formatLocalizedNumber(distanceFromKm(firstCardioSet.distance, distanceUnit), { maximumFractionDigits: 2 });
         cardioParts.push(`${dist} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
       }
     }
@@ -569,7 +579,7 @@ function ActiveWorkoutExerciseCard({
             onLongPress={longPressMenu}
             hitSlop={{ top: 10, bottom: 10, left: 12, right: 12 }}
             accessibilityRole="button"
-            accessibilityLabel={`Expand ${name}`}
+            accessibilityLabel={t('activeWorkout.exercise.expand', { defaultValue: 'Expand {{name}}', name })}
             className="flex-1 self-stretch flex-row items-center gap-3"
           >
             <Text
@@ -600,7 +610,7 @@ function ActiveWorkoutExerciseCard({
           onPress={onPressThumb ? () => onPressThumb(exercise.id) : undefined}
           accessible={onPressThumb != null}
           accessibilityRole={onPressThumb != null ? 'button' : undefined}
-          accessibilityLabel={onPressThumb != null ? `View ${name} details` : undefined}
+          accessibilityLabel={onPressThumb != null ? t('activeWorkout.exercise.viewDetails', { defaultValue: 'View {{name}} details', name }) : undefined}
         >
           {thumb}
         </Pressable>
@@ -613,7 +623,7 @@ function ActiveWorkoutExerciseCard({
           hitSlop={{ top: 10, bottom: 4 }}
           className="flex-1 self-stretch justify-center"
           accessibilityRole="button"
-          accessibilityLabel={`Collapse ${name}`}
+          accessibilityLabel={t('activeWorkout.exercise.collapse', { defaultValue: 'Collapse {{name}}', name })}
         >
           <Text numberOfLines={2} className="text-base font-semibold text-text-primary">
             {name}
@@ -624,7 +634,7 @@ function ActiveWorkoutExerciseCard({
             onPress={openOverflowMenu}
             hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
             accessibilityRole="button"
-            accessibilityLabel={`More options for ${name}`}
+            accessibilityLabel={t('activeWorkout.exercise.moreOptions', { defaultValue: 'More options for {{name}}', name })}
             className="p-1"
           >
             <Icon name="ellipsis-horizontal" size={18} color={textMuted} />
@@ -634,7 +644,7 @@ function ActiveWorkoutExerciseCard({
           onPress={() => onToggleExpanded(exercise.id)}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel={`Collapse ${name}`}
+          accessibilityLabel={t('activeWorkout.exercise.collapse', { defaultValue: 'Collapse {{name}}', name })}
           className="p-1"
         >
           <Animated.View style={chevronStyle}>
@@ -660,14 +670,14 @@ function ActiveWorkoutExerciseCard({
               value={exercise.notes}
               onCommit={(text) => onCommitExerciseNote(exercise.id, text)}
               label=""
-              placeholder="Add a note for this exercise…"
-              accessibilityLabel={`Notes for ${name}`}
+              placeholder={t('activeWorkout.exercise.notePlaceholder', { defaultValue: 'Add a note for this exercise…' })}
+              accessibilityLabel={t('activeWorkout.exercise.notesFor', { defaultValue: 'Notes for {{name}}', name })}
             />
           </View>
         )}
         {readOnly && !!exercise.notes && (
           <View className="mt-2 px-1">
-            <Text className="text-sm text-text-secondary" accessibilityLabel={`Notes for ${name}`}>
+            <Text className="text-sm text-text-secondary" accessibilityLabel={t('activeWorkout.exercise.notesFor', { defaultValue: 'Notes for {{name}}', name })}>
               {exercise.notes}
             </Text>
           </View>
@@ -704,7 +714,7 @@ function ActiveWorkoutExerciseCard({
                   autoFocus
                   selectTextOnFocus
                   placeholder="–"
-                  accessibilityLabel={`Calories burned for ${name}`}
+                  accessibilityLabel={t('activeWorkout.exercise.caloriesFor', { defaultValue: 'Calories burned for {{name}}', name })}
                   className="text-center"
                   style={{
                     paddingTop: 4,
@@ -716,7 +726,7 @@ function ActiveWorkoutExerciseCard({
                     minWidth: 52,
                   }}
                 />
-                <Text className="text-sm text-text-secondary">Cal</Text>
+                <Text className="text-sm text-text-secondary">{t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'kcal' })}</Text>
               </View>
             ) : (
               <Pressable
@@ -724,11 +734,11 @@ function ActiveWorkoutExerciseCard({
                 className="flex-row items-center gap-1"
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 accessibilityRole="button"
-                accessibilityLabel={`Edit calories burned for ${name}`}
+                accessibilityLabel={t('activeWorkout.exercise.editCaloriesFor', { defaultValue: 'Edit calories burned for {{name}}', name })}
               >
                 <Icon name="flame" size={14} color={accentPrimary} />
                 <Text className="text-sm" style={{ color: accentPrimary }}>
-                  {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} Cal
+                  {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} {t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'kcal' })}
                 </Text>
                 <Icon name="chevron-down" size={10} color={accentPrimary} />
               </Pressable>
@@ -736,13 +746,13 @@ function ActiveWorkoutExerciseCard({
             {caloriesText != null && (
               <View className="flex-row items-center">
                 <Icon name="flame" size={14} color={textMuted} />
-                <Text className="text-sm text-text-secondary ml-1">{caloriesText} Cal</Text>
+                <Text className="text-sm text-text-secondary ml-1">{caloriesText} {t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'kcal' })}</Text>
               </View>
             )}
             {bestDisplay != null && (
               <View
                 className="flex-row items-center"
-                accessibilityLabel={`Best ${bestText}`}
+                accessibilityLabel={t('activeWorkout.exercise.best', { defaultValue: 'Best {{value}}', value: bestText })}
               >
                 <Icon
                   name="trophy-outline"
@@ -801,26 +811,26 @@ function ActiveWorkoutExerciseCard({
             <Text
               className={`${durationLike ? 'flex-1' : 'w-9'} text-center text-xs font-semibold uppercase text-text-muted`}
             >
-              Set
+              {t('workout.set', { defaultValue: 'Set' })}
             </Text>
             {!readOnly && (
               <Text
                 className={`${durationLike ? 'flex-1' : 'w-20'} text-center text-xs font-semibold uppercase text-text-muted`}
               >
-                Prev
+                {t('workout.prev', { defaultValue: 'Prev' })}
               </Text>
             )}
             {durationLike ? (
               <>
                 <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-                  Sec
+                  {t('workout.sec', { defaultValue: 'Sec' })}
                 </Text>
                 {/* Read-only cardio tables surface per-set distance (imports,
                     intervals); live/edit tables keep the single editable Sec
                     cell, so the column only exists in view mode. */}
                 {readOnly && modality === 'duration_distance' && (
                   <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-                    {distanceUnit === 'miles' ? 'Mi' : 'Km'}
+                    {distanceUnit === 'miles' ? t('workout.mi', { defaultValue: 'mi' }) : t('workout.km', { defaultValue: 'km' })}
                   </Text>
                 )}
               </>
@@ -828,11 +838,11 @@ function ActiveWorkoutExerciseCard({
               <>
                 {modality !== 'reps_only' && (
                   <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-                    {weightUnit === 'kg' ? 'KG' : 'LBS'}
+                    {unitLabel}
                   </Text>
                 )}
                 <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
-                  Reps
+                  {t('workout.reps', { defaultValue: 'Reps' })}
                 </Text>
               </>
             )}
@@ -841,14 +851,14 @@ function ActiveWorkoutExerciseCard({
                 onPress={openMetricMenu}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityRole="button"
-                accessibilityLabel="Change metric column"
+                accessibilityLabel={t('activeWorkout.exercise.changeMetric', { defaultValue: 'Change metric column' })}
                 className="flex-row items-center gap-0.5"
               >
                 <Text
                   className="text-xs font-semibold uppercase"
                   style={{ color: accentPrimary }}
                 >
-                  {METRIC_COLUMN_LABELS[effectiveMetricColumn]}
+                  {metricColumnLabel(effectiveMetricColumn)}
                 </Text>
                 <Icon name="chevron-down" size={10} color={accentPrimary} />
               </Pressable>
@@ -917,7 +927,7 @@ function ActiveWorkoutExerciseCard({
                 <View className="px-1 pb-2">
                   <Text
                     className="text-xs text-text-secondary"
-                    accessibilityLabel={`Notes for set ${set.set_number}`}
+                    accessibilityLabel={t('activeWorkout.exercise.notesForSet', { defaultValue: 'Notes for set {{number}}', number: set.set_number })}
                   >
                     {set.notes}
                   </Text>
@@ -931,12 +941,12 @@ function ActiveWorkoutExerciseCard({
           <Pressable
             onPress={() => onAddSet?.(exercise.id)}
             accessibilityRole="button"
-            accessibilityLabel={`Add set to ${name}`}
+            accessibilityLabel={t('activeWorkout.exercise.addSet', { defaultValue: 'Add set to {{name}}', name })}
             className="flex-row items-center justify-center gap-1.5 py-2.5 mt-1"
           >
             <Icon name="add" size={15} color={accentPrimary} />
             <Text className="text-sm font-medium" style={{ color: accentPrimary }}>
-              Add set
+              {t('activeWorkout.exercise.addSetLabel', { defaultValue: 'Add set' })}
             </Text>
           </Pressable>
         )}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ActivityIndicator } from 'react-native';
 import Button from '../ui/Button';
 
@@ -23,6 +24,7 @@ const OnlineSectionFooter: React.FC<OnlineSectionFooterProps> = ({
   accentColor,
   onFetchNextPage,
 }) => {
+  const { t } = useTranslation();
   if (isOnlineSearching && visibleOnlineResultCount === 0) {
     return (
       <View className="py-4 items-center">
@@ -38,7 +40,7 @@ const OnlineSectionFooter: React.FC<OnlineSectionFooterProps> = ({
         className="py-3"
         textClassName="text-sm"
       >
-        Failed to load more. Tap to retry
+        {t('foodSearch.actions.loadMoreFailed', { defaultValue: 'Failed to load more. Tap to retry' })}
       </Button>
     );
   }
@@ -57,7 +59,7 @@ const OnlineSectionFooter: React.FC<OnlineSectionFooterProps> = ({
         className="py-4 mb-4"
         textClassName="text-sm"
       >
-        Load More
+        {t('foodSearch.actions.loadMore', { defaultValue: 'Load More' })}
       </Button>
     );
   }
@@ -65,7 +67,7 @@ const OnlineSectionFooter: React.FC<OnlineSectionFooterProps> = ({
     return (
       <View className="px-4 py-4">
         <Text className="text-text-secondary text-sm text-center">
-          No online results from {selectedProviderName}
+          {t('foodSearch.states.noOnlineResultsFrom', { defaultValue: 'No online results from {{provider}}', provider: selectedProviderName })}
         </Text>
       </View>
     );

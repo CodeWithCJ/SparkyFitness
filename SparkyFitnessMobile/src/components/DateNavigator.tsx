@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { formatDateLabel, formatDate } from '../utils/dateUtils';
@@ -32,13 +33,17 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
   skipHorizontalPadding,
   compact,
 }) => {
+  // Subscribe to the reactive app language so the date label re-localizes
+  // immediately on a runtime PL <-> EN switch without an app restart.
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const secondaryTextColor = useCSSVariable('--color-text-secondary') as string;
   const primaryTextColor = useCSSVariable('--color-text-primary') as string;
 
   const dateLabel = showDateAlways
-    ? formatDate(selectedDate)
-    : formatDateLabel(selectedDate);
+    ? formatDate(selectedDate, locale)
+    : formatDateLabel(selectedDate, t, locale);
 
   const paddingTop = compact ? 0 : skipTopInset ? 16 : insets.top + 16;
 

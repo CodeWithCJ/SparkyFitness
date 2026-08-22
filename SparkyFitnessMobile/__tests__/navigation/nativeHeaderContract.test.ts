@@ -468,7 +468,7 @@ describe('native header navigation contract', () => {
         !new RegExp(`${name}Stack\\.Navigator[\\s\\S]*${name}Stack\\.Screen`).test(
           tabsSource,
         ) ||
-        !new RegExp(`${name}Stack\\.Screen[\\s\\S]*title: '${name}'`).test(
+        !new RegExp(`${name}Stack\\.Screen[\\s\\S]*title:\\s*(?:'${name}'|t\\([^)]*defaultValue:\\s*'${name}'[^)]*\\))`).test(
           tabsSource,
         ),
     );

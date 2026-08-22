@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -29,6 +30,7 @@ import {
   canReorderDraftExercises,
   exerciseFromSnapshot,
 } from '../utils/workoutSession';
+import { formatLocalizedNumber } from '../localization';
 import {
   useDeleteWorkout,
   useUpdateWorkout,
@@ -65,6 +67,8 @@ import { canEditGroupedWorkout } from '@workspace/shared';
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [session, setSession] = useState(route.params.session);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -124,7 +128,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const entryDate = session.entry_date ?? '';
   const normalizedDate = normalizeDate(entryDate);
 
-  const { name } = getWorkoutSummary(session);
+  const { name } = getWorkoutSummary(session, t);
 
   const deleteWorkout = useDeleteWorkout({
     sessionId: session.id,
@@ -324,17 +328,17 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const setMenuItems = useMemo<ActionSheetItem[]>(() => {
     if (setMenuTargetId == null) return [];
     const items: ActionSheetItem[] = [
-      { key: 'edit', label: 'Edit', onPress: startEditing },
+      { key: 'edit', label: t('common.edit', { defaultValue: 'Edit' }), onPress: startEditing },
     ];
     if (!isWorkoutActive) {
       items.push({
         key: 'start-here',
-        label: 'Start workout here',
+        label: t('workoutDetail.actions.startHere', { defaultValue: 'Start workout here' }),
         onPress: () => beginWorkout(setMenuTargetId),
       });
     }
     return items;
-  }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout]);
+  }, [setMenuTargetId, isWorkoutActive, startEditing, beginWorkout, t]);
 
   // "Save as preset": review-and-save through the preset create form,
   // prefilled from this session. Not gated on canEdit — templating a synced
@@ -371,11 +375,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       const entry = session.exercises.find((e) => e.id === entryId);
       if (!entry) return;
       navigation.navigate('ExerciseDetail', {
-        item: exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id),
+        item: exerciseFromSnapshot(entry.exercise_snapshot, entry.exercise_id, t),
         hideWorkoutActions: true,
       });
     },
-    [session, navigation],
+    [session, navigation, t],
   );
 
   // --- Save ---
@@ -388,8 +392,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       if (exercisesModifiedRef.current && !submission.canSave) {
         Toast.show({
           type: 'error',
-          text1: 'Workout needs an exercise',
-          text2: 'Add at least one exercise with a set or delete the workout.',
+          text1: t('workoutDetail.errors.needsExercise', { defaultValue: 'Workout needs an exercise' }),
+          text2: t('workoutDetail.errors.addExerciseOrDelete', { defaultValue: 'Add at least one exercise with a set or delete the workout.' }),
         });
         return;
       }
@@ -410,9 +414,9 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       deactivateSet();
     } catch (error) {
       addLog(`Failed to save workout: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
+      Toast.show({ type: 'error', text1: t('workoutDetail.errors.saveFailed', { defaultValue: 'Failed to save workout' }), text2: t('common.tryAgain', { defaultValue: 'Please try again.' }) });
     }
-  }, [submission, normalizedDate, editNotes, updateSession, session, invalidateSessionCache, deactivateSet, exercisesModifiedRef]);
+  }, [submission, normalizedDate, editNotes, updateSession, session, invalidateSessionCache, deactivateSet, exercisesModifiedRef, t]);
 
   // --- Read-only render helpers ---
 
@@ -478,12 +482,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const details = session.activity_details;
     if (!details || details.length === 0) return null;
 
-    const items = extractActivitySummary(details);
+    const items = extractActivitySummary(details, t);
     if (items.length === 0) return null;
 
     return (
       <View className="bg-surface rounded-xl p-4 mt-4">
-        <Text className="text-base font-semibold text-text-primary mb-2">Details</Text>
+        <Text className="text-base font-semibold text-text-primary mb-2">{t('workoutDetail.labels.details', { defaultValue: 'Details' })}</Text>
         {items.map((item, i) => (
           <View
             key={`${item.label}-${i}`}
@@ -520,19 +524,26 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const summaryItems: { value: string; label: string }[] = [];
     summaryItems.push({
       value: String(exerciseCount),
-      label: exerciseCount === 1 ? 'Exercise' : 'Exercises',
+      label: t('workoutDetail.summary.exercise', {
+        count: exerciseCount,
+        defaultValue: 'Exercises',
+        defaultValue_one: 'Exercise',
+        defaultValue_few: 'Exercises',
+        defaultValue_many: 'Exercises',
+        defaultValue_other: 'Exercises',
+      }),
     });
-    if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: 'Sets' });
+    if (totalSets > 0) summaryItems.push({ value: String(totalSets), label: t('workoutDetail.summary.sets', { defaultValue: 'Sets' }) });
     if (totalVolume > 0) {
       const volumeLabel = isEditing
-        ? `${Math.round(totalVolume).toLocaleString()} ${weightUnit}`
+        ? `${formatLocalizedNumber(Math.round(totalVolume))} ${weightUnit}`
         : formatVolume(totalVolume, weightUnit);
-      summaryItems.push({ value: volumeLabel, label: 'Volume' });
+      summaryItems.push({ value: volumeLabel, label: t('workoutDetail.summary.volume', { defaultValue: 'Volume' }) });
     }
     if (totalCalories > 0) {
       summaryItems.push({
-        value: Math.round(totalCalories).toLocaleString(),
-        label: 'Calories',
+        value: formatLocalizedNumber(Math.round(totalCalories)),
+        label: t('workoutDetail.summary.calories', { defaultValue: 'Calories' }),
       });
     }
     if (summaryItems.length === 0) return null;
@@ -566,7 +577,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     busy: isSaving,
     disabled: isSaving || !hasEditedExercisesWithSets,
     onPress: handleSave,
-    accessibilityLabel: 'Save',
+    accessibilityLabel: t('workoutDetail.accessibility.save', { defaultValue: 'Save' }),
     identifier: 'workout-detail-save',
   };
   const reorderHeaderItem: HeaderItem = {
@@ -575,7 +586,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     ionicon: 'swap-vertical',
     role: 'secondary',
     onPress: () => exerciseListRef.current?.openReorder(),
-    accessibilityLabel: 'Reorder exercises',
+    accessibilityLabel: t('workoutDetail.accessibility.reorder', { defaultValue: 'Reorder exercises' }),
     identifier: 'workout-detail-reorder',
   };
   const saveAsPresetHeaderItem: HeaderItem = {
@@ -584,7 +595,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     ionicon: 'bookmark-outline',
     role: 'secondary',
     onPress: handleSaveAsPreset,
-    accessibilityLabel: 'Save as preset',
+    accessibilityLabel: t('workoutDetail.accessibility.saveAsPreset', { defaultValue: 'Save as preset' }),
     identifier: 'workout-detail-save-as-preset',
   };
 
@@ -595,7 +606,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // left slot with swipe-back disabled, Save (+ reorder) on the right; name
   // edited in-body.
   const header = useScreenHeader({
-    nativeTitle: isEditing ? 'Edit Workout' : name,
+    nativeTitle: isEditing ? t('workoutDetail.title.edit', { defaultValue: 'Edit Workout' }) : name,
     animateKey: isEditing ? 'edit' : 'view',
     borderless: true,
     nativeOptions: { gestureEnabled: !isEditing, headerBackVisible: !isEditing },
@@ -604,7 +615,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           kind: 'dismiss',
           onPress: cancelEditing,
           disabled: isSaving,
-          accessibilityLabel: 'Cancel',
+          accessibilityLabel: t('common.cancel', { defaultValue: 'Cancel' }),
           identifier: 'workout-detail-cancel',
         }
       : { kind: 'back' },
@@ -617,10 +628,10 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             saveAsPresetHeaderItem,
             {
               kind: 'text',
-              label: 'Edit',
+              label: t('common.edit', { defaultValue: 'Edit' }),
               role: 'secondary',
               onPress: startEditing,
-              accessibilityLabel: 'Edit workout',
+              accessibilityLabel: t('workoutDetail.accessibility.editWorkout', { defaultValue: 'Edit workout' }),
               identifier: 'workout-detail-edit',
             },
           ]
@@ -649,11 +660,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View className="mb-4">
           {isEditing ? (
             <FadeView key="edit-title">
-              <Text className="text-sm font-medium text-text-secondary mb-1">Name</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1">{t('workoutDetail.labels.name', { defaultValue: 'Name' })}</Text>
               <FormInput
                 value={formState.name}
                 onChangeText={setFormName}
-                placeholder="Workout Name"
+                placeholder={t('workoutDetail.placeholders.workoutName', { defaultValue: 'Workout Name' })}
                 className="mb-2"
               />
             </FadeView>
@@ -672,12 +683,12 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 activeOpacity={0.7}
               >
                 <Text className="text-sm" style={{ color: accentPrimary }}>
-                  {formatDateLabel(formState.entryDate)}
+                  {formatDateLabel(formState.entryDate, t, dateLocale)}
                 </Text>
                 <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
               </TouchableOpacity>
             ) : entryDate ? (
-              <Text className="text-sm text-text-muted">{formatDate(entryDate)}</Text>
+              <Text className="text-sm text-text-muted">{formatDate(entryDate, dateLocale)}</Text>
             ) : null}
           </View>
         </View>
@@ -688,7 +699,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Start Workout button */}
         {!isEditing && canEdit && !isWorkoutActive && (
           <Button variant="primary" onPress={handleStartWorkout} className="mt-4">
-            Start Workout
+            {t('workout.startWorkout', { defaultValue: 'Start Workout' })}
           </Button>
         )}
 
@@ -738,11 +749,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing && (
           <FadeView>
             <View className="mt-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1">{t('workoutDetail.labels.notes', { defaultValue: 'Notes' })}</Text>
               <FormInput
                 value={editNotes}
                 onChangeText={setEditNotes}
-                placeholder="Add notes..."
+                placeholder={t('workoutDetail.placeholders.notes', { defaultValue: 'Add notes...' })}
                 multiline
                 style={{ minHeight: 60 }}
               />
@@ -754,7 +765,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {!isEditing && session.notes && (
           <FadeView>
             <View className="mt-4 px-4">
-              <Text className="text-sm font-medium text-text-secondary mb-1">Notes</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-1">{t('workoutDetail.labels.notes', { defaultValue: 'Notes' })}</Text>
               <Text className="text-sm text-text-primary">{session.notes}</Text>
             </View>
           </FadeView>

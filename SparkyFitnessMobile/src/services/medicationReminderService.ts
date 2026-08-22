@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import i18n from '../localization/i18n';
 
 import { addDays, getDeviceTimezone, getTodayDate } from '../utils/dateUtils';
 import { getDueDosesForDate } from '@workspace/shared';
@@ -45,7 +46,7 @@ async function scheduleReminder(
   try {
     return await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Medication reminder',
+        title: i18n.t('medications.notificationTitle', { defaultValue: 'Medication reminder' }),
         body,
         sound: true,
         categoryIdentifier: MEDICATION_REMINDER_CATEGORY,
@@ -109,6 +110,8 @@ export async function reconcileMedicationReminders(
     const today = getTodayDate();
     const tz = getDeviceTimezone();
     const hideNames = prefs.medicationReminderHideNames;
+    const reminderLocale = i18n.resolvedLanguage?.split('-')[0] === 'pl' ? 'pl' : 'en';
+
 
     const desiredKeys = new Set<string>();
     const dosesToSchedule: {
@@ -151,11 +154,11 @@ export async function reconcileMedicationReminders(
         if (!n.content.data?.medicationId) return false;
         const key = n.content.data.key as string | undefined;
         if (!key || !desiredKeys.has(key)) return true;
-        // Pending content baked in the name (or lack of one) at schedule time;
-        // a hide-names preference flip must cancel so the loop below
-        // reschedules with matching content. Unstamped requests predate the
-        // preference and carry the name.
-        return (n.content.data.hideNames === 'true') !== hideNames;
+        // Notification copy is language-sensitive as well as privacy-sensitive:
+        // changing EN ↔ PL must replace pending notifications created earlier.
+        return (n.content.data.hideNames === 'true') !== hideNames
+          || (n.content.data.locale ?? 'en') !== reminderLocale;
+
       })
       .map((n) => n.identifier);
     if (toCancel.length > 0) await cancelReminders(toCancel);
@@ -170,9 +173,18 @@ export async function reconcileMedicationReminders(
       const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);
 
       const [hours, minutes] = timeOfDay.split(':').map(Number);
+      const doseSuffix = due.medication.dose_amount != null
+        ? ` (${due.medication.dose_amount}${due.medication.dose_unit ? ` ${due.medication.dose_unit}` : ''})`
+        : '';
       const body = hideNames
-        ? 'You have a scheduled dose'
-        : `Scheduled dose: ${due.medication.name}${due.medication.dose_amount != null ? ` (${due.medication.dose_amount} ${due.medication.dose_unit ?? ''})` : ''}`;
+        ? i18n.t('medications.notificationScheduledDose', {
+            defaultValue: 'You have a scheduled dose',
+          })
+        : i18n.t('medications.notificationScheduledDoseNamed', {
+            defaultValue: 'Scheduled dose: {{name}}{{dose}}',
+            name: due.medication.name,
+            dose: doseSuffix,
+          });
       const data = {
         medicationId: due.medication.id,
         scheduleId: due.schedule.id,
@@ -180,6 +192,8 @@ export async function reconcileMedicationReminders(
         key: baseKey,
         baseKey,
         hideNames: String(hideNames),
+        locale: reminderLocale,
+
       };
 
       const [year, month, day] = date.split('-').map(Number);

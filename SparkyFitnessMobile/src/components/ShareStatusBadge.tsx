@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
@@ -9,6 +10,7 @@ interface ShareStatusBadgeProps {
 }
 
 const ShareStatusBadge: React.FC<ShareStatusBadgeProps> = ({ status, style }) => {
+  const { t } = useTranslation();
   const [accentColor, successColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-success',
@@ -21,7 +23,9 @@ const ShareStatusBadge: React.FC<ShareStatusBadgeProps> = ({ status, style }) =>
   return (
     <View
       accessibilityRole="image"
-      accessibilityLabel={isPublic ? 'Shared publicly' : 'Shared with family'}
+      accessibilityLabel={isPublic
+        ? t('shareStatus.public', { defaultValue: 'Shared publicly' })
+        : t('shareStatus.family', { defaultValue: 'Shared with family' })}
       testID={`share-status-${status}`}
       style={[{ flexShrink: 0 }, style]}
     >

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, {
   forwardRef,
   useCallback,
@@ -179,6 +180,7 @@ const WorkoutFormExerciseList = forwardRef<
   },
   ref,
 ) {
+  const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const cardExercises = useMemo(
@@ -398,9 +400,9 @@ const WorkoutFormExerciseList = forwardRef<
     (clientId: string) => {
       if (!onViewExercise) return;
       const draft = exercises.find(e => e.clientId === clientId);
-      if (draft) onViewExercise(exerciseFromDraft(draft));
+      if (draft) onViewExercise(exerciseFromDraft(draft, t));
     },
-    [exercises, onViewExercise],
+    [exercises, onViewExercise, t],
   );
 
   // Rest sheet (All/per-set rest duration, committed on Done).
@@ -504,21 +506,21 @@ const WorkoutFormExerciseList = forwardRef<
     if (onViewExercise) {
       items.push({
         key: 'view',
-        label: 'View exercise',
+        label: t('workoutForm.viewExercise', { defaultValue: 'View exercise' }),
         onPress: () => handleViewExercise(clientId),
       });
     }
     if (setExerciseNotes) {
       items.push({
         key: 'notes',
-        label: 'Notes',
+        label: t('workoutForm.notes', { defaultValue: 'Notes' }),
         onPress: () => handleToggleExerciseNote(clientId),
       });
     }
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
-        label: 'Superset with…',
+        label: t('workoutForm.supersetWith', { defaultValue: 'Superset with…' }),
         // Keeps the sheet presented; the candidate list swaps in place.
         dismissOnPress: false,
         onPress: () => {
@@ -529,14 +531,14 @@ const WorkoutFormExerciseList = forwardRef<
     if (groupedIds.has(clientId)) {
       items.push({
         key: 'ungroup',
-        label: 'Remove from superset',
+        label: t('workoutForm.removeFromSuperset', { defaultValue: 'Remove from superset' }),
         onPress: () => ungroupExercise(clientId),
       });
     }
     if (onReplaceExercise) {
       items.push({
         key: 'replace',
-        label: 'Replace exercise',
+        label: t('workoutForm.replaceExercise', { defaultValue: 'Replace exercise' }),
         onPress: () => onReplaceExercise(clientId),
       });
     }
@@ -552,7 +554,7 @@ const WorkoutFormExerciseList = forwardRef<
       if (!cardioForm && target?.sets.some(s => s.completedAt != null)) {
         items.push({
           key: 'clear',
-          label: 'Clear logged sets',
+          label: t('workoutForm.clearLoggedSets', { defaultValue: 'Clear logged sets' }),
           destructive: true,
           onPress: () => clearExerciseCompletions(clientId),
         });
@@ -560,7 +562,7 @@ const WorkoutFormExerciseList = forwardRef<
     }
     items.push({
       key: 'remove',
-      label: 'Remove exercise',
+      label: t('workoutForm.removeExercise', { defaultValue: 'Remove exercise' }),
       destructive: true,
       onPress: () => {
         const exercise = exercises.find(e => e.clientId === clientId);
@@ -583,6 +585,7 @@ const WorkoutFormExerciseList = forwardRef<
     handleViewExercise,
     setExerciseNotes,
     handleToggleExerciseNote,
+    t,
   ]);
 
   return (
@@ -676,7 +679,7 @@ const WorkoutFormExerciseList = forwardRef<
         >
           <Icon name="add-circle" size={20} color={accentPrimary} />
           <Text className="text-lg font-medium ml-2" style={{ color: accentPrimary }}>
-            Add Exercise
+            {t('workoutForm.addExercise', { defaultValue: 'Add Exercise' })}
           </Text>
         </TouchableOpacity>
       </Animated.View>
@@ -694,9 +697,9 @@ const WorkoutFormExerciseList = forwardRef<
         ref={overflowSheetRef}
         title={
           overflowMenu?.mode === 'pick'
-            ? 'Superset with…'
+            ? t('workoutForm.supersetWith', { defaultValue: 'Superset with…' })
             : (exercises.find(e => e.clientId === overflowMenu?.clientId)?.exerciseName ??
-              'Exercise')
+              t('workoutForm.exercise', { defaultValue: 'Exercise' }))
         }
         items={overflowMenuItems}
         onBack={

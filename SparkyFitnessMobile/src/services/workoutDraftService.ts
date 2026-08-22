@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
+import i18n from '../localization/i18n';
 import type { FormDraft } from '../types/drafts';
 
 const DRAFT_KEY = '@SessionDraft';
@@ -25,7 +26,7 @@ export async function saveDraft(draft: FormDraft): Promise<void> {
     await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   } catch (error) {
     addLog(`Failed to save draft: ${error}`, 'ERROR');
-    Toast.show({ type: 'error', text1: 'Failed to save draft', text2: 'Please try again.' });
+    Toast.show({ type: 'error', text1: i18n.t('workoutDraft.saveFailed', { defaultValue: 'Failed to save draft' }), text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }) });
   }
 }
 

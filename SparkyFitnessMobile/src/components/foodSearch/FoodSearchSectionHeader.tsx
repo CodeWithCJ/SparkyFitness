@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable, ActivityIndicator, Keyboard } from 'react-native';
 import Icon from '../Icon';
 import BottomSheetPicker from '../BottomSheetPicker';
@@ -44,6 +45,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
   onSelectProvider,
   onToggleProvider,
 }) => {
+  const { t } = useTranslation();
   if (!section.title) return null;
 
   // The External Results / Top Matches header doubles as the source switcher:
@@ -53,8 +55,8 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
   if (section.kind === 'online' || section.kind === 'online-top') {
     const canSwitch = providerOptions.length > 1;
     const label =
-      section.kind === 'online-top' ? 'Top Matches' : 'Online Results';
-    const value = isAllProviders ? 'All Sources' : selectedProviderName;
+      section.kind === 'online-top' ? t('foodSearch.sections.topMatches', { defaultValue: 'Top Matches' }) : t('foodSearch.sections.onlineResults', { defaultValue: 'Online Results' });
+    const value = isAllProviders ? t('foodSearch.menu.allSources', { defaultValue: 'All Sources' }) : selectedProviderName;
     const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
     const header = (
       <View className="px-4 py-1 bg-background flex-row items-center justify-between">
@@ -82,7 +84,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
         value={selectedProvider ?? ''}
         options={providerOptions}
         onSelect={onSelectProvider}
-        title="Online provider"
+        title={t('foodSearch.pickers.onlineProvider', { defaultValue: 'Online provider' })}
         renderTrigger={({ onPress }) => (
           <Pressable
             onPress={() => {
@@ -92,7 +94,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
               onPress();
             }}
             accessibilityRole="button"
-            accessibilityLabel={`Source ${value}, tap to change`}
+            accessibilityLabel={t('foodSearch.accessibility.sourceChange', { defaultValue: 'Source {{source}}, tap to change', source: value })}
           >
             {header}
           </Pressable>
@@ -125,13 +127,11 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
         accessibilityRole="button"
         accessibilityLabel={
           errored
-            ? `${provider.provider_name}, could not load, tap to retry`
+            ? t('foodSearch.accessibility.providerError', { defaultValue: '{{provider}}, could not load, tap to retry', provider: provider.provider_name })
             : empty
-              ? `${provider.provider_name}, no results`
+              ? t('foodSearch.accessibility.providerNoResults', { defaultValue: '{{provider}}, no results', provider: provider.provider_name })
               : expandable
-                ? `${provider.provider_name}, ${count} results, tap to ${
-                    expanded ? 'collapse' : 'expand'
-                  }`
+                ? t('foodSearch.accessibility.providerExpand', { defaultValue: '{{provider}}, {{count}} results, tap to {{action}}', provider: provider.provider_name, count, action: expanded ? t('common.collapse', { defaultValue: 'collapse' }) : t('common.expand', { defaultValue: 'expand' }) })
                 : provider.provider_name
         }
       >
@@ -153,11 +153,11 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
           <ActivityIndicator size="small" color={textMuted} />
         ) : errored ? (
           <View className="flex-row items-center gap-1">
-            <Text className="text-text-muted text-xs">Couldn&apos;t load</Text>
+            <Text className="text-text-muted text-xs">{t('foodSearch.states.couldNotLoad', { defaultValue: "Couldn't load" })}</Text>
             <Icon name="sync" size={14} color={textMuted} />
           </View>
         ) : empty ? (
-          <Text className="text-text-muted text-xs">No results</Text>
+          <Text className="text-text-muted text-xs">{t('foodSearch.states.noResults', { defaultValue: 'No results' })}</Text>
         ) : (
           <Icon
             name={expanded ? 'chevron-down' : 'chevron-forward'}

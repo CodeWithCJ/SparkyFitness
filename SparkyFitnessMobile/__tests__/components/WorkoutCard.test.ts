@@ -1,5 +1,6 @@
 import { getWorkoutSummary } from '../../src/components/WorkoutCard';
 import type { ExerciseSessionResponse } from '@workspace/shared';
+import i18n from '../../src/localization/i18n';
 
 describe('getWorkoutSummary', () => {
   test('prefers a custom individual session name over the exercise snapshot name', () => {
@@ -32,7 +33,7 @@ describe('getWorkoutSummary', () => {
       activity_details: [],
     };
 
-    expect(getWorkoutSummary(session)).toMatchObject({
+    expect(getWorkoutSummary(session, i18n.t)).toMatchObject({
       name: 'Morning Run',
       duration: 35,
       calories: 320,

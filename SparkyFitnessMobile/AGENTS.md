@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-08-21*
+*Last updated: 2026-08-22*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -134,8 +134,6 @@ npx expo prebuild --clean
 - Platform split: `services/writeback.ios.ts` re-exports `healthkit/writeback.ts`; `services/writeback.ts` re-exports `healthconnect/writeback.ts`.
 - `runWriteback()` runs after inbound sync in its own try/catch. Writeback failures must not block inbound sync results.
 - Writeback is opt-in per metric and gated on write permissions. Android production permissions include `WRITE_NUTRITION` and `WRITE_HYDRATION`; other write permissions are dev-only.
-- Read sync and writeback are independent opt-ins with independent prefs; nothing writes the other direction's `preferenceKey`. But the OS authorization sheet is authoritative for every row it shows, so a request carrying only one direction can commit an omitted-but-enabled direction back to off (issue #2160). **Whenever both directions of a record type are enabled, request them together** — `services/shared/healthPermissionSets.ts` builds the counterpart set, and every request path uses it: both `SyncScreen` toggles, "Enable All", and `refreshEnabledMetricPermissions` (which must never issue a read-only request while writeback is on). `buildAuthDataTypes` in `healthkit/index.ts` still keeps `toRead`/`toShare` in separate Sets, and a direction that is switched off is never requested for.
-- `REQUIRED_HEALTH_PERMISSION_VERSION` in `shared/healthPermissionMigration.ts` is 4; bump it when an existing install needs its enabled permissions re-requested.
 - Imported health entries are skipped to avoid echo loops. iOS sets the app bundle id as the own-source guard; Android relies on source metadata.
 - Per-day content-signature hashing skips unchanged days. Each run deletes prior tracked UUIDs then saves fresh records; failed deletes are retried next run.
 - `HealthDataWriteback` on `SyncScreen` owns the remove flow. `BottomSheetPicker` offers all-time purge or date range through `DateRangeSheet`; both call `removeWrittenData(range)` and clear tracking.
@@ -266,6 +264,15 @@ All endpoints require auth headers, and proxy headers are injected before auth h
 - `ChatScreen.tsx` (transport) + `chatApi.ts` - streaming chat via `POST /api/chat/stream`, history load/clear.
 
 When reviewing an API issue, trace screen/hook -> API client -> server route -> service/repository -> shared schema before judging the fix. Deeper endpoint docs live in mobile `docs/` (`food_api.md`, `sync_api.md`, `measurements_api.md`, `external_providers.md`, `healthkit.md`, `bg_sync.md`).
+
+## Localization And Reactive Helpers
+
+- React UI gets `t` from `useTranslation()`; user-facing utility helpers accept an injected `TFunction` and never hide singleton `i18n.t()` fallbacks.
+- Pass `t` through every presentation helper and include it in `useMemo` / `useCallback` dependencies when the derived result contains localized text; this keeps mounted UI correct after a runtime language switch.
+- Translation keys are semantic and statically analyzable. Every static `defaultValue` is the English source fallback and must exactly match the EN catalog entry.
+- A key used with `count` is a plural family: EN requires `_one` and `_other`; PL requires `_one`, `_few`, `_many`, and `_other`. Use grammatically correct forms rather than duplicating suffixes blindly.
+- Run `pnpm run i18n:audit` after localization work. `pnpm run validate` includes typecheck, lint with zero warnings, and this audit.
+- Keep canonical storage/API values and user-generated content literal; localize only application-owned presentation labels.
 
 ## Testing Guidance
 

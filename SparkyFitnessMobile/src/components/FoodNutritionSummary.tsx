@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import VerifiedBadge from './VerifiedBadge';
 import { buildNutrientDisplayList, type NutrientDisplayItem } from '../types/foodInfo';
+import { localizeNutrientKey } from '../utils/nutrientLocalization';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import NutritionMacroCard, { type NutritionGoalPercentages } from './NutritionMacroCard';
 import { useCustomNutrients, useServerConnection } from '../hooks';
@@ -89,7 +91,9 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
 
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
+  const { t } = useTranslation();
   const scale = (value: number) => value * servings;
+  const localizedNutrientLabel = (label: string) => localizeNutrientKey(t, label);
   // Gate the Total Carbs row injection on the same condition NutritionMacroCard
   // uses to swap the macro bar to "Net Carbs" — if fiber is unavailable the
   // bar falls back to total carbs and the row would otherwise duplicate it.
@@ -100,8 +104,9 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
         showNetCarbs: useNetCarbs,
         // Pass raw carbs; renderRow scales by `servings` like every other row.
         carbs: useNetCarbs ? values.carbs : undefined,
+        t,
       }),
-    [values, useNetCarbs],
+    [values, useNetCarbs, t],
   );
 
   // Build custom nutrient rows: show ALL user-defined custom nutrients (from defs),
@@ -137,7 +142,7 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
       key={nutrient.label}
       className={`flex-row justify-between py-1 ${showBorder ? 'border-b border-border-subtle' : ''}`}
     >
-      <Text className="text-text-secondary text-sm">{nutrient.label}</Text>
+      <Text className="text-text-secondary text-sm">{localizedNutrientLabel(nutrient.label)}</Text>
       <Text className="text-text-primary text-sm">
         {Math.round(scale(nutrient.value))}
         {nutrient.unit}
@@ -184,7 +189,7 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
             className="self-start py-0 px-0"
           >
             <Text style={{ color: accentColor }} className="text-sm font-medium">
-              {showMoreNutrients ? 'Hide extra nutrients ▴' : 'Show more nutrients ▾'}
+              {showMoreNutrients ? t('foodNutrition.hideExtra', { defaultValue: 'Hide extra nutrients ▴' }) : t('foodNutrition.showMore', { defaultValue: 'Show more nutrients ▾' })}
             </Text>
           </Button>
         </Animated.View>

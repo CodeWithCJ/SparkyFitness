@@ -1,6 +1,7 @@
 // Sole consumer: ActivityDetailScreen (via EditableSetList). The workout and
 // preset forms use the card-based ActiveWorkoutSetRow in edit mode.
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, View, Text, TextInput, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useCSSVariable } from 'uniwind';
@@ -61,6 +62,7 @@ function EditableSetRow({
   onRemoveSet,
   onAddSet,
 }: EditableSetRowProps) {
+  const { t } = useTranslation();
   const dangerColor = useCSSVariable('--color-bg-danger') as string;
 
   const durationLike = isDurationModality(modality);
@@ -133,11 +135,11 @@ function EditableSetRow({
   }, [exerciseClientId, onRemoveSet, setClientId]);
 
   const handleConfirmRemove = useCallback(() => {
-    Alert.alert(`Set ${setNumber}`, undefined, [
-      { text: 'Delete', style: 'destructive', onPress: handleRemove },
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('editableSet.removeTitle', { defaultValue: 'Set {{number}}', number: setNumber }), undefined, [
+      { text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: handleRemove },
+      { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
     ]);
-  }, [handleRemove, setNumber]);
+  }, [handleRemove, setNumber, t]);
 
   const handleAdvance = useCallback(() => {
     // For within-row advance, move focus directly via ref so iOS keeps the

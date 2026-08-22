@@ -15,6 +15,7 @@ import {
   runWriteback,
   removeWrittenData,
 } from '../../../src/services/healthkit/writeback';
+import i18n, { initializeI18n } from '../../../src/localization/i18n';
 
 jest.mock('../../../src/services/api/dailySummaryApi', () => ({
   fetchDailySummary: jest.fn(),
@@ -139,6 +140,14 @@ describe('writebackPhase', () => {
       HKFoodType: 'Eggs',
       Meal: 'Breakfast', // meal_type 'breakfast' → canonical label (HealthKit has no meal field)
     });
+  });
+
+  it('localizes known meal metadata for Polish HealthKit users', async () => {
+    await initializeI18n('pl');
+    prefs({ writebackNutritionEnabled: true });
+    await writebackPhase(['2026-06-01']);
+    expect(mockSaveCorrelation.mock.calls[0][4]).toMatchObject({ Meal: 'Śniadanie' });
+    await i18n.changeLanguage('en');
   });
 
   it('stamps the food name and meal label onto each contained sample (Apple Health reads sample metadata, not the correlation)', async () => {

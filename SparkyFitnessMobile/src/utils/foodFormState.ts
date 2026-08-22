@@ -4,7 +4,9 @@ import type {
 } from '../types/foodUnitVariants';
 import { formatFoodFormNumber } from './foodDetails';
 import { parseDecimalInput } from './numericInput';
+import { localizeFoodUnit, localizeFoodUnitGroup } from './foodUnitLocalization';
 import { FOOD_FORM_UNIT_GROUPS } from '@workspace/shared';
+import type { TFunction } from 'i18next';
 
 export interface FoodFormData {
   name: string;
@@ -69,10 +71,23 @@ export const NUMERIC_FOOD_FORM_FIELD_SET = new Set<keyof FoodFormData>(
   NUMERIC_FOOD_FORM_FIELDS,
 );
 
-export const SERVING_UNIT_SECTIONS = FOOD_FORM_UNIT_GROUPS.map((group) => ({
-  title: group.label,
-  options: group.units.map((unit) => ({ label: unit, value: unit })),
-}));
+/**
+ * Localized unit sections for the serving-unit picker. Group titles and
+ * unit labels follow the active app locale via the controlled-food-unit
+ * mapping; the raw canonical `value` (used for selection, conversion, storage)
+ * is preserved unchanged. Unknown/custom units fall back to their literal.
+ */
+export function makeServingUnitSections(
+  t: TFunction,
+): { title: string; options: { label: string; value: string }[] }[] {
+  return FOOD_FORM_UNIT_GROUPS.map((group) => ({
+    title: localizeFoodUnitGroup(group.label, t),
+    options: group.units.map((unit) => ({
+      label: localizeFoodUnit(unit, t),
+      value: unit,
+    })),
+  }));
+}
 
 export const NUTRITION_FIELDS: (keyof FoodFormData)[] = [
   'calories',

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { Meal } from '../types/meals';
@@ -35,6 +36,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
   showBadge = false,
   isFavorite = false,
 }) => {
+  const { t } = useTranslation();
   const { profile } = useProfile();
   const status = deriveShareStatus(meal.user_id, meal.is_public, profile?.id);
   const foodInfo = useMemo(() => mealToFoodInfo(meal), [meal]);
@@ -82,7 +84,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
             {showBadge ? (
               <View className="px-1 py-0.5 rounded border border-border-subtle flex-shrink-0">
                 <Text className="text-text-muted text-xs">
-                  Meal
+                  {t('foodSearch.labels.meal', { defaultValue: 'Meal' })}
                 </Text>
               </View>
             ) : null}
@@ -95,7 +97,7 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
                 size={16}
                 color={goldColor}
                 style={{ marginTop: -1 }}
-                accessibilityLabel="Favorite"
+                accessibilityLabel={t('foodSearch.accessibility.favorite', { defaultValue: 'Favorite' })}
               />
             )}
           </View>
@@ -107,10 +109,10 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
-            {foodInfo.calories} cal
+            {foodInfo.calories} {t('foodSearch.labels.caloriesShort', { defaultValue: 'kcal' })}
           </Text>
           <Text className="text-text-secondary text-xs">
-            {itemCount} {itemCount === 1 ? 'item' : 'items'}
+            {t('foodSearch.labels.itemCount', { defaultValue: "{{count}} items", defaultValue_one: "{{count}} item", defaultValue_other: "{{count}} items", count: itemCount })}
           </Text>
         </View>
       </View>

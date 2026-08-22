@@ -3,10 +3,26 @@ const path = require('node:path');
 const ts = require('typescript');
 
 const EXCLUDE_DIRS = new Set(['__tests__', '__mocks__', 'node_modules', 'coverage', 'android', 'ios', 'scripts', '.tooling']);
+const CONTROLLED_DYNAMIC_I18N_RULES = new Set([
+  'healthMetrics',
+  'healthCategories',
+]);
+
+function isApprovedControlledDynamicKey(node) {
+  if (!ts.isTemplateExpression(node)) return false;
+  const head = node.head.text;
+  const prefixMatch = head.match(/^([A-Za-z0-9_.-]+)\.$/);
+  if (!prefixMatch || !CONTROLLED_DYNAMIC_I18N_RULES.has(prefixMatch[1])) return false;
+  return node.templateSpans.length === 1;
+}
+
+
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
 /** Blocking rule name for a source file that could not be scanned (fail-closed). */
 const SOURCE_SCAN_ERROR_RULE = 'source-scan-error';
+
+const CUSTOM_UI_ATTRIBUTE_NAMES = new Set(['errorMessage', 'successMessage', 'emptyMessage']);
 
 const LOCALIZED_ATTRIBUTE_NAMES = new Set([
   'accessibilityHint',
@@ -82,6 +98,7 @@ function isDynamicTranslationKey(node) {
   const arg = node.arguments[0];
   if (!arg) return false;
   if (resolveStaticTranslationKeyArg(arg) !== null) return false;
+  if (isApprovedControlledDynamicKey(arg)) return false;
 
   return true;
 }
@@ -98,23 +115,44 @@ function isDynamicTranslationKey(node) {
  * satisfy the contract — the fallback must be readable by the audit so a
  * missing key can never leak a raw translation key into the UI.
  */
-function hasExplicitFallback(node) {
+function staticLiteralText(node) {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return node.text;
+  }
+  return null;
+}
+
+function getExplicitFallbacks(node) {
   const args = node.arguments;
-  if (args.length < 2) return false;
+  if (args.length < 2) return {};
 
   const second = args[1];
-  if (ts.isStringLiteral(second) || ts.isNoSubstitutionTemplateLiteral(second)) {
-    return true;
+  const positionalFallback = staticLiteralText(second);
+  if (positionalFallback !== null) return { defaultValue: positionalFallback };
+  if (!ts.isObjectLiteralExpression(second)) return {};
+
+  const fallbacks = {};
+  for (const prop of second.properties) {
+    if (!ts.isPropertyAssignment(prop)) continue;
+    const name = propertyNameText(prop.name);
+    if (!name || (name !== 'defaultValue' && !/^defaultValue_(?:zero|one|two|few|many|other)$/.test(name))) continue;
+    const value = staticLiteralText(prop.initializer);
+    if (value !== null) fallbacks[name] = value;
   }
-  if (ts.isObjectLiteralExpression(second)) {
-    return second.properties.some((prop) => {
-      if (!ts.isPropertyAssignment(prop) || propertyNameText(prop.name) !== 'defaultValue') {
-        return false;
-      }
-      return literalText(prop.initializer) !== null;
-    });
-  }
-  return false;
+  return fallbacks;
+}
+
+function hasExplicitFallback(node) {
+  return Object.hasOwn(getExplicitFallbacks(node), 'defaultValue');
+}
+
+function hasCountOption(node) {
+  const second = node.arguments[1];
+  if (!second || !ts.isObjectLiteralExpression(second)) return false;
+  return second.properties.some((prop) =>
+    (ts.isPropertyAssignment(prop) && propertyNameText(prop.name) === 'count') ||
+    (ts.isShorthandPropertyAssignment(prop) && prop.name.text === 'count'),
+  );
 }
 
 /**
@@ -160,9 +198,8 @@ function resolveStaticTranslationKeyArg(arg) {
 function isTextLikeElement(node) {
   if (!ts.isJsxElement(node)) return false;
   const tag = node.openingElement.tagName;
-  if (ts.isIdentifier(tag) && tag.text === 'Text') return true;
-
-  return false;
+  if (!ts.isIdentifier(tag)) return false;
+  return tag.text === 'Text' || tag.text === 'Button';
 }
 
 function isLikelyRoute(value) {
@@ -189,6 +226,11 @@ function isLikelyFalsePositive(value) {
   const trimmed = value.trim();
 
   if (!/[A-Za-z]/.test(trimmed)) return true;
+
+  // Template expressions whose only literal residue is punctuation/affordance
+  // glyphs are not user-facing hard-coded language (for example a dynamic
+  // calorie value followed by a dropdown marker).
+  if (/^(?:\{\{dynamic\}\}\s*)+[^A-Za-z]*$/.test(trimmed)) return true;
 
   if (isLikelyRoute(trimmed)) return true;
 
@@ -334,7 +376,9 @@ function visitSourceFile(filePath, rootDir) {
           const key = resolveStaticTranslationKeyArg(node.arguments[0]);
           const line = getLinePosition(node, sourceFile);
           if (key !== null) {
-            recordFinding(relPath, line, key, 'static-t-key', { key });
+            const fallbacks = getExplicitFallbacks(node);
+            const hasCount = hasCountOption(node);
+            recordFinding(relPath, line, key, 'static-t-key', { key, fallbacks, hasCount });
             if (!hasExplicitFallback(node)) {
               recordFinding(relPath, line, key, 'missing-fallback-key', { key });
             }
@@ -372,7 +416,7 @@ function visitSourceFile(filePath, rootDir) {
 
     if (ts.isJsxAttribute(node)) {
       const attrName = node.name.getText(sourceFile);
-      if (LOCALIZED_ATTRIBUTE_NAMES.has(attrName) && node.initializer) {
+      if ((LOCALIZED_ATTRIBUTE_NAMES.has(attrName) || CUSTOM_UI_ATTRIBUTE_NAMES.has(attrName)) && node.initializer) {
         const line = getLinePosition(node, sourceFile);
         if (ts.isStringLiteral(node.initializer)) {
           const value = normalizeText(node.initializer.text);
@@ -543,11 +587,14 @@ module.exports = {
   literalText,
   isLikelyFalsePositive,
   LOCALIZED_ATTRIBUTE_NAMES,
+  CUSTOM_UI_ATTRIBUTE_NAMES,
   EXCLUDE_DIRS,
   SOURCE_EXTENSIONS,
   getAllSuppressionIssues,
   resolveStaticTranslationKeyArg,
   hasExplicitFallback,
+  getExplicitFallbacks,
+  hasCountOption,
   isLikelyRoute,
   isLikelyCss,
   isLikelyTechnical,

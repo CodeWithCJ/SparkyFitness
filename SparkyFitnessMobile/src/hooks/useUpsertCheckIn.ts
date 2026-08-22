@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { upsertCheckIn } from '../services/api/measurementsApi';
 import { measurementsQueryKey } from './queryKeys';
@@ -18,6 +19,7 @@ interface UpsertCheckInVars {
 }
 
 export function useUpsertCheckIn(options?: { showErrorToast?: boolean }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (vars: UpsertCheckInVars) => upsertCheckIn(vars),
@@ -36,8 +38,8 @@ export function useUpsertCheckIn(options?: { showErrorToast?: boolean }) {
       if (options?.showErrorToast !== false) {
         Toast.show({
           type: 'error',
-          text1: 'Save failed',
-          text2: 'Could not save measurements. Please try again.',
+          text1: t('checkIn.saveFailed', { defaultValue: 'Save failed' }),
+          text2: t('checkIn.saveMessage', { defaultValue: 'Could not save measurements. Please try again.' }),
         });
       }
     },

@@ -433,7 +433,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     await findByText('Pre-Workout');
 
     // Custom-pw has 17:30; open the picker for a type WITHOUT a time (dinner).
-    fireEvent.press(getByLabelText('Default time for Lunch, not set'));
+    fireEvent.press(getByLabelText('Default time for Lunch, Not set'));
     // The wheel seeds pending with the current time; Save commits that HH:MM.
     fireEvent.press(getByLabelText('Save default time'));
     await waitFor(() => {
@@ -797,7 +797,7 @@ describe('MealTypeSettingsScreen — unified anchor list', () => {
     const { findByText, getByLabelText } = renderScreen({ mealTypes: types });
     await findByText(longName);
     expect(getByLabelText(`Edit ${longName}`)).toBeTruthy();
-    expect(getByLabelText(`Default time for ${longName}, not set`)).toBeTruthy();
+    expect(getByLabelText(`Default time for ${longName}, Not set`)).toBeTruthy();
     expect(getByLabelText(`Reorder ${longName}`)).toBeTruthy();
     // Edit sheet exposes quick log + delete.
     fireEvent.press(getByLabelText(`Edit ${longName}`));
@@ -1537,7 +1537,7 @@ describe('Meal type time wheel — visible on-device picker (device bugfix)', ()
       .spyOn(mealTypesApi, 'updateMealType')
       .mockResolvedValue({} as any);
     await findByText('Pre-Workout');
-    fireEvent.press(getByLabelText('Default time for Lunch, not set'));
+    fireEvent.press(getByLabelText('Default time for Lunch, Not set'));
     const picker = getByTestId('date-picker');
     const d = picker.props.date as Date;
     const hh = String(d.getHours()).padStart(2, '0');

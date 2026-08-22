@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useCycleLog } from '../../hooks/useCycleLogs';
@@ -33,30 +34,30 @@ interface CycleTodayViewProps {
   hideSaveButton?: boolean;
 }
 
-const FLOW_OPTIONS: { value: FlowLevel; label: string; icon: string }[] = [
-  { value: 'none', label: 'None', icon: 'flow-none' },
-  { value: 'spotting', label: 'Spot', icon: 'flow-spotting' },
-  { value: 'light', label: 'Light', icon: 'flow-light' },
-  { value: 'medium', label: 'Med', icon: 'flow-medium' },
-  { value: 'heavy', label: 'Heavy', icon: 'flow-heavy' },
+const FLOW_OPTIONS: { value: FlowLevel; labelKey: string; icon: string }[] = [
+  { value: 'none', labelKey: 'none', icon: 'flow-none' },
+  { value: 'spotting', labelKey: 'spot', icon: 'flow-spotting' },
+  { value: 'light', labelKey: 'light', icon: 'flow-light' },
+  { value: 'medium', labelKey: 'medium', icon: 'flow-medium' },
+  { value: 'heavy', labelKey: 'heavy', icon: 'flow-heavy' },
 ];
 
 // Both fields are optional, so each picker leads with an empty value the save
 // handler maps back to null.
 const MUCUS_OPTIONS = [
-  { value: '', label: 'None' },
-  { value: 'dry', label: 'Dry' },
-  { value: 'sticky', label: 'Sticky' },
-  { value: 'creamy', label: 'Creamy' },
-  { value: 'watery', label: 'Watery' },
-  { value: 'eggwhite', label: 'Egg White' },
+  { value: '', labelKey: 'none' },
+  { value: 'dry', labelKey: 'dry' },
+  { value: 'sticky', labelKey: 'sticky' },
+  { value: 'creamy', labelKey: 'creamy' },
+  { value: 'watery', labelKey: 'watery' },
+  { value: 'eggwhite', labelKey: 'eggWhite' },
 ];
 
 const CERVICAL_POSITION_OPTIONS = [
-  { value: '', label: 'None' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
+  { value: '', labelKey: 'none' },
+  { value: 'low', labelKey: 'low' },
+  { value: 'medium', labelKey: 'medium' },
+  { value: 'high', labelKey: 'high' },
 ];
 
 const CycleTodayView: React.FC<CycleTodayViewProps> = ({
@@ -67,6 +68,32 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
   onDatePress,
   hideSaveButton = false,
 }) => {
+  const { t } = useTranslation();
+  const flowLabel = (key: string) =>
+    key === 'none' ? t('cycleToday.flow.none', { defaultValue: 'None' })
+      : key === 'spot' ? t('cycleToday.flow.spot', { defaultValue: 'Spot' })
+        : key === 'light' ? t('cycleToday.flow.light', { defaultValue: 'Light' })
+          : key === 'medium' ? t('cycleToday.flow.medium', { defaultValue: 'Med' })
+            : t('cycleToday.flow.heavy', { defaultValue: 'Heavy' });
+  const mucusLabel = (key: string) =>
+    key === 'none' ? t('cycleToday.mucus.none', { defaultValue: 'None' })
+      : key === 'dry' ? t('cycleToday.mucus.dry', { defaultValue: 'Dry' })
+        : key === 'sticky' ? t('cycleToday.mucus.sticky', { defaultValue: 'Sticky' })
+          : key === 'creamy' ? t('cycleToday.mucus.creamy', { defaultValue: 'Creamy' })
+            : key === 'watery' ? t('cycleToday.mucus.watery', { defaultValue: 'Watery' })
+              : t('cycleToday.mucus.eggWhite', { defaultValue: 'Egg White' });
+  const positionLabel = (key: string) =>
+    key === 'none' ? t('cycleToday.position.none', { defaultValue: 'None' })
+      : key === 'low' ? t('cycleToday.position.low', { defaultValue: 'Low' })
+        : key === 'medium' ? t('cycleToday.position.medium', { defaultValue: 'Medium' })
+          : t('cycleToday.position.high', { defaultValue: 'High' });
+  const intercourseLabel = (key: string) =>
+    key === 'none' ? t('cycleToday.intercourseOption.none', { defaultValue: 'None' })
+      : key === 'yes' ? t('cycleToday.intercourseOption.yes', { defaultValue: 'Yes' })
+        : t('cycleToday.intercourseOption.no', { defaultValue: 'No' });
+  const protectionLabel = (key: string) =>
+    key === 'protected' ? t('cycleToday.protectionOption.protected', { defaultValue: 'Protected' })
+      : t('cycleToday.protectionOption.unprotected', { defaultValue: 'Unprotected' });
   const { log, isLoading, refetch } = useCycleLog({ date });
   const { upsertLogAsync, isSaving } = useUpsertCycleLog();
   const { mode } = useCycleMode();
@@ -164,7 +191,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
     // partially-saved entry behind.
     const bbtVal = bbt.trim() ? parseFloat(bbt) : null;
     if (bbt.trim() && isNaN(bbtVal as number)) {
-      Toast.show({ type: 'error', text1: 'Invalid temperature input' });
+      Toast.show({ type: 'error', text1: t('cycleToday.invalidTemperature', { defaultValue: 'Invalid temperature input' }) });
       return;
     }
     // Save weight only when the field was edited to a new value. An emptied
@@ -173,7 +200,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
     const weightEdited = isPregnant && weight.trim() !== '' && weight.trim() !== hydratedWeight;
     const weightVal = weightEdited ? parseFloat(weight) : null;
     if (weightEdited && isNaN(weightVal as number)) {
-      Toast.show({ type: 'error', text1: 'Invalid weight input' });
+      Toast.show({ type: 'error', text1: t('cycleToday.invalidWeight', { defaultValue: 'Invalid weight input' }) });
       return;
     }
 
@@ -271,7 +298,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       {/* Period / Flow Selector — Only for non-pregnant cycle tracking */}
       {!isPregnant && (
         <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
-          <Text className="text-text-primary text-sm font-semibold mb-3">Menstrual Flow</Text>
+          <Text className="text-text-primary text-sm font-semibold mb-3">{t('cycleToday.menstrualFlow', { defaultValue: 'Menstrual Flow' })}</Text>
           <View className="flex-row justify-between">
             {FLOW_OPTIONS.map((opt) => {
               const isSelected = flowLevel === opt.value;
@@ -285,7 +312,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
                 >
                   <CycleIcon id={opt.icon} size={24} />
                   <Text className={`text-xs mt-1 font-medium ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                    {opt.label}
+                    {flowLabel(opt.labelKey)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -300,12 +327,12 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
           {onDatePress && <DateSelectRow date={date} onPress={onDatePress} />}
           <View>
             <Text className="text-text-primary text-sm font-semibold mb-2">
-              Weight ({weightUnit})
+              {t('cycleToday.weight', { defaultValue: 'Weight ({{unit}})', unit: weightUnit })}
             </Text>
             <FormInput
               value={weight}
               onChangeText={handleWeightChange}
-              placeholder={weightUnit === 'lbs' ? 'e.g. 143' : 'e.g. 65'}
+              placeholder={weightUnit === 'lbs' ? t('cycleToday.weightExampleLbs', { defaultValue: 'e.g. 143' }) : t('cycleToday.weightExampleKg', { defaultValue: 'e.g. 65' })}
               keyboardType="decimal-pad"
             />
           </View>
@@ -324,13 +351,13 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       {/* Cervical Mucus — Bottom Sheet Picker */}
       {!isPregnant && (
         <View className="bg-surface rounded-xl p-4 shadow-sm border-0 gap-2">
-          <Text className="text-text-primary text-sm font-semibold">Cervical Mucus</Text>
+          <Text className="text-text-primary text-sm font-semibold">{t('cycleToday.cervicalMucus', { defaultValue: 'Cervical Mucus' })}</Text>
           <BottomSheetPicker
-            title="Select Cervical Mucus"
-            options={MUCUS_OPTIONS}
+            title={t('cycleToday.selectCervicalMucus', { defaultValue: 'Select Cervical Mucus' })}
+            options={MUCUS_OPTIONS.map((option) => ({ ...option, label: mucusLabel(option.labelKey) }))}
             value={mucus || ''}
             onSelect={(value) => setMucus(value || null)}
-            placeholder="Tap to select..."
+            placeholder={t('cycleToday.tapToSelect', { defaultValue: 'Tap to select...' })}
           />
         </View>
       )}
@@ -339,24 +366,24 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       {isTtc && (
         <View className="bg-surface rounded-xl p-4 shadow-sm border-0 gap-4">
           <View>
-            <Text className="text-text-primary text-sm font-semibold mb-3">Intercourse</Text>
+            <Text className="text-text-primary text-sm font-semibold mb-3">{t('cycleToday.intercourse', { defaultValue: 'Intercourse' })}</Text>
             <View className="flex-row gap-2">
               {[
-                { label: 'None', val: null as boolean | null },
-                { label: 'Yes', val: true },
-                { label: 'No', val: false },
+                { labelKey: 'none', val: null as boolean | null },
+                { labelKey: 'yes', val: true },
+                { labelKey: 'no', val: false },
               ].map((opt) => {
                 const isSelected = intercourse === opt.val;
                 return (
                   <TouchableOpacity
-                    key={opt.label}
+                    key={opt.labelKey}
                     onPress={() => setIntercourse(opt.val)}
                     className={`rounded-full px-4 py-2 border ${
                       isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                     }`}
                   >
                     <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                      {opt.label}
+                      {intercourseLabel(opt.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -366,23 +393,23 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
 
           {intercourse === true && (
             <View>
-              <Text className="text-text-primary text-sm font-semibold mb-3">Protection</Text>
+              <Text className="text-text-primary text-sm font-semibold mb-3">{t('cycleToday.protection', { defaultValue: 'Protection' })}</Text>
               <View className="flex-row gap-2">
                 {[
-                  { label: 'Protected', val: true },
-                  { label: 'Unprotected', val: false },
+                  { labelKey: 'protected', val: true },
+                  { labelKey: 'unprotected', val: false },
                 ].map((opt) => {
                   const isSelected = intercourseProtected === opt.val;
                   return (
                     <TouchableOpacity
-                      key={opt.label}
+                      key={opt.labelKey}
                       onPress={() => setIntercourseProtected(opt.val)}
                       className={`rounded-full px-4 py-2 border ${
                         isSelected ? 'bg-accent-primary/10 border-accent-primary' : 'bg-raised border-transparent'
                       }`}
                     >
                       <Text className={`text-xs font-semibold ${isSelected ? 'text-text-primary font-bold' : 'text-text-secondary'}`}>
-                        {opt.label}
+                        {protectionLabel(opt.labelKey)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -392,13 +419,13 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
           )}
 
           <View className="gap-2">
-            <Text className="text-text-primary text-sm font-semibold">Cervical Position</Text>
+            <Text className="text-text-primary text-sm font-semibold">{t('cycleToday.cervicalPosition', { defaultValue: 'Cervical Position' })}</Text>
             <BottomSheetPicker
-              title="Select Cervical Position"
-              options={CERVICAL_POSITION_OPTIONS}
+              title={t('cycleToday.selectCervicalPosition', { defaultValue: 'Select Cervical Position' })}
+              options={CERVICAL_POSITION_OPTIONS.map((option) => ({ ...option, label: positionLabel(option.labelKey) }))}
               value={cervicalPosition || ''}
               onSelect={(value) => setCervicalPosition(value || null)}
-              placeholder="Tap to select..."
+              placeholder={t('cycleToday.tapToSelect', { defaultValue: 'Tap to select...' })}
             />
           </View>
         </View>
@@ -407,14 +434,14 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       {/* Basal Body Temperature — Only for non-pregnant cycle tracking */}
       {!isPregnant && (
         <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
-          <Text className="text-text-primary text-sm font-semibold mb-2">Basal Body Temperature</Text>
+          <Text className="text-text-primary text-sm font-semibold mb-2">{t('cycleToday.basalTemperature', { defaultValue: 'Basal Body Temperature' })}</Text>
           <Text className="text-text-secondary text-xs mb-3">
-            Track your waking temperature (°C) to identify biphasic shifts post-ovulation.
+            {t('cycleToday.basalTemperatureHint', { defaultValue: 'Track your waking temperature (°C) to identify biphasic shifts post-ovulation.' })}
           </Text>
           <FormInput
             value={bbt}
             onChangeText={setBbt}
-            placeholder="e.g. 36.5"
+            placeholder={t('cycleToday.temperatureExample', { defaultValue: 'e.g. 36.5' })}
             keyboardType="decimal-pad"
           />
         </View>
@@ -422,13 +449,13 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
 
       {/* Notes */}
       <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
-        <Text className="text-text-primary text-sm font-semibold mb-2">Notes</Text>
+        <Text className="text-text-primary text-sm font-semibold mb-2">{t('cycleToday.notes', { defaultValue: 'Notes' })}</Text>
         <TextInput
           value={notes}
           onChangeText={setNotes}
           onFocus={() => setIsNotesFocused(true)}
           onBlur={() => setIsNotesFocused(false)}
-          placeholder="Log details about how you feel, energy level..."
+          placeholder={t('cycleToday.notesPlaceholder', { defaultValue: 'Log details about how you feel, energy level...' })}
           placeholderTextColor={textMuted}
           multiline
           numberOfLines={4}
@@ -443,7 +470,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       {!hideSaveButton && (
         <View className="px-4">
           <Button variant="primary" disabled={saving} onPress={handleSave}>
-            {saving ? 'Saving...' : 'Save Log Entry'}
+            {saving ? t('cycleToday.saving', { defaultValue: 'Saving...' }) : t('cycleToday.save', { defaultValue: 'Save Log Entry' })}
           </Button>
         </View>
       )}

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -39,6 +40,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
   title,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const getImageSource = useFoodImageSourceContext();
@@ -140,7 +142,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
 
         <Pressable
           onPress={onClose}
-          accessibilityLabel="Close"
+          accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
           testID="lightbox-close"
           hitSlop={12}
           className="absolute"

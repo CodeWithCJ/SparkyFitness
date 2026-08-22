@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -34,11 +35,11 @@ import type { RootStackScreenProps } from '../types/navigation';
 type LogScreenProps = RootStackScreenProps<'Logs'>;
 
 const MAX_LOGS_TO_LOAD = 1000;
-const LEVEL_CHIPS: { status: LogStatus; label: string; color: string; activeColor?: string }[] = [
-  { status: 'ERROR', label: 'Error', color: '#dc3545' },
-  { status: 'WARNING', label: 'Warning', color: '#ffc107' },
-  { status: 'INFO', label: 'Info', color: '#007bff', activeColor: '#ffffff' },
-  { status: 'DEBUG', label: 'Debug', color: '#6c757d', activeColor: '#d1d5db' },
+const LEVEL_CHIPS: { status: LogStatus; color: string; activeColor?: string }[] = [
+  { status: 'ERROR', color: '#dc3545' },
+  { status: 'WARNING', color: '#ffc107' },
+  { status: 'INFO', color: '#007bff', activeColor: '#ffffff' },
+  { status: 'DEBUG', color: '#6c757d', activeColor: '#d1d5db' },
 ];
 
 const getStatusColor = (status: string): string => {
@@ -58,6 +59,15 @@ const getStatusIcon = (status: string): IconName => {
     default: return 'alert-circle';
   }
 };
+
+function getStatusLabel(t: (key: string, options: { defaultValue: string }) => string, status: LogStatus): string {
+  switch (status) {
+    case 'ERROR': return t('logScreen.status.error', { defaultValue: 'Error' });
+    case 'WARNING': return t('logScreen.status.warning', { defaultValue: 'Warning' });
+    case 'INFO': return t('logScreen.status.info', { defaultValue: 'Info' });
+    case 'DEBUG': return t('logScreen.status.debug', { defaultValue: 'Debug' });
+  }
+}
 
 interface FilterChipProps {
   label: string;
@@ -120,10 +130,8 @@ const FilterChip: React.FC<FilterChipProps> = ({ label, count, active, color, ac
   );
 };
 
-const pluralize = (count: number, [singular, plural]: [string, string]): string =>
-  count === 1 ? singular : plural;
-
 const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -152,7 +160,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
     try {
       await setViewSelectedStatuses(next);
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to save log filter.' });
+      Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('logScreen.filterSaveFailed', { defaultValue: 'Failed to save log filter.' }) });
       console.error('Failed to persist log filter selection', error);
     }
   };
@@ -171,12 +179,12 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
 
   const handleClearLogs = useCallback((): void => {
     Alert.alert(
-      'Clear Logs',
-      'Are you sure you want to clear all logs?',
+      t('logScreen.clearTitle', { defaultValue: 'Clear Logs' }),
+      t('logScreen.clearMessage', { defaultValue: 'Are you sure you want to clear all logs?' }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('common.clear', { defaultValue: 'Clear' }),
           onPress: async () => {
             await clearLogs();
             setLogs([]);
@@ -185,38 +193,38 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
       ],
       { cancelable: true },
     );
-  }, []);
+  }, [t]);
 
   const hasLogs = logs.length > 0;
 
   // Clear is destructive-ish but not a save, so it stays a neutral text action.
   const header = useScreenHeader({
-    title: 'Logs',
+    title: t('logScreen.title', { defaultValue: 'Logs' }),
     left: { kind: 'back' },
     right: {
       kind: 'text',
-      label: 'Clear',
+      label: t('common.clear', { defaultValue: 'Clear' }),
       role: 'secondary',
       disabled: !hasLogs,
       onPress: handleClearLogs,
-      accessibilityLabel: 'Clear logs',
+      accessibilityLabel: t('logScreen.clearLogs', { defaultValue: 'Clear logs' }),
       identifier: 'logs-clear',
     },
   });
 
   const handleCopyLogToClipboard = (item: LogEntry): void => {
-    let logText = `Status: ${item.status}\n`;
-    logText += `Message: ${item.message}\n`;
+    let logText = `${t('logScreen.clipboard.status', { defaultValue: 'Status' })}: ${item.status}\n`;
+    logText += `${t('logScreen.clipboard.message', { defaultValue: 'Message' })}: ${item.message}\n`;
 
     if (item.details && item.details.length > 0) {
-      logText += `Details: ${item.details.join(', ')}\n`;
+      logText += `${t('logScreen.clipboard.details', { defaultValue: 'Details' })}: ${item.details.join(', ')}\n`;
     }
 
-    logText += `Timestamp: ${new Date(item.timestamp).toLocaleString()}`;
+    logText += `${t('logScreen.clipboard.timestamp', { defaultValue: 'Timestamp' })}: ${new Date(item.timestamp).toLocaleString()}`;
 
     Clipboard.setString(logText);
 
-    Toast.show({ type: 'success', text1: 'Copied', text2: 'Log entry copied to clipboard' });
+    Toast.show({ type: 'success', text1: t('logScreen.copied', { defaultValue: 'Copied' }), text2: t('logScreen.copiedMessage', { defaultValue: 'Log entry copied to clipboard' }) });
   };
 
   const filteredLogs = useMemo(() => {
@@ -238,8 +246,8 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
 
   const summaryLabel = useMemo(() => {
     const n = filteredLogs.length;
-    return `Showing ${n} ${pluralize(n, ['log', 'logs'])}`;
-  }, [filteredLogs.length]);
+    return t('logScreen.showingLogs', { defaultValue: 'Showing {{count}} log', count: n });
+  }, [filteredLogs.length, t]);
 
   const ListHeader = (
     <View>
@@ -250,7 +258,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
         contentContainerStyle={{ paddingHorizontal: 16 }}
       >
         <FilterChip
-          label="All"
+          label={t('logScreen.all', { defaultValue: 'All' })}
           count={logs.length}
           active={allActive}
           onPress={handleSelectAll}
@@ -258,7 +266,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
         {LEVEL_CHIPS.map(chip => (
           <FilterChip
             key={chip.status}
-            label={chip.label}
+            label={getStatusLabel(t, chip.status)}
             count={statusCounts[chip.status]}
             active={selectedStatuses.includes(chip.status)}
             color={chip.color}
@@ -323,7 +331,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
         ListEmptyComponent={() => (
           <View className="items-center py-8">
             <Text className="text-text-muted text-base">
-              {logs.length === 0 ? 'No logs yet.' : 'No logs match the current filter.'}
+              {logs.length === 0 ? t('logScreen.noLogs', { defaultValue: 'No logs yet.' }) : t('logScreen.noMatchingLogs', { defaultValue: 'No logs match the current filter.' })}
             </Text>
           </View>
         )}

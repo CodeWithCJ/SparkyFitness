@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -9,10 +10,11 @@ import Icon from './Icon';
 import DoseRow from './medications/DoseRow';
 import { useMedications, useMedicationEntries, useLogDose } from '../hooks/useMedications';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { getDueDosesForDate, formatDose, formatTimeOfDay } from '@workspace/shared';
+import { getDueDosesForDate, formatDose } from '@workspace/shared';
 import { getDeviceTimezone } from '../utils/dateUtils';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
-import { MEDICATION_TYPES } from '../types/medications';
+import { formatLocalizedTimeOfDay } from '../utils/medicationScheduleLocalization';
+import { medicationTypeLabel } from '../utils/medicationLocalization';
 import { doseSlotStatus } from '../utils/medications';
 
 type MedicationsCardNavigation = CompositeNavigationProp<
@@ -24,10 +26,10 @@ interface MedicationsCardProps {
   navigation: MedicationsCardNavigation;
 }
 
-const typeLabelFor = (typeId: string | null): string =>
-  MEDICATION_TYPES.find((t) => t.id === typeId)?.label ?? '';
+const typeLabelFor = (typeId: string | null, t: Parameters<typeof medicationTypeLabel>[1]): string => medicationTypeLabel(typeId, t);
 
 const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
 
   const { data: medications, isLoading: isLoadingMeds } = useMedications({ activeOnly: true });
@@ -54,7 +56,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
     return (
       <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
         <View className="flex-row items-center justify-between">
-          <Text className="font-bold text-text-secondary">Medications</Text>
+          <Text className="font-bold text-text-secondary">{t('medications.card.title', { defaultValue: 'Medications' })}</Text>
           <ActivityIndicator size="small" color={accentPrimary} />
         </View>
       </View>
@@ -69,12 +71,12 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         onPress={() => navigation.navigate('MedicationsList')}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
-        accessibilityLabel="View all medications"
+        accessibilityLabel={t('medications.card.viewAllA11y', { defaultValue: 'View all medications' })}
         className="flex-row items-center justify-between mb-2"
       >
-        <Text className="font-bold text-text-secondary">Medications</Text>
+        <Text className="font-bold text-text-secondary">{t('medications.card.title', { defaultValue: 'Medications' })}</Text>
         <View className="flex-row items-center">
-          <Text className="text-accent-primary font-medium">View all</Text>
+          <Text className="text-accent-primary font-medium">{t('medications.card.viewAll', { defaultValue: 'View all' })}</Text>
           <Icon name="chevron-forward" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
         </View>
       </TouchableOpacity>
@@ -82,7 +84,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
       {dueDoses.map((due) => {
         const med = due.medication;
         const subtitle = [
-          typeLabelFor(med.type_id),
+          typeLabelFor(med.type_id, t),
           formatDose(med, due.schedule),
         ].filter(Boolean).join(' · ');
         return (
@@ -94,7 +96,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
             onTake={() => logDose(due, 'taken')}
             onSkip={() => logDose(due, 'skipped')}
             title={med.name}
-            time={due.schedule.time_of_day ? formatTimeOfDay(due.schedule.time_of_day) : undefined}
+            time={due.schedule.time_of_day ? formatLocalizedTimeOfDay(due.schedule.time_of_day) : undefined}
             subtitle={subtitle}
             onPress={() => navigation.navigate('MedicationDetail', { medicationId: med.id })}
           />
@@ -105,7 +107,7 @@ const MedicationsCard: React.FC<MedicationsCardProps> = ({ navigation }) => {
         const prnCount = entries?.filter(
           (e) => e.medication_id === med.id && e.status === 'prn_taken' && e.entry_date === selectedDate,
         ).length ?? 0;
-        const subtitle = [typeLabelFor(med.type_id), formatDose(med)].filter(Boolean).join(' · ');
+        const subtitle = [typeLabelFor(med.type_id, t), formatDose(med)].filter(Boolean).join(' · ');
         return (
           <DoseRow
             key={med.id}

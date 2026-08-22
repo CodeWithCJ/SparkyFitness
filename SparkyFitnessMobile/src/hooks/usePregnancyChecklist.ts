@@ -7,7 +7,7 @@ import type { PregnancyChecklistItem } from '../types/womensHealth';
 export function usePregnancyChecklist(pregnancyId: string | undefined) {
   const query = useQuery<PregnancyChecklistItem[]>({
     queryKey: [...pregnancyChecklistQueryKey, pregnancyId],
-    queryFn: () => getChecklist(pregnancyId!) as Promise<PregnancyChecklistItem[]>,
+    queryFn: () => getChecklist(pregnancyId!),
     enabled: !!pregnancyId,
   });
 

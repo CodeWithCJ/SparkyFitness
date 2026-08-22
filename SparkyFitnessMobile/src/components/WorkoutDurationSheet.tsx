@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import {
   BottomSheetModal,
@@ -35,6 +36,7 @@ interface WorkoutDurationSheetProps {
  */
 const WorkoutDurationSheet = forwardRef<WorkoutDurationSheetRef, WorkoutDurationSheetProps>(
   ({ onSave }, ref) => {
+    const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const [surfaceBg, textMuted] = useCSSVariable([
       '--color-surface',
@@ -108,10 +110,10 @@ const WorkoutDurationSheet = forwardRef<WorkoutDurationSheetRef, WorkoutDuration
       >
         <BottomSheetView className="px-6 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-1">
-            Workout duration
+            {t('workout.durationTitle', { defaultValue: 'Workout duration' })}
           </Text>
           <Text className="text-sm text-text-muted text-center mb-4">
-            Minutes this workout counts as, up to its {formatDuration(maxMinutes)} span.
+            {t('workout.durationDescription', { defaultValue: 'Minutes this workout counts as, up to its {{span}} span.', span: formatDuration(maxMinutes) })}
           </Text>
 
           <View className="flex-row items-center justify-center mb-3">
@@ -129,7 +131,7 @@ const WorkoutDurationSheet = forwardRef<WorkoutDurationSheetRef, WorkoutDuration
             </Text>
           </View>
           <Button variant="primary" onPress={handleSave}>
-            Save
+            {t('common.save', { defaultValue: 'Save' })}
           </Button>
         </BottomSheetView>
       </BottomSheetModal>

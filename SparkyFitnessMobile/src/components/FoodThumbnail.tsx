@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Pressable, type StyleProp, type ViewStyle } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import SafeImage from './SafeImage';
@@ -43,6 +44,7 @@ const FoodThumbnail: React.FC<FoodThumbnailProps> = ({
   style,
   testID = 'food-thumbnail',
 }) => {
+  const { t } = useTranslation();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
 
   const source = image ? getImageSource(image) : null;
@@ -63,7 +65,7 @@ const FoodThumbnail: React.FC<FoodThumbnailProps> = ({
         ? {
             onPress,
             accessibilityRole: 'imagebutton' as const,
-            accessibilityLabel: 'View photo',
+            accessibilityLabel: t('foodSearch.accessibility.viewPhoto', { defaultValue: 'View photo' }),
             // Sibling pressable, never nested inside the row's own — nesting
             // leaves the inner one live while the parent is disabled. Matches
             // the exercise thumbnail pattern.

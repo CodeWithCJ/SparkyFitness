@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Alert, View, Text, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { DeleteRowAction } from './SwipeableDeleteRow';
 
@@ -26,24 +27,20 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
   onConfirmDelete,
   onPress,
 }) => {
-  // Matches the existing `SwipeableFoodRow` convention in this codebase. A more
-  // specific ref type (e.g. `React.ComponentRef<typeof ReanimatedSwipeable>`)
-  // resolves to `{}` and breaks `.close()` under the current Expo SDK 55 React
-  // types; until upstream tightens this, `any` is what the rest of the project
-  // uses for the same ref.
+  const { t } = useTranslation();
   const swipeableRef = useRef<any>(null);
 
   const handleDeletePress = () => {
     const message = isLastIngredient
-      ? 'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.'
+      ? t('ingredientRow.lastWarning', { defaultValue: 'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.' })
       : undefined;
     Alert.alert(
-      `Remove ${foodName}?`,
+      t('ingredientRow.removeTitle', { defaultValue: 'Remove {{name}}?', name: foodName }),
       message,
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => swipeableRef.current?.close() },
+        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel', onPress: () => swipeableRef.current?.close() },
         {
-          text: 'Remove',
+          text: t('common.remove', { defaultValue: 'Remove' }),
           style: 'destructive',
           onPress: () => {
             swipeableRef.current?.close();
@@ -67,11 +64,11 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
       style?: 'cancel' | 'destructive';
       onPress?: () => void;
     }[] = [];
-    if (onPress) buttons.push({ text: 'Edit', onPress });
-    buttons.push({ text: 'Delete', style: 'destructive', onPress: onConfirmDelete });
-    buttons.push({ text: 'Cancel', style: 'cancel' });
+    if (onPress) buttons.push({ text: t('common.edit', { defaultValue: 'Edit' }), onPress });
+    buttons.push({ text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: onConfirmDelete });
+    buttons.push({ text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' });
     const message = isLastIngredient
-      ? 'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.'
+      ? t('ingredientRow.lastWarning', { defaultValue: 'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.' })
       : undefined;
     Alert.alert(foodName, message, buttons);
   };
@@ -108,7 +105,7 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
           onPress={onPress}
           onLongPress={handleLongPress}
           disabled={disabled}
-          accessibilityLabel={`Edit ${foodName}`}
+          accessibilityLabel={t('ingredientRow.edit', { defaultValue: 'Edit {{name}}', name: foodName })}
           accessibilityRole="button"
         >
           {rowBody}

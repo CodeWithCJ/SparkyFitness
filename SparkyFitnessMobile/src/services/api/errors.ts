@@ -1,4 +1,5 @@
 import { TimeoutError } from '../../utils/concurrency';
+import i18n from '../../localization/i18n';
 
 export class ApiError extends Error {
   constructor(
@@ -13,7 +14,7 @@ export class ApiError extends Error {
 
 export function getApiErrorMessage(error: unknown): string | null {
   if (error instanceof TimeoutError) {
-    return 'Request timed out. Check your server connection.';
+    return i18n.t('common.requestTimedOut', { defaultValue: 'Request timed out. Check your server connection.' });
   }
   if (!(error instanceof ApiError) || !error.body) return null;
   try {

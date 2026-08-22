@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import FoodImagePicker from './FoodImagePicker';
 import FoodThumbnail from './FoodThumbnail';
@@ -42,6 +43,7 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
   isPending = false,
   canEdit = true,
 }) => {
+  const { t } = useTranslation();
   const getImageSource = useFoodImageSourceContext();
   const [items, setItems] = useState<PickerImage[]>(() => toSavedImages(images));
 
@@ -93,7 +95,7 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
     return (
       <View>
         <Text className="text-text-secondary text-sm font-medium mb-2">
-          Photo
+          {t('entryImage.photo', { defaultValue: 'Photo' })}
         </Text>
         <View className="flex-row gap-2">
           {shown.slice(0, 4).map((image) => (
@@ -113,7 +115,7 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
     return (
       <View>
         <Text className="text-text-secondary text-sm font-medium mb-2">
-          Photo
+          {t('entryImage.photo', { defaultValue: 'Photo' })}
         </Text>
         <View className="flex-row gap-2" style={{ opacity: 0.6 }}>
           {inherited.slice(0, 4).map((image) => (
@@ -130,7 +132,7 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
             items={items}
             onItemsChange={handleChange}
             label=""
-            helpText="Add a photo to set one for this entry."
+            helpText={t('entryImage.addHelp', { defaultValue: 'Add a photo to set one for this entry.' })}
             disabled={isPending}
           />
         </View>
@@ -142,8 +144,8 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
     <FoodImagePicker
       items={items}
       onItemsChange={handleChange}
-      label="Photo"
-      helpText={hasOverride ? 'This photo applies to this entry only.' : undefined}
+      label={t('entryImage.photo', { defaultValue: 'Photo' })}
+      helpText={hasOverride ? t('entryImage.entryOnly', { defaultValue: 'This photo applies to this entry only.' }) : undefined}
       disabled={isPending}
     />
   );

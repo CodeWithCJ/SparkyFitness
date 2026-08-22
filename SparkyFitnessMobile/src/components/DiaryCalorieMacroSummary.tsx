@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity, LayoutAnimation } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -14,9 +15,10 @@ import Icon from './Icon';
 import NutrientPill from './NutrientPill';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
-import { NUTRIENT_META } from '../constants/nutrients';
+import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import type { DailySummary } from '../types/dailySummary';
 import type { UserCustomNutrient } from '../hooks/useCustomNutrients';
+import { formatLocalizedNumber } from '../localization';
 
 const CORE_MACROS = ['protein', 'carbs', 'fat', 'dietary_fiber'] as const;
 
@@ -28,6 +30,7 @@ interface CalorieBarProps {
 }
 
 const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progressPercent }) => {
+  const { t } = useTranslation();
   const [barWidth, setBarWidth] = useState(0);
   const [trackColor, fillColor] = useCSSVariable([
     '--color-progress-track',
@@ -74,20 +77,21 @@ const CalorieBar: React.FC<CalorieBarProps> = ({ eaten, goal, remaining, progres
     <View>
       <View className="flex-row justify-between items-baseline mb-3">
         <Text className="text-lg font-bold text-text-primary">
-          {Math.round(eaten).toLocaleString()}
+          {formatLocalizedNumber(Math.round(eaten))}
           {hasGoal && (
             <Text className="text-lg font-semibold text-text-muted">
-              {` / ${Math.round(goal).toLocaleString()}`}
+{/* i18n-audit-ignore-next-line hardcoded-ui-text -- slash and spacing are numeric presentation punctuation. */}
+              {t('nutrition.goalSeparator', { defaultValue: ' / {{value}}', value: formatLocalizedNumber(Math.round(goal)) })}
             </Text>
           )}
-          <Text className="text-sm font-normal text-text-muted"> kcal</Text>
+          <Text className="text-sm font-normal text-text-muted"> {t('nutrition.caloriesShort', { defaultValue: "kcal" })}</Text>
         </Text>
         {hasGoal && (
           <Text className="text-sm font-bold text-text-primary">
-            {Math.abs(Math.round(remaining)).toLocaleString()}
+            {formatLocalizedNumber(Math.abs(Math.round(remaining)))}
             <Text className="text-sm font-normal text-text-muted">
               {' '}
-              {remaining >= 0 ? 'remaining' : 'over'}
+              {remaining >= 0 ? t('diarySummary.remaining', { defaultValue: 'remaining' }) : t('diarySummary.over', { defaultValue: 'over' })}
             </Text>
           </Text>
         )}
@@ -138,6 +142,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   customNutrientKeys,
   customNutrients,
 }) => {
+  const { t } = useTranslation();
   const diarySummaryVisible = useAppPreferencesStore((s) => s.diarySummaryVisible);
   const diarySummaryExpanded = useAppPreferencesStore((s) => s.diarySummaryExpanded);
   const setDiarySummaryExpanded = useAppPreferencesStore((s) => s.setDiarySummaryExpanded);
@@ -164,22 +169,22 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
 
   const resolveCoreMacro = (key: (typeof CORE_MACROS)[number]) => {
     if (key === 'protein') {
-      return { label: 'Protein', consumed: summary.protein.consumed, goal: summary.protein.goal || undefined };
+      return { label: t('nutrients.protein', { defaultValue: 'Protein' }), consumed: summary.protein.consumed, goal: summary.protein.goal || undefined };
     }
     if (key === 'carbs') {
       const consumed = showNetCarbs
         ? getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed)
         : summary.carbs.consumed;
       return {
-        label: showNetCarbs ? 'Net Carbs' : 'Carbs',
+        label: showNetCarbs ? t('nutrients.netCarbs', { defaultValue: 'Net Carbs' }) : t('nutrients.carbs', { defaultValue: 'Carbs' }),
         consumed,
         goal: summary.carbs.goal || undefined,
       };
     }
     if (key === 'fat') {
-      return { label: 'Fat', consumed: summary.fat.consumed, goal: summary.fat.goal || undefined };
+      return { label: t('nutrients.fat', { defaultValue: 'Fat' }), consumed: summary.fat.consumed, goal: summary.fat.goal || undefined };
     }
-    return { label: 'Fiber', consumed: summary.fiber.consumed, goal: summary.fiber.goal || undefined };
+    return { label: t('nutrients.fiber', { defaultValue: 'Fiber' }), consumed: summary.fiber.consumed, goal: summary.fiber.goal || undefined };
   };
 
   return (
@@ -189,10 +194,10 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
         activeOpacity={0.7}
         accessibilityRole="button"
         accessibilityState={{ expanded: diarySummaryExpanded }}
-        accessibilityHint={diarySummaryExpanded ? 'Collapse this section' : 'Expand this section'}
+        accessibilityHint={diarySummaryExpanded ? t('diarySummary.collapse', { defaultValue: 'Collapse this section' }) : t('diarySummary.expand', { defaultValue: 'Expand this section' })}
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-md font-bold text-text-secondary">Summary</Text>
+          <Text className="text-md font-bold text-text-secondary">{t('diarySummary.title', { defaultValue: 'Summary' })}</Text>
           <Animated.View style={chevronStyle}>
             <Icon name="chevron-down" size={20} color={textSecondary} />
           </Animated.View>
@@ -215,7 +220,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
           {customNutrientKeys.map((name) => {
             const customDef = customNutrients.find((cn) => cn.name === name);
             const meta = NUTRIENT_META[name];
-            const label = meta?.label ?? customDef?.name ?? name;
+            const label = meta ? getNutrientLabel(t, name) : (customDef?.name ?? name);
             const unit = meta?.unit ?? customDef?.unit ?? 'g';
             const consumed = summary.customNutrientTotals[name] ?? 0;
             const nutrientGoal = summary.customNutrientGoals[name] || undefined;

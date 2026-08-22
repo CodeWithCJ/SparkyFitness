@@ -4,6 +4,7 @@ import { useDraftPersistence } from './useDraftPersistence';
 import { getTodayDate, normalizeDate } from '../utils/dateUtils';
 import { kmToMiles, distanceToKm } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
+import { getAppLocale } from '../localization';
 import type { Exercise } from '../types/exercise';
 import type { ActivityDraft } from '../types/drafts';
 import type { IndividualSessionResponse } from '@workspace/shared';
@@ -32,7 +33,7 @@ function createEmptyDraft(): ActivityDraft {
 function formatActivityDate(dateString: string): string {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
 }
 
 function defaultActivityName(exerciseName: string, dateString: string): string {

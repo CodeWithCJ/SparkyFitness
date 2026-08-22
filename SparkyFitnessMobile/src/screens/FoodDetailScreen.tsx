@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -31,6 +32,7 @@ const buildSelectedVariantId = (hasExternalVariants: boolean, variantId?: string
   hasExternalVariants ? (variantId ?? 'ext-0') : variantId;
 
 const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const { item, updatedItem, updatedSelectedVariantId, updatedBarcode } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -70,14 +72,14 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
       }));
       Toast.show({
         type: 'success',
-        text1: updated.shared_with_public ? 'Food shared publicly' : 'Food made private',
+        text1: updated.shared_with_public ? t('foodDetail.sharedPublicly', { defaultValue: 'Food shared publicly' }) : t('foodDetail.madePrivate', { defaultValue: 'Food made private' }),
       });
     },
     onError: (error) => {
       Toast.show({
         type: 'error',
-        text1: 'Failed to update sharing',
-        text2: error instanceof Error ? error.message : 'Please try again.',
+        text1: t('foodDetail.shareFailed', { defaultValue: 'Failed to update sharing' }),
+        text2: error instanceof Error ? error.message : t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     },
   });
@@ -87,18 +89,18 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
       updateShareMutation.mutate(false);
     } else {
       Alert.alert(
-        'Make public?',
-        'This food will become visible to all users on this server.',
+        t('foodDetail.makePublicTitle', { defaultValue: 'Make public?' }),
+        t('foodDetail.makePublicMessage', { defaultValue: 'This food will become visible to all users on this server.' }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
           {
-            text: 'Make Public',
+            text: t('foodDetail.makePublic', { defaultValue: 'Make Public' }),
             onPress: () => updateShareMutation.mutate(true),
           },
         ]
       );
     }
-  }, [isPublic, updateShareMutation]);
+  }, [isPublic, t, updateShareMutation]);
 
   // Favorites: a saved local food can be starred here, so the library is no
   // longer edit-only via search. External results have no stable id to
@@ -242,8 +244,8 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             disabled: isFavoritePending,
             onPress: handleToggleFavorite,
             accessibilityLabel: isFavorite
-              ? 'Remove from favorites'
-              : 'Add to favorites',
+              ? t('common.removeFromFavorites', { defaultValue: 'Remove from favorites' })
+              : t('common.addToFavorites', { defaultValue: 'Add to favorites' }),
             identifier: 'food-detail-favorite',
           } as const,
         ]
@@ -258,16 +260,16 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             useIoniconOnIOS: !isPublic,
             disabled: updateShareMutation.isPending,
             onPress: handleToggleShare,
-            accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+            accessibilityLabel: isPublic ? t('foodDetail.makePrivate', { defaultValue: 'Make private' }) : t('foodDetail.sharePublic', { defaultValue: 'Share with public' }),
             identifier: 'food-detail-share',
           } as const,
           {
             kind: 'text',
-            label: 'Edit',
+            label: t('common.edit', { defaultValue: 'Edit' }),
             role: 'secondary',
             disabled: !selectedVariantId,
             onPress: handleEdit,
-            accessibilityLabel: 'Edit food',
+            accessibilityLabel: t('foodDetail.editFood', { defaultValue: 'Edit food' }),
             identifier: 'food-detail-edit',
           } as const,
         ]
@@ -286,9 +288,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title="No server configured"
-          subtitle="Configure your server connection in Settings to view food details."
-          action={{ label: 'Go to Settings', onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          title={t('foodDetail.noServer', { defaultValue: 'No server configured' })}
+          subtitle={t('foodDetail.configureServer', { defaultValue: 'Configure your server connection in Settings to view food details.' })}
+          action={{ label: t('common.goToSettings', { defaultValue: 'Go to Settings' }), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
         />
       );
     }
@@ -313,20 +315,20 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
         />
 
         <View className="bg-surface rounded-xl p-4">
-          <Text className="text-text-secondary text-sm mb-2">Serving</Text>
+          <Text className="text-text-secondary text-sm mb-2">{t('foodDetail.serving', { defaultValue: 'Serving' })}</Text>
           {variantOptions.length > 1 ? (
             <BottomSheetPicker
               value={selectedVariantId ?? variantOptions[0].id}
               options={variantOptions.map((option) => ({ label: option.label, value: option.id }))}
               onSelect={setSelectedVariantId}
-              title="Select Serving"
+              title={t('foodDetail.selectServing', { defaultValue: 'Select Serving' })}
               renderTrigger={({ onPress }) => (
                 <TouchableOpacity
                   onPress={onPress}
                   activeOpacity={0.7}
                   className="flex-row items-center justify-between"
                   accessibilityRole="button"
-                  accessibilityLabel="Serving options"
+                  accessibilityLabel={t('foodDetail.servingOptions', { defaultValue: 'Serving options' })}
                 >
                   <Text className="text-text-primary text-base font-medium flex-1 mr-3">
                     {selectedVariantLabel}
@@ -345,14 +347,14 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             <View className="flex-row items-center mt-3">
               <ActivityIndicator size="small" color={accentColor} />
               <Text className="text-text-secondary text-sm ml-2">
-                Loading serving options...
+                {t('foodDetail.loadingServingOptions', { defaultValue: 'Loading serving options...' })}
               </Text>
             </View>
           ) : null}
 
           {isVariantsError ? (
             <Text className="text-text-secondary text-sm mt-3">
-              Some serving options could not be loaded right now.
+              {t('foodDetail.servingOptionsError', { defaultValue: 'Some serving options could not be loaded right now.' })}
             </Text>
           ) : null}
         </View>
@@ -361,12 +363,12 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           <SettingsRowGroup>
             <SettingsRow
               icon="scan"
-              title="Barcode"
+              title={t('foodDetail.barcode', { defaultValue: 'Barcode' })}
               subtitle={
                 food.barcode ? (
                   food.barcode
                 ) : (
-                  <Text className="text-sm text-text-secondary mt-0.5">Not set</Text>
+                  <Text className="text-sm text-text-secondary mt-0.5">{t('common.notSet', { defaultValue: 'Not set' })}</Text>
                 )
               }
               onPress={() =>
@@ -387,7 +389,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             item: applyDisplayValuesToFoodInfo(food, displayValues, selectedVariantId),
           })}
         >
-          <Text className="text-white text-base font-semibold">Log Food</Text>
+          <Text className="text-white text-base font-semibold">{t('foodDetail.logFood', { defaultValue: 'Log Food' })}</Text>
         </Button>
 
         {canManageFood && (
@@ -396,7 +398,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             onPress={confirmAndDelete}
             disabled={isDeletePending}
           >
-            {isDeletePending ? 'Deleting...' : 'Delete Food'}
+            {isDeletePending ? t('common.deleting', { defaultValue: 'Deleting...' }) : t('foodDetail.deleteFood', { defaultValue: 'Delete Food' })}
           </Button>
         )}
       </ScrollView>

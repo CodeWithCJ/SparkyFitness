@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { addFavorite, removeFavorite } from '../services/api/favoritesApi';
 import { FavoritesResponse, FavoriteType, FoodItem } from '../types/foods';
@@ -25,6 +26,7 @@ interface ToggleFavoriteContext {
  * favorites cache and rollback on error.
  */
 export function useToggleFavorite() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const mutation = useMutation<
@@ -79,8 +81,8 @@ export function useToggleFavorite() {
       }
       Toast.show({
         type: 'error',
-        text1: 'Failed to update favorites',
-        text2: 'Please try again.',
+        text1: t('favorites.updateFailed', { defaultValue: 'Failed to update favorites' }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     },
     onSettled: () => {

@@ -26,6 +26,8 @@ const SegmentedControl = <T extends string>({
             activeKey === segment.key ? 'bg-surface' : ''
           }`}
           activeOpacity={0.7}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeKey === segment.key }}
         >
           <Text
             className={`text-sm font-medium ${

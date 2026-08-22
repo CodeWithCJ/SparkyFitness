@@ -114,7 +114,7 @@ const writableMetrics = async (metrics: WritebackMetric[]): Promise<WritebackMet
   }
   return metrics.filter((m) => {
     const ok = granted.some((p) => p.recordType === m.recordType && p.accessType === 'write');
-    if (!ok) addLog(`[Writeback] Skipping ${m.label}: write permission not granted`, 'WARNING');
+    if (!ok) addLog(`[Writeback] Skipping ${m.defaultLabel}: write permission not granted`, 'WARNING');
     return ok;
   });
 };
@@ -218,7 +218,7 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
           addLog('[Writeback] Health Connect quota exceeded — stopping; resumes next sync', 'WARNING');
           return false;
         }
-        addLog(`[Writeback] Failed ${metric.label} for ${date}: ${message(error)}`, 'ERROR');
+        addLog(`[Writeback] Failed ${metric.defaultLabel} for ${date}: ${message(error)}`, 'ERROR');
       }
     }
   }

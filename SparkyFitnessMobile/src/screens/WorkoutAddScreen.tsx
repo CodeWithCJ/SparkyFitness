@@ -1,4 +1,5 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -43,6 +44,7 @@ import type {
 type Props = RootStackScreenProps<'WorkoutAdd'>;
 
 const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const session = route.params?.session;
   const preset = route.params?.preset;
   const initialDate = route.params?.date ?? useDiaryDateStore.getState().selectedDate;
@@ -240,17 +242,17 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleFinish = useCallback(() => {
     if (!submission.canSave) {
-      Toast.show({ type: 'error', text1: 'Add an Exercise', text2: 'Add at least one exercise with a set before saving.' });
+      Toast.show({ type: 'error', text1: t('workoutAdd.addExercise', { defaultValue: 'Add an Exercise' }), text2: t('workoutAdd.addExerciseMessage', { defaultValue: 'Add at least one exercise with a set before saving.' }) });
       return;
     }
 
-    const alertTitle = isEditMode ? 'Save Changes?' : 'Save Workout?';
+    const alertTitle = isEditMode ? t('workoutAdd.saveChangesTitle', { defaultValue: 'Save Changes?' }) : t('workoutAdd.saveWorkoutTitle', { defaultValue: 'Save Workout?' });
     const alertMessage = `Save "${submission.name}" with ${submission.exerciseCount} exercise(s)?`;
 
     Alert.alert(alertTitle, alertMessage, [
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('workoutAdd.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
       {
-        text: 'Save',
+        text: t('workoutAdd.save', { defaultValue: 'Save' }),
         onPress: async () => {
           try {
             if (isEditMode && session) {
@@ -278,7 +280,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
             }
           } catch (error) {
             addLog(`Failed to save workout: ${error}`, 'ERROR');
-            Toast.show({ type: 'error', text1: 'Failed to save workout', text2: 'Please try again.' });
+            Toast.show({ type: 'error', text1: t('workoutAdd.saveFailed', { defaultValue: 'Failed to save workout' }), text2: t('workoutAdd.tryAgain', { defaultValue: 'Please try again.' }) });
           }
         },
       },
@@ -295,6 +297,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     discardDraft,
     navigation,
     popCount,
+    t,
   ]);
 
   const saveItem: HeaderItem = {
@@ -322,7 +325,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
             ionicon: 'swap-vertical',
             role: 'secondary',
             onPress: () => exerciseListRef.current?.openReorder(),
-            accessibilityLabel: 'Reorder exercises',
+            accessibilityLabel: t('workoutAdd.reorderExercises', { defaultValue: 'Reorder exercises' }),
             identifier: 'workout-add-reorder',
           },
           saveItem,
@@ -355,7 +358,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         className="text-xl font-bold text-text-primary rounded-lg"
                         value={state.name}
                         onChangeText={setName}
-                        placeholder="Workout"
+                        placeholder={t('workoutAdd.workoutPlaceholder', { defaultValue: 'Workout' })}
                         returnKeyType="done"
                         autoFocus
                         selectTextOnFocus
@@ -371,7 +374,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                         activeOpacity={0.6}
                       >
                         <Text className="text-xl font-bold text-text-primary">
-                          {state.name || 'Workout'}
+                          {state.name || t('workoutAdd.workoutPlaceholder', { defaultValue: 'Workout' })}
                         </Text>
                         <Icon name="pencil" size={20} color={textMuted} />
                       </TouchableOpacity>
@@ -391,14 +394,14 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       className="flex-row items-center mx-4"
                       onPress={() => setDate(addDays(getTodayDate(), -1))}
                     >
-                      <Text className="text-text-link text-sm font-medium mx-1.5">Use Yesterday</Text>
+                      <Text className="text-text-link text-sm font-medium mx-1.5">{t('workoutAdd.useYesterday', { defaultValue: 'Use Yesterday' })}</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity activeOpacity={0.7}
                       className="flex-row items-center mx-4"
                       onPress={() => setDate(getTodayDate())}
                     >
-                      <Text className="text-text-link text-sm font-medium mx-1.5">Use Today</Text>
+                      <Text className="text-text-link text-sm font-medium mx-1.5">{t('workoutAdd.useToday', { defaultValue: 'Use Today' })}</Text>
                     </TouchableOpacity>
                   )}
                 </View>

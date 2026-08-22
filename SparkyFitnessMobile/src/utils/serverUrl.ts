@@ -65,12 +65,12 @@ export const isPrivateOrLocalHost = (url: string): boolean => {
  * certs). Plain HTTP is accepted only for private/LAN hosts during development;
  * production always requires HTTPS.
  */
-export const getInsecureUrlError = (url: string): string | null => {
+export const getInsecureUrlError = (url: string, localizedMessage?: string): string | null => {
   const normalized = normalizeUrl(url).toLowerCase();
   if (normalized.startsWith('https://')) return null;
 
   if (__DEV__ && isPrivateOrLocalHost(url)) return null;
 
   const healthPolicy = Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
-  return `HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`;
+  return localizedMessage ?? `HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`;
 };

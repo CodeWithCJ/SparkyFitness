@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { FoodItem } from '../types/foods';
@@ -28,6 +29,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
   showDivider = false,
   isFavorite = false,
 }) => {
+  const { t } = useTranslation();
   const { profile } = useProfile();
   const status = deriveShareStatus(food.user_id, food.shared_with_public, profile?.id);
   // Gold, not accent: a passive indicator, not a tap target. See MealLibraryRow.
@@ -77,7 +79,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
                 size={16}
                 color={goldColor}
                 style={{ marginTop: -1 }}
-                accessibilityLabel="Favorite"
+                accessibilityLabel={t('foodSearch.accessibility.favorite', { defaultValue: 'Favorite' })}
               />
             )}
           </View>
@@ -89,7 +91,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
-            {food.default_variant.calories} cal
+            {food.default_variant.calories} {t('foodSearch.labels.caloriesShort', { defaultValue: 'kcal' })}
           </Text>
           <Text className="text-text-secondary text-xs">
             {food.default_variant.serving_size} {formatServingUnit(food.default_variant.serving_unit)}

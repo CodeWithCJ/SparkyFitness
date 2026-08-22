@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -22,6 +23,7 @@ type Feature = {
 };
 
 const WidgetMockup: React.FC = () => {
+  const { t } = useTranslation();
   const [
     calorieColor,
     catViolet,
@@ -42,7 +44,17 @@ const WidgetMockup: React.FC = () => {
     '--color-exercise',
     '--color-cat-pink',
     '--color-cat-orange',
-  ]) as [string, string, string, string, string, string, string, string, string];
+  ]) as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
 
   const iconPositions: {
     top?: number;
@@ -90,20 +102,39 @@ const WidgetMockup: React.FC = () => {
         style={{ width: 140, height: 124 }}
       >
         <Text className="text-xs font-semibold tracking-wider text-text-secondary mb-0.5">
-          TODAY
+          {t('whatsNewPage.mockup.today', { defaultValue: 'TODAY' })}
         </Text>
-        <Text className="text-2xl font-bold text-text-primary" style={{ color: calorieColor }}>
-          1,515
+        <Text
+          className="text-2xl font-bold text-text-primary"
+          style={{ color: calorieColor }}
+        >
+          {t('whatsNewPage.mockup.caloriesLeftValue', {
+            defaultValue: '1,515',
+          })}
         </Text>
-        <Text className="text-xs text-text-secondary mb-2">kcal left</Text>
+        <Text className="text-xs text-text-secondary mb-2">
+          {t('whatsNewPage.mockup.kcalLeft', { defaultValue: 'kcal left' })}
+        </Text>
         <View className="flex-row">
           <View className="flex-1">
-            <Text className="text-xs text-text-secondary">In</Text>
-            <Text className="text-xs font-medium text-text-primary">1,540</Text>
+            <Text className="text-xs text-text-secondary">
+              {t('whatsNewPage.mockup.in', { defaultValue: 'In' })}
+            </Text>
+            <Text className="text-xs font-medium text-text-primary">
+              {t('whatsNewPage.mockup.caloriesInValue', {
+                defaultValue: '1,540',
+              })}
+            </Text>
           </View>
           <View className="flex-1">
-            <Text className="text-xs text-text-secondary">Out</Text>
-            <Text className="text-xs font-medium text-text-primary">255</Text>
+            <Text className="text-xs text-text-secondary">
+              {t('whatsNewPage.mockup.out', { defaultValue: 'Out' })}
+            </Text>
+            <Text className="text-xs font-medium text-text-primary">
+              {t('whatsNewPage.mockup.caloriesOutValue', {
+                defaultValue: '255',
+              })}
+            </Text>
           </View>
         </View>
       </View>
@@ -112,6 +143,7 @@ const WidgetMockup: React.FC = () => {
 };
 
 const ChatMockup: React.FC = () => {
+  const { t } = useTranslation();
   const [catViolet, accentPrimary, accentText] = useCSSVariable([
     '--color-cat-violet',
     '--color-accent-primary',
@@ -125,7 +157,9 @@ const ChatMockup: React.FC = () => {
     >
       <View className="self-end bg-surface rounded-2xl rounded-tr-md shadow-sm px-3.5 py-2.5 mb-3 max-w-[75%]">
         <Text className="text-[13px] text-text-primary">
-          What can I have for dinner with 500 calories left?
+          {t('whatsNewPage.mockup.chatQuestion', {
+            defaultValue: 'What can I have for dinner with 500 calories left?',
+          })}
         </Text>
       </View>
 
@@ -134,14 +168,22 @@ const ChatMockup: React.FC = () => {
           className="rounded-full items-center justify-center mr-2 shadow-sm"
           style={{ width: 28, height: 28, backgroundColor: accentPrimary }}
         >
-          <Icon name="sparkles" size={14} color={accentText} weight="semibold" />
+          <Icon
+            name="sparkles"
+            size={14}
+            color={accentText}
+            weight="semibold"
+          />
         </View>
         <View
           className="rounded-2xl rounded-bl-md shadow-sm px-3.5 py-2.5"
           style={{ backgroundColor: accentPrimary }}
         >
           <Text className="text-[13px]" style={{ color: accentText }}>
-            Grilled salmon with a side salad keeps you right around 480 kcal.
+            {t('whatsNewPage.mockup.chatAnswer', {
+              defaultValue:
+                'Grilled salmon with a side salad keeps you right around 480 kcal.',
+            })}
           </Text>
         </View>
       </View>
@@ -150,16 +192,29 @@ const ChatMockup: React.FC = () => {
 };
 
 const LiquidGlassMockup: React.FC = () => {
+  const { t } = useTranslation();
   const [textPrimary, accentPrimary] = useCSSVariable([
     '--color-text-primary',
     '--color-accent-primary',
   ]) as [string, string];
 
   const tabs: { name: IconName; label: string; active?: boolean }[] = [
-    { name: 'tab-dashboard', label: 'Dashboard' },
-    { name: 'document-text', label: 'Diary' },
-    { name: 'book', label: 'Library' },
-    { name: 'settings', label: 'Settings' },
+    {
+      name: 'tab-dashboard',
+      label: t('navigation.dashboard', { defaultValue: 'Dashboard' }),
+    },
+    {
+      name: 'document-text',
+      label: t('navigation.diary', { defaultValue: 'Diary' }),
+    },
+    {
+      name: 'book',
+      label: t('navigation.library', { defaultValue: 'Library' }),
+    },
+    {
+      name: 'settings',
+      label: t('navigation.settings', { defaultValue: 'Settings' }),
+    },
   ];
 
   const glassStyle = {
@@ -180,21 +235,23 @@ const LiquidGlassMockup: React.FC = () => {
           className="flex-1 flex-row items-center justify-around py-2 rounded-3xl"
           style={glassStyle}
         >
-          {tabs.map((tab) => (
+          {tabs.map(tab => (
             <View
               key={tab.label}
               className="items-center px-2 py-1 rounded-2xl"
-              style={tab.active ? { backgroundColor: `${textPrimary}26` } : undefined}
+              style={
+                tab.active ? { backgroundColor: `${textPrimary}26` } : undefined
+              }
             >
               <Icon
                 name={tab.name}
                 size={20}
-                color={tab.active ? accentPrimary : "#000000" }
+                color={tab.active ? accentPrimary : '#000000'}
                 weight={tab.active ? 'semibold' : 'regular'}
               />
               <Text
                 className="text-xs mt-0.5"
-                style={{ color: tab.active ? accentPrimary : "#000000" }}
+                style={{ color: tab.active ? accentPrimary : '#000000' }}
               >
                 {tab.label}
               </Text>
@@ -214,13 +271,15 @@ const LiquidGlassMockup: React.FC = () => {
 };
 
 const PhotoMockup: React.FC = () => {
-  const [catOrange, macroProtein, macroCarbs, macroFat, textPrimary] = useCSSVariable([
-    '--color-cat-orange',
-    '--color-macro-protein',
-    '--color-macro-carbs',
-    '--color-macro-fat',
-    '--color-text-primary',
-  ]) as [string, string, string, string, string];
+  const { t } = useTranslation();
+  const [catOrange, macroProtein, macroCarbs, macroFat, textPrimary] =
+    useCSSVariable([
+      '--color-cat-orange',
+      '--color-macro-protein',
+      '--color-macro-carbs',
+      '--color-macro-fat',
+      '--color-text-primary',
+    ]) as [string, string, string, string, string];
 
   return (
     <View
@@ -307,13 +366,18 @@ const PhotoMockup: React.FC = () => {
             marginRight: 6,
           }}
         />
-        <Text className="text-xs font-semibold text-text-primary">~412 kcal</Text>
+        <Text className="text-xs font-semibold text-text-primary">
+          {t('whatsNewPage.mockup.estimatedCalories', {
+            defaultValue: '~412 kcal',
+          })}
+        </Text>
       </View>
     </View>
   );
 };
 
 const CycleMockup: React.FC = () => {
+  const { t } = useTranslation();
   const [catPink, textSecondary] = useCSSVariable([
     '--color-cat-pink',
     '--color-text-secondary',
@@ -336,20 +400,36 @@ const CycleMockup: React.FC = () => {
             >
               <Icon name="sparkles" size={14} color={catPink} />
             </View>
-            <Text className="text-xs font-bold text-text-primary">Luteal Phase</Text>
+            <Text className="text-xs font-bold text-text-primary">
+              {t('whatsNewPage.mockup.lutealPhase', {
+                defaultValue: 'Luteal Phase',
+              })}
+            </Text>
           </View>
-          <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: `${catPink}25` }}>
-            <Text className="text-[10px] font-semibold" style={{ color: catPink }}>
-              Day 18
+          <View
+            className="px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: `${catPink}25` }}
+          >
+            <Text
+              className="text-[10px] font-semibold"
+              style={{ color: catPink }}
+            >
+              {t('whatsNewPage.mockup.day18', { defaultValue: 'Day 18' })}
             </Text>
           </View>
         </View>
 
         <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
           <Text className="text-[11px]" style={{ color: textSecondary }}>
-            Symptom & Flow Log
+            {t('whatsNewPage.mockup.symptomFlowLog', {
+              defaultValue: 'Symptom & Flow Log',
+            })}
           </Text>
-          <Text className="text-[11px] font-medium text-text-primary">Mild • Normal</Text>
+          <Text className="text-[11px] font-medium text-text-primary">
+            {t('whatsNewPage.mockup.mildNormal', {
+              defaultValue: 'Mild • Normal',
+            })}
+          </Text>
         </View>
       </View>
     </View>
@@ -357,6 +437,7 @@ const CycleMockup: React.FC = () => {
 };
 
 const WorkoutMockup: React.FC = () => {
+  const { t } = useTranslation();
   const [exercise, textSecondary] = useCSSVariable([
     '--color-exercise',
     '--color-text-secondary',
@@ -379,20 +460,38 @@ const WorkoutMockup: React.FC = () => {
             >
               <Icon name="exercise-weights" size={14} color={exercise} />
             </View>
-            <Text className="text-xs font-bold text-text-primary">Bench Press</Text>
+            <Text className="text-xs font-bold text-text-primary">
+              {t('whatsNewPage.mockup.benchPress', {
+                defaultValue: 'Bench Press',
+              })}
+            </Text>
           </View>
-          <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: `${exercise}25` }}>
-            <Text className="text-[10px] font-semibold" style={{ color: exercise }}>
-              3 Sets
+          <View
+            className="px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: `${exercise}25` }}
+          >
+            <Text
+              className="text-[10px] font-semibold"
+              style={{ color: exercise }}
+            >
+              {t('whatsNewPage.mockup.threeSets', {
+                defaultValue: '3 Sets',
+              })}
             </Text>
           </View>
         </View>
 
         <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
           <Text className="text-[11px]" style={{ color: textSecondary }}>
-            Set 1: 10 reps
+            {t('whatsNewPage.mockup.setOneReps', {
+              defaultValue: 'Set 1: 10 reps',
+            })}
           </Text>
-          <Text className="text-[11px] font-medium text-text-primary">80 kg • Done</Text>
+          <Text className="text-[11px] font-medium text-text-primary">
+            {t('whatsNewPage.mockup.doneWeight', {
+              defaultValue: '80 kg • Done',
+            })}
+          </Text>
         </View>
       </View>
     </View>
@@ -400,6 +499,7 @@ const WorkoutMockup: React.FC = () => {
 };
 
 const MedicationsMockup: React.FC = () => {
+  const { t } = useTranslation();
   const [catTeal, textSecondary] = useCSSVariable([
     '--color-cat-teal',
     '--color-text-secondary',
@@ -422,20 +522,34 @@ const MedicationsMockup: React.FC = () => {
             >
               <Icon name="medication" size={14} color={catTeal} />
             </View>
-            <Text className="text-xs font-bold text-text-primary">Fauxprofen</Text>
+            <Text className="text-xs font-bold text-text-primary">
+              {t('whatsNewPage.mockup.fauxprofen', {
+                defaultValue: 'Fauxprofen',
+              })}
+            </Text>
           </View>
-          <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: `${catTeal}25` }}>
-            <Text className="text-[10px] font-semibold" style={{ color: catTeal }}>
-              8:00 AM
+          <View
+            className="px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: `${catTeal}25` }}
+          >
+            <Text
+              className="text-[10px] font-semibold"
+              style={{ color: catTeal }}
+            >
+              {t('whatsNewPage.mockup.eightAm', { defaultValue: '8:00 AM' })}
             </Text>
           </View>
         </View>
 
         <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
           <Text className="text-[11px]" style={{ color: textSecondary }}>
-            200 mg • Daily
+            {t('whatsNewPage.mockup.dailyDose', {
+              defaultValue: '200 mg • Daily',
+            })}
           </Text>
-          <Text className="text-[11px] font-medium text-text-primary">Taken</Text>
+          <Text className="text-[11px] font-medium text-text-primary">
+            {t('whatsNewPage.mockup.taken', { defaultValue: 'Taken' })}
+          </Text>
         </View>
       </View>
     </View>
@@ -443,6 +557,7 @@ const MedicationsMockup: React.FC = () => {
 };
 
 const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -456,64 +571,121 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
     {
-      eyebrow: 'MEDICATIONS',
-      headline: 'Track your medications',
-      body: 'Add your medications, set dose schedules, and log each dose from the dashboard with optional reminders.',
+      eyebrow: t('whatsNewPage.features.medications.eyebrow', {
+        defaultValue: 'MEDICATIONS',
+      }),
+      headline: t('whatsNewPage.features.medications.headline', {
+        defaultValue: 'Track your medications',
+      }),
+      body: t('whatsNewPage.features.medications.body', {
+        defaultValue:
+          'Add your medications, set dose schedules, and log each dose from the dashboard with optional reminders.',
+      }),
       hero: <MedicationsMockup />,
       cta: {
-        label: 'Set up medications',
+        label: t('whatsNewPage.features.medications.cta', {
+          defaultValue: 'Set up medications',
+        }),
         onPress: () => navigation.navigate('MedicationsList'),
       },
     },
     {
-      eyebrow: 'CYCLE & PREGNANCY',
-      headline: 'Track your cycle & pregnancy',
-      body: 'Comprehensive tracking for cycle phases, symptoms, flow, and pregnancy progress with tailored insights and goal adjustments.',
+      eyebrow: t('whatsNewPage.features.cycle.eyebrow', {
+        defaultValue: 'CYCLE & PREGNANCY',
+      }),
+      headline: t('whatsNewPage.features.cycle.headline', {
+        defaultValue: 'Track your cycle & pregnancy',
+      }),
+      body: t('whatsNewPage.features.cycle.body', {
+        defaultValue:
+          'Comprehensive tracking for cycle phases, symptoms, flow, and pregnancy progress with tailored insights and goal adjustments.',
+      }),
       hero: <CycleMockup />,
     },
     {
-      eyebrow: 'WORKOUT & EXERCISES',
-      headline: 'Revamped workout workflows',
-      body: 'Streamlined exercise logging, updated exercise library management, and improved multi-set performance tracking.',
+      eyebrow: t('whatsNewPage.features.workout.eyebrow', {
+        defaultValue: 'WORKOUT & EXERCISES',
+      }),
+      headline: t('whatsNewPage.features.workout.headline', {
+        defaultValue: 'Revamped workout workflows',
+      }),
+      body: t('whatsNewPage.features.workout.body', {
+        defaultValue:
+          'Streamlined exercise logging, updated exercise library management, and improved multi-set performance tracking.',
+      }),
       hero: <WorkoutMockup />,
     },
     ...(showLiquidGlassCard
       ? [
           {
-            eyebrow: 'IOS 26',
-            headline: 'A Liquid Glass look',
-            body: 'Turn on Liquid Glass navigation for translucent tabs and headers that pick up the color behind them. Toggle it anytime in App settings.',
+            eyebrow: t('whatsNewPage.features.ios.eyebrow', {
+              defaultValue: 'iOS 26',
+            }),
+            headline: t('whatsNewPage.features.ios.headline', {
+              defaultValue: 'A Liquid Glass look',
+            }),
+            body: t('whatsNewPage.features.ios.body', {
+              defaultValue:
+                'Turn on Liquid Glass navigation for translucent tabs and headers that pick up the color behind them. Toggle it anytime in App settings.',
+            }),
             hero: <LiquidGlassMockup />,
             cta: {
-              label: 'Open settings',
+              label: t('whatsNewPage.features.ios.cta', {
+                defaultValue: 'Open settings',
+              }),
               onPress: () => navigation.navigate('AppSettings'),
             },
           } satisfies Feature,
         ]
       : []),
     {
-      eyebrow: 'ASK SPARKY',
-      headline: 'Chat with your AI coach',
-      body: 'Ask Sparky to log meals, plan what to eat, and answer questions about your day through chat.',
+      eyebrow: t('whatsNewPage.features.chat.eyebrow', {
+        defaultValue: 'ASK SPARKY',
+      }),
+      headline: t('whatsNewPage.features.chat.headline', {
+        defaultValue: 'Chat with your AI coach',
+      }),
+      body: t('whatsNewPage.features.chat.body', {
+        defaultValue:
+          'Ask Sparky to log meals, plan what to eat, and answer questions about your day through chat.',
+      }),
       hero: <ChatMockup />,
       cta: {
-        label: 'Start chatting',
+        label: t('whatsNewPage.features.chat.cta', {
+          defaultValue: 'Start chatting',
+        }),
         onPress: () => navigation.navigate('Chat'),
       },
     },
     {
-      eyebrow: 'HOME SCREEN WIDGET',
-      headline: 'Calories on your home screen',
-      body: "See where your day stands at a glance. Add SparkyFitness from your home screen's widget gallery.",
+      eyebrow: t('whatsNewPage.features.widget.eyebrow', {
+        defaultValue: 'HOME SCREEN WIDGET',
+      }),
+      headline: t('whatsNewPage.features.widget.headline', {
+        defaultValue: 'Calories on your home screen',
+      }),
+      body: t('whatsNewPage.features.widget.body', {
+        defaultValue:
+          "See where your day stands at a glance. Add SparkyFitness from your home screen's widget gallery.",
+      }),
       hero: <WidgetMockup />,
     },
     {
-      eyebrow: 'AI PHOTO SCAN',
-      headline: 'Snap a meal, log the macros',
-      body: "Estimate nutrition from a photo when you're short on time.",
+      eyebrow: t('whatsNewPage.features.photo.eyebrow', {
+        defaultValue: 'AI PHOTO SCAN',
+      }),
+      headline: t('whatsNewPage.features.photo.headline', {
+        defaultValue: 'Snap a meal, log the macros',
+      }),
+      body: t('whatsNewPage.features.photo.body', {
+        defaultValue:
+          "Estimate nutrition from a photo when you're short on time.",
+      }),
       hero: <PhotoMockup />,
       cta: {
-        label: 'Try it out',
+        label: t('whatsNewPage.features.photo.cta', {
+          defaultValue: 'Try it out',
+        }),
         onPress: () =>
           navigation.navigate('FoodScan', {
             date: getTodayDate(),
@@ -523,19 +695,27 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
     },
   ];
 
-  const header = useScreenHeader({ title: "What's New", left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: t('whatsNewPage.title', { defaultValue: "What's New" }),
+    left: { kind: 'back' },
+  });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={
+          usesNativeHeader ? 'automatic' : 'never'
+        }
       >
-        {features.map((feature) => (
+        {features.map(feature => (
           <View
             key={feature.headline}
             className="bg-surface rounded-xl mb-4 shadow-sm overflow-hidden"

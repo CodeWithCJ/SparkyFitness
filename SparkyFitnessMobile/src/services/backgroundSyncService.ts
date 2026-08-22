@@ -159,7 +159,7 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
     if (outcome.status === 'skipped') {
       syncErrors++;
       addLog(
-        `[Background Sync] Skipping ${metric.label} because an earlier metric timed out; will retry next cycle`,
+        `[Background Sync] Skipping ${metric.defaultLabel} because an earlier metric timed out; will retry next cycle`,
         'WARNING',
       );
     } else if (outcome.status === 'fulfilled') {
@@ -175,13 +175,13 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
       if (outcome.error) {
         syncErrors++;
         addLog(
-          `[Background Sync] ${metric.label} completed with read errors: ${outcome.error}`,
+          `[Background Sync] ${metric.defaultLabel} completed with read errors: ${outcome.error}`,
           'WARNING',
         );
       }
     } else {
       syncErrors++;
-      addLog(`[Background Sync] Error syncing ${metric.label}: ${outcome.error}`, 'ERROR');
+      addLog(`[Background Sync] Error syncing ${metric.defaultLabel}: ${outcome.error}`, 'ERROR');
     }
   }
 

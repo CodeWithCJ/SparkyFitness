@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getLocalizedMealLabel } from '../constants/meals';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,7 +10,7 @@ import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import EntryImageOverride from '../components/EntryImageOverride';
 import Icon from '../components/Icon';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
@@ -33,7 +35,6 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel, normalizeDate } from '../utils/dateUtils';
 import {
   getFoodEntryMealTypeLabel,
-  getMealTypeDisplayLabel,
 } from '../utils/mealNutrition';
 import { buildMealIngredientDraftFromEntryMealFood } from '../utils/mealBuilderDraft';
 import { formatCaloriesDisplay, formatServingSizeDisplay } from '../utils/foodDetails';
@@ -79,6 +80,8 @@ function computeBaseTotals(ingredients: MealIngredientDraft[]): IngredientTotals
 }
 
 const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation, route }) => {
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { foodEntryMealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -176,10 +179,20 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const scaleFactor = originalQuantity > 0 ? quantity / originalQuantity : 0;
 
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
-  const mealPickerOptions = useMemo(
-    () => mealTypes.map((mt) => ({ label: getMealTypeDisplayLabel(mt), value: mt.id })),
-    [mealTypes],
+  const mealTypeLabel = useCallback(
+    (mealType: (typeof mealTypes)[number]) =>
+      mealType.user_id == null
+        ? getLocalizedMealLabel(t, mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase())
+        : mealType.name,
+    [t],
   );
+  const mealPickerOptions = useMemo(
+    () => mealTypes.map((mt) => ({ label: mealTypeLabel(mt), value: mt.id })),
+    [mealTypes, mealTypeLabel],
+  );
+  const entryMealTypeLabel = selectedMealType
+    ? mealTypeLabel(selectedMealType)
+    : meal ? getFoodEntryMealTypeLabel(meal, mealTypes, t) : t('mealTypes.other', { defaultValue: 'Other' });
 
   const initialDate = meal ? normalizeDate(meal.entry_date) : null;
   const dirty =
@@ -330,12 +343,12 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     left: { kind: 'back' },
     right: {
       kind: 'primary',
-      label: SAVE_LABEL,
-      busyLabel: SAVING_LABEL,
+      label: t('common.save', { defaultValue: 'Save' }),
+      busyLabel: t('common.saving', { defaultValue: 'Saving…' }),
       busy: isSavePending,
       disabled: !canSave || isRowBusy,
       onPress: handleSave,
-      accessibilityLabel: 'Save meal',
+      accessibilityLabel: t('editLoggedMeal.accessibility.saveMeal', { defaultValue: 'Save meal' }),
       identifier: 'edit-logged-meal-save',
     },
   });
@@ -376,11 +389,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
       >
         {/* Name */}
         <View>
-          <Text className="text-text-secondary text-sm mb-1">Meal name</Text>
+          <Text className="text-text-secondary text-sm mb-1">{t('editLoggedMeal.fields.mealName', { defaultValue: 'Meal name' })}</Text>
           <FormInput
             value={effectiveName}
             onChangeText={setName}
-            placeholder="Meal name"
+            placeholder={t('editLoggedMeal.fields.mealName', { defaultValue: 'Meal name' })} accessibilityLabel={t('editLoggedMeal.accessibility.mealName', { defaultValue: 'Meal name' })}
             autoCapitalize="sentences"
           />
         </View>
@@ -405,7 +418,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
         {/* Quantity */}
         <View>
-          <Text className="text-text-secondary text-sm mb-1">Servings</Text>
+          <Text className="text-text-secondary text-sm mb-1">{t('editLoggedMeal.fields.servings', { defaultValue: 'Servings' })}</Text>
           <View className="flex-row items-center">
             <StepperInput
               value={effectiveQuantityText}
@@ -424,14 +437,16 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
         {/* Date row */}
         <Animated.View layout={LinearTransition.duration(300)} className="flex-row items-center">
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">Date</Text>
+            <Text className="text-text-secondary text-base mr-2">{t('common.date', { defaultValue: 'Date' })}</Text>
             <TouchableOpacity
               onPress={() => calendarRef.current?.present()}
               activeOpacity={0.7}
               className="flex-row items-center"
+              accessibilityRole="button"
+              accessibilityLabel={t('editLoggedMeal.accessibility.date', { defaultValue: 'Select date: {{date}}', date: effectiveDate ?? '' })}
             >
               <Text className="text-text-primary text-base font-medium">
-                {effectiveDate ? formatDateLabel(effectiveDate) : ''}
+                {effectiveDate ? formatDateLabel(effectiveDate, t, dateLocale) : ''}
               </Text>
               <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
             </TouchableOpacity>
@@ -439,21 +454,23 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
           {/* Meal type */}
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">Meal</Text>
+            <Text className="text-text-secondary text-base mr-2">{t('editLoggedMeal.fields.meal', { defaultValue: 'Meal' })}</Text>
             {selectedMealType && effectiveMealId ? (
               <BottomSheetPicker
                 value={effectiveMealId}
                 options={mealPickerOptions}
                 onSelect={(id) => setSelectedMealId(id)}
-                title="Select Meal"
+                title={t('editLoggedMeal.fields.selectMeal', { defaultValue: 'Select Meal' })}
                 renderTrigger={({ onPress }) => (
                   <TouchableOpacity
                     onPress={onPress}
                     activeOpacity={0.7}
                     className="flex-row items-center"
+                    accessibilityRole="button"
+                    accessibilityLabel={t('editLoggedMeal.accessibility.meal', { defaultValue: 'Select meal: {{meal}}', meal: selectedMealType ? mealTypeLabel(selectedMealType) : '' })}
                   >
                     <Text className="text-text-primary text-base font-medium">
-                      {getMealTypeDisplayLabel(selectedMealType)}
+                      {mealTypeLabel(selectedMealType)}
                     </Text>
                     <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
                   </TouchableOpacity>
@@ -461,7 +478,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               />
             ) : (
               <Text className="text-text-primary text-base font-medium">
-                {getFoodEntryMealTypeLabel(meal, mealTypes)}
+                {entryMealTypeLabel}
               </Text>
             )}
           </View>
@@ -469,14 +486,16 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
         {/* Time row */}
         <Animated.View layout={LinearTransition.duration(300)} className="flex-row items-center">
-          <Text className="text-text-secondary text-base mr-2">Time</Text>
+          <Text className="text-text-secondary text-base mr-2">{t('editLoggedMeal.fields.time', { defaultValue: 'Time' })}</Text>
           <TouchableOpacity
             onPress={() => timeSheetRef.current?.present()}
             activeOpacity={0.7}
             className="flex-row items-center"
+            accessibilityRole="button"
+            accessibilityLabel={t('editLoggedMeal.accessibility.time', { defaultValue: 'Select time: {{time}}', time: formatTimeLabel(effectiveEntryTime, preferences?.time_format) ?? t('common.none', { defaultValue: 'None' }) })}
           >
             <Text className="text-text-primary text-base font-medium">
-              {formatTimeLabel(effectiveEntryTime) ?? 'None'}
+              {formatTimeLabel(effectiveEntryTime, preferences?.time_format) ?? t('common.none', { defaultValue: 'None' })}
             </Text>
             <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
           </TouchableOpacity>
@@ -485,15 +504,17 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               activeOpacity={0.7}
               className="flex-row items-center ml-4"
               onPress={() => setEntryTime('')}
+              accessibilityRole="button"
+              accessibilityLabel={t('editLoggedMeal.accessibility.clearTime', { defaultValue: 'Clear entry time' })}
             >
-              <Text className="text-text-link text-sm font-medium">Clear</Text>
+              <Text className="text-text-link text-sm font-medium">{t('common.clear', { defaultValue: 'Clear' })}</Text>
             </TouchableOpacity>
           )}
         </Animated.View>
 
         {/* Component foods: tap a row to edit, swipe to remove, button to add. */}
         <View className="mt-2">
-          <Text className="text-text-secondary text-sm mb-2">Foods in this meal</Text>
+          <Text className="text-text-secondary text-sm mb-2">{t('editLoggedMeal.fields.foodsInMeal', { defaultValue: 'Foods in this meal' })}</Text>
           {ingredients.length > 0 ? (
             <View className="bg-surface rounded-xl overflow-hidden">
               {ingredients.map((food, index) => {
@@ -505,9 +526,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
                 return (
                   <SwipeableIngredientRow
                     key={`${food.food_id}-${food.variant_id}-${index}`}
-                    foodName={food.food_name ?? 'Food'}
+                    foodName={food.food_name ?? t('common.food', { defaultValue: 'Food' })}
                     quantityLabel={`${formatServingSizeDisplay(scaledQty)} ${food.unit}`}
-                    caloriesLabel={`${foodCals} Cal`}
+                    caloriesLabel={`${foodCals} ${t('nutrition.caloriesShort', { defaultValue: "kcal" })}`}
                     showBottomBorder={index < ingredients.length - 1}
                     isLastIngredient={ingredients.length === 1}
                     disabled={isRowBusy}
@@ -518,7 +539,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               })}
             </View>
           ) : (
-            <Text className="text-text-muted text-sm">No foods in this meal yet.</Text>
+            <Text className="text-text-muted text-sm">{t('editLoggedMeal.states.noFoods', { defaultValue: 'No foods in this meal yet.' })}</Text>
           )}
 
           <View className="items-center pt-3">
@@ -527,10 +548,10 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               onPress={openIngredientPicker}
               disabled={isRowBusy}
               className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
-              accessibilityLabel="Add Food"
+              accessibilityLabel={t('editLoggedMeal.actions.addFood', { defaultValue: 'Add Food' })}
             >
               <Icon name="add" size={16} color={accentColor} />
-              <Text className="text-accent-primary text-sm font-semibold">Add Food</Text>
+              <Text className="text-accent-primary text-sm font-semibold">{t('editLoggedMeal.actions.addFood', { defaultValue: 'Add Food' })}</Text>
             </Button>
           </View>
         </View>
@@ -542,7 +563,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           disabled={isRowBusy}
           className="mt-2"
         >
-          {isDeletePending ? 'Deleting...' : 'Delete Meal'}
+          {isDeletePending ? t('common.deleting', { defaultValue: 'Deleting...' }) : t('editLoggedMeal.actions.deleteMeal', { defaultValue: 'Delete Meal' })}
         </Button>
       </ScrollView>
 
