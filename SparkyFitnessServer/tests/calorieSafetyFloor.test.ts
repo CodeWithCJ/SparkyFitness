@@ -62,7 +62,11 @@ describe('goalService calorie safety floor preference', () => {
     );
   });
 
-  const prefs = (mode: string, adjustmentMode = 'fixed', method = 'adaptive') => ({
+  const prefs = (
+    mode: string,
+    adjustmentMode = 'fixed',
+    method = 'adaptive'
+  ) => ({
     calorie_goal_adjustment_mode: adjustmentMode,
     goal_mode: 'maintain',
     goal_mode_calculation_method: method,
@@ -73,11 +77,20 @@ describe('goalService calorie safety floor preference', () => {
     timezone: 'Europe/Berlin',
   });
 
-  const caloriesFor = async (mode: string, adjustmentMode?: string, method?: string) => {
+  const caloriesFor = async (
+    mode: string,
+    adjustmentMode?: string,
+    method?: string
+  ) => {
     vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(
       prefs(mode, adjustmentMode, method)
     );
-    const result = await goalService.getUserGoalsForRange(userId, date, date, true);
+    const result = await goalService.getUserGoalsForRange(
+      userId,
+      date,
+      date,
+      true
+    );
     return (result[date] as { calories: number }).calories;
   };
 
@@ -94,15 +107,17 @@ describe('goalService calorie safety floor preference', () => {
   });
 
   it('never allows a target below the clinical minimum, whatever the mode', async () => {
-    vi.mocked(adaptiveTdeeService.calculateAdaptiveTdeeRange).mockResolvedValue({
-      [date]: {
-        tdee: 900,
-        confidence: 'HIGH',
-        isFallback: false,
-        daysOfData: 60,
-        lastCalculated: date,
-      },
-    });
+    vi.mocked(adaptiveTdeeService.calculateAdaptiveTdeeRange).mockResolvedValue(
+      {
+        [date]: {
+          tdee: 900,
+          confidence: 'HIGH',
+          isFallback: false,
+          daysOfData: 60,
+          lastCalculated: date,
+        },
+      }
+    );
     expect(await caloriesFor('clinical_minimum')).toBe(1200);
   });
 
@@ -117,6 +132,8 @@ describe('goalService calorie safety floor preference', () => {
       fat_percentage: null,
     });
     expect(await caloriesFor('standard', 'adaptive', 'manual')).toBe(1200);
-    expect(await caloriesFor('clinical_minimum', 'adaptive', 'manual')).toBe(1200);
+    expect(await caloriesFor('clinical_minimum', 'adaptive', 'manual')).toBe(
+      1200
+    );
   });
 });
