@@ -2,6 +2,14 @@ import { getClient, getSystemClient } from '../db/poolManager.js';
 import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
 import type { FoodVariantNutrientField } from '@workspace/shared';
 import type { FoodEntrySnapshot } from '../types/nutrition.js';
+import {
+  supplementScanWhere,
+  supplementFixedAgg,
+  supplementCountable,
+  supplementFixedSubquery,
+  supplementCustomUnion,
+  supplementCustomTotals,
+} from './supplementSql.js';
 
 const DEFAULT_VARIANT_JSON_SQL = `
   json_build_object(
@@ -220,52 +228,6 @@ async function removeFoodFavorite(userId: string, foodId: string) {
     client.release();
   }
 }
-// A logged supplement contributes its per-dose snapshot, scaled by the dose count taken
-// (GREATEST-clamped so a non-positive value can't subtract). These fragments let the diary
-// daily-summary aggregations count supplements exactly the way the report already does, so
-// they show against goals. userExpr/dateExpr are the SQL expressions to correlate on: bind
-// params ($1/$2) for the single-date query, or the grouped columns (fe.user_id/fe.entry_date)
-// for the per-date query.
-function supplementFixed(
-  key: string,
-  userExpr: string,
-  dateExpr: string
-): string {
-  return `COALESCE((SELECT SUM(public.sf_try_numeric(me.nutrients_snapshot->>'${key}') * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)) FROM medication_entries me WHERE me.user_id = ${userExpr} AND me.entry_date = ${dateExpr} AND me.status IN ('taken', 'prn_taken') AND me.nutrients_snapshot IS NOT NULL), 0)`;
-}
-// One scaled row per (custom nutrient, dose) pair. Kept apart from the UNION wrapper below
-// because the daily-summary query needs the supplement contribution on its own, not merged
-// into the food rows, and the two must not drift: a second copy of this SELECT is a second
-// place for the status filter or the dose clamp to be wrong.
-function supplementCustomRows(userExpr: string, dateExpr: string): string {
-  return `
-                SELECT key, public.sf_try_numeric(value) * GREATEST(COALESCE(me2.dose_amount_snapshot, 1), 0) AS scaled
-                FROM medication_entries me2
-                CROSS JOIN LATERAL jsonb_each_text(me2.nutrients_snapshot->'custom_nutrients')
-                WHERE me2.user_id = ${userExpr} AND me2.entry_date = ${dateExpr} AND me2.status IN ('taken', 'prn_taken') AND me2.nutrients_snapshot IS NOT NULL`;
-}
-function supplementCustomUnion(userExpr: string, dateExpr: string): string {
-  return `
-                UNION ALL${supplementCustomRows(userExpr, dateExpr)}`;
-}
-// The same rows aggregated by nutrient name and with no food arm, for the supplement-only
-// totals the Diary needs. Empty object rather than NULL on a day with no doses, so callers
-// can iterate unconditionally.
-function supplementCustomTotals(userExpr: string, dateExpr: string): string {
-  return `COALESCE(
-          (
-            SELECT jsonb_object_agg(key, value)
-            FROM (
-              SELECT key, SUM(scaled) AS value
-              FROM (${supplementCustomRows(userExpr, dateExpr)}
-              ) supplement_custom
-              GROUP BY key
-            ) supplement_custom_agg
-          ),
-          '{}'::jsonb
-        )`;
-}
-
 /**
  * The supplement arm of a day's intake, on its own.
  *
@@ -276,7 +238,7 @@ function supplementCustomTotals(userExpr: string, dateExpr: string): string {
  * food rows the user can see.
  *
  * Fields are `FOOD_VARIANT_NUTRIENT_FIELDS`, the same list `reportRepository` applies
- * `supplementFixed` to for the range query and the same fixed fields the Diary's summary
+ * `supplementFixedSubquery` to for the range query and the same fixed fields the Diary's summary
  * card can render. This selected only the five macro fields until #2145, which is how a
  * supplement's calcium reached Reports but not the Diary card beside it. Returns zeros
  * rather than nulls on a day with no supplements, so callers can add unconditionally.
@@ -286,15 +248,32 @@ function supplementCustomTotals(userExpr: string, dateExpr: string): string {
  * the B vitamins reach the client through `custom_nutrients` or not at all. This endpoint
  * carried none of them until #2145; `getDailyNutritionSummary` already unions them into
  * its food totals, but the Diary does not call that.
+ *
+ * Unlike the callers that add a supplement total onto a food SUM, this one has no food arm
+ * to correlate against, so the seventeen fields are summed in a single pass over the day's
+ * doses rather than as seventeen scalar subqueries that each rescan the same rows. The
+ * outer COALESCE is what the per-subquery COALESCE used to do: with no GROUP BY the inner
+ * aggregate still yields exactly one row on a day with no doses, but a row of NULLs.
  */
 async function getDailySupplementTotals(userId: string, date: string) {
   const client = await getClient(userId);
   try {
+    const sums = FOOD_VARIANT_NUTRIENT_FIELDS.map(
+      (field) => `${supplementFixedAgg(field, 'me')} AS ${field}`
+    ).join(',\n          ');
     const selects = FOOD_VARIANT_NUTRIENT_FIELDS.map(
-      (field) => `${supplementFixed(field, '$1', '$2')} AS ${field}`
+      (field) => `COALESCE(supplement_fixed.${field}, 0) AS ${field}`
     ).join(',\n        ');
     const result = await client.query(
-      `SELECT\n        ${selects},\n        ${supplementCustomTotals('$1', '$2')} AS custom_nutrients`,
+      `SELECT
+        ${selects},
+        ${supplementCustomTotals('$1', '$2')} AS custom_nutrients
+      FROM (
+        SELECT
+          ${sums}
+        FROM medication_entries me
+        WHERE ${supplementScanWhere('me', '$1', '$2')}
+      ) supplement_fixed`,
       [userId, date]
     );
     const row = result.rows[0] ?? {};
@@ -325,11 +304,11 @@ async function getDailyNutritionSummary(userId: string, date: string) {
   try {
     const result = await client.query(
       `SELECT
-        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('calories', '$1', '$2')} AS total_calories,
-        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('protein', '$1', '$2')} AS total_protein,
-        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('carbs', '$1', '$2')} AS total_carbs,
-        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('fat', '$1', '$2')} AS total_fat,
-        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('dietary_fiber', '$1', '$2')} AS total_dietary_fiber,
+        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('calories', '$1', '$2')} AS total_calories,
+        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('protein', '$1', '$2')} AS total_protein,
+        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('carbs', '$1', '$2')} AS total_carbs,
+        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('fat', '$1', '$2')} AS total_fat,
+        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('dietary_fiber', '$1', '$2')} AS total_dietary_fiber,
         COALESCE(
           (
             SELECT jsonb_object_agg(key, value)
@@ -369,11 +348,11 @@ async function getDailyNutritionSummariesByDates(
     const result = await client.query(
       `SELECT
         d.entry_date,
-        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('calories', 'd.user_id', 'd.entry_date')} AS total_calories,
-        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('protein', 'd.user_id', 'd.entry_date')} AS total_protein,
-        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('carbs', 'd.user_id', 'd.entry_date')} AS total_carbs,
-        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('fat', 'd.user_id', 'd.entry_date')} AS total_fat,
-        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixed('dietary_fiber', 'd.user_id', 'd.entry_date')} AS total_dietary_fiber,
+        COALESCE(SUM(fe.calories * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('calories', 'd.user_id', 'd.entry_date')} AS total_calories,
+        COALESCE(SUM(fe.protein * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('protein', 'd.user_id', 'd.entry_date')} AS total_protein,
+        COALESCE(SUM(fe.carbs * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('carbs', 'd.user_id', 'd.entry_date')} AS total_carbs,
+        COALESCE(SUM(fe.fat * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('fat', 'd.user_id', 'd.entry_date')} AS total_fat,
+        COALESCE(SUM(fe.dietary_fiber * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery('dietary_fiber', 'd.user_id', 'd.entry_date')} AS total_dietary_fiber,
         COALESCE(
           (
             SELECT jsonb_object_agg(key, value)
@@ -395,11 +374,10 @@ async function getDailyNutritionSummariesByDates(
            FROM food_entries
           WHERE user_id = $1 AND entry_date = ANY($2::date[])
          UNION
-         SELECT DISTINCT user_id, entry_date
-           FROM medication_entries
-          WHERE user_id = $1 AND entry_date = ANY($2::date[])
-            AND status IN ('taken', 'prn_taken')
-            AND nutrients_snapshot IS NOT NULL
+         SELECT DISTINCT me.user_id, me.entry_date
+           FROM medication_entries me
+          WHERE me.user_id = $1 AND me.entry_date = ANY($2::date[])
+            AND ${supplementCountable('me')}
        ) d
        LEFT JOIN food_entries fe
               ON fe.user_id = d.user_id AND fe.entry_date = d.entry_date

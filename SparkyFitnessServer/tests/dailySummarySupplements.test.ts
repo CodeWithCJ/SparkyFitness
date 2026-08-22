@@ -35,12 +35,41 @@ describe('daily-total aggregations include supplement snapshots', () => {
   afterEach(() => vi.clearAllMocks());
 
   const sqlOf = () => String(mockClient.query.mock.calls[0][0]);
+
+  // These statements contain MANY medication_entries scans: seventeen fixed-nutrient
+  // subqueries, a custom-nutrient scan, and the date-set arm. Asserting that the filter or
+  // the clamp appears *somewhere* in the string therefore proves almost nothing, because any
+  // one of the other scans satisfies it. Dropping the status predicate from a single
+  // nutrient leaves the other sixteen to keep such an assertion green while a skipped dose
+  // starts contributing that nutrient. So: split the statement into its scans and check
+  // every one of them.
+  // Matched as a UNIT, not by splitting on `FROM medication_entries`. The clamp and the
+  // snapshot read sit BEFORE the FROM, so a split would test each chunk against the NEXT
+  // subquery's expressions, and since the fixed subqueries all share one alias, a subquery
+  // that had lost its filter would be covered by its neighbour. The backreference (\1) also
+  // pins the read, the clamp and the scan to one alias.
+  const FIXED_SUBQUERY =
+    /\(SELECT SUM\(public\.sf_try_numeric\((\w+)\.nutrients_snapshot->>'(\w+)'\) \* GREATEST\(COALESCE\(\1\.dose_amount_snapshot, 1\), 0\)\) FROM medication_entries \1 WHERE (.+?)\), 0\)/g;
+
+  const expectEveryScanFiltered = (sql: string) => {
+    const matches = [...sql.matchAll(FIXED_SUBQUERY)];
+    // Every fixed snapshot read must belong to a subquery this regex actually matched,
+    // or one could slip past the loop below and be silently unchecked.
+    const reads = (sql.match(/nutrients_snapshot->>'/g) ?? []).length;
+    expect(matches.length, 'a fixed subquery escaped the check').toBe(reads);
+    expect(matches.length).toBeGreaterThan(0);
+    for (const [, alias, key, where] of matches) {
+      expect(where, `the ${key} subquery lost the status filter`).toContain(
+        `${alias}.status IN ('taken', 'prn_taken')`
+      );
+    }
+  };
+
   const expectSupplementArm = (sql: string) => {
     // Reads the immutable per-entry snapshot, restricted to taken/prn_taken entries, and
     // scales by the dose count (GREATEST-clamped so a non-positive value can't subtract).
     expect(sql).toContain('medication_entries');
-    expect(sql).toContain("me.status IN ('taken', 'prn_taken')");
-    expect(sql).toContain('GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)');
+    expectEveryScanFiltered(sql);
     // Both the fixed macros and the custom-nutrient aggregation pull from the snapshot.
     expect(sql).toContain("nutrients_snapshot->>'calories'");
     expect(sql).toContain("nutrients_snapshot->'custom_nutrients'");
@@ -49,9 +78,24 @@ describe('daily-total aggregations include supplement snapshots', () => {
   // A day on which the user logged only supplements must still produce a row. Both
   // queries therefore drive from the UNION of food and taken-supplement dates rather
   // than letting food_entries select the date set.
+  //
+  // Pinned to the driving arm specifically. Bare `toContain('UNION')` plus
+  // `toContain('FROM medication_entries')` is satisfied by the custom-nutrient subquery,
+  // which supplies its own UNION ALL and its own scan, so deleting the date-set arm
+  // outright left this green while a supplement-only day silently returned no row at all.
+  //
+  // The arm must also select the date the dose was LOGGED FOR. Accepting any date
+  // expression lets `me.created_at::date AS entry_date` through, which groups a dose
+  // logged for the 19th but entered on the 20th under the wrong day, or drops it from a
+  // request for the 19th alone.
   const expectUnionDrivenDates = (sql: string) => {
-    expect(sql).toContain('UNION');
-    expect(sql).toContain('FROM medication_entries');
+    const arm = sql.match(
+      /\bUNION\s+(SELECT DISTINCT[\s\S]{0,200}?FROM medication_entries\s+\w+)/
+    )?.[1];
+    expect(arm, 'no supplement date arm drives the date set').toBeTruthy();
+    expect(arm).toMatch(
+      /SELECT DISTINCT (?:\w+\.user_id, )?\w+\.entry_date\s+FROM medication_entries/
+    );
     expect(sql).toContain('LEFT JOIN food_entries');
   };
 
@@ -80,7 +124,9 @@ describe('daily-total aggregations include supplement snapshots', () => {
     const sql = sqlOf();
     expect(sql).toContain('medication_entries');
     expect(sql).toContain("nutrients_snapshot->>'calories'");
-    expect(sql).toContain('GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)');
+    expect(sql).toMatch(
+      /GREATEST\(COALESCE\(\w+\.dose_amount_snapshot, 1\), 0\)/
+    );
   });
 });
 
@@ -99,8 +145,10 @@ describe('getDailySupplementTotals', () => {
     await getDailySupplementTotals(userId, '2026-08-06');
 
     const sql = String(mockClient.query.mock.calls[0][0]);
-    expect(sql).toContain("me.status IN ('taken', 'prn_taken')");
-    expect(sql).toContain('GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)');
+    expect(sql).toMatch(/\w+\.status IN \('taken', 'prn_taken'\)/);
+    expect(sql).toMatch(
+      /GREATEST\(COALESCE\(\w+\.dose_amount_snapshot, 1\), 0\)/
+    );
     // Exactly the fields the nutrition summary sums for supplements. Offering the picker
     // a field this query does not read would let a user enter a number that goes nowhere.
     for (const key of [
@@ -128,10 +176,28 @@ describe('getDailySupplementTotals', () => {
     expect(sql).toContain("nutrients_snapshot->'custom_nutrients'");
     expect(sql).toContain('jsonb_object_agg(key, value)');
     expect(sql).toContain('AS custom_nutrients');
+    // The aggregate this test is NAMED for. Asserting only that a JSON aggregation exists
+    // leaves the aggregation itself unchecked: swapping SUM(scaled) for MAX(scaled) keeps
+    // every other assertion green, and two magnesium doses of 100mg and 200mg would then
+    // report 200 instead of 300. The mock hands back an already-aggregated row, so no
+    // downstream test notices either.
+    expect(sql).toMatch(/SELECT key, SUM\(scaled\) AS value/);
+    expect(sql).toContain('GROUP BY key');
     // Same status filter and dose clamp as the fixed arm, because the custom rows are the
     // shared fragment rather than a second copy that could drift from it.
-    expect(sql).toContain("me2.status IN ('taken', 'prn_taken')");
-    expect(sql).toContain('GREATEST(COALESCE(me2.dose_amount_snapshot, 1), 0)');
+    //
+    // Asserted against the CUSTOM scan's own alias, derived from the query. This statement
+    // holds two scans, so a bare /\w+\.status IN .../ is satisfied by the fixed one and
+    // stays green even when the custom fragment loses its filter entirely. Deriving the
+    // alias keeps the assertion pinned to the right scan without hardcoding its name.
+    const customAlias = sql.match(
+      /FROM medication_entries (\w+)\s+CROSS JOIN LATERAL jsonb_each_text/
+    )?.[1];
+    expect(customAlias, 'could not find the custom-nutrient scan').toBeTruthy();
+    expect(sql).toContain(`${customAlias}.status IN ('taken', 'prn_taken')`);
+    expect(sql).toContain(
+      `GREATEST(COALESCE(${customAlias}.dose_amount_snapshot, 1), 0)`
+    );
     // Supplements alone. Unioning the food rows in here, the way getDailyNutritionSummary
     // does, would double-count every custom nutrient: callers add this arm onto totals
     // they have already derived from food entries themselves.
