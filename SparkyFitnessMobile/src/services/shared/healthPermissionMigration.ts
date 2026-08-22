@@ -1,7 +1,7 @@
 import { addLog } from '../LogService';
 import type { PermissionRequest, HealthMetricStates } from '../../types/healthRecords';
 
-const REQUIRED_HEALTH_PERMISSION_VERSION = 3;
+const REQUIRED_HEALTH_PERMISSION_VERSION = 4;
 const REQUIRED_HEALTH_PERMISSION_VERSION_KEY = 'healthPermissionsVersion';
 
 type PermissionedMetric = {
@@ -16,6 +16,16 @@ interface MigrateEnabledMetricPermissionsParams {
   saveHealthPreference: <T>(key: string, value: T) => Promise<void>;
   requestHealthPermissions: (permissions: PermissionRequest[]) => Promise<boolean>;
   logTag: string;
+  /**
+   * Permissions for directions that are enabled but not covered by `metrics` — in
+   * practice the write side of enabled writeback metrics.
+   *
+   * This pass re-requests permissions for everything already enabled. Issuing it with
+   * the read direction alone would hand the authorization sheet a partial picture, and
+   * the sheet is authoritative for every row it shows, so an omitted-but-enabled write
+   * direction can be committed back to off. Both directions go in one request.
+   */
+  extraPermissions?: PermissionRequest[];
 }
 
 export const migrateEnabledMetricPermissionsIfNeeded = async ({
@@ -25,15 +35,17 @@ export const migrateEnabledMetricPermissionsIfNeeded = async ({
   saveHealthPreference,
   requestHealthPermissions,
   logTag,
+  extraPermissions = [],
 }: MigrateEnabledMetricPermissionsParams): Promise<boolean> => {
   const storedVersion = await loadHealthPreference<number>(REQUIRED_HEALTH_PERMISSION_VERSION_KEY);
   if (storedVersion === REQUIRED_HEALTH_PERMISSION_VERSION) {
     return true;
   }
 
-  const enabledPermissions = metrics
-    .filter(metric => healthMetricStates[metric.stateKey])
-    .flatMap(metric => metric.permissions);
+  const enabledPermissions = [
+    ...metrics.filter(metric => healthMetricStates[metric.stateKey]).flatMap(m => m.permissions),
+    ...extraPermissions,
+  ];
 
   if (enabledPermissions.length === 0) {
     await saveHealthPreference(REQUIRED_HEALTH_PERMISSION_VERSION_KEY, REQUIRED_HEALTH_PERMISSION_VERSION);

@@ -268,6 +268,13 @@ export const requestHealthPermissions = async (
 
   const isSimulator = Platform.OS === 'ios' && (Platform.constants as { simulator?: boolean })?.simulator === true;
   if (isSimulator && !(globalThis as Record<string, unknown>).FORCE_HEALTHKIT_ON_SIM) {
+    // Returning true here is a convenience for simulator runs, but callers log it as
+    // "permission granted" — say plainly that nothing was requested so the log is not
+    // read as evidence that HealthKit was asked.
+    addLog(
+      '[HealthKitService] Simulator: skipped the authorization request entirely (no sheet, no grant). Set FORCE_HEALTHKIT_ON_SIM to exercise the real path.',
+      'WARNING',
+    );
     return true;
   }
 
@@ -346,8 +353,23 @@ export const requestHealthPermissions = async (
   const toShare = Array.from(writePermissionsSet);
 
   if (toRead.length === 0 && toShare.length === 0) {
+    // Every requested record type expanded to nothing — an unmapped record type, or one
+    // missing from SUPPORTED_HK_TYPES. Nothing reaches HealthKit, so no sheet appears and
+    // the type never shows up in the Health app, yet callers see success. Say so loudly.
+    addLog(
+      '[HealthKitService] Authorization request expanded to zero HealthKit types — nothing was requested.',
+      'WARNING',
+      permissionsToRequest.map(p => `unmapped: ${p.accessType} ${p.recordType}`),
+    );
     return true;
   }
+
+  // Exactly what we hand HealthKit, per direction. This is the record that separates
+  // "the request never reached HealthKit" from "it did and the grant did not stick".
+  addLog('[HealthKitService] Requesting HealthKit authorization', 'INFO', [
+    `toRead (${toRead.length}): ${toRead.join(', ') || '(none)'}`,
+    `toShare (${toShare.length}): ${toShare.join(', ') || '(none)'}`,
+  ]);
 
   try {
     // HealthKit library expects 'toRead' and 'toShare' arrays

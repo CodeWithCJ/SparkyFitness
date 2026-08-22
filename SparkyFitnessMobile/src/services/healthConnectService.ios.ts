@@ -12,6 +12,7 @@ import {
 } from '../types/healthRecords';
 import { SyncDuration } from './healthkit/preferences';
 import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
+import { enabledWritebackPermissions } from './shared/healthPermissionSets';
 
 // Tell the read transformers which bundle id is "us" so they skip HealthKit records
 // this app wrote (hydration writeback feedback-loop guard). Parallels Android's
@@ -74,9 +75,11 @@ export const saveSyncDuration = HealthKitPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthKitPreferences.loadSyncDuration;
 export const refreshEnabledMetricPermissions = async (
   healthMetricStates: HealthMetricStates,
+  writebackStates: Record<string, boolean> = {},
 ): Promise<boolean> =>
   migrateEnabledMetricPermissionsIfNeeded({
     healthMetricStates,
+    extraPermissions: enabledWritebackPermissions(writebackStates),
     metrics: HEALTH_METRICS,
     loadHealthPreference,
     saveHealthPreference,

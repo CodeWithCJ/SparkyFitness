@@ -121,3 +121,73 @@ describe('exerciseSession metric permissions', () => {
     }
   });
 });
+
+// Regression guard for issue #2160 at the expansion layer: each direction lands in its
+// own array and neither leaks into the other. Whether a *caller* bundles the enabled
+// counterpart into one request is a separate decision, made in SyncScreen — see
+// services/shared/healthPermissionSets.ts.
+describe('read/write direction independence', () => {
+  it.each(['Nutrition', 'Hydration'])(
+    'requests %s write without touching read',
+    async (recordType) => {
+      const { toRead, toShare } = await authorizeWith([{ accessType: 'write', recordType }]);
+      expect(toRead).toEqual([]);
+      expect(toShare.length).toBeGreaterThan(0);
+    },
+  );
+
+  it.each(['Nutrition', 'Hydration'])(
+    'requests %s read without touching write',
+    async (recordType) => {
+      const { toRead, toShare } = await authorizeWith([{ accessType: 'read', recordType }]);
+      expect(toShare).toEqual([]);
+      expect(toRead.length).toBeGreaterThan(0);
+    },
+  );
+
+  it.each(['Nutrition', 'Hydration'])(
+    'keeps both directions when %s is requested both ways at once',
+    async (recordType) => {
+      const { toRead, toShare } = await authorizeWith([
+        { accessType: 'read', recordType },
+        { accessType: 'write', recordType },
+      ]);
+      expect(toRead.length).toBeGreaterThan(0);
+      expect(toShare).toEqual(toRead);
+    },
+  );
+});
+
+describe('authorization request logging', () => {
+  const { addLog } = jest.requireMock('../../../src/services/LogService');
+
+  it('records exactly what was handed to HealthKit, per direction', async () => {
+    (addLog as jest.Mock).mockClear();
+    await authorizeWith([{ accessType: 'write', recordType: 'Hydration' }]);
+
+    const [message, , details] = (addLog as jest.Mock).mock.calls.find(
+      ([m]: [string]) => m.includes('Requesting HealthKit authorization'),
+    );
+    expect(message).toBeTruthy();
+    expect(details).toEqual([
+      'toRead (0): (none)',
+      'toShare (1): HKQuantityTypeIdentifierDietaryWater',
+    ]);
+  });
+
+  it('warns instead of silently succeeding when nothing maps to a HealthKit type', async () => {
+    (addLog as jest.Mock).mockClear();
+    (requestAuthorization as jest.Mock).mockClear();
+
+    await requestHealthPermissions([
+      { accessType: 'write', recordType: 'NotARealRecordType' },
+    ] as Parameters<typeof requestHealthPermissions>[0]);
+
+    expect(requestAuthorization).not.toHaveBeenCalled();
+    expect(addLog).toHaveBeenCalledWith(
+      expect.stringContaining('expanded to zero HealthKit types'),
+      'WARNING',
+      ['unmapped: write NotARealRecordType'],
+    );
+  });
+});

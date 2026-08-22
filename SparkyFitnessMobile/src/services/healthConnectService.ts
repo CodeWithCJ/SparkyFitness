@@ -14,6 +14,7 @@ import {
 } from '../types/healthRecords';
 import { SyncDuration } from './healthconnect/preferences';
 import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
+import { enabledWritebackPermissions } from './shared/healthPermissionSets';
 import * as Application from 'expo-application';
 
 // Tell the read transformers which package is "us" so they skip Health Connect
@@ -74,9 +75,11 @@ export const saveSyncDuration = HealthConnectPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthConnectPreferences.loadSyncDuration;
 export const refreshEnabledMetricPermissions = async (
   healthMetricStates: HealthMetricStates,
+  writebackStates: Record<string, boolean> = {},
 ): Promise<boolean> =>
   migrateEnabledMetricPermissionsIfNeeded({
     healthMetricStates,
+    extraPermissions: enabledWritebackPermissions(writebackStates),
     metrics: HEALTH_METRICS,
     loadHealthPreference,
     saveHealthPreference,
