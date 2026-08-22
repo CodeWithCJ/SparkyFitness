@@ -2,7 +2,10 @@
 // api service (src/api) and page components can import them (page components are
 // not allowed to import from src/api directly — see eslint no-restricted-imports).
 
-import type { FoodVariantNutrientField } from '@workspace/shared';
+import type {
+  FoodVariantNutrientField,
+  MedicationWithMeal,
+} from '@workspace/shared';
 
 /**
  * A supplement's per-dose payload: the fixed food-variant nutrient columns plus the
@@ -58,7 +61,7 @@ export interface MedicationSchedule {
   cycle_off_days: number | null;
   prn_reason: string | null;
   prn_max_per_day: number | null;
-  with_meal: string | null;
+  with_meal: MedicationWithMeal | null;
   start_date: string | null;
   end_date: string | null;
   active: boolean;

@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { Settings, Clock, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { todayInZone, formatDose } from '@workspace/shared';
+import {
+  todayInZone,
+  formatDose,
+  type MedicationWithMeal,
+} from '@workspace/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,7 +49,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
   const [scheduleTypeId, setScheduleTypeId] = useState('daily');
   const [timeOfDay, setTimeOfDay] = useState('09:00');
   const [doseAmount, setDoseAmount] = useState('');
-  const [withMeal, setWithMeal] = useState<string | null>(null);
+  const [withMeal, setWithMeal] = useState<MedicationWithMeal | null>(null);
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
   const [intervalDays, setIntervalDays] = useState('1');
   const [dayOfMonth, setDayOfMonth] = useState('1');
@@ -253,7 +257,9 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                 </Label>
                 <Select
                   value={withMeal || 'none'}
-                  onValueChange={(v) => setWithMeal(v === 'none' ? null : v)}
+                  onValueChange={(v) =>
+                    setWithMeal(v === 'none' ? null : (v as MedicationWithMeal))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -273,6 +279,12 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                     </SelectItem>
                     <SelectItem value="after">
                       {t('medications.mealRelation.after', 'After meal')}
+                    </SelectItem>
+                    <SelectItem value="away_from_meals">
+                      {t(
+                        'medications.mealRelation.awayFromMeals',
+                        'Away from meals'
+                      )}
                     </SelectItem>
                   </SelectContent>
                 </Select>

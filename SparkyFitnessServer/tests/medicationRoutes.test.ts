@@ -631,6 +631,30 @@ describe('Medication Routes V2', () => {
       );
     });
 
+    it('accepts away_from_meals as a with_meal value', async () => {
+      const schedule = { id: 'sched-2', schedule_type_id: 'daily' };
+      vi.mocked(medicationRepository.addSchedule).mockResolvedValue(schedule);
+      const res = await request(app)
+        .post(`/api/v2/medications/${UID}/schedules`)
+        .set('Cookie', cookie)
+        .send({ schedule_type_id: 'daily', with_meal: 'away_from_meals' });
+      expect(res.statusCode).toBe(201);
+      expect(medicationRepository.addSchedule).toHaveBeenCalledWith(
+        'testUser',
+        UID,
+        expect.objectContaining({ with_meal: 'away_from_meals' })
+      );
+    });
+
+    it('rejects an invalid with_meal value', async () => {
+      const res = await request(app)
+        .post(`/api/v2/medications/${UID}/schedules`)
+        .set('Cookie', cookie)
+        .send({ schedule_type_id: 'daily', with_meal: 'bedtime' });
+      expect(res.statusCode).toBe(400);
+      expect(medicationRepository.addSchedule).not.toHaveBeenCalled();
+    });
+
     it('returns 400 when schedule_type_id is missing on create', async () => {
       const res = await request(app)
         .post(`/api/v2/medications/${UID}/schedules`)
