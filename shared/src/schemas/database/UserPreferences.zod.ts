@@ -2,8 +2,6 @@
 import { z } from "zod";
 import {
   CALORIE_SAFETY_FLOOR_MODES,
-  MAX_CALORIE_SAFETY_FLOOR,
-  MIN_CALORIE_SAFETY_FLOOR,
 } from "../../constants/calorieConstants.ts";
 
 export const SUPPORTED_TIME_FORMATS = ["HH:mm", "h:mm A", "h:mm a"] as const;
@@ -57,11 +55,6 @@ export const userPreferencesSchema = z.object({
   goal_mode_calculation_method: z.enum(["adaptive", "manual"]),
   goal_mode_custom_percentage: z.number().int().min(-40).max(40),
   calorie_safety_floor_mode: z.enum(CALORIE_SAFETY_FLOOR_MODES),
-  calorie_safety_floor_value: z
-    .number()
-    .int()
-    .min(MIN_CALORIE_SAFETY_FLOOR)
-    .max(MAX_CALORIE_SAFETY_FLOOR),
   measurement_decimal_places: z.number().int().min(0),
   // Manually added (file is ts-to-zod generated; precedent: MealFoods.zod.ts). Keep on regen.
   use_external_bmr: z.boolean(),
@@ -120,12 +113,6 @@ export const userPreferencesInitializerSchema = z.object({
   goal_mode_calculation_method: z.enum(["adaptive", "manual"]).optional(),
   goal_mode_custom_percentage: z.number().int().min(-40).max(40).optional(),
   calorie_safety_floor_mode: z.enum(CALORIE_SAFETY_FLOOR_MODES).optional(),
-  calorie_safety_floor_value: z
-    .number()
-    .int()
-    .min(MIN_CALORIE_SAFETY_FLOOR)
-    .max(MAX_CALORIE_SAFETY_FLOOR)
-    .optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
@@ -183,12 +170,6 @@ export const userPreferencesMutatorSchema = z.object({
   goal_mode_calculation_method: z.enum(["adaptive", "manual"]).optional(),
   goal_mode_custom_percentage: z.number().int().min(-40).max(40).optional(),
   calorie_safety_floor_mode: z.enum(CALORIE_SAFETY_FLOOR_MODES).optional(),
-  calorie_safety_floor_value: z
-    .number()
-    .int()
-    .min(MIN_CALORIE_SAFETY_FLOOR)
-    .max(MAX_CALORIE_SAFETY_FLOOR)
-    .optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),

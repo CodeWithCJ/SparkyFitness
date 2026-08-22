@@ -71,7 +71,6 @@ const PersonalPlan = ({
     sugarCalculationAlgorithm,
     energyUnit,
     calorieSafetyFloorMode,
-    calorieSafetyFloorValue,
   } = usePreferences();
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -117,7 +116,7 @@ const PersonalPlan = ({
       localVitaminAlgorithm,
       localSugarAlgorithm,
       convertEnergy,
-      { calorieSafetyFloorMode, calorieSafetyFloorValue }
+      calorieSafetyFloorMode
     );
   });
 
@@ -143,7 +142,7 @@ const PersonalPlan = ({
       localVitaminAlgorithm,
       localSugarAlgorithm,
       convertEnergy,
-      { calorieSafetyFloorMode, calorieSafetyFloorValue }
+      calorieSafetyFloorMode
     );
 
     setEditedPlan((prev) => {
@@ -159,17 +158,13 @@ const PersonalPlan = ({
   };
 
   const plan = useMemo(() => {
-    return calculateBasePlan(formData, localSelectedDiet, customPercentages, {
-      calorieSafetyFloorMode,
-      calorieSafetyFloorValue,
-    });
-  }, [
-    formData,
-    localSelectedDiet,
-    customPercentages,
-    calorieSafetyFloorMode,
-    calorieSafetyFloorValue,
-  ]);
+    return calculateBasePlan(
+      formData,
+      localSelectedDiet,
+      customPercentages,
+      calorieSafetyFloorMode
+    );
+  }, [formData, localSelectedDiet, customPercentages, calorieSafetyFloorMode]);
 
   const handleMacroValueChange = (
     changedMacro: keyof typeof customPercentages,
@@ -246,7 +241,7 @@ const PersonalPlan = ({
       localVitaminAlgorithm,
       localSugarAlgorithm,
       convertEnergy,
-      { calorieSafetyFloorMode, calorieSafetyFloorValue }
+      calorieSafetyFloorMode
     );
     setEditedPlan(updatedPlan);
   };

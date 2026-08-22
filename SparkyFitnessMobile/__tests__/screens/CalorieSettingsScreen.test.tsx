@@ -80,19 +80,20 @@ describe('CalorieSettingsScreen safety floor', () => {
     mockPreferences = {
       calorie_goal_adjustment_mode: 'adaptive',
       calorie_safety_floor_mode: 'standard',
-      calorie_safety_floor_value: 1200,
     };
   });
 
-  it('offers standard, custom, and disabled safety floor modes', () => {
-    const { getByText } = render(
+  it('offers the standard and clinical-minimum safety floor modes', () => {
+    const { getByText, queryByText } = render(
       <CalorieSettingsScreen navigation={navigation} route={route} />,
     );
 
     expect(getByText('Safety Floor')).toBeTruthy();
     expect(getByText('Standard')).toBeTruthy();
-    expect(getByText('Custom')).toBeTruthy();
-    expect(getByText('Disabled')).toBeTruthy();
+    expect(getByText('Clinical minimum only')).toBeTruthy();
+    // The retired modes must not come back: the clinical minimum is not opt-out.
+    expect(queryByText('Custom')).toBeNull();
+    expect(queryByText('Disabled')).toBeNull();
   });
 
   it('saves a selected safety floor mode', () => {
@@ -100,56 +101,19 @@ describe('CalorieSettingsScreen safety floor', () => {
       <CalorieSettingsScreen navigation={navigation} route={route} />,
     );
 
-    fireEvent.press(getByText('Disabled'));
+    fireEvent.press(getByText('Clinical minimum only'));
     expect(mockMutate).toHaveBeenCalledWith({
-      calorie_safety_floor_mode: 'disabled',
+      calorie_safety_floor_mode: 'clinical_minimum',
     });
   });
 
-  it('saves a custom safety floor value', () => {
-    mockPreferences.calorie_safety_floor_mode = 'custom';
-    const { getByDisplayValue } = render(
+  it('explains what each mode clamps at', () => {
+    const { getByText } = render(
       <CalorieSettingsScreen navigation={navigation} route={route} />,
     );
-    const input = getByDisplayValue('1200');
 
-    fireEvent.changeText(input, '1150');
-    fireEvent(input, 'blur');
-
-    expect(mockMutate).toHaveBeenCalledWith({
-      calorie_safety_floor_value: 1150,
-    });
-  });
-
-  it('restores the saved value without persisting when the custom input is blank', () => {
-    mockPreferences.calorie_safety_floor_mode = 'custom';
-    const { getByDisplayValue } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
-    );
-    const input = getByDisplayValue('1200');
-
-    fireEvent.changeText(input, '');
-    fireEvent(input, 'blur');
-
-    expect(getByDisplayValue('1200')).toBeTruthy();
-    expect(mockMutate).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    ['799', 800],
-    ['5001', 5000],
-  ])('clamps custom floor %s to %s kcal', (inputValue, expectedValue) => {
-    mockPreferences.calorie_safety_floor_mode = 'custom';
-    const { getByDisplayValue } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
-    );
-    const input = getByDisplayValue('1200');
-
-    fireEvent.changeText(input, inputValue);
-    fireEvent(input, 'blur');
-
-    expect(mockMutate).toHaveBeenCalledWith({
-      calorie_safety_floor_value: expectedValue,
-    });
+    expect(
+      getByText(/higher of your estimated RMR and the clinical minimum/),
+    ).toBeTruthy();
   });
 });

@@ -117,7 +117,7 @@ describe('calculateBasePlan goal handling', () => {
     expect(plan!.finalDailyCalories).toBeGreaterThanOrEqual(1200);
   });
 
-  it('uses the configured custom floor when calculating a small weight-loss plan', () => {
+  it('clamps a very small weight-loss plan to the clinical minimum', () => {
     const plan = calculateBasePlan(
       {
         ...baseForm,
@@ -129,34 +129,44 @@ describe('calculateBasePlan goal handling', () => {
       },
       'balanced',
       NO_CUSTOM,
-      {
-        calorieSafetyFloorMode: 'custom',
-        calorieSafetyFloorValue: 1000,
-      }
+      'clinical_minimum'
     );
 
-    expect(plan!.finalDailyCalories).toBe(1000);
+    // Rounded to the nearest 10 by calculateBasePlan, so 1200 exactly.
+    expect(plan!.finalDailyCalories).toBe(1200);
   });
 
-  it('does not clamp a small weight-loss plan when the floor is disabled', () => {
-    const plan = calculateBasePlan(
+  it('keeps the RMR floor on the standard mode', () => {
+    const standard = calculateBasePlan(
       {
         ...baseForm,
         primaryGoal: 'lose_weight',
         sex: 'female',
-        currentWeight: 40,
-        height: 145,
+        currentWeight: 90,
+        height: 155,
         activityLevel: 'not_much',
       },
       'balanced',
       NO_CUSTOM,
+      'standard'
+    );
+    const relaxed = calculateBasePlan(
       {
-        calorieSafetyFloorMode: 'disabled',
-        calorieSafetyFloorValue: 1200,
-      }
+        ...baseForm,
+        primaryGoal: 'lose_weight',
+        sex: 'female',
+        currentWeight: 90,
+        height: 155,
+        activityLevel: 'not_much',
+      },
+      'balanced',
+      NO_CUSTOM,
+      'clinical_minimum'
     );
 
-    expect(plan!.finalDailyCalories).toBe(990);
+    expect(standard!.finalDailyCalories).toBeGreaterThanOrEqual(
+      relaxed!.finalDailyCalories
+    );
   });
 
   // Regression: onboarding persists goalMode, and the goal it saves is this

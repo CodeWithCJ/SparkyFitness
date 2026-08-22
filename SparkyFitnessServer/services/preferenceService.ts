@@ -5,9 +5,7 @@ import {
   SUPPORTED_TIME_FORMATS,
   MAX_GOAL_MODE_PERCENTAGE,
   CALORIE_SAFETY_FLOOR_MODES,
-  MIN_CALORIE_SAFETY_FLOOR,
-  MAX_CALORIE_SAFETY_FLOOR,
-  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  DEFAULT_CALORIE_SAFETY_FLOOR_MODE,
   type UserPreferencesMutator,
 } from '@workspace/shared';
 
@@ -19,10 +17,7 @@ type GoalModePreferenceInput = Partial<
   >
 >;
 type CalorieSafetyFloorPreferenceInput = Partial<
-  Pick<
-    UserPreferencesMutator,
-    'calorie_safety_floor_mode' | 'calorie_safety_floor_value'
-  >
+  Pick<UserPreferencesMutator, 'calorie_safety_floor_mode'>
 >;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function validateTimezone(preferenceData: any) {
@@ -116,22 +111,6 @@ async function validateCalorieSafetyFloor(
       { status: 400 }
     );
   }
-  if (preferenceData.calorie_safety_floor_value !== undefined) {
-    const value = preferenceData.calorie_safety_floor_value;
-    if (
-      typeof value !== 'number' ||
-      !Number.isInteger(value) ||
-      value < MIN_CALORIE_SAFETY_FLOOR ||
-      value > MAX_CALORIE_SAFETY_FLOOR
-    ) {
-      throw Object.assign(
-        new Error(
-          `Invalid calorie_safety_floor_value: '${preferenceData.calorie_safety_floor_value}'. Must be an integer between ${MIN_CALORIE_SAFETY_FLOOR} and ${MAX_CALORIE_SAFETY_FLOOR}.`
-        ),
-        { status: 400 }
-      );
-    }
-  }
 }
 function getDefaultPreferences() {
   return {
@@ -139,8 +118,7 @@ function getDefaultPreferences() {
     show_net_carbs: false,
     timezone: null,
     time_format: 'h:mm A',
-    calorie_safety_floor_mode: 'standard',
-    calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+    calorie_safety_floor_mode: DEFAULT_CALORIE_SAFETY_FLOOR_MODE,
   };
 }
 async function updateUserPreferences(

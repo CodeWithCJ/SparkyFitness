@@ -2,10 +2,7 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import {
-  MAX_CALORIE_SAFETY_FLOOR,
-  MIN_CALORIE_SAFETY_FLOOR,
-} from '@workspace/shared';
+import { CALORIE_SAFETY_FLOOR_MODES } from '@workspace/shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const swaggerScanPaths = [
@@ -1160,16 +1157,9 @@ const options = {
             meal_calorie_distribution: { type: 'object' },
             calorie_safety_floor_mode: {
               type: 'string',
-              enum: ['standard', 'custom', 'disabled'],
+              enum: CALORIE_SAFETY_FLOOR_MODES,
               description:
-                'Controls adaptive calorie-target clamping. Standard uses the recommended RMR/clinical floor, custom uses calorie_safety_floor_value, and disabled only reports health warnings.',
-            },
-            calorie_safety_floor_value: {
-              type: 'integer',
-              minimum: MIN_CALORIE_SAFETY_FLOOR,
-              maximum: MAX_CALORIE_SAFETY_FLOOR,
-              description:
-                'Custom calorie safety floor in kcal/day. Used when calorie_safety_floor_mode is custom.',
+                'Controls adaptive calorie-target clamping. `standard` clamps at the higher of estimated RMR and the sex-specific clinical minimum; `clinical_minimum` clamps only at the clinical minimum, allowing targets below RMR.',
             },
           },
         },

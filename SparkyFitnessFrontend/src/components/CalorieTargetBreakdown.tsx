@@ -655,16 +655,10 @@ Calculated: ${bfp.toFixed(1)}%`;
               </li>
               <li>
                 Effective Safety Floor:{' '}
-                {effectiveSafetyFloor === null ? (
-                  t('settings.goalMode.safetyFloorDisabled', 'Disabled')
-                ) : (
-                  <>
-                    {Math.round(
-                      convertEnergy(effectiveSafetyFloor, 'kcal', energyUnit)
-                    )}{' '}
-                    {getEnergyUnitString(energyUnit)}
-                  </>
-                )}
+                {Math.round(
+                  convertEnergy(effectiveSafetyFloor, 'kcal', energyUnit)
+                )}{' '}
+                {getEnergyUnitString(energyUnit)}
               </li>
             </ul>
           </div>
@@ -672,14 +666,7 @@ Calculated: ${bfp.toFixed(1)}%`;
             <div className="text-sm text-gray-500 italic mt-0.5">
               {/* computeCalorieTarget already decided this; re-deriving it here
                   drifts if the rounding or floor rules change. */}
-              {effectiveSafetyFloor === null ? (
-                <span className="text-amber-600 dark:text-amber-400 font-medium">
-                  {t(
-                    'settings.calorieBreakdown.safetyFloorDisabled',
-                    'Automatic safety-floor clamping is disabled; recommended limits are still shown above.'
-                  )}
-                </span>
-              ) : previewResult.wasClampedToFloor ? (
+              {previewResult.wasClampedToFloor ? (
                 <span className="text-amber-600 dark:text-amber-400 font-medium">
                   {t(
                     'settings.calorieBreakdown.raisedToSafetyFloor',
@@ -689,8 +676,8 @@ Calculated: ${bfp.toFixed(1)}%`;
               ) : effectiveSafetyFloor < recommendedSafetyFloor ? (
                 <span className="text-amber-600 dark:text-amber-400 font-medium">
                   {t(
-                    'settings.calorieBreakdown.customFloorActive',
-                    'A custom safety floor is active; recommended limits are still shown above.'
+                    'settings.calorieBreakdown.clinicalMinimumFloorActive',
+                    'Clamping only at the clinical minimum; the recommended floor is still shown above.'
                   )}
                 </span>
               ) : (

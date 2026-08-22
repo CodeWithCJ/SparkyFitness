@@ -568,7 +568,7 @@ describe('computeCalorieTarget safety floor reporting', () => {
     expect(result.isBelowAbsoluteFloor).toBe(true);
   });
 
-  it('uses a custom floor instead of forcing the higher calculated RMR (issue #2124)', () => {
+  it('lets the measured target through below RMR on clinical_minimum (issue #2124)', () => {
     const result = computeCalorieTarget({
       ...smallBase,
       weightKg: 88,
@@ -578,8 +578,7 @@ describe('computeCalorieTarget safety floor reporting', () => {
       currentGoalCalories: 1606,
       goalMode: 'maintain',
       calculationMethod: 'adaptive',
-      calorieSafetyFloorMode: 'custom',
-      calorieSafetyFloorValue: 1200,
+      calorieSafetyFloorMode: 'clinical_minimum',
     });
 
     expect(result.rmr).toBeGreaterThan(1606);
@@ -588,49 +587,87 @@ describe('computeCalorieTarget safety floor reporting', () => {
     expect(result.wasClampedToFloor).toBe(false);
   });
 
-  it('clamps to the configured custom floor and identifies it as the source', () => {
+  it('still clamps at the clinical minimum on clinical_minimum', () => {
     const result = computeCalorieTarget({
       ...smallBase,
       adaptiveTdee: 1300,
       currentGoalCalories: 1300,
       goalMode: 'high_cut',
       calculationMethod: 'adaptive',
-      calorieSafetyFloorMode: 'custom',
-      calorieSafetyFloorValue: 1100,
+      calorieSafetyFloorMode: 'clinical_minimum',
     });
 
     expect(result.target).toBe(1040);
-    expect(result.finalTarget).toBe(1100);
-    expect(result.effectiveSafetyFloor).toBe(1100);
-    expect(result.clampedFloorSource).toBe('custom');
+    expect(result.finalTarget).toBe(1200);
+    expect(result.effectiveSafetyFloor).toBe(1200);
+    expect(result.clampedFloorSource).toBe('absolute');
   });
 
-  it('does not clamp an adaptive target when the floor is disabled', () => {
+  it('uses the male clinical minimum for men', () => {
     const result = computeCalorieTarget({
       ...smallBase,
-      goalMode: 'cut',
+      gender: 'male',
+      weightKg: 90,
+      heightCm: 178,
+      adaptiveTdee: 1700,
+      currentGoalCalories: 1700,
+      goalMode: 'high_cut',
       calculationMethod: 'adaptive',
-      calorieSafetyFloorMode: 'disabled',
-      calorieSafetyFloorValue: 1200,
+      calorieSafetyFloorMode: 'clinical_minimum',
     });
 
-    expect(result.finalTarget).toBe(1190);
-    expect(result.effectiveSafetyFloor).toBeNull();
-    expect(result.wasClampedToFloor).toBe(false);
-    expect(result.clampedFloorSource).toBeNull();
+    expect(result.effectiveSafetyFloor).toBe(1500);
+    expect(result.finalTarget).toBe(1500);
+  });
+
+  // The escape hatch relaxes the RMR half only; the clinical minimum is not opt-out.
+  it('never drops below the clinical minimum in either mode', () => {
+    for (const mode of ['standard', 'clinical_minimum'] as const) {
+      const result = computeCalorieTarget({
+        ...smallBase,
+        adaptiveTdee: 900,
+        currentGoalCalories: 900,
+        goalMode: 'high_cut',
+        calculationMethod: 'adaptive',
+        calorieSafetyFloorMode: mode,
+      });
+      expect(result.finalTarget).toBeGreaterThanOrEqual(1200);
+    }
+  });
+
+  // The reporter is sedentary, not small: the ceiling is 1 - 1/activityMultiplier,
+  // so a 20% cut is unreachable at 1.2 regardless of body size or sex.
+  it('reports the same deficit ceiling for a man and a woman at the same activity level', () => {
+    const ceiling = (gender: 'male' | 'female', bmr: number) =>
+      computeCalorieTarget({
+        ...smallBase,
+        gender,
+        bmr,
+        weightKg: gender === 'male' ? 90 : 100,
+        heightCm: gender === 'male' ? 178 : 155,
+        adaptiveTdee: Math.round(bmr * 1.2),
+        currentGoalCalories: Math.round(bmr * 1.2),
+        goalMode: 'high_cut',
+        calculationMethod: 'adaptive',
+      }).maxFeasibleDeficitPercent;
+
+    expect(ceiling('female', 1633)).toBeCloseTo(16.7, 1);
+    expect(ceiling('male', 1843)).toBeCloseTo(16.7, 1);
   });
 });
 
 describe('shouldShowCalorieSafetyWarning', () => {
   it('does not warn while maintaining weight', () => {
-    expect(shouldShowCalorieSafetyWarning('maintain', 'manual')).toBe(false);
+    expect(shouldShowCalorieSafetyWarning('maintain')).toBe(false);
   });
 
+  // Previously gated on `manual`, which silenced the warning under `adaptive` —
+  // the only method the floor clamps, and so the only one that can now land
+  // below RMR once the user relaxes it.
   it.each(['recomp', 'cut', 'high_cut', 'lean_bulk', 'bulk', 'manual'])(
-    'warns for a manually configured non-maintenance %s goal',
+    'warns for a non-maintenance %s goal regardless of method',
     (goalMode) => {
-      expect(shouldShowCalorieSafetyWarning(goalMode, 'manual')).toBe(true);
-      expect(shouldShowCalorieSafetyWarning(goalMode, 'adaptive')).toBe(false);
+      expect(shouldShowCalorieSafetyWarning(goalMode)).toBe(true);
     }
   );
 });

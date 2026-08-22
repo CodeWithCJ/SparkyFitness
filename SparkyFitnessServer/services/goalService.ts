@@ -16,8 +16,7 @@ import {
   todayInZone,
   CALORIE_CALCULATION_CONSTANTS,
   computeCalorieTarget,
-  resolveCalorieSafetyFloor,
-  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  DEFAULT_CALORIE_SAFETY_FLOOR_MODE,
   ACTIVITY_MULTIPLIERS,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
@@ -277,18 +276,14 @@ async function getUserGoalsForRange(
 
       // Apply adaptive TDEE base adjustment — mirrors DashboardService
       if (adjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-        const adaptiveGoal = Math.round(
-          adaptiveTdeeData.tdee + calorieGoalOffset
+        // Predates the safety-floor preference and is deliberately left alone: this
+        // bound belongs to the adaptive *adjustment* path, not the goal-mode clamp
+        // the preference governs. Changing it would move goals for every existing
+        // user on this adjustment mode.
+        goalCalories = Math.max(
+          1200,
+          Math.round(adaptiveTdeeData.tdee + calorieGoalOffset)
         );
-        const adaptiveGoalFloor = resolveCalorieSafetyFloor(
-          userPreferences?.calorie_safety_floor_mode,
-          userPreferences?.calorie_safety_floor_value,
-          DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
-        );
-        goalCalories =
-          adaptiveGoalFloor === null
-            ? adaptiveGoal
-            : Math.max(adaptiveGoalFloor, adaptiveGoal);
       }
 
       // Apply goal mode deficit AND baseline replacement.
@@ -322,10 +317,8 @@ async function getUserGoalsForRange(
           currentGoalCalories: goalCalories,
           calculateBmrFn: bmrService.calculateBmr,
           calorieSafetyFloorMode:
-            userPreferences?.calorie_safety_floor_mode || 'standard',
-          calorieSafetyFloorValue:
-            userPreferences?.calorie_safety_floor_value ||
-            DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+            userPreferences?.calorie_safety_floor_mode ||
+            DEFAULT_CALORIE_SAFETY_FLOOR_MODE,
         });
         goalCalories = targetResult.finalTarget;
       }

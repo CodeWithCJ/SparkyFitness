@@ -35,7 +35,7 @@ import {
   GoalMode,
   GoalModeCalculationMethod,
   CalorieSafetyFloorMode,
-  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  DEFAULT_CALORIE_SAFETY_FLOOR_MODE,
   type UserPreferences as SharedUserPreferences,
 } from '@workspace/shared';
 
@@ -125,7 +125,6 @@ interface PreferencesContextType {
   goalModeCalculationMethod: GoalModeCalculationMethod;
   goalModeCustomPercentage: number;
   calorieSafetyFloorMode: CalorieSafetyFloorMode;
-  calorieSafetyFloorValue: number;
   setMeasurementDecimalPlaces: (places: number) => void;
   setGoalMode: (mode: GoalMode) => void;
   setGoalModeCalculationMethod: (method: GoalModeCalculationMethod) => void;
@@ -240,7 +239,6 @@ export interface DefaultPreferences {
   goal_mode_calculation_method: GoalModeCalculationMethod;
   goal_mode_custom_percentage: number;
   calorie_safety_floor_mode: SharedUserPreferences['calorie_safety_floor_mode'];
-  calorie_safety_floor_value: SharedUserPreferences['calorie_safety_floor_value'];
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -349,9 +347,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [goalModeCustomPercentage, setGoalModeCustomPercentageState] =
     useState<number>(0);
   const [calorieSafetyFloorMode, setCalorieSafetyFloorModeState] =
-    useState<CalorieSafetyFloorMode>('standard');
-  const [calorieSafetyFloorValue, setCalorieSafetyFloorValueState] =
-    useState<number>(DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR);
+    useState<CalorieSafetyFloorMode>(DEFAULT_CALORIE_SAFETY_FLOOR_MODE);
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -621,8 +617,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         first_day_of_week: 0,
         show_net_carbs: false,
         ai_assisted_conversions: true,
-        calorie_safety_floor_mode: 'standard',
-        calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+        calorie_safety_floor_mode: DEFAULT_CALORIE_SAFETY_FLOOR_MODE,
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -745,10 +740,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         setGoalModeCustomPercentageState(data.goal_mode_custom_percentage ?? 0);
         setCalorieSafetyFloorModeState(
-          data.calorie_safety_floor_mode ?? 'standard'
-        );
-        setCalorieSafetyFloorValueState(
-          data.calorie_safety_floor_value ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
+          data.calorie_safety_floor_mode ?? DEFAULT_CALORIE_SAFETY_FLOOR_MODE
         );
       } else {
         await createDefaultPreferences();
@@ -923,8 +915,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.goalModeCustomPercentage ?? goalModeCustomPercentage,
         calorie_safety_floor_mode:
           newPrefs?.calorieSafetyFloorMode ?? calorieSafetyFloorMode,
-        calorie_safety_floor_value:
-          newPrefs?.calorieSafetyFloorValue ?? calorieSafetyFloorValue,
       };
 
       try {
@@ -984,7 +974,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCalculationMethod,
       goalModeCustomPercentage,
       calorieSafetyFloorMode,
-      calorieSafetyFloorValue,
       updatePreferences,
       loadPreferences,
     ]
@@ -1232,7 +1221,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCalculationMethod,
       goalModeCustomPercentage,
       calorieSafetyFloorMode,
-      calorieSafetyFloorValue,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setGoalMode,
       setGoalModeCalculationMethod,
@@ -1327,7 +1315,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCalculationMethod,
       goalModeCustomPercentage,
       calorieSafetyFloorMode,
-      calorieSafetyFloorValue,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,

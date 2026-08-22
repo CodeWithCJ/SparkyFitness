@@ -42,19 +42,29 @@ export const CALORIE_CALCULATION_CONSTANTS = {
  */
 export const ENERGY_DENSITY_KCAL_PER_KG = 6000;
 
+/**
+ * How far the adaptive calorie target may be clamped upwards.
+ *
+ * `standard` keeps the historical floor: the higher of the user's own resting
+ * metabolism and the sex-specific clinical minimum. `clinical_minimum` drops the
+ * RMR half and enforces only the clinical minimum.
+ *
+ * The RMR half binds whenever the requested deficit exceeds `1 - 1/activityMultiplier`,
+ * which for a sedentary user is ~17% — so it makes deeper goal modes unreachable
+ * regardless of body size. Opting out of that half is what #2124 asked for. The
+ * clinical minimum is never opt-out: it is the bound with guideline backing, and
+ * removing it would matter most to the users least able to absorb it.
+ */
 export const CALORIE_SAFETY_FLOOR_MODES = [
   "standard",
-  "custom",
-  "disabled",
+  "clinical_minimum",
 ] as const;
 
 export type CalorieSafetyFloorMode =
   (typeof CALORIE_SAFETY_FLOOR_MODES)[number];
 
-/** Guardrails for persisted custom values; disabling remains an explicit mode. */
-export const MIN_CALORIE_SAFETY_FLOOR = 800;
-export const MAX_CALORIE_SAFETY_FLOOR = 5_000;
-export const DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR = 1200;
+export const DEFAULT_CALORIE_SAFETY_FLOOR_MODE: CalorieSafetyFloorMode =
+  "standard";
 
 export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   none: 1.0,

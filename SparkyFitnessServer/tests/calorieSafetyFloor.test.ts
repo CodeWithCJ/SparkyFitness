@@ -62,55 +62,61 @@ describe('goalService calorie safety floor preference', () => {
     );
   });
 
-  it('allows the measured target below RMR when a lower custom floor is configured', async () => {
-    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
-      calorie_goal_adjustment_mode: 'fixed',
-      goal_mode: 'maintain',
-      goal_mode_calculation_method: 'adaptive',
-      goal_mode_custom_percentage: 0,
-      activity_level: 'not_much',
-      bmr_algorithm: 'Mifflin-St Jeor',
-      calorie_safety_floor_mode: 'custom',
-      calorie_safety_floor_value: 1200,
-      timezone: 'Europe/Berlin',
-    });
-
-    const result = await goalService.getUserGoalsForRange(
-      userId,
-      date,
-      date,
-      true
-    );
-
-    expect((result[date] as { calories: number }).calories).toBe(1606);
+  const prefs = (mode: string, adjustmentMode = 'fixed', method = 'adaptive') => ({
+    calorie_goal_adjustment_mode: adjustmentMode,
+    goal_mode: 'maintain',
+    goal_mode_calculation_method: method,
+    goal_mode_custom_percentage: 0,
+    activity_level: 'not_much',
+    bmr_algorithm: 'Mifflin-St Jeor',
+    calorie_safety_floor_mode: mode,
+    timezone: 'Europe/Berlin',
   });
 
-  it('preserves the legacy 1200 kcal floor for the standard adaptive adjustment path', async () => {
+  const caloriesFor = async (mode: string, adjustmentMode?: string, method?: string) => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(
+      prefs(mode, adjustmentMode, method)
+    );
+    const result = await goalService.getUserGoalsForRange(userId, date, date, true);
+    return (result[date] as { calories: number }).calories;
+  };
+
+  // The scenario from #2124: RMR 1642, measured adaptive TDEE 1606. Under
+  // `standard` the RMR half of the floor overrides the measured target by 36 kcal
+  // and the user is pinned there permanently, because both sides scale with body
+  // size. `clinical_minimum` drops that half and lets the measurement through.
+  it('clamps the measured target up to RMR under the standard floor', async () => {
+    expect(await caloriesFor('standard')).toBe(1642);
+  });
+
+  it('allows a measured target below RMR under the clinical minimum floor', async () => {
+    expect(await caloriesFor('clinical_minimum')).toBe(1606);
+  });
+
+  it('never allows a target below the clinical minimum, whatever the mode', async () => {
+    vi.mocked(adaptiveTdeeService.calculateAdaptiveTdeeRange).mockResolvedValue({
+      [date]: {
+        tdee: 900,
+        confidence: 'HIGH',
+        isFallback: false,
+        daysOfData: 60,
+        lastCalculated: date,
+      },
+    });
+    expect(await caloriesFor('clinical_minimum')).toBe(1200);
+  });
+
+  // The `calorie_goal_adjustment_mode: 'adaptive'` path used to hardcode a flat
+  // 1200 floor, which ignored RMR and applied the female minimum to men. It now
+  // resolves the same floor as every other path.
+  it('applies the RMR floor on the adaptive adjustment path', async () => {
     vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
       calories: 1000,
       protein_percentage: null,
       carbs_percentage: null,
       fat_percentage: null,
     });
-    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
-      calorie_goal_adjustment_mode: 'adaptive',
-      goal_mode: 'maintain',
-      goal_mode_calculation_method: 'manual',
-      goal_mode_custom_percentage: 0,
-      activity_level: 'not_much',
-      bmr_algorithm: 'Mifflin-St Jeor',
-      calorie_safety_floor_mode: 'standard',
-      calorie_safety_floor_value: 1200,
-      timezone: 'Europe/Berlin',
-    });
-
-    const result = await goalService.getUserGoalsForRange(
-      userId,
-      date,
-      date,
-      true
-    );
-
-    expect((result[date] as { calories: number }).calories).toBe(1200);
+    expect(await caloriesFor('standard', 'adaptive', 'manual')).toBe(1200);
+    expect(await caloriesFor('clinical_minimum', 'adaptive', 'manual')).toBe(1200);
   });
 });

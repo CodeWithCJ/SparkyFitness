@@ -306,7 +306,7 @@ describe('CalorieTargetBreakdown shown working', () => {
 });
 
 describe('CalorieTargetBreakdown configured safety floor', () => {
-  it('shows a custom floor as the effective limit', () => {
+  it('shows the resolved floor as the effective limit', () => {
     render(
       <CalorieTargetBreakdown
         {...defaultProps}
@@ -322,24 +322,7 @@ describe('CalorieTargetBreakdown configured safety floor', () => {
     );
   });
 
-  it('shows that automatic clamping is disabled without hiding recommendations', () => {
-    render(
-      <CalorieTargetBreakdown
-        {...defaultProps}
-        previewResult={{
-          ...defaultProps.previewResult,
-          effectiveSafetyFloor: null,
-        }}
-      />
-    );
-
-    expect(screen.getByText(/Effective Safety Floor:/)).toHaveTextContent(
-      'Disabled'
-    );
-    expect(screen.getByText(/Clinical Absolute Floor:/)).toBeInTheDocument();
-  });
-
-  it('warns when a custom adaptive target remains below the recommendation', () => {
+  it('warns when a relaxed adaptive target remains below the recommendation', () => {
     render(
       <CalorieTargetBreakdown
         {...defaultProps}

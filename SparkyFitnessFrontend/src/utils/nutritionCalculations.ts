@@ -11,7 +11,7 @@ import type { FoodEntry, FoodVariant } from '@/types/food';
 import { FoodEntryMeal, MealTotals } from '@/types/meal';
 import {
   ACTIVITY_MULTIPLIERS,
-  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  DEFAULT_CALORIE_SAFETY_FLOOR_MODE,
   calculateBmr,
   computeCalorieTarget,
   goalModeFromPrimaryGoal,
@@ -625,13 +625,7 @@ export const calculateBasePlan = (
   formData: CalculatorFormData,
   localSelectedDiet: string,
   customPercentages: { carbs: number; protein: number; fat: number },
-  safetyFloor: {
-    calorieSafetyFloorMode: CalorieSafetyFloorMode;
-    calorieSafetyFloorValue: number;
-  } = {
-    calorieSafetyFloorMode: 'standard',
-    calorieSafetyFloorValue: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
-  }
+  calorieSafetyFloorMode: CalorieSafetyFloorMode = DEFAULT_CALORIE_SAFETY_FLOOR_MODE
 ): BasePlan | null => {
   // formData values are already in Metric (kg/cm) because they come from UnitInput or normalized state
   const weightKg = Number(formData.currentWeight) || 0;
@@ -675,8 +669,7 @@ export const calculateBasePlan = (
     gender,
     currentGoalCalories: 0,
     calculateBmrFn: calculateBmr,
-    calorieSafetyFloorMode: safetyFloor.calorieSafetyFloorMode,
-    calorieSafetyFloorValue: safetyFloor.calorieSafetyFloorValue,
+    calorieSafetyFloorMode,
   });
 
   const finalDailyCalories = Math.round(targetResult.finalTarget / 10) * 10;

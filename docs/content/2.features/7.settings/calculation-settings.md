@@ -105,14 +105,15 @@ SparkyFitness shows two recommended safety limits for calorie goals:
 > **Adaptive Safety Floor:**
 >
 > - **Standard (default):** The higher of your estimated RMR and the sex-specific clinical minimum is enforced. If an Adaptive target falls below it, SparkyFitness raises the target and explains which limit bound.
-> - **Custom minimum:** Replaces the Standard floor with a calorie value you choose. This can be below or above the recommended limits; those recommendations and health warnings remain visible.
-> - **Disabled:** Does not automatically raise Adaptive targets. The calculated target is used as-is, while recommended limits and health warnings remain visible.
+> - **Clinical minimum only:** Drops the RMR half of the floor and enforces only the clinical minimum ($1{,}200$ / $1{,}500$ kcal). Targets below your estimated RMR are allowed; the recommendation and health warnings remain visible.
 > - Under the **Manual** method, the target is **not automatically raised**, but a prominent warning banner is displayed warning you that your budget is in an unsafe range.
+>
+> The clinical minimum applies in both modes and cannot be switched off.
 
 Safety floors only ever apply to deficits. A surplus can never trip them.
 
 > [!TIP]
-> If you are small-bodied, the Standard floor can bind before you reach your chosen deficit — for example, a measured TDEE of $1{,}400$ kcal with a $15\%$ cut computes to $1{,}190$ kcal, below the $1{,}200$ floor. If that recommendation does not fit a target you have agreed with a qualified clinician, choose a **Custom minimum** or **Disabled**. First check that your **Activity Level** and profile data are accurate, because they affect the estimate. Very low calorie targets can carry health risks and may require medical supervision.
+> The Standard floor binds whenever your requested deficit exceeds $1 - 1/\text{activityMultiplier}$ — about $17\%$ at **Sedentary** ($\times 1.2$), and $0\%$ at **None** ($\times 1.0$). That is a property of your activity level, not your body size: a sedentary man and a sedentary woman hit the same ceiling. If a goal mode appears to have no effect, check your **Activity Level** first, since it sets that ceiling and is the most common thing to have understated. If your target has been agreed with a qualified clinician and still falls below your RMR, switch to **Clinical minimum only**. Very low calorie targets can carry health risks and may require medical supervision.
 
 ---
 

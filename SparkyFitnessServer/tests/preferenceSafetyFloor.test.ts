@@ -12,13 +12,12 @@ describe('calorie safety floor preference validation', () => {
     });
   });
 
-  it.each([800, 5000])(
-    'accepts inclusive custom floor boundary %s',
-    async (value) => {
+  it.each(['standard', 'clinical_minimum'])(
+    'accepts the %s mode',
+    async (mode) => {
       await expect(
         preferenceService.updateUserPreferences('user-1', 'user-1', {
-          calorie_safety_floor_mode: 'custom',
-          calorie_safety_floor_value: value,
+          calorie_safety_floor_mode: mode,
         })
       ).resolves.toEqual({ user_id: 'user-1' });
     }
@@ -32,22 +31,24 @@ describe('calorie safety floor preference validation', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
-  it.each([799, 5001, 1200.5])(
-    'rejects invalid custom floor value %s',
-    async (value) => {
+  // The three-mode design briefly allowed turning clamping off entirely. The
+  // clinical minimum is not opt-out, so these must not be revived by accident.
+  it.each(['custom', 'disabled'])(
+    'rejects the retired %s mode',
+    async (mode) => {
       await expect(
         preferenceService.updateUserPreferences('user-1', 'user-1', {
-          calorie_safety_floor_value: value,
+          calorie_safety_floor_mode: mode,
         })
       ).rejects.toMatchObject({ status: 400 });
     }
   );
 
-  it('rejects non-number values instead of coercing them', async () => {
+  it('leaves the mode untouched when the update omits it', async () => {
     await expect(
       preferenceService.updateUserPreferences('user-1', 'user-1', {
-        calorie_safety_floor_value: true,
-      } as never)
-    ).rejects.toMatchObject({ status: 400 });
+        activity_level: 'light',
+      })
+    ).resolves.toEqual({ user_id: 'user-1' });
   });
 });

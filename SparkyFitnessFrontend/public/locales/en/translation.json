@@ -1856,15 +1856,12 @@
       "projectedWeeklyGain": "Projected weekly gain:",
       "projectedWeeklyLoss": "Projected weekly loss:",
       "raisedToFloorTitle": "Target raised to your safety minimum",
-      "safetyFloorCustom": "Custom minimum",
-      "safetyFloorCustomHint": "Replaces the standard floor with your chosen minimum. Health recommendations remain visible.",
-      "safetyFloorDisabled": "Disabled",
-      "safetyFloorDisabledHint": "Stops automatic target clamping. Health warnings remain visible; consider medical guidance for very low targets.",
       "safetyFloorModeLabel": "Adaptive Safety Floor",
-      "safetyFloorStandard": "Standard (RMR / clinical minimum)",
-      "safetyFloorStandardHint": "Uses the higher of your estimated RMR and the clinical minimum (1,200 kcal for females, 1,500 kcal for males).",
-      "safetyFloorValueLabel": "Custom minimum",
-      "awaitingCalibrationTitle": "Awaiting Adaptive TDEE Calibration"
+      "safetyFloorStandard": "Standard (RMR or clinical minimum)",
+      "safetyFloorStandardHint": "Uses the higher of your estimated RMR and the clinical minimum (1,200 kcal for females, 1,500 kcal for males). At lower activity levels the RMR half can make deeper goal modes unreachable.",
+      "awaitingCalibrationTitle": "Awaiting Adaptive TDEE Calibration",
+      "safetyFloorClinicalMinimum": "Clinical minimum only",
+      "safetyFloorClinicalMinimumHint": "Clamps only at the clinical minimum (1,200 kcal for females, 1,500 kcal for males), allowing targets below your estimated RMR. Low-target warnings remain visible."
     },
     "mfa": {
       "confirmPassword": "Confirm Password to Continue",
@@ -1924,10 +1921,8 @@
       "bodyFatMissing": "{{algorithm}} uses body fat, but no measurement is logged — log one for an accurate target.",
       "bodyFatUnused": "Shown for reference only — {{algorithm}} does not take body fat as an input.",
       "belowRecommendedFloor": "⚠️ Warning: Calorie budget is below the recommended safety floor ({{floor}} {{unit}}).",
-      "customFloorDescription": "configured custom safety floor",
-      "customFloorActive": "A custom safety floor is active; recommended limits are still shown above.",
       "raisedToSafetyFloor": "⚠️ Daily budget was automatically raised to the safety-floor limit.",
-      "safetyFloorDisabled": "Automatic safety-floor clamping is disabled; recommended limits are still shown above."
+      "clinicalMinimumFloorActive": "Clamping only at the clinical minimum; the recommended floor is still shown above."
     }
   },
   "admin": {

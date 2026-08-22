@@ -1,10 +1,8 @@
 import {
   ACTIVITY_MULTIPLIERS,
   CALORIE_CALCULATION_CONSTANTS,
-  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  DEFAULT_CALORIE_SAFETY_FLOOR_MODE,
   ENERGY_DENSITY_KCAL_PER_KG,
-  MAX_CALORIE_SAFETY_FLOOR,
-  MIN_CALORIE_SAFETY_FLOOR,
   type CalorieSafetyFloorMode,
 } from "../constants/calorieConstants.ts";
 
@@ -526,12 +524,12 @@ export interface CalorieTargetResult {
    * Only ever true for `calculationMethod === "adaptive"`.
    */
   wasClampedToFloor: boolean;
-  /** Which floor bound: RMR, the flat absolute minimum, or a user override. */
-  clampedFloorSource: "rmr" | "absolute" | "custom" | null;
-  /** Recommended default (the higher of RMR and the sex-specific absolute floor). */
+  /** Which floor bound: the user's own RMR, or the flat clinical minimum. */
+  clampedFloorSource: "rmr" | "absolute" | null;
+  /** The `standard` floor (higher of RMR and the clinical minimum), for comparison. */
   recommendedSafetyFloor: number;
-  /** Floor that is actually enforced, or null when automatic clamping is disabled. */
-  effectiveSafetyFloor: number | null;
+  /** Floor actually enforced, which depends on the user's floor mode. */
+  effectiveSafetyFloor: number;
   /**
    * Largest deficit, in percent, that still clears the safety floor.
    * Null when the goal is not a deficit or the floor never binds.
@@ -539,23 +537,25 @@ export interface CalorieTargetResult {
   maxFeasibleDeficitPercent: number | null;
 }
 
+/**
+ * The floor actually enforced for a user, given their floor mode.
+ *
+ * Takes the RMR and sex directly rather than a pre-computed "standard floor", so
+ * a caller cannot pass the wrong baseline. The clinical minimum applies in both
+ * modes, so this never returns null: there is no way to switch clamping off.
+ */
 export function resolveCalorieSafetyFloor(
   mode: CalorieSafetyFloorMode | string | null | undefined,
-  customValue: number | null | undefined,
-  standardFloor: number,
-): number | null {
-  if (mode === "disabled") return null;
-  if (
-    mode === "custom" &&
-    Number.isInteger(customValue) &&
-    Number(customValue) >= MIN_CALORIE_SAFETY_FLOOR &&
-    Number(customValue) <= MAX_CALORIE_SAFETY_FLOOR
-  ) {
-    return Number(customValue);
-  }
-  return standardFloor;
+  rmr: number,
+  gender: "male" | "female",
+): number {
+  const clinicalMinimum = getClinicalCalorieMinimum(gender);
+  return mode === "clinical_minimum"
+    ? clinicalMinimum
+    : Math.max(rmr, clinicalMinimum);
 }
 
+/** The `standard` floor, whatever mode the user is actually on. */
 export function getRecommendedCalorieSafetyFloor(
   rmr: number,
   gender: "male" | "female",
@@ -567,11 +567,18 @@ export function getClinicalCalorieMinimum(gender: "male" | "female"): number {
   return gender === "female" ? 1200 : 1500;
 }
 
-export function shouldShowCalorieSafetyWarning(
-  goalMode: string,
-  calculationMethod: string,
-): boolean {
-  return goalMode !== "maintain" && calculationMethod === "manual";
+/**
+ * Whether a low-target warning is worth showing at all.
+ *
+ * Deliberately not gated on the calculation method. The floor only ever clamps
+ * under `adaptive`, so gating on `manual` silenced the warning in exactly the
+ * configuration that can now land below RMR (adaptive + `clinical_minimum`).
+ * Callers pair this with the outcome — `finalTarget < rmr` and friends — which
+ * is self-limiting: an unrelaxed adaptive target is clamped at or above the
+ * floor, so the comparison is false and nothing renders.
+ */
+export function shouldShowCalorieSafetyWarning(goalMode: string): boolean {
+  return goalMode !== "maintain";
 }
 
 export function computeCalorieTarget({
@@ -591,8 +598,7 @@ export function computeCalorieTarget({
   bmrAlgorithm,
   currentGoalCalories,
   calculateBmrFn,
-  calorieSafetyFloorMode = "standard",
-  calorieSafetyFloorValue = DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  calorieSafetyFloorMode = DEFAULT_CALORIE_SAFETY_FLOOR_MODE,
 }: {
   goalMode: string;
   calculationMethod: string;
@@ -611,7 +617,6 @@ export function computeCalorieTarget({
   currentGoalCalories: number;
   calculateBmrFn?: BmrCalculatorFn;
   calorieSafetyFloorMode?: CalorieSafetyFloorMode;
-  calorieSafetyFloorValue?: number;
 }): CalorieTargetResult {
   const rmr = calculateMinimumMetabolism(
     weightKg,
@@ -650,36 +655,28 @@ export function computeCalorieTarget({
   const recommendedSafetyFloor = getRecommendedCalorieSafetyFloor(rmr, gender);
   const effectiveSafetyFloor = resolveCalorieSafetyFloor(
     calorieSafetyFloorMode,
-    calorieSafetyFloorValue,
-    recommendedSafetyFloor,
+    rmr,
+    gender,
   );
   const wasClampedToFloor =
-    calculationMethod === "adaptive" &&
-    effectiveSafetyFloor !== null &&
-    calculatedTarget < effectiveSafetyFloor;
+    calculationMethod === "adaptive" && calculatedTarget < effectiveSafetyFloor;
   const finalTarget = wasClampedToFloor
     ? Math.round(effectiveSafetyFloor)
     : Math.round(calculatedTarget);
 
   // Name which floor actually bound, so the UI can explain rather than just clamp.
-  const usesValidCustomFloor =
-    calorieSafetyFloorMode === "custom" &&
-    Number.isInteger(calorieSafetyFloorValue) &&
-    calorieSafetyFloorValue >= MIN_CALORIE_SAFETY_FLOOR &&
-    calorieSafetyFloorValue <= MAX_CALORIE_SAFETY_FLOOR;
-  const clampedFloorSource: "rmr" | "absolute" | "custom" | null =
-    wasClampedToFloor
-      ? usesValidCustomFloor
-        ? "custom"
-        : rmr >= absoluteFloorValue
-          ? "rmr"
-          : "absolute"
-      : null;
+  // On `clinical_minimum` the RMR half is not enforced, so only the flat minimum
+  // can ever be the binding constraint.
+  const clampedFloorSource: "rmr" | "absolute" | null = wasClampedToFloor
+    ? effectiveSafetyFloor > absoluteFloorValue
+      ? "rmr"
+      : "absolute"
+    : null;
 
   // The largest deficit that still clears the floor. Surfaced so a user who asked
   // for more than is feasible gets an actionable number instead of a silent override.
   const maxFeasibleDeficitPercent =
-    wasClampedToFloor && baselineTdee > 0 && effectiveSafetyFloor !== null
+    wasClampedToFloor && baselineTdee > 0
       ? Math.max(0, (1 - effectiveSafetyFloor / baselineTdee) * 100)
       : null;
 
@@ -720,8 +717,7 @@ export function computeCalorieTarget({
     wasClampedToFloor,
     clampedFloorSource,
     recommendedSafetyFloor: Math.round(recommendedSafetyFloor),
-    effectiveSafetyFloor:
-      effectiveSafetyFloor === null ? null : Math.round(effectiveSafetyFloor),
+    effectiveSafetyFloor: Math.round(effectiveSafetyFloor),
     maxFeasibleDeficitPercent,
   };
 }

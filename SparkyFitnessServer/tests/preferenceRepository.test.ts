@@ -138,32 +138,25 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     expect(mockClient.query.mock.calls[0][1]).toContain(15);
   });
 
-  it('round-trips calorie safety floor preferences through save and load', async () => {
+  it('round-trips the calorie safety floor mode through save and load', async () => {
     const row = {
       user_id: 'user-1',
-      calorie_safety_floor_mode: 'custom',
-      calorie_safety_floor_value: 1200,
+      calorie_safety_floor_mode: 'clinical_minimum',
     };
     mockClient.query.mockResolvedValueOnce({ rows: [row] });
     mockClient.query.mockResolvedValueOnce({ rows: [row] });
 
     await preferenceRepository.upsertUserPreferences({
       user_id: 'user-1',
-      calorie_safety_floor_mode: 'custom',
-      calorie_safety_floor_value: 1200,
+      calorie_safety_floor_mode: 'clinical_minimum',
     });
     const result = await preferenceRepository.getUserPreferences('user-1');
 
-    expect(result.calorie_safety_floor_mode).toBe('custom');
-    expect(result.calorie_safety_floor_value).toBe(1200);
+    expect(result.calorie_safety_floor_mode).toBe('clinical_minimum');
     expect(mockClient.query.mock.calls[0][0]).toContain(
       'calorie_safety_floor_mode'
     );
-    expect(mockClient.query.mock.calls[0][0]).toContain(
-      'calorie_safety_floor_value'
-    );
-    expect(mockClient.query.mock.calls[0][1]).toContain('custom');
-    expect(mockClient.query.mock.calls[0][1]).toContain(1200);
+    expect(mockClient.query.mock.calls[0][1]).toContain('clinical_minimum');
   });
 
   it('preserves saved safety-floor preferences when a partial upsert omits them', async () => {
@@ -177,9 +170,6 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     const sql = mockClient.query.mock.calls[0][0] as string;
     expect(sql).toContain(
       'calorie_safety_floor_mode = COALESCE($45, user_preferences.calorie_safety_floor_mode)'
-    );
-    expect(sql).toContain(
-      'calorie_safety_floor_value = COALESCE($46, user_preferences.calorie_safety_floor_value)'
     );
   });
 });
