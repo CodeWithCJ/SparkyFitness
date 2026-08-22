@@ -428,6 +428,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                         onChangeText={setPassword}
                         secureTextEntry
                         autoComplete="password"
+                        autoCapitalize="none"
                       />
                     </View>
                   </>
@@ -469,7 +470,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                         <Icon name="fingerprint" size={20} color={accentPrimary} />
                       </View>
                       <Text className="text-base font-semibold text-text-primary">
-                        Sign in with Passkey
+                        {"Sign in with Passkey "}
                       </Text>
                     </View>
                   </Button>
@@ -480,7 +481,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
                     {/* ErrorBanner's own mb-4 is the banner→button gap. */}
                     <ErrorBanner message={error} />
                     {hasEmail && (
-                      <PrimaryButton label="Sign In" onPress={handleSignIn} loading={loading} />
+                      <PrimaryButton label="Sign In " onPress={handleSignIn} loading={loading} />
                     )}
                   </View>
                 )}
