@@ -1864,7 +1864,9 @@
       "safetyFloorStandard": "Standard (RMR / clinical minimum)",
       "safetyFloorStandardHint": "Uses the higher of your estimated RMR and the clinical minimum (1,200 kcal for females, 1,500 kcal for males).",
       "safetyFloorValueLabel": "Custom minimum",
-      "awaitingCalibrationTitle": "Awaiting Adaptive TDEE Calibration"
+      "awaitingCalibrationTitle": "Awaiting Adaptive TDEE Calibration",
+      "modeUnreachableSuffix": "not reachable",
+      "deficitCeilingHint": "At your current activity level the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor."
     },
     "mfa": {
       "confirmPassword": "Confirm Password to Continue",

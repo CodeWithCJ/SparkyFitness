@@ -451,6 +451,21 @@ const CalculationSettings = () => {
     calorieSafetyFloorValue,
   });
 
+  // The safety floor clamps silently, so a goal mode that cannot be reached at
+  // this activity level renders identically to one that can — at None (x1.0) every
+  // deficit mode returns the same target. Surface the ceiling in the picker so the
+  // choice is informed rather than explained after the override. The ceiling depends
+  // only on the baseline and the floor, so it is the same for every mode.
+  const deficitCeilingPercent = previewResult.maxFeasibleDeficitPercent;
+  const isGoalModeUnreachable = (mode: GoalMode) =>
+    deficitCeilingPercent != null &&
+    getGoalModeAdjustment(mode, goalModeCustomPercentage) * 100 >
+      deficitCeilingPercent + 1e-9;
+  const goalModeSuffix = (mode: GoalMode) =>
+    isGoalModeUnreachable(mode)
+      ? ` — ${t('settings.goalMode.modeUnreachableSuffix', 'not reachable')}`
+      : '';
+
   const deficitPct = getGoalModeAdjustment(goalMode, goalModeCustomPercentage);
 
   // Measured adaptive TDEE, shown only when the same sufficiency test used by
@@ -1156,12 +1171,15 @@ const CalculationSettings = () => {
                     'settings.goalMode.modeRecomp',
                     'Body Recomposition (-10%)'
                   )}
+                  {goalModeSuffix('recomp')}
                 </SelectItem>
                 <SelectItem value="cut">
                   {t('settings.goalMode.modeCut', 'Cut (-15%)')}
+                  {goalModeSuffix('cut')}
                 </SelectItem>
                 <SelectItem value="high_cut">
                   {t('settings.goalMode.modeHighCut', 'High Cut (-20%)')}
+                  {goalModeSuffix('high_cut')}
                 </SelectItem>
                 <SelectItem value="lean_bulk">
                   {t('settings.goalMode.modeLeanBulk', 'Lean Bulk (+10%)')}
@@ -1174,6 +1192,15 @@ const CalculationSettings = () => {
                 </SelectItem>
               </SelectContent>
             </Select>
+            {deficitCeilingPercent != null && (
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {t(
+                  'settings.goalMode.deficitCeilingHint',
+                  'At your current activity level the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
+                  { percent: deficitCeilingPercent.toFixed(0) }
+                )}
+              </p>
+            )}
           </div>
 
           <div>
