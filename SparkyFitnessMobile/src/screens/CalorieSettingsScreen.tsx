@@ -176,7 +176,19 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   );
 
   const handleSafetyFloorBlur = useCallback(() => {
-    const parsed = Number(safetyFloorText);
+    const trimmedValue = safetyFloorText.trim();
+    if (trimmedValue === '') {
+      setSafetyFloorText(
+        String(
+          displayEnergy(
+            normalized.calorieSafetyFloorValue,
+            normalized.energyUnit,
+          ),
+        ),
+      );
+      return;
+    }
+    const parsed = Number(trimmedValue);
     const kcal = Number.isFinite(parsed)
       ? toKcal(parsed, normalized.energyUnit)
       : normalized.calorieSafetyFloorValue;

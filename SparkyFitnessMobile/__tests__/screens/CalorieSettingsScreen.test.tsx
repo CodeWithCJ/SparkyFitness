@@ -121,6 +121,20 @@ describe('CalorieSettingsScreen safety floor', () => {
     });
   });
 
+  it('restores the saved value without persisting when the custom input is blank', () => {
+    mockPreferences.calorie_safety_floor_mode = 'custom';
+    const { getByDisplayValue } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />,
+    );
+    const input = getByDisplayValue('1200');
+
+    fireEvent.changeText(input, '');
+    fireEvent(input, 'blur');
+
+    expect(getByDisplayValue('1200')).toBeTruthy();
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['799', 800],
     ['5001', 5000],

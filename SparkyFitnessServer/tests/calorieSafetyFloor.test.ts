@@ -87,7 +87,7 @@ describe('goalService calorie safety floor preference', () => {
 
   it('preserves the legacy 1200 kcal floor for the standard adaptive adjustment path', async () => {
     vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
-      calories: 1970,
+      calories: 1000,
       protein_percentage: null,
       carbs_percentage: null,
       fat_percentage: null,
@@ -111,6 +111,6 @@ describe('goalService calorie safety floor preference', () => {
       true
     );
 
-    expect((result[date] as { calories: number }).calories).toBe(1606);
+    expect((result[date] as { calories: number }).calories).toBe(1200);
   });
 });

@@ -626,10 +626,13 @@ describe('shouldShowCalorieSafetyWarning', () => {
     expect(shouldShowCalorieSafetyWarning('maintain', 'manual')).toBe(false);
   });
 
-  it('warns only for manually configured deficit goals', () => {
-    expect(shouldShowCalorieSafetyWarning('cut', 'manual')).toBe(true);
-    expect(shouldShowCalorieSafetyWarning('cut', 'adaptive')).toBe(false);
-  });
+  it.each(['recomp', 'cut', 'high_cut', 'lean_bulk', 'bulk', 'manual'])(
+    'warns for a manually configured non-maintenance %s goal',
+    (goalMode) => {
+      expect(shouldShowCalorieSafetyWarning(goalMode, 'manual')).toBe(true);
+      expect(shouldShowCalorieSafetyWarning(goalMode, 'adaptive')).toBe(false);
+    }
+  );
 });
 
 describe('normalizeCalorieGoalAdjustmentMode', () => {

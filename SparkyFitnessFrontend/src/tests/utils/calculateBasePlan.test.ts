@@ -131,11 +131,11 @@ describe('calculateBasePlan goal handling', () => {
       NO_CUSTOM,
       {
         calorieSafetyFloorMode: 'custom',
-        calorieSafetyFloorValue: 800,
+        calorieSafetyFloorValue: 1000,
       }
     );
 
-    expect(plan!.finalDailyCalories).toBe(990);
+    expect(plan!.finalDailyCalories).toBe(1000);
   });
 
   it('does not clamp a small weight-loss plan when the floor is disabled', () => {
