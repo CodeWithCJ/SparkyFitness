@@ -109,10 +109,12 @@ SparkyFitness shows two recommended safety limits for calorie goals:
 > - **Disabled:** Does not automatically raise Adaptive targets. The calculated target is used as-is, while recommended limits and health warnings remain visible.
 > - Under the **Manual** method, the target is **not automatically raised**, but a prominent warning banner is displayed warning you that your budget is in an unsafe range.
 
-Safety floors only ever apply to deficits. A surplus can never trip them.
+Under the Adaptive method the floor applies whenever the calculated target falls below it. That is almost always a deficit, but a surplus can trip it too: if your entire maintenance sits below the clinical minimum, even a gain goal is raised to that minimum.
 
 > [!TIP]
-> If you are small-bodied, the Standard floor can bind before you reach your chosen deficit — for example, a measured TDEE of $1{,}400$ kcal with a $15\%$ cut computes to $1{,}190$ kcal, below the $1{,}200$ floor. If that recommendation does not fit a target you have agreed with a qualified clinician, choose a **Custom minimum** or **Disabled**. First check that your **Activity Level** and profile data are accurate, because they affect the estimate. Very low calorie targets can carry health risks and may require medical supervision.
+> If a goal mode appears to have no effect, the Standard floor is binding. That is usually about your **activity level**, not your body size. With the fallback estimate (TDEE = RMR × activity multiplier) and RMR as the binding half, the floor bites once your deficit exceeds roughly $1 - 1/\text{activityMultiplier}$ — about $17\%$ at **Sedentary** ($\times 1.2$), and $0\%$ at **None** ($\times 1.0$), where every deficit mode returns the same target. Once Adaptive has enough history it uses your *measured* TDEE, so the real limit is how far your expenditure sits above your RMR. A sedentary man and a sedentary woman of very different sizes hit the same ceiling.
+>
+> Check your **Activity Level** and profile data first, since they set that ceiling and are the most common things to have understated. If your target has been agreed with a qualified clinician and still falls below the Standard floor, choose a **Custom minimum** or **Disabled**. Very small adults may find the clinical minimum sits above their own maintenance, in which case those two options are the only way to set a deficit at all. Very low calorie targets can carry health risks and may require medical supervision.
 
 ---
 
