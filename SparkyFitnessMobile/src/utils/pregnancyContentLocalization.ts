@@ -1,12 +1,7 @@
 import type { TFunction } from 'i18next';
-import i18n from '../localization/i18n';
 import { formatLocalizedNumber } from '../localization';
 import { babyWeek } from '@workspace/shared';
 
-const defaultTranslator: TFunction = i18n.t.bind(i18n);
-function resolveTranslator(t?: TFunction): TFunction {
-  return t ?? defaultTranslator;
-}
 
 /** Controlled pregnancy week range (4–40). closed and bounded. */
 export const PREGNANCY_WEEK_MIN = 4;
@@ -21,7 +16,7 @@ export const PREGNANCY_WEEK_MAX = 40;
  */
 export function localizeBabyWeek(
   week: number,
-  t?: TFunction,
+  t: TFunction,
 ): { comparison: string; baby: string; mom: string } | null {
   if (
     !Number.isInteger(week) ||
@@ -30,7 +25,7 @@ export function localizeBabyWeek(
   ) {
     return null;
   }
-  const translate = resolveTranslator(t);
+  const translate = t;
   const base = `pregnancy.babyDev.w${week}`;
   const canonical = babyWeek(week);
   const fallbackComparison = canonical?.comparison ?? '';

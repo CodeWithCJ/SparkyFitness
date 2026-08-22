@@ -1,14 +1,9 @@
 import type { TFunction } from 'i18next';
-import i18n from '../localization/i18n';
 import { getAppLocale, formatLocalizedNumber } from '../localization';
 import { getMetabolicStage, type MetabolicStage } from '../constants/fasting';
 import { toLocalDateString, formatDateLabel, normalizeDate } from './dateUtils';
 import type { FastingLog, FastingStats } from '../types/fasting';
 const MS_PER_HOUR = 1000 * 60 * 60;
-const defaultTranslator: TFunction = i18n.t.bind(i18n);
-function resolveTranslator(t?: TFunction): TFunction {
-  return t ?? defaultTranslator;
-}
 /** Formats an ISO timestamp's local time of day, e.g. "6:32 PM". */
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' });
@@ -33,8 +28,8 @@ export function formatElapsedClock(ms: number): string {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 /** Formats a duration as a short "Xh Ym" label (drops the hours when zero). */
-export function formatHoursMinutes(ms: number, t?: TFunction): string {
-  const translate = resolveTranslator(t);
+export function formatHoursMinutes(ms: number, t: TFunction): string {
+  const translate = t;
   const totalMinutes = Math.max(0, Math.floor(ms / 60000));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
@@ -65,7 +60,7 @@ export function computeFastTimerValues(
   startTime: string,
   targetEndTime: string | null | undefined,
   now: number,
-  t?: TFunction,
+  t: TFunction,
 ): FastTimerValues {
   const startMs = new Date(startTime).getTime();
   const safeStart = Number.isNaN(startMs) ? now : startMs;
@@ -98,8 +93,8 @@ export function computeFastTimerValues(
   };
 }
 /** Lowercases "Today"/"Yesterday" (matches the card mockup) but keeps absolute dates. */
-export function relativeDayLabel(dateString: string, t?: TFunction): string {
-  const translate = resolveTranslator(t);
+export function relativeDayLabel(dateString: string, t: TFunction): string {
+  const translate = t;
   const date = normalizeDate(dateString);
   const today = new Date();
   const todayString = toLocalDateString(today);
@@ -117,9 +112,9 @@ export function relativeDayLabel(dateString: string, t?: TFunction): string {
  * history row. Returns null when there is no usable completed fast (e.g. a row
  * with `duration_minutes = null`), so the caller can omit the line entirely.
  */
-export function formatLastFast(log: FastingLog | null | undefined, t?: TFunction): string | null {
+export function formatLastFast(log: FastingLog | null | undefined, t: TFunction): string | null {
   if (!log || log.duration_minutes == null) return null;
-  const translate = resolveTranslator(t);
+  const translate = t;
   const duration = formatHoursMinutes(log.duration_minutes * 60000, translate);
   const refDate = log.end_time ?? log.start_time;
   if (!refDate) return translate('fastingCard.lastFast', { defaultValue: 'Last fast {{duration}}', duration });
@@ -151,9 +146,9 @@ function toFiniteNumber(value: string | number | null | undefined): number | nul
  */
 export function formatFastingStats(
   stats: FastingStats | null | undefined,
-  t?: TFunction,
+  t: TFunction,
 ): FastingStatsDisplay {
-  const translate = resolveTranslator(t);
+  const translate = t;
   const hoursUnit = translate('time.hoursShort', { defaultValue: 'h' });
   const avgMin = toFiniteNumber(stats?.average_duration_minutes);
   const totalMin = toFiniteNumber(stats?.total_minutes_fasted);

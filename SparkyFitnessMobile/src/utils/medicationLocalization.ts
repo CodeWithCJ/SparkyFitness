@@ -1,7 +1,6 @@
 import type { TFunction } from 'i18next';
-import i18n from '../localization/i18n';
 
-export function medicationTypeLabel(typeId: string | null | undefined, t: TFunction = i18n.t.bind(i18n)): string {
+export function medicationTypeLabel(typeId: string | null | undefined, t: TFunction): string {
   switch (typeId) {
     case 'pill': return t('medications.types.pill', { defaultValue: 'Pill' });
     case 'tablet': return t('medications.types.tablet', { defaultValue: 'Tablet' });
@@ -26,11 +25,11 @@ export function medicationTypeLabel(typeId: string | null | undefined, t: TFunct
   }
 }
 
-export function scheduleTypeLabel(typeId: string, t: TFunction = i18n.t.bind(i18n)): string {
+export function scheduleTypeLabel(typeId: string, t: TFunction): string {
   return medicationTypeLabel(typeId, t);
 }
 
-export function mealTimingLabel(value: string, t: TFunction = i18n.t.bind(i18n)): string {
+export function mealTimingLabel(value: string, t: TFunction): string {
   switch (value) {
     case 'before': return t('medications.types.beforeMeal', { defaultValue: 'Before meal' });
     case 'with': return t('medications.types.withMeal', { defaultValue: 'With meal' });

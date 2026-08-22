@@ -86,7 +86,7 @@ const MealSection: React.FC<MealSectionProps> = ({
         <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
           <Text className="text-xs text-accent-primary font-semibold">
             {totalCalories}
-            {targetCalories > 0 ? ` / ${targetCalories}` : ''} {t('foodSummary.caloriesShort', { defaultValue: 'Cal' })}
+            {targetCalories > 0 ? ` / ${targetCalories}` : ''} {t('foodSummary.caloriesShort', { defaultValue: 'kcal' })}
           </Text>
         </View>
       )}

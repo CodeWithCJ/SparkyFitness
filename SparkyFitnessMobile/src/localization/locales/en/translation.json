@@ -305,7 +305,7 @@
       "changeMetric": "Change metric column",
       "notesForSet": "Notes for set {{number}}",
       "addSet": "Add set to {{name}}",
-      "caloriesUnit": "Cal",
+      "caloriesUnit": "kcal",
       "addSetLabel": "Add set"
     },
     "nextSet": "Next Set"
@@ -1522,7 +1522,7 @@
     "setCount_few": "{{formattedCount}} sets",
     "setCount_many": "{{formattedCount}} sets",
     "setCount_other": "{{formattedCount}} sets",
-    "caloriesShort": "Cal",
+    "caloriesShort": "kcal",
     "unknownExercise": "Unknown exercise",
     "addNotePlaceholder": "Add a note…",
     "setOf_one": "Set {{number}} of {{count}}",
@@ -1772,7 +1772,7 @@
   },
   "foodSummary": {
     "tapToAddFood": "Tap to add food",
-    "caloriesShort": "Cal",
+    "caloriesShort": "kcal",
     "nutritionBreakdown": "{{label}} nutrition breakdown"
   },
   "exerciseSummary": {
@@ -1783,7 +1783,7 @@
   "foodRow": {
     "unknownFood": "Unknown food",
     "adjustServing": "Adjust serving",
-    "caloriesShort": "Cal",
+    "caloriesShort": "kcal",
     "deleteFood": "Delete food"
   },
   "exerciseRow": {

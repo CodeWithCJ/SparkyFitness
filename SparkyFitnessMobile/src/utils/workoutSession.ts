@@ -288,7 +288,7 @@ export function buildSessionSubtitle(
       const dist = distanceFromKm(totalDistanceKm, distanceUnit);
       parts.push(`${formatLocalizedNumber(dist, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
     }
-    if (calories > 0) parts.push(`${Math.round(calories)} ${t('workout.caloriesShort', { defaultValue: 'Cal' })}`);
+    if (calories > 0) parts.push(`${Math.round(calories)} ${t('workout.caloriesShort', { defaultValue: 'kcal' })}`);
     return parts.join(' \u00b7 ');
   }
 
@@ -308,7 +308,7 @@ export function buildSessionSubtitle(
       parts.push(`${formatLocalizedNumber(vol)} ${weightUnit}`);
     }
     if (duration > 0) parts.push(formatDuration(duration));
-    if (calories > 0) parts.push(`${Math.round(calories)} ${t('workout.caloriesShort', { defaultValue: 'Cal' })}`);
+    if (calories > 0) parts.push(`${Math.round(calories)} ${t('workout.caloriesShort', { defaultValue: 'kcal' })}`);
     return parts.join(' \u00b7 ');
   }
 
@@ -320,7 +320,7 @@ export function buildSessionSubtitle(
     const label = distanceUnit === 'miles' ? 'mi' : 'km';
     parts.push(`${formatLocalizedNumber(dist, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${label}`);
   }
-  if (calories > 0) parts.push(`${Math.round(calories)} ${t('workout.caloriesShort', { defaultValue: 'Cal' })}`);
+  if (calories > 0) parts.push(`${Math.round(calories)} ${t('workout.caloriesShort', { defaultValue: 'kcal' })}`);
   return parts.join(' \u00b7 ');
 }
 

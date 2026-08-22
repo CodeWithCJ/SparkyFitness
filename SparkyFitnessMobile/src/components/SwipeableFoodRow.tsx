@@ -151,11 +151,11 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
               className="py-0 px-0"
               textClassName="text-sm text-text-secondary font-medium"
             >
-              {`${nutrition.calories} ${t('foodRow.caloriesShort', { defaultValue: 'Cal' })} ▾`}
+              {`${nutrition.calories} ${t('foodRow.caloriesShort', { defaultValue: 'kcal' })} ▾`}
             </Button>
           ) : (
             <Text className="text-sm text-text-secondary font-medium mr-2">
-              {nutrition.calories} {t('foodRow.caloriesShort', { defaultValue: 'Cal' })}
+              {nutrition.calories} {t('foodRow.caloriesShort', { defaultValue: 'kcal' })}
             </Text>
           )}
         </View>

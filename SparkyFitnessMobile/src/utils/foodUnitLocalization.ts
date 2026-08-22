@@ -1,5 +1,4 @@
 import type { TFunction } from 'i18next';
-import i18n from '../localization/i18n';
 import { formatLocalizedNumber } from '../localization';
 
 /**
@@ -15,10 +14,6 @@ import { formatLocalizedNumber } from '../localization';
  * application language with no second localization system).
  */
 
-const defaultTranslator: TFunction = i18n.t.bind(i18n);
-function resolveTranslator(t?: TFunction): TFunction {
-  return t ?? defaultTranslator;
-}
 
 /** Controlled group labels from FOOD_FORM_UNIT_GROUPS. */
 const GROUP_KEYS: Record<string, string> = {
@@ -31,8 +26,8 @@ const GROUP_KEYS: Record<string, string> = {
  * Localized presentation label for a controlled unit group label
  * (Weight/Volume/Quantity). Unknown group labels fall back to the literal.
  */
-export function localizeFoodUnitGroup(label: string, t?: TFunction): string {
-  const translate = resolveTranslator(t);
+export function localizeFoodUnitGroup(label: string, t: TFunction): string {
+  const translate = t;
   const key = GROUP_KEYS[label];
   if (!key) return label;
   return translate(key, { defaultValue: label });
@@ -92,9 +87,9 @@ const COUNTABLE_UNITS: ReadonlySet<string> = new Set([
  * units, or the original literal for unknown/custom/server-defined units. The
  * raw unit is never altered.
  */
-export function localizeFoodUnit(unit: string | null | undefined, t?: TFunction): string {
+export function localizeFoodUnit(unit: string | null | undefined, t: TFunction): string {
   if (unit == null) return '';
-  const translate = resolveTranslator(t);
+  const translate = t;
   const normalized = unit.trim().toLowerCase();
   const key = UNIT_KEYS[normalized];
   if (!key) return unit;
@@ -117,10 +112,10 @@ export function localizeFoodUnit(unit: string | null | undefined, t?: TFunction)
 export function formatLocalizedUnitQuantity(
   quantity: number,
   unit: string | null | undefined,
-  t?: TFunction,
+  t: TFunction,
 ): string {
   if (unit == null) return '';
-  const translate = resolveTranslator(t);
+  const translate = t;
   const normalized = unit.trim().toLowerCase();
   const qty = formatLocalizedNumber(quantity, {
     minimumFractionDigits: 0,

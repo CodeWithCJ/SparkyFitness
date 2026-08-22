@@ -726,7 +726,7 @@ function ActiveWorkoutExerciseCard({
                     minWidth: 52,
                   }}
                 />
-                <Text className="text-sm text-text-secondary">{t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'Cal' })}</Text>
+                <Text className="text-sm text-text-secondary">{t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'kcal' })}</Text>
               </View>
             ) : (
               <Pressable
@@ -738,7 +738,7 @@ function ActiveWorkoutExerciseCard({
               >
                 <Icon name="flame" size={14} color={accentPrimary} />
                 <Text className="text-sm" style={{ color: accentPrimary }}>
-                  {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} {t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'Cal' })}
+                  {(exercise.editCaloriesText ?? '') !== '' ? exercise.editCaloriesText : '–'} {t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'kcal' })}
                 </Text>
                 <Icon name="chevron-down" size={10} color={accentPrimary} />
               </Pressable>
@@ -746,7 +746,7 @@ function ActiveWorkoutExerciseCard({
             {caloriesText != null && (
               <View className="flex-row items-center">
                 <Icon name="flame" size={14} color={textMuted} />
-                <Text className="text-sm text-text-secondary ml-1">{caloriesText} {t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'Cal' })}</Text>
+                <Text className="text-sm text-text-secondary ml-1">{caloriesText} {t('activeWorkout.exercise.caloriesUnit', { defaultValue: 'kcal' })}</Text>
               </View>
             )}
             {bestDisplay != null && (

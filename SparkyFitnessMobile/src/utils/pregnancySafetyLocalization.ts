@@ -1,11 +1,6 @@
 import type { TFunction } from 'i18next';
-import i18n from '../localization/i18n';
 import type { SafetyItem } from '@workspace/shared';
 
-const defaultTranslator: TFunction = i18n.t.bind(i18n);
-function resolveTranslator(t?: TFunction): TFunction {
-  return t ?? defaultTranslator;
-}
 
 /**
  * Localized Polish search aliases per controlled safety item. Kept here (not in
@@ -53,15 +48,15 @@ function safetyKey(item: SafetyItem, list: 'food' | 'med'): string {
 }
 
 /** Localized presentation name for a controlled safety item. */
-export function localizeSafetyName(item: SafetyItem, list: 'food' | 'med', t?: TFunction): string {
-  const translate = resolveTranslator(t);
+export function localizeSafetyName(item: SafetyItem, list: 'food' | 'med', t: TFunction): string {
+  const translate = t;
   const key = safetyKey(item, list);
   return translate(`${key}.name`, { defaultValue: item.name });
 }
 
 /** Localized explanatory note for a controlled safety item. */
-export function localizeSafetyNote(item: SafetyItem, list: 'food' | 'med', t?: TFunction): string {
-  const translate = resolveTranslator(t);
+export function localizeSafetyNote(item: SafetyItem, list: 'food' | 'med', t: TFunction): string {
+  const translate = t;
   const key = safetyKey(item, list);
   return translate(`${key}.note`, { defaultValue: item.note });
 }
@@ -135,7 +130,7 @@ export function lookupSafetyLocalized(
   query: string,
   list: readonly SafetyItem[],
   group: 'food' | 'med',
-  t?: TFunction,
+  t: TFunction,
 ): SafetyItem[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
