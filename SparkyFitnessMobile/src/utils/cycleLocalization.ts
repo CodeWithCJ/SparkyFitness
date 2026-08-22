@@ -1,11 +1,6 @@
 import type { TFunction } from 'i18next';
-import i18n from '../localization/i18n';
 import { BUILT_IN_CYCLE_SYMPTOMS } from '@workspace/shared';
 
-const defaultTranslator: TFunction = i18n.t.bind(i18n);
-function resolveTranslator(t?: TFunction): TFunction {
-  return t ?? defaultTranslator;
-}
 
 /**
  * Reverse map from a built-in cycle symptom's English `displayName` (the value
@@ -24,10 +19,10 @@ const DISPLAY_TO_KEY: ReadonlyMap<string, string> = new Map(
  */
 export function localizeCycleSymptom(
   symptom: string | null | undefined,
-  t?: TFunction,
+  t: TFunction,
 ): string {
   if (symptom == null || symptom.trim() === '') return symptom ?? '';
-  const translate = resolveTranslator(t);
+  const translate = t;
   const key = DISPLAY_TO_KEY.get(symptom.trim().toLowerCase());
   if (key) {
     return translate(`cycleSymptoms.items.${key}`, {
@@ -72,9 +67,9 @@ export function localizeCycleAnomaly(
   key: string,
   fallbackMessage: string,
   params?: CycleMessageParams,
-  t?: TFunction,
+  t: TFunction,
 ): string {
-  const translate = resolveTranslator(t);
+  const translate = t;
   if (key === 'short_cycle') {
     if (params?.cycleLength != null) {
       return translate('cycleInsights.anomaly.short_cycle', {
@@ -115,9 +110,9 @@ export function localizeCycleAlert(
   key: string,
   fallbackMessage: string,
   params?: CycleMessageParams,
-  t?: TFunction,
+  t: TFunction,
 ): string {
-  const translate = resolveTranslator(t);
+  const translate = t;
   if (key === 'late_period' && params?.days != null) {
     return translate('cycleInsights.alert.late_period', {
       defaultValue: fallbackMessage,
@@ -145,5 +140,5 @@ export function localizeCycleAlert(
       defaultValue: fallbackMessage,
     });
   }
-  return localizeCycleAnomaly(key, fallbackMessage, params, translate);
+  return localizeCycleAnomaly(key, fallbackMessage, params, t);
 }
