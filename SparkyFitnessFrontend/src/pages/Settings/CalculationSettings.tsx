@@ -1571,10 +1571,7 @@ const CalculationSettings = () => {
           )}
 
           {/* Warning callouts */}
-          {shouldShowCalorieSafetyWarning(
-            goalMode,
-            goalModeCalculationMethod
-          ) &&
+          {shouldShowCalorieSafetyWarning(goalMode) &&
             previewResult.finalTarget < previewResult.rmr &&
             previewResult.finalTarget >= previewResult.absoluteFloorValue && (
               <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex gap-3 text-sm text-amber-800 dark:text-amber-300">
@@ -1594,10 +1591,7 @@ const CalculationSettings = () => {
             )}
 
           {/* Absolute Floor Danger Callout */}
-          {shouldShowCalorieSafetyWarning(
-            goalMode,
-            goalModeCalculationMethod
-          ) &&
+          {shouldShowCalorieSafetyWarning(goalMode) &&
             previewResult.finalTarget < previewResult.absoluteFloorValue && (
               <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex gap-3 text-sm text-red-800 dark:text-red-300">
                 <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />

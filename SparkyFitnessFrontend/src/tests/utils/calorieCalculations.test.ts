@@ -623,16 +623,56 @@ describe('computeCalorieTarget safety floor reporting', () => {
 
 describe('shouldShowCalorieSafetyWarning', () => {
   it('does not warn while maintaining weight', () => {
-    expect(shouldShowCalorieSafetyWarning('maintain', 'manual')).toBe(false);
+    expect(shouldShowCalorieSafetyWarning('maintain')).toBe(false);
   });
 
   it.each(['recomp', 'cut', 'high_cut', 'lean_bulk', 'bulk', 'manual'])(
-    'warns for a manually configured non-maintenance %s goal',
+    'warns for a non-maintenance %s goal regardless of method',
     (goalMode) => {
-      expect(shouldShowCalorieSafetyWarning(goalMode, 'manual')).toBe(true);
-      expect(shouldShowCalorieSafetyWarning(goalMode, 'adaptive')).toBe(false);
+      expect(shouldShowCalorieSafetyWarning(goalMode)).toBe(true);
     }
   );
+});
+
+describe('safety warnings reach a relaxed adaptive floor', () => {
+  // A custom or disabled floor lets an adaptive target land below RMR. Gating the
+  // warning on the manual method used to silence it there, which is precisely
+  // where it matters: the floor never clamps under manual in the first place.
+  const base = {
+    goalMode: 'high_cut',
+    calculationMethod: 'adaptive' as const,
+    customPercentage: 0,
+    bmr: 1633,
+    activityLevelMultiplier: 1.2,
+    adaptiveTdee: 1959,
+    adaptiveTdeeFallback: false,
+    adaptiveTdeeDaysOfData: 60,
+    weightKg: 100,
+    heightCm: 155,
+    age: 35,
+    gender: 'female' as const,
+    currentGoalCalories: 1959,
+  };
+
+  it('produces a below-RMR target the warning must cover', () => {
+    const result = computeCalorieTarget({
+      ...base,
+      calorieSafetyFloorMode: 'disabled',
+    });
+
+    expect(result.finalTarget).toBeLessThan(result.rmr);
+    expect(shouldShowCalorieSafetyWarning(base.goalMode)).toBe(true);
+  });
+
+  it('stays quiet when the standard floor already clamped the target', () => {
+    const result = computeCalorieTarget({
+      ...base,
+      calorieSafetyFloorMode: 'standard',
+    });
+
+    // The helper is permissive; the outcome comparison is what silences it.
+    expect(result.finalTarget).toBeGreaterThanOrEqual(result.rmr);
+  });
 });
 
 describe('normalizeCalorieGoalAdjustmentMode', () => {

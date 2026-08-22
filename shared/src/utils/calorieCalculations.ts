@@ -567,11 +567,21 @@ export function getClinicalCalorieMinimum(gender: "male" | "female"): number {
   return gender === "female" ? 1200 : 1500;
 }
 
-export function shouldShowCalorieSafetyWarning(
-  goalMode: string,
-  calculationMethod: string,
-): boolean {
-  return goalMode !== "maintain" && calculationMethod === "manual";
+/**
+ * Whether a low-target warning is worth showing at all.
+ *
+ * Deliberately not gated on the calculation method. The floor only ever clamps
+ * under `adaptive`, so gating on `manual` silenced the warning in exactly the
+ * configurations that can land below RMR: a custom floor, or a disabled one.
+ * Those are also the settings the smallest users depend on, because a clinical
+ * minimum of 1200/1500 can sit above their entire maintenance.
+ *
+ * Callers pair this with the outcome (`finalTarget < rmr` and friends), which is
+ * self-limiting: an unclamped adaptive target sits at or above its floor, so the
+ * comparison is false and nothing renders.
+ */
+export function shouldShowCalorieSafetyWarning(goalMode: string): boolean {
+  return goalMode !== "maintain";
 }
 
 export function computeCalorieTarget({
