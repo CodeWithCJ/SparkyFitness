@@ -30,6 +30,12 @@ import {
 
 type CalorieSettingsScreenProps = RootStackScreenProps<'CalorieSettings'>;
 
+const safetyFloorOptions = [
+  { label: 'Standard', value: 'standard' },
+  { label: 'Custom', value: 'custom' },
+  { label: 'Disabled', value: 'disabled' },
+];
+
 function normalizePreferences(prefs: UserPreferences | undefined) {
   const raw = prefs?.calorie_goal_adjustment_mode;
   return {
