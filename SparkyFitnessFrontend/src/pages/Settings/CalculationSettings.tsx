@@ -1290,6 +1290,15 @@ const CalculationSettings = () => {
                 'settings.goalMode.customPercentageHint',
                 'Positive adds calories (surplus), negative cuts them (deficit).'
               )}
+              {isGoalModeUnreachable('manual') && (
+                <span className="block text-amber-600 dark:text-amber-400">
+                  {t(
+                    'settings.goalMode.customPercentageUnreachable',
+                    'Deeper than the ~{{percent}}% your safety floor allows; the target will be raised to that floor.',
+                    { percent: deficitCeilingPercent!.toFixed(0) }
+                  )}
+                </span>
+              )}
             </span>
           </div>
         )}
@@ -1677,8 +1686,10 @@ const CalculationSettings = () => {
                       <span className="font-semibold">
                         {previewResult.maxFeasibleDeficitPercent.toFixed(0)}%
                       </span>
-                      . To lose faster than that, raise your expenditure through
-                      activity rather than cutting intake further.
+                      {t(
+                        'settings.goalMode.clampAdvice',
+                        '. To lose faster than that, raise your actual expenditure rather than cutting intake further — and if you are still on the estimated baseline, check that your Activity Level is not understated.'
+                      )}
                     </>
                   )}
                 </p>
