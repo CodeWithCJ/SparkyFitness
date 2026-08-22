@@ -30,31 +30,6 @@ import {
 
 type CalorieSettingsScreenProps = RootStackScreenProps<'CalorieSettings'>;
 
-const modeOptions = [
-  { label: 'Adaptive Goal', value: 'adaptive' },
-  { label: 'Dynamic Goal', value: 'dynamic' },
-  { label: 'Fixed Goal', value: 'fixed' },
-  { label: 'Percentage Earn-Back', value: 'percentage' },
-  { label: 'Device Projection', value: 'tdee' },
-];
-
-const activityLevelOptions = [
-  { label: 'None (x1.0)', value: 'none' },
-  { label: 'Sedentary (x1.2)', value: 'not_much' },
-  { label: 'Lightly Active (x1.375)', value: 'light' },
-  { label: 'Moderately Active (x1.55)', value: 'moderate' },
-  { label: 'Very Active (x1.725)', value: 'heavy' },
-];
-
-const safetyFloorOptions = [
-  { label: 'Standard', value: 'standard' },
-  { label: 'Custom', value: 'custom' },
-  { label: 'Disabled', value: 'disabled' },
-];
-
-// Apple Health and Health Connect use different terms for the same baseline-energy value.
-const bmrMetricName = Platform.OS === 'ios' ? 'Resting Energy' : 'BMR';
-
 function normalizePreferences(prefs: UserPreferences | undefined) {
   const raw = prefs?.calorie_goal_adjustment_mode;
   return {

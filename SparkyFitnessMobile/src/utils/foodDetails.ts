@@ -8,6 +8,7 @@ import type {
 } from '../types/foodUnitVariants';
 import type { CreateFoodVariantPayload } from '../services/api/foodsApi';
 import { formatLocalizedNumber } from '../localization';
+import i18n from '../localization/i18n';
 import {
   formatLocalizedUnitQuantity,
   localizeFoodUnit,
@@ -410,13 +411,13 @@ export function formatVariantServingLabel(
     return formatServingDescription(values.servingDescription ?? '');
   }
 
-  const servingLabel = formatLocalizedUnitQuantity(values.servingSize, values.servingUnit);
+  const servingLabel = formatLocalizedUnitQuantity(values.servingSize, values.servingUnit, i18n.t);
   const metricEquivalent = !isMetricUnit(values.servingUnit)
     ? findMetricEquivalent(equivalents)
     : undefined;
 
   if (metricEquivalent) {
-    return `${servingLabel} (${formatLocalizedUnitQuantity(metricEquivalent.serving_size, metricEquivalent.serving_unit)})`;
+    return `${servingLabel} (${formatLocalizedUnitQuantity(metricEquivalent.serving_size, metricEquivalent.serving_unit, i18n.t)})`;
   }
 
   return servingLabel;
@@ -437,10 +438,10 @@ export function formatQuantityUnitLabel(
   const metricEquivalent = !isMetricUnit(values.servingUnit)
     ? findMetricEquivalent(equivalents)
     : undefined;
-  const unitLabel = localizeFoodUnit(formatServingUnit(values.servingUnit));
+  const unitLabel = localizeFoodUnit(formatServingUnit(values.servingUnit), i18n.t);
 
   if (metricEquivalent) {
-    return `${unitLabel} (${formatLocalizedUnitQuantity(metricEquivalent.serving_size, metricEquivalent.serving_unit)})`;
+    return `${unitLabel} (${formatLocalizedUnitQuantity(metricEquivalent.serving_size, metricEquivalent.serving_unit, i18n.t)})`;
   }
 
   return unitLabel;
