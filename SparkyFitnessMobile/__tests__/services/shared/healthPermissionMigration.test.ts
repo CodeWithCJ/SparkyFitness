@@ -32,7 +32,7 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
   });
 
   test('skips migration when the stored version is current', async () => {
-    loadHealthPreference.mockResolvedValue(3);
+    loadHealthPreference.mockResolvedValue(4);
 
     const result = await migrateEnabledMetricPermissionsIfNeeded({
       healthMetricStates: { isExerciseSessionSyncEnabled: true },
@@ -62,7 +62,7 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
 
     expect(result).toBe(true);
     expect(requestHealthPermissions).not.toHaveBeenCalled();
-    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 3);
+    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 4);
   });
 
   test('persists the new version after all enabled permissions are granted', async () => {
@@ -83,7 +83,7 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
 
     expect(result).toBe(true);
     expect(requestHealthPermissions).toHaveBeenCalledWith(metrics[0].permissions);
-    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 3);
+    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 4);
   });
 
   test('does not persist the new version when permissions are only partially granted', async () => {
@@ -119,5 +119,51 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
 
     expect(result).toBe(false);
     expect(saveHealthPreference).not.toHaveBeenCalled();
+  });
+});
+
+describe('writeback directions in the refresh pass', () => {
+  const baseArgs = {
+    healthMetricStates: { isHydrationSyncEnabled: true },
+    metrics: [
+      {
+        stateKey: 'isHydrationSyncEnabled',
+        permissions: [{ accessType: 'read' as const, recordType: 'Hydration' }],
+      },
+    ],
+    logTag: '[Test]',
+  };
+
+  it('sends read and write in ONE request, never a read-only one', async () => {
+    const requestHealthPermissions = jest.fn().mockResolvedValue(true);
+    const saveHealthPreference = jest.fn().mockResolvedValue(undefined);
+
+    await migrateEnabledMetricPermissionsIfNeeded({
+      ...baseArgs,
+      loadHealthPreference: jest.fn().mockResolvedValue(null),
+      saveHealthPreference,
+      requestHealthPermissions,
+      extraPermissions: [{ accessType: 'write', recordType: 'Hydration' }],
+    });
+
+    expect(requestHealthPermissions).toHaveBeenCalledTimes(1);
+    expect(requestHealthPermissions).toHaveBeenCalledWith([
+      { accessType: 'read', recordType: 'Hydration' },
+      { accessType: 'write', recordType: 'Hydration' },
+    ]);
+  });
+
+  it('re-runs for installs stamped at the previous version', async () => {
+    const requestHealthPermissions = jest.fn().mockResolvedValue(true);
+
+    await migrateEnabledMetricPermissionsIfNeeded({
+      ...baseArgs,
+      loadHealthPreference: jest.fn().mockResolvedValue(3),
+      saveHealthPreference: jest.fn().mockResolvedValue(undefined),
+      requestHealthPermissions,
+      extraPermissions: [{ accessType: 'write', recordType: 'Hydration' }],
+    });
+
+    expect(requestHealthPermissions).toHaveBeenCalledTimes(1);
   });
 });

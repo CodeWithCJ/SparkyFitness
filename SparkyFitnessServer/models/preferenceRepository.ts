@@ -45,6 +45,8 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         active_vision_ai_service_id = CASE WHEN $42 THEN $41 ELSE active_vision_ai_service_id END,
         measurement_decimal_places = COALESCE($40, measurement_decimal_places),
         added_sugar_algorithm = COALESCE($43, added_sugar_algorithm),
+        calorie_safety_floor_mode = COALESCE($45, calorie_safety_floor_mode),
+        calorie_safety_floor_value = COALESCE($46, calorie_safety_floor_value),
         updated_at = now()
       WHERE user_id = $28
       RETURNING *`,
@@ -93,6 +95,8 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         'active_vision_ai_service_id' in preferenceData,
         preferenceData.added_sugar_algorithm,
         preferenceData.time_format,
+        preferenceData.calorie_safety_floor_mode,
+        preferenceData.calorie_safety_floor_value,
       ]
     );
     return result.rows[0];
@@ -179,6 +183,8 @@ async function upsertUserPreferences(preferenceData: any) {
        measurement_decimal_places,
        active_vision_ai_service_id,
        added_sugar_algorithm,
+       calorie_safety_floor_mode,
+       calorie_safety_floor_value,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -204,6 +210,8 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($40, 0),
        $41,
        COALESCE($43, 'WHO_IDEAL'),
+       COALESCE($45, 'standard'),
+       COALESCE($46, 1200),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -246,6 +254,8 @@ async function upsertUserPreferences(preferenceData: any) {
        active_vision_ai_service_id = CASE WHEN $42 THEN EXCLUDED.active_vision_ai_service_id ELSE user_preferences.active_vision_ai_service_id END,
        measurement_decimal_places = COALESCE(EXCLUDED.measurement_decimal_places, user_preferences.measurement_decimal_places),
        added_sugar_algorithm = COALESCE(EXCLUDED.added_sugar_algorithm, user_preferences.added_sugar_algorithm),
+       calorie_safety_floor_mode = COALESCE($45, user_preferences.calorie_safety_floor_mode),
+       calorie_safety_floor_value = COALESCE($46, user_preferences.calorie_safety_floor_value),
        time_format = COALESCE($44, user_preferences.time_format),
        updated_at = now()
      RETURNING *`,
@@ -294,6 +304,8 @@ async function upsertUserPreferences(preferenceData: any) {
         'active_vision_ai_service_id' in preferenceData,
         preferenceData.added_sugar_algorithm,
         preferenceData.time_format,
+        preferenceData.calorie_safety_floor_mode,
+        preferenceData.calorie_safety_floor_value,
       ]
     );
     return result.rows[0];

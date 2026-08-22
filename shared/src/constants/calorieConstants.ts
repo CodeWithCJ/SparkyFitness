@@ -42,6 +42,20 @@ export const CALORIE_CALCULATION_CONSTANTS = {
  */
 export const ENERGY_DENSITY_KCAL_PER_KG = 6000;
 
+export const CALORIE_SAFETY_FLOOR_MODES = [
+  "standard",
+  "custom",
+  "disabled",
+] as const;
+
+export type CalorieSafetyFloorMode =
+  (typeof CALORIE_SAFETY_FLOOR_MODES)[number];
+
+/** Guardrails for persisted custom values; disabling remains an explicit mode. */
+export const MIN_CALORIE_SAFETY_FLOOR = 800;
+export const MAX_CALORIE_SAFETY_FLOOR = 5_000;
+export const DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR = 1200;
+
 export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   none: 1.0,
   not_much: 1.2,

@@ -8,6 +8,8 @@ import {
   computeExerciseCredited,
   computeCalorieProgress,
   normalizeCalorieGoalAdjustmentMode,
+  shouldShowCalorieSafetyWarning,
+  convertEnergyValue,
 } from '@workspace/shared';
 import {
   computeCalorieTarget,
@@ -25,6 +27,13 @@ describe('ACTIVITY_MULTIPLIERS', () => {
     expect(ACTIVITY_MULTIPLIERS['light']).toBe(1.375);
     expect(ACTIVITY_MULTIPLIERS['moderate']).toBe(1.55);
     expect(ACTIVITY_MULTIPLIERS['heavy']).toBe(1.725);
+  });
+});
+
+describe('convertEnergyValue', () => {
+  it('converts energy in both directions without rounding away precision', () => {
+    expect(convertEnergyValue(100, 'kcal', 'kJ')).toBeCloseTo(418.4, 5);
+    expect(convertEnergyValue(418.4, 'kJ', 'kcal')).toBeCloseTo(100, 5);
   });
 });
 
@@ -558,6 +567,72 @@ describe('computeCalorieTarget safety floor reporting', () => {
     expect(result.finalTarget).toBe(1190); // the user gets what they asked for
     expect(result.isBelowAbsoluteFloor).toBe(true);
   });
+
+  it('uses a custom floor instead of forcing the higher calculated RMR (issue #2124)', () => {
+    const result = computeCalorieTarget({
+      ...smallBase,
+      weightKg: 88,
+      heightCm: 175,
+      age: 30,
+      adaptiveTdee: 1606,
+      currentGoalCalories: 1606,
+      goalMode: 'maintain',
+      calculationMethod: 'adaptive',
+      calorieSafetyFloorMode: 'custom',
+      calorieSafetyFloorValue: 1200,
+    });
+
+    expect(result.rmr).toBeGreaterThan(1606);
+    expect(result.finalTarget).toBe(1606);
+    expect(result.effectiveSafetyFloor).toBe(1200);
+    expect(result.wasClampedToFloor).toBe(false);
+  });
+
+  it('clamps to the configured custom floor and identifies it as the source', () => {
+    const result = computeCalorieTarget({
+      ...smallBase,
+      adaptiveTdee: 1300,
+      currentGoalCalories: 1300,
+      goalMode: 'high_cut',
+      calculationMethod: 'adaptive',
+      calorieSafetyFloorMode: 'custom',
+      calorieSafetyFloorValue: 1100,
+    });
+
+    expect(result.target).toBe(1040);
+    expect(result.finalTarget).toBe(1100);
+    expect(result.effectiveSafetyFloor).toBe(1100);
+    expect(result.clampedFloorSource).toBe('custom');
+  });
+
+  it('does not clamp an adaptive target when the floor is disabled', () => {
+    const result = computeCalorieTarget({
+      ...smallBase,
+      goalMode: 'cut',
+      calculationMethod: 'adaptive',
+      calorieSafetyFloorMode: 'disabled',
+      calorieSafetyFloorValue: 1200,
+    });
+
+    expect(result.finalTarget).toBe(1190);
+    expect(result.effectiveSafetyFloor).toBeNull();
+    expect(result.wasClampedToFloor).toBe(false);
+    expect(result.clampedFloorSource).toBeNull();
+  });
+});
+
+describe('shouldShowCalorieSafetyWarning', () => {
+  it('does not warn while maintaining weight', () => {
+    expect(shouldShowCalorieSafetyWarning('maintain', 'manual')).toBe(false);
+  });
+
+  it.each(['recomp', 'cut', 'high_cut', 'lean_bulk', 'bulk', 'manual'])(
+    'warns for a manually configured non-maintenance %s goal',
+    (goalMode) => {
+      expect(shouldShowCalorieSafetyWarning(goalMode, 'manual')).toBe(true);
+      expect(shouldShowCalorieSafetyWarning(goalMode, 'adaptive')).toBe(false);
+    }
+  );
 });
 
 describe('normalizeCalorieGoalAdjustmentMode', () => {

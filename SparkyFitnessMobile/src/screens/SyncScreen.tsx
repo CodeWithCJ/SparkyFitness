@@ -11,6 +11,10 @@ import SyncOnOpen from '../components/SyncOnOpen';
 import HealthDataSync from '../components/HealthDataSync';
 import HealthDataWriteback from '../components/HealthDataWriteback';
 import { WRITEBACK_METRICS, type WritebackMetric, type WritebackDateRange } from '../WritebackMetrics';
+import {
+  enabledWritebackPermissions,
+  enabledReadPermissionsForRecordType,
+} from '../services/shared/healthPermissionSets';
 import HealthSourceLabel from '../components/HealthSourceLabel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -147,7 +151,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     setWritebackStates(newWritebackStates);
 
     if (initialized) {
-      await refreshEnabledMetricPermissions(newHealthMetricStates);
+      await refreshEnabledMetricPermissions(newHealthMetricStates, newWritebackStates);
     }
 
     const bgSyncEnabled = await loadBackgroundSyncEnabled();
@@ -260,7 +264,12 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     }
     if (newValue) {
       try {
-        const granted = await requestHealthPermissions(metric.permissions);
+        // Carry the write direction too when writeback for this record type is already
+        // on, so the sheet cannot commit it back to off. See healthPermissionSets.ts.
+        const granted = await requestHealthPermissions([
+          ...metric.permissions,
+          ...enabledWritebackPermissions(writebackStates, new Set([metric.recordType])),
+        ]);
         if (!granted) {
           Alert.alert(t('syncScreen.permissionDenied.title', { defaultValue: 'Permission Denied' }), t('syncScreen.permissionDenied.read', { defaultValue: 'Please grant {{metric}} permission in {{settings}}.', metric: getHealthMetricLabel(t, metric).toLowerCase(), settings: healthSettingsName }));
           setHealthMetricStates(prevStates => ({
@@ -299,7 +308,10 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     }
     // Enabling: request the write permission; revert the toggle if denied.
     try {
-      const granted = await requestHealthPermissions([metric.permission]);
+      const granted = await requestHealthPermissions([
+        metric.permission,
+        ...enabledReadPermissionsForRecordType(healthMetricStates, metric.permission.recordType),
+      ]);
       if (!granted) {
         Alert.alert(
           t('syncScreen.permissionDenied.title', { defaultValue: 'Permission Denied' }),
@@ -386,7 +398,10 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     });
 
     if (newValue) {
-      const allPermissions = HEALTH_METRICS.flatMap(metric => metric.permissions);
+      const allPermissions = [
+        ...HEALTH_METRICS.flatMap(metric => metric.permissions),
+        ...enabledWritebackPermissions(writebackStates),
+      ];
       addLog(`[SyncScreen] Requesting permissions for all ${HEALTH_METRICS.length} metrics`, 'DEBUG');
 
       try {

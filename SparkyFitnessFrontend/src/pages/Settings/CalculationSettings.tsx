@@ -67,6 +67,12 @@ import {
   calculateBmr,
   calculateAge,
   CalorieGoalAdjustmentMode,
+  CalorieSafetyFloorMode,
+  MIN_CALORIE_SAFETY_FLOOR,
+  MAX_CALORIE_SAFETY_FLOOR,
+  resolveCalorieSafetyFloor,
+  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  shouldShowCalorieSafetyWarning,
   normalizeCalorieGoalAdjustmentMode,
 } from '@workspace/shared';
 
@@ -115,6 +121,8 @@ const CalculationSettings = () => {
     goalMode: contextGoalMode,
     goalModeCalculationMethod: contextGoalModeCalculationMethod,
     goalModeCustomPercentage: contextGoalModeCustomPercentage,
+    calorieSafetyFloorMode: contextCalorieSafetyFloorMode,
+    calorieSafetyFloorValue: contextCalorieSafetyFloorValue,
     weightUnit,
     timezone,
     convertWeight,
@@ -148,6 +156,27 @@ const CalculationSettings = () => {
   const [customPercentageInput, setCustomPercentageInput] = useState<string>(
     String(contextGoalModeCustomPercentage ?? 0)
   );
+  const [calorieSafetyFloorMode, setCalorieSafetyFloorMode] =
+    useState<CalorieSafetyFloorMode>(
+      contextCalorieSafetyFloorMode ?? 'standard'
+    );
+  const [calorieSafetyFloorValue, setCalorieSafetyFloorValue] =
+    useState<number>(
+      contextCalorieSafetyFloorValue ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
+    );
+  const [calorieSafetyFloorInput, setCalorieSafetyFloorInput] =
+    useState<string>(
+      String(
+        Math.round(
+          convertEnergy(
+            contextCalorieSafetyFloorValue ??
+              DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+            'kcal',
+            energyUnit
+          )
+        )
+      )
+    );
 
   const [bmrAlgorithm, setBmrAlgorithm] = useState<BmrAlgorithm>(
     contextBmrAlgorithm || BmrAlgorithm.MIFFLIN_ST_JEOR
@@ -240,6 +269,19 @@ const CalculationSettings = () => {
       setGoalModeCustomPercentage(contextGoalModeCustomPercentage);
       setCustomPercentageInput(String(contextGoalModeCustomPercentage));
     }
+    if (contextCalorieSafetyFloorMode !== undefined) {
+      setCalorieSafetyFloorMode(contextCalorieSafetyFloorMode);
+    }
+    if (contextCalorieSafetyFloorValue !== undefined) {
+      setCalorieSafetyFloorValue(contextCalorieSafetyFloorValue);
+      setCalorieSafetyFloorInput(
+        String(
+          Math.round(
+            convertEnergy(contextCalorieSafetyFloorValue, 'kcal', energyUnit)
+          )
+        )
+      );
+    }
     // Since preferences are loaded by the PreferencesProvider at a higher level,
     // we can assume they are available by the time this component renders.
     // Set isLoading to false after initial render with context values.
@@ -261,6 +303,10 @@ const CalculationSettings = () => {
     contextGoalMode,
     contextGoalModeCalculationMethod,
     contextGoalModeCustomPercentage,
+    contextCalorieSafetyFloorMode,
+    contextCalorieSafetyFloorValue,
+    convertEnergy,
+    energyUnit,
   ]);
 
   const handleSave = async () => {
@@ -284,6 +330,8 @@ const CalculationSettings = () => {
         goalMode: goalMode,
         goalModeCalculationMethod: goalModeCalculationMethod,
         goalModeCustomPercentage: goalModeCustomPercentage,
+        calorieSafetyFloorMode,
+        calorieSafetyFloorValue,
       });
       invalidateDiary();
       invalidateDailyProgress();
@@ -366,10 +414,18 @@ const CalculationSettings = () => {
       : Math.round(bmr > 0 ? bmr * activityMultiplier : 2000);
 
   if (calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-    currentGoalBase = Math.max(
-      1200,
-      Math.round((adaptiveTdeeData.tdee ?? 0) + calorieGoalOffset)
+    const adaptiveGoal = Math.round(
+      (adaptiveTdeeData.tdee ?? 0) + calorieGoalOffset
     );
+    const adaptiveGoalFloor = resolveCalorieSafetyFloor(
+      calorieSafetyFloorMode,
+      calorieSafetyFloorValue,
+      DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
+    );
+    currentGoalBase =
+      adaptiveGoalFloor === null
+        ? adaptiveGoal
+        : Math.max(adaptiveGoalFloor, adaptiveGoal);
   }
 
   const previewResult = computeCalorieTarget({
@@ -391,6 +447,8 @@ const CalculationSettings = () => {
     bmrAlgorithm,
     currentGoalCalories: currentGoalBase,
     calculateBmrFn: calculateBmr,
+    calorieSafetyFloorMode,
+    calorieSafetyFloorValue,
   });
 
   const deficitPct = getGoalModeAdjustment(goalMode, goalModeCustomPercentage);
@@ -1209,6 +1267,108 @@ const CalculationSettings = () => {
           </div>
         )}
 
+        <div className="mb-4 rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="calorie-safety-floor-mode">
+                {t(
+                  'settings.goalMode.safetyFloorModeLabel',
+                  'Adaptive Safety Floor'
+                )}
+              </Label>
+              <Select
+                value={calorieSafetyFloorMode}
+                onValueChange={(value: CalorieSafetyFloorMode) =>
+                  setCalorieSafetyFloorMode(value)
+                }
+              >
+                <SelectTrigger id="calorie-safety-floor-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">
+                    {t(
+                      'settings.goalMode.safetyFloorStandard',
+                      'Standard (RMR / clinical minimum)'
+                    )}
+                  </SelectItem>
+                  <SelectItem value="custom">
+                    {t('settings.goalMode.safetyFloorCustom', 'Custom minimum')}
+                  </SelectItem>
+                  <SelectItem value="disabled">
+                    {t('settings.goalMode.safetyFloorDisabled', 'Disabled')}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {calorieSafetyFloorMode === 'custom' && (
+              <div>
+                <Label htmlFor="calorie-safety-floor-value">
+                  {t(
+                    'settings.goalMode.safetyFloorValueLabel',
+                    'Custom minimum'
+                  )}{' '}
+                  ({getEnergyUnitString(energyUnit)})
+                </Label>
+                <Input
+                  id="calorie-safety-floor-value"
+                  type="number"
+                  step="1"
+                  min={Math.round(
+                    convertEnergy(MIN_CALORIE_SAFETY_FLOOR, 'kcal', energyUnit)
+                  )}
+                  max={Math.round(
+                    convertEnergy(MAX_CALORIE_SAFETY_FLOOR, 'kcal', energyUnit)
+                  )}
+                  value={calorieSafetyFloorInput}
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    setCalorieSafetyFloorInput(raw);
+                    if (raw.trim() === '') return;
+                    const parsed = Number(raw);
+                    if (!Number.isFinite(parsed)) return;
+                    setCalorieSafetyFloorValue(
+                      Math.round(convertEnergy(parsed, energyUnit, 'kcal'))
+                    );
+                  }}
+                  onBlur={() => {
+                    const clamped = Math.min(
+                      MAX_CALORIE_SAFETY_FLOOR,
+                      Math.max(
+                        MIN_CALORIE_SAFETY_FLOOR,
+                        calorieSafetyFloorValue
+                      )
+                    );
+                    setCalorieSafetyFloorValue(clamped);
+                    setCalorieSafetyFloorInput(
+                      String(
+                        Math.round(convertEnergy(clamped, 'kcal', energyUnit))
+                      )
+                    );
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {calorieSafetyFloorMode === 'standard'
+              ? t(
+                  'settings.goalMode.safetyFloorStandardHint',
+                  'Uses the higher of your estimated RMR and the clinical minimum (1,200 kcal for females, 1,500 kcal for males).'
+                )
+              : calorieSafetyFloorMode === 'custom'
+                ? t(
+                    'settings.goalMode.safetyFloorCustomHint',
+                    'Replaces the standard floor with your chosen minimum. Health recommendations remain visible.'
+                  )
+                : t(
+                    'settings.goalMode.safetyFloorDisabledHint',
+                    'Stops automatic target clamping. Health warnings remain visible; consider medical guidance for very low targets.'
+                  )}
+          </p>
+        </div>
+
         {/* Live Preview & Diagnostics Callouts */}
         <div className="space-y-3">
           {/* Live Preview Panel */}
@@ -1411,10 +1571,12 @@ const CalculationSettings = () => {
           )}
 
           {/* Warning callouts */}
-          {goalMode !== 'maintain' &&
-            goalModeCalculationMethod === 'manual' &&
-            previewResult.isBelowRmr &&
-            !previewResult.isBelowAbsoluteFloor && (
+          {shouldShowCalorieSafetyWarning(
+            goalMode,
+            goalModeCalculationMethod
+          ) &&
+            previewResult.finalTarget < previewResult.rmr &&
+            previewResult.finalTarget >= previewResult.absoluteFloorValue && (
               <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex gap-3 text-sm text-amber-800 dark:text-amber-300">
                 <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
@@ -1424,17 +1586,19 @@ const CalculationSettings = () => {
                   <p className="text-sm text-amber-700 dark:text-amber-400/80 leading-relaxed">
                     Your calorie target is below your estimated minimum
                     metabolism (RMR). This may not be sustainable long-term.
-                    Consider selecting a less aggressive Goal Mode or switching
-                    to the Adaptive method.
+                    Consider selecting a less aggressive Goal Mode or enabling a
+                    Standard or Custom safety floor.
                   </p>
                 </div>
               </div>
             )}
 
           {/* Absolute Floor Danger Callout */}
-          {goalMode !== 'maintain' &&
-            goalModeCalculationMethod === 'manual' &&
-            previewResult.isBelowAbsoluteFloor && (
+          {shouldShowCalorieSafetyWarning(
+            goalMode,
+            goalModeCalculationMethod
+          ) &&
+            previewResult.finalTarget < previewResult.absoluteFloorValue && (
               <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex gap-3 text-sm text-red-800 dark:text-red-300">
                 <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
@@ -1473,7 +1637,12 @@ const CalculationSettings = () => {
                   {getEnergyUnitString(energyUnit)}, which is below your{' '}
                   {previewResult.clampedFloorSource === 'rmr'
                     ? 'estimated resting metabolism (RMR)'
-                    : 'absolute safety floor'}{' '}
+                    : previewResult.clampedFloorSource === 'custom'
+                      ? t(
+                          'settings.calorieBreakdown.customFloorDescription',
+                          'configured custom safety floor'
+                        )
+                      : 'absolute safety floor'}{' '}
                   of{' '}
                   {Math.round(
                     convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)

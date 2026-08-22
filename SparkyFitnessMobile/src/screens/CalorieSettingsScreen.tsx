@@ -20,8 +20,40 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { preferencesQueryKey } from '../hooks/queryKeys';
 import type { UserPreferences } from '../types/preferences';
 import type { RootStackScreenProps } from '../types/navigation';
+import {
+  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  MAX_CALORIE_SAFETY_FLOOR,
+  MIN_CALORIE_SAFETY_FLOOR,
+  convertEnergyValue,
+  type CalorieSafetyFloorMode,
+} from '@workspace/shared';
 
 type CalorieSettingsScreenProps = RootStackScreenProps<'CalorieSettings'>;
+
+const modeOptions = [
+  { label: 'Adaptive Goal', value: 'adaptive' },
+  { label: 'Dynamic Goal', value: 'dynamic' },
+  { label: 'Fixed Goal', value: 'fixed' },
+  { label: 'Percentage Earn-Back', value: 'percentage' },
+  { label: 'Device Projection', value: 'tdee' },
+];
+
+const activityLevelOptions = [
+  { label: 'None (x1.0)', value: 'none' },
+  { label: 'Sedentary (x1.2)', value: 'not_much' },
+  { label: 'Lightly Active (x1.375)', value: 'light' },
+  { label: 'Moderately Active (x1.55)', value: 'moderate' },
+  { label: 'Very Active (x1.725)', value: 'heavy' },
+];
+
+const safetyFloorOptions = [
+  { label: 'Standard', value: 'standard' },
+  { label: 'Custom', value: 'custom' },
+  { label: 'Disabled', value: 'disabled' },
+];
+
+// Apple Health and Health Connect use different terms for the same baseline-energy value.
+const bmrMetricName = Platform.OS === 'ios' ? 'Resting Energy' : 'BMR';
 
 function normalizePreferences(prefs: UserPreferences | undefined) {
   const raw = prefs?.calorie_goal_adjustment_mode;
@@ -32,8 +64,19 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     includeBmrInNetCalories: prefs?.include_bmr_in_net_calories ?? false,
     tdeeAllowNegativeAdjustment: prefs?.tdee_allow_negative_adjustment ?? false,
     useExternalBmr: prefs?.use_external_bmr ?? false,
+    calorieSafetyFloorMode: prefs?.calorie_safety_floor_mode ?? 'standard',
+    calorieSafetyFloorValue:
+      prefs?.calorie_safety_floor_value ??
+      DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+    energyUnit: prefs?.energy_unit ?? 'kcal',
   };
 }
+
+const displayEnergy = (kcal: number, unit: 'kcal' | 'kJ') =>
+  Math.round(convertEnergyValue(kcal, 'kcal', unit));
+
+const toKcal = (value: number, unit: 'kcal' | 'kJ') =>
+  Math.round(convertEnergyValue(value, unit, 'kcal'));
 
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const { t } = useTranslation();
@@ -69,6 +112,11 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const [percentageText, setPercentageText] = useState(
     () => String(normalized.exerciseCaloriePercentage),
   );
+  const [safetyFloorText, setSafetyFloorText] = useState(() =>
+    String(
+      displayEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit),
+    ),
+  );
 
   // Re-sync the input text when the saved percentage changes (e.g. a background
   // refetch). Done during render (instead of in an effect) so the field shows
@@ -79,6 +127,21 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   if (syncedPercentage !== normalized.exerciseCaloriePercentage) {
     setSyncedPercentage(normalized.exerciseCaloriePercentage);
     setPercentageText(String(normalized.exerciseCaloriePercentage));
+  }
+  const [syncedSafetyFloor, setSyncedSafetyFloor] = useState(
+    `${normalized.calorieSafetyFloorValue}:${normalized.energyUnit}`,
+  );
+  const safetyFloorSyncKey = `${normalized.calorieSafetyFloorValue}:${normalized.energyUnit}`;
+  if (syncedSafetyFloor !== safetyFloorSyncKey) {
+    setSyncedSafetyFloor(safetyFloorSyncKey);
+    setSafetyFloorText(
+      String(
+        displayEnergy(
+          normalized.calorieSafetyFloorValue,
+          normalized.energyUnit,
+        ),
+      ),
+    );
   }
 
   const mutation = useMutation({
@@ -124,6 +187,47 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const handleExternalBmrToggle = useCallback((value: boolean) => {
     mutation.mutate({ use_external_bmr: value });
   }, [mutation]);
+
+  const handleSafetyFloorModeChange = useCallback(
+    (value: string) => {
+      mutation.mutate({
+        calorie_safety_floor_mode: value as CalorieSafetyFloorMode,
+      });
+    },
+    [mutation],
+  );
+
+  const handleSafetyFloorBlur = useCallback(() => {
+    const trimmedValue = safetyFloorText.trim();
+    if (trimmedValue === '') {
+      setSafetyFloorText(
+        String(
+          displayEnergy(
+            normalized.calorieSafetyFloorValue,
+            normalized.energyUnit,
+          ),
+        ),
+      );
+      return;
+    }
+    const parsed = Number(trimmedValue);
+    const kcal = Number.isFinite(parsed)
+      ? toKcal(parsed, normalized.energyUnit)
+      : normalized.calorieSafetyFloorValue;
+    const clamped = Math.max(
+      MIN_CALORIE_SAFETY_FLOOR,
+      Math.min(MAX_CALORIE_SAFETY_FLOOR, kcal),
+    );
+    setSafetyFloorText(String(displayEnergy(clamped, normalized.energyUnit)));
+    if (clamped !== normalized.calorieSafetyFloorValue) {
+      mutation.mutate({ calorie_safety_floor_value: clamped });
+    }
+  }, [
+    mutation,
+    normalized.calorieSafetyFloorValue,
+    normalized.energyUnit,
+    safetyFloorText,
+  ]);
 
   const handlePercentageBlur = useCallback(() => {
     const parsed = parseInt(percentageText, 10);
@@ -289,6 +393,46 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               {t('calorieSettings.includeRestingDescription', { defaultValue: 'Include your baseline energy (BMR) in net calculations.' })}
             </Text>
           </Animated.View>
+        </Animated.View>
+
+        <Animated.View
+          className="bg-surface rounded-xl p-4 mb-4 shadow-sm"
+          layout={optionsLayout}
+        >
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-semibold text-text-primary">
+              Safety Floor
+            </Text>
+            <BottomSheetPicker
+              value={normalized.calorieSafetyFloorMode}
+              options={safetyFloorOptions}
+              onSelect={handleSafetyFloorModeChange}
+              title="Safety Floor"
+              containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
+            />
+          </View>
+          {normalized.calorieSafetyFloorMode === 'custom' && (
+            <View className="mt-4">
+              <Text className="text-sm font-semibold text-text-primary mb-2">
+                Custom minimum ({normalized.energyUnit})
+              </Text>
+              <FormInput
+                value={safetyFloorText}
+                onChangeText={setSafetyFloorText}
+                onBlur={handleSafetyFloorBlur}
+                keyboardType="number-pad"
+                maxLength={5}
+                returnKeyType="done"
+              />
+            </View>
+          )}
+          <Text className="text-text-secondary text-sm mt-3">
+            {normalized.calorieSafetyFloorMode === 'standard'
+              ? 'Uses the higher of your estimated RMR and the clinical minimum.'
+              : normalized.calorieSafetyFloorMode === 'custom'
+                ? 'Replaces the standard floor with your chosen minimum. Health recommendations remain visible.'
+                : 'Stops automatic target clamping. Health warnings remain visible.'}
+          </Text>
         </Animated.View>
 
         {/* Calculation Pipeline */}
