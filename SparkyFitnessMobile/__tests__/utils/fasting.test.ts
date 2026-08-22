@@ -94,7 +94,7 @@ describe('computeFastTimerValues', () => {
     const start = '1970-01-01T00:00:00.000Z';
     const now = 18 * HOUR;
 
-    const v = computeFastTimerValues(start, null, now);
+    const v = computeFastTimerValues(start, null, now, i18n.t);
 
     expect(v.hasGoal).toBe(false);
     expect(v.goalHours).toBeNull();
@@ -108,14 +108,14 @@ describe('computeFastTimerValues', () => {
   test('treats a target at/before the start as no goal', () => {
     const start = new Date(10 * HOUR).toISOString();
     const target = new Date(5 * HOUR).toISOString();
-    const v = computeFastTimerValues(start, target, 11 * HOUR);
+    const v = computeFastTimerValues(start, target, 11 * HOUR, i18n.t);
     expect(v.hasGoal).toBe(false);
   });
 
   test('clamps progress to 1 and remaining to 0 past the goal', () => {
     const start = '1970-01-01T00:00:00.000Z';
     const target = new Date(16 * HOUR).toISOString();
-    const v = computeFastTimerValues(start, target, 20 * HOUR);
+    const v = computeFastTimerValues(start, target, 20 * HOUR, i18n.t);
     expect(v.progress).toBe(1);
     expect(v.remainingMs).toBe(0);
   });
@@ -127,7 +127,7 @@ describe('formatFastingStats', () => {
       total_completed_fasts: '0',
       total_minutes_fasted: null,
       average_duration_minutes: null,
-    });
+    }, i18n.t);
     expect(display.fastsCount).toBe('0');
     expect(display.avgFastValue).toBe('-');
     expect(display.avgFastUnit).toBe('');
