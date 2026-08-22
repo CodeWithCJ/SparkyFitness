@@ -52,8 +52,8 @@ export type CalorieSafetyFloorMode =
   (typeof CALORIE_SAFETY_FLOOR_MODES)[number];
 
 /** Guardrails for persisted custom values; disabling remains an explicit mode. */
-export const MIN_CALORIE_SAFETY_FLOOR = 1;
-export const MAX_CALORIE_SAFETY_FLOOR = 10_000;
+export const MIN_CALORIE_SAFETY_FLOOR = 800;
+export const MAX_CALORIE_SAFETY_FLOOR = 5_000;
 export const DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR = 1200;
 
 export const ACTIVITY_MULTIPLIERS: Record<string, number> = {

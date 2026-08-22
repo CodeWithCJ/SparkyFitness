@@ -2,6 +2,10 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  MAX_CALORIE_SAFETY_FLOOR,
+  MIN_CALORIE_SAFETY_FLOOR,
+} from '@workspace/shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const swaggerScanPaths = [
@@ -1162,8 +1166,8 @@ const options = {
             },
             calorie_safety_floor_value: {
               type: 'integer',
-              minimum: 1,
-              maximum: 10000,
+              minimum: MIN_CALORIE_SAFETY_FLOOR,
+              maximum: MAX_CALORIE_SAFETY_FLOOR,
               description:
                 'Custom calorie safety floor in kcal/day. Used when calorie_safety_floor_mode is custom.',
             },

@@ -12,14 +12,17 @@ describe('calorie safety floor preference validation', () => {
     });
   });
 
-  it('accepts the supported modes and a positive integer custom value', async () => {
-    await expect(
-      preferenceService.updateUserPreferences('user-1', 'user-1', {
-        calorie_safety_floor_mode: 'custom',
-        calorie_safety_floor_value: 1200,
-      })
-    ).resolves.toEqual({ user_id: 'user-1' });
-  });
+  it.each([800, 5000])(
+    'accepts inclusive custom floor boundary %s',
+    async (value) => {
+      await expect(
+        preferenceService.updateUserPreferences('user-1', 'user-1', {
+          calorie_safety_floor_mode: 'custom',
+          calorie_safety_floor_value: value,
+        })
+      ).resolves.toEqual({ user_id: 'user-1' });
+    }
+  );
 
   it('rejects an unknown mode', async () => {
     await expect(
@@ -29,7 +32,7 @@ describe('calorie safety floor preference validation', () => {
     ).rejects.toMatchObject({ status: 400 });
   });
 
-  it.each([0, -1, 1200.5, 10001])(
+  it.each([799, 5001, 1200.5])(
     'rejects invalid custom floor value %s',
     async (value) => {
       await expect(

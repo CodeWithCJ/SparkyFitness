@@ -8,6 +8,8 @@ import {
   computeExerciseCredited,
   computeCalorieProgress,
   normalizeCalorieGoalAdjustmentMode,
+  shouldShowCalorieSafetyWarning,
+  convertEnergyValue,
 } from '@workspace/shared';
 import {
   computeCalorieTarget,
@@ -25,6 +27,13 @@ describe('ACTIVITY_MULTIPLIERS', () => {
     expect(ACTIVITY_MULTIPLIERS['light']).toBe(1.375);
     expect(ACTIVITY_MULTIPLIERS['moderate']).toBe(1.55);
     expect(ACTIVITY_MULTIPLIERS['heavy']).toBe(1.725);
+  });
+});
+
+describe('convertEnergyValue', () => {
+  it('converts energy in both directions without rounding away precision', () => {
+    expect(convertEnergyValue(100, 'kcal', 'kJ')).toBeCloseTo(418.4, 5);
+    expect(convertEnergyValue(418.4, 'kJ', 'kcal')).toBeCloseTo(100, 5);
   });
 });
 
@@ -609,6 +618,17 @@ describe('computeCalorieTarget safety floor reporting', () => {
     expect(result.effectiveSafetyFloor).toBeNull();
     expect(result.wasClampedToFloor).toBe(false);
     expect(result.clampedFloorSource).toBeNull();
+  });
+});
+
+describe('shouldShowCalorieSafetyWarning', () => {
+  it('does not warn while maintaining weight', () => {
+    expect(shouldShowCalorieSafetyWarning('maintain', 'manual')).toBe(false);
+  });
+
+  it('warns only for manually configured deficit goals', () => {
+    expect(shouldShowCalorieSafetyWarning('cut', 'manual')).toBe(true);
+    expect(shouldShowCalorieSafetyWarning('cut', 'adaptive')).toBe(false);
   });
 });
 

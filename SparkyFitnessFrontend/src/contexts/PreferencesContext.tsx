@@ -35,6 +35,8 @@ import {
   GoalMode,
   GoalModeCalculationMethod,
   CalorieSafetyFloorMode,
+  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  type UserPreferences as SharedUserPreferences,
 } from '@workspace/shared';
 
 import {
@@ -237,8 +239,8 @@ export interface DefaultPreferences {
   goal_mode: GoalMode;
   goal_mode_calculation_method: GoalModeCalculationMethod;
   goal_mode_custom_percentage: number;
-  calorie_safety_floor_mode: CalorieSafetyFloorMode;
-  calorie_safety_floor_value: number;
+  calorie_safety_floor_mode: SharedUserPreferences['calorie_safety_floor_mode'];
+  calorie_safety_floor_value: SharedUserPreferences['calorie_safety_floor_value'];
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -349,7 +351,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [calorieSafetyFloorMode, setCalorieSafetyFloorModeState] =
     useState<CalorieSafetyFloorMode>('standard');
   const [calorieSafetyFloorValue, setCalorieSafetyFloorValueState] =
-    useState<number>(1200);
+    useState<number>(DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR);
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -620,7 +622,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         show_net_carbs: false,
         ai_assisted_conversions: true,
         calorie_safety_floor_mode: 'standard',
-        calorie_safety_floor_value: 1200,
+        calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -746,7 +748,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           data.calorie_safety_floor_mode ?? 'standard'
         );
         setCalorieSafetyFloorValueState(
-          data.calorie_safety_floor_value ?? 1200
+          data.calorie_safety_floor_value ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
         );
       } else {
         await createDefaultPreferences();

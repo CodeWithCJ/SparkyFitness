@@ -17,7 +17,7 @@ import {
   CALORIE_CALCULATION_CONSTANTS,
   computeCalorieTarget,
   resolveCalorieSafetyFloor,
-  getRecommendedCalorieSafetyFloor,
+  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   ACTIVITY_MULTIPLIERS,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
@@ -283,7 +283,7 @@ async function getUserGoalsForRange(
         const adaptiveGoalFloor = resolveCalorieSafetyFloor(
           userPreferences?.calorie_safety_floor_mode,
           userPreferences?.calorie_safety_floor_value,
-          getRecommendedCalorieSafetyFloor(bmr, gender)
+          DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
         );
         goalCalories =
           adaptiveGoalFloor === null
@@ -324,7 +324,8 @@ async function getUserGoalsForRange(
           calorieSafetyFloorMode:
             userPreferences?.calorie_safety_floor_mode || 'standard',
           calorieSafetyFloorValue:
-            userPreferences?.calorie_safety_floor_value || 1200,
+            userPreferences?.calorie_safety_floor_value ||
+            DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
         });
         goalCalories = targetResult.finalTarget;
       }

@@ -1,3 +1,5 @@
+import type { CalorieSafetyFloorMode } from '@workspace/shared';
+
 export interface UserPreferences {
   bmr_algorithm?: string;
   body_fat_algorithm?: string;
@@ -27,7 +29,7 @@ export interface UserPreferences {
   exercise_calorie_percentage?: number;
   activity_level?: string;
   tdee_allow_negative_adjustment?: boolean;
-  calorie_safety_floor_mode?: 'standard' | 'custom' | 'disabled';
+  calorie_safety_floor_mode?: CalorieSafetyFloorMode;
   calorie_safety_floor_value?: number;
   auto_clear_history?: string;
   logging_level?: string;

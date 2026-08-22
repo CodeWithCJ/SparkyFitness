@@ -48,7 +48,7 @@ import {
   computeExerciseCredited,
   normalizeCalorieGoalAdjustmentMode,
   resolveCalorieSafetyFloor,
-  getRecommendedCalorieSafetyFloor,
+  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
 } from '@workspace/shared';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
@@ -230,7 +230,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     const adaptiveGoalFloor = resolveCalorieSafetyFloor(
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
-      getRecommendedCalorieSafetyFloor(bmr, displayGender)
+      DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
     );
     adjustedManualGoal =
       adaptiveGoalFloor === null

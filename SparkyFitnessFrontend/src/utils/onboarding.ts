@@ -11,6 +11,7 @@ import {
 import { calculateBasePlan } from './nutritionCalculations';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { OnboardingData } from '@/types/onboarding';
+import type { CalorieSafetyFloorMode } from '@workspace/shared';
 
 export const createInitialPlan = (
   formData: OnboardingData,
@@ -25,14 +26,19 @@ export const createInitialPlan = (
     value: number,
     fromUnit: EnergyUnit,
     toUnit: EnergyUnit
-  ) => number
+  ) => number,
+  safetyFloor: {
+    calorieSafetyFloorMode: CalorieSafetyFloorMode;
+    calorieSafetyFloorValue: number;
+  }
 ): ExpandedGoals | null => {
   // 1. Basis Plan berechnen
   // formData is already in Metric (kg/cm) from UnitInput
   const plan = calculateBasePlan(
     formData,
     localSelectedDiet,
-    customPercentages
+    customPercentages,
+    safetyFloor
   );
 
   if (!plan) return null;

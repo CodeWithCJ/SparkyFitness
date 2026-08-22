@@ -120,4 +120,22 @@ describe('CalorieSettingsScreen safety floor', () => {
       calorie_safety_floor_value: 1150,
     });
   });
+
+  it.each([
+    ['799', 800],
+    ['5001', 5000],
+  ])('clamps custom floor %s to %s kcal', (inputValue, expectedValue) => {
+    mockPreferences.calorie_safety_floor_mode = 'custom';
+    const { getByDisplayValue } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />,
+    );
+    const input = getByDisplayValue('1200');
+
+    fireEvent.changeText(input, inputValue);
+    fireEvent(input, 'blur');
+
+    expect(mockMutate).toHaveBeenCalledWith({
+      calorie_safety_floor_value: expectedValue,
+    });
+  });
 });

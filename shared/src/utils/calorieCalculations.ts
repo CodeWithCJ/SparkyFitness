@@ -8,6 +8,15 @@ import {
   type CalorieSafetyFloorMode,
 } from "../constants/calorieConstants.ts";
 
+export function convertEnergyValue(
+  value: number,
+  fromUnit: "kcal" | "kJ",
+  toUnit: "kcal" | "kJ",
+): number {
+  if (fromUnit === toUnit) return value;
+  return fromUnit === "kcal" ? value * 4.184 : value / 4.184;
+}
+
 export type CalorieGoalAdjustmentMode =
   | "dynamic"
   | "fixed"
@@ -551,8 +560,18 @@ export function getRecommendedCalorieSafetyFloor(
   rmr: number,
   gender: "male" | "female",
 ): number {
-  const clinicalMinimum = gender === "female" ? 1200 : 1500;
-  return Math.max(rmr, clinicalMinimum);
+  return Math.max(rmr, getClinicalCalorieMinimum(gender));
+}
+
+export function getClinicalCalorieMinimum(gender: "male" | "female"): number {
+  return gender === "female" ? 1200 : 1500;
+}
+
+export function shouldShowCalorieSafetyWarning(
+  goalMode: string,
+  calculationMethod: string,
+): boolean {
+  return goalMode !== "maintain" && calculationMethod === "manual";
 }
 
 export function computeCalorieTarget({
@@ -622,7 +641,7 @@ export function computeCalorieTarget({
   const isGainGoal = deficitPercent < 0;
   const isBelowRmr = calculatedTarget < rmr;
 
-  const absoluteFloorValue = gender === "female" ? 1200 : 1500;
+  const absoluteFloorValue = getClinicalCalorieMinimum(gender);
   const isBelowAbsoluteFloor = calculatedTarget < absoluteFloorValue;
 
   // The floor is whichever is higher: the user's own resting metabolism, or the

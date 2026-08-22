@@ -117,6 +117,48 @@ describe('calculateBasePlan goal handling', () => {
     expect(plan!.finalDailyCalories).toBeGreaterThanOrEqual(1200);
   });
 
+  it('uses the configured custom floor when calculating a small weight-loss plan', () => {
+    const plan = calculateBasePlan(
+      {
+        ...baseForm,
+        primaryGoal: 'lose_weight',
+        sex: 'female',
+        currentWeight: 40,
+        height: 145,
+        activityLevel: 'not_much',
+      },
+      'balanced',
+      NO_CUSTOM,
+      {
+        calorieSafetyFloorMode: 'custom',
+        calorieSafetyFloorValue: 800,
+      }
+    );
+
+    expect(plan!.finalDailyCalories).toBe(990);
+  });
+
+  it('does not clamp a small weight-loss plan when the floor is disabled', () => {
+    const plan = calculateBasePlan(
+      {
+        ...baseForm,
+        primaryGoal: 'lose_weight',
+        sex: 'female',
+        currentWeight: 40,
+        height: 145,
+        activityLevel: 'not_much',
+      },
+      'balanced',
+      NO_CUSTOM,
+      {
+        calorieSafetyFloorMode: 'disabled',
+        calorieSafetyFloorValue: 1200,
+      }
+    );
+
+    expect(plan!.finalDailyCalories).toBe(990);
+  });
+
   // Regression: onboarding persists goalMode, and the goal it saves is this
   // finalDailyCalories -- which already has the adjustment applied. If the
   // calculation method were left at its 'manual' default, goalService would

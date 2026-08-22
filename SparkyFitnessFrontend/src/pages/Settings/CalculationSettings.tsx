@@ -71,7 +71,8 @@ import {
   MIN_CALORIE_SAFETY_FLOOR,
   MAX_CALORIE_SAFETY_FLOOR,
   resolveCalorieSafetyFloor,
-  getRecommendedCalorieSafetyFloor,
+  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  shouldShowCalorieSafetyWarning,
   normalizeCalorieGoalAdjustmentMode,
 } from '@workspace/shared';
 
@@ -160,13 +161,16 @@ const CalculationSettings = () => {
       contextCalorieSafetyFloorMode ?? 'standard'
     );
   const [calorieSafetyFloorValue, setCalorieSafetyFloorValue] =
-    useState<number>(contextCalorieSafetyFloorValue ?? 1200);
+    useState<number>(
+      contextCalorieSafetyFloorValue ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
+    );
   const [calorieSafetyFloorInput, setCalorieSafetyFloorInput] =
     useState<string>(
       String(
         Math.round(
           convertEnergy(
-            contextCalorieSafetyFloorValue ?? 1200,
+            contextCalorieSafetyFloorValue ??
+              DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
             'kcal',
             energyUnit
           )
@@ -416,7 +420,7 @@ const CalculationSettings = () => {
     const adaptiveGoalFloor = resolveCalorieSafetyFloor(
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
-      getRecommendedCalorieSafetyFloor(bmr, gender)
+      DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
     );
     currentGoalBase =
       adaptiveGoalFloor === null
@@ -1567,7 +1571,11 @@ const CalculationSettings = () => {
           )}
 
           {/* Warning callouts */}
-          {previewResult.finalTarget < previewResult.rmr &&
+          {shouldShowCalorieSafetyWarning(
+            goalMode,
+            goalModeCalculationMethod
+          ) &&
+            previewResult.finalTarget < previewResult.rmr &&
             previewResult.finalTarget >= previewResult.absoluteFloorValue && (
               <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex gap-3 text-sm text-amber-800 dark:text-amber-300">
                 <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -1586,25 +1594,29 @@ const CalculationSettings = () => {
             )}
 
           {/* Absolute Floor Danger Callout */}
-          {previewResult.finalTarget < previewResult.absoluteFloorValue && (
-            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex gap-3 text-sm text-red-800 dark:text-red-300">
-              <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="font-semibold">
-                  Critical Health Alert: Calorie target below absolute floor
-                </p>
-                <p className="text-sm text-red-700 dark:text-red-400/80 leading-relaxed">
-                  Your calorie target is below the clinical absolute safety
-                  floor of{' '}
-                  {energyUnit === 'kcal'
-                    ? `${previewResult.absoluteFloorValue} kcal`
-                    : `${Math.round(convertEnergy(previewResult.absoluteFloorValue, 'kcal', 'kJ'))} kJ`}
-                  /day. Deficits below this level are generally not recommended
-                  without direct medical supervision.
-                </p>
+          {shouldShowCalorieSafetyWarning(
+            goalMode,
+            goalModeCalculationMethod
+          ) &&
+            previewResult.finalTarget < previewResult.absoluteFloorValue && (
+              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex gap-3 text-sm text-red-800 dark:text-red-300">
+                <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold">
+                    Critical Health Alert: Calorie target below absolute floor
+                  </p>
+                  <p className="text-sm text-red-700 dark:text-red-400/80 leading-relaxed">
+                    Your calorie target is below the clinical absolute safety
+                    floor of{' '}
+                    {energyUnit === 'kcal'
+                      ? `${previewResult.absoluteFloorValue} kcal`
+                      : `${Math.round(convertEnergy(previewResult.absoluteFloorValue, 'kcal', 'kJ'))} kJ`}
+                    /day. Deficits below this level are generally not
+                    recommended without direct medical supervision.
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Safety floor clamp — explain the override instead of applying it silently */}
           {previewResult.wasClampedToFloor && (

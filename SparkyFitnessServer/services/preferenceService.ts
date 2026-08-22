@@ -7,6 +7,7 @@ import {
   CALORIE_SAFETY_FLOOR_MODES,
   MIN_CALORIE_SAFETY_FLOOR,
   MAX_CALORIE_SAFETY_FLOOR,
+  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   type UserPreferencesMutator,
 } from '@workspace/shared';
 
@@ -139,7 +140,7 @@ function getDefaultPreferences() {
     timezone: null,
     time_format: 'h:mm A',
     calorie_safety_floor_mode: 'standard',
-    calorie_safety_floor_value: 1200,
+    calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   };
 }
 async function updateUserPreferences(

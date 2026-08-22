@@ -85,7 +85,7 @@ describe('goalService calorie safety floor preference', () => {
     expect((result[date] as { calories: number }).calories).toBe(1606);
   });
 
-  it('uses the recommended RMR floor for the standard adaptive adjustment path', async () => {
+  it('preserves the legacy 1200 kcal floor for the standard adaptive adjustment path', async () => {
     vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
       calories: 1970,
       protein_percentage: null,
@@ -111,6 +111,6 @@ describe('goalService calorie safety floor preference', () => {
       true
     );
 
-    expect((result[date] as { calories: number }).calories).toBe(1642);
+    expect((result[date] as { calories: number }).calories).toBe(1606);
   });
 });

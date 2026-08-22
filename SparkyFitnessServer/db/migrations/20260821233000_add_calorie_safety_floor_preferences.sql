@@ -4,7 +4,7 @@ ALTER TABLE public.user_preferences
   ADD CONSTRAINT user_preferences_calorie_safety_floor_mode_check
     CHECK (calorie_safety_floor_mode IN ('standard', 'custom', 'disabled')),
   ADD CONSTRAINT user_preferences_calorie_safety_floor_value_check
-    CHECK (calorie_safety_floor_value BETWEEN 1 AND 10000);
+    CHECK (calorie_safety_floor_value BETWEEN 800 AND 5000);
 
 COMMENT ON COLUMN public.user_preferences.calorie_safety_floor_mode IS
   'Controls adaptive calorie target clamping: standard, custom, or disabled.';
