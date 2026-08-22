@@ -66,8 +66,8 @@ const ALERT_KEYS = new Set([
 export function localizeCycleAnomaly(
   key: string,
   fallbackMessage: string,
-  params?: CycleMessageParams,
   t: TFunction,
+  params?: CycleMessageParams,
 ): string {
   const translate = t;
   if (key === 'short_cycle') {
@@ -109,8 +109,8 @@ export function localizeCycleAnomaly(
 export function localizeCycleAlert(
   key: string,
   fallbackMessage: string,
-  params?: CycleMessageParams,
   t: TFunction,
+  params?: CycleMessageParams,
 ): string {
   const translate = t;
   if (key === 'late_period' && params?.days != null) {
@@ -140,5 +140,5 @@ export function localizeCycleAlert(
       defaultValue: fallbackMessage,
     });
   }
-  return localizeCycleAnomaly(key, fallbackMessage, params, t);
+  return localizeCycleAnomaly(key, fallbackMessage, t, params);
 }

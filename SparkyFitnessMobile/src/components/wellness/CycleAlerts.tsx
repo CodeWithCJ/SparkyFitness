@@ -43,7 +43,7 @@ const CycleAlerts: React.FC<CycleAlertsProps> = ({ alerts }) => {
               />
             </View>
             <Text className="flex-1 text-sm text-text-primary leading-5">
-              {localizeCycleAlert(alert.key, alert.message, alert.params, t)}
+              {localizeCycleAlert(alert.key, alert.message, t, alert.params)}
             </Text>
           </View>
         );

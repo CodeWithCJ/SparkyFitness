@@ -177,7 +177,7 @@ const CycleInsightsView: React.FC = () => {
                   <Icon name="warning" size={18} color={dangerColor} />
                 </View>
                 <Text className="flex-1 text-sm text-text-primary leading-normal">
-                  {localizeCycleAnomaly(anom.key, anom.message, anom.params, t)}
+                  {localizeCycleAnomaly(anom.key, anom.message, t, anom.params)}
                 </Text>
               </View>
             ))}
