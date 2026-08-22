@@ -91,11 +91,11 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
       'active_vision_ai_service_id'
     );
     // The 'in'-guard flag ($42) gates the CASE WHEN, and the value ($41)
-    // precedes it; added_sugar_algorithm ($43) and time_format ($44) were
-    // appended after both. A partial payload that includes the field must write it.
+    // precedes it. Use their stable SQL parameter numbers instead of counting
+    // backward from the end, because new preferences are appended over time.
     const params = mockClient.query.mock.calls[0][1];
-    expect(params[params.length - 4]).toBe('svc-99');
-    expect(params[params.length - 3]).toBe(true);
+    expect(params[40]).toBe('svc-99');
+    expect(params[41]).toBe(true);
   });
 
   it('leaves active_vision_ai_service_id untouched when the field is omitted', async () => {
@@ -108,7 +108,7 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
 
     // The guard flag is false, so the CASE WHEN keeps the stored pointer.
     const params = mockClient.query.mock.calls[0][1];
-    expect(params[params.length - 3]).toBe(false);
+    expect(params[41]).toBe(false);
   });
 
   it('round-trips goal_mode preferences through save and load', async () => {
@@ -136,5 +136,50 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     expect(mockClient.query.mock.calls[0][1]).toContain('recomp');
     expect(mockClient.query.mock.calls[0][1]).toContain('adaptive');
     expect(mockClient.query.mock.calls[0][1]).toContain(15);
+  });
+
+  it('round-trips calorie safety floor preferences through save and load', async () => {
+    const row = {
+      user_id: 'user-1',
+      calorie_safety_floor_mode: 'custom',
+      calorie_safety_floor_value: 1200,
+    };
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      calorie_safety_floor_mode: 'custom',
+      calorie_safety_floor_value: 1200,
+    });
+    const result = await preferenceRepository.getUserPreferences('user-1');
+
+    expect(result.calorie_safety_floor_mode).toBe('custom');
+    expect(result.calorie_safety_floor_value).toBe(1200);
+    expect(mockClient.query.mock.calls[0][0]).toContain(
+      'calorie_safety_floor_mode'
+    );
+    expect(mockClient.query.mock.calls[0][0]).toContain(
+      'calorie_safety_floor_value'
+    );
+    expect(mockClient.query.mock.calls[0][1]).toContain('custom');
+    expect(mockClient.query.mock.calls[0][1]).toContain(1200);
+  });
+
+  it('preserves saved safety-floor preferences when a partial upsert omits them', async () => {
+    mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      show_net_carbs: true,
+    });
+
+    const sql = mockClient.query.mock.calls[0][0] as string;
+    expect(sql).toContain(
+      'calorie_safety_floor_mode = COALESCE($45, user_preferences.calorie_safety_floor_mode)'
+    );
+    expect(sql).toContain(
+      'calorie_safety_floor_value = COALESCE($46, user_preferences.calorie_safety_floor_value)'
+    );
   });
 });

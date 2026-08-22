@@ -106,8 +106,7 @@ function computeAdaptiveTdeeFromData(
   }
 
   const gender = profile?.gender || 'male';
-  const fallbackTdee = Math.max(
-    1200,
+  const fallbackTdee =
     (bmrService.calculateBmr(
       bmrAlgorithm,
       weightKg,
@@ -121,8 +120,7 @@ function computeAdaptiveTdeeFromData(
       10 * weightKg +
         6.25 * heightCm -
         5 * age +
-        (gender === 'male' ? 5 : -161)) * multiplier
-  );
+        (gender === 'male' ? 5 : -161)) * multiplier;
 
   // Check if we have enough data (at least 2 weight entries separated by 7 days)
   const weightEntries = checkInMeasurements
@@ -277,9 +275,10 @@ function computeAdaptiveTdeeFromData(
   // dailyWeightChange raises the estimate above intake.
   let adaptiveTdee =
     avgDailyIntake - dailyWeightChange * ENERGY_DENSITY_KCAL_PER_KG;
-  // Safety Capping: +/- 500 kcal from BMR-based fallback
+  // Plausibility capping: +/- 500 kcal from the BMR-based estimate. Clinical
+  // calorie floors are a goal policy and are applied later, not to TDEE itself.
   const maxTdee = fallbackTdee + 500;
-  const minTdee = Math.max(1200, fallbackTdee - 500);
+  const minTdee = Math.max(0, fallbackTdee - 500);
   adaptiveTdee = Math.min(Math.max(adaptiveTdee, minTdee), maxTdee);
 
   // Find tracking age of weight logging (weightEntries is sorted by date ascending)

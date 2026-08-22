@@ -1,8 +1,21 @@
 import {
   ACTIVITY_MULTIPLIERS,
   CALORIE_CALCULATION_CONSTANTS,
+  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   ENERGY_DENSITY_KCAL_PER_KG,
+  MAX_CALORIE_SAFETY_FLOOR,
+  MIN_CALORIE_SAFETY_FLOOR,
+  type CalorieSafetyFloorMode,
 } from "../constants/calorieConstants.ts";
+
+export function convertEnergyValue(
+  value: number,
+  fromUnit: "kcal" | "kJ",
+  toUnit: "kcal" | "kJ",
+): number {
+  if (fromUnit === toUnit) return value;
+  return fromUnit === "kcal" ? value * 4.184 : value / 4.184;
+}
 
 export type CalorieGoalAdjustmentMode =
   | "dynamic"
@@ -513,13 +526,52 @@ export interface CalorieTargetResult {
    * Only ever true for `calculationMethod === "adaptive"`.
    */
   wasClampedToFloor: boolean;
-  /** Which floor bound: the user's own RMR, or the flat absolute minimum. */
-  clampedFloorSource: "rmr" | "absolute" | null;
+  /** Which floor bound: RMR, the flat absolute minimum, or a user override. */
+  clampedFloorSource: "rmr" | "absolute" | "custom" | null;
+  /** Recommended default (the higher of RMR and the sex-specific absolute floor). */
+  recommendedSafetyFloor: number;
+  /** Floor that is actually enforced, or null when automatic clamping is disabled. */
+  effectiveSafetyFloor: number | null;
   /**
    * Largest deficit, in percent, that still clears the safety floor.
    * Null when the goal is not a deficit or the floor never binds.
    */
   maxFeasibleDeficitPercent: number | null;
+}
+
+export function resolveCalorieSafetyFloor(
+  mode: CalorieSafetyFloorMode | string | null | undefined,
+  customValue: number | null | undefined,
+  standardFloor: number,
+): number | null {
+  if (mode === "disabled") return null;
+  if (
+    mode === "custom" &&
+    Number.isInteger(customValue) &&
+    Number(customValue) >= MIN_CALORIE_SAFETY_FLOOR &&
+    Number(customValue) <= MAX_CALORIE_SAFETY_FLOOR
+  ) {
+    return Number(customValue);
+  }
+  return standardFloor;
+}
+
+export function getRecommendedCalorieSafetyFloor(
+  rmr: number,
+  gender: "male" | "female",
+): number {
+  return Math.max(rmr, getClinicalCalorieMinimum(gender));
+}
+
+export function getClinicalCalorieMinimum(gender: "male" | "female"): number {
+  return gender === "female" ? 1200 : 1500;
+}
+
+export function shouldShowCalorieSafetyWarning(
+  goalMode: string,
+  calculationMethod: string,
+): boolean {
+  return goalMode !== "maintain" && calculationMethod === "manual";
 }
 
 export function computeCalorieTarget({
@@ -539,6 +591,8 @@ export function computeCalorieTarget({
   bmrAlgorithm,
   currentGoalCalories,
   calculateBmrFn,
+  calorieSafetyFloorMode = "standard",
+  calorieSafetyFloorValue = DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
 }: {
   goalMode: string;
   calculationMethod: string;
@@ -556,6 +610,8 @@ export function computeCalorieTarget({
   bmrAlgorithm?: string;
   currentGoalCalories: number;
   calculateBmrFn?: BmrCalculatorFn;
+  calorieSafetyFloorMode?: CalorieSafetyFloorMode;
+  calorieSafetyFloorValue?: number;
 }): CalorieTargetResult {
   const rmr = calculateMinimumMetabolism(
     weightKg,
@@ -585,31 +641,46 @@ export function computeCalorieTarget({
   const isGainGoal = deficitPercent < 0;
   const isBelowRmr = calculatedTarget < rmr;
 
-  const absoluteFloorValue = gender === "female" ? 1200 : 1500;
+  const absoluteFloorValue = getClinicalCalorieMinimum(gender);
   const isBelowAbsoluteFloor = calculatedTarget < absoluteFloorValue;
 
   // The floor is whichever is higher: the user's own resting metabolism, or the
   // flat minimum below which hitting protein and micronutrient targets is
   // impractical. A surplus can never trip it.
-  const safetyFloor = Math.max(rmr, absoluteFloorValue);
+  const recommendedSafetyFloor = getRecommendedCalorieSafetyFloor(rmr, gender);
+  const effectiveSafetyFloor = resolveCalorieSafetyFloor(
+    calorieSafetyFloorMode,
+    calorieSafetyFloorValue,
+    recommendedSafetyFloor,
+  );
   const wasClampedToFloor =
-    calculationMethod === "adaptive" && calculatedTarget < safetyFloor;
+    calculationMethod === "adaptive" &&
+    effectiveSafetyFloor !== null &&
+    calculatedTarget < effectiveSafetyFloor;
   const finalTarget = wasClampedToFloor
-    ? Math.round(safetyFloor)
+    ? Math.round(effectiveSafetyFloor)
     : Math.round(calculatedTarget);
 
   // Name which floor actually bound, so the UI can explain rather than just clamp.
-  const clampedFloorSource: "rmr" | "absolute" | null = wasClampedToFloor
-    ? rmr >= absoluteFloorValue
-      ? "rmr"
-      : "absolute"
-    : null;
+  const usesValidCustomFloor =
+    calorieSafetyFloorMode === "custom" &&
+    Number.isInteger(calorieSafetyFloorValue) &&
+    calorieSafetyFloorValue >= MIN_CALORIE_SAFETY_FLOOR &&
+    calorieSafetyFloorValue <= MAX_CALORIE_SAFETY_FLOOR;
+  const clampedFloorSource: "rmr" | "absolute" | "custom" | null =
+    wasClampedToFloor
+      ? usesValidCustomFloor
+        ? "custom"
+        : rmr >= absoluteFloorValue
+          ? "rmr"
+          : "absolute"
+      : null;
 
   // The largest deficit that still clears the floor. Surfaced so a user who asked
   // for more than is feasible gets an actionable number instead of a silent override.
   const maxFeasibleDeficitPercent =
-    wasClampedToFloor && baselineTdee > 0
-      ? Math.max(0, (1 - safetyFloor / baselineTdee) * 100)
+    wasClampedToFloor && baselineTdee > 0 && effectiveSafetyFloor !== null
+      ? Math.max(0, (1 - effectiveSafetyFloor / baselineTdee) * 100)
       : null;
 
   // Signed: negative is loss, positive is gain, matching how weight deltas read
@@ -648,6 +719,9 @@ export function computeCalorieTarget({
     safetyZone,
     wasClampedToFloor,
     clampedFloorSource,
+    recommendedSafetyFloor: Math.round(recommendedSafetyFloor),
+    effectiveSafetyFloor:
+      effectiveSafetyFloor === null ? null : Math.round(effectiveSafetyFloor),
     maxFeasibleDeficitPercent,
   };
 }
