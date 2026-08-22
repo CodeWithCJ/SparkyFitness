@@ -534,7 +534,11 @@ export interface CalorieTargetResult {
   effectiveSafetyFloor: number | null;
   /**
    * Largest deficit, in percent, that still clears the safety floor.
-   * Null when the goal is not a deficit or the floor never binds.
+   *
+   * Always present under the adaptive method, whether or not the current goal
+   * mode trips the floor, so the UI can mark unreachable modes *before* one is
+   * chosen rather than explaining the override afterwards. Null under manual,
+   * which never clamps, and when the baseline is unknown.
    */
   maxFeasibleDeficitPercent: number | null;
 }
@@ -686,10 +690,14 @@ export function computeCalorieTarget({
           : "absolute"
       : null;
 
-  // The largest deficit that still clears the floor. Surfaced so a user who asked
-  // for more than is feasible gets an actionable number instead of a silent override.
+  // The largest deficit that still clears the floor. Computed whenever the floor
+  // could bind — not only once it has — so a goal-mode picker can say which modes
+  // are out of reach up front. Depends on the baseline and the floor, both of
+  // which are independent of the goal mode, so it is the same for every mode.
   const maxFeasibleDeficitPercent =
-    wasClampedToFloor && baselineTdee > 0 && effectiveSafetyFloor !== null
+    calculationMethod === "adaptive" &&
+    baselineTdee > 0 &&
+    effectiveSafetyFloor !== null
       ? Math.max(0, (1 - effectiveSafetyFloor / baselineTdee) * 100)
       : null;
 

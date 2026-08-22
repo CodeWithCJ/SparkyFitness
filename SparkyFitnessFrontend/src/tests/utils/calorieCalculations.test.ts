@@ -476,10 +476,13 @@ describe('computeCalorieTarget with gain goals', () => {
     expect(result.safetyZone).toBe('red');
   });
 
-  it('never trips the safety floor for a surplus', () => {
+  it('never trips the safety floor for a surplus above the floor', () => {
     const result = computeCalorieTarget({ ...gainBase, goalMode: 'bulk' });
     expect(result.wasClampedToFloor).toBe(false);
-    expect(result.maxFeasibleDeficitPercent).toBeNull();
+    expect(result.clampedFloorSource).toBeNull();
+    // The ceiling is reported regardless of the selected mode — it describes the
+    // floor, not this goal — so a gain goal still carries the deficit headroom.
+    expect(result.maxFeasibleDeficitPercent).not.toBeNull();
   });
 
   it('accepts a positive custom percentage as a manual surplus', () => {
@@ -618,6 +621,75 @@ describe('computeCalorieTarget safety floor reporting', () => {
     expect(result.effectiveSafetyFloor).toBeNull();
     expect(result.wasClampedToFloor).toBe(false);
     expect(result.clampedFloorSource).toBeNull();
+  });
+});
+
+describe('deficit ceiling is available before the clamp (issue #2205)', () => {
+  // Same body throughout; only the activity multiplier moves. The ceiling is
+  // 1 - 1/multiplier, so it is a property of activity, not body size.
+  const at = (multiplier: number, goalMode = 'maintain') => {
+    const bmr = 1633;
+    const tdee = Math.round(bmr * multiplier);
+    return computeCalorieTarget({
+      goalMode,
+      calculationMethod: 'adaptive',
+      customPercentage: 0,
+      bmr,
+      activityLevelMultiplier: multiplier,
+      adaptiveTdee: tdee,
+      adaptiveTdeeFallback: false,
+      adaptiveTdeeDaysOfData: 60,
+      weightKg: 100,
+      heightCm: 155,
+      age: 35,
+      gender: 'female',
+      currentGoalCalories: tdee,
+    });
+  };
+
+  it('reports the ceiling even when the current mode does not trip the floor', () => {
+    const result = at(1.2, 'maintain');
+
+    expect(result.wasClampedToFloor).toBe(false);
+    expect(result.maxFeasibleDeficitPercent).toBeCloseTo(16.7, 1);
+  });
+
+  it('is effectively zero at the None activity level, where every deficit mode is clamped', () => {
+    // TDEE equals RMR there, so no deficit clears the floor at all.
+    expect(at(1.0).maxFeasibleDeficitPercent).toBeLessThan(0.1);
+  });
+
+  it('does not depend on which goal mode is selected', () => {
+    const ceilings = ['maintain', 'recomp', 'cut', 'high_cut'].map(
+      (mode) => at(1.2, mode).maxFeasibleDeficitPercent
+    );
+
+    expect(new Set(ceilings.map((c) => c!.toFixed(6))).size).toBe(1);
+  });
+
+  it('rises with activity level', () => {
+    expect(at(1.375).maxFeasibleDeficitPercent).toBeCloseTo(27.3, 1);
+    expect(at(1.55).maxFeasibleDeficitPercent).toBeCloseTo(35.5, 1);
+  });
+
+  it('is null under the manual method, which never clamps', () => {
+    const result = computeCalorieTarget({
+      goalMode: 'high_cut',
+      calculationMethod: 'manual',
+      customPercentage: 0,
+      bmr: 1633,
+      activityLevelMultiplier: 1.2,
+      adaptiveTdee: 1959,
+      adaptiveTdeeFallback: false,
+      adaptiveTdeeDaysOfData: 60,
+      weightKg: 100,
+      heightCm: 155,
+      age: 35,
+      gender: 'female',
+      currentGoalCalories: 1959,
+    });
+
+    expect(result.maxFeasibleDeficitPercent).toBeNull();
   });
 });
 
