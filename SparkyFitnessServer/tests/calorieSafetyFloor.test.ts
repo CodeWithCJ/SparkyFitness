@@ -121,10 +121,10 @@ describe('goalService calorie safety floor preference', () => {
     expect(await caloriesFor('clinical_minimum')).toBe(1200);
   });
 
-  // The `calorie_goal_adjustment_mode: 'adaptive'` path used to hardcode a flat
-  // 1200 floor, which ignored RMR and applied the female minimum to men. It now
-  // resolves the same floor as every other path.
-  it('applies the RMR floor on the adaptive adjustment path', async () => {
+  // The adaptive *adjustment* path keeps its own fixed 1200 bound, which predates
+  // the safety-floor preference and is deliberately not governed by it. Pinned in
+  // both modes so a future change there is a decision rather than an accident.
+  it('leaves the adaptive adjustment path on its own fixed 1200 bound', async () => {
     vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
       calories: 1000,
       protein_percentage: null,

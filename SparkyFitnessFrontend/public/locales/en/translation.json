@@ -1861,7 +1861,9 @@
       "safetyFloorStandardHint": "Uses the higher of your estimated RMR and the clinical minimum (1,200 kcal for females, 1,500 kcal for males). At lower activity levels the RMR half can make deeper goal modes unreachable.",
       "awaitingCalibrationTitle": "Awaiting Adaptive TDEE Calibration",
       "safetyFloorClinicalMinimum": "Clinical minimum only",
-      "safetyFloorClinicalMinimumHint": "Clamps only at the clinical minimum (1,200 kcal for females, 1,500 kcal for males), allowing targets below your estimated RMR. Low-target warnings remain visible."
+      "safetyFloorClinicalMinimumHint": "Clamps only at the clinical minimum (1,200 kcal for females, 1,500 kcal for males), allowing targets below your estimated RMR. Low-target warnings remain visible.",
+      "belowRmrWarning": "Your calorie target is below your estimated minimum metabolism (RMR). This may not be sustainable long-term. Consider selecting a less aggressive Goal Mode, raising your activity level, or switching the safety floor back to Standard.",
+      "maxFeasibleDeficitHint": "The largest deficit that fits above your minimum is about {{percent}}%. To lose faster than that, raise your expenditure through activity, correct your activity level if it is understated, or switch the safety floor to Clinical minimum only."
     },
     "mfa": {
       "confirmPassword": "Confirm Password to Continue",
@@ -1922,7 +1924,9 @@
       "bodyFatUnused": "Shown for reference only — {{algorithm}} does not take body fat as an input.",
       "belowRecommendedFloor": "⚠️ Warning: Calorie budget is below the recommended safety floor ({{floor}} {{unit}}).",
       "raisedToSafetyFloor": "⚠️ Daily budget was automatically raised to the safety-floor limit.",
-      "clinicalMinimumFloorActive": "Clamping only at the clinical minimum; the recommended floor is still shown above."
+      "clinicalMinimumFloorActive": "Clamping only at the clinical minimum; the recommended floor is still shown above.",
+      "rmrFloorDescription": "estimated resting metabolism (RMR)",
+      "clinicalMinimumDescription": "clinical minimum"
     }
   },
   "admin": {

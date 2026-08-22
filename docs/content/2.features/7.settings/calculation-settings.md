@@ -110,10 +110,10 @@ SparkyFitness shows two recommended safety limits for calorie goals:
 >
 > The clinical minimum applies in both modes and cannot be switched off.
 
-Safety floors only ever apply to deficits. A surplus can never trip them.
+Under the Adaptive method the floor applies whenever the calculated target falls below it. That is almost always a deficit, but a surplus can trip it too if your whole maintenance sits below the clinical minimum.
 
 > [!TIP]
-> The Standard floor binds whenever your requested deficit exceeds $1 - 1/\text{activityMultiplier}$ — about $17\%$ at **Sedentary** ($\times 1.2$), and $0\%$ at **None** ($\times 1.0$). That is a property of your activity level, not your body size: a sedentary man and a sedentary woman hit the same ceiling. If a goal mode appears to have no effect, check your **Activity Level** first, since it sets that ceiling and is the most common thing to have understated. If your target has been agreed with a qualified clinician and still falls below your RMR, switch to **Clinical minimum only**. Very low calorie targets can carry health risks and may require medical supervision.
+> If a goal mode appears to have no effect, the floor is binding. With the fallback estimate (TDEE = RMR × activity multiplier) and RMR as the binding half, that happens once your deficit exceeds roughly $1 - 1/\text{activityMultiplier}$ — about $17\%$ at **Sedentary** ($\times 1.2$), and $0\%$ at **None** ($\times 1.0$). Once Adaptive has enough history it uses your *measured* TDEE, so the real limit is set by how far your expenditure sits above your RMR. Either way this is a property of your activity, not your body size: a sedentary man and a sedentary woman hit the same ceiling. Check your **Activity Level** first, since it is the most common thing to have understated. If your target has been agreed with a qualified clinician and still falls below your RMR, switch to **Clinical minimum only**. Very low calorie targets can carry health risks and may require medical supervision.
 
 ---
 

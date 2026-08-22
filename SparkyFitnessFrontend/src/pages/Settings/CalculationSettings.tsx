@@ -1486,11 +1486,10 @@ const CalculationSettings = () => {
                     Safety Alert: Calorie target below minimum metabolism
                   </p>
                   <p className="text-sm text-amber-700 dark:text-amber-400/80 leading-relaxed">
-                    Your calorie target is below your estimated minimum
-                    metabolism (RMR). This may not be sustainable long-term.
-                    Consider selecting a less aggressive Goal Mode, raising your
-                    activity level, or switching the safety floor back to
-                    Standard.
+                    {t(
+                      'settings.goalMode.belowRmrWarning',
+                      'Your calorie target is below your estimated minimum metabolism (RMR). This may not be sustainable long-term. Consider selecting a less aggressive Goal Mode, raising your activity level, or switching the safety floor back to Standard.'
+                    )}
                   </p>
                 </div>
               </div>
@@ -1536,8 +1535,14 @@ const CalculationSettings = () => {
                   )}{' '}
                   {getEnergyUnitString(energyUnit)}, which is below your{' '}
                   {previewResult.clampedFloorSource === 'rmr'
-                    ? 'estimated resting metabolism (RMR)'
-                    : 'clinical minimum'}{' '}
+                    ? t(
+                        'settings.calorieBreakdown.rmrFloorDescription',
+                        'estimated resting metabolism (RMR)'
+                      )
+                    : t(
+                        'settings.calorieBreakdown.clinicalMinimumDescription',
+                        'clinical minimum'
+                      )}{' '}
                   of{' '}
                   {Math.round(
                     convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)
@@ -1547,14 +1552,14 @@ const CalculationSettings = () => {
                   {previewResult.maxFeasibleDeficitPercent != null && (
                     <>
                       {' '}
-                      The largest deficit that fits above your minimum is about{' '}
-                      <span className="font-semibold">
-                        {previewResult.maxFeasibleDeficitPercent.toFixed(0)}%
-                      </span>
-                      . To lose faster than that, raise your expenditure through
-                      activity, correct your activity level if it is
-                      understated, or switch the safety floor to Clinical
-                      minimum only.
+                      {t(
+                        'settings.goalMode.maxFeasibleDeficitHint',
+                        'The largest deficit that fits above your minimum is about {{percent}}%. To lose faster than that, raise your expenditure through activity, correct your activity level if it is understated, or switch the safety floor to Clinical minimum only.',
+                        {
+                          percent:
+                            previewResult.maxFeasibleDeficitPercent.toFixed(0),
+                        }
+                      )}
                     </>
                   )}
                 </p>
