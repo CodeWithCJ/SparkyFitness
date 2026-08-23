@@ -1012,6 +1012,7 @@ export function Test({ condition, bar, userLabel, userTitle, userValue }) {
   return <>
     <Text>{condition ? 'First branch' : 'Second branch'}</Text>
     <Text>{condition && 'Visible message'}</Text>
+    <Text>{(condition ? 'Condition-only A' : 'Condition-only B') && 'Visible RHS'}</Text>
     <Text>{condition ? (bar || 'Fallback A') : (userValue ? 'Fallback B' : 'Fallback C')}</Text>
     <Text>{('Asserted text' as const)}</Text>
     <Text>{('Typed text' as string)}</Text>
@@ -1025,9 +1026,49 @@ export function Test({ condition, bar, userLabel, userTitle, userValue }) {
     const values = hardcodedValues(scan(tmpDir).findings);
     expect(values).toEqual(expect.arrayContaining([
       'First branch', 'Second branch', 'Visible message', 'Fallback A', 'Fallback B',
-      'Fallback C', 'Asserted text', 'Typed text', 'Satisfied text', 'Fallback label', 'Fallback title',
+      'Fallback C', 'Asserted text', 'Typed text', 'Satisfied text', 'Fallback label', 'Fallback title', 'Visible RHS',
     ]));
     expect(values).not.toContain('condition');
+    expect(values).not.toContain('Condition-only A');
+    expect(values).not.toContain('Condition-only B');
+  });
+
+  it('reaches a real TypeAssertionExpression in a .ts presentation context', () => {
+    const source = `
+import { Alert } from 'react-native';
+Alert.alert(<string>'Type asserted text');
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'type-assertion.ts': source });
+    expect(hardcodedValues(scan(tmpDir).findings)).toContain('Type asserted text');
+  });
+
+  it('detects Unicode UI letters but not arbitrary Unicode strings', () => {
+    const source = `
+import { Text } from 'react-native';
+const canonical = '保存';
+export function Test() {
+  return <>
+    <Text>{'Żółć'}</Text>
+    <Text>{'保存'}</Text>
+  </>;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'unicode.tsx': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).toContain('Żółć');
+    expect(values).toContain('保存');
+    expect(values).not.toContain('canonical');
+  });
+
+  it('preserves punctuation-only dynamic template filtering', () => {
+    const source = [
+      "import { Text } from 'react-native';",
+      'export function Test({ value }) {',
+      '  return <Text>{`${value} ·`}</Text>;',
+      '}',
+    ].join('\\n');
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'dynamic.tsx': source });
+    expect(hardcodedValues(scan(tmpDir).findings)).not.toContain(' ·');
   });
 
   it('collects conditional Alert and Toast presentation values without scanning conditions', () => {

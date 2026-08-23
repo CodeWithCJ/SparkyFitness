@@ -49,6 +49,10 @@ function normalizeText(value) {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+function hasLetter(value) {
+  return /\p{L}/u.test(value);
+}
+
 function literalText(node) {
   if (ts.isStringLiteral(node)) {
     return normalizeText(node.text);
@@ -92,6 +96,10 @@ function collectLiteralTexts(node) {
        node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
        node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken)) {
     const values = collectLiteralTexts(node.right);
+    // For && the left operand is always a condition; only the RHS can be
+    // rendered. || and ?? may render a presentation expression on either side.
+    if (node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) return values;
+
     // A nested presentation expression may itself be on the left. Do not
     // recurse into ordinary identifiers, comparisons, or other conditions.
     const left = node.left;
@@ -264,12 +272,13 @@ function isLikelyTechnical(value) {
 function isLikelyFalsePositive(value) {
   const trimmed = value.trim();
 
-  if (!/[A-Za-z]/.test(trimmed)) return true;
+  if (!hasLetter(trimmed)) return true;
 
   // Template expressions whose only literal residue is punctuation/affordance
   // glyphs are not user-facing hard-coded language (for example a dynamic
-  // calorie value followed by a dropdown marker).
-  if (!trimmed.replace(/\{\{dynamic\}\}/g, '').match(/[A-Za-z]/)) return true;
+  // calorie value followed by a dropdown marker). Strip the internal marker
+  // before checking the user-facing residue.
+  if (!hasLetter(trimmed.replace(/\{\{dynamic\}\}/g, ''))) return true;
 
   // Numeric/unit-only presentation fragments are language-neutral, not UI copy.
   if (/^[\s()\/·+\-]*?(?:\{\{dynamic\}\}\s*)+(?:g|kg|mg|mcg|kcal|kJ|ml|l)\s*$/.test(trimmed)) return true;
@@ -363,7 +372,7 @@ function parseSuppressions(source, relPath) {
 
 function recordFinding(relPath, line, value, kind, context) {
   const normalized = normalizeText(value);
-  if (!normalized || !/[A-Za-z]/.test(normalized)) return;
+  if (!normalized || !hasLetter(normalized)) return;
 
   if (kind === 'hardcoded-ui-text' || kind === 'dynamic-t-key' || kind === 'missing-fallback-key') {
     const rule = kind === 'hardcoded-ui-text' ? 'hardcoded-ui-text' : kind === 'dynamic-t-key' ? 'dynamic-i18n-key' : 'missing-fallback';
