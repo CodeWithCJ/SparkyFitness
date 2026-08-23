@@ -28,15 +28,24 @@ Use this skill whenever opening a pull request for the SparkyFitness repository.
 ## 2. Step-by-Step Submission Procedure
 
 ### Step 1: Pre-Submission Validation
-Run validation in the changed workspace package(s):
-```bash
-# In modified TypeScript/JS packages (e.g. SparkyFitnessServer, SparkyFitnessFrontend, SparkyFitnessMobile)
-pnpm run validate
-pnpm test <relevant-test-files>
+Run the standard validation commands for all packages touched in the PR:
 
-# In Python packages (e.g. SparkyFitnessGarmin)
-cd SparkyFitnessGarmin && ./venv/bin/python -m unittest discover tests
-```
+- **Server (`SparkyFitnessServer/`)**:
+  ```bash
+  cd SparkyFitnessServer && pnpm format && pnpm test && pnpm validate
+  ```
+- **Frontend (`SparkyFitnessFrontend/`)**:
+  ```bash
+  cd SparkyFitnessFrontend && pnpm format && pnpm test && pnpm validate
+  ```
+- **Mobile (`SparkyFitnessMobile/`)**:
+  ```bash
+  cd SparkyFitnessMobile && pnpm test && pnpm validate
+  ```
+- **Garmin Microservice (`SparkyFitnessGarmin/`)**:
+  ```bash
+  cd SparkyFitnessGarmin && ./venv/bin/python -m unittest discover tests
+  ```
 
 Inspect `git status` and `git diff` to ensure no scratch files, debug logs, or unwanted changes are staged.
 
