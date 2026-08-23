@@ -82,7 +82,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         hideWorkoutActions: true,
       });
     },
-    [cardExercises, navigation],
+    [cardExercises, navigation, t],
   );
 
   // Metric column is shared with the workout screens (intended). Preset sets
