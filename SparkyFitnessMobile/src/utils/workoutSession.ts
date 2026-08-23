@@ -267,8 +267,6 @@ export function buildSessionSubtitle(
       formattedCount: String(exerciseCount),
       defaultValue: '{{formattedCount}} exercises',
       defaultValue_one: '{{formattedCount}} exercise',
-      defaultValue_few: '{{formattedCount}} exercises',
-      defaultValue_many: '{{formattedCount}} exercises',
       defaultValue_other: '{{formattedCount}} exercises',
     }));
     if (totalSets > 0) parts.push(t('workout.setCount', {
@@ -276,8 +274,6 @@ export function buildSessionSubtitle(
       formattedCount: String(totalSets),
       defaultValue: '{{formattedCount}} sets',
       defaultValue_one: '{{formattedCount}} set',
-      defaultValue_few: '{{formattedCount}} sets',
-      defaultValue_many: '{{formattedCount}} sets',
       defaultValue_other: '{{formattedCount}} sets',
     }));
     if (totalVolumeKg > 0) {
@@ -307,8 +303,6 @@ export function buildSessionSubtitle(
       formattedCount: String(totalSets),
       defaultValue: '{{formattedCount}} sets',
       defaultValue_one: '{{formattedCount}} set',
-      defaultValue_few: '{{formattedCount}} sets',
-      defaultValue_many: '{{formattedCount}} sets',
       defaultValue_other: '{{formattedCount}} sets',
     }));
     if (totalVolumeKg > 0) {

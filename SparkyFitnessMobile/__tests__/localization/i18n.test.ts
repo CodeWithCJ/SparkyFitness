@@ -124,6 +124,16 @@ describe('English fallback contract', () => {
     });
   });
 
+  it('falls back to English when a Polish translation is empty', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('pl');
+      i18n.addResource('en', 'translation', 'emptyFallbackProbe', 'New feature');
+      i18n.addResource('pl', 'translation', 'emptyFallbackProbe', '');
+      expect(i18n.t('emptyFallbackProbe')).toBe('New feature');
+    });
+  });
+
   it('falls back to the English resource when a Polish key is missing', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');

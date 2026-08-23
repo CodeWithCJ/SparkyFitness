@@ -521,6 +521,7 @@ function visitSourceFile(filePath, rootDir) {
             recordFinding(relPath, line, value, 'hardcoded-ui-text', { attr: attrName });
           }
         } else if (ts.isJsxExpression(node.initializer) && node.initializer.expression) {
+          scanPresentationNumbers(node.initializer.expression, sourceFile, relPath, { context: `presentation attribute ${attrName}` });
           for (const value of collectLiteralTexts(node.initializer.expression)) {
             if (!isLikelyFalsePositive(value)) {
               recordFinding(relPath, line, value, 'hardcoded-ui-text', { attr: attrName, form: 'expression' });
@@ -541,6 +542,7 @@ function visitSourceFile(filePath, rootDir) {
       }
       const propName = propertyNameText(node.name);
       if (propName && LOCALIZED_ATTRIBUTE_NAMES.has(propName)) {
+        scanPresentationNumbers(node.initializer, sourceFile, relPath, { context: `presentation property ${propName}` });
         const line = getLinePosition(node, sourceFile);
         for (const value of collectLiteralTexts(node.initializer)) {
           if (!isLikelyFalsePositive(value)) {

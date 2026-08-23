@@ -68,6 +68,16 @@ function samePlaceholderMultiset(left, right) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+function isEmptyTranslation(value) {
+  return typeof value === 'string' && value.trim() === '';
+}
+
+function translatedValueIsPresent(value) {
+  if (isEmptyTranslation(value)) return false;
+  if (Array.isArray(value)) return value.every((item) => !isEmptyTranslation(item));
+  return true;
+}
+
 function requiredPluralForms(intlLocale) {
   return new Intl.PluralRules(intlLocale).resolvedOptions().pluralCategories.map((category) => `_${category}`);
 }
@@ -141,6 +151,9 @@ class LocaleValidator {
     const sourceIntlLocale = this.options.sourceIntlLocale || 'en-US';
     const sourceGroups = groupPluralKeys(Object.keys(source));
     for (const [key, value] of Object.entries(source)) {
+      if (isEmptyTranslation(value) || (Array.isArray(value) && value.some(isEmptyTranslation))) {
+        errors.push({ rule: 'empty-source-value', locale: sourceLocale, key, message: `Source value "${key}" must not be empty` });
+      }
       if (!isStringOrArrayOfStrings(value)) {
         errors.push({ rule: 'invalid-source-leaf', locale: sourceLocale, key, sourceType: valueType(value), message: `Source leaf "${key}" must be a string or array of strings` });
       }
@@ -152,13 +165,7 @@ class LocaleValidator {
       for (const key of group.keys) {
         const suffix = getPluralSuffix(key);
         if (suffix !== '_zero' && !sourceRequiredForms.includes(suffix)) {
-          // Existing English catalogs may carry paired i18next compatibility
-          // forms for locales with richer CLDR categories. A lone unsupported
-          // category remains invalid and catches accidental source drift.
-          const compatibilityPair = suffix === '_few' ? `${group.base}_many` : suffix === '_many' ? `${group.base}_few` : null;
-          if (!compatibilityPair || !Object.hasOwn(source, compatibilityPair)) {
-            errors.push({ rule: 'invalid-plural-category', locale: sourceLocale, key, form: suffix, message: `Invalid source plural category "${suffix}" for ${sourceLocale}` });
-          }
+          errors.push({ rule: 'invalid-plural-category', locale: sourceLocale, key, form: suffix, message: `Invalid source plural category "${suffix}" for ${sourceLocale}` });
         }
       }
       for (const form of sourceRequiredForms) {
@@ -198,8 +205,8 @@ class LocaleValidator {
       for (const sourceGroup of sourceGroups) {
         if (!sourceGroup.isPlural) {
           requiredTotal += 1;
-          if (Object.hasOwn(translated, sourceGroup.base)) presentTotal += 1;
-          compareValues(source[sourceGroup.base], translated[sourceGroup.base], sourceGroup.base, target.locale, errors);
+          if (Object.hasOwn(translated, sourceGroup.base) && translatedValueIsPresent(translated[sourceGroup.base])) presentTotal += 1;
+          if (translatedValueIsPresent(translated[sourceGroup.base])) compareValues(source[sourceGroup.base], translated[sourceGroup.base], sourceGroup.base, target.locale, errors);
           continue;
         }
         const canonical = canonicalPluralPlaceholders(source, sourceGroup);
@@ -207,8 +214,8 @@ class LocaleValidator {
         for (const form of targetRequiredForms) {
           const targetKey = `${sourceGroup.base}${form}`;
           if (Object.hasOwn(translated, targetKey)) {
-            presentTotal += 1;
-            if (form !== '_zero' || Object.hasOwn(source, `${sourceGroup.base}${form}`)) {
+            if (translatedValueIsPresent(translated[targetKey])) presentTotal += 1;
+            if (translatedValueIsPresent(translated[targetKey]) && (form !== '_zero' || Object.hasOwn(source, `${sourceGroup.base}${form}`))) {
               if (!samePlaceholderMultiset(placeholderNames(translated[targetKey]), canonical)) {
                 errors.push({ rule: 'placeholder-mismatch', locale: target.locale, key: targetKey, sourcePlaceholders: canonical, translatedPlaceholders: placeholderNames(translated[targetKey]), message: `Placeholder mismatch for "${targetKey}" in ${target.locale}` });
               }
@@ -219,7 +226,7 @@ class LocaleValidator {
           const suffix = getPluralSuffix(key);
           if (suffix === '_zero') {
             const targetKey = `${sourceGroup.base}_zero`;
-            if (!samePlaceholderMultiset(placeholderNames(translated[targetKey]), canonical)) {
+            if (translatedValueIsPresent(translated[targetKey]) && !samePlaceholderMultiset(placeholderNames(translated[targetKey]), canonical)) {
               errors.push({ rule: 'placeholder-mismatch', locale: target.locale, key: targetKey, sourcePlaceholders: canonical, translatedPlaceholders: placeholderNames(translated[targetKey]), message: `Placeholder mismatch for "${targetKey}" in ${target.locale}` });
             }
           } else if (!targetRequiredForms.includes(suffix)) {

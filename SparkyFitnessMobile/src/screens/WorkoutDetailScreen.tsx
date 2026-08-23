@@ -528,8 +528,6 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         count: exerciseCount,
         defaultValue: 'Exercises',
         defaultValue_one: 'Exercise',
-        defaultValue_few: 'Exercises',
-        defaultValue_many: 'Exercises',
         defaultValue_other: 'Exercises',
       }),
     });

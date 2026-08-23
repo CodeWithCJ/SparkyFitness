@@ -31,6 +31,7 @@ const I18N_INIT_OPTIONS = {
   supportedLngs: [...SUPPORTED_LANGUAGES],
   initImmediate: false,
   interpolation: { escapeValue: false },
+  returnEmptyString: false,
   react: { useSuspense: false },
 };
 

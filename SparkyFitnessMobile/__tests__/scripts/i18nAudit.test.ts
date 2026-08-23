@@ -1176,6 +1176,49 @@ describe('Multilingual source-first regressions', () => {
     expect(validator.validate().errors.some((item) => item.rule === 'placeholder-mismatch' && item.locale === 'pl')).toBe(true);
   });
 
+  it('rejects an unsupported English _few and _many compatibility pair', () => {
+    const tmpDir = createFixtureStructure({ en: '{"item_one":"item", "item_other":"items", "item_few":"items", "item_many":"items"}', pl: '{}' });
+    const validator = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json'));
+    expect(validator.validate().errors.filter((item) => item.rule === 'invalid-plural-category' && item.locale === 'en')).toHaveLength(2);
+  });
+
+  it('allows empty target values as missing non-blocking coverage', () => {
+    const tmpDir = createFixtureStructure({ en: '{"greeting":"Hello {{name}}"}', pl: '{"greeting":""}' });
+    const result = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json')).validate();
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.missing).toBe(1);
+  });
+
+  it('still blocks non-empty target placeholder corruption', () => {
+    const tmpDir = createFixtureStructure({ en: '{"greeting":"Hello {{name}}"}', pl: '{"greeting":"Witaj {{wrong}}"}' });
+    const result = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json')).validate();
+    expect(result.errors.some((item) => item.rule === 'placeholder-mismatch')).toBe(true);
+  });
+
+  it('derives German and Arabic target plural coverage from CLDR', () => {
+    for (const [locale, forms] of [['de-DE', ['_one', '_other']], ['ar', new Intl.PluralRules('ar').resolvedOptions().pluralCategories.map((category) => `_${category}`)] as const]) {
+      const source = Object.fromEntries(forms.map((form) => [`item${form}`, form]));
+      const tmpDir = createFixtureStructure({ en: JSON.stringify(source), pl: '{}' });
+      const result = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json'), { localePaths: [{ locale, path: path.join(tmpDir, 'src/localization/locales/pl/translation.json'), intlLocale: locale }] }).validate();
+      expect(result.coverage[locale].total).toBe(forms.length);
+    }
+  });
+
+  it('blocks unsafe localized JSX and object presentation properties', () => {
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, {
+      'unsafe.tsx': `export const View = () => <Metric label={value.toFixed(1)} subtitle={value.toLocaleString('en-US')} />; const config = { label: value.toFixed(1) };`,
+    });
+    const findings = scan(tmpDir).findings.filter((finding) => finding.kind === 'locale-unsafe-number-format');
+    expect(findings.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('allows the shared localized formatter in presentation properties', () => {
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, {
+      'safe.tsx': `export const View = () => <Metric label={formatLocalizedNumber(value)} />;`,
+    });
+    expect(scan(tmpDir).findings.filter((finding) => finding.kind === 'locale-unsafe-number-format')).toHaveLength(0);
+  });
+
   it('supports synthetic region variants without collapsing them', () => {
     const registry = {
       'pt-BR': { languageCode: 'pt', intlLocale: 'pt-BR', nativeLanguageTag: 'pt-BR', displayNameKey: 'x', defaultDisplayName: 'Português (Brasil)' },

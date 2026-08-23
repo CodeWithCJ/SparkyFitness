@@ -5,7 +5,6 @@ export type LocaleMetadata = {
   intlLocale: string;
   displayNameKey: string;
   defaultDisplayName: string;
-  nativeLanguageTag: string;
 };
 
 type ManifestLocaleKey = keyof typeof manifest.locales;
@@ -23,6 +22,7 @@ if (!Object.hasOwn(manifestLocales, FALLBACK_LOCALE)) {
 
 /** Authoritative application-shipped locales. Weblate directories are not automatically shipped. */
 export const SHIPPED_LOCALES = manifestLocales;
+export type CanonicalLocaleRegistry = Record<string, LocaleMetadata>;
 export type SupportedLanguage = keyof typeof manifestLocales;
 export const SUPPORTED_LANGUAGES = Object.keys(manifestLocales) as SupportedLanguage[];
 export const SHIPPED_INTL_LOCALES = SUPPORTED_LANGUAGES.map((language) => SHIPPED_LOCALES[language].intlLocale);
@@ -40,16 +40,16 @@ export function normalizeLocaleFromRegistry(
   const input = canonicalizeLocaleTag(value);
   const entries = Object.entries(registry);
   const exact = entries.find(([key, metadata]) =>
-    [key, metadata.nativeLanguageTag, metadata.intlLocale]
+    [key, metadata.intlLocale]
       .some((tag) => canonicalizeLocaleTag(tag) === input),
   );
   if (exact) return exact[0];
 
   return entries
-    .filter(([key, metadata]) => [key, metadata.nativeLanguageTag, metadata.intlLocale]
+    .filter(([key, metadata]) => [key, metadata.intlLocale]
       .some((tag) => input.startsWith(`${canonicalizeLocaleTag(tag)}-`)))
-    .sort((a, b) => Math.max(b[0].length, b[1].nativeLanguageTag.length, b[1].intlLocale.length)
-      - Math.max(a[0].length, a[1].nativeLanguageTag.length, a[1].intlLocale.length))[0]?.[0] ?? null;
+    .sort((a, b) => Math.max(b[0].length, b[1].intlLocale.length)
+      - Math.max(a[0].length, a[1].intlLocale.length))[0]?.[0] ?? null;
 }
 
 export function normalizeRegisteredLocale(value: string | null | undefined): SupportedLanguage | null {
@@ -65,5 +65,5 @@ export function metadataForLanguage(language: SupportedLanguage): LocaleMetadata
 }
 
 export function nativeLanguageTags(): string[] {
-  return SUPPORTED_LANGUAGES.map((language) => SHIPPED_LOCALES[language].nativeLanguageTag);
+  return [...SUPPORTED_LANGUAGES];
 }
