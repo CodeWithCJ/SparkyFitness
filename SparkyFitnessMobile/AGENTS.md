@@ -48,7 +48,7 @@ pnpm run test:coverage -- --watchman=false --runInBand
 npx expo prebuild --clean
 ```
 
-- `pnpm run validate` runs typecheck and Expo lint.
+- `pnpm run validate` runs TypeScript typecheck, Expo lint, and the blocking mobile i18n audit.
 - Use Watchman-disabled Jest commands in agent/sandbox runs; bare Jest often fails on macOS.
 - `collectCoverage` is enabled in Jest config, so expect coverage output from normal test runs.
 - Run `npx expo prebuild --clean` after native dependency changes, permissions, app group or widget target changes, Expo plugin changes, native config edits, or patching native modules.

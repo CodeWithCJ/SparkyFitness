@@ -1195,13 +1195,62 @@ describe('Multilingual source-first regressions', () => {
     expect(result.errors.some((item) => item.rule === 'placeholder-mismatch')).toBe(true);
   });
 
-  it('derives German and Arabic target plural coverage from CLDR', () => {
-    for (const [locale, forms] of [['de-DE', ['_one', '_other']], ['ar', new Intl.PluralRules('ar').resolvedOptions().pluralCategories.map((category) => `_${category}`)] as const]) {
-      const source = Object.fromEntries(forms.map((form) => [`item${form}`, form]));
-      const tmpDir = createFixtureStructure({ en: JSON.stringify(source), pl: '{}' });
-      const result = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json'), { localePaths: [{ locale, path: path.join(tmpDir, 'src/localization/locales/pl/translation.json'), intlLocale: locale }] }).validate();
-      expect(result.coverage[locale].total).toBe(forms.length);
-    }
+  it('derives German target coverage independently from the English source', () => {
+    const deForms = new Intl.PluralRules('de-DE')
+      .resolvedOptions()
+      .pluralCategories
+      .map((category) => `_${category}`);
+    const tmpDir = createFixtureStructure({
+      en: JSON.stringify({ item_one: '{{count}} item', item_other: '{{count}} items' }),
+      pl: '{}',
+    });
+    const dePath = path.join(tmpDir, 'src/localization/locales/de', 'translation.json');
+    fs.mkdirSync(path.dirname(dePath), { recursive: true });
+    fs.writeFileSync(dePath, JSON.stringify(Object.fromEntries(
+      deForms.map((form) => [`item${form}`, '{{count}} German item']),
+    )));
+
+    const result = new LocaleValidator(
+      path.join(tmpDir, 'src/localization/locales/en/translation.json'),
+      path.join(tmpDir, 'src/localization/locales/pl/translation.json'),
+      { localePaths: [{ locale: 'de', path: dePath, intlLocale: 'de-DE' }] },
+    ).validate();
+
+    expect(result.errors.filter((error) => error.locale === 'de')).toHaveLength(0);
+    expect(result.coverage.de).toMatchObject({
+      total: deForms.length,
+      translated: deForms.length,
+      missing: 0,
+    });
+  });
+
+  it('derives Arabic target coverage independently from the English source', () => {
+    const arForms = new Intl.PluralRules('ar')
+      .resolvedOptions()
+      .pluralCategories
+      .map((category) => `_${category}`);
+    const tmpDir = createFixtureStructure({
+      en: JSON.stringify({ item_one: '{{count}} item', item_other: '{{count}} items' }),
+      pl: '{}',
+    });
+    const arPath = path.join(tmpDir, 'src/localization/locales/ar', 'translation.json');
+    fs.mkdirSync(path.dirname(arPath), { recursive: true });
+    fs.writeFileSync(arPath, JSON.stringify(Object.fromEntries(
+      arForms.map((form) => [`item${form}`, '{{count}} Arabic fixture']),
+    )));
+
+    const result = new LocaleValidator(
+      path.join(tmpDir, 'src/localization/locales/en/translation.json'),
+      path.join(tmpDir, 'src/localization/locales/pl/translation.json'),
+      { localePaths: [{ locale: 'ar', path: arPath, intlLocale: 'ar' }] },
+    ).validate();
+
+    expect(result.errors.filter((error) => error.locale === 'ar')).toHaveLength(0);
+    expect(result.coverage.ar).toMatchObject({
+      total: arForms.length,
+      translated: arForms.length,
+      missing: 0,
+    });
   });
 
   it('blocks unsafe localized JSX and object presentation properties', () => {
