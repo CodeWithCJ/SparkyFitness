@@ -234,7 +234,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           style: 'cancel',
         },
         {
-          text: 'Resume Draft',
+          text: t('workoutPresetDetail.draft.resume', {
+            defaultValue: 'Resume Draft',
+          }),
           onPress: () => {
             navigation.navigate(
               draft.type === 'workout' ? 'WorkoutAdd' : 'ActivityAdd',
@@ -242,7 +244,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           },
         },
         {
-          text: 'Discard & Continue',
+          text: t('workoutPresetDetail.draft.discard', {
+            defaultValue: 'Discard & Continue',
+          }),
           style: 'destructive',
           onPress: async () => {
             await clearDraft();
@@ -375,14 +379,12 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           </Text>
         ) : null}
         <Text className="text-sm text-text-muted mt-2 mb-4">
-          {(exerciseCount === 1
-            ? t('workoutPresetDetail.exerciseCountLabel_one', {
-                defaultValue: '{{count}} exercise',
-              })
-            : t('workoutPresetDetail.exerciseCountLabel_other', {
-                defaultValue: '{{count}} exercises',
-              })
-          ).replace('{{count}}', String(exerciseCount))}
+          {t('workoutPresetDetail.exerciseCount', {
+            count: exerciseCount,
+            defaultValue: '{{count}} exercises',
+            defaultValue_one: '{{count}} exercise',
+            defaultValue_other: '{{count}} exercises',
+          })}
         </Text>
 
         {/* Pull back part of the scroll container's 16px inset so the cards

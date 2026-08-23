@@ -3659,11 +3659,7 @@
       "duplicating": "Powielanie…",
       "duplicate": "Powiel szablon"
     },
-    "exerciseCount_one": "{{count}} ćwiczenie",
-    "exerciseCountLabel_one": "{{count}} ćwiczenie",
-    "exerciseCountLabel_few": "{{count}} ćwiczenia",
-    "exerciseCountLabel_many": "{{count}} ćwiczeń",
-    "exerciseCountLabel_other": "{{count}} ćwiczeń"
+    "exerciseCount_one": "{{count}} ćwiczenie"
   },
   "workoutPresetMutations": {
     "errors": {

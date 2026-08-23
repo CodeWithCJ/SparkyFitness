@@ -304,7 +304,8 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(startLiveWorkout).not.toHaveBeenCalled();
   });
 
-  it('prompts to resume an active draft before logging a past preset workout', async () => {
+  it('prompts with Polish draft actions before logging a past preset workout', async () => {
+    await i18n.changeLanguage('pl');
     const alertSpy = jest.spyOn(Alert, 'alert');
     mockLoadActiveDraft.mockResolvedValue({
       type: 'workout',
@@ -331,19 +332,43 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(buildPreset());
 
-    fireEvent.press(screen.getByText('Log past workout'));
+    fireEvent.press(screen.getByText('Zapisz wcześniejszy trening'));
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(
-        'Draft in Progress',
+        'Niezapisany szkic',
         expect.any(String),
         expect.any(Array),
       );
     });
 
     const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
-    buttons.find((button) => button.text === 'Resume Draft')?.onPress?.();
+    expect(buttons.map((button) => button.text)).toEqual(
+      expect.arrayContaining(['Wznów szkic', 'Odrzuć i kontynuuj']),
+    );
+    buttons.find((button) => button.text === 'Wznów szkic')?.onPress?.();
     expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd');
+  });
+
+  it.each([
+    [1, '1 ćwiczenie'],
+    [2, '2 ćwiczenia'],
+    [5, '5 ćwiczeń'],
+    [22, '22 ćwiczenia'],
+    [25, '25 ćwiczeń'],
+  ])('renders the Polish exercise count for %i exercises', async (count, expected) => {
+    await i18n.changeLanguage('pl');
+    const preset = buildPreset({
+      exercises: Array.from({ length: count as number }, (_, index) => ({
+        id: `pe-${index + 1}`,
+        exercise_id: `ex-${index + 1}`,
+        exercise_name: `Exercise ${index + 1}`,
+        image_url: null,
+        sets: [buildSet()],
+      })),
+    });
+    const screen = renderScreen(preset);
+    expect(screen.getByText(expected as string)).toBeTruthy();
   });
 
   it('renders preset name, description, and exercise count', () => {

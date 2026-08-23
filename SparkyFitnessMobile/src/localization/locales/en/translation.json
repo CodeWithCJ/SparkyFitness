@@ -3601,8 +3601,6 @@
       "duplicating": "Duplicating…",
       "duplicate": "Duplicate preset"
     },
-    "exerciseCountLabel_one": "{{count}} exercise",
-    "exerciseCountLabel_other": "{{count}} exercises",
     "exerciseCount_one": "{{count}} exercise",
     "exerciseCount_few": "{{count}} exercises",
     "exerciseCount_many": "{{count}} exercises"
