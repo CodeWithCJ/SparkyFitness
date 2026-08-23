@@ -99,6 +99,7 @@ export function buildNutrientDisplayList(
       }
     }
     primary.splice(insertIdx, 0, {
+      // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical nutrient metadata; presentation localizes this label when a translator is available.
       label: options.t ? localizeNutrientKey(options.t, 'totalCarbs') : 'Total Carbs',
       value: options.carbs,
       unit: 'g',

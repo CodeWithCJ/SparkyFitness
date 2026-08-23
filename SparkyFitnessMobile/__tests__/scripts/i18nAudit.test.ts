@@ -1002,3 +1002,91 @@ describe('groupPluralKeys', () => {
     );
   });
 });
+
+describe('Hardened presentation literal extraction', () => {
+  it('collects conditional, logical, nested, and asserted presentation literals', () => {
+    const source = `
+import React from 'react';
+import { Text } from 'react-native';
+export function Test({ condition, bar, userLabel, userTitle, userValue }) {
+  return <>
+    <Text>{condition ? 'First branch' : 'Second branch'}</Text>
+    <Text>{condition && 'Visible message'}</Text>
+    <Text>{condition ? (bar || 'Fallback A') : (userValue ? 'Fallback B' : 'Fallback C')}</Text>
+    <Text>{('Asserted text' as const)}</Text>
+    <Text>{('Typed text' as string)}</Text>
+    <Text>{('Satisfied text' satisfies string)}</Text>
+    <Text>{userLabel || 'Fallback label'}</Text>
+    <Text>{userTitle ?? 'Fallback title'}</Text>
+  </>;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'test.tsx': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).toEqual(expect.arrayContaining([
+      'First branch', 'Second branch', 'Visible message', 'Fallback A', 'Fallback B',
+      'Fallback C', 'Asserted text', 'Typed text', 'Satisfied text', 'Fallback label', 'Fallback title',
+    ]));
+    expect(values).not.toContain('condition');
+  });
+
+  it('collects conditional Alert and Toast presentation values without scanning conditions', () => {
+    const source = `
+import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
+Alert.alert(condition ? 'Title A' : 'Title B', userMessage ?? 'Message fallback', [
+  { text: condition && 'Button text', onPress() {} },
+]);
+Toast.show({ text1: ready ? 'Toast A' : 'Toast B', text2: value || 'Toast fallback' });
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'test.ts': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).toEqual(expect.arrayContaining([
+      'Title A', 'Title B', 'Message fallback', 'Button text', 'Toast A', 'Toast B', 'Toast fallback',
+    ]));
+    expect(values).not.toContain('condition');
+    expect(values).not.toContain('ready');
+  });
+
+  it('does not inspect arbitrary expressions or condition comparisons', () => {
+    const source = `
+const payload = { label: 'Not UI' };
+const value = mode === 'DELETE' ? 'Not UI either' : 'Still not UI';
+const canonical = 'GET';
+export function Test({ condition }) {
+  return condition ? <View /> : <Text t={value} />;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'test.tsx': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).not.toEqual(expect.arrayContaining(['Not UI', 'Not UI either', 'Still not UI', 'DELETE', 'GET']));
+  });
+
+  it('keeps t() results out of hardcoded findings and preserves one-finding suppression', () => {
+    const suppressedSource = `
+import { Text } from 'react-native';
+import { t } from 'i18next';
+export function Translated() {
+  return <Text>{t('first', { defaultValue: 'Translated value' })}</Text>;
+}
+`;
+    const translatedDir = createFixtureStructure({ en: '{"first":"First"}', pl: '{"first":"Pierwszy"}' }, {
+      'translated.tsx': suppressedSource,
+    });
+    expect(hardcodedValues(scan(translatedDir).findings)).not.toContain('Translated value');
+
+    const suppressedSourceWithDirective = `
+import { Text } from 'react-native';
+export function Test({ condition }) {
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- one candidate only
+  return <Text>{condition ? 'First suppressed' : 'Second unsuppressed'}</Text>;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{"first":"First"}', pl: '{"first":"Pierwszy"}' }, {
+      'test.tsx': suppressedSourceWithDirective,
+    });
+    const findings = scan(tmpDir).findings.filter((f) => f.kind === 'hardcoded-ui-text');
+    expect(findings.filter((f) => f.value === 'Second unsuppressed')).toHaveLength(1);
+    expect(findings.filter((f) => f.value === 'First suppressed')).toHaveLength(0);
+  });
+});

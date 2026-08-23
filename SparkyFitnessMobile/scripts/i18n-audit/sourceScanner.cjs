@@ -67,6 +67,45 @@ function literalText(node) {
   return null;
 }
 
+/**
+ * Collect only presentation literals from an expression. This is deliberately
+ * bounded: conditions and arbitrary operands are never traversed. The caller
+ * must already have established a recognized user-facing presentation context.
+ */
+function collectLiteralTexts(node) {
+  if (!node) return [];
+
+  if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) ||
+      (typeof ts.isSatisfiesExpression === 'function' && ts.isSatisfiesExpression(node))) {
+    return collectLiteralTexts(node.expression);
+  }
+
+  const direct = literalText(node);
+  if (direct !== null) return [direct];
+
+  if (ts.isConditionalExpression(node)) {
+    return [...collectLiteralTexts(node.whenTrue), ...collectLiteralTexts(node.whenFalse)];
+  }
+
+  if (ts.isBinaryExpression(node) &&
+      (node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+       node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+       node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken)) {
+    const values = collectLiteralTexts(node.right);
+    // A nested presentation expression may itself be on the left. Do not
+    // recurse into ordinary identifiers, comparisons, or other conditions.
+    const left = node.left;
+    if (ts.isConditionalExpression(left) || ts.isBinaryExpression(left) ||
+        ts.isParenthesizedExpression(left) || ts.isAsExpression(left) || ts.isTypeAssertionExpression(left) ||
+        (typeof ts.isSatisfiesExpression === 'function' && ts.isSatisfiesExpression(left))) {
+      return [...collectLiteralTexts(left), ...values];
+    }
+    return values;
+  }
+
+  return [];
+}
+
 function propertyNameText(name) {
   if (ts.isIdentifier(name) || ts.isStringLiteral(name)) {
     return name.text;
@@ -230,7 +269,10 @@ function isLikelyFalsePositive(value) {
   // Template expressions whose only literal residue is punctuation/affordance
   // glyphs are not user-facing hard-coded language (for example a dynamic
   // calorie value followed by a dropdown marker).
-  if (/^(?:\{\{dynamic\}\}\s*)+[^A-Za-z]*$/.test(trimmed)) return true;
+  if (!trimmed.replace(/\{\{dynamic\}\}/g, '').match(/[A-Za-z]/)) return true;
+
+  // Numeric/unit-only presentation fragments are language-neutral, not UI copy.
+  if (/^[\s()\/·+\-]*?(?:\{\{dynamic\}\}\s*)+(?:g|kg|mg|mcg|kcal|kJ|ml|l)\s*$/.test(trimmed)) return true;
 
   if (isLikelyRoute(trimmed)) return true;
 
@@ -405,10 +447,12 @@ function visitSourceFile(filePath, rootDir) {
             recordFinding(relPath, childLine, trimmed, 'hardcoded-ui-text', { element: 'Text', form: 'text' });
           }
         } else if (ts.isJsxExpression(child) && child.expression) {
-          const value = literalText(child.expression);
-          if (value !== null && value !== undefined && !isLikelyFalsePositive(value)) {
-            const childLine = getLinePosition(child, sourceFile);
-            recordFinding(relPath, childLine, value, 'hardcoded-ui-text', { element: 'Text', form: 'expression' });
+          const values = collectLiteralTexts(child.expression);
+          const childLine = getLinePosition(child, sourceFile);
+          for (const value of values) {
+            if (!isLikelyFalsePositive(value)) {
+              recordFinding(relPath, childLine, value, 'hardcoded-ui-text', { element: 'Text', form: 'expression' });
+            }
           }
         }
       }
@@ -424,9 +468,10 @@ function visitSourceFile(filePath, rootDir) {
             recordFinding(relPath, line, value, 'hardcoded-ui-text', { attr: attrName });
           }
         } else if (ts.isJsxExpression(node.initializer) && node.initializer.expression) {
-          const value = literalText(node.initializer.expression);
-          if (value !== null && value !== undefined && !isLikelyFalsePositive(value)) {
-            recordFinding(relPath, line, value, 'hardcoded-ui-text', { attr: attrName, form: 'expression' });
+          for (const value of collectLiteralTexts(node.initializer.expression)) {
+            if (!isLikelyFalsePositive(value)) {
+              recordFinding(relPath, line, value, 'hardcoded-ui-text', { attr: attrName, form: 'expression' });
+            }
           }
         }
       }
@@ -444,9 +489,10 @@ function visitSourceFile(filePath, rootDir) {
       const propName = propertyNameText(node.name);
       if (propName && LOCALIZED_ATTRIBUTE_NAMES.has(propName)) {
         const line = getLinePosition(node, sourceFile);
-        const value = literalText(node.initializer);
-        if (value !== null && value !== undefined && !isLikelyFalsePositive(value)) {
-          recordFinding(relPath, line, value, 'hardcoded-ui-text', { prop: propName });
+        for (const value of collectLiteralTexts(node.initializer)) {
+          if (!isLikelyFalsePositive(value)) {
+            recordFinding(relPath, line, value, 'hardcoded-ui-text', { prop: propName });
+          }
         }
       }
     }
@@ -462,9 +508,10 @@ function visitSourceFile(filePath, rootDir) {
       const messageArg = node.arguments[1];
       const args = [titleArg, messageArg].filter((a) => a !== undefined);
       for (let i = 0; i < args.length; i++) {
-        const value = literalText(args[i]);
-        if (value !== null && value !== undefined && !isLikelyFalsePositive(value)) {
-          recordFinding(relPath, line, value, 'hardcoded-ui-text', { context: 'Alert.alert', argIndex: i });
+        for (const value of collectLiteralTexts(args[i])) {
+          if (!isLikelyFalsePositive(value)) {
+            recordFinding(relPath, line, value, 'hardcoded-ui-text', { context: 'Alert.alert', argIndex: i });
+          }
         }
       }
       const buttonsArg = node.arguments[2];
@@ -472,9 +519,10 @@ function visitSourceFile(filePath, rootDir) {
         function visitAlertButtons(buttonNode) {
           if (ts.isPropertyAssignment(buttonNode) && propertyNameText(buttonNode.name) === 'text') {
             alertButtonTextProps.add(buttonNode);
-            const value = literalText(buttonNode.initializer);
-            if (value !== null && value !== undefined && !isLikelyFalsePositive(value)) {
-              recordFinding(relPath, getLinePosition(buttonNode, sourceFile), value, 'hardcoded-ui-text', { context: 'Alert.alert:button' });
+            for (const value of collectLiteralTexts(buttonNode.initializer)) {
+              if (!isLikelyFalsePositive(value)) {
+                recordFinding(relPath, getLinePosition(buttonNode, sourceFile), value, 'hardcoded-ui-text', { context: 'Alert.alert:button' });
+              }
             }
           }
           ts.forEachChild(buttonNode, visitAlertButtons);
@@ -497,9 +545,10 @@ function visitSourceFile(filePath, rootDir) {
               const propName = propertyNameText(prop.name);
               if (propName === 'text1' || propName === 'text2') {
                 toastTextProps.add(prop);
-                const value = literalText(prop.initializer);
-                if (value !== null && value !== undefined && !isLikelyFalsePositive(value)) {
-                  recordFinding(relPath, line, value, 'hardcoded-ui-text', { context: 'Toast.show', prop: propName });
+                for (const value of collectLiteralTexts(prop.initializer)) {
+                  if (!isLikelyFalsePositive(value)) {
+                    recordFinding(relPath, line, value, 'hardcoded-ui-text', { context: 'Toast.show', prop: propName });
+                  }
                 }
               }
             }
@@ -585,6 +634,7 @@ module.exports = {
   visitSourceFile,
   normalizeText,
   literalText,
+  collectLiteralTexts,
   isLikelyFalsePositive,
   LOCALIZED_ATTRIBUTE_NAMES,
   CUSTOM_UI_ATTRIBUTE_NAMES,
