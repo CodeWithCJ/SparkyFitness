@@ -90,7 +90,10 @@ describe('WorkoutPresetsManager duplicate preset', () => {
       name: 'workoutPresetsManager.duplicateNameSuffix:{"name":"Upper Body"}',
       description: 'Push + Pull',
       is_public: false,
-      exercises: presetFixture.exercises,
+      exercises: presetFixture.exercises.map((exercise, index) => ({
+        ...exercise,
+        sort_order: index,
+      })),
     });
   });
 });

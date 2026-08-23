@@ -75,11 +75,19 @@ export function useWorkoutPresetForm({
       if (replaceTargetIndex !== null) {
         // Swap the exercise identity in place, keeping the entry's already
         // configured sets — the whole point of replace over remove-then-add.
+        // Only safe when the modality is unchanged, but a duration-only
+        // set carries `reps: null`, and a weight_reps set carries a
+        // `duration`/no `reps` default, reusing those fields across a
+        // modality change would either show a blank reps column instead of
+        // the default, or silently keep a stale field the new modality's UI
+        // hides, but the server still persists. On a modality change, reset
+        // to a fresh default set for the new modality instead.
         setExercises((prev) =>
           prev.map((ex, index) => {
             if (index !== replaceTargetIndex) {
               return ex;
             }
+            const modalityChanged = modality !== ex.modality;
             return {
               ...ex,
               exercise_id: exercise.id,
@@ -88,6 +96,14 @@ export function useWorkoutPresetForm({
               exercise,
               category: exercise.category ?? '',
               modality,
+              sets: modalityChanged
+                ? [
+                    {
+                      ...defaultSetForModality(modality),
+                      id: generateClientId(),
+                    },
+                  ]
+                : ex.sets,
             };
           })
         );
@@ -134,6 +150,12 @@ export function useWorkoutPresetForm({
       const duplicate: WorkoutPresetExercise = {
         ...exerciseToDuplicate,
         id: generateClientId(),
+        // The web editor has no superset UI, so silently carrying the
+        // original's superset_group forward would join the copy to the same
+        // superset with no way for the user to see or intend that (mobile
+        // clears it for the same reason, inserting the copy after the whole
+        // run instead).
+        superset_group: null,
         sets: exerciseToDuplicate.sets.map((set) => ({
           ...set,
           id: generateClientId(),

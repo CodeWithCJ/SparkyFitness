@@ -141,23 +141,26 @@ describe('useScreenHeader custom bar title layout', () => {
   // (flexBasis: auto/content) title gets ZERO share of both the shrink
   // distribution (scaled shrink factor = flexShrink × flexBasis = 0 for
   // basis:0% items) and the growth (growth doesn't apply during overflow) —
-  // a long title claims the entire row and the side cells vanish. The side
-  // cells must be content-sized (no flex-grow/shrink) and the title must be
-  // the one flexible cell, with flexBasis: 0 like CSS's `flex: 1 1 0%`, so
-  // it's on equal footing in that algorithm instead of starting from an
-  // unbounded content-based size. Asserts the inline `style` (not a
-  // className string) since Uniwind's classes are processed at build time
+  // a long title claims the entire row and the side cells vanish. Fixed via
+  // an absolutely-positioned title layer (decoupled from the side cells'
+  // flex layout entirely, so it can never compete with them for space) plus
+  // content-sized (flexShrink: 0) side cells, so neither a long title nor
+  // wide side content can squeeze the other. Asserts the inline `style` (not
+  // a className string) since Uniwind's classes are processed at build time
   // and are opaque to this test either way — the inline style is what
   // actually guarantees the behavior at runtime.
-  it('makes the title cell the flexible one (flexGrow/flexShrink, flexBasis: 0) and the side cells content-sized, so a long title cannot squeeze them to zero', () => {
+  it('renders the title as an untouchable absolute layer and keeps the side cells content-sized, so a long title cannot squeeze them to zero', () => {
     const { UNSAFE_getAllByType } = render(
       <TestScreen title={'A very long preset name that would otherwise overflow the header bar'} />,
     );
 
     const views = UNSAFE_getAllByType(View);
-    const titleContainer = views.find((view) => view.props.className === 'px-2');
-    expect(titleContainer?.props.style).toEqual(
-      expect.objectContaining({ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 }),
+    const titleLayer = views.find((view) => view.props.pointerEvents === 'box-none');
+    expect(titleLayer?.props.style).toEqual(
+      expect.objectContaining({ position: 'absolute', left: 16, right: 16 }),
+    );
+    expect(titleLayer?.props.children.props.children).toBe(
+      'A very long preset name that would otherwise overflow the header bar',
     );
 
     const leftContainer = views.find(

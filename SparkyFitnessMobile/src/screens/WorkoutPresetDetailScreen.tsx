@@ -222,10 +222,16 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         name: `${preset.name} (Copy)`,
         description: preset.description,
         is_public: false,
-        exercises: preset.exercises.map(exercise => ({
+        // The list/detail read queries never select wpe.sort_order (see
+        // workoutPresetRepository), so exercise.sort_order is always
+        // undefined here — every duplicated row would otherwise insert with
+        // the same sort_order and rely on id-ASC as a display-order tiebreak.
+        // preset.exercises already arrives in display order (server sorts by
+        // sort_order then id), so the array index is the real sort_order.
+        exercises: preset.exercises.map((exercise, index) => ({
           exercise_id: exercise.exercise_id,
           image_url: exercise.image_url,
-          sort_order: exercise.sort_order ?? undefined,
+          sort_order: index,
           superset_group: exercise.superset_group,
           sets: exercise.sets.map(set => ({
             set_number: set.set_number,
@@ -240,7 +246,11 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         })),
       });
       Toast.show({ type: 'success', text1: 'Workout preset duplicated' });
-      navigation.navigate('WorkoutPresetDetail', { preset: created });
+      // navigate() to the route already focused replaces its params instead of
+      // pushing a new screen (React Navigation 7) — push so Back still returns
+      // to the original preset instead of the fresh copy. Same fix as
+      // MealDetailScreen's MealDetail -> MealDetail link.
+      navigation.push('WorkoutPresetDetail', { preset: created });
     } catch {
       // useCreateWorkoutPreset already shows an error Toast on failure.
     }

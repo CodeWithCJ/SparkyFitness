@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, MutableRefObject } from 'react';
+import { resolveExerciseModality } from '@workspace/shared';
 import {
   getDefaultRestSec,
   moveDraftExerciseItem,
@@ -101,14 +102,21 @@ export function draftExercisesReducer(
     // Mirrors the live store's replaceExercise: swap the exercise identity in
     // place (keeping clientId, position, and superset grouping). Dropping
     // serverId sends the whole session down the server's delete-and-recreate
-    // path (mixed old/new exercise ids aren't allowed). When preserveSets
-    // isn't requested (or there's nothing to preserve), reset to one default
-    // set — the old sets no longer describe the new movement.
+    // path (mixed old/new exercise ids aren't allowed). Sets are only
+    // preserved when the replacement's effective modality matches the
+    // original's — otherwise a duration set's null reps, or a weight_reps
+    // set's stale duration, would carry into a UI that hides those fields
+    // but the server would still persist them. When preserveSets isn't
+    // requested, there's nothing to preserve, or the modality changed, reset
+    // to one default set — the old sets no longer describe the new movement.
     case 'REPLACE_EXERCISE':
       return exercises.map(exercise => {
         if (exercise.clientId !== action.clientId) return exercise;
+        const modalityUnchanged =
+          resolveExerciseModality(exercise.exerciseModality, exercise.exerciseCategory) ===
+          resolveExerciseModality(action.exercise.modality, action.exercise.category);
         const sets =
-          action.preserveSets && exercise.sets.length > 0
+          action.preserveSets && exercise.sets.length > 0 && modalityUnchanged
             ? exercise.sets
             : [
                 {
@@ -148,7 +156,10 @@ export function draftExercisesReducer(
         supersetGroup: null,
         sets: original.sets.map((set, i) => ({
           ...set,
-          clientId: action.setClientIds[i],
+          // setClientIds is precomputed against exercisesRef before dispatch
+          // (see useDraftExerciseActions); fall back to a deterministic id if
+          // it and the live reducer state ever desync on set count.
+          clientId: action.setClientIds[i] ?? `${action.newExerciseClientId}-${i}`,
           completedAt: null,
           isPr: false,
         })),
@@ -367,15 +378,20 @@ export function useDraftExerciseActions(
           setClientId,
           preserveSets: preserveSetsOnReplace,
         });
-        // Sets got preserved (nothing new was created) — there's nothing to
-        // focus. Otherwise a fresh single set was created (either replace
-        // never preserves here, or there was nothing to preserve); focus it,
-        // same as before.
-        const hadExistingSets =
-          (exercisesRef.current.find(e => e.clientId === clientId)?.sets.length ?? 0) > 0;
+        // Mirrors REPLACE_EXERCISE's own preserve/reset decision: sets are
+        // preserved (nothing new to focus) only when preserving was
+        // requested, there was something to preserve, and the modality is
+        // unchanged. Otherwise a fresh single set was created; focus it.
+        const target = exercisesRef.current.find(e => e.clientId === clientId);
+        const hadExistingSets = (target?.sets.length ?? 0) > 0;
+        const modalityUnchanged =
+          target != null &&
+          resolveExerciseModality(target.exerciseModality, target.exerciseCategory) ===
+            resolveExerciseModality(exercise.modality, exercise.category);
+        const setsWerePreserved = preserveSetsOnReplace && hadExistingSets && modalityUnchanged;
         return {
           exerciseClientId: clientId,
-          setClientId: preserveSetsOnReplace && hadExistingSets ? null : setClientId,
+          setClientId: setsWerePreserved ? null : setClientId,
         };
       },
       duplicateExercise: (clientId: string) => {

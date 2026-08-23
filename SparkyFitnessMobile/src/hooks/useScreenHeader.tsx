@@ -721,27 +721,35 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
 
   const bar = (
     <View
-      className={`flex-row items-center px-4 py-3 ${borderless ? '' : 'border-b border-border-subtle'}`}
+      className={`px-4 py-3 ${borderless ? '' : 'border-b border-border-subtle'}`}
+      style={{ position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
     >
-      {/* The side cells are content-sized (no flex-grow/shrink) and the title
-          is the one flexible cell (flexGrow/flexShrink with flexBasis: 0,
-          matching CSS's `flex: 1 1 0%`). A `flex-1` (flexBasis: 0%) side cell
-          next to a flexShrink-only (flexBasis: auto/content) title starves
-          under CSS/Yoga's shrink algorithm: each sibling's share of shrinkage
-          is scaled by `flexShrink × flexBasis`, and flexBasis: 0% siblings
-          always compute a scaled shrink factor of 0 — so a long title claims
-          the entire row and the side cells render at 0 width (confirmed via
-          on-device onLayout measurement). Giving every cell in this row the
-          same flexBasis: 0 floor puts them on equal footing. Centering is
-          relative to the leftover space between the two content-sized side
-          cells rather than screen-true-center when their widths differ — an
-          accepted trade-off for buttons that are never hidden. */}
-      <View className="flex-row items-center gap-4" style={{ flexShrink: 0 }}>
-        {leftCustom}
-      </View>
+      {/* The title is a separate, absolutely-positioned layer centered on the
+          bar's full width, independent of the side cells' own flex layout —
+          the same technique native iOS/Android headers use. Centering the
+          title by giving the side cells equal flex-grow instead (so an empty
+          side matched the populated one) is what let a long title squeeze
+          both side cells to zero width in the first place: under CSS/Yoga's
+          shrink algorithm, a `flexBasis: 0%` sibling always computes a scaled
+          shrink factor of 0, so once the title overflowed the row it claimed
+          100% of the space and the side cells rendered at 0 width (confirmed
+          via on-device onLayout measurement). Decoupling the title from that
+          layout means it can never compete with the side cells for space, so
+          it can never squeeze them — and it still lands on the bar's true
+          center regardless of how the left/right content widths differ.
+          pointerEvents="box-none" keeps the title layer itself untouchable so
+          it can never sit "on top of" a button for hit-testing purposes. */}
       <View
-        className="px-2"
-        style={{ flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, overflow: 'hidden' }}
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          left: 16,
+          right: 16,
+          top: 0,
+          bottom: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
         {center ?? (
           <Text
@@ -751,6 +759,13 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
             {title ?? ''}
           </Text>
         )}
+      </View>
+      {/* flexShrink: 0 (content-sized) rather than flex-1: these cells can
+          never be squeezed by the title, at the cost of no longer truncating
+          if their own content ever got wide enough to overflow — a non-issue
+          for the icon/short-text buttons this bar renders. */}
+      <View className="flex-row items-center gap-4" style={{ flexShrink: 0 }}>
+        {leftCustom}
       </View>
       <View className="flex-row items-center justify-end gap-4" style={{ flexShrink: 0 }}>
         {rightCustom}

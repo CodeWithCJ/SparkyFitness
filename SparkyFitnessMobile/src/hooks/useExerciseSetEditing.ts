@@ -57,10 +57,11 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
       replaceTarget != null && actions.replaceExercise
         ? actions.replaceExercise(replaceTarget, exercise)
         : actions.addExercise(exercise);
-    // null means a replace preserved the existing sets — nothing new to focus.
-    if (setClientId != null) {
-      pendingActivationRef.current = `${exerciseClientId}:${setClientId}`;
-    }
+    // null means a replace preserved the existing sets — nothing new to
+    // focus. Clear (not just skip) so a stale pending activation from an
+    // earlier action can't fire on a later transitionEnd.
+    pendingActivationRef.current =
+      setClientId != null ? `${exerciseClientId}:${setClientId}` : null;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-properties; spreading `actions` would break memoization
   }, [actions.addExercise, actions.replaceExercise]);
 

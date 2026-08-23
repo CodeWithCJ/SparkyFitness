@@ -27,6 +27,7 @@ export interface WorkoutPresetExercise {
   sets: WorkoutPresetSet[];
   category?: string;
   modality?: ExerciseModality | null; // Populated from backend join
+  superset_group?: number | null;
 }
 
 export interface WorkoutPreset {

@@ -47,6 +47,7 @@ jest.mock('../../src/services/workoutDraftService', () => ({
 const mockNavigation = {
   setOptions: jest.fn(),
   navigate: jest.fn(),
+  push: jest.fn(),
   goBack: jest.fn(),
 } as any;
 jest.mock('@react-navigation/native', () => ({
@@ -189,7 +190,7 @@ describe('WorkoutPresetDetailScreen', () => {
         {
           exercise_id: 'ex-1',
           image_url: null,
-          sort_order: undefined,
+          sort_order: 0,
           superset_group: undefined,
           sets: [
             {
@@ -207,10 +208,46 @@ describe('WorkoutPresetDetailScreen', () => {
       ],
     });
     await waitFor(() => {
-      expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetDetail', {
+      // push, not navigate: this runs from WorkoutPresetDetail itself, and
+      // navigate() to the already-focused route would replace its params
+      // instead of pushing a new screen, silently turning the original
+      // detail screen into the copy.
+      expect(navigation.push).toHaveBeenCalledWith('WorkoutPresetDetail', {
         preset: created,
       });
     });
+    expect(navigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it('re-indexes sort_order from array position on duplicate (the read query never returns it)', async () => {
+    const createPresetAsync = jest.fn().mockResolvedValue(buildPreset({ id: 8 }));
+    mockUseCreateWorkoutPreset.mockReturnValue({ createPresetAsync, isPending: false });
+
+    const preset = buildPreset({
+      exercises: [
+        {
+          id: 'pe-1',
+          exercise_id: 'ex-1',
+          exercise_name: 'Bench Press',
+          image_url: null,
+          sets: [buildSet()],
+        },
+        {
+          id: 'pe-2',
+          exercise_id: 'ex-2',
+          exercise_name: 'Squat',
+          image_url: null,
+          sets: [buildSet()],
+        },
+      ],
+    });
+    const screen = renderScreen(preset);
+
+    fireEvent.press(screen.getByLabelText('Duplicate workout preset'));
+
+    await waitFor(() => expect(createPresetAsync).toHaveBeenCalledTimes(1));
+    const sentExercises = createPresetAsync.mock.calls[0][0].exercises;
+    expect(sentExercises.map((e: { sort_order: number }) => e.sort_order)).toEqual([0, 1]);
   });
 
   it('navigates to WorkoutAdd with the preset and popCount=2 on Log past workout', async () => {

@@ -141,6 +141,12 @@ const WorkoutPresetsManager = () => {
       // so the original's exercises/sets can be sent as-is. Defaults to
       // private regardless of the source's visibility — duplicating someone
       // else's public preset shouldn't silently re-share it under this user.
+      // sort_order is the one field that can't be sent as-is: the read
+      // queries never select wpe.sort_order, so preset.exercises[].sort_order
+      // is always undefined here and every duplicated row would insert with
+      // the same value, relying on id-ASC as a display-order tiebreak.
+      // preset.exercises already arrives in display order (server sorts by
+      // sort_order then id), so the array index is the real sort_order.
       await createPreset({
         user_id: user.id,
         name: t('workoutPresetsManager.duplicateNameSuffix', {
@@ -148,7 +154,10 @@ const WorkoutPresetsManager = () => {
         }),
         description: preset.description,
         is_public: false,
-        exercises: preset.exercises,
+        exercises: preset.exercises.map((exercise, index) => ({
+          ...exercise,
+          sort_order: index,
+        })),
       });
     },
     [createPreset, user?.id, t]
