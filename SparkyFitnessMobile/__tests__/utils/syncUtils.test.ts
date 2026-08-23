@@ -9,6 +9,7 @@ import {
   buildBackfillWindows,
   enumerateDayAlignedWindows,
   SESSION_OVERLAP_MS,
+  MAX_BACKGROUND_LOOKBACK_DAYS,
   SyncDuration,
 } from '../../src/utils/syncUtils';
 
@@ -225,5 +226,63 @@ describe('getSyncStartDate', () => {
       expect(result).toBeInstanceOf(Date);
       expect(result.getTime()).toBeLessThanOrEqual(Date.now());
     }
+  });
+});
+
+describe('buildBackgroundWindows lookback clamp', () => {
+  test('clamps a long-stale cursor to the lookback floor', () => {
+    const now = new Date('2026-08-21T03:00:00Z');
+    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    const windows = buildBackgroundWindows(ninetyDaysAgo.toISOString(), now);
+
+    const floor = new Date(
+      now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+    );
+    expect(windows.sessionStart).toEqual(floor);
+  });
+
+  test('a fresh cursor is untouched — the clamp is a floor, not a window size', () => {
+    const now = new Date('2026-08-21T03:00:00Z');
+    const lastSynced = new Date(now.getTime() - 30 * 60 * 1000);
+
+    const windows = buildBackgroundWindows(lastSynced.toISOString(), now);
+
+    expect(windows.sessionStart).toEqual(
+      new Date(lastSynced.getTime() - SESSION_OVERLAP_MS),
+    );
+  });
+
+  test('an unparseable cursor falls back to the floor rather than an Invalid Date', () => {
+    const now = new Date('2026-08-21T03:00:00Z');
+
+    const windows = buildBackgroundWindows('not-a-date', now);
+
+    expect(Number.isFinite(windows.sessionStart.getTime())).toBe(true);
+    expect(windows.sessionStart).toEqual(
+      new Date(now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000),
+    );
+  });
+});
+
+describe('buildBackgroundWindows clamp reporting', () => {
+  test('reports the span it dropped so the caller can warn the user', () => {
+    const now = new Date('2026-08-21T03:00:00Z');
+    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    const windows = buildBackgroundWindows(ninetyDaysAgo.toISOString(), now);
+
+    expect(windows.clampedFrom).toEqual(
+      new Date(ninetyDaysAgo.getTime() - SESSION_OVERLAP_MS),
+    );
+  });
+
+  test('reports nothing when the window was not clamped', () => {
+    const now = new Date('2026-08-21T03:00:00Z');
+    const lastSynced = new Date(now.getTime() - 30 * 60 * 1000);
+
+    const windows = buildBackgroundWindows(lastSynced.toISOString(), now);
+
+    expect(windows.clampedFrom).toBeUndefined();
   });
 });

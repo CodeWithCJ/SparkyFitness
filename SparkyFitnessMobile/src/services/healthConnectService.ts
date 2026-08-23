@@ -89,6 +89,7 @@ export const refreshEnabledMetricPermissions = async (
 
 // Locked-device detection stubs for Android (iOS-only feature)
 export const resetDatabaseInaccessibleCount = (): void => {};
+export const getClientUnavailableCount = HealthConnect.getClientUnavailableCount;
 export const getDatabaseInaccessibleCount = (): number => 0;
 
 // Background delivery stubs for Android (iOS-only feature)

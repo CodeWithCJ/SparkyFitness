@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { View, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,13 @@ interface FooterSaveBarProps {
 }
 
 /**
+ * Presses closer together than this are treated as one. Comfortably longer
+ * than the gap between taps replayed from a blocked JS thread, comfortably
+ * shorter than a deliberate second save.
+ */
+const DUPLICATE_PRESS_WINDOW_MS = 700;
+
+/**
  * Sticky footer save bar for form screens. Screens whose Save also lives in
  * the native header (placement: 'native-only') should render this behind a
  * {!usesNativeHeader && …} guard so the two never show together.
@@ -26,6 +33,27 @@ export const FooterSaveBar: React.FC<FooterSaveBarProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
 
+  // Synchronous re-entrancy guard. `disabled`/`busy` are React state derived
+  // from a mutation's isPending, and state does not commit until the next
+  // render — so when the JS thread has been blocked and several queued taps
+  // are delivered back to back, every one of them runs against the stale props
+  // and fires the save again. That is how one Save press became half a dozen
+  // identical food entries (#2191).
+  //
+  // Deliberately time-based rather than a latch released on `busy`: not every
+  // save reports a pending state (some handlers are local and synchronous), and
+  // a latch waiting on a `busy` that never arrives would leave the button dead.
+  // A queued burst is delivered within a few milliseconds, so this only ever
+  // swallows the duplicates.
+  const lastPressAt = useRef(0);
+
+  const handlePress = useCallback(() => {
+    const now = Date.now();
+    if (now - lastPressAt.current < DUPLICATE_PRESS_WINDOW_MS) return;
+    lastPressAt.current = now;
+    onPress();
+  }, [onPress]);
+
   return (
     <View
       className="px-4 py-3 border-t border-border-subtle"
@@ -33,7 +61,7 @@ export const FooterSaveBar: React.FC<FooterSaveBarProps> = ({
     >
       <Button
         variant="primary"
-        onPress={onPress}
+        onPress={handlePress}
         disabled={disabled}
         loading={busy}
         className="py-3"

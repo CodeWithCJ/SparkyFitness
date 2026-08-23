@@ -28,6 +28,10 @@ import type {
 /** AsyncStorage prefix for remembered per-session route consent decisions. */
 const ROUTE_CONSENT_PREFIX = '@SparkyFitness/routeConsent:';
 
+/** Paging for the consent-prefetch session read. */
+const ROUTE_PREFETCH_PAGE_SIZE = 1000;
+const ROUTE_PREFETCH_MAX_PAGES = 20;
+
 /**
  * Ceiling on samples we will accept from an unfiltered fallback read, as a
  * multiple of one sample per second. Anything denser than this is another app's
@@ -204,14 +208,26 @@ export async function prefetchSessionRoutes(
 
   let sessions: Record<string, unknown>[];
   try {
-    const result = await readRecords('ExerciseSession', {
-      timeRangeFilter: {
-        operator: 'between',
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-      },
-    });
-    sessions = (result?.records ?? []) as Record<string, unknown>[];
+    // Paged: this window is the user's whole configured sync range, which can
+    // hold more sessions than one page. An unpaged read silently skipped every
+    // session past the first page, so those never got their route.
+    sessions = [];
+    let pageToken: string | undefined;
+    let page = 0;
+    do {
+      page++;
+      const result = await readRecords('ExerciseSession', {
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        },
+        pageSize: ROUTE_PREFETCH_PAGE_SIZE,
+        ...(pageToken ? { pageToken } : {}),
+      } as never);
+      sessions.push(...((result?.records ?? []) as Record<string, unknown>[]));
+      pageToken = result?.pageToken;
+    } while (pageToken && page < ROUTE_PREFETCH_MAX_PAGES);
   } catch (error) {
     addLog(
       `[HealthConnectService] Route consent prefetch read failed: ${
@@ -359,6 +375,59 @@ async function readSeriesForWindow(
   }
 }
 
+/**
+ * Which sample series a session can plausibly carry, by Health Connect
+ * exerciseType (numbering per EXERCISE_MAP in dataTransformation.ts).
+ *
+ * Every series costs a read, and a second unfiltered read when the
+ * origin-scoped one comes back empty — so reading all five for a session that
+ * can only ever have heart rate is up to ten native calls to learn nothing
+ * (#2191). The sets below are deliberately narrow: an exerciseType that
+ * matches none of them keeps the previous read-everything behaviour, so an
+ * unrecognised or newly added type never silently loses data.
+ */
+
+/** Strength, floor and mind-body work: heart rate is the only plausible series. */
+const HEART_RATE_ONLY_TYPES = new Set([
+  1, 3, 6, 7, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 30, 33, 40, 42, 43,
+  48, 49, 67, 70, 71, 77, 81, 83,
+]);
+
+/** Foot-based locomotion: step cadence, never pedaling cadence. */
+const FOOT_BASED_TYPES = new Set([37, 56, 57, 79]);
+
+/** Pedal-driven: pedaling cadence, never step cadence. */
+const PEDAL_BASED_TYPES = new Set([8, 9]);
+
+type SeriesName =
+  | 'HeartRate'
+  | 'Speed'
+  | 'Power'
+  | 'StepsCadence'
+  | 'CyclingPedalingCadence';
+
+const ALL_SERIES: SeriesName[] = [
+  'HeartRate',
+  'Speed',
+  'Power',
+  'StepsCadence',
+  'CyclingPedalingCadence',
+];
+
+export function seriesForExerciseType(
+  exerciseType: number | undefined
+): SeriesName[] {
+  if (typeof exerciseType !== 'number') return ALL_SERIES;
+  if (HEART_RATE_ONLY_TYPES.has(exerciseType)) return ['HeartRate'];
+  if (FOOT_BASED_TYPES.has(exerciseType)) {
+    return ['HeartRate', 'Speed', 'Power', 'StepsCadence'];
+  }
+  if (PEDAL_BASED_TYPES.has(exerciseType)) {
+    return ['HeartRate', 'Speed', 'Power', 'CyclingPedalingCadence'];
+  }
+  return ALL_SERIES;
+}
+
 const sampleExtractors: Record<
   string,
   (record: unknown) => SeriesPoint[]
@@ -455,23 +524,25 @@ export async function collectSessionTelemetry(
     durationMs,
   };
 
+  // Series a session of this type cannot carry are not read at all; each skipped
+  // one saves up to two native reads plus their bridge and sort cost.
+  const wanted = new Set(
+    seriesForExerciseType(session.exerciseType as number | undefined)
+  );
+  const readSeries = (name: SeriesName): Promise<SeriesPoint[]> =>
+    wanted.has(name)
+      ? readSeriesForWindow(name, window, sampleExtractors[name])
+      : Promise.resolve([]);
+
   try {
     const [route, hr, speed, power, stepsCadence, cyclingCadence] =
       await Promise.all([
         collectSessionRoute(session, options.interactive),
-        readSeriesForWindow('HeartRate', window, sampleExtractors.HeartRate),
-        readSeriesForWindow('Speed', window, sampleExtractors.Speed),
-        readSeriesForWindow('Power', window, sampleExtractors.Power),
-        readSeriesForWindow(
-          'StepsCadence',
-          window,
-          sampleExtractors.StepsCadence
-        ),
-        readSeriesForWindow(
-          'CyclingPedalingCadence',
-          window,
-          sampleExtractors.CyclingPedalingCadence
-        ),
+        readSeries('HeartRate'),
+        readSeries('Speed'),
+        readSeries('Power'),
+        readSeries('StepsCadence'),
+        readSeries('CyclingPedalingCadence'),
       ]);
 
     // Whichever cadence the activity produced; a session yields one or neither.

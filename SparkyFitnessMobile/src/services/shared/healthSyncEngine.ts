@@ -17,6 +17,7 @@ import { serverSupportsPerRecordWater } from '../api/measurementsApi';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../../utils/concurrency';
 import {
   createTelemetryRunContext,
+  FOREGROUND_TELEMETRY_BUDGET,
   type TelemetryRunContext,
 } from './telemetryBudget';
 import {
@@ -67,13 +68,18 @@ export interface HealthReadProvider {
   postProcessRaw(
     metric: HealthMetric,
     records: unknown[],
-    telemetry?: TelemetryRunContext,
+    telemetry: TelemetryRunContext,
   ): Promise<unknown[]>;
   /** Interactive-run preparation with no deadline, run before the timed metric
    *  reads. Android resolves per-session route-consent dialogs here — a dialog
    *  waits on the user, so inside the per-metric timeout it would fail the
    *  whole sync. */
   prepareInteractiveRead?(metrics: HealthMetric[], windows: SyncWindows): Promise<void>;
+  /** Clears platform run-scoped state before a run's reads begin. Android uses
+   *  it to reset the Health Connect reconnect attempt, so "reconnect once" is
+   *  once per sync rather than once per app process. Synchronous and
+   *  non-throwing: it must never be able to fail a sync. */
+  beginRun?(): void;
   /** Platform transform tables (record shapes and timezone metadata differ). */
   transform(records: unknown[], metric: MetricConfig): TransformOutput[];
 }
@@ -191,14 +197,23 @@ const collectMetric = async (
  * per-metric timeout; a timeout stops later batches, marking them 'skipped').
  * Pure collection: no cursor, upload, or writeback concerns — shells own those,
  * along with all user-facing log phrasing for the outcomes.
+ *
+ * `opts.telemetry` is required: it carries the per-run workout-telemetry budget
+ * and whether UI may be shown. See telemetryBudget.ts.
  */
 export const collectHealthData = async (
   provider: HealthReadProvider,
   metrics: HealthMetric[],
   windows: SyncWindows,
-  opts: { timeoutLabelPrefix: string; timeoutMs?: number; telemetry?: TelemetryRunContext },
+  opts: { timeoutLabelPrefix: string; timeoutMs?: number; telemetry: TelemetryRunContext },
 ): Promise<MetricSyncOutcome[]> => {
-  const telemetry = opts.telemetry ?? createTelemetryRunContext();
+  // Required, not defaulted: an omitted context used to fall back to the
+  // unbounded interactive shape, which is exactly how runForegroundSync ended
+  // up enriching every workout in a 365-day window on every sync (#2191).
+  // Every run shell must state its own policy.
+  const telemetry = opts.telemetry;
+
+  provider.beginRun?.();
 
   // Probed once per run, and only when a per-record water metric is enabled.
   const waterFallbackToSum = metrics.some(
@@ -278,6 +293,13 @@ export const runForegroundSync = async (
 
   const outcomes = await collectHealthData(provider, metricsToSync, windows, {
     timeoutLabelPrefix: opts.timeoutLabelPrefix,
+    // Interactive (a user is present to answer a route-consent dialog) but
+    // still bounded: this window is the user's full configured sync range, so
+    // an unbounded budget scales the per-run cost with their whole history.
+    telemetry: createTelemetryRunContext({
+      budget: FOREGROUND_TELEMETRY_BUDGET,
+      interactive: true,
+    }),
   });
 
   const allTransformedData: HealthDataPayload = [];

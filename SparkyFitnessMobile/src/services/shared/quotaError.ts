@@ -8,3 +8,17 @@ export const isQuotaExceededError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error ?? '');
   return QUOTA_ERROR_PATTERNS.some((pattern) => pattern.test(message));
 };
+
+// Health Connect rejects every call with "client is not initialized" once its
+// client has gone away (the app was backgrounded, the provider updated, the
+// device is locked). Unlike a transient per-window read failure, this is fatal
+// for the whole run — splitting the range into sub-windows just repeats the
+// same failure once per window, producing hundreds of identical errors and the
+// AsyncStorage log churn that goes with them (#2191). Callers short-circuit on
+// it exactly as they do on quota errors.
+const CLIENT_UNAVAILABLE_PATTERNS = [/client is not initialized/i];
+
+export const isClientUnavailableError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return CLIENT_UNAVAILABLE_PATTERNS.some((pattern) => pattern.test(message));
+};

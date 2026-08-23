@@ -36,6 +36,7 @@ import {
 import type { PermissionRequest, GrantedPermission } from '../../../src/types/healthRecords';
 import type { SyncDuration } from '../../../src/services/healthconnect/preferences';
 import { createTelemetryRunContext } from '../../../src/services/shared/telemetryBudget';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -1143,7 +1144,7 @@ describe('enrichExerciseSessions', () => {
   });
 
   test('returns empty array for empty input', async () => {
-    const result = await enrichExerciseSessions([]);
+    const result = await enrichExerciseSessions([], createTelemetryRunContext());
     expect(result).toEqual([]);
     expect(mockAggregateRecord).not.toHaveBeenCalled();
   });
@@ -1159,7 +1160,7 @@ describe('enrichExerciseSessions', () => {
       return Promise.resolve({});
     });
 
-    const result = await enrichExerciseSessions([makeSession()]);
+    const result = await enrichExerciseSessions([makeSession()], createTelemetryRunContext());
 
     expect(result[0]).toMatchObject({
       energy: { inKilocalories: 350 },
@@ -1182,7 +1183,7 @@ describe('enrichExerciseSessions', () => {
       return Promise.resolve({});
     });
 
-    const result = await enrichExerciseSessions([makeSession()]);
+    const result = await enrichExerciseSessions([makeSession()], createTelemetryRunContext());
 
     expect(result[0]).toMatchObject({
       energy: { inKilocalories: 380 },
@@ -1203,7 +1204,7 @@ describe('enrichExerciseSessions', () => {
       return Promise.resolve({});
     });
 
-    const result = await enrichExerciseSessions([makeSession()]);
+    const result = await enrichExerciseSessions([makeSession()], createTelemetryRunContext());
 
     expect(result[0]).toMatchObject({
       energy: { inKilocalories: 420 },
@@ -1224,7 +1225,7 @@ describe('enrichExerciseSessions', () => {
       return Promise.resolve({});
     });
 
-    const result = await enrichExerciseSessions([makeSession()]);
+    const result = await enrichExerciseSessions([makeSession()], createTelemetryRunContext());
 
     expect(result[0]).toMatchObject({
       energy: { inKilocalories: 200 },
@@ -1246,7 +1247,7 @@ describe('enrichExerciseSessions', () => {
     });
 
     const session = makeSession();
-    const result = await enrichExerciseSessions([session]);
+    const result = await enrichExerciseSessions([session], createTelemetryRunContext());
 
     expect(result[0]).toEqual(session);
   });
@@ -1255,7 +1256,7 @@ describe('enrichExerciseSessions', () => {
     mockAggregateRecord.mockResolvedValue({});
 
     const session = makeSession();
-    const result = await enrichExerciseSessions([session]);
+    const result = await enrichExerciseSessions([session], createTelemetryRunContext());
 
     expect(result[0]).toEqual(session);
   });
@@ -1264,7 +1265,7 @@ describe('enrichExerciseSessions', () => {
     mockAggregateRecord.mockRejectedValue(new Error('Permission denied'));
 
     const session = makeSession();
-    const result = await enrichExerciseSessions([session]);
+    const result = await enrichExerciseSessions([session], createTelemetryRunContext());
 
     expect(result[0]).toEqual(session);
   });
@@ -1272,7 +1273,7 @@ describe('enrichExerciseSessions', () => {
   test('skips records without startTime or endTime', async () => {
     const incompleteSession = { metadata: { dataOrigin: 'com.fitbit' } };
 
-    const result = await enrichExerciseSessions([incompleteSession]);
+    const result = await enrichExerciseSessions([incompleteSession], createTelemetryRunContext());
 
     expect(result[0]).toEqual(incompleteSession);
     expect(mockAggregateRecord).not.toHaveBeenCalled();
@@ -1284,7 +1285,7 @@ describe('enrichExerciseSessions', () => {
       endTime: '2024-01-15T10:00:00Z',
     });
 
-    const result = await enrichExerciseSessions([invalidSession]);
+    const result = await enrichExerciseSessions([invalidSession], createTelemetryRunContext());
 
     expect(result[0]).toEqual(invalidSession);
     expect(mockAggregateRecord).not.toHaveBeenCalled();
@@ -1293,7 +1294,7 @@ describe('enrichExerciseSessions', () => {
   test('issues all three aggregates in parallel with the same dataOriginFilter', async () => {
     mockAggregateRecord.mockResolvedValue({});
 
-    await enrichExerciseSessions([makeSession({ metadata: { dataOrigin: 'com.ohealth' } })]);
+    await enrichExerciseSessions([makeSession({ metadata: { dataOrigin: 'com.ohealth' } })], createTelemetryRunContext());
 
     const recordTypes = mockAggregateRecord.mock.calls.map((c: unknown[]) => (c[0] as { recordType: string }).recordType);
     expect(recordTypes).toHaveLength(3);
@@ -1317,7 +1318,7 @@ describe('enrichExerciseSessions', () => {
     // 41-minute walk
     const result = await enrichExerciseSessions([
       makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:41:00Z' }),
-    ]);
+    ], createTelemetryRunContext());
 
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 265 });
   });
@@ -1336,7 +1337,7 @@ describe('enrichExerciseSessions', () => {
     // 35-minute indoor bike
     const result = await enrichExerciseSessions([
       makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:35:00Z' }),
-    ]);
+    ], createTelemetryRunContext());
 
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 314 });
   });
@@ -1352,7 +1353,7 @@ describe('enrichExerciseSessions', () => {
       return Promise.resolve({});
     });
 
-    const result = await enrichExerciseSessions([makeSession()]);
+    const result = await enrichExerciseSessions([makeSession()], createTelemetryRunContext());
 
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 337 });
   });
@@ -1368,7 +1369,7 @@ describe('enrichExerciseSessions', () => {
       return Promise.resolve({});
     });
 
-    const result = await enrichExerciseSessions([makeSession()]);
+    const result = await enrichExerciseSessions([makeSession()], createTelemetryRunContext());
 
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 200 });
   });
@@ -1387,7 +1388,7 @@ describe('enrichExerciseSessions', () => {
     // 60-minute session: cap = 120, delta = 80 → passes OR-clause
     const result = await enrichExerciseSessions([
       makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z' }),
-    ]);
+    ], createTelemetryRunContext());
 
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 100 });
   });
@@ -1406,7 +1407,7 @@ describe('enrichExerciseSessions', () => {
     // 35-minute session: cap = 70, delta = 280 → fails OR-clause; ratio = 0.067 → fails
     const result = await enrichExerciseSessions([
       makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:35:00Z' }),
-    ]);
+    ], createTelemetryRunContext());
 
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 300 });
   });
@@ -1422,7 +1423,7 @@ describe('enrichExerciseSessions', () => {
     // 35-minute session, 51 m aggregate distance (HealthSync indoor bike contamination)
     const result = await enrichExerciseSessions([
       makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:35:00Z' }),
-    ]);
+    ], createTelemetryRunContext());
 
     expect('distance' in (result[0] as Record<string, unknown>)).toBe(false);
   });
@@ -1438,7 +1439,7 @@ describe('enrichExerciseSessions', () => {
     // 5-minute session, 90 m: short enough that the plausibility floor doesn't apply
     const result = await enrichExerciseSessions([
       makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:05:00Z' }),
-    ]);
+    ], createTelemetryRunContext());
 
     expect((result[0] as { distance: { inMeters: number } }).distance).toEqual({ inMeters: 90 });
   });
@@ -1471,7 +1472,7 @@ describe('enrichExerciseSessions', () => {
         return Promise.resolve({ records: [] });
       });
 
-      const result = await enrichExerciseSessions([makeSession()]);
+      const result = await enrichExerciseSessions([makeSession()], createTelemetryRunContext());
 
       const enriched = result[0] as Record<string, unknown>;
       expect(enriched.hr_samples).toEqual([
@@ -1508,7 +1509,7 @@ describe('enrichExerciseSessions', () => {
         return Promise.resolve({ records: [] });
       });
 
-      const result = await enrichExerciseSessions([makeSession()]);
+      const result = await enrichExerciseSessions([makeSession()], createTelemetryRunContext());
 
       expect(
         (result[0] as { telemetry: { active_calories?: number } }).telemetry
@@ -1524,7 +1525,7 @@ describe('enrichExerciseSessions', () => {
             { startTime: '2024-01-15T10:30:00Z', endTime: '2024-01-15T11:00:00Z' },
           ],
         }),
-      ]);
+      ], createTelemetryRunContext());
 
       expect(result[0]).toMatchObject({
         laps: [
@@ -1538,7 +1539,7 @@ describe('enrichExerciseSessions', () => {
       // readRecords/aggregateRecord default to empty via jest.setup.js — this
       // is the "nothing to enrich" baseline every other case in this describe
       // block is a variation of.
-      const result = await enrichExerciseSessions([makeSession()]);
+      const result = await enrichExerciseSessions([makeSession()], createTelemetryRunContext());
 
       const enriched = result[0] as Record<string, unknown>;
       expect(enriched.gps_points).toBeUndefined();
@@ -1725,5 +1726,289 @@ describe('ensureHistoryReadPermission', () => {
     mockGetGrantedPermissions.mockRejectedValue(new Error('bridge unavailable'));
 
     await expect(ensureHistoryReadPermission()).resolves.toBe(false);
+  });
+});
+
+describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
+  const {
+    _resetEnrichedSessionCacheForTests,
+  } = require('../../../src/services/shared/enrichedSessionCache');
+
+  const session = (id: string, startTime: string) => ({
+    startTime,
+    endTime: new Date(Date.parse(startTime) + 60 * 60 * 1000).toISOString(),
+    metadata: { dataOrigin: 'com.fitbit', id, lastModifiedTime: startTime },
+  });
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    _resetEnrichedSessionCacheForTests();
+    await AsyncStorage.clear();
+    mockAggregateRecord.mockResolvedValue({});
+    mockReadRecords.mockResolvedValue({ records: [] });
+  });
+
+  const trackPeak = (mock: jest.Mock, result: unknown) => {
+    const state = { inFlight: 0, peak: 0 };
+    mock.mockImplementation(async () => {
+      state.inFlight++;
+      state.peak = Math.max(state.peak, state.inFlight);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      state.inFlight--;
+      return result;
+    });
+    return state;
+  };
+
+  const tenSessions = () =>
+    Array.from({ length: 10 }, (_, i) =>
+      session(`s${i}`, `2024-01-${String(10 + i).padStart(2, '0')}T10:00:00.000Z`),
+    );
+
+  test('the cheap calorie/distance aggregates run at the wider limit', async () => {
+    const aggregates = trackPeak(mockAggregateRecord, {});
+    trackPeak(mockReadRecords, { records: [] });
+
+    await enrichExerciseSessions(tenSessions(), createTelemetryRunContext());
+
+    // AGGREGATE_CONCURRENCY (6) sessions × 3 scalar aggregates each. The point
+    // is that ten sessions do not become thirty concurrent calls.
+    expect(aggregates.peak).toBeLessThanOrEqual(18);
+  });
+
+  test('telemetry stays capped at two sessions however wide the outer batch runs', async () => {
+    trackPeak(mockAggregateRecord, {});
+    const telemetryReads = trackPeak(mockReadRecords, { records: [] });
+
+    await enrichExerciseSessions(tenSessions(), createTelemetryRunContext());
+
+    // Only readRecords carries telemetry (route plus up to five sample series).
+    // TELEMETRY_CONCURRENCY (2) sessions × 6 parallel reads = 12. Without the
+    // limiter the outer batch of 6 would put ~36 in flight — and the original
+    // unbounded version put all ten sessions' worth in flight at once, which is
+    // what froze the UI in #2191.
+    expect(telemetryReads.peak).toBeLessThanOrEqual(12);
+  });
+
+  test('preserves input order despite batching', async () => {
+    mockAggregateRecord.mockImplementation(async () => {
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 3));
+      return {};
+    });
+
+    const sessions = Array.from({ length: 6 }, (_, i) =>
+      session(`s${i}`, `2024-01-${String(10 + i).padStart(2, '0')}T10:00:00.000Z`),
+    );
+
+    const result = await enrichExerciseSessions(sessions, createTelemetryRunContext());
+
+    expect(result.map(r => (r as { metadata: { id: string } }).metadata.id)).toEqual(
+      ['s0', 's1', 's2', 's3', 's4', 's5'],
+    );
+  });
+
+  test('a session collected once is not re-collected on the next run', async () => {
+    const sessions = [session('s1', '2024-01-15T10:00:00.000Z')];
+
+    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+    const firstRunReads = mockReadRecords.mock.calls.length;
+    expect(firstRunReads).toBeGreaterThan(0);
+
+    mockReadRecords.mockClear();
+    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+
+    expect(mockReadRecords).not.toHaveBeenCalled();
+  });
+
+  test('a cached session does not consume a budget slot, so the next one still gets it', async () => {
+    const cached = session('cached', '2024-01-16T10:00:00.000Z');
+    const fresh = session('fresh', '2024-01-15T10:00:00.000Z');
+
+    // Prime the cache with the newer session only.
+    await enrichExerciseSessions([cached], createTelemetryRunContext());
+    mockReadRecords.mockClear();
+
+    // Budget of exactly 1: without the skip, the newest-first claim would spend
+    // it on the already-collected session and the fresh one would get nothing.
+    await enrichExerciseSessions(
+      [cached, fresh],
+      createTelemetryRunContext({ budget: 1 }),
+    );
+
+    const windows = mockReadRecords.mock.calls.map(c => c[1].timeRangeFilter.startTime);
+    expect(windows).toContain(fresh.startTime);
+    expect(windows).not.toContain(cached.startTime);
+  });
+
+  test('a re-edited session is collected again rather than frozen', async () => {
+    const original = session('s1', '2024-01-15T10:00:00.000Z');
+    await enrichExerciseSessions([original], createTelemetryRunContext());
+    mockReadRecords.mockClear();
+
+    const edited = {
+      ...original,
+      metadata: { ...original.metadata, lastModifiedTime: '2024-01-15T12:00:00.000Z' },
+    };
+    await enrichExerciseSessions([edited], createTelemetryRunContext());
+
+    expect(mockReadRecords).toHaveBeenCalled();
+  });
+});
+
+describe('readHealthRecordsDetailed fallback short-circuits (#2191)', () => {
+  const wideStart = new Date('2024-01-01T00:00:00.000Z');
+  const wideEnd = new Date('2024-01-15T00:00:00.000Z');
+  const addLog = require('../../../src/services/LogService').addLog as jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const retryLogs = () =>
+    addLog.mock.calls.filter(([message]: [string]) =>
+      String(message).includes('day window(s)'),
+    );
+
+  test('a dead client is not split into per-day retries', async () => {
+    mockReadRecords.mockRejectedValue(
+      new Error('Health Connect client is not initialized'),
+    );
+
+    const result = await readHealthRecordsDetailed('Weight', wideStart, wideEnd);
+
+    // One failed read, not one per day in the window.
+    expect(mockReadRecords).toHaveBeenCalledTimes(1);
+    expect(retryLogs()).toHaveLength(0);
+    expect(result.error).toContain('client is not initialized');
+  });
+
+  test('an ordinary read failure still splits into day windows', async () => {
+    mockReadRecords.mockRejectedValue(new Error('Something transient went wrong'));
+
+    await readHealthRecordsDetailed('Weight', wideStart, wideEnd);
+
+    expect(retryLogs()).toHaveLength(1);
+    expect(mockReadRecords.mock.calls.length).toBeGreaterThan(1);
+  });
+});
+
+describe('enrichExerciseSessions failure and cache semantics (#2191)', () => {
+  const {
+    _resetEnrichedSessionCacheForTests,
+  } = require('../../../src/services/shared/enrichedSessionCache');
+
+  const session = (id: string) => ({
+    startTime: '2024-01-15T10:00:00.000Z',
+    endTime: '2024-01-15T11:00:00.000Z',
+    metadata: { dataOrigin: 'com.fitbit', id, lastModifiedTime: '2024-01-15T11:00:00.000Z' },
+  });
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    _resetEnrichedSessionCacheForTests();
+    await AsyncStorage.clear();
+    mockAggregateRecord.mockResolvedValue({});
+    mockReadRecords.mockResolvedValue({ records: [] });
+  });
+
+  test('a rejected enrichment still fails the read, so the sync cursor holds', async () => {
+    mockAggregateRecord.mockImplementation(() => {
+      throw new Error('bridge exploded');
+    });
+
+    await expect(
+      enrichExerciseSessions([session('s1')], createTelemetryRunContext()),
+    ).rejects.toThrow('bridge exploded');
+  });
+
+  test('a headless run does not cache, so the next interactive run still collects the route', async () => {
+    const sessions = [session('s1')];
+
+    await enrichExerciseSessions(
+      sessions,
+      createTelemetryRunContext({ budget: 3, interactive: false }),
+    );
+    mockReadRecords.mockClear();
+
+    // A background run cannot answer the route-consent dialog. Caching it there
+    // would strand the route forever.
+    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+
+    expect(mockReadRecords).toHaveBeenCalled();
+  });
+});
+
+describe('dead Health Connect client is reconnected, not abandoned (#2191)', () => {
+  const {
+    resetClientUnavailableState,
+    getClientUnavailableCount,
+  } = require('../../../src/services/healthconnect/index');
+  const addLog = require('../../../src/services/LogService').addLog as jest.Mock;
+
+  const wideStart = new Date('2024-01-01T00:00:00.000Z');
+  const wideEnd = new Date('2024-01-15T00:00:00.000Z');
+  const deadClient = () => new Error('Health Connect client is not initialized');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetClientUnavailableState();
+    mockInitialize.mockResolvedValue(true);
+  });
+
+  const retryLogs = () =>
+    addLog.mock.calls.filter(([m]: [string]) => String(m).includes('day window(s)'));
+
+  test('reconnects once and returns the records the retry finds', async () => {
+    mockReadRecords
+      .mockRejectedValueOnce(deadClient())
+      .mockResolvedValueOnce({ records: [{ id: 'recovered' }] });
+
+    const result = await readHealthRecordsDetailed('Weight', wideStart, wideEnd);
+
+    expect(mockInitialize).toHaveBeenCalledTimes(1);
+    expect(result.records).toEqual([{ id: 'recovered' }]);
+    expect(result.error).toBeUndefined();
+  });
+
+  test('reconnects once per RUN, not once per metric', async () => {
+    mockReadRecords.mockRejectedValue(deadClient());
+
+    await readHealthRecordsDetailed('Weight', wideStart, wideEnd);
+    await readHealthRecordsDetailed('Steps', wideStart, wideEnd);
+    await readHealthRecordsDetailed('HeartRate', wideStart, wideEnd);
+
+    // Three metrics, one reconnect. Without the per-run guard, 33 enabled
+    // metrics would mean 33 reconnect attempts.
+    expect(mockInitialize).toHaveBeenCalledTimes(1);
+    expect(getClientUnavailableCount()).toBe(3);
+  });
+
+  test('a still-dead client surfaces the error without day-window retries', async () => {
+    mockReadRecords.mockRejectedValue(deadClient());
+
+    const result = await readHealthRecordsDetailed('Weight', wideStart, wideEnd);
+
+    expect(retryLogs()).toHaveLength(0);
+    expect(result.error).toContain('client is not initialized');
+  });
+
+  test('a new run gets a fresh reconnect attempt', async () => {
+    mockReadRecords.mockRejectedValue(deadClient());
+    await readHealthRecordsDetailed('Weight', wideStart, wideEnd);
+    expect(mockInitialize).toHaveBeenCalledTimes(1);
+
+    resetClientUnavailableState();
+    await readHealthRecordsDetailed('Weight', wideStart, wideEnd);
+
+    expect(mockInitialize).toHaveBeenCalledTimes(2);
+  });
+
+  test('a healthy read never reconnects', async () => {
+    mockReadRecords.mockResolvedValue({ records: [] });
+
+    await readHealthRecordsDetailed('Weight', wideStart, wideEnd);
+
+    expect(mockInitialize).not.toHaveBeenCalled();
+    expect(getClientUnavailableCount()).toBe(0);
   });
 });

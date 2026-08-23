@@ -13,6 +13,7 @@ import {
   readHealthRecordsDetailed,
   readEarliestRecordDetailed,
   enrichExerciseSessions,
+  resetClientUnavailableState,
 } from './index';
 import { transformHealthRecords } from './dataTransformation';
 
@@ -63,7 +64,7 @@ export const readMinMaxAvgByDay = async (
 export const postProcessRaw = async (
   metric: Pick<HealthMetric, 'recordType'>,
   records: unknown[],
-  telemetry?: TelemetryRunContext,
+  telemetry: TelemetryRunContext,
 ): Promise<unknown[]> =>
   metric.recordType === 'ExerciseSession' ? enrichExerciseSessions(records, telemetry) : records;
 
@@ -87,7 +88,16 @@ export const readEarliestRecord = async (
   metric: Pick<HealthMetric, 'recordType'>,
 ): Promise<ReadResult<{ startTime: string }>> => readEarliestRecordDetailed(metric.recordType);
 
+/**
+ * Clears the per-run Health Connect reconnect state, so a client that dies is
+ * retried once in each sync rather than only once per app process.
+ */
+export const beginRun = (): void => {
+  resetClientUnavailableState();
+};
+
 export const healthReadProvider: HealthReadProvider = {
+  beginRun,
   readCumulativeByDay,
   readMinMaxAvgByDay,
   readRaw: readHealthRecordsDetailed,

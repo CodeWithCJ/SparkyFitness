@@ -22,6 +22,19 @@
 /** Workouts to enrich per background read. */
 export const BACKGROUND_TELEMETRY_BUDGET = 3;
 
+/**
+ * Workouts to enrich per foreground read.
+ *
+ * Higher than the background budget — a user-present run has no OS deadline —
+ * but not unlimited: the foreground window is the user's whole configured sync
+ * range (up to 365 days), so an uncapped run enriches every workout in that
+ * range on every single sync. At roughly a dozen native reads per workout, whose
+ * results are deserialized and sorted on the JS thread, that starves the UI and
+ * taps queue up for seconds (#2191). Sessions beyond the cap are picked up by
+ * later syncs, which skip the ones already collected.
+ */
+export const FOREGROUND_TELEMETRY_BUDGET = 25;
+
 export interface TelemetryRunContext {
   /**
    * Whether collection may show UI. Android route access can require a

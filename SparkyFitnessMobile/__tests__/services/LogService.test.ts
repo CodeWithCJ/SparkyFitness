@@ -341,6 +341,40 @@ describe('LogService', () => {
     });
   });
 
+
+  describe('flush cost (#2191)', () => {
+    /**
+     * A burst of sync errors used to flush every 20 entries, and every flush
+     * re-read and re-parsed the whole ~240 KB log store on the JS thread. The
+     * store is now mirrored in memory, so storage is read at most once.
+     */
+    test('a long burst of logs reads the store at most once', async () => {
+      await setCaptureLevel('all');
+      const getItem = AsyncStorage.getItem as unknown as jest.Mock;
+      getItem.mockClear();
+
+      for (let i = 0; i < 200; i++) {
+        await addLog(`burst ${i}`, 'ERROR');
+      }
+      await _flushBuffer();
+
+      const logKeyReads = getItem.mock.calls.filter(([key]) => key === 'app_logs');
+      expect(logKeyReads.length).toBeLessThanOrEqual(1);
+    });
+
+    test('the burst is still persisted and readable, newest first', async () => {
+      await setCaptureLevel('all');
+
+      for (let i = 0; i < 60; i++) {
+        await addLog(`burst ${i}`, 'ERROR');
+      }
+      await _flushBuffer();
+
+      const logs = await getLogs(0, 3);
+      expect(logs.map(l => l.message)).toEqual(['burst 59', 'burst 58', 'burst 57']);
+    });
+  });
+
   describe('setCaptureLevel / getCaptureLevel', () => {
     test('persists capture level setting', async () => {
       await setCaptureLevel('warnings_errors');

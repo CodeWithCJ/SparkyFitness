@@ -1,11 +1,22 @@
 import {
   BACKGROUND_TELEMETRY_BUDGET,
+  FOREGROUND_TELEMETRY_BUDGET,
   createTelemetryRunContext,
 } from '../../../src/services/shared/telemetryBudget';
 
 describe('BACKGROUND_TELEMETRY_BUDGET', () => {
   it('is 3 — background runs enrich only the newest few workouts', () => {
     expect(BACKGROUND_TELEMETRY_BUDGET).toBe(3);
+  });
+});
+
+describe('FOREGROUND_TELEMETRY_BUDGET', () => {
+  it('is finite — an unbounded foreground run is what caused #2191', () => {
+    expect(Number.isFinite(FOREGROUND_TELEMETRY_BUDGET)).toBe(true);
+  });
+
+  it('is more generous than the background budget but still capped', () => {
+    expect(FOREGROUND_TELEMETRY_BUDGET).toBeGreaterThan(BACKGROUND_TELEMETRY_BUDGET);
   });
 });
 
