@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getAppLocale } from '../localization';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -220,7 +221,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
       logText += `${t('logScreen.clipboard.details', { defaultValue: 'Details' })}: ${item.details.join(', ')}\n`;
     }
 
-    logText += `${t('logScreen.clipboard.timestamp', { defaultValue: 'Timestamp' })}: ${new Date(item.timestamp).toLocaleString()}`;
+    logText += `${t('logScreen.clipboard.timestamp', { defaultValue: 'Timestamp' })}: ${new Date(item.timestamp).toLocaleString(getAppLocale())}`;
 
     Clipboard.setString(logText);
 
@@ -322,7 +323,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
                   ))}
               </View>
               <Text className="text-sm text-text-muted">
-                {new Date(item.timestamp).toLocaleString()}
+                {new Date(item.timestamp).toLocaleString(getAppLocale())}
               </Text>
             </View>
           </TouchableOpacity>

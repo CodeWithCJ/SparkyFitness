@@ -21,10 +21,7 @@ describe('locale-less presentation guard', () => {
   // Per-call-site exceptions for intentional system-locale / non-presentation
   // uses. Format: "relative/path:line" -> reason. Only these exact lines are
   // exempted; a new bad call elsewhere in the same file is still flagged.
-  const INTENTIONAL_LINES: Record<string, string> = {
-    'screens/LogScreen.tsx:223': 'debug/log clipboard display (category C)',
-    'screens/LogScreen.tsx:325': 'debug/log clipboard display (category C)',
-  };
+  const INTENTIONAL_LINES: Record<string, string> = {};
 
   const files: string[] = [];
   function walk(dir: string) {

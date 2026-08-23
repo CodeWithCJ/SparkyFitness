@@ -527,7 +527,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 className="text-base font-bold ml-2"
                 style={{ color: rpeToneColor, fontVariant: ['tabular-nums'] }}
               >
-                {formatLocalizedNumber(parseFloat(summary.averageRpe.toFixed(1)), { maximumFractionDigits: 1 })}
+                {formatLocalizedNumber(summary.averageRpe, { maximumFractionDigits: 1 })}
               </Text>
             </View>
           )}

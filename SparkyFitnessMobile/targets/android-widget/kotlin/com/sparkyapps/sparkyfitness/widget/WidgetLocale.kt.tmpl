@@ -40,7 +40,12 @@ object WidgetLocale {
 
     // Generated from the TypeScript shipped-locale registry by the Expo plugin.
     private val SUPPORTED_LOCALES = setOf({{SUPPORTED_LOCALES}})
-    private val SUPPORTED_PREFERENCES = setOf("system", {{SUPPORTED_LOCALES}})
+    // Explicit generated entries retain the existing resource contract.
+{{SUPPORTED_LOCALE_DECLARATIONS}}
+    private val SUPPORTED_LOCALES_CANONICAL = SUPPORTED_LOCALES.map(::canonicalTag).toSet()
+    private val FALLBACK_LOCALE = "{{FALLBACK_LOCALE}}"
+    private val FALLBACK_LOCALE_CANONICAL = canonicalTag(FALLBACK_LOCALE)
+    private val SUPPORTED_PREFERENCES = setOf("system") + SUPPORTED_LOCALES_CANONICAL
 
     private fun isNativeAppLanguageSupported(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -78,7 +83,7 @@ object WidgetLocale {
         if (normalizedPreference !in SUPPORTED_PREFERENCES) {
             throw IllegalArgumentException("Unsupported widget language preference")
         }
-        if (normalizedEffective !in SUPPORTED_LOCALES) {
+        if (canonicalTag(normalizedEffective) !in SUPPORTED_LOCALES_CANONICAL) {
             throw IllegalArgumentException("Unsupported effective widget language")
         }
 
@@ -165,10 +170,16 @@ object WidgetLocale {
     }
 
     private fun normalizeLanguage(locale: Locale): String {
-        val tag = locale.toLanguageTag().lowercase(Locale.ROOT)
-        return SUPPORTED_LOCALES.firstOrNull { tag == it || tag.startsWith("$it-") }
-            ?: SUPPORTED_LOCALES.first()
+        val tag = canonicalTag(locale.toLanguageTag())
+        return SUPPORTED_LOCALES
+            .map { it to canonicalTag(it) }
+            .filter { (_, canonical) -> tag == canonical || tag.startsWith("$canonical-") }
+            .maxByOrNull { (_, canonical) -> canonical.length }
+            ?.first ?: FALLBACK_LOCALE
     }
+
+    private fun canonicalTag(value: String): String =
+        Locale.forLanguageTag(value).toLanguageTag().lowercase(Locale.ROOT)
 
     private fun systemPlatformLanguage(context: Context): String? {
         if (!isNativeAppLanguageSupported()) return null
@@ -208,8 +219,8 @@ object WidgetLocale {
     }
 
     private fun localeFromCode(code: String?): Locale? {
-        val normalized = code?.lowercase(Locale.ROOT)
-        return if (normalized != null && normalized in SUPPORTED_LOCALES) Locale.forLanguageTag(normalized) else null
+        val normalized = code?.let(::canonicalTag)
+        return if (normalized != null && normalized in SUPPORTED_LOCALES_CANONICAL) Locale.forLanguageTag(normalized) else null
     }
 
     /**

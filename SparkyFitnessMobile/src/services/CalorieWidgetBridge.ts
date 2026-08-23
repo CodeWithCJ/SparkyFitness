@@ -1,7 +1,8 @@
 import { NativeModules, Platform } from 'react-native';
+import type { LanguagePreference, SupportedLanguage } from '../localization/i18n';
 
-export type WidgetLocalePreference = 'system' | 'en' | 'pl';
-export type WidgetEffectiveLanguage = 'en' | 'pl';
+export type WidgetLocalePreference = LanguagePreference;
+export type WidgetEffectiveLanguage = SupportedLanguage;
 
 interface CalorieWidgetNativeModule {
   setCalorieSnapshot(json: string): Promise<void>;

@@ -19,14 +19,14 @@ export { FALLBACK_LOCALE, SHIPPED_LOCALES, SUPPORTED_LANGUAGES } from './localeR
 export type { SupportedLanguage } from './localeRegistry';
 export type LanguagePreference = 'system' | SupportedLanguage;
 
-const resources = {
+export const RESOURCE_MAP = {
   en: { translation: enTranslation },
   pl: { translation: plTranslation },
 } satisfies Record<SupportedLanguage, { translation: object }>;
 
 const i18n = createInstance();
 const I18N_INIT_OPTIONS = {
-  resources,
+  resources: RESOURCE_MAP,
   fallbackLng: FALLBACK_LOCALE,
   supportedLngs: [...SUPPORTED_LANGUAGES],
   initImmediate: false,

@@ -71,7 +71,14 @@ function printHumanReport() {
   console.log(`user-facing t() without English fallback: ${summary.missingFallbackFindings}`);
   console.log(`dynamic t() keys: ${summary.dynamicI18nFindings}`);
   console.log(`source scan errors: ${summary.sourceScanErrors ?? 0}`);
+  if (report.translationCoverage && Object.keys(report.translationCoverage).length > 0) {
+    console.log('\nTranslations:');
+    for (const [locale, coverage] of Object.entries(report.translationCoverage)) {
+      console.log(`  ${locale}: ${coverage.translated}/${coverage.total} complete (${coverage.percent}%), ${coverage.missing} missing${coverage.stale ? `, ${coverage.stale} stale` : ''}`);
+    }
+  }
   console.log(`hardcoded UI strings (blocking): ${summary.hardcodedUiFindings}`);
+  console.log(`locale-unsafe number formatting (blocking): ${summary.unsafeNumberFormatFindings ?? 0}`);
 }
 
 if (showJson) {

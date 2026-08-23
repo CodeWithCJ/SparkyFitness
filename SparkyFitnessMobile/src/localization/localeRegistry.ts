@@ -1,41 +1,57 @@
-export const SOURCE_LOCALE = 'en' as const;
-export const FALLBACK_LOCALE = SOURCE_LOCALE;
+import manifest from './localeRegistry.json';
+
+export const SOURCE_LOCALE = manifest.sourceLocale;
+export const FALLBACK_LOCALE = manifest.fallbackLocale;
 
 export type LocaleMetadata = {
   languageCode: string;
   intlLocale: string;
   displayNameKey: string;
+  defaultDisplayName: string;
   nativeLanguageTag: string;
 };
 
-/** Authoritative list of locales exposed by the application. Weblate files are not automatically shipped. */
-export const SHIPPED_LOCALES = {
-  en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'settings.language.english', nativeLanguageTag: 'en' },
-  pl: { languageCode: 'pl', intlLocale: 'pl-PL', displayNameKey: 'settings.language.polish', nativeLanguageTag: 'pl' },
-} as const satisfies Record<string, LocaleMetadata>;
-
+export const SHIPPED_LOCALES = manifest.locales as Record<string, LocaleMetadata>;
 export type SupportedLanguage = keyof typeof SHIPPED_LOCALES;
 export const SUPPORTED_LANGUAGES = Object.keys(SHIPPED_LOCALES) as SupportedLanguage[];
-export const SHIPPED_INTL_LOCALES = Object.values(SHIPPED_LOCALES).map(({ intlLocale }) => intlLocale);
+export const SHIPPED_INTL_LOCALES = SUPPORTED_LANGUAGES.map((language) => SHIPPED_LOCALES[language].intlLocale);
 
-function canonical(value: string): string {
+export function canonicalizeLocaleTag(value: string): string {
   return value.trim().replaceAll('_', '-').toLowerCase();
 }
 
-/** Match the most specific registered locale first, then its language family. */
-export function normalizeRegisteredLocale(value: string | null | undefined): SupportedLanguage | null {
+/**
+ * Resolves the most specific registered locale without collapsing region
+ * variants. Exact tags win; private-use extensions then fall back to the
+ * longest registered prefix; language-only fallback is supported for locales
+ * whose registry entry is itself language-only.
+ */
+export function normalizeLocaleFromRegistry(
+  value: string | null | undefined,
+  registry: Record<string, LocaleMetadata> = SHIPPED_LOCALES,
+): string | null {
   if (!value) return null;
-  const input = canonical(value);
-  const exact = SUPPORTED_LANGUAGES.find((code) => input === canonical(code) || input === canonical(SHIPPED_LOCALES[code].nativeLanguageTag));
-  if (exact) return exact;
-  const candidates = SUPPORTED_LANGUAGES
-    .filter((code) => input === canonical(SHIPPED_LOCALES[code].intlLocale) || input.startsWith(`${canonical(code)}-`))
-    .sort((a, b) => canonical(SHIPPED_LOCALES[b].intlLocale).length - canonical(SHIPPED_LOCALES[a].intlLocale).length);
-  return candidates[0] ?? null;
+  const input = canonicalizeLocaleTag(value);
+  const entries = Object.entries(registry);
+  const exact = entries.find(([key, metadata]) =>
+    [key, metadata.nativeLanguageTag, metadata.languageCode, metadata.intlLocale]
+      .some((tag) => canonicalizeLocaleTag(tag) === input),
+  );
+  if (exact) return exact[0];
+
+  return entries
+    .filter(([key, metadata]) => [key, metadata.nativeLanguageTag, metadata.intlLocale]
+      .some((tag) => input.startsWith(`${canonicalizeLocaleTag(tag)}-`)))
+    .sort((a, b) => Math.max(b[0].length, b[1].nativeLanguageTag.length, b[1].intlLocale.length)
+      - Math.max(a[0].length, a[1].nativeLanguageTag.length, a[1].intlLocale.length))[0]?.[0] ?? null;
+}
+
+export function normalizeRegisteredLocale(value: string | null | undefined): SupportedLanguage | null {
+  return normalizeLocaleFromRegistry(value) as SupportedLanguage | null;
 }
 
 export function resolveLanguage(value: string | null | undefined): SupportedLanguage {
-  return normalizeRegisteredLocale(value) ?? FALLBACK_LOCALE;
+  return normalizeRegisteredLocale(value) ?? FALLBACK_LOCALE as SupportedLanguage;
 }
 
 export function metadataForLanguage(language: SupportedLanguage): LocaleMetadata {

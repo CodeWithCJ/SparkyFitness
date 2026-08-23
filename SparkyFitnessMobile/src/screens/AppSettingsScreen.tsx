@@ -78,7 +78,7 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
     { label: t('settings.language.system', 'System'), value: 'system' as LanguagePreference },
     ...Object.entries(SHIPPED_LOCALES).map(([value, metadata]) => ({
       // i18n-audit-ignore-next-line dynamic-i18n-key -- registry metadata is a bounded static translation-key map
-      label: t(metadata.displayNameKey, value === 'pl' ? 'Polski' : 'English'),
+      label: t(metadata.displayNameKey, metadata.defaultDisplayName),
       value: value as LanguagePreference,
     })),
   ];

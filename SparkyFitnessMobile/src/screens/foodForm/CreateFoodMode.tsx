@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../../localization';
 import { View, TouchableOpacity, Platform, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -472,7 +473,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
               </Text>
             </View>
             <Text className="text-text-secondary text-sm mt-2">
-              {t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} servings', defaultValue_one: 'meal makes {{count}} serving', defaultValue_other: 'meal makes {{count}} servings', count: servings, formattedCount: servings % 1 === 0 ? servings : servings.toFixed(1) })}
+              {t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} servings', defaultValue_one: 'meal makes {{count}} serving', defaultValue_other: 'meal makes {{count}} servings', count: servings, formattedCount: formatLocalizedNumber(servings, { maximumFractionDigits: 1 }) })}
               {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} {t('foodEntryAdd.labels.perServing', { defaultValue: 'per serving' })}
             </Text>
           </View>

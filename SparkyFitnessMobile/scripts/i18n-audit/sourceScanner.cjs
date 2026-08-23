@@ -323,6 +323,7 @@ const ALLOWED_SUPPRESSION_RULES = new Set([
   'hardcoded-ui-text',
   'dynamic-i18n-key',
   'missing-fallback',
+  'locale-unsafe-number-format',
 ]);
 
 const SUPPRESSION_REGEX = /^\s*\/\/\s*i18n-audit-ignore-next-line\s+(\S+)(?:\s*--\s*(.+))?$/;
@@ -369,6 +370,33 @@ function parseSuppressions(source, relPath) {
     records.push({ commentLine, targetLine, rule, reason, consumed: false });
   }
   return records;
+}
+
+function recordNumberFinding(relPath, line, expression, context) {
+  const normalized = normalizeText(expression);
+  const idx = suppressionRecords.findIndex((r) => !r.consumed && r.rule === 'locale-unsafe-number-format' && r.targetLine === line);
+  if (idx !== -1) { suppressionRecords[idx].consumed = true; return; }
+  findings.push({ file: relPath, line, kind: 'locale-unsafe-number-format', value: normalized, context: context || {} });
+}
+
+function scanPresentationNumbers(node, sourceFile, relPath, context) {
+  function walk(current, parent) {
+    if (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression)) {
+      const method = current.expression.name.text;
+      const parentIsSharedFormatter = parent && ts.isCallExpression(parent) &&
+        ts.isIdentifier(parent.expression) && parent.expression.text === 'formatLocalizedNumber';
+      if (!parentIsSharedFormatter && ['toFixed', 'toPrecision', 'toExponential'].includes(method)) {
+        recordNumberFinding(relPath, getLinePosition(current, sourceFile), current.getText(sourceFile), context);
+      }
+      // An explicit locale argument is considered safe; the audit targets the
+      // silent device-locale form only.
+      if (method === 'toLocaleString' && current.arguments.length === 0) {
+        recordNumberFinding(relPath, getLinePosition(current, sourceFile), current.getText(sourceFile), context);
+      }
+    }
+    ts.forEachChild(current, (child) => walk(child, current));
+  }
+  walk(node, null);
 }
 
 function recordFinding(relPath, line, value, kind, context) {
@@ -457,6 +485,7 @@ function visitSourceFile(filePath, rootDir) {
             recordFinding(relPath, childLine, trimmed, 'hardcoded-ui-text', { element: 'Text', form: 'text' });
           }
         } else if (ts.isJsxExpression(child) && child.expression) {
+          scanPresentationNumbers(child.expression, sourceFile, relPath, { context: 'JSX presentation' });
           const values = collectLiteralTexts(child.expression);
           const childLine = getLinePosition(child, sourceFile);
           for (const value of values) {
@@ -466,6 +495,12 @@ function visitSourceFile(filePath, rootDir) {
           }
         }
       }
+    }
+
+    if (ts.isPropertyAssignment(node)) {
+      const formatterNames = new Set(['tickFormat', 'labelFormat', 'valueFormat', 'formatX', 'formatY', 'tooltipFormat', 'formatTooltip']);
+      const propName = propertyNameText(node.name);
+      if (propName && formatterNames.has(propName)) scanPresentationNumbers(node.initializer, sourceFile, relPath, { context: `chart formatter ${propName}` });
     }
 
     if (ts.isJsxAttribute(node)) {

@@ -1,0 +1,20 @@
+{
+  "sourceLocale": "en",
+  "fallbackLocale": "en",
+  "locales": {
+    "en": {
+      "languageCode": "en",
+      "intlLocale": "en-US",
+      "nativeLanguageTag": "en",
+      "displayNameKey": "settings.language.english",
+      "defaultDisplayName": "English"
+    },
+    "pl": {
+      "languageCode": "pl",
+      "intlLocale": "pl-PL",
+      "nativeLanguageTag": "pl",
+      "displayNameKey": "settings.language.polish",
+      "defaultDisplayName": "Polski"
+    }
+  }
+}

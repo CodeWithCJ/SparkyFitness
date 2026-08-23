@@ -15,7 +15,7 @@ import {
 } from 'expo/config-plugins';
 import fs from 'fs';
 import path from 'path';
-import { SUPPORTED_LANGUAGES } from '../src/localization/localeRegistry';
+import { FALLBACK_LOCALE, SUPPORTED_LANGUAGES } from '../src/localization/localeRegistry';
 
 const WIDGET_PACKAGE = 'com.sparkyapps.sparkyfitness.widget';
 const WIDGET_PACKAGE_IMPORT = `import ${WIDGET_PACKAGE}.CalorieWidgetPackage`;
@@ -87,7 +87,9 @@ const withCalorieWidget: ConfigPlugin = (config) => {
           const substituted = contents
             .toString('utf8')
             .replace(/\{\{APPLICATION_ID\}\}/g, applicationId)
-            .replace(/\{\{SUPPORTED_LOCALES\}\}/g, SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', '));
+            .replace(/\{\{SUPPORTED_LOCALES\}\}/g, SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', '))
+            .replace(/\{\{SUPPORTED_LOCALE_DECLARATIONS\}\}/g, SUPPORTED_LANGUAGES.map((language) => `    private val ${language.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_LOCALE = Locale.forLanguageTag("${language}")`).join('\n'))
+            .replace(/\{\{FALLBACK_LOCALE\}\}/g, FALLBACK_LOCALE);
           return {
             destName: base.slice(0, -TEMPLATE_SUFFIX.length),
             contents: Buffer.from(substituted, 'utf8'),

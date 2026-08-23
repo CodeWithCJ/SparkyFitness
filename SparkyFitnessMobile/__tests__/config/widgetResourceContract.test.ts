@@ -530,8 +530,8 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/editor\.remove\(KEY_EFFECTIVE_RENDER_LOCALE\)/);
       expect(src).toMatch(/editor\.remove\(KEY_LOCALE\)/);
       expect(src).toMatch(/editor\.putString\(KEY_LOCALE, normalizedPreference\)/);
-      expect(src).toMatch(/Locale\.forLanguageTag\("en"\)/);
-      expect(src).toMatch(/Locale\.forLanguageTag\("pl"\)/);
+      expect(src).toMatch(/\{\{SUPPORTED_LOCALE_DECLARATIONS\}\}/);
+      expect(src).toMatch(/\{\{FALLBACK_LOCALE\}\}/);
     });
 
     it('refreshes the broadcast locale payload before LOCALE_CHANGED updateAll', () => {

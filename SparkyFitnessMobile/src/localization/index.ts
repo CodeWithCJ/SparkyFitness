@@ -5,6 +5,7 @@ export {
 } from './appLanguage';
 export {
   SUPPORTED_LANGUAGES,
+  RESOURCE_MAP,
   SHIPPED_LOCALES,
   formatLocalizedNumber,
   getAppLocale,

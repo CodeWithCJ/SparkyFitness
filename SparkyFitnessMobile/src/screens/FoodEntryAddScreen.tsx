@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 import {
   View,
   Text,
@@ -1359,7 +1360,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           </View>
           <View className="flex-row items-center mt-2">
             <Text className="text-text-secondary text-sm">
-              {servings % 1 === 0 ? servings : servings.toFixed(1)}{' '}
+              {formatLocalizedNumber(servings, { maximumFractionDigits: 1 })}{' '}
               {t('foodEntryAdd.labels.serving', { defaultValue: 'servings', defaultValue_one: 'serving', defaultValue_other: 'servings', count: servings })}
             </Text>
             {/* Suppress the redundant "X serving per serving" suffix when the

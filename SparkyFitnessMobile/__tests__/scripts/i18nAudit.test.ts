@@ -55,6 +55,7 @@ interface AuditReport {
   dynamicI18nFindings: AuditError[];
   hardcodedUiFindings: AuditFinding[];
   summary: Record<string, number>;
+  translationCoverage?: Record<string, unknown>;
 }
 
 interface AuditResult {
@@ -169,7 +170,7 @@ describe('LocaleValidator', () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it('2. fails for missing plain key in PL', () => {
+  it('2. allows missing plain key in PL and reports coverage', () => {
     const tmpDir = createFixtureStructure({
       en: '{"common": {"save": "Save", "close": "Close"}}',
       pl: '{"common": {"save": "Zapisz"}}',
@@ -181,10 +182,11 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e) => e.rule === 'missing-key' && e.key === 'common.close')).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.missing).toBe(1);
   });
 
-  it('3. fails for extra key in PL', () => {
+  it('3. reports extra key in PL as non-blocking stale coverage', () => {
     const tmpDir = createFixtureStructure({
       en: '{"common": {"save": "Save"}}',
       pl: '{"common": {"save": "Zapisz", "extra": "Dodatkowy"}}',
@@ -196,7 +198,8 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e) => e.rule === 'missing-key' && e.locale === 'en' && e.key === 'common.extra')).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.stale).toBe(1);
   });
 
   it('4. fails for malformed JSON', () => {
@@ -291,7 +294,7 @@ describe('LocaleValidator', () => {
 });
 
 describe('Pluralization', () => {
-  it('9. fails for missing _many in Polish', () => {
+  it('9. allows incomplete Polish plural coverage', () => {
     const tmpDir = createFixtureStructure({
       en: '{"count": {"item_one": "item", "item_other": "items"}}',
       pl: '{"count": {"item_one": "przedmiot", "item_few": "przedmioty", "item_other": "przedmiotów"}}',
@@ -303,7 +306,8 @@ describe('Pluralization', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e) => e.rule === 'missing-plural-form' && e.locale === 'pl' && e.form === '_many')).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.missing).toBeGreaterThan(0);
   });
 
   it('10. passes for EN _one/_other and PL _one/_few/_many/_other', () => {
@@ -615,7 +619,7 @@ export function Test({ name }) {
   });
 });
 
-describe('Hardcoded UI text detection (informational)', () => {
+describe('Hardcoded UI text detection (blocking)', () => {
   it('14. reports new hardcoded text in <Text> without failing the audit', () => {
     const source = `
 import React from 'react';
@@ -635,7 +639,7 @@ export function Test() {
     );
 
     expect(hardcoded.length).toBe(1);
-    expect(result.hasErrors).toBe(false);
+    expect(result.hasErrors).toBe(true);
     expect(result.report.hardcodedUiFindings.length).toBeGreaterThan(0);
   });
 
@@ -809,7 +813,7 @@ describe('Static key resolution', () => {
 
     expect(result.hasErrors).toBe(true);
     expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'en')).toBe(true);
-    expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'pl')).toBe(true);
+    expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'en')).toBe(true);
   });
 
   it('flags a plural fallback that differs from the English _other form', () => {
@@ -1129,5 +1133,56 @@ export function Test({ condition }) {
     const findings = scan(tmpDir).findings.filter((f) => f.kind === 'hardcoded-ui-text');
     expect(findings.filter((f) => f.value === 'Second unsuppressed')).toHaveLength(1);
     expect(findings.filter((f) => f.value === 'First suppressed')).toHaveLength(0);
+  });
+});
+
+
+describe('Multilingual source-first regressions', () => {
+  it('discovers sibling locale directories from the locale root', () => {
+    const tmpDir = createFixtureStructure({
+      en: '{"dashboard": {"weeklyProgress": "Weekly progress"}}',
+      pl: '{"dashboard": {}}',
+    });
+    const result = auditRun(tmpDir);
+    expect(result.hasErrors).toBe(false);
+    expect(result.report.translationCoverage.pl).toMatchObject({ missing: 1 });
+  });
+
+  it('fails when a statically used source key is absent from English', () => {
+    const tmpDir = createFixtureStructure(
+      { en: '{"common": {"save": "Save"}}', pl: '{}' },
+      { 'missing.ts': "export const label = t('missing.source', 'Missing source');" },
+    );
+    const result = auditRun(tmpDir);
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.missingStaticKeys.some((item) => item.key === 'missing.source' && item.locale === 'en')).toBe(true);
+  });
+
+  it('fails source plural placeholder drift', () => {
+    const tmpDir = createFixtureStructure({
+      en: '{"item_one": "{{count}} item", "item_other": "{{total}} items"}',
+      pl: '{}',
+    });
+    const validator = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json'));
+    expect(validator.validate().errors.some((item) => item.rule === 'placeholder-mismatch' && item.locale === 'en')).toBe(true);
+  });
+
+  it('fails target plural placeholder drift against the source family', () => {
+    const tmpDir = createFixtureStructure({
+      en: '{"item_one": "{{count}} item", "item_other": "{{count}} items"}',
+      pl: '{"item_one": "{{count}} przedmiot", "item_few": "{{total}} przedmioty", "item_many": "{{count}} przedmiotów", "item_other": "{{count}} przedmiotów"}',
+    });
+    const validator = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json'));
+    expect(validator.validate().errors.some((item) => item.rule === 'placeholder-mismatch' && item.locale === 'pl')).toBe(true);
+  });
+
+  it('supports synthetic region variants without collapsing them', () => {
+    const registry = {
+      'pt-BR': { languageCode: 'pt', intlLocale: 'pt-BR', nativeLanguageTag: 'pt-BR', displayNameKey: 'x', defaultDisplayName: 'Português (Brasil)' },
+      'pt-PT': { languageCode: 'pt', intlLocale: 'pt-PT', nativeLanguageTag: 'pt-PT', displayNameKey: 'x', defaultDisplayName: 'Português (Portugal)' },
+    };
+    const { normalizeLocaleFromRegistry } = require('../../src/localization/localeRegistry');
+    expect(normalizeLocaleFromRegistry('pt-BR-x-private', registry)).toBe('pt-BR');
+    expect(normalizeLocaleFromRegistry('pt-PT-x-private', registry)).toBe('pt-PT');
   });
 });

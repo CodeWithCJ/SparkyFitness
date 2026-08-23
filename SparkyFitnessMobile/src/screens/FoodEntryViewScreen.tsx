@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 import {
   View,
   Text,
@@ -900,7 +901,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   <Text className="text-text-secondary text-sm">
                     {editServings % 1 === 0
                       ? editServings
-                      : parseFloat(editServings.toFixed(2))}{' '}
+                      : formatLocalizedNumber(editServings, { maximumFractionDigits: 2 })}{' '}
                     {t('foodEntryAdd.labels.serving', { defaultValue: 'servings', defaultValue_one: 'serving', defaultValue_other: 'servings', count: editServings })}
                   </Text>
                   {variantPickerOptions.length > 1 ? (

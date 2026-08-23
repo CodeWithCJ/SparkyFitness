@@ -5,7 +5,7 @@ import {
 } from 'expo/config-plugins';
 import fs from 'fs';
 import path from 'path';
-import { SUPPORTED_LANGUAGES } from '../src/localization/localeRegistry';
+import { FALLBACK_LOCALE, SUPPORTED_LANGUAGES } from '../src/localization/localeRegistry';
 
 const LANGUAGE_PACKAGE = 'com.sparkyapps.sparkyfitness.language';
 export const LANGUAGE_IMPORT = `import ${LANGUAGE_PACKAGE}.AppLanguagePackage`;
@@ -69,7 +69,7 @@ const withAppLanguage: ConfigPlugin = (config) => {
       await copyTree(sourceRoot, destinationRoot);
       const modulePath = path.join(destinationRoot, 'com/sparkyapps/sparkyfitness/language/AppLanguageModule.kt');
       const moduleSource = await fs.promises.readFile(modulePath, 'utf8');
-      await fs.promises.writeFile(modulePath, moduleSource.replace(/\{\{SUPPORTED_LOCALES\}\}/g, SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', ')));
+      await fs.promises.writeFile(modulePath, moduleSource.replace(/\{\{SUPPORTED_LOCALES\}\}/g, SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', ')).replace(/\{\{FALLBACK_LOCALE\}\}/g, FALLBACK_LOCALE));
       return config;
     },
   ]);
