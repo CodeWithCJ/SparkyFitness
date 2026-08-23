@@ -3579,14 +3579,17 @@
     "accessibility": {
       "makePrivate": "Make private",
       "sharePublic": "Share with public",
-      "edit": "Edit workout preset"
+      "edit": "Edit workout preset",
+      "duplicate": "Duplicate workout preset"
     },
     "exerciseCount_other": "{{count}} exercises",
     "actions": {
       "starting": "Starting…",
       "start": "Start workout",
       "logPast": "Log past workout",
-      "delete": "Delete preset"
+      "delete": "Delete preset",
+      "duplicating": "Duplicating…",
+      "duplicate": "Duplicate preset"
     },
     "exerciseCount_one": "{{count}} exercise",
     "exerciseCount_few": "{{count}} exercises",

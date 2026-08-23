@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, View, Text, ScrollView } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -38,6 +39,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   route,
 }) => {
   const preset = route.params.updatedPreset ?? route.params.preset;
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -76,7 +78,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           name: card.exercise_snapshot?.name,
           category: card.exercise_snapshot?.category,
           images: card.exercise_snapshot?.images,
-        }),
+        }, t),
         hideWorkoutActions: true,
       });
     },

@@ -3639,7 +3639,8 @@
     "accessibility": {
       "makePrivate": "Ustaw jako prywatny",
       "sharePublic": "Udostępnij publicznie",
-      "edit": "Edytuj szablon treningu"
+      "edit": "Edytuj szablon treningu",
+      "duplicate": "Powiel szablon treningu"
     },
     "exerciseCount_few": "{{count}} ćwiczenia",
     "exerciseCount_many": "{{count}} ćwiczeń",
@@ -3648,7 +3649,9 @@
       "starting": "Uruchamianie…",
       "start": "Rozpocznij trening",
       "logPast": "Zapisz wcześniejszy trening",
-      "delete": "Usuń szablon treningu"
+      "delete": "Usuń szablon treningu",
+      "duplicating": "Powielanie…",
+      "duplicate": "Powiel szablon"
     },
     "exerciseCount_one": "{{count}} ćwiczenie"
   },
