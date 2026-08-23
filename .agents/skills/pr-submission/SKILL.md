@@ -1,6 +1,6 @@
 ---
 name: pr-submission
-description: Use whenever the user asks to submit, open, create, or publish a pull request (PR) — e.g. "submit this as PR", "open a PR", "create PR for me", "submit PR", "make a PR". Enforces pre-submission package validation, active branch reuse (only branching when on main), strict zero-AI-attribution commit standards, and mandatory full adherence to .github/pull_request_template.md without removing any sections or checkboxes.
+description: Use whenever the user asks to submit, open, create, or publish a pull request (PR) — e.g. "submit this as PR", "open a PR", "create PR for me", "submit PR", "make a PR". Enforces pre-submission package validation, active branch reuse (only branching when on main or detached HEAD), strict zero-AI-attribution commit standards, and mandatory full adherence to .github/pull_request_template.md without removing any sections or checkboxes.
 ---
 
 # PR Submission Workflow
@@ -16,10 +16,10 @@ Use this skill whenever opening a pull request for the SparkyFitness repository.
 1. **Zero AI Attribution (Strict Monorepo Rule)**:
    - Commit messages, commit trailers, PR titles, PR bodies, and comments must **never** contain `Co-Authored-By: Claude` (or any other assistant trailer), "Generated with...", "🤖", or any mention of Claude, Gemini, Antigravity, Copilot, Cursor, etc.
    - Write strictly from the perspective of the repository author/maintainer.
-2. **Branch Management (Use Current Branch Unless on Main)**:
+2. **Branch Management (Use Current Branch Unless on Main or Detached HEAD)**:
    - Always check the current active branch: `git branch --show-current`.
-   - **If on `main` or `master`**: Create a new topic branch (`git checkout -b fix/<topic>` or `feat/<topic>`) because GitHub does not allow creating a PR from `main` into `main`.
-   - **If already on a work/dev branch (e.g. `dev`, `fix/...`, `feat/...`)**: **Do not create a new branch.** Stay on the current branch, commit changes, and push directly to origin.
+   - **If on `main`, `master`, or detached HEAD (empty string)**: Create a new topic branch (`git checkout -b fix/<topic>` or `feat/<topic>`) because GitHub does not allow creating a PR from `main` into `main`, and pushing from detached HEAD fails.
+   - **If already on an active work/dev branch (e.g. `dev`, `fix/...`, `feat/...`)**: **Do not create a new branch.** Stay on the current branch, commit changes, and push directly to origin.
 3. **Preserve Complete PR Template**:
    - Always load `.github/pull_request_template.md`.
    - **Never delete or strip any sections, questions, or checkboxes**, even if they are not applicable to the current change (e.g. keep Frontend, Backend, UI, Mobile checklist blocks intact).
@@ -60,10 +60,12 @@ Inspect `git status` and `git diff` to ensure no scratch files, debug logs, or u
    ```bash
    BRANCH=$(git branch --show-current)
    ```
-2. If `BRANCH` is `main` or `master`:
-   ```bash
-   git checkout -b fix/<topic> # or feat/<topic>
-   ```
+2. Handle branch state:
+   - **If `BRANCH` is empty (detached HEAD), `main`, or `master`**: Create a new topic branch:
+     ```bash
+     git checkout -b fix/<topic> # or feat/<topic>
+     ```
+   - **If already on a named work/dev branch (e.g. `dev`, `fix/...`, `feat/...`)**: Stay on the current branch.
 3. Stage modified files:
    ```bash
    git add <files>
@@ -84,7 +86,7 @@ Fixes #<issue_number>"
 Read `.github/pull_request_template.md` and populate the body file:
 1. **Description**:
    - **What problem does this PR solve?** (1-2 sentences)
-   - **How did you implement the solution?** (Bullet points of technical changes)
+   - **How did you implement the solution?** (Technical bullet points)
    - **Linked Issue**: `Closes #<issue_number>`
 2. **How to Test**: Concrete steps to run commands, trigger the flow, and verify behavior.
 3. **PR Type**: Mark `[x]` on the applicable type (Issue, New Feature, Refactor, Documentation).
@@ -93,15 +95,16 @@ Read `.github/pull_request_template.md` and populate the body file:
 6. **Notes for Reviewers**: Note any relevant configuration keys, architectural decisions, or performance context.
 
 ### Step 5: Push Branch & Create PR
-Push the branch to `origin`:
-```bash
-git push -u origin $(git branch --show-current)
-```
+1. Push the branch to `origin`:
+   ```bash
+   BRANCH=$(git branch --show-current)
+   git push -u origin "$BRANCH"
+   ```
 
-Create the PR targeting `main` via GitHub CLI:
-```bash
-gh pr create --base main --title "fix(<domain>): <summary>" --body-file "<path-to-body-file>"
-```
+2. Create the PR targeting `main` via GitHub CLI:
+   ```bash
+   gh pr create --base main --title "fix(<domain>): <summary>" --body-file "<path-to-body-file>"
+   ```
 
 ### Step 6: Final Verification
 Verify the created PR via `gh pr view <number>` to ensure formatting and checklists rendered cleanly.
