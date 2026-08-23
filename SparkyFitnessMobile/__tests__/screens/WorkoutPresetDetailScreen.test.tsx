@@ -13,6 +13,9 @@ import {
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
 import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
+import type { RootStackScreenProps } from '../../src/types/navigation';
+
+type ScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
 
 jest.mock('../../src/hooks', () => ({
   usePreferences: jest.fn(),
@@ -49,7 +52,7 @@ const mockNavigation = {
   navigate: jest.fn(),
   push: jest.fn(),
   goBack: jest.fn(),
-} as any;
+} as unknown as ScreenProps['navigation'];
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,

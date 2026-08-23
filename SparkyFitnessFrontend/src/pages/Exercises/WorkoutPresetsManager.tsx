@@ -57,6 +57,9 @@ import { ColumnDef, RowSelectionState } from '@tanstack/react-table';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '@/components/ui/badge';
 
+// Matches workout_presets.name VARCHAR(255) in the database.
+const MAX_PRESET_NAME_LENGTH = 255;
+
 const WorkoutPresetsManager = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -147,10 +150,25 @@ const WorkoutPresetsManager = () => {
       // the same value, relying on id-ASC as a display-order tiebreak.
       // preset.exercises already arrives in display order (server sorts by
       // sort_order then id), so the array index is the real sort_order.
+      // workout_presets.name is VARCHAR(255) with no client-side length cap on
+      // creation, so a max-length preset name must be truncated here to leave
+      // room for the localized suffix — otherwise the duplicate insert fails.
+      const suffixOnly = t('workoutPresetsManager.duplicateNameSuffix', {
+        name: '',
+      });
+      const availableNameLength = Math.max(
+        0,
+        MAX_PRESET_NAME_LENGTH - suffixOnly.length
+      );
+      const truncatedName =
+        preset.name.length > availableNameLength
+          ? preset.name.slice(0, availableNameLength)
+          : preset.name;
+
       await createPreset({
         user_id: user.id,
         name: t('workoutPresetsManager.duplicateNameSuffix', {
-          name: preset.name,
+          name: truncatedName,
         }),
         description: preset.description,
         is_public: false,

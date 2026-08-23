@@ -10,6 +10,15 @@ jest.mock('react-i18next', () => ({
     t: (key: string, defaultOrValues?: string | Record<string, unknown>) => {
       if (typeof defaultOrValues === 'string') return defaultOrValues;
       if (defaultOrValues && typeof defaultOrValues === 'object') {
+        // Real interpolation only for the key exercised in these tests
+        // (matches en/translation.json's "{{name}} (Copy)"), so the
+        // duplicate-name truncation tests assert on the actual rendered
+        // string rather than a synthetic JSON blob. Other keyed
+        // interpolations fall back to the JSON-stringified form.
+        if (key === 'workoutPresetsManager.duplicateNameSuffix') {
+          const { name } = defaultOrValues as { name: string };
+          return `${name} (Copy)`;
+        }
         return `${key}:${JSON.stringify(defaultOrValues)}`;
       }
       return key;
@@ -87,7 +96,7 @@ describe('WorkoutPresetsManager duplicate preset', () => {
     await waitFor(() => expect(mockCreatePreset).toHaveBeenCalledTimes(1));
     expect(mockCreatePreset).toHaveBeenCalledWith({
       user_id: 'user-1',
-      name: 'workoutPresetsManager.duplicateNameSuffix:{"name":"Upper Body"}',
+      name: 'Upper Body (Copy)',
       description: 'Push + Pull',
       is_public: false,
       exercises: presetFixture.exercises.map((exercise, index) => ({
@@ -95,5 +104,34 @@ describe('WorkoutPresetsManager duplicate preset', () => {
         sort_order: index,
       })),
     });
+  });
+
+  it('truncates a max-length preset name so the duplicate stays within 255 characters', async () => {
+    const originalName = presetFixture.name;
+    presetFixture.name = 'A'.repeat(255);
+
+    try {
+      render(<WorkoutPresetsManager />);
+
+      const trigger = screen.getAllByRole('button', { name: /open menu/i })[0]!;
+      fireEvent.pointerDown(trigger, {
+        button: 0,
+        ctrlKey: false,
+        pointerId: 1,
+      });
+      fireEvent.click(trigger);
+      fireEvent.click((await screen.findAllByText('Duplicate'))[0]!);
+
+      await waitFor(() => expect(mockCreatePreset).toHaveBeenCalledTimes(1));
+      const duplicateName = (
+        mockCreatePreset.mock.calls[0]![0] as { name: string }
+      ).name;
+      // 248-char truncated name + " (Copy)" (7 chars) = 255, the
+      // workout_presets.name VARCHAR(255) limit.
+      expect(duplicateName).toBe(`${'A'.repeat(248)} (Copy)`);
+      expect(duplicateName.length).toBe(255);
+    } finally {
+      presetFixture.name = originalName;
+    }
   });
 });
