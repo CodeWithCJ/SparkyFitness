@@ -23,6 +23,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 import {
   getNativeIOSLanguage,
   setAppLanguagePreference,
+  SHIPPED_LOCALES,
   type LanguagePreference,
 } from '../localization';
 
@@ -75,8 +76,11 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
 
   const languagePickerOptions = [
     { label: t('settings.language.system', 'System'), value: 'system' as LanguagePreference },
-    { label: t('settings.language.english', 'English'), value: 'en' as LanguagePreference },
-    { label: t('settings.language.polish', 'Polski'), value: 'pl' as LanguagePreference },
+    ...Object.entries(SHIPPED_LOCALES).map(([value, metadata]) => ({
+      // i18n-audit-ignore-next-line dynamic-i18n-key -- registry metadata is a bounded static translation-key map
+      label: t(metadata.displayNameKey, value === 'pl' ? 'Polski' : 'English'),
+      value: value as LanguagePreference,
+    })),
   ];
 
   const openIOSLanguageSettings = useCallback(async () => {

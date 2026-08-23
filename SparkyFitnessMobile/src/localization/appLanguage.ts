@@ -12,6 +12,7 @@ import i18n, {
   type LanguagePreference,
   type SupportedLanguage,
 } from './i18n';
+import { normalizeRegisteredLocale } from './localeRegistry';
 
 /**
  * Stable, versioned marker that records whether the one-time Android 13+
@@ -26,12 +27,13 @@ const MIGRATION_STORAGE_KEY = '@SparkyFitness/app-language-migration';
 const MIGRATION_VERSION = 1;
 
 function normalizePreference(value: unknown): LanguagePreference {
-  return value === 'en' || value === 'pl' || value === 'system' ? value : 'system';
+  return value === 'system' || (typeof value === 'string' && normalizeRegisteredLocale(value) !== null)
+    ? value as LanguagePreference
+    : 'system';
 }
 
 function normalizeNativeLanguage(value: string | null | undefined): SupportedLanguage | null {
-  const language = value?.toLowerCase().split('-')[0];
-  return language === 'en' || language === 'pl' ? language : null;
+  return normalizeRegisteredLocale(value);
 }
 
 /**
@@ -315,11 +317,11 @@ async function runMigration(storedPreference: LanguagePreference): Promise<Suppo
     );
   }
 
-  // Native is explicit en/pl (cases A/B): the user's Android Settings choice
+  // Native is an explicit registered locale (cases A/B): the user's Android Settings choice
   // wins over the legacy store value. No native write.
   setStorePreference(native);
   await writeMigrationFinished();
-  return applyEffectiveLanguage(native);
+  return applyEffectiveLanguage(normalizeRegisteredLocale(native) ?? 'en');
 }
 
 /**

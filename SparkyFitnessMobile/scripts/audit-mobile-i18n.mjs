@@ -71,7 +71,7 @@ function printHumanReport() {
   console.log(`user-facing t() without English fallback: ${summary.missingFallbackFindings}`);
   console.log(`dynamic t() keys: ${summary.dynamicI18nFindings}`);
   console.log(`source scan errors: ${summary.sourceScanErrors ?? 0}`);
-  console.log(`hardcoded UI strings (informational, PR5 scope): ${summary.hardcodedUiFindings}`);
+  console.log(`hardcoded UI strings (blocking): ${summary.hardcodedUiFindings}`);
 }
 
 if (showJson) {

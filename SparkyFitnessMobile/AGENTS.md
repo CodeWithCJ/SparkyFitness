@@ -25,6 +25,14 @@ This is the package guide for `SparkyFitnessMobile/`. Work from this directory f
 - Global `fetch` is Expo's WinterCG `expo/fetch`, so React Native's `{uri, name, type}` FormData file parts throw "Unsupported FormDataPart implementation". Append an `expo-file-system` `File` (it implements Blob) for multipart uploads; see `pregnancyPhotosApi.ts`.
 - Server-stored distance/weight units are metric. UI conversion belongs in mobile helpers such as `unitConversions.ts`.
 
+## Localization contract
+
+English (`en`) is the canonical source locale and the deterministic fallback. Feature developers must add/update the English catalog, use semantic static keys, provide explicit English fallback/defaultValue text, use count-based i18next pluralization, use app-locale date/number/unit formatters, and avoid user-facing hardcoded text. Custom, user, and server content stays literal.
+
+Feature developers do not need to know or translate Polish or any future language, and do not need to wait for Weblate. Translators/Weblate own Polish and future translations and linguistic QA. Missing translation content is non-blocking and falls back to English; existing translated content remains structurally validated.
+
+The shipped locale registry is `src/localization/localeRegistry.ts`. Adding a catalog to Weblate does not ship it. Shipping requires explicit registry enablement plus native/platform support verification. RN catalogs and native resources are separate surfaces (Expo metadata, Android widget resources, and iOS widget/Live Activity `.lproj` resources).
+
 ## Commands
 
 ```bash

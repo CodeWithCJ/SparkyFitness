@@ -38,8 +38,9 @@ object WidgetLocale {
     private const val KEY_LOCALE = "widgetLocale"
     private const val KEY_EFFECTIVE_RENDER_LOCALE = "effectiveRenderLocale"
 
-    private val SUPPORTED_LOCALES = setOf("en", "pl")
-    private val SUPPORTED_PREFERENCES = setOf("system", "en", "pl")
+    // Generated from the TypeScript shipped-locale registry by the Expo plugin.
+    private val SUPPORTED_LOCALES = setOf({{SUPPORTED_LOCALES}})
+    private val SUPPORTED_PREFERENCES = setOf("system", {{SUPPORTED_LOCALES}})
 
     private fun isNativeAppLanguageSupported(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -75,10 +76,10 @@ object WidgetLocale {
             ?: throw IllegalArgumentException("Effective widget language is required")
 
         if (normalizedPreference !in SUPPORTED_PREFERENCES) {
-            throw IllegalArgumentException("Only system, en, or pl are supported")
+            throw IllegalArgumentException("Unsupported widget language preference")
         }
         if (normalizedEffective !in SUPPORTED_LOCALES) {
-            throw IllegalArgumentException("Effective widget language must be en or pl")
+            throw IllegalArgumentException("Unsupported effective widget language")
         }
 
         val editor = preferences(context).edit()
@@ -164,7 +165,9 @@ object WidgetLocale {
     }
 
     private fun normalizeLanguage(locale: Locale): String {
-        return if (locale.language.equals("pl", ignoreCase = true)) "pl" else "en"
+        val tag = locale.toLanguageTag().lowercase(Locale.ROOT)
+        return SUPPORTED_LOCALES.firstOrNull { tag == it || tag.startsWith("$it-") }
+            ?: SUPPORTED_LOCALES.first()
     }
 
     private fun systemPlatformLanguage(context: Context): String? {
@@ -205,11 +208,8 @@ object WidgetLocale {
     }
 
     private fun localeFromCode(code: String?): Locale? {
-        return when (code?.lowercase(Locale.ROOT)) {
-            "en" -> Locale.forLanguageTag("en")
-            "pl" -> Locale.forLanguageTag("pl")
-            else -> null
-        }
+        val normalized = code?.lowercase(Locale.ROOT)
+        return if (normalized != null && normalized in SUPPORTED_LOCALES) Locale.forLanguageTag(normalized) else null
     }
 
     /**

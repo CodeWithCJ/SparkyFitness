@@ -1,5 +1,6 @@
 import "tsx/cjs";
 import { ExpoConfig, ConfigContext } from 'expo/config';
+import { nativeLanguageTags } from './src/localization/localeRegistry';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { getIosAppGroup, DEV_BUNDLE_IDENTIFIER } = require('./app.identifiers.js');
 
@@ -126,10 +127,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     name: APP_NAME,
     slug: APP_SLUG,
     version: packageJson.version,
-    locales: {
-      en: './locales/en.json',
-      pl: './locales/pl.json',
-    },
+    locales: Object.fromEntries(nativeLanguageTags().map((language) => [language, `./locales/${language}.json`])),
     ios: {
       bundleIdentifier: isDev
         ? DEV_BUNDLE_IDENTIFIER
@@ -195,8 +193,8 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         'expo-localization',
         {
           supportedLocales: {
-            ios: ['en', 'pl'],
-            android: ['en', 'pl'],
+            ios: nativeLanguageTags(),
+            android: nativeLanguageTags(),
           },
         },
       ],

@@ -6,6 +6,7 @@ const EXCLUDE_DIRS = new Set(['__tests__', '__mocks__', 'node_modules', 'coverag
 const CONTROLLED_DYNAMIC_I18N_RULES = new Set([
   'healthMetrics',
   'healthCategories',
+  'settings.language',
 ]);
 
 function isApprovedControlledDynamicKey(node) {

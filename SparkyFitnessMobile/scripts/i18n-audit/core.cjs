@@ -1,5 +1,6 @@
 const path = require('node:path');
-const { LocaleValidator, PLURAL_SUFFIXES } = require('./localeValidator.cjs');
+const fs = require('node:fs');
+const { LocaleValidator, PLURAL_SUFFIXES, requiredPluralForms } = require('./localeValidator.cjs');
 const { collectFindings: scanFindings, getAllSuppressionIssues, SOURCE_SCAN_ERROR_RULE } = require('./sourceScanner.cjs');
 
 const MOBILE_ROOT = path.resolve(__dirname, '..', '..');
@@ -63,10 +64,13 @@ function runAudit(options = {}) {
     missingFallbackFindings: [],
     hardcodedUiFindings: [],
     dynamicI18nFindings: [],
+    translationCoverage: {},
     summary: {},
   };
 
-  const validator = new LocaleValidator(enLocalePath, plLocalePath);
+  const localeDir = path.dirname(enLocalePath);
+  const localePaths = fs.readdirSync(localeDir, { withFileTypes: true }).filter((entry) => entry.isDirectory() && entry.name !== 'en' && fs.existsSync(path.join(localeDir, entry.name, 'translation.json'))).map((entry) => ({ locale: entry.name, path: path.join(localeDir, entry.name, 'translation.json') }));
+  const validator = new LocaleValidator(enLocalePath, plLocalePath, { localePaths });
   let localeResult;
   try {
     localeResult = validator.validate();
@@ -78,6 +82,8 @@ function runAudit(options = {}) {
     report.summary = buildSummary(report);
     return { report, hasErrors: true };
   }
+
+  report.translationCoverage = localeResult.coverage || {};
 
   for (const error of localeResult.errors) {
     if (error.rule === 'missing-plural-form') {
@@ -109,7 +115,6 @@ function runAudit(options = {}) {
   }
 
   const enKeySet = new Set(localeResult.enKeys || []);
-  const plKeySet = new Set(localeResult.plKeys || []);
 
   const seenStaticKeys = new Set();
 
@@ -117,19 +122,8 @@ function runAudit(options = {}) {
     if (finding.kind === 'static-t-key') {
       const { fallbacks = {}, hasCount = false } = finding.context;
       if (hasCount) {
-        for (const locale of ['en', 'pl']) {
-          const keySet = locale === 'en' ? enKeySet : plKeySet;
-          if (!localeHasRequiredPluralForms(keySet, finding.value, locale)) {
-            report.pluralErrors.push({
-              rule: 'count-requires-plural-group',
-              locale,
-              key: finding.value,
-              file: finding.file,
-              line: finding.line,
-              message: `Count lookup t("${finding.value}") requires ${locale === 'en' ? '_one and _other' : '_one, _few, _many, and _other'} forms in the ${locale === 'en' ? 'English' : 'Polish'} locale`,
-            });
-          }
-        }
+        const requiredForms = requiredPluralForms('en-US');
+        if (!requiredForms.every((form) => enKeySet.has(`${finding.value}${form}`))) report.pluralErrors.push({ rule: 'count-requires-plural-group', locale: 'en', key: finding.value, file: finding.file, line: finding.line, message: `Count lookup requires ${requiredForms.join(', ')} forms in the English source locale` });
       }
       for (const [fallbackName, fallbackValue] of Object.entries(fallbacks)) {
         const expectedKey = expectedFallbackKey(finding.value, fallbackName, hasCount);
@@ -155,16 +149,7 @@ function runAudit(options = {}) {
             message: `Static t("${finding.value}") not found in English locale`,
           });
         }
-        if (!localeHasKey(plKeySet, finding.value)) {
-          report.missingStaticKeys.push({
-            rule: 'missing-static-key',
-            locale: 'pl',
-            key: finding.value,
-            file: finding.file,
-            line: finding.line,
-            message: `Static t("${finding.value}") not found in Polish locale`,
-          });
-        }
+        // Missing translation keys are non-blocking Weblate coverage diagnostics.
       }
     } else if (finding.kind === 'missing-fallback-key') {
       report.missingFallbackFindings.push({
@@ -206,7 +191,7 @@ function runAudit(options = {}) {
 
   report.summary = buildSummary(report);
 
-  return { report, hasErrors: structuralErrorCount > 0 };
+  return { report, hasErrors: structuralErrorCount > 0 || report.hardcodedUiFindings.length > 0 };
 }
 
 function collectFindingsForSource(rootDir, sourceRoots) {
@@ -215,6 +200,7 @@ function collectFindingsForSource(rootDir, sourceRoots) {
 
 function buildSummary(report) {
   return {
+    translationCoverage: report.translationCoverage || {},
     localeStructuralErrors: report.localeStructuralErrors.length,
     missingStaticKeys: report.missingStaticKeys.length,
     placeholderErrors: report.placeholderErrors.length,

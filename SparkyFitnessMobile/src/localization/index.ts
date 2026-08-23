@@ -5,6 +5,7 @@ export {
 } from './appLanguage';
 export {
   SUPPORTED_LANGUAGES,
+  SHIPPED_LOCALES,
   formatLocalizedNumber,
   getAppLocale,
   useAppLocale,
@@ -15,3 +16,4 @@ export {
   type LanguagePreference,
   type SupportedLanguage,
 } from './i18n';
+export { metadataForLanguage, normalizeRegisteredLocale, nativeLanguageTags } from './localeRegistry';

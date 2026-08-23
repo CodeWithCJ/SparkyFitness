@@ -93,6 +93,7 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
     companion object {
         private const val MODULE_NAME = "AppLanguage"
         private const val API_33 = 33
-        private val SUPPORTED_LANGUAGES = setOf("en", "pl")
+        // Generated from the TypeScript shipped-locale registry by Expo config.
+        private val SUPPORTED_LANGUAGES = setOf({{SUPPORTED_LOCALES}})
     }
 }
