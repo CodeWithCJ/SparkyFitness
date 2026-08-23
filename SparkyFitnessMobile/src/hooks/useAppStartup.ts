@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import i18n from '../localization/i18n';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { initWorkoutNotificationActions } from '../stores/activeWorkoutStore';
@@ -12,7 +13,7 @@ import {
 import { tryClaimAutoSync } from '../services/autoSyncCoordinator';
 import { initializeTheme } from '../services/themeService';
 import { addLog, initLogService } from '../services/LogService';
-import { initNotifications } from '../services/notifications';
+import { initNotifications, registerLocalizedNotificationPresentation } from '../services/notifications';
 import { initMedicationNotificationActions } from '../services/medicationNotificationHandler';
 import { initWorkoutLiveActivity } from '../services/workoutLiveActivity';
 import { ensureTimezoneBootstrapped } from '../services/api/preferencesApi';
@@ -33,6 +34,10 @@ interface AppStartupArgs {
 export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
   useEffect(() => {
     let cancelled = false;
+    const onLanguageChanged = () => {
+      void registerLocalizedNotificationPresentation();
+    };
+    i18n.on('languageChanged', onLanguageChanged);
 
     // Initialize theme from storage on app start
     initializeTheme();
@@ -121,6 +126,7 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
 
     return () => {
       cancelled = true;
+      i18n.off('languageChanged', onLanguageChanged);
       if (Platform.OS === 'ios') {
         stopObservers();
       }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import i18n from '../localization/i18n';
+import { useTranslation } from 'react-i18next';
 import { Alert } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { queryClient } from './queryClient';
@@ -17,10 +17,10 @@ import { NON_ADD_TABS, type NonAddTabName } from '../components/TabsLayout';
 import type { RootStackParamList } from '../types/navigation';
 
 
-function getServerConnectionMessage(key: string, fallback: string): string {
+function getServerConnectionMessage(t: (key: string, options: { defaultValue: string }) => string, key: string, fallback: string): string {
   switch (key) {
-    case 'addSheetActions.configureForExercise': return i18n.t('addSheetActions.configureForExercise', { defaultValue: 'Configure your server connection in Settings to add an exercise.' });
-    case 'addSheetActions.configureForWorkout': return i18n.t('addSheetActions.configureForWorkout', { defaultValue: 'Configure your server connection in Settings to start a workout.' });
+    case 'addSheetActions.configureForExercise': return t(key, { defaultValue: 'Configure your server connection in Settings to add an exercise.' });
+    case 'addSheetActions.configureForWorkout': return t(key, { defaultValue: 'Configure your server connection in Settings to start a workout.' });
     default: return fallback;
   }
 }
@@ -89,6 +89,7 @@ interface AddSheetActionsArgs {
  * user to their last content tab after a dismissal without an action.
  */
 export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
+  const { t } = useTranslation();
   const lastActiveTabRef = useRef<NonAddTabName>('Dashboard');
   const addSheetDismissNavigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -146,17 +147,17 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
   const checkServerConnected = useCallback((message: string, defaultMessage: string): boolean => {
     const isConnected = queryClient.getQueryData(serverConnectionQueryKey);
     if (!isConnected) {
-      Alert.alert(i18n.t('addSheetActions.noServerTitle', { defaultValue: 'No Server Connected' }), getServerConnectionMessage(message, defaultMessage), [
-        { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+      Alert.alert(t('addSheetActions.noServerTitle', { defaultValue: 'No Server Connected' }), getServerConnectionMessage(t, message, defaultMessage), [
+        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
         {
-          text: i18n.t('common.goToSettings', { defaultValue: 'Go to Settings' }),
+          text: t('common.goToSettings', { defaultValue: 'Go to Settings' }),
           onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
         },
       ]);
       return false;
     }
     return true;
-  }, [navigateFromSheet]);
+  }, [navigateFromSheet, t]);
 
   const handleStartExerciseForm = useCallback(
     async (screen: 'WorkoutAdd' | 'ActivityAdd') => {
@@ -168,12 +169,12 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
       const draft = await loadActiveDraft();
       if (draft) {
         Alert.alert(
-          i18n.t('addSheetActions.draft.title', { defaultValue: 'Draft in Progress' }),
-          i18n.t('addSheetActions.draft.message', { defaultValue: 'You have an unsaved {{type}} draft. What would you like to do?', type: draft.type === 'workout' ? i18n.t('addSheetActions.draft.workout', { defaultValue: 'workout' }) : i18n.t('addSheetActions.draft.activity', { defaultValue: 'activity' }) }),
+          t('addSheetActions.draft.title', { defaultValue: 'Draft in Progress' }),
+          t('addSheetActions.draft.message', { defaultValue: 'You have an unsaved {{type}} draft. What would you like to do?', type: draft.type === 'workout' ? t('addSheetActions.draft.workout', { defaultValue: 'workout' }) : t('addSheetActions.draft.activity', { defaultValue: 'activity' }) }),
           [
-            { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+            { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
             {
-              text: i18n.t('addSheetActions.draft.resume', { defaultValue: 'Resume Draft' }),
+              text: t('addSheetActions.draft.resume', { defaultValue: 'Resume Draft' }),
               onPress: () => {
                 if (draft.type === 'workout') {
                   navigateFromSheet('WorkoutAdd');
@@ -183,7 +184,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
               },
             },
             {
-              text: i18n.t('addSheetActions.draft.discard', { defaultValue: 'Discard & Continue' }),
+              text: t('addSheetActions.draft.discard', { defaultValue: 'Discard & Continue' }),
               style: 'destructive',
               onPress: async () => {
                 await clearDraft();
@@ -197,7 +198,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
 
       navigateFromSheet(screen, { date, skipDraftLoad: true });
     },
-    [checkServerConnected, navigateFromSheet, getActiveDiaryDate],
+    [checkServerConnected, navigateFromSheet, getActiveDiaryDate, t],
   );
 
   // Live start: no draft guard (form drafts belong to the Log Workout path) and
@@ -213,7 +214,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     });
     if (prompted) return;
     navigateFromSheet('PresetSearch');
-  }, [checkServerConnected, navigateFromSheet]);
+  }, [checkServerConnected, navigateFromSheet, t]);
 
   const handleLogWorkout = useCallback(() => handleStartExerciseForm('WorkoutAdd'), [handleStartExerciseForm]);
   const handleAddActivity = useCallback(() => handleStartExerciseForm('ActivityAdd'), [handleStartExerciseForm]);
@@ -225,18 +226,18 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
 
   const handleAskSparky = useCallback(() => {
     navigateFromSheet('Chat');
-  }, [navigateFromSheet]);
+  }, [navigateFromSheet, t]);
 
   const handleOpenCycle = useCallback(() => {
     navigateFromSheet('CycleLogModal');
-  }, [navigateFromSheet]);
+  }, [navigateFromSheet, t]);
 
   const handleSyncHealthData = useCallback(async () => {
     if (syncMutation.isPending || isSyncClaimed()) return;
 
     const initialized = await initHealthConnect();
     if (!initialized) {
-      Alert.alert(i18n.t('addSheetActions.healthUnavailable.title', { defaultValue: 'Health Data Unavailable' }), i18n.t('addSheetActions.healthUnavailable.message', { defaultValue: 'Could not initialize health data access. Check your permissions in Settings.' }));
+      Alert.alert(t('addSheetActions.healthUnavailable.title', { defaultValue: 'Health Data Unavailable' }), t('addSheetActions.healthUnavailable.message', { defaultValue: 'Could not initialize health data access. Check your permissions in Settings.' }));
       return;
     }
 
@@ -250,7 +251,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     }
 
     syncMutation.mutate({ timeRange, healthMetricStates });
-  }, [syncMutation]);
+  }, [syncMutation, t]);
 
   const handleAddSheetDismissWithoutAction = useCallback(() => {
     if (!rootNavigationRef.isReady()) return;

@@ -41,6 +41,46 @@ let hasShownDeniedToast = false;
  * scheduling can run from a background task, where `initNotifications`
  * (invoked from App startup) may not have run in the current JS context.
  */
+export async function registerLocalizedNotificationPresentation(): Promise<void> {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+      name: notificationCopy('notifications.channels.workoutTimer', 'Workout timer'),
+      importance: Notifications.AndroidImportance.HIGH,
+      enableVibrate: true,
+    });
+    await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
+      name: notificationCopy('notifications.channels.fasting', 'Fasting'),
+      importance: Notifications.AndroidImportance.HIGH,
+      enableVibrate: true,
+    });
+    await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
+      name: notificationCopy('notifications.channels.medicationReminders', 'Medication reminders'),
+      importance: Notifications.AndroidImportance.HIGH,
+      enableVibrate: true,
+    });
+  }
+
+  await Notifications.setNotificationCategoryAsync(REST_COMPLETE_CATEGORY, [
+    {
+      identifier: COMPLETE_SET_ACTION,
+      buttonTitle: notificationCopy('notifications.actions.completeSet', 'Complete Set'),
+      options: { opensAppToForeground: false },
+    },
+  ]);
+  await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
+    {
+      identifier: MEDICATION_TAKEN_ACTION,
+      buttonTitle: notificationCopy('notifications.actions.logAsTaken', 'Log as taken'),
+      options: { opensAppToForeground: false },
+    },
+    {
+      identifier: MEDICATION_SKIP_ACTION,
+      buttonTitle: notificationCopy('notifications.actions.skip', 'Skip'),
+      options: { opensAppToForeground: false },
+    },
+  ]);
+}
+
 export async function ensureMedicationReminderChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
@@ -110,43 +150,7 @@ export async function initNotifications(): Promise<void> {
       },
     });
 
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-        name: notificationCopy('notifications.channels.workoutTimer', 'Workout timer'),
-        importance: Notifications.AndroidImportance.HIGH,
-        enableVibrate: true,
-      });
-      await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
-        name: notificationCopy('notifications.channels.fasting', 'Fasting'),
-        importance: Notifications.AndroidImportance.HIGH,
-        enableVibrate: true,
-      });
-      await ensureMedicationReminderChannel();
-    }
-
-    // "Complete Set" button on the rest-complete ping. The press is handled
-    // in the background — no app open; iOS reveals it on long-press/pull-down,
-    // Android shows it directly on the notification.
-    await Notifications.setNotificationCategoryAsync(REST_COMPLETE_CATEGORY, [
-      {
-        identifier: COMPLETE_SET_ACTION,
-        buttonTitle: notificationCopy('notifications.actions.completeSet', 'Complete Set'),
-        options: { opensAppToForeground: false },
-      },
-    ]);
-
-    await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
-      {
-        identifier: MEDICATION_TAKEN_ACTION,
-        buttonTitle: notificationCopy('notifications.actions.logAsTaken', 'Log as taken'),
-        options: { opensAppToForeground: false },
-      },
-      {
-        identifier: MEDICATION_SKIP_ACTION,
-        buttonTitle: notificationCopy('notifications.actions.skip', 'Skip'),
-        options: { opensAppToForeground: false },
-      },
-    ]);
+    await registerLocalizedNotificationPresentation();
   } catch (err) {
     addLog(`initNotifications failed: ${(err as Error).message}`, 'ERROR');
   }

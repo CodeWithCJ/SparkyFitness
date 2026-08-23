@@ -1,7 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import i18n from '../../../localization/i18n';
 import { eddFromLmp, eddFromConception, compareDays } from '@workspace/shared';
 import type { PregnancyDueDateBasis, SharedPregnancy } from '@workspace/shared';
 import { getTodayDate, formatDate, addDays } from '../../../utils/dateUtils';
@@ -47,6 +46,7 @@ export interface PregnancyDueDateFormState {
 export function usePregnancyDueDateForm(
   existing?: SharedPregnancy | null,
 ): PregnancyDueDateFormState {
+  const { t } = useTranslation();
   // Prefill from the existing record when editing. For lmp/conception the date
   // field holds that basis date; for manual/scan it holds the due date itself.
   // New pregnancies default to a plain due date, the value most people know —
@@ -71,16 +71,16 @@ export function usePregnancyDueDateForm(
   const validate = (): string | null => {
     const today = getTodayDate();
     if (basis === 'lmp' && compareDays(date, today) > 0) {
-      return i18n.t('pregnancyDueDate.errors.lmpFuture', { defaultValue: 'Your last period can’t be in the future.' });
+      return t('pregnancyDueDate.errors.lmpFuture', { defaultValue: 'Your last period can’t be in the future.' });
     }
     if (basis === 'conception' && compareDays(date, today) > 0) {
-      return i18n.t('pregnancyDueDate.errors.conceptionFuture', { defaultValue: 'The conception date can’t be in the future.' });
+      return t('pregnancyDueDate.errors.conceptionFuture', { defaultValue: 'The conception date can’t be in the future.' });
     }
     if (compareDays(computedDueDate, addDays(today, -MAX_OVERDUE_DAYS)) < 0) {
-      return i18n.t('pregnancyDueDate.errors.past', { defaultValue: 'That due date is in the past. Please check the date.' });
+      return t('pregnancyDueDate.errors.past', { defaultValue: 'That due date is in the past. Please check the date.' });
     }
     if (compareDays(computedDueDate, addDays(today, MAX_DUE_DAYS_AHEAD)) > 0) {
-      return i18n.t('pregnancyDueDate.errors.tooFar', { defaultValue: 'That due date is too far away — a pregnancy is about 40 weeks.' });
+      return t('pregnancyDueDate.errors.tooFar', { defaultValue: 'That due date is too far away — a pregnancy is about 40 weeks.' });
     }
     return null;
   };
