@@ -12,6 +12,7 @@ import {
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import {
+  ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   getGoalModeAdjustment,
   ENERGY_DENSITY_KCAL_PER_KG,
   type CalorieTargetResult,
@@ -263,8 +264,8 @@ Calculated: ${bfp.toFixed(1)}%`;
       return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to: ${adaptiveTdeeData.fallbackReason}`;
     }
 
-    if (daysOfCalorieLogs < 14) {
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) until 14 days of calorie logs are reached (currently ${daysOfCalorieLogs}/14 days logged).`;
+    if (daysOfCalorieLogs < ADAPTIVE_TDEE_GOAL_MIN_DAYS) {
+      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) until ${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days of calorie logs are reached (currently ${daysOfCalorieLogs}/${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days logged).`;
     }
 
     return '';
@@ -433,14 +434,14 @@ Calculated: ${bfp.toFixed(1)}%`;
                     </span>
                     <span
                       className={
-                        daysOfCalorieLogs >= 14
+                        daysOfCalorieLogs >= ADAPTIVE_TDEE_GOAL_MIN_DAYS
                           ? 'text-green-600 font-semibold'
                           : 'text-amber-600 font-semibold'
                       }
                     >
-                      {daysOfCalorieLogs >= 14
-                        ? `✓ Met (${daysOfCalorieLogs}/14 days logged)`
-                        : `⚠️ Missing (${daysOfCalorieLogs}/14 days logged)`}
+                      {daysOfCalorieLogs >= ADAPTIVE_TDEE_GOAL_MIN_DAYS
+                        ? `✓ Met (${daysOfCalorieLogs}/${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days logged)`
+                        : `⚠️ Missing (${daysOfCalorieLogs}/${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days logged)`}
                     </span>
                   </div>
                 </div>
@@ -562,7 +563,8 @@ Calculated: ${bfp.toFixed(1)}%`;
                     )
                   )}{' '}
                   {getEnergyUnitString(energyUnit)} (Fallback used: not enough
-                  history [&lt;14 days]; raw calculation of{' '}
+                  history [&lt;{ADAPTIVE_TDEE_GOAL_MIN_DAYS} days]; raw
+                  calculation of{' '}
                   {adaptiveTdeeData
                     ? Math.round(
                         convertEnergy(
@@ -714,14 +716,15 @@ Calculated: ${bfp.toFixed(1)}%`;
               )}
             </div>
           )}
-          {isAdaptiveMethod && daysOfCalorieLogs < 14 && (
-            <div className="flex items-start gap-1 mt-1 p-1 bg-yellow-100 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800 text-xs">
-              <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
-              <span className="text-yellow-700 dark:text-yellow-300">
-                {getTargetFallbackNotice()}
-              </span>
-            </div>
-          )}
+          {isAdaptiveMethod &&
+            daysOfCalorieLogs < ADAPTIVE_TDEE_GOAL_MIN_DAYS && (
+              <div className="flex items-start gap-1 mt-1 p-1 bg-yellow-100 dark:bg-yellow-900/30 rounded border border-yellow-200 dark:border-yellow-800 text-xs">
+                <Info className="w-3 h-3 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                <span className="text-yellow-700 dark:text-yellow-300">
+                  {getTargetFallbackNotice()}
+                </span>
+              </div>
+            )}
           <div className="pt-1 border-t border-border/60 font-bold text-foreground mt-1 flex justify-between items-center text-sm">
             <span>Final Energy Budget Target:</span>
             <span className="text-primary text-sm font-semibold">

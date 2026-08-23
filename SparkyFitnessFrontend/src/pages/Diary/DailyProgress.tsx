@@ -44,6 +44,8 @@ import {
   ACTIVITY_MULTIPLIERS,
   calculateAge,
   computeCalorieTarget,
+  isAdaptiveTdeeMature,
+  ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   calculateBmr,
   computeExerciseCredited,
   normalizeCalorieGoalAdjustmentMode,
@@ -226,7 +228,16 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   let adjustedManualGoal = rawManualGoal;
   if (calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-    const adaptiveGoal = Math.round(adaptiveTdeeData.tdee + calorieGoalOffset);
+    // Mirrors goalService: hold the estimated baseline until the measured estimate
+    // is settled, so the diary matches the goal the server actually saves.
+    const adaptiveBaseline = isAdaptiveTdeeMature(
+      adaptiveTdeeData.tdee,
+      adaptiveTdeeData.isFallback,
+      adaptiveTdeeData.daysOfData
+    )
+      ? adaptiveTdeeData.tdee
+      : Math.round(bmr * activityMultiplier);
+    const adaptiveGoal = Math.round(adaptiveBaseline + calorieGoalOffset);
     const adaptiveGoalFloor = resolveCalorieSafetyFloor(
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
@@ -290,8 +301,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
       return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) due to: ${adaptiveTdeeData.fallbackReason}`;
     }
 
-    if (daysOfCalorieLogs < 14) {
-      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) until 14 days of calorie logs are reached (currently ${daysOfCalorieLogs}/14 days logged).`;
+    if (daysOfCalorieLogs < ADAPTIVE_TDEE_GOAL_MIN_DAYS) {
+      return `Goal target will use fallback BMR (${fallbackVal} ${unitStr}) until ${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days of calorie logs are reached (currently ${daysOfCalorieLogs}/${ADAPTIVE_TDEE_GOAL_MIN_DAYS} days logged).`;
     }
 
     return '';
@@ -647,7 +658,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               )}
 
               {!adaptiveTdeeData.isFallback &&
-                (adaptiveTdeeData.daysOfData ?? 0) < 14 && (
+                (adaptiveTdeeData.daysOfData ?? 0) <
+                  ADAPTIVE_TDEE_GOAL_MIN_DAYS && (
                   <div className="flex items-start gap-1 mt-1 p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
                     <Info className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
                     <span className="text-[10px] text-blue-700 dark:text-blue-300">

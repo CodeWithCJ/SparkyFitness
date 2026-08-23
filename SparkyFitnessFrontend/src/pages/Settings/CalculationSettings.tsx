@@ -58,6 +58,7 @@ import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import {
   computeCalorieTarget,
+  isAdaptiveTdeeMature,
   todayInZone,
   ACTIVITY_MULTIPLIERS,
   getGoalModeAdjustment,
@@ -414,9 +415,16 @@ const CalculationSettings = () => {
       : Math.round(bmr > 0 ? bmr * activityMultiplier : 2000);
 
   if (calorieGoalAdjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-    const adaptiveGoal = Math.round(
-      (adaptiveTdeeData.tdee ?? 0) + calorieGoalOffset
-    );
+    // Mirrors goalService: hold the estimated baseline until the measured estimate
+    // is settled, so this preview matches the goal the server actually saves.
+    const adaptiveBaseline = isAdaptiveTdeeMature(
+      adaptiveTdeeData.tdee,
+      adaptiveTdeeData.isFallback,
+      adaptiveTdeeData.daysOfData
+    )
+      ? adaptiveTdeeData.tdee
+      : Math.round(bmr * activityMultiplier);
+    const adaptiveGoal = Math.round(adaptiveBaseline + calorieGoalOffset);
     const adaptiveGoalFloor = resolveCalorieSafetyFloor(
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
@@ -470,12 +478,14 @@ const CalculationSettings = () => {
 
   // Measured adaptive TDEE, shown only when the same sufficiency test used by
   // computeCalorieTarget passes; constant across goal modes and methods.
-  const measuredAdaptiveTdee =
-    adaptiveTdeeData?.isFallback === false &&
-    adaptiveTdeeData.tdee != null &&
-    (adaptiveTdeeData.daysOfData ?? 0) >= 14
-      ? adaptiveTdeeData.tdee
-      : null;
+  const reportedAdaptiveTdee = adaptiveTdeeData?.tdee;
+  const measuredAdaptiveTdee = isAdaptiveTdeeMature(
+    reportedAdaptiveTdee,
+    adaptiveTdeeData?.isFallback,
+    adaptiveTdeeData?.daysOfData
+  )
+    ? reportedAdaptiveTdee
+    : null;
 
   let baselineLabel: string;
   if (goalModeCalculationMethod === 'adaptive') {
