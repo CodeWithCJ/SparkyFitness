@@ -29,8 +29,8 @@ describe('locale registry contracts', () => {
 
   it('does not ambiguously resolve a language-only regional family', () => {
     const synthetic = {
-      'pt-BR': { languageCode: 'pt', intlLocale: 'pt-BR', nativeLanguageTag: 'pt-BR', displayNameKey: 'x', defaultDisplayName: 'Brazil' },
-      'pt-PT': { languageCode: 'pt', intlLocale: 'pt-PT', nativeLanguageTag: 'pt-PT', displayNameKey: 'x', defaultDisplayName: 'Portugal' },
+      'pt-BR': { languageCode: 'pt', intlLocale: 'pt-BR', displayNameKey: 'x', defaultDisplayName: 'Brazil' },
+      'pt-PT': { languageCode: 'pt', intlLocale: 'pt-PT', displayNameKey: 'x', defaultDisplayName: 'Portugal' },
     };
     expect(normalizeLocaleFromRegistry('pt-BR', synthetic)).toBe('pt-BR');
     expect(normalizeLocaleFromRegistry('pt-BR-x-private', synthetic)).toBe('pt-BR');

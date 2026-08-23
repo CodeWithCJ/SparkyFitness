@@ -1270,8 +1270,8 @@ describe('Multilingual source-first regressions', () => {
 
   it('supports synthetic region variants without collapsing them', () => {
     const registry = {
-      'pt-BR': { languageCode: 'pt', intlLocale: 'pt-BR', nativeLanguageTag: 'pt-BR', displayNameKey: 'x', defaultDisplayName: 'Português (Brasil)' },
-      'pt-PT': { languageCode: 'pt', intlLocale: 'pt-PT', nativeLanguageTag: 'pt-PT', displayNameKey: 'x', defaultDisplayName: 'Português (Portugal)' },
+      'pt-BR': { languageCode: 'pt', intlLocale: 'pt-BR', displayNameKey: 'x', defaultDisplayName: 'Português (Brasil)' },
+      'pt-PT': { languageCode: 'pt', intlLocale: 'pt-PT', displayNameKey: 'x', defaultDisplayName: 'Português (Portugal)' },
     };
     const { normalizeLocaleFromRegistry } = require('../../src/localization/localeRegistry');
     expect(normalizeLocaleFromRegistry('pt-BR-x-private', registry)).toBe('pt-BR');
