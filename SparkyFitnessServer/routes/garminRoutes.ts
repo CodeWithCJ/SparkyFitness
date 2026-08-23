@@ -4,7 +4,7 @@ import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.j
 import garminConnectService from '../integrations/garminconnect/garminConnectService.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import measurementService from '../services/measurementService.js';
-import garminMeasurementMapping from '../integrations/garminconnect/garminMeasurementMapping.js';
+import { parseGarminHealthMeasurements } from '../integrations/garminconnect/garminMeasurementMapping.js';
 import { log } from '../config/logging.js';
 import moment from 'moment';
 import garminService from '../services/garminService.js';
@@ -246,73 +246,9 @@ router.post(
         'info',
         `[GARMIN_SYNC] Processing metrics from Garmin. Available metrics: ${Object.keys(healthWellnessData.data || {}).join(', ')}`
       );
-      for (const metric in healthWellnessData.data) {
-        // Skip stress as it's handled by processGarminHealthAndWellnessData
-        if (metric === 'stress') continue;
-        const dailyEntries = healthWellnessData.data[metric];
-        log(
-          'info',
-          `[GARMIN_SYNC] Processing metric '${metric}': ${dailyEntries?.length || 0} entries`
-        );
-        if (Array.isArray(dailyEntries)) {
-          for (const rawEntry of dailyEntries) {
-            const entry = rawEntry as Record<string, unknown>;
-            const calendarDateRaw = entry.date;
-            if (!calendarDateRaw) continue;
-            const calendarDate = moment(calendarDateRaw as string).format(
-              'YYYY-MM-DD'
-            );
-            log(
-              'debug',
-              `[GARMIN_SYNC] Entry for ${metric} on ${calendarDate}: ${JSON.stringify(entry)}`
-            );
-            for (const key in entry) {
-              if (key === 'date') continue;
-              let mapping = (garminMeasurementMapping as Record<string, any>)[
-                key
-              ];
-              // If no mapping is found for the key, check if there's a mapping for the metric itself.
-              // This handles cases like 'blood_pressure' where the entry is just { date, value }.
-              if (!mapping && key === 'value') {
-                mapping = (garminMeasurementMapping as Record<string, any>)[
-                  metric
-                ];
-              }
-              if (mapping) {
-                const value = entry[key];
-                if (value === null || value === undefined) {
-                  log(
-                    'debug',
-                    `[GARMIN_SYNC] Skipping ${key}: value is null/undefined`
-                  );
-                  continue;
-                }
-                const type =
-                  mapping.targetType === 'check_in'
-                    ? mapping.field
-                    : mapping.name;
-                log(
-                  'info',
-                  `[GARMIN_SYNC] Mapped ${key}=${value} -> type='${type}' (${mapping.targetType})`
-                );
-                processedHealthData.push({
-                  type: type,
-                  value: value,
-                  date: calendarDate,
-                  source: 'garmin',
-                  dataType: mapping.dataType,
-                  measurementType: mapping.measurementType,
-                });
-              } else {
-                log(
-                  'warn',
-                  `[GARMIN_SYNC] No mapping found for key '${key}' in metric '${metric}'`
-                );
-              }
-            }
-          }
-        }
-      }
+      processedHealthData.push(
+        ...parseGarminHealthMeasurements(healthWellnessData.data)
+      );
       log(
         'info',
         `[GARMIN_SYNC] Total processed health data items: ${processedHealthData.length}`

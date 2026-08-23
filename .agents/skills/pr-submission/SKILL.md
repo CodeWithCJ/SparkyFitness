@@ -30,9 +30,12 @@ Use this skill whenever opening a pull request for the SparkyFitness repository.
 ### Step 1: Pre-Submission Validation
 Run validation in the changed workspace package(s):
 ```bash
-# In modified packages (e.g. SparkyFitnessServer, SparkyFitnessFrontend, SparkyFitnessMobile)
+# In modified TypeScript/JS packages (e.g. SparkyFitnessServer, SparkyFitnessFrontend, SparkyFitnessMobile)
 pnpm run validate
 pnpm test <relevant-test-files>
+
+# In Python packages (e.g. SparkyFitnessGarmin)
+cd SparkyFitnessGarmin && ./venv/bin/python -m unittest discover tests
 ```
 
 Inspect `git status` and `git diff` to ensure no scratch files, debug logs, or unwanted changes are staged.

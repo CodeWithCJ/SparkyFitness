@@ -41,6 +41,11 @@ async function postWithRetry<T = unknown>(
         (err.code === 'ECONNRESET' ||
           err.code === 'ETIMEDOUT' ||
           err.code === 'ECONNREFUSED' ||
+          err.code === 'ECONNABORTED' ||
+          err.code === 'EAI_AGAIN' ||
+          Boolean(
+            err.message && err.message.toLowerCase().includes('timeout')
+          ) ||
           (err.response?.status !== undefined && err.response.status >= 500));
       if (attempt < retries && isTransient) {
         const delayMs = (attempt + 1) * 1000;

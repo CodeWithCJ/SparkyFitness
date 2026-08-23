@@ -385,25 +385,47 @@ export async function processGarminWorkoutSession(
       }
 
       // Fallback 1: check summarizedExerciseSets if available
-      if (!garminExerciseName && rawSummarizedSets.length > 0) {
-        const stepIdx = garminSet.stepIndex ?? garminSet.wktStepId;
+      if (
+        (!garminExerciseName ||
+          garminExerciseName === garminCategory ||
+          garminExerciseName === 'Uncategorized') &&
+        rawSummarizedSets.length > 0
+      ) {
+        const setCategory =
+          (garminSet.category as string | undefined) ||
+          (garminSet.exercises?.[0]?.category as string | undefined) ||
+          garminCategory;
+        const setSubCategory =
+          ((garminSet as Record<string, unknown>).subCategory as
+            | string
+            | undefined) ||
+          (garminSet.exercises?.[0]?.name as string | undefined);
+
         const matchingSumSet =
-          (stepIdx !== undefined &&
-            stepIdx !== null &&
-            rawSummarizedSets[stepIdx]) ||
-          (rawSummarizedSets.length === 1 ? rawSummarizedSets[0] : null);
-        if (matchingSumSet) {
+          (rawSummarizedSets.length === 1
+            ? rawSummarizedSets[0]
+            : rawSummarizedSets.find((sum) => {
+                if (!sum || typeof sum !== 'object') return false;
+                const sumCat = (sum as Record<string, unknown>).category;
+                const sumSubCat = (sum as Record<string, unknown>).subCategory;
+                return (
+                  (setSubCategory && sumSubCat === setSubCategory) ||
+                  (setCategory && sumCat === setCategory)
+                );
+              })) || (currentGroup ? null : rawSummarizedSets[0]);
+
+        if (matchingSumSet && typeof matchingSumSet === 'object') {
+          const sumRecord = matchingSumSet as Record<string, unknown>;
           garminExerciseName =
-            (typeof matchingSumSet.subCategory === 'string' &&
-              matchingSumSet.subCategory) ||
-            (typeof matchingSumSet.category === 'string' &&
-              matchingSumSet.category) ||
-            (typeof matchingSumSet.exerciseName === 'string' &&
-              matchingSumSet.exerciseName) ||
-            (typeof matchingSumSet.name === 'string' && matchingSumSet.name) ||
+            (typeof sumRecord.subCategory === 'string' &&
+              sumRecord.subCategory) ||
+            (typeof sumRecord.category === 'string' && sumRecord.category) ||
+            (typeof sumRecord.exerciseName === 'string' &&
+              sumRecord.exerciseName) ||
+            (typeof sumRecord.name === 'string' && sumRecord.name) ||
             null;
-          if (typeof matchingSumSet.category === 'string') {
-            garminCategory = matchingSumSet.category;
+          if (typeof sumRecord.category === 'string') {
+            garminCategory = sumRecord.category;
           }
         }
       }

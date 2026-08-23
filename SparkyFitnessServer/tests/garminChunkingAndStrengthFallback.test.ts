@@ -58,8 +58,12 @@ vi.mock('../services/garmin/garminExerciseMapper.js', () => ({
     ),
 }));
 
+import type { PoolClient } from 'pg';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
-import { processGarminWorkoutSession } from '../services/garmin/garminActivityProcessor.js';
+import {
+  processGarminWorkoutSession,
+  type GarminSessionData,
+} from '../services/garmin/garminActivityProcessor.js';
 
 describe('Garmin Date Chunking', () => {
   it('splits single day range into one chunk', () => {
@@ -88,7 +92,7 @@ describe('Garmin Strength Activity Processor - summarizedExerciseSets Fallback',
   });
 
   it('synthesizes exercise entries from summarizedExerciseSets when exerciseSets is empty', async () => {
-    const sessionData = {
+    const sessionData: GarminSessionData = {
       activity: {
         activityId: 10001,
         activityType: { typeKey: 'strength_training' },
@@ -121,8 +125,8 @@ describe('Garmin Strength Activity Processor - summarizedExerciseSets Fallback',
 
     await processGarminWorkoutSession(
       'user-1',
-      sessionData as any,
-      fakeClient as any,
+      sessionData,
+      fakeClient as unknown as PoolClient,
       'UTC'
     );
 
@@ -146,7 +150,7 @@ describe('Garmin Strength Activity Processor - summarizedExerciseSets Fallback',
   });
 
   it('falls back to summarizedExerciseSets when individual exercise sets lack exercise names', async () => {
-    const sessionData = {
+    const sessionData: GarminSessionData = {
       activity: {
         activityId: 10002,
         activityType: { typeKey: 'strength_training' },
@@ -191,8 +195,8 @@ describe('Garmin Strength Activity Processor - summarizedExerciseSets Fallback',
 
     await processGarminWorkoutSession(
       'user-1',
-      sessionData as any,
-      fakeClient as any,
+      sessionData,
+      fakeClient as unknown as PoolClient,
       'UTC'
     );
 
@@ -205,5 +209,61 @@ describe('Garmin Strength Activity Processor - summarizedExerciseSets Fallback',
     ).mock.calls[0][2];
     expect(callArgs.sets).toHaveLength(2);
     expect(callArgs.notes).toContain('INCLINE_DUMBBELL_PRESS');
+  });
+
+  it('matches matching category from multiple summarizedExerciseSets entries', async () => {
+    const sessionData: GarminSessionData = {
+      activity: {
+        activityId: 10003,
+        activityType: { typeKey: 'strength_training' },
+        activityName: 'Mixed Strength Workout',
+        startTimeLocal: '2026-08-10 10:00:00',
+        duration: 2400,
+        summarizedExerciseSets: [
+          {
+            category: 'SQUAT',
+            subCategory: 'BARBELL_SQUAT',
+            sets: 2,
+            reps: 16,
+            volume: 160000,
+          },
+          {
+            category: 'BENCH_PRESS',
+            subCategory: 'BARBELL_BENCH_PRESS',
+            sets: 2,
+            reps: 20,
+            volume: 120000,
+          },
+        ],
+      },
+      exercise_sets: {
+        exerciseSets: [
+          {
+            setType: 'ACTIVE',
+            duration: 40,
+            repetitionCount: 10,
+            weight: 60000,
+            exercises: [{ category: 'BENCH_PRESS' }], // matches 2nd summary
+            stepIndex: 5, // arbitrary stepIndex
+          },
+        ],
+      },
+    };
+
+    await processGarminWorkoutSession(
+      'user-1',
+      sessionData,
+      fakeClient as unknown as PoolClient,
+      'UTC'
+    );
+
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledTimes(1);
+
+    const callArgs = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls[0][2];
+    expect(callArgs.notes).toContain('BARBELL_BENCH_PRESS');
   });
 });

@@ -1,7 +1,6 @@
 import { log } from '../config/logging.js';
 import garminConnectService from '../integrations/garminconnect/garminConnectService.js';
-import garminMeasurementMapping from '../integrations/garminconnect/garminMeasurementMapping.js';
-import moment from 'moment';
+import { parseGarminHealthMeasurements } from '../integrations/garminconnect/garminMeasurementMapping.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone, addDays } from '@workspace/shared';
 import measurementService from './measurementService.js';
@@ -43,48 +42,7 @@ async function processHealthChunk(
     endDate
   );
 
-  const processedHealthData: any[] = [];
-  for (const metric in healthData) {
-    if (metric === 'stress') continue;
-    const dailyEntries = healthData[metric];
-    if (Array.isArray(dailyEntries)) {
-      for (const entry of dailyEntries) {
-        const calendarDateRaw = (entry as Record<string, unknown>).date;
-        if (!calendarDateRaw) continue;
-        const calendarDate = moment(calendarDateRaw as string).format(
-          'YYYY-MM-DD'
-        );
-        for (const key in entry as Record<string, unknown>) {
-          if (key === 'date') continue;
-          let mapping = (garminMeasurementMapping as Record<string, any>)[key];
-          if (!mapping && key === 'value') {
-            mapping = (garminMeasurementMapping as Record<string, any>)[metric];
-          }
-          if (mapping) {
-            const value = (entry as Record<string, unknown>)[key];
-            if (value === null || value === undefined) continue;
-            if (
-              value === 0 &&
-              mapping.targetType === 'check_in' &&
-              (mapping.field === 'weight' ||
-                mapping.field === 'body_fat_percentage')
-            )
-              continue;
-            const type =
-              mapping.targetType === 'check_in' ? mapping.field : mapping.name;
-            processedHealthData.push({
-              type: type,
-              value: value,
-              date: calendarDate,
-              source: 'garmin',
-              dataType: mapping.dataType,
-              measurementType: mapping.measurementType,
-            });
-          }
-        }
-      }
-    }
-  }
+  const processedHealthData = parseGarminHealthMeasurements(healthData);
 
   let measurementServiceResult = {};
   if (processedHealthData.length > 0) {
@@ -114,6 +72,7 @@ async function processHealthChunk(
     processedGarminHealthData,
     measurementServiceResult,
     processedSleepData,
+    processedEntries: processedHealthData.length,
   };
 }
 
@@ -166,13 +125,13 @@ async function syncGarminData(
     nutrition: null,
   };
 
+  let totalProcessedHealth = 0;
   let totalProcessedActivities = 0;
   let totalProcessedNutrition = 0;
+  let lastHealthResult: Record<string, unknown> | null = null;
   const healthErrors: string[] = [];
   const activityErrors: string[] = [];
   const nutritionErrors: string[] = [];
-
-  let lastHealthResult: Record<string, unknown> | null = null;
 
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
@@ -196,6 +155,7 @@ async function syncGarminData(
         chunk.start,
         chunk.end
       );
+      totalProcessedHealth += healthChunkResult.processedEntries || 0;
       lastHealthResult = healthChunkResult;
     } catch (healthError: unknown) {
       const errMsg =
@@ -274,6 +234,7 @@ async function syncGarminData(
   } else {
     results.health = {
       ...(lastHealthResult || {}),
+      processedEntries: totalProcessedHealth,
       ...(healthErrors.length > 0 ? { partialErrors: healthErrors } : {}),
     };
   }
