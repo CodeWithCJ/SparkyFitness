@@ -3133,7 +3133,9 @@
       "allSets_one": "{{count}} set",
       "allSets_other": "{{count}} sets",
       "sets_one": "{{count}} set",
-      "sets_other": "{{count}} sets"
+      "sets_other": "{{count}} sets",
+      "personalRecordCount_one": "{{formattedCount}} Personal Record",
+      "personalRecordCount_other": "{{formattedCount}} Personal Records"
     },
     "accessibility": {
       "calculating": "Calculating"

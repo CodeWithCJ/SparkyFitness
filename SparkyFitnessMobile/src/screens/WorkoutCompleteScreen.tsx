@@ -542,9 +542,13 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                   <Icon name="trophy" size={17} color={prColor} />
                 </View>
                 <Text className="text-sm font-bold text-text-primary">
-                  {summary.prRows.length === 1
-                    ? '1 Personal Record'
-                    : `${summary.prRows.length} Personal Records`}
+                  {t('workoutComplete.labels.personalRecordCount', {
+                    count: summary.prRows.length,
+                    formattedCount: formatLocalizedNumber(summary.prRows.length),
+                    defaultValue: '{{formattedCount}} Personal Records',
+                    defaultValue_one: '{{formattedCount}} Personal Record',
+                    defaultValue_other: '{{formattedCount}} Personal Records',
+                  })}
                 </Text>
               </View>
               {summary.prRows.map((pr, index) => (

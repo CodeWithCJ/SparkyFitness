@@ -230,24 +230,26 @@ describe('WorkoutCompleteScreen', () => {
     expect(getByText('3 of 4 sets')).toBeTruthy();
   });
 
-  it('updates completion actions when the mounted screen changes languages', async () => {
-    await i18n.changeLanguage('pl');
+  it('updates completion actions and personal record count when the mounted screen changes languages', async () => {
     const screen = renderScreen();
 
-    expect(screen.getByText('Trening ukończony')).toBeTruthy();
-    expect(screen.getByText('Gotowe')).toBeTruthy();
-
-    await act(async () => {
-      await i18n.changeLanguage('en');
-    });
     expect(screen.getByText('Workout Complete')).toBeTruthy();
     expect(screen.getByText('Done')).toBeTruthy();
+    expect(screen.getByText('1 Personal Record')).toBeTruthy();
 
     await act(async () => {
       await i18n.changeLanguage('pl');
     });
     expect(screen.getByText('Trening ukończony')).toBeTruthy();
     expect(screen.getByText('Gotowe')).toBeTruthy();
+    expect(screen.getByText('1 rekord osobisty')).toBeTruthy();
+
+    await act(async () => {
+      await i18n.changeLanguage('en');
+    });
+    expect(screen.getByText('Workout Complete')).toBeTruthy();
+    expect(screen.getByText('Done')).toBeTruthy();
+    expect(screen.getByText('1 Personal Record')).toBeTruthy();
   });
 
   it('says "All N sets" when every set was logged', () => {
@@ -340,6 +342,33 @@ describe('WorkoutCompleteScreen', () => {
     expect(getByText('1 Personal Record')).toBeTruthy();
     expect(getByText('120 kg × 3')).toBeTruthy();
     expect(fireSuccessHaptic).toHaveBeenCalledTimes(1);
+  });
+
+  it('localizes the English personal record count for multiple records', () => {
+    const { getByText } = renderScreen({ prSetIds: { '101': true as const, '201': true as const } });
+
+    expect(getByText('2 Personal Records')).toBeTruthy();
+  });
+
+  it.each([
+    [1, '1 rekord osobisty'],
+    [2, '2 rekordy osobiste'],
+    [5, '5 rekordów osobistych'],
+    [22, '22 rekordy osobiste'],
+    [25, '25 rekordów osobistych'],
+  ])('renders the Polish personal record plural for %s', async (count, expected) => {
+    await i18n.changeLanguage('pl');
+    const prSetIds: Record<string, true> = {};
+    const session = makeSession();
+    const sets = Array.from({ length: count as number }, (_, index) =>
+      makeSet(10_000 + index, { weight: 100 + index }),
+    );
+    session.exercises = [makeExercise('ex-pr', 'Bench Press', sets)];
+    const completedSetIdsForCase = Object.fromEntries(sets.map(set => [String(set.id), set.id]));
+    Object.keys(completedSetIdsForCase).forEach(id => { prSetIds[id] = true; });
+    const { getByText } = renderScreen({ session, completedSetIds: completedSetIdsForCase, prSetIds });
+
+    expect(getByText(expected as string)).toBeTruthy();
   });
 
   it('hides the records card entirely and skips the haptic without PRs', () => {

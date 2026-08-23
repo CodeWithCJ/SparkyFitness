@@ -3189,7 +3189,11 @@
       "sets_one": "{{count}} seria",
       "sets_few": "{{count}} serie",
       "sets_many": "{{count}} serii",
-      "sets_other": "{{count}} serii"
+      "sets_other": "{{count}} serii",
+      "personalRecordCount_one": "{{formattedCount}} rekord osobisty",
+      "personalRecordCount_few": "{{formattedCount}} rekordy osobiste",
+      "personalRecordCount_many": "{{formattedCount}} rekordów osobistych",
+      "personalRecordCount_other": "{{formattedCount}} rekordów osobistych"
     },
     "accessibility": {
       "calculating": "Obliczanie"
