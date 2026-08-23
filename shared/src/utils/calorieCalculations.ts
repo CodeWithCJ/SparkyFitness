@@ -553,6 +553,12 @@ export interface CalorieTargetResult {
  * re-expressed at each call site — they had already drifted apart once, with the
  * settings preview holding out for a mature estimate while the saved goal took the
  * raw one.
+ *
+ * Fails closed on an unknown fallback status. The service always populates the
+ * flag, but the web types it as optional and pass it through unmodified, so a
+ * partial or stale payload could otherwise let an estimate of unknown provenance
+ * set someone's calorie target. Requiring an explicit `false` costs nothing when
+ * the field is present and degrades to the estimated baseline when it is not.
  */
 export function isAdaptiveTdeeMature(
   tdee: number | null | undefined,
@@ -563,7 +569,7 @@ export function isAdaptiveTdeeMature(
     typeof tdee === "number" &&
     Number.isFinite(tdee) &&
     tdee > 0 &&
-    isFallback !== true &&
+    isFallback === false &&
     (daysOfData ?? 0) >= ADAPTIVE_TDEE_GOAL_MIN_DAYS
   );
 }

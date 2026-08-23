@@ -711,6 +711,15 @@ describe('isAdaptiveTdeeMature', () => {
     expect(isAdaptiveTdeeMature(1800, true, 365)).toBe(false);
   });
 
+  // The service always sets the flag, but the web types it optional and forwards
+  // it unmodified, so an unknown provenance must not be read as "measured".
+  it.each([null, undefined])(
+    'rejects an estimate whose fallback status is %p',
+    (isFallback) => {
+      expect(isAdaptiveTdeeMature(1800, isFallback, 365)).toBe(false);
+    }
+  );
+
   it('rejects a missing or unusable estimate', () => {
     expect(isAdaptiveTdeeMature(null, false, 30)).toBe(false);
     expect(isAdaptiveTdeeMature(undefined, false, 30)).toBe(false);
