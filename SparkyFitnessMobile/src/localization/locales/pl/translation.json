@@ -2189,7 +2189,7 @@
     "byPhase": "{{metric}} według fazy cyklu",
     "higher": "wyższa",
     "lower": "niższa",
-    "peak": "{{metric}} zwykle jest {{direction}} w fazie {{phase}} ({{delta}}{{unit}} względem średniej).",
+    "peak": "{{phase}}: {{metric}} jest zwykle {{direction}} ({{delta}}{{unit}} względem średniej).",
     "noDataTitle": "Korelacje będą dostępne po zebraniu większej ilości danych",
     "noDataHint": "Zapisuj masę ciała, nastrój, sen i energię przez kilka cykli, aby zobaczyć ich zależność od faz cyklu.",
     "conditions": {
