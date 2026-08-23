@@ -1,4 +1,29 @@
-const garminMeasurementMapping = {
+import moment from 'moment';
+
+export interface GarminMeasurementMappingEntry {
+  targetType: 'check_in' | 'custom';
+  field?: string;
+  name?: string;
+  dataType: string;
+  measurementType: string;
+  frequency?: string;
+}
+
+export interface ProcessedGarminHealthMeasurement {
+  type: string;
+  value: unknown;
+  date: string;
+  source: 'garmin';
+  dataType: string;
+  measurementType: string;
+}
+
+export type GarminMeasurementMappingRecord = Record<
+  string,
+  GarminMeasurementMappingEntry | undefined
+>;
+
+const garminMeasurementMapping: GarminMeasurementMappingRecord = {
   // Check-in Measurements
   weight: {
     targetType: 'check_in',
@@ -508,4 +533,62 @@ const garminMeasurementMapping = {
     frequency: 'Daily',
   },
 };
+
+/**
+ * Extracts and maps raw health and wellness metrics into structured measurement records.
+ */
+export function parseGarminHealthMeasurements(
+  healthData: Record<string, unknown> | null | undefined
+): ProcessedGarminHealthMeasurement[] {
+  if (!healthData || typeof healthData !== 'object') return [];
+
+  const processed: ProcessedGarminHealthMeasurement[] = [];
+  for (const metric in healthData) {
+    if (metric === 'stress') continue;
+    const dailyEntries = healthData[metric];
+    if (Array.isArray(dailyEntries)) {
+      for (const entry of dailyEntries) {
+        if (!entry || typeof entry !== 'object') continue;
+        const entryRecord = entry as Record<string, unknown>;
+        const calendarDateRaw = entryRecord.date;
+        if (!calendarDateRaw) continue;
+        const calendarDate = moment(calendarDateRaw as string).format(
+          'YYYY-MM-DD'
+        );
+        for (const key in entryRecord) {
+          if (key === 'date') continue;
+          let mapping = garminMeasurementMapping[key];
+          if (!mapping && key === 'value') {
+            mapping = garminMeasurementMapping[metric];
+          }
+          if (mapping) {
+            const value = entryRecord[key];
+            if (value === null || value === undefined) continue;
+            if (
+              value === 0 &&
+              mapping.targetType === 'check_in' &&
+              (mapping.field === 'weight' ||
+                mapping.field === 'body_fat_percentage')
+            ) {
+              continue;
+            }
+            const type =
+              mapping.targetType === 'check_in' ? mapping.field : mapping.name;
+            if (!type) continue;
+            processed.push({
+              type,
+              value,
+              date: calendarDate,
+              source: 'garmin',
+              dataType: mapping.dataType,
+              measurementType: mapping.measurementType,
+            });
+          }
+        }
+      }
+    }
+  }
+  return processed;
+}
+
 export default garminMeasurementMapping;

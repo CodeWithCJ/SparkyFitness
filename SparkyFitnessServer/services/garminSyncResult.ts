@@ -11,7 +11,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function getGarminSyncPhaseErrors(result: GarminSyncResult) {
   return GARMIN_SYNC_PHASES.filter((phase) => {
     const phaseResult = result[phase];
-    return isRecord(phaseResult) && typeof phaseResult.error === 'string';
+    if (!isRecord(phaseResult)) return false;
+    const hasFatalError = typeof phaseResult.error === 'string';
+    const hasPartialErrors =
+      Array.isArray(phaseResult.partialErrors) &&
+      phaseResult.partialErrors.length > 0;
+    return hasFatalError || hasPartialErrors;
   });
 }
 

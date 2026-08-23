@@ -21,3 +21,10 @@ export interface GarminRefreshTokenPayload {
   refreshTokenValue: string;
   garminGuid: string;
 }
+
+export interface GarminLoginResponseDto {
+  status?: string;
+  tokens?: GarminTokenPayload;
+  client_state?: string;
+  [key: string]: unknown;
+}
