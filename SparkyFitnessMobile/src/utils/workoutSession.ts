@@ -302,7 +302,15 @@ export function buildSessionSubtitle(
       (sum, set) => sum + (set.weight ?? 0) * (set.reps ?? 0), 0,
     );
     const parts: string[] = [];
-    parts.push(`${totalSets} set${totalSets !== 1 ? 's' : ''}`);
+    parts.push(t('workout.setCount', {
+      count: totalSets,
+      formattedCount: String(totalSets),
+      defaultValue: '{{formattedCount}} sets',
+      defaultValue_one: '{{formattedCount}} set',
+      defaultValue_few: '{{formattedCount}} sets',
+      defaultValue_many: '{{formattedCount}} sets',
+      defaultValue_other: '{{formattedCount}} sets',
+    }));
     if (totalVolumeKg > 0) {
       const vol = Math.round(weightFromKg(totalVolumeKg, weightUnit));
       parts.push(`${formatLocalizedNumber(vol)} ${weightUnit}`);
