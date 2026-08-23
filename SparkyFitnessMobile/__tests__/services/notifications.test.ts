@@ -69,6 +69,7 @@ const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
 describe('notifications service', () => {
   beforeEach(async () => {
+    await initializeI18n('en');
     await AsyncStorage.clear();
     __resetNotificationStateForTests();
     mockGetPerms.mockReset().mockResolvedValue({ status: 'granted' } as any);
