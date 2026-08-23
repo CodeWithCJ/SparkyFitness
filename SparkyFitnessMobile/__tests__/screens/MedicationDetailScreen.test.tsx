@@ -1,7 +1,8 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import MedicationDetailScreen from '../../src/screens/MedicationDetailScreen';
 import {
   useMedicationDetail,
@@ -168,7 +169,9 @@ function setupScreen(med: MedicationDetail, entries: MedicationEntry[] = []) {
 }
 
 describe('MedicationDetailScreen', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await act(async () => { await initializeI18n('en');
+    await i18n.changeLanguage('en'); });
     jest.clearAllMocks();
     mockEntryForDue.mockReturnValue(undefined);
     mockUseLogDose.mockReturnValue({
@@ -318,4 +321,17 @@ describe('MedicationDetailScreen', () => {
       expect.any(Array),
     );
   });
+  it('localizes the PRN Logged fallback and keeps timestamp entries distinct', async () => {
+    const med = buildMedication({ schedules: [] });
+    const logged = setupScreen(med, [buildEntry({ schedule_id: null, status: 'prn_taken', taken_at: null })]);
+    expect(logged.getByText('Logged')).toBeTruthy();
+    await act(async () => { await i18n.changeLanguage('pl'); });
+    expect(logged.getByText('Zapisano')).toBeTruthy();
+    expect(logged.queryByText('Logged')).toBeNull();
+    logged.unmount();
+    const timestamp = setupScreen(med, [buildEntry({ schedule_id: null, status: 'prn_taken', taken_at: '2026-07-29T14:00:00Z' })]);
+    expect(timestamp.queryByText('Zapisano')).toBeNull();
+    expect(timestamp.queryByText('Logged')).toBeNull();
+  });
+
 });

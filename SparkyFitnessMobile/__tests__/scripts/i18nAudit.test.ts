@@ -1045,7 +1045,7 @@ Alert.alert(<string>'Type asserted text');
   it('detects Unicode UI letters but not arbitrary Unicode strings', () => {
     const source = `
 import { Text } from 'react-native';
-const canonical = '保存';
+const canonical = '内部';
 export function Test() {
   return <>
     <Text>{'Żółć'}</Text>
@@ -1057,7 +1057,7 @@ export function Test() {
     const values = hardcodedValues(scan(tmpDir).findings);
     expect(values).toContain('Żółć');
     expect(values).toContain('保存');
-    expect(values).not.toContain('canonical');
+    expect(values).not.toContain('内部');
   });
 
   it('preserves punctuation-only dynamic template filtering', () => {

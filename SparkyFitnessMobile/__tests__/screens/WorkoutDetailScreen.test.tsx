@@ -2,6 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import WorkoutDetailScreen from '../../src/screens/WorkoutDetailScreen';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import type { ActionSheetItem } from '../../src/components/ActionSheet';
@@ -23,11 +24,14 @@ jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: jest.fn(),
 }));
 
+let mockDeletePending = false;
+const mockConfirmAndDelete = jest.fn();
+
 jest.mock('../../src/hooks/useExerciseMutations', () => {
   const updateSession = jest.fn();
   return {
     __mockUpdateSession: updateSession,
-    useDeleteWorkout: jest.fn(() => ({ confirmAndDelete: jest.fn(), isPending: false })),
+    useDeleteWorkout: jest.fn(() => ({ confirmAndDelete: mockConfirmAndDelete, isPending: mockDeletePending })),
     useUpdateWorkout: jest.fn(() => ({
       updateSession,
       isPending: false,
@@ -221,9 +225,12 @@ describe('WorkoutDetailScreen', () => {
     );
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
     mockSheet.props = null;
+    mockDeletePending = false;
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     __resetActiveWorkoutStoreForTests();
     __resetAppPreferencesStoreForTests();
     mockUsePreferences.mockReturnValue({
@@ -498,4 +505,19 @@ describe('WorkoutDetailScreen', () => {
     expect(screen.getByTestId('superset-rail-entry-1')).toBeTruthy();
     expect(screen.getByTestId('superset-rail-entry-2')).toBeTruthy();
   });
+  it('localizes delete action in English and Polish, including pending state', async () => {
+    const screen = renderScreen(buildSession());
+    fireEvent.press(screen.getByLabelText('Edit workout'));
+    expect(screen.getByText('Delete Workout')).toBeTruthy();
+    await act(async () => { await i18n.changeLanguage('pl'); });
+    expect(screen.getByText('Usuń trening')).toBeTruthy();
+    expect(screen.queryByText('Delete Workout')).toBeNull();
+    screen.unmount();
+    mockDeletePending = true;
+    const pending = renderScreen(buildSession());
+    fireEvent.press(pending.getByLabelText('Edytuj trening'));
+    expect(pending.getByText('Usuwanie…')).toBeTruthy();
+    expect(pending.queryByText('Deleting...')).toBeNull();
+  });
+
 });
