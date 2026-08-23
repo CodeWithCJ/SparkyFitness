@@ -223,7 +223,8 @@ END $$;
 -- ============================================================
 -- Step 3: Drop the three legacy extensions
 --         Checks pg_extension first (no privilege needed).
---         Catches insufficient_privilege for non-superuser deployments.
+--         Catches insufficient_privilege, dependent_objects_still_exist,
+--         and other catchable errors for managed/shared PostgreSQL clusters.
 -- ============================================================
 
 -- pg_stat_statements
@@ -235,8 +236,13 @@ BEGIN
     END IF;
     DROP EXTENSION "pg_stat_statements";
     RAISE NOTICE '[Step 3] Dropped extension: pg_stat_statements';
-EXCEPTION WHEN insufficient_privilege THEN
-    RAISE NOTICE '[Step 3] Skipped dropping pg_stat_statements: insufficient privilege (superuser required). Extension is unused and harmless.';
+EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE NOTICE '[Step 3] Skipped dropping pg_stat_statements: insufficient privilege (superuser required). Extension remains installed.';
+    WHEN dependent_objects_still_exist THEN
+        RAISE NOTICE '[Step 3] Skipped dropping pg_stat_statements: other objects depend on it. Extension remains installed.';
+    WHEN OTHERS THEN
+        RAISE NOTICE '[Step 3] Skipped dropping pg_stat_statements: % (SQLSTATE %). Extension remains installed.', SQLERRM, SQLSTATE;
 END $$;
 
 -- uuid-ossp
@@ -248,8 +254,13 @@ BEGIN
     END IF;
     DROP EXTENSION "uuid-ossp";
     RAISE NOTICE '[Step 3] Dropped extension: uuid-ossp. All column defaults migrated to gen_random_uuid().';
-EXCEPTION WHEN insufficient_privilege THEN
-    RAISE NOTICE '[Step 3] Skipped dropping uuid-ossp: insufficient privilege (superuser required). Column defaults were migrated to gen_random_uuid() in Step 1 — extension is now unused.';
+EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE NOTICE '[Step 3] Skipped dropping uuid-ossp: insufficient privilege (superuser required). Column defaults were migrated to gen_random_uuid() in Step 1 — extension remains installed.';
+    WHEN dependent_objects_still_exist THEN
+        RAISE NOTICE '[Step 3] Skipped dropping uuid-ossp: other objects depend on it. Column defaults were migrated to gen_random_uuid() in Step 1 — extension remains installed.';
+    WHEN OTHERS THEN
+        RAISE NOTICE '[Step 3] Skipped dropping uuid-ossp: % (SQLSTATE %). Column defaults were migrated to gen_random_uuid() in Step 1 — extension remains installed.', SQLERRM, SQLSTATE;
 END $$;
 
 -- pgcrypto
@@ -261,6 +272,11 @@ BEGIN
     END IF;
     DROP EXTENSION "pgcrypto";
     RAISE NOTICE '[Step 3] Dropped extension: pgcrypto. All defaults re-bound to pg_catalog built-in in Step 2.';
-EXCEPTION WHEN insufficient_privilege THEN
-    RAISE NOTICE '[Step 3] Skipped dropping pgcrypto: insufficient privilege (superuser required). Column defaults were re-bound to pg_catalog.gen_random_uuid() in Step 2 — extension is now unused by the application.';
+EXCEPTION
+    WHEN insufficient_privilege THEN
+        RAISE NOTICE '[Step 3] Skipped dropping pgcrypto: insufficient privilege (superuser required). Column defaults were re-bound to pg_catalog.gen_random_uuid() in Step 2 — extension remains installed.';
+    WHEN dependent_objects_still_exist THEN
+        RAISE NOTICE '[Step 3] Skipped dropping pgcrypto: other objects depend on it. Column defaults were re-bound to pg_catalog.gen_random_uuid() in Step 2 — extension remains installed.';
+    WHEN OTHERS THEN
+        RAISE NOTICE '[Step 3] Skipped dropping pgcrypto: % (SQLSTATE %). Column defaults were re-bound to pg_catalog.gen_random_uuid() in Step 2 — extension remains installed.', SQLERRM, SQLSTATE;
 END $$;
