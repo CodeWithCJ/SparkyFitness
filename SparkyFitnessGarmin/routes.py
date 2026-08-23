@@ -1,8 +1,12 @@
 # routes.py
-import uuid
-import time
+from __future__ import annotations
+
+import asyncio
 import json
 import logging
+import os
+import time
+import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
@@ -45,6 +49,16 @@ logger = logging.getLogger(__name__)
 
 # Create the router
 router = APIRouter()
+
+MAX_CONCURRENT_GARMIN_REQUESTS = int(os.getenv("GARMIN_MAX_CONCURRENCY", "4"))
+garmin_concurrency_semaphore = asyncio.Semaphore(MAX_CONCURRENT_GARMIN_REQUESTS)
+
+
+async def safe_garmin_call(fn, *args, **kwargs):
+    """Execute a blocking Garmin Connect call in a worker thread bounded by the concurrency semaphore."""
+    async with garmin_concurrency_semaphore:
+        return await asyncio.to_thread(fn, *args, **kwargs)
+
 
 
 @router.post("/auth/garmin/login")
@@ -174,7 +188,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             )
 
         garmin = Garmin(is_cn=IS_CN)
-        garmin.login(tokens_string)
+        await asyncio.to_thread(garmin.login, tokens_string)
 
         # Initialize health_data as a dictionary where each key is a metric type and the value is a list of daily entries
         health_data = {metric: [] for metric in ALL_HEALTH_METRICS}
@@ -1564,7 +1578,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
 @router.post("/data/activities_and_workouts")
 async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest):
     """
-    Retrieves detailed activity and workout data from Garmin.
+    Retrieves detailed activity and workout data from Garmin with concurrent, bounded sub-requests.
     """
     user_id = request_data.user_id
     start_date = request_data.start_date
@@ -1596,12 +1610,14 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
             )
 
         garmin = Garmin(is_cn=IS_CN)
-        garmin.login(tokens_string)
+        await asyncio.to_thread(garmin.login, tokens_string)
 
         logger.info(
             f"Fetching activities for user {user_id} from {start_date} to {end_date} with activity type {activity_type}"
         )
-        activities = garmin.get_activities_by_date(start_date, end_date, activity_type)
+        activities = await safe_garmin_call(
+            garmin.get_activities_by_date, start_date, end_date, activity_type
+        )
         logger.debug(f"Raw activities retrieved: {activities}")
 
         # Ensure activityName is set from typeKey if it's missing
@@ -1616,39 +1632,51 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
         converted_activities = convert_activities_units(activities)
         logger.debug(f"Converted activities: {converted_activities}")
 
-        detailed_activities = []
-        for activity in converted_activities:
-            activity_id = activity["activityId"]
+        async def _fetch_single_detailed_activity(activity_item: dict) -> dict:
+            act_id = activity_item.get("activityId")
+            if not act_id:
+                return {"activity": activity_item}
 
-            # calculate active calories
-            cal = activity.get("calories") or 0.0
-            bmr = activity.get("bmrCalories") or 0.0
+            cal = activity_item.get("calories") or 0.0
+            bmr = activity_item.get("bmrCalories") or 0.0
             active_calories = max(0.0, cal - bmr)
 
-            try:
-                activity_details = garmin.get_activity_details(activity_id)
-                activity_splits = garmin.get_activity_splits(activity_id)
-                activity_weather = garmin.get_activity_weather(activity_id)
-                activity_hr_in_timezones = garmin.get_activity_hr_in_timezones(
-                    activity_id
-                )
-                activity_exercise_sets = garmin.get_activity_exercise_sets(activity_id)
-                activity_gear = garmin.get_activity_gear(activity_id)
+            async def _safe_sub_call(fn, *args):
+                try:
+                    return await safe_garmin_call(fn, *args)
+                except Exception as sub_err:
+                    logger.warning(
+                        f"Could not retrieve {fn.__name__} for activity ID {act_id}: {sub_err}"
+                    )
+                    return None
 
-                # Extract Cadence and Power from activity_details if available
+            try:
+                sub_results = await asyncio.gather(
+                    _safe_sub_call(garmin.get_activity_details, act_id),
+                    _safe_sub_call(garmin.get_activity_splits, act_id),
+                    _safe_sub_call(garmin.get_activity_weather, act_id),
+                    _safe_sub_call(garmin.get_activity_hr_in_timezones, act_id),
+                    _safe_sub_call(garmin.get_activity_exercise_sets, act_id),
+                    _safe_sub_call(garmin.get_activity_gear, act_id),
+                    return_exceptions=True,
+                )
+
+                activity_details = sub_results[0] if not isinstance(sub_results[0], Exception) else None
+                activity_splits = sub_results[1] if not isinstance(sub_results[1], Exception) else None
+                activity_weather = sub_results[2] if not isinstance(sub_results[2], Exception) else None
+                activity_hr_in_timezones = sub_results[3] if not isinstance(sub_results[3], Exception) else None
+                activity_exercise_sets = sub_results[4] if not isinstance(sub_results[4], Exception) else None
+                activity_gear = sub_results[5] if not isinstance(sub_results[5], Exception) else None
+
                 extracted_cadence = None
                 extracted_power = None
                 if activity_details and isinstance(activity_details, dict):
-                    # Common keys for cadence and power in activity details
-                    # These might be nested, so we'll look for them in common places
-                    # This is a heuristic based on typical Garmin data structures
                     if activity_details.get("metrics"):
                         for metric in activity_details["metrics"]:
                             if metric.get("metricName") == "cadence":
                                 extracted_cadence = metric.get("value")
                             if metric.get("metricName") == "power":
                                 extracted_power = metric.get("value")
-                    # Also check top-level or other common locations
                     extracted_cadence = (
                         extracted_cadence
                         or activity_details.get("avgCadence")
@@ -1660,67 +1688,74 @@ async def get_activities_and_workouts(request_data: ActivitiesAndWorkoutsRequest
                         or activity_details.get("averagePower")
                     )
 
-                detailed_activities.append(
-                    {
-                        "activity": {
-                            **activity,
-                            "cadence": extracted_cadence,
-                            "power": extracted_power,
-                            "active_calories": active_calories,
-                        },
-                        "details": json.dumps(clean_garmin_data(activity_details))
-                        if activity_details
-                        else None,
-                        "splits": json.dumps(clean_garmin_data(activity_splits))
-                        if activity_splits
-                        else None,
-                        "weather": json.dumps(clean_garmin_data(activity_weather))
-                        if activity_weather
-                        else None,
-                        "hr_in_timezones": json.dumps(
-                            clean_garmin_data(activity_hr_in_timezones)
-                        )
-                        if activity_hr_in_timezones
-                        else None,
-                        "exercise_sets": json.dumps(
-                            clean_garmin_data(activity_exercise_sets)
-                        )
-                        if activity_exercise_sets
-                        else None,
-                        "gear": json.dumps(clean_garmin_data(activity_gear))
-                        if activity_gear
-                        else None,
-                    }
-                )
-            except Exception as e:
+                return {
+                    "activity": {
+                        **activity_item,
+                        "cadence": extracted_cadence,
+                        "power": extracted_power,
+                        "active_calories": active_calories,
+                    },
+                    "details": json.dumps(clean_garmin_data(activity_details))
+                    if activity_details
+                    else None,
+                    "splits": json.dumps(clean_garmin_data(activity_splits))
+                    if activity_splits
+                    else None,
+                    "weather": json.dumps(clean_garmin_data(activity_weather))
+                    if activity_weather
+                    else None,
+                    "hr_in_timezones": json.dumps(
+                        clean_garmin_data(activity_hr_in_timezones)
+                    )
+                    if activity_hr_in_timezones
+                    else None,
+                    "exercise_sets": json.dumps(
+                        clean_garmin_data(activity_exercise_sets)
+                    )
+                    if activity_exercise_sets
+                    else None,
+                    "gear": json.dumps(clean_garmin_data(activity_gear))
+                    if activity_gear
+                    else None,
+                }
+            except Exception as act_err:
                 logger.warning(
-                    f"Could not retrieve details for activity ID {activity_id}: {e}"
+                    f"Unexpected error retrieving details for activity ID {act_id}: {act_err}"
                 )
-                # Append activity even if details fail, but without the failed details
-                detailed_activities.append({"activity": activity})
+                return {"activity": activity_item}
+
+        # Fetch detailed activities concurrently with bounded concurrency
+        detailed_activities = await asyncio.gather(
+            *[_fetch_single_detailed_activity(act) for act in converted_activities]
+        )
 
         logger.info(f"Fetching workouts for user {user_id}")
-        workouts = garmin.get_workouts()
+        workouts = await safe_garmin_call(garmin.get_workouts) or []
         logger.debug("Raw workouts retrieved: %s", workouts)
-        detailed_workouts = []
-        for workout in workouts:
-            workout_id = workout["workoutId"]
+
+        async def _fetch_single_workout(workout_item: dict) -> dict:
+            w_id = workout_item.get("workoutId")
+            if not w_id:
+                return workout_item
             try:
-                workout_details = garmin.get_workout_by_id(workout_id)
-                detailed_workouts.append(workout_details)
-            except Exception as e:
+                w_details = await safe_garmin_call(garmin.get_workout_by_id, w_id)
+                return w_details if w_details else workout_item
+            except Exception as w_err:
                 logger.warning(
-                    f"Could not retrieve details for workout ID {workout_id}: {e}"
+                    f"Could not retrieve details for workout ID {w_id}: {w_err}"
                 )
-                # Append workout even if details fail, but without the failed details
-                detailed_workouts.append(workout)
+                return workout_item
+
+        detailed_workouts = await asyncio.gather(
+            *[_fetch_single_workout(w) for w in workouts]
+        )
 
         # Clean and filter the data
-        cleaned_activities = clean_garmin_data(detailed_activities)
-        cleaned_workouts = clean_garmin_data(detailed_workouts)
+        cleaned_activities = clean_garmin_data(list(detailed_activities))
+        cleaned_workouts = clean_garmin_data(list(detailed_workouts))
 
         logger.info(
-            f"Successfully retrieved and cleaned activities and workouts for user {user_id} from {start_date} to {end_date}. Activities: {cleaned_activities}, Workouts: {cleaned_workouts}"
+            f"Successfully retrieved and cleaned activities and workouts for user {user_id} from {start_date} to {end_date}. Activities: {len(cleaned_activities) if cleaned_activities else 0}, Workouts: {len(cleaned_workouts) if cleaned_workouts else 0}"
         )
 
         # Save data to local file if capture is enabled
@@ -1793,14 +1828,16 @@ async def get_nutrition_diary(request_data: NutritionDiaryRequest):
             )
 
         garmin = Garmin(is_cn=IS_CN)
-        garmin.login(tokens_string)
+        await asyncio.to_thread(garmin.login, tokens_string)
 
         dates = get_dates_in_range(start_date, end_date)
         nutrition_data = []
 
         for date_str in dates:
             try:
-                food_log = garmin.get_nutrition_daily_food_log(date_str)
+                food_log = await safe_garmin_call(
+                    garmin.get_nutrition_daily_food_log, date_str
+                )
                 if food_log:
                     nutrition_data.append(food_log)
             except Exception as e:

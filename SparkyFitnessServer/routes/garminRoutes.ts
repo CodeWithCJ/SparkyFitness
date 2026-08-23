@@ -255,23 +255,28 @@ router.post(
           `[GARMIN_SYNC] Processing metric '${metric}': ${dailyEntries?.length || 0} entries`
         );
         if (Array.isArray(dailyEntries)) {
-          for (const entry of dailyEntries) {
+          for (const rawEntry of dailyEntries) {
+            const entry = rawEntry as Record<string, unknown>;
             const calendarDateRaw = entry.date;
             if (!calendarDateRaw) continue;
-            const calendarDate = moment(calendarDateRaw).format('YYYY-MM-DD');
+            const calendarDate = moment(calendarDateRaw as string).format(
+              'YYYY-MM-DD'
+            );
             log(
               'debug',
               `[GARMIN_SYNC] Entry for ${metric} on ${calendarDate}: ${JSON.stringify(entry)}`
             );
             for (const key in entry) {
               if (key === 'date') continue;
-              // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-              let mapping = garminMeasurementMapping[key];
+              let mapping = (garminMeasurementMapping as Record<string, any>)[
+                key
+              ];
               // If no mapping is found for the key, check if there's a mapping for the metric itself.
               // This handles cases like 'blood_pressure' where the entry is just { date, value }.
               if (!mapping && key === 'value') {
-                // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-                mapping = garminMeasurementMapping[metric];
+                mapping = (garminMeasurementMapping as Record<string, any>)[
+                  metric
+                ];
               }
               if (mapping) {
                 const value = entry[key];

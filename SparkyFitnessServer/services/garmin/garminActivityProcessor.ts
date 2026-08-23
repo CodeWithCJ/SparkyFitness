@@ -348,16 +348,25 @@ export async function processGarminWorkoutSession(
     created_by_user_id: userId,
   });
 
-  if (exercise_sets && Array.isArray(exercise_sets.exerciseSets)) {
-    const groupedExercises: SessionExerciseGroup[] = [];
+  const rawSummarizedSets = Array.isArray(activity.summarizedExerciseSets)
+    ? (activity.summarizedExerciseSets as Array<Record<string, unknown>>)
+    : [];
+
+  const groupedExercises: SessionExerciseGroup[] = [];
+  let totalActiveDurationSeconds = 0;
+  const activeSetsWithStartAndEndTimes: Array<{
+    set: SessionSetRow;
+    startTime: number;
+    endTime: number;
+    garminSetIndex: number;
+  }> = [];
+
+  if (
+    exercise_sets &&
+    Array.isArray(exercise_sets.exerciseSets) &&
+    exercise_sets.exerciseSets.length > 0
+  ) {
     let currentGroup: SessionExerciseGroup | null = null;
-    let totalActiveDurationSeconds = 0;
-    const activeSetsWithStartAndEndTimes: Array<{
-      set: SessionSetRow;
-      startTime: number;
-      endTime: number;
-      garminSetIndex: number;
-    }> = [];
 
     for (let i = 0; i < exercise_sets.exerciseSets.length; i++) {
       const garminSet = exercise_sets.exerciseSets[i];
@@ -375,6 +384,31 @@ export async function processGarminWorkoutSession(
         garminCategory = garminSet.category;
       }
 
+      // Fallback 1: check summarizedExerciseSets if available
+      if (!garminExerciseName && rawSummarizedSets.length > 0) {
+        const stepIdx = garminSet.stepIndex ?? garminSet.wktStepId;
+        const matchingSumSet =
+          (stepIdx !== undefined &&
+            stepIdx !== null &&
+            rawSummarizedSets[stepIdx]) ||
+          (rawSummarizedSets.length === 1 ? rawSummarizedSets[0] : null);
+        if (matchingSumSet) {
+          garminExerciseName =
+            (typeof matchingSumSet.subCategory === 'string' &&
+              matchingSumSet.subCategory) ||
+            (typeof matchingSumSet.category === 'string' &&
+              matchingSumSet.category) ||
+            (typeof matchingSumSet.exerciseName === 'string' &&
+              matchingSumSet.exerciseName) ||
+            (typeof matchingSumSet.name === 'string' && matchingSumSet.name) ||
+            null;
+          if (typeof matchingSumSet.category === 'string') {
+            garminCategory = matchingSumSet.category;
+          }
+        }
+      }
+
+      // Fallback 2: currentGroup name for rest/transition sets
       if (
         !garminExerciseName &&
         currentGroup &&
@@ -516,7 +550,64 @@ export async function processGarminWorkoutSession(
         }
       }
     }
+  } else if (rawSummarizedSets.length > 0) {
+    // Fallback path: synthesize grouped exercises from summarizedExerciseSets
+    for (let i = 0; i < rawSummarizedSets.length; i++) {
+      const sumSet = rawSummarizedSets[i];
+      const sumName =
+        (typeof sumSet.subCategory === 'string' && sumSet.subCategory) ||
+        (typeof sumSet.category === 'string' && sumSet.category) ||
+        (typeof sumSet.name === 'string' && sumSet.name) ||
+        (typeof sumSet.exerciseName === 'string' && sumSet.exerciseName) ||
+        workoutName ||
+        'Strength Exercise';
+      const sumCategory =
+        (typeof sumSet.category === 'string' && sumSet.category) || 'strength';
+      const setsCount = Math.max(1, Number(sumSet.sets) || 1);
+      const totalReps =
+        Number(sumSet.reps) || Number(sumSet.repetitionCount) || 0;
+      const repsPerSet =
+        Math.max(1, Math.round(totalReps / setsCount)) ||
+        (totalReps > 0 ? totalReps : 10);
+      const totalDuration = Number(sumSet.duration) || 0;
+      const durationPerSet = Math.round(totalDuration / setsCount);
+      const volumeGrams = Number(sumSet.volume) || 0;
+      const rawWeight = Number(sumSet.weight) || 0;
+      let weightKg = 0;
+      if (volumeGrams > 0 && totalReps > 0) {
+        weightKg = parseFloat(((volumeGrams / totalReps) * 0.001).toFixed(2));
+      } else if (rawWeight > 0) {
+        weightKg = parseFloat((rawWeight * 0.001).toFixed(2));
+      }
 
+      const sets: SessionSetRow[] = [];
+      for (let s = 1; s <= setsCount; s++) {
+        sets.push({
+          set_number: s,
+          set_type: 'Working Set',
+          reps: repsPerSet,
+          weight: weightKg,
+          duration: durationPerSet,
+          rest_time: 0,
+          notes: '',
+        });
+      }
+
+      groupedExercises.push({
+        name: sumName,
+        stepIndex: i,
+        exerciseDetails: { category: sumCategory },
+        sets,
+        totalDuration: totalDuration || setsCount * 60,
+        activeDuration: totalDuration || setsCount * 60,
+        startTime: null,
+        endTime: null,
+      });
+      totalActiveDurationSeconds += totalDuration || setsCount * 60;
+    }
+  }
+
+  if (groupedExercises.length > 0) {
     let exerciseSortOrder = 0;
     // Collected across the whole loop so laps/GPS/HR-zones can be attached once, after
     // every exercise entry in the session exists, instead of only ever landing on the
