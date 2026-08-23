@@ -61,7 +61,9 @@
     },
     "unknownDate": "Unknown date",
     "selectOption": "Select an option",
-    "requestTimedOut": "Request timed out. Check your server connection."
+    "requestTimedOut": "Request timed out. Check your server connection.",
+    "nextStep": "Next step",
+    "notNow": "Not now"
   },
   "settings": {
     "app": "App Settings",
@@ -551,7 +553,8 @@
       "saveFailed": "Failed to save: {{message}}",
       "generic": "Authentication failed. Please try again.",
       "connectionRetry": "Could not connect to server. Please try again.",
-      "httpsRequiredEdit": "HTTPS is required for server connections. Please edit this configuration to use HTTPS."
+      "httpsRequiredEdit": "HTTPS is required for server connections. Please edit this configuration to use HTTPS.",
+      "httpsRequiredServer": "Server connections require HTTPS."
     },
     "authenticatorApp": "Authenticator App",
     "emailCode": "Email Code",
@@ -1060,7 +1063,8 @@
       "other": "Other",
       "beforeMeal": "Before meal",
       "withMeal": "With meal",
-      "afterMeal": "After meal"
+      "afterMeal": "After meal",
+      "awayFromMeals": "Away from meals"
     },
     "weekdays": {
       "title": "Days of Week",
@@ -1919,7 +1923,9 @@
       "loadError": "Couldn't load custom measurements.",
       "deleteEntry": "Delete {{label}} entry",
       "moreCategories": "More categories ▾",
-      "hideCategories": "Hide categories ▴"
+      "hideCategories": "Hide categories ▴",
+      "hideCategoriesToggle": "Hide categories ▴",
+      "moreCategoriesToggle": "More categories ▾"
     },
     "confirm": {
       "measurement": "measurement",
@@ -2224,7 +2230,8 @@
     "glycemicIndexLow": "Low",
     "glycemicIndexMedium": "Medium",
     "glycemicIndexHigh": "High",
-    "glycemicIndexVeryHigh": "Very High"
+    "glycemicIndexVeryHigh": "Very High",
+    "saturatedFatCompact": "Sat. fat"
   },
   "foodNutrition": {
     "hideExtra": "Hide extra nutrients ▴",
