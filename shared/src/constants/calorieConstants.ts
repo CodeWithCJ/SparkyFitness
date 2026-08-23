@@ -42,6 +42,16 @@ export const CALORIE_CALCULATION_CONSTANTS = {
  */
 export const ENERGY_DENSITY_KCAL_PER_KG = 6000;
 
+/**
+ * Qualifying calorie-log days before a measured adaptive TDEE may drive a goal.
+ *
+ * `AdaptiveTdeeService` releases a raw estimate at 7 days, which is enough to
+ * report but not enough to budget against: the estimate is still moving, and a
+ * goal that tracks it lurches. Goals therefore wait for a stabler window, which
+ * is the threshold the settings UI calls "target budget stability".
+ */
+export const ADAPTIVE_TDEE_GOAL_MIN_DAYS = 14;
+
 export const CALORIE_SAFETY_FLOOR_MODES = [
   "standard",
   "custom",

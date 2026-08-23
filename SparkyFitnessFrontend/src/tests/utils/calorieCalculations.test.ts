@@ -9,6 +9,8 @@ import {
   computeCalorieProgress,
   normalizeCalorieGoalAdjustmentMode,
   shouldShowCalorieSafetyWarning,
+  isAdaptiveTdeeMature,
+  ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   convertEnergyValue,
 } from '@workspace/shared';
 import {
@@ -690,6 +692,66 @@ describe('deficit ceiling is available before the clamp (issue #2205)', () => {
     });
 
     expect(result.maxFeasibleDeficitPercent).toBeNull();
+  });
+});
+
+describe('isAdaptiveTdeeMature', () => {
+  // AdaptiveTdeeService releases a raw estimate at 7 days; goals wait for the
+  // stabler window. The gap between those two numbers is where the saved goal and
+  // the settings preview used to disagree.
+  it.each([0, 6, 7, 13])('rejects a measured estimate at %i days', (days) => {
+    expect(isAdaptiveTdeeMature(1800, false, days)).toBe(false);
+  });
+
+  it.each([14, 30])('accepts a measured estimate at %i days', (days) => {
+    expect(isAdaptiveTdeeMature(1800, false, days)).toBe(true);
+  });
+
+  it('rejects a fallback estimate no matter how much history backs it', () => {
+    expect(isAdaptiveTdeeMature(1800, true, 365)).toBe(false);
+  });
+
+  it('rejects a missing or unusable estimate', () => {
+    expect(isAdaptiveTdeeMature(null, false, 30)).toBe(false);
+    expect(isAdaptiveTdeeMature(undefined, false, 30)).toBe(false);
+    expect(isAdaptiveTdeeMature(0, false, 30)).toBe(false);
+    expect(isAdaptiveTdeeMature(NaN, false, 30)).toBe(false);
+  });
+
+  it('treats a missing day count as no history', () => {
+    expect(isAdaptiveTdeeMature(1800, false, null)).toBe(false);
+    expect(isAdaptiveTdeeMature(1800, false, undefined)).toBe(false);
+  });
+
+  it('is the threshold computeCalorieTarget actually applies', () => {
+    const base = {
+      goalMode: 'maintain',
+      calculationMethod: 'adaptive' as const,
+      customPercentage: 0,
+      bmr: 1600,
+      activityLevelMultiplier: 1.2,
+      adaptiveTdee: 1420,
+      adaptiveTdeeFallback: false,
+      weightKg: 80,
+      heightCm: 178,
+      age: 36,
+      gender: 'male' as const,
+      currentGoalCalories: 1900,
+    };
+
+    const immature = computeCalorieTarget({
+      ...base,
+      adaptiveTdeeDaysOfData: ADAPTIVE_TDEE_GOAL_MIN_DAYS - 1,
+    });
+    const mature = computeCalorieTarget({
+      ...base,
+      adaptiveTdeeDaysOfData: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
+    });
+
+    expect(immature.insufficientHistory).toBe(true);
+    expect(immature.baselineTdee).toBe(1920);
+    expect(mature.insufficientHistory).toBe(false);
+    expect(mature.baselineTdee).toBe(1420);
   });
 });
 
