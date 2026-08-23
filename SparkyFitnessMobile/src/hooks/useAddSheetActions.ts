@@ -19,8 +19,8 @@ import type { RootStackParamList } from '../types/navigation';
 
 function getServerConnectionMessage(t: (key: string, options: { defaultValue: string }) => string, key: string, fallback: string): string {
   switch (key) {
-    case 'addSheetActions.configureForExercise': return t(key, { defaultValue: 'Configure your server connection in Settings to add an exercise.' });
-    case 'addSheetActions.configureForWorkout': return t(key, { defaultValue: 'Configure your server connection in Settings to start a workout.' });
+    case 'addSheetActions.configureForExercise': return t('addSheetActions.configureForExercise', { defaultValue: 'Configure your server connection in Settings to add an exercise.' });
+    case 'addSheetActions.configureForWorkout': return t('addSheetActions.configureForWorkout', { defaultValue: 'Configure your server connection in Settings to start a workout.' });
     default: return fallback;
   }
 }

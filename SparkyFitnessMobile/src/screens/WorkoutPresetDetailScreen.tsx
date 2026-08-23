@@ -386,7 +386,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           textClassName="text-text-secondary font-medium"
           accessibilityLabel={t('workoutPresetDetail.accessibility.duplicate', { defaultValue: 'Duplicate workout preset' })}
         >
-          {isDuplicatePending ? t('workoutPresetDetail.actions.duplicating', { defaultValue: 'Duplicating...' }) : t('workoutPresetDetail.actions.duplicate', { defaultValue: 'Duplicate preset' })}
+          {isDuplicatePending ? t('workoutPresetDetail.actions.duplicating', { defaultValue: 'Duplicating…' }) : t('workoutPresetDetail.actions.duplicate', { defaultValue: 'Duplicate preset' })}
         </Button>
 
         {canManagePreset && (
