@@ -143,17 +143,7 @@ The application uses a two-user model: a **database owner** (for migrations) and
 ALTER USER <owner> CREATEROLE;
 ```
 
-The following extensions must be created by a superuser:
-
-```sql
-\c <database>
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO "<owner>" WITH GRANT OPTION;
-```
-
-> `pg_stat_statements` requires `shared_preload_libraries = 'pg_stat_statements'` in the PostgreSQL config.
+Alternatively, you can pre-create the app user beforehand so `CREATEROLE` is not required. See [External Database Setup](../docs/content/1.install/8.external-database.md) for details. No superuser PostgreSQL extensions are required.
 
 ## Secrets
 

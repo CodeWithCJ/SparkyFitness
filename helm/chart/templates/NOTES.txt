@@ -122,19 +122,9 @@ Frontend URL: {{ include "sparkyfitness.frontendUrl" . }}
 
     ALTER USER <owner> NOCREATEROLE;
 
-  Required PostgreSQL extensions and grants (run as superuser):
-
-    \c {{ .Values.externalDatabase.database }}
-
-    -- Standard extensions
-    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
-    -- Performance monitoring (requires shared_preload_libraries = 'pg_stat_statements')
-    CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
-
-    -- Grant extension functions to the DB owner so the app can delegate them
-    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO "<owner>" WITH GRANT OPTION;
+  Alternatively, pre-create the app user beforehand to run with reduced privileges
+  (see documentation on External Database Setup). No superuser PostgreSQL extensions
+  are required.
 {{- end }}
 
 ================================================================================
