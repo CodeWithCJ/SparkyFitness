@@ -22,6 +22,7 @@ import {
 import { ExactAlarmBridge } from '../../src/services/ExactAlarmBridge';
 import { __resetSoundsForTests } from '../../src/services/sounds';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
+import i18n from '../../src/localization/i18n';
 
 jest.mock('../../src/services/ExactAlarmBridge', () => ({
   ExactAlarmBridge: {
@@ -96,13 +97,13 @@ describe('notifications service', () => {
       Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
       await initNotifications();
       expect(mockSetChannel).toHaveBeenCalledWith('workout-timer', expect.objectContaining({ name: 'Workout timer' }));
-      await (await import('../../src/localization/i18n')).default.changeLanguage('pl');
+      await i18n.changeLanguage('pl');
       await registerLocalizedNotificationPresentation();
       expect(mockSetChannel).toHaveBeenLastCalledWith('medication-reminders', expect.objectContaining({ name: 'Przypomnienia o lekach' }));
       expect(mockSetCategory).toHaveBeenLastCalledWith('medication-reminder', expect.arrayContaining([
         expect.objectContaining({ identifier: 'medication-taken', buttonTitle: 'Oznacz jako przyjęty' }),
       ]));
-      await (await import('../../src/localization/i18n')).default.changeLanguage('en');
+      await i18n.changeLanguage('en');
       await registerLocalizedNotificationPresentation();
       expect(mockSetChannel).toHaveBeenLastCalledWith('medication-reminders', expect.objectContaining({ name: 'Medication reminders' }));
     });
