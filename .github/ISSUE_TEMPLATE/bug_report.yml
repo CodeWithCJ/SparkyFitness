@@ -79,7 +79,7 @@ body:
         - Server / API
         - Database / migrations
         - AI / SparkyAI
-        - Integrations (Garmin, Apple Health, Health Connect, Fitbit, etc.)
+        - Integrations (Garmin, Google Health, Polar, Oura, etc.)
         - Docker / deployment
         - Other
     validations:
