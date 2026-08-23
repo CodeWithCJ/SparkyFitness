@@ -133,6 +133,16 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 
 ---
 
+### Issue & PR Management Workflows
+
+#### `issue-auto-label.yml`
+
+**Purpose**: Automatically label newly opened or edited issues based on the issue template choices (e.g. `has-pr-volunteer`, `mobile`, `frontend`, `backend`).
+
+**Triggers**: Issues (opened, edited)
+
+---
+
 ## Development Notes
 
 ### Testing Workflows Locally

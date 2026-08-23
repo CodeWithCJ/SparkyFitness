@@ -45,14 +45,17 @@ body:
         - Mobile app (iOS)
         - Mobile app (Android)
         - Server / API
+        - Database / migrations
         - AI / SparkyAI
-        - Integrations (Garmin, Fitbit, etc.)
+        - Integrations (Garmin, Google Health, Polar, Oura, etc.)
         - Nutrition tracking
         - Exercise tracking
         - Body metrics
         - Family / multi-user
         - Docker / deployment
         - Other
+    validations:
+      required: true
 
   - type: dropdown
     id: priority

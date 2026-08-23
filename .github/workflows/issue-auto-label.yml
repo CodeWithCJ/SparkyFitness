@@ -1,0 +1,135 @@
+name: Issue Auto Labeler
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: issue-auto-label-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    name: Auto-label Issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply labels based on issue content
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const title = issue.title || '';
+            const currentLabels = new Set((issue.labels || []).map(l => l.name));
+
+            // Helper to parse a markdown section from GitHub issue templates
+            function getSection(text, headingPattern) {
+              const regex = new RegExp(`###\\s+${headingPattern}[^\\n]*\\n([\\s\\S]*?)(?=\\n###|$)`, 'i');
+              const match = text.match(regex);
+              return match ? match[1].trim() : '';
+            }
+
+            const prSection = getSection(body, 'Are you willing to submit a PR');
+            const areaSection = getSection(body, 'Which area does this relate to') + '\n' + getSection(body, 'Which area is affected');
+
+            const desiredManagedLabels = new Set();
+            const MANAGED_DOMAIN_LABELS = ['mobile', 'frontend', 'backend', 'integrations', 'ai', 'docker'];
+
+            // 1. PR Willingness
+            if (prSection.includes("Yes, I'd like to submit a PR!")) {
+              desiredManagedLabels.add('has-pr-volunteer');
+            }
+
+            // 2. Mobile (including on-device Apple Health & Health Connect)
+            if (
+              areaSection.includes('Mobile app (iOS)') ||
+              areaSection.includes('Mobile app (Android)') ||
+              /\b(mobile|ios|android)\b/i.test(areaSection) ||
+              /\b(mobile|ios|android|apk|testflight|expo|apple health|healthkit|health connect)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('mobile');
+            }
+
+            // 3. Frontend
+            if (
+              areaSection.includes('Web frontend') ||
+              /\b(web frontend|frontend)\b/i.test(areaSection) ||
+              /\b(frontend|web app|vite|pwa)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('frontend');
+            }
+
+            // 4. Backend / Server / DB
+            if (
+              areaSection.includes('Server / API') ||
+              areaSection.includes('Database / migrations') ||
+              /\b(server|api|database|migration|backend)\b/i.test(areaSection) ||
+              /\b(backend|server|api|database|migration|rls|postgres)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('backend');
+            }
+
+            // 5. Cloud Integrations (Garmin, Google Health, Polar, Oura, etc.)
+            if (
+              areaSection.includes('Integrations') ||
+              /\bintegrations?\b/i.test(areaSection) ||
+              /\b(garmin|google health|oura|polar|whoop|suunto|strava|cronometer|resmed|amazfit)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('integrations');
+            }
+
+            // 6. AI / SparkyAI
+            if (
+              areaSection.includes('AI / SparkyAI') ||
+              /\bai\b/i.test(areaSection) ||
+              /\b(sparkyai|photo estimate|gpt|llm|vision|voice)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('ai');
+            }
+
+            // 7. Docker / Deployment
+            if (
+              areaSection.includes('Docker / deployment') ||
+              /\b(docker|deployment)\b/i.test(areaSection) ||
+              /\b(docker|docker-compose|compose|helm|k8s|kubernetes|caddy|nginx|traefik|unraid|truenas|synology)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('docker');
+            }
+
+            const allManagedLabels = ['has-pr-volunteer', ...MANAGED_DOMAIN_LABELS];
+            const isTemplatedIssue = prSection.length > 0 || areaSection.trim().length > 0;
+
+            const labelsToAdd = allManagedLabels.filter(label => desiredManagedLabels.has(label) && !currentLabels.has(label));
+            const labelsToRemove = isTemplatedIssue
+              ? allManagedLabels.filter(label => !desiredManagedLabels.has(label) && currentLabels.has(label))
+              : [];
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            if (labelsToAdd.length > 0) {
+              console.log(`Adding labels to issue #${issue.number}: ${labelsToAdd.join(', ')}`);
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: issue.number,
+                labels: labelsToAdd,
+              });
+            }
+
+            for (const label of labelsToRemove) {
+              console.log(`Removing label from issue #${issue.number}: ${label}`);
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  name: label,
+                });
+              } catch (err) {
+                if (err.status !== 404) throw err;
+              }
+            }
