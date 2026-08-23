@@ -23,10 +23,7 @@ jobs:
             const issue = context.payload.issue;
             const body = issue.body || '';
             const title = issue.title || '';
-            const currentLabels = (issue.labels || []).map(l => l.name);
-
-            const labelsToAdd = [];
-            const labelsToRemove = [];
+            const currentLabels = new Set((issue.labels || []).map(l => l.name));
 
             // Helper to parse a markdown section from GitHub issue templates
             function getSection(text, headingPattern) {
@@ -38,73 +35,77 @@ jobs:
             const prSection = getSection(body, 'Are you willing to submit a PR');
             const areaSection = getSection(body, 'Which area does this relate to') + '\n' + getSection(body, 'Which area is affected');
 
+            const desiredManagedLabels = new Set();
+            const MANAGED_DOMAIN_LABELS = ['mobile', 'frontend', 'backend', 'integrations', 'ai', 'docker'];
+
             // 1. PR Willingness
-            const wantsToSubmitPR = prSection.includes("Yes, I'd like to submit a PR!");
-            if (wantsToSubmitPR) {
-              if (!currentLabels.includes('has-pr-volunteer')) {
-                labelsToAdd.push('has-pr-volunteer');
-              }
-            } else {
-              if (currentLabels.includes('has-pr-volunteer') && prSection.length > 0) {
-                labelsToRemove.push('has-pr-volunteer');
-              }
+            if (prSection.includes("Yes, I'd like to submit a PR!")) {
+              desiredManagedLabels.add('has-pr-volunteer');
             }
 
             // 2. Mobile (including on-device Apple Health & Health Connect)
-            const isMobile = areaSection.includes('Mobile app (iOS)') ||
-                             areaSection.includes('Mobile app (Android)') ||
-                             /\b(mobile|ios|android)\b/i.test(areaSection) ||
-                             /\b(mobile|ios|android|apk|testflight|expo|apple health|healthkit|health connect)\b/i.test(title);
-
-            if (isMobile && !currentLabels.includes('mobile')) {
-              labelsToAdd.push('mobile');
+            if (
+              areaSection.includes('Mobile app (iOS)') ||
+              areaSection.includes('Mobile app (Android)') ||
+              /\b(mobile|ios|android)\b/i.test(areaSection) ||
+              /\b(mobile|ios|android|apk|testflight|expo|apple health|healthkit|health connect)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('mobile');
             }
 
             // 3. Frontend
-            const isFrontend = areaSection.includes('Web frontend') ||
-                               /\b(web frontend|frontend)\b/i.test(areaSection) ||
-                               /\b(frontend|web app|vite|pwa)\b/i.test(title);
-
-            if (isFrontend && !currentLabels.includes('frontend')) {
-              labelsToAdd.push('frontend');
+            if (
+              areaSection.includes('Web frontend') ||
+              /\b(web frontend|frontend)\b/i.test(areaSection) ||
+              /\b(frontend|web app|vite|pwa)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('frontend');
             }
 
             // 4. Backend / Server / DB
-            const isBackend = areaSection.includes('Server / API') ||
-                              areaSection.includes('Database / migrations') ||
-                              /\b(server|api|database|migration|backend)\b/i.test(areaSection) ||
-                              /\b(backend|server|api|database|migration|rls|postgres)\b/i.test(title);
-
-            if (isBackend && !currentLabels.includes('backend')) {
-              labelsToAdd.push('backend');
+            if (
+              areaSection.includes('Server / API') ||
+              areaSection.includes('Database / migrations') ||
+              /\b(server|api|database|migration|backend)\b/i.test(areaSection) ||
+              /\b(backend|server|api|database|migration|rls|postgres)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('backend');
             }
 
             // 5. Cloud Integrations (Garmin, Google Health, Polar, Oura, etc.)
-            const isIntegrations = areaSection.includes('Integrations') ||
-                                   /\bintegrations?\b/i.test(areaSection) ||
-                                   /\b(garmin|google health|oura|polar|whoop|suunto|strava|cronometer|resmed|amazfit)\b/i.test(title);
-
-            if (isIntegrations && !currentLabels.includes('integrations')) {
-              labelsToAdd.push('integrations');
+            if (
+              areaSection.includes('Integrations') ||
+              /\bintegrations?\b/i.test(areaSection) ||
+              /\b(garmin|google health|oura|polar|whoop|suunto|strava|cronometer|resmed|amazfit)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('integrations');
             }
 
             // 6. AI / SparkyAI
-            const isAI = areaSection.includes('AI / SparkyAI') ||
-                         /\bai\b/i.test(areaSection) ||
-                         /\b(sparkyai|photo estimate|gpt|llm|vision|voice)\b/i.test(title);
-
-            if (isAI && !currentLabels.includes('ai')) {
-              labelsToAdd.push('ai');
+            if (
+              areaSection.includes('AI / SparkyAI') ||
+              /\bai\b/i.test(areaSection) ||
+              /\b(sparkyai|photo estimate|gpt|llm|vision|voice)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('ai');
             }
 
             // 7. Docker / Deployment
-            const isDocker = areaSection.includes('Docker / deployment') ||
-                             /\b(docker|deployment)\b/i.test(areaSection) ||
-                             /\b(docker|docker-compose|compose|helm|k8s|kubernetes|caddy|nginx|traefik|unraid|truenas|synology)\b/i.test(title);
-
-            if (isDocker && !currentLabels.includes('docker')) {
-              labelsToAdd.push('docker');
+            if (
+              areaSection.includes('Docker / deployment') ||
+              /\b(docker|deployment)\b/i.test(areaSection) ||
+              /\b(docker|docker-compose|compose|helm|k8s|kubernetes|caddy|nginx|traefik|unraid|truenas|synology)\b/i.test(title)
+            ) {
+              desiredManagedLabels.add('docker');
             }
+
+            const allManagedLabels = ['has-pr-volunteer', ...MANAGED_DOMAIN_LABELS];
+            const isTemplatedIssue = prSection.length > 0 || areaSection.trim().length > 0;
+
+            const labelsToAdd = allManagedLabels.filter(label => desiredManagedLabels.has(label) && !currentLabels.has(label));
+            const labelsToRemove = isTemplatedIssue
+              ? allManagedLabels.filter(label => !desiredManagedLabels.has(label) && currentLabels.has(label))
+              : [];
 
             const owner = context.repo.owner;
             const repo = context.repo.repo;
