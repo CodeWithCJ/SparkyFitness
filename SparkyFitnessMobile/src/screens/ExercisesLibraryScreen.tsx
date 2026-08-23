@@ -30,6 +30,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
+import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
 
 type ExercisesLibraryScreenProps = RootStackScreenProps<'ExercisesLibrary'>;
 
@@ -167,7 +168,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
             </View>
             {item.category ? (
               <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-                {item.category}
+                {localizeExerciseTaxonomyValue(t, 'category', item.category)}
               </Text>
             ) : null}
           </View>

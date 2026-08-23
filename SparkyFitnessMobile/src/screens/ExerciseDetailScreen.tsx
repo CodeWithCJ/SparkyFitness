@@ -48,6 +48,7 @@ import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
+import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
 
 type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
 
@@ -208,10 +209,10 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
   const primaryMusclesText = formatList(exercise.primary_muscles ?? []);
   const secondaryMusclesText = formatList(exercise.secondary_muscles ?? []);
   const description = exercise.description?.trim() ?? '';
-  const categoryText = exercise.category ? capitalize(exercise.category) : '';
-  const levelText = exercise.level ? capitalize(exercise.level) : '';
-  const forceText = exercise.force ? capitalize(exercise.force) : '';
-  const mechanicText = exercise.mechanic ? capitalize(exercise.mechanic) : '';
+  const categoryText = localizeExerciseTaxonomyValue(t, 'category', exercise.category);
+  const levelText = localizeExerciseTaxonomyValue(t, 'level', exercise.level);
+  const forceText = localizeExerciseTaxonomyValue(t, 'force', exercise.force);
+  const mechanicText = localizeExerciseTaxonomyValue(t, 'mechanic', exercise.mechanic);
   const sourceText = exercise.source ?? '';
   const hasDetails = Boolean(
     categoryText || levelText || forceText || mechanicText || sourceText,

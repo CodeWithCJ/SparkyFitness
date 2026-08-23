@@ -44,6 +44,7 @@ import { getApiErrorMessage } from '../services/api/errors';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
 import type { RootStackScreenProps } from '../types/navigation';
+import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
 
 type ExerciseSearchScreenProps = RootStackScreenProps<'ExerciseSearch'>;
 
@@ -241,7 +242,7 @@ useEffect(() => {
             </View>
             {item.category && (
               <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
-                {item.category}
+                {localizeExerciseTaxonomyValue(t, 'category', item.category)}
               </Text>
             )}
           </View>
