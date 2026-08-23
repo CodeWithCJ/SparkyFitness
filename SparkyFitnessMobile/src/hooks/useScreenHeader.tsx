@@ -721,14 +721,36 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
 
   const bar = (
     <View
-      className={`flex-row items-center px-4 py-3 ${borderless ? '' : 'border-b border-border-subtle'}`}
+      className={`px-4 py-3 ${borderless ? '' : 'border-b border-border-subtle'}`}
+      style={{ position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
     >
-      {/* Equal-width side cells keep the title cell geometrically centered in
-          the bar even when the left/right actions have different widths; the
-          title stays content-sized (shrinking to truncate) so it can use more
-          than a third of the width when the sides are light. */}
-      <View className="flex-1 flex-row items-center gap-4">{leftCustom}</View>
-      <View className="shrink px-2">
+      {/* The title is a separate, absolutely-positioned layer centered on the
+          bar's full width, independent of the side cells' own flex layout —
+          the same technique native iOS/Android headers use. Centering the
+          title by giving the side cells equal flex-grow instead (so an empty
+          side matched the populated one) is what let a long title squeeze
+          both side cells to zero width in the first place: under CSS/Yoga's
+          shrink algorithm, a `flexBasis: 0%` sibling always computes a scaled
+          shrink factor of 0, so once the title overflowed the row it claimed
+          100% of the space and the side cells rendered at 0 width (confirmed
+          via on-device onLayout measurement). Decoupling the title from that
+          layout means it can never compete with the side cells for space, so
+          it can never squeeze them — and it still lands on the bar's true
+          center regardless of how the left/right content widths differ.
+          pointerEvents="box-none" keeps the title layer itself untouchable so
+          it can never sit "on top of" a button for hit-testing purposes. */}
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          left: 16,
+          right: 16,
+          top: 0,
+          bottom: 0,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         {center ?? (
           <Text
             numberOfLines={1}
@@ -738,7 +760,16 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
           </Text>
         )}
       </View>
-      <View className="flex-1 flex-row items-center justify-end gap-4">{rightCustom}</View>
+      {/* flexShrink: 0 (content-sized) rather than flex-1: these cells can
+          never be squeezed by the title, at the cost of no longer truncating
+          if their own content ever got wide enough to overflow — a non-issue
+          for the icon/short-text buttons this bar renders. */}
+      <View className="flex-row items-center gap-4" style={{ flexShrink: 0 }}>
+        {leftCustom}
+      </View>
+      <View className="flex-row items-center justify-end gap-4" style={{ flexShrink: 0 }}>
+        {rightCustom}
+      </View>
     </View>
   );
 
