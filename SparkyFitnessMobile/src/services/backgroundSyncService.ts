@@ -238,9 +238,12 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
   if (allData.length > 0) {
     addLog(`[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`, 'INFO');
     addLog(`[Background Sync] Sending ${allData.length} records to server`, 'INFO');
-    await syncHealthData(allData);
-    // Records accepted — safe to remember the collected telemetry now.
-    await markEnrichedSessions(telemetry.drainCollected());
+    const uploadSummary = await syncHealthData(allData);
+    // Only a fully accepted upload commits the telemetry reuse cache; see the
+    // invariant on markEnrichedSessions.
+    if ((uploadSummary?.recordErrors?.length ?? 0) === 0) {
+      await markEnrichedSessions(telemetry.drainCollected());
+    }
     await refreshHealthSyncCacheWhenActive();
 
     if (syncErrors > 0) {

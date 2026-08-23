@@ -79,6 +79,17 @@ export const hasEnrichedSession = async (key: string | null): Promise<boolean> =
 /**
  * Records sessions as collected, oldest-evicted-first. Batched per sync run so
  * a run costs one write rather than one per session.
+ *
+ * INVARIANT — an entry here means "the server durably holds this session's
+ * telemetry", not "we read it". Anything weaker loses data, because a cached
+ * session is never re-collected: the next sync re-sends it as a summary-only
+ * record. So commit only after an upload the server accepted in full. A run
+ * that threw, or that came back with per-record rejections, must leave its
+ * staging undrained — per-record rejections do not hold the sync cursor, and a
+ * foreground window is the user's configured range rather than the cursor, so
+ * the rejected workout WILL be re-sent, and it must carry its telemetry when
+ * it is. Rejections are real: see PR #2136, where the server rejected
+ * fractional telemetry values outright.
  */
 export const markEnrichedSessions = async (keys: (string | null)[]): Promise<void> => {
   const fresh = keys.filter((k): k is string => Boolean(k));

@@ -377,7 +377,11 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
         let uploadSummary: HealthDataSyncSummary | undefined;
         try {
           uploadSummary = await syncHealthData(payload);
-          await markEnrichedSessions(telemetry.drainCollected());
+          // Only a fully accepted window commits the telemetry reuse cache;
+          // see the invariant on markEnrichedSessions.
+          if ((uploadSummary?.recordErrors?.length ?? 0) === 0) {
+            await markEnrichedSessions(telemetry.drainCollected());
+          }
         } catch (error) {
           return { outcome: 'upload-failed', error: getErrorMessage(error), recordsUploaded };
         }

@@ -344,10 +344,17 @@ export const runForegroundSync = async (
   if (allTransformedData.length > 0) {
     try {
       const apiResponse = await api.syncHealthData(allTransformedData);
-      // The server has the records — only now is it safe to remember which
-      // sessions had their telemetry collected. A failed upload leaves this
-      // run's staging undrained, so the retry re-collects (#2191).
-      await markEnrichedSessions(telemetry.drainCollected());
+
+      // Commit the telemetry reuse cache only on a fully accepted upload; see
+      // the invariant on markEnrichedSessions. Per-record rejections carry no
+      // usable record identity (RecordSyncError.entry is an opaque echo), so
+      // there is no way to commit just the accepted subset — a partial
+      // rejection leaves the whole run's staging undrained and the next sync
+      // re-collects. Wasteful when an unrelated record is the one rejected,
+      // but the alternative silently strips telemetry from the rejected one.
+      if ((apiResponse?.recordErrors?.length ?? 0) === 0) {
+        await markEnrichedSessions(telemetry.drainCollected());
+      }
       return {
         success: true,
         apiResponse,

@@ -540,3 +540,62 @@ describe('runForegroundSync telemetry budget (#2191)', () => {
     expect(second.claim()).toBe(true);
   });
 });
+
+describe('telemetry reuse cache commits only on a fully accepted upload', () => {
+  const opts = {
+    logTag: '[TestService]',
+    emptyMessage: 'Nothing to sync.',
+    timeoutLabelPrefix: 'Test query',
+  };
+  const cache = require('../../../src/services/shared/enrichedSessionCache');
+
+  let markSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    writeback.runWriteback.mockResolvedValue(undefined);
+    markSpy = jest.spyOn(cache, 'markEnrichedSessions').mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    markSpy.mockRestore();
+  });
+
+  const runWithOneSession = () => {
+    const provider = fakeProvider({
+      readRaw: jest.fn().mockResolvedValue({ records: [{ id: 'session-1' }] }),
+    });
+    return runForegroundSync(provider, '7d', { isExerciseSessionSyncEnabled: true }, opts);
+  };
+
+  test('a fully accepted upload commits', async () => {
+    api.syncHealthData.mockResolvedValue({ recordsSent: 1, recordErrors: [] });
+
+    await runWithOneSession();
+
+    expect(markSpy).toHaveBeenCalled();
+  });
+
+  test('a partially rejected upload does not commit', async () => {
+    api.syncHealthData.mockResolvedValue({
+      recordsSent: 1,
+      recordErrors: [{ error: 'numeric field out of range' }],
+    });
+
+    await runWithOneSession();
+
+    // Per-record rejections do not hold the sync cursor, and the foreground
+    // window is the configured range rather than the cursor — so the rejected
+    // workout WILL be re-sent, and caching here would strip its telemetry
+    // permanently (see PR #2136, where the server rejected telemetry values).
+    expect(markSpy).not.toHaveBeenCalled();
+  });
+
+  test('a thrown upload does not commit', async () => {
+    api.syncHealthData.mockRejectedValue(new Error('network down'));
+
+    await runWithOneSession();
+
+    expect(markSpy).not.toHaveBeenCalled();
+  });
+});
