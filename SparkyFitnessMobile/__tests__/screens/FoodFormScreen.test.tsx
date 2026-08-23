@@ -1,9 +1,10 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodFormScreen from '../../src/screens/FoodFormScreen';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { useMealTypes, usePreferences } from '../../src/hooks';
 import { useSaveFood } from '../../src/hooks/useSaveFood';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
@@ -138,6 +139,7 @@ jest.mock('../../src/components/CalendarSheet', () => {
 
 let mockSubmittedFoodFormData: any;
 let mockUnitSelectionResult: any;
+let mockEquivalentDraft: any[] = [];
 
 jest.mock('../../src/components/FoodForm', () => {
   const React = require('react');
@@ -155,6 +157,11 @@ jest.mock('../../src/components/FoodForm', () => {
               onPress={() => unitSelector.onUnitSelectionChange?.(mockUnitSelectionResult)}
             >
               <Text>Select Converted Unit</Text>
+            </Pressable>
+          ) : null}
+          {props.equivalents ? (
+            <Pressable onPress={() => props.equivalents.onChange(mockEquivalentDraft)}>
+              <Text>Apply Equivalent Fixture</Text>
             </Pressable>
           ) : null}
           <Pressable onPress={() => onSubmit(mockSubmittedFoodFormData)}>
@@ -197,7 +204,8 @@ function answerSyncPrompt(choice: 'keep' | 'update' = 'keep') {
         press(choice === 'update' ? 'Update' : "Don't Update");
         return;
       }
-      if (title === 'Save nutrition') {
+      if (title === 'Save nutrition' || title === 'Zapisz wartości odżywcze') {
+        press('Zaktualizuj istniejący');
         press('Update existing');
         return;
       }
@@ -228,7 +236,8 @@ describe('FoodFormScreen', () => {
       </SafeAreaProvider>,
     );
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await act(async () => { await initializeI18n('en'); await i18n.changeLanguage('en'); });
     jest.clearAllMocks();
     answerSyncPrompt('keep');
     mockFoodForm.mockClear();
@@ -1453,6 +1462,54 @@ describe('FoodFormScreen', () => {
         false,
       );
     });
+  });
+
+  function buildEquivalentEditParams(count: number) {
+    const variants = Array.from({ length: count + 1 }, (_, index) => ({
+      id: `variant-${index}`,
+      food_id: 'food-1',
+      serving_size: index === 0 ? 100 : index + 1,
+      serving_unit: index === 0 ? 'g' : `unit-${index}`,
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      is_default: index === 0,
+    }));
+    mockUseFoodVariants.mockReturnValue({ variants: variants as any, isLoading: false, isError: false });
+    mockEquivalentDraft = variants.slice(1).map((variant: any, index) => ({
+      ...variant,
+      serving_size: variant.serving_size + 0.5 + index,
+    }));
+    return {
+      mode: 'edit-food',
+      item: { id: 'food-1', name: 'Greek Yogurt', brand: 'Brand Co', servingSize: 100, servingUnit: 'g', calories: 120, protein: 10, carbs: 8, fat: 4, source: 'local', originalItem: {} as any },
+      initialValues: { name: 'Greek Yogurt', brand: 'Brand Co', servingSize: '100', servingUnit: 'g', calories: '120', protein: '10', carbs: '8', fat: '4' },
+      returnKey: 'FoodDetail-key', foodId: 'food-1', variantId: 'variant-0', customNutrients: null,
+    };
+  }
+
+  it.each([
+    ['en', 0], ['en', 1], ['en', 2],
+    ['pl', 0], ['pl', 1], ['pl', 2], ['pl', 5], ['pl', 22], ['pl', 25],
+  ])('uses the real EditFood save path for %s with %i changed equivalent rows', async (language, count) => {
+    const normalizedLanguage = language as 'en' | 'pl';
+    const expected = normalizedLanguage === 'en'
+      ? (count === 0 ? 'Saved' : `Saved · ${count} equivalent ${count === 1 ? 'unit' : 'units'} updated`)
+      : count === 0 ? 'Zapisano' : count === 1
+        ? 'Zapisano · zaktualizowano 1 równoważną jednostkę'
+        : [2, 22].includes(count)
+          ? `Zapisano · zaktualizowano ${count} równoważne jednostki`
+          : `Zapisano · zaktualizowano ${count} równoważnych jednostek`;
+    await act(async () => { await i18n.changeLanguage(normalizedLanguage); });
+    const screen = renderScreen(buildEquivalentEditParams(count));
+    if (count > 0) {
+      await act(async () => { fireEvent.press(screen.getByText('Apply Equivalent Fixture')); });
+    }
+    await act(async () => { fireEvent.press(screen.getByText('Save')); });
+    await waitFor(() => expect(mockToast.show).toHaveBeenCalledWith({ type: 'success', text1: expected }));
+    screen.unmount();
+    await act(async () => { await i18n.changeLanguage('en'); });
   });
 
   it('refuses to save edit-food submissions while the variants query is still loading', async () => {

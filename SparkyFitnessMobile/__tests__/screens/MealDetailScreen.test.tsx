@@ -1,8 +1,9 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MealDetailScreen from '../../src/screens/MealDetailScreen';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { useDeleteMeal, useFavorites, useMeal, useProfile, useServerConnection, useToggleFavorite } from '../../src/hooks';
 import type { Meal } from '../../src/types/meals';
 
@@ -130,7 +131,8 @@ describe('MealDetailScreen', () => {
   const getHeaderRightItems = () =>
     (navigation.setOptions as jest.Mock).mock.calls.at(-1)?.[0]?.unstable_headerRightItems;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await act(async () => { await initializeI18n('en'); await i18n.changeLanguage('en'); });
     queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -281,6 +283,35 @@ describe('MealDetailScreen', () => {
     expect(toggleFavorite).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'meal', id: 'meal-1', isFavorite: false }),
     );
+  });
+
+  it('keeps food content literal and uses the localized fallback for missing food names', async () => {
+    const localizedMeal = buildMeal({
+      foods: [{
+        ...meal.foods[0],
+        food_name: null,
+        brand: 'Dragon Brand',
+      } as any],
+    });
+    mockUseMeal.mockReturnValue({ meal: localizedMeal, isLoading: false, isError: false, refetch: jest.fn() });
+    const screen = renderScreen();
+
+    await act(async () => { await i18n.changeLanguage('pl'); });
+    expect(screen.getByText('Produkt', { exact: false })).toBeTruthy();
+    expect(screen.queryByText('Food')).toBeNull();
+    expect(screen.getByText('Dragon Brand', { exact: false })).toBeTruthy();
+
+    screen.unmount();
+    const literalMeal = buildMeal({
+      foods: [{ ...meal.foods[0], food_name: 'Dragon Custom Food', brand: 'Dragon Brand' } as any],
+    });
+    mockUseMeal.mockReturnValue({ meal: literalMeal, isLoading: false, isError: false, refetch: jest.fn() });
+    const literal = renderScreen();
+    expect(literal.getByText('Dragon Custom Food', { exact: false })).toBeTruthy();
+    expect(literal.getByText('Dragon Brand', { exact: false })).toBeTruthy();
+    expect(literal.queryByText('Food')).toBeNull();
+    literal.unmount();
+    await act(async () => { await i18n.changeLanguage('en'); });
   });
 
   it('shows the starred state when the meal is a favorite', () => {
