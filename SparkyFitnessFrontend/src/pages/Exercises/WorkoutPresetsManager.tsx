@@ -22,6 +22,7 @@ import {
   Play,
   X,
   MoreHorizontal,
+  CopyPlus,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -55,6 +56,9 @@ import { DataTable } from '@/components/ui/DataTable';
 import { ColumnDef, RowSelectionState } from '@tanstack/react-table';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Badge } from '@/components/ui/badge';
+
+// Matches workout_presets.name VARCHAR(255) in the database.
+const MAX_PRESET_NAME_LENGTH = 255;
 
 const WorkoutPresetsManager = () => {
   const { t } = useTranslation();
@@ -131,6 +135,51 @@ const WorkoutPresetsManager = () => {
     await createPreset({ ...newPresetData, user_id: user.id });
     setIsAddPresetDialogOpen(false);
   };
+
+  const handleDuplicatePreset = React.useCallback(
+    async (preset: WorkoutPreset) => {
+      if (!user?.id) return;
+      // The server always inserts fresh rows for exercises/sets on create and
+      // ignores any incoming id (see workoutPresetRepository.createWorkoutPreset),
+      // so the original's exercises/sets can be sent as-is. Defaults to
+      // private regardless of the source's visibility — duplicating someone
+      // else's public preset shouldn't silently re-share it under this user.
+      // sort_order is the one field that can't be sent as-is: the read
+      // queries never select wpe.sort_order, so preset.exercises[].sort_order
+      // is always undefined here and every duplicated row would insert with
+      // the same value, relying on id-ASC as a display-order tiebreak.
+      // preset.exercises already arrives in display order (server sorts by
+      // sort_order then id), so the array index is the real sort_order.
+      // workout_presets.name is VARCHAR(255) with no client-side length cap on
+      // creation, so a max-length preset name must be truncated here to leave
+      // room for the localized suffix — otherwise the duplicate insert fails.
+      const suffixOnly = t('workoutPresetsManager.duplicateNameSuffix', {
+        name: '',
+      });
+      const availableNameLength = Math.max(
+        0,
+        MAX_PRESET_NAME_LENGTH - suffixOnly.length
+      );
+      const truncatedName =
+        preset.name.length > availableNameLength
+          ? preset.name.slice(0, availableNameLength)
+          : preset.name;
+
+      await createPreset({
+        user_id: user.id,
+        name: t('workoutPresetsManager.duplicateNameSuffix', {
+          name: truncatedName,
+        }),
+        description: preset.description,
+        is_public: false,
+        exercises: preset.exercises.map((exercise, index) => ({
+          ...exercise,
+          sort_order: index,
+        })),
+      });
+    },
+    [createPreset, user?.id, t]
+  );
 
   const handleUpdatePreset = async (
     presetId: string,
@@ -305,6 +354,10 @@ const WorkoutPresetsManager = () => {
                   <CalendarPlus className="mr-2 h-4 w-4" />
                   {t('workoutPresetsManager.logToDiary', 'Log to Diary')}
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDuplicatePreset(preset)}>
+                  <CopyPlus className="mr-2 h-4 w-4" />
+                  {t('workoutPresetsManager.duplicate', 'Duplicate')}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!isOwned}
                   onClick={() => {
@@ -335,6 +388,7 @@ const WorkoutPresetsManager = () => {
       user?.id,
       weightUnit,
       handleLogPresetToDiary,
+      handleDuplicatePreset,
       handleDeletePreset,
       handleStartWorkoutPlayback,
     ]

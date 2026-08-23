@@ -96,6 +96,12 @@ interface WorkoutFormExerciseListProps {
    */
   onReplaceExercise?: (clientId: string) => void;
   /**
+   * Enables the ⋮ "Duplicate exercise" item: adds an independent copy of the
+   * entry (same sets, notes, calories) right after it, ungrouped even if the
+   * original is in a superset. Preset form only.
+   */
+  onDuplicateExercise?: (clientId: string) => void;
+  /**
    * Enables the ⋮ "Clear logged sets" item, shown only when the exercise has
    * a completed set and renders a set table — cardio-effort-form exercises
    * hide it (workout edit). Absent for forms whose drafts never carry
@@ -167,6 +173,7 @@ const WorkoutFormExerciseList = forwardRef<
     setExerciseCalories,
     setExerciseNotes,
     onReplaceExercise,
+    onDuplicateExercise,
     clearExerciseCompletions,
     supersetWith,
     ungroupExercise,
@@ -542,6 +549,13 @@ const WorkoutFormExerciseList = forwardRef<
         onPress: () => onReplaceExercise(clientId),
       });
     }
+    if (onDuplicateExercise) {
+      items.push({
+        key: 'duplicate',
+        label: 'Duplicate exercise',
+        onPress: () => onDuplicateExercise(clientId),
+      });
+    }
     if (clearExerciseCompletions) {
       const target = exercises.find(e => e.clientId === clientId);
       // The cardio effort form shows no completion state in the forms, so a
@@ -579,6 +593,7 @@ const WorkoutFormExerciseList = forwardRef<
     supersetWith,
     ungroupExercise,
     onReplaceExercise,
+    onDuplicateExercise,
     clearExerciseCompletions,
     onRemoveExercise,
     onViewExercise,

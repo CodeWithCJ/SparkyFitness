@@ -231,7 +231,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     supersetWith,
     ungroupExercise,
     reorderExercises,
-  } = useDraftExerciseActions(dispatch);
+  } = useDraftExerciseActions(dispatch, state.exercises);
 
   const { clearPersistedDraft } = useDraftPersistence({
     state,

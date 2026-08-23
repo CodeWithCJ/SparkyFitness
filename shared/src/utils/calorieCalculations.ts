@@ -1,5 +1,6 @@
 import {
   ACTIVITY_MULTIPLIERS,
+  ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   CALORIE_CALCULATION_CONSTANTS,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   ENERGY_DENSITY_KCAL_PER_KG,
@@ -543,6 +544,36 @@ export interface CalorieTargetResult {
   maxFeasibleDeficitPercent: number | null;
 }
 
+/**
+ * Whether a measured adaptive TDEE is settled enough to drive a calorie goal.
+ *
+ * `AdaptiveTdeeService` hands back a raw estimate at 7 qualifying days, but a goal
+ * budget wants a stabler number than that. Every consumer that turns adaptive TDEE
+ * into a target must ask this same question, so it lives here rather than being
+ * re-expressed at each call site — they had already drifted apart once, with the
+ * settings preview holding out for a mature estimate while the saved goal took the
+ * raw one.
+ *
+ * Fails closed on an unknown fallback status. The service always populates the
+ * flag, but the web types it as optional and pass it through unmodified, so a
+ * partial or stale payload could otherwise let an estimate of unknown provenance
+ * set someone's calorie target. Requiring an explicit `false` costs nothing when
+ * the field is present and degrades to the estimated baseline when it is not.
+ */
+export function isAdaptiveTdeeMature(
+  tdee: number | null | undefined,
+  isFallback: boolean | null | undefined,
+  daysOfData: number | null | undefined,
+): tdee is number {
+  return (
+    typeof tdee === "number" &&
+    Number.isFinite(tdee) &&
+    tdee > 0 &&
+    isFallback === false &&
+    (daysOfData ?? 0) >= ADAPTIVE_TDEE_GOAL_MIN_DAYS
+  );
+}
+
 export function resolveCalorieSafetyFloor(
   mode: CalorieSafetyFloorMode | string | null | undefined,
   customValue: number | null | undefined,
@@ -643,7 +674,13 @@ export function computeCalorieTarget({
   let insufficientHistory = false;
 
   if (calculationMethod === "adaptive") {
-    if (adaptiveTdeeFallback || !adaptiveTdee || adaptiveTdeeDaysOfData < 14) {
+    if (
+      !isAdaptiveTdeeMature(
+        adaptiveTdee,
+        adaptiveTdeeFallback,
+        adaptiveTdeeDaysOfData,
+      )
+    ) {
       baselineTdee = Math.round(bmr * activityLevelMultiplier);
       insufficientHistory = true;
     } else {

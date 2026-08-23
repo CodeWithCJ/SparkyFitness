@@ -1,5 +1,6 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, MutableRefObject } from 'react';
+import { resolveExerciseModality } from '@workspace/shared';
 import {
   getDefaultRestSec,
   moveDraftExerciseItem,
@@ -28,7 +29,26 @@ export function generateClientId(): string {
 export type DraftExercisesAction =
   | { type: 'ADD_EXERCISE'; exercise: Exercise; exerciseClientId: string; setClientId: string }
   | { type: 'REMOVE_EXERCISE'; clientId: string }
-  | { type: 'REPLACE_EXERCISE'; clientId: string; exercise: Exercise; setClientId: string }
+  | {
+      type: 'REPLACE_EXERCISE';
+      clientId: string;
+      exercise: Exercise;
+      setClientId: string;
+      /**
+       * Keep the entry's already-entered sets instead of resetting to one
+       * empty set. Opt-in (preset form only) — the workout form still wants
+       * a fresh set, since replacing a logged exercise's identity while
+       * keeping its recorded numbers would misrepresent what was actually
+       * performed.
+       */
+      preserveSets?: boolean;
+    }
+  | {
+      type: 'DUPLICATE_EXERCISE';
+      clientId: string;
+      newExerciseClientId: string;
+      setClientIds: string[];
+    }
   | { type: 'CLEAR_EXERCISE_COMPLETIONS'; clientId: string }
   | { type: 'ADD_SET'; exerciseClientId: string; setClientId: string }
   | { type: 'REMOVE_SET'; exerciseClientId: string; setClientId: string }
@@ -80,13 +100,33 @@ export function draftExercisesReducer(
       );
 
     // Mirrors the live store's replaceExercise: swap the exercise identity in
-    // place (keeping clientId, position, and superset grouping) and reset to
-    // one default set — the old sets no longer describe the new movement.
-    // Dropping serverId sends the whole session down the server's
-    // delete-and-recreate path (mixed old/new exercise ids aren't allowed).
+    // place (keeping clientId, position, and superset grouping). Dropping
+    // serverId sends the whole session down the server's delete-and-recreate
+    // path (mixed old/new exercise ids aren't allowed). Sets are only
+    // preserved when the replacement's effective modality matches the
+    // original's — otherwise a duration set's null reps, or a weight_reps
+    // set's stale duration, would carry into a UI that hides those fields
+    // but the server would still persist them. When preserveSets isn't
+    // requested, there's nothing to preserve, or the modality changed, reset
+    // to one default set — the old sets no longer describe the new movement.
     case 'REPLACE_EXERCISE':
       return exercises.map(exercise => {
         if (exercise.clientId !== action.clientId) return exercise;
+        const modalityUnchanged =
+          resolveExerciseModality(exercise.exerciseModality, exercise.exerciseCategory) ===
+          resolveExerciseModality(action.exercise.modality, action.exercise.category);
+        const sets =
+          action.preserveSets && exercise.sets.length > 0 && modalityUnchanged
+            ? exercise.sets
+            : [
+                {
+                  clientId: action.setClientId,
+                  weight: '',
+                  reps: '',
+                  distance: '',
+                  restTime: getDefaultRestSec(),
+                },
+              ];
         return {
           ...exercise,
           serverId: undefined,
@@ -96,17 +136,48 @@ export function draftExercisesReducer(
           exerciseCategory: action.exercise.category,
           exerciseModality: action.exercise.modality ?? null,
           images: action.exercise.images ?? [],
-          sets: [
-            {
-              clientId: action.setClientId,
-              weight: '',
-              reps: '',
-              distance: '',
-              restTime: getDefaultRestSec(),
-            },
-          ],
+          sets,
         };
       });
+
+    // Adds an independent copy of the exercise (same sets, notes, calories)
+    // right after its own run so a duplicate can never visually split an
+    // existing superset's border. The copy starts ungrouped — silently
+    // joining the original's superset would change the original's structure.
+    case 'DUPLICATE_EXERCISE': {
+      const index = exercises.findIndex(e => e.clientId === action.clientId);
+      if (index === -1) return exercises;
+      const original = exercises[index];
+      const duplicate: WorkoutDraftExercise = {
+        ...original,
+        clientId: action.newExerciseClientId,
+        serverId: undefined,
+        snapshot: null,
+        supersetGroup: null,
+        sets: original.sets.map((set, i) => ({
+          ...set,
+          // setClientIds is precomputed against exercisesRef before dispatch
+          // (see useDraftExerciseActions); fall back to a deterministic id if
+          // it and the live reducer state ever desync on set count.
+          clientId: action.setClientIds[i] ?? `${action.newExerciseClientId}-${i}`,
+          completedAt: null,
+          isPr: false,
+        })),
+      };
+      let insertAt = index + 1;
+      const groupId = original.supersetGroup ?? null;
+      if (groupId != null) {
+        while (
+          insertAt < exercises.length &&
+          (exercises[insertAt].supersetGroup ?? null) === groupId
+        ) {
+          insertAt++;
+        }
+      }
+      const next = [...exercises];
+      next.splice(insertAt, 0, duplicate);
+      return next;
+    }
 
     // Mirrors the live store's clearExerciseCompletions: un-log every set,
     // dropping the stale PR flags with the completions. Identity return when
@@ -235,6 +306,11 @@ export function draftExercisesReducer(
  */
 export function useDraftExerciseActions(
   dispatch: Dispatch<DraftExercisesAction>,
+  exercises: WorkoutDraftExercise[],
+  options?: {
+    /** See REPLACE_EXERCISE's `preserveSets`. Off by default (workout form). */
+    preserveSetsOnReplace?: boolean;
+  },
 ): {
   exercisesModifiedRef: MutableRefObject<boolean>;
   addExercise: (exercise: Exercise) => { exerciseClientId: string; setClientId: string };
@@ -242,7 +318,8 @@ export function useDraftExerciseActions(
   replaceExercise: (
     clientId: string,
     exercise: Exercise,
-  ) => { exerciseClientId: string; setClientId: string };
+  ) => { exerciseClientId: string; setClientId: string | null };
+  duplicateExercise: (clientId: string) => { exerciseClientId: string };
   clearExerciseCompletions: (clientId: string) => void;
   addSet: (exerciseClientId: string) => string;
   removeSet: (exerciseClientId: string, setClientId: string) => void;
@@ -265,6 +342,18 @@ export function useDraftExerciseActions(
   reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
 } {
   const exercisesModifiedRef = useRef(false);
+  // Read inside the memoized wrappers below without joining the useMemo deps
+  // (which would churn every wrapper's identity on every draft edit) — only
+  // replaceExercise/duplicateExercise need the current array, to look up a
+  // target's existing sets synchronously before dispatch. Synced in an
+  // effect (not inline) since writing a ref during render is disallowed; by
+  // the time a user action calls replaceExercise/duplicateExercise, the
+  // effect from the latest render has already run.
+  const exercisesRef = useRef(exercises);
+  useEffect(() => {
+    exercisesRef.current = exercises;
+  });
+  const preserveSetsOnReplace = options?.preserveSetsOnReplace ?? false;
   return useMemo(
     () => ({
       exercisesModifiedRef,
@@ -282,8 +371,36 @@ export function useDraftExerciseActions(
       replaceExercise: (clientId: string, exercise: Exercise) => {
         exercisesModifiedRef.current = true;
         const setClientId = generateClientId();
-        dispatch({ type: 'REPLACE_EXERCISE', clientId, exercise, setClientId });
-        return { exerciseClientId: clientId, setClientId };
+        dispatch({
+          type: 'REPLACE_EXERCISE',
+          clientId,
+          exercise,
+          setClientId,
+          preserveSets: preserveSetsOnReplace,
+        });
+        // Mirrors REPLACE_EXERCISE's own preserve/reset decision: sets are
+        // preserved (nothing new to focus) only when preserving was
+        // requested, there was something to preserve, and the modality is
+        // unchanged. Otherwise a fresh single set was created; focus it.
+        const target = exercisesRef.current.find(e => e.clientId === clientId);
+        const hadExistingSets = (target?.sets.length ?? 0) > 0;
+        const modalityUnchanged =
+          target != null &&
+          resolveExerciseModality(target.exerciseModality, target.exerciseCategory) ===
+            resolveExerciseModality(exercise.modality, exercise.category);
+        const setsWerePreserved = preserveSetsOnReplace && hadExistingSets && modalityUnchanged;
+        return {
+          exerciseClientId: clientId,
+          setClientId: setsWerePreserved ? null : setClientId,
+        };
+      },
+      duplicateExercise: (clientId: string) => {
+        exercisesModifiedRef.current = true;
+        const newExerciseClientId = generateClientId();
+        const target = exercisesRef.current.find(e => e.clientId === clientId);
+        const setClientIds = (target?.sets ?? []).map(() => generateClientId());
+        dispatch({ type: 'DUPLICATE_EXERCISE', clientId, newExerciseClientId, setClientIds });
+        return { exerciseClientId: newExerciseClientId };
       },
       clearExerciseCompletions: (clientId: string) => {
         exercisesModifiedRef.current = true;
@@ -341,6 +458,6 @@ export function useDraftExerciseActions(
         dispatch({ type: 'REORDER_EXERCISES', fromItemIndex, toItemIndex });
       },
     }),
-    [dispatch],
+    [dispatch, preserveSetsOnReplace],
   );
 }

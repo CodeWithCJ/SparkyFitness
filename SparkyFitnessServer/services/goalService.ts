@@ -16,6 +16,7 @@ import {
   todayInZone,
   CALORIE_CALCULATION_CONSTANTS,
   computeCalorieTarget,
+  isAdaptiveTdeeMature,
   resolveCalorieSafetyFloor,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   ACTIVITY_MULTIPLIERS,
@@ -275,11 +276,20 @@ async function getUserGoalsForRange(
         }
       }
 
-      // Apply adaptive TDEE base adjustment — mirrors DashboardService
+      // Apply adaptive TDEE base adjustment.
       if (adjustmentMode === 'adaptive' && adaptiveTdeeData && bmr > 0) {
-        const adaptiveGoal = Math.round(
-          adaptiveTdeeData.tdee + calorieGoalOffset
-        );
+        // Hold the estimated baseline until the measured estimate is settled, the
+        // same test computeCalorieTarget applies below. Without it this path
+        // budgeted against a raw 7-day estimate that the settings preview was
+        // still rejecting, so the goal and the preview disagreed.
+        const adaptiveBaseline = isAdaptiveTdeeMature(
+          adaptiveTdeeData.tdee,
+          adaptiveTdeeData.isFallback,
+          adaptiveTdeeData.daysOfData
+        )
+          ? adaptiveTdeeData.tdee
+          : Math.round(bmr * activityMultiplier);
+        const adaptiveGoal = Math.round(adaptiveBaseline + calorieGoalOffset);
         const adaptiveGoalFloor = resolveCalorieSafetyFloor(
           userPreferences?.calorie_safety_floor_mode,
           userPreferences?.calorie_safety_floor_value,

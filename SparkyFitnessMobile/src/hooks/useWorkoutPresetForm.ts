@@ -137,6 +137,7 @@ export function useWorkoutPresetForm() {
     addExercise,
     removeExercise,
     replaceExercise,
+    duplicateExercise,
     addSet,
     removeSet,
     updateSetField,
@@ -145,7 +146,7 @@ export function useWorkoutPresetForm() {
     supersetWith,
     ungroupExercise,
     reorderExercises,
-  } = useDraftExerciseActions(dispatch);
+  } = useDraftExerciseActions(dispatch, state.exercises, { preserveSetsOnReplace: true });
 
   const setName = useCallback((name: string) => {
     dispatch({ type: 'SET_NAME', name });
@@ -196,6 +197,7 @@ export function useWorkoutPresetForm() {
     addExercise,
     removeExercise,
     replaceExercise,
+    duplicateExercise,
     addSet,
     removeSet,
     updateSetField,

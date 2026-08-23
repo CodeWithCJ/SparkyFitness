@@ -65,6 +65,7 @@ interface PresetFormBodyProps {
   isEligibleForPrefill: (clientId: string) => boolean;
   onAddExercisePress: () => void;
   onReplaceExercise: (clientId: string) => void;
+  onDuplicateExercise: (clientId: string) => void;
   onRegisterAccessoryHandle: (key: string, handle: SetRowAccessoryHandle | null) => void;
   onViewExercise: (exercise: Exercise) => void;
   listRef: React.Ref<WorkoutFormExerciseListHandle>;
@@ -87,6 +88,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   isEligibleForPrefill,
   onAddExercisePress,
   onReplaceExercise,
+  onDuplicateExercise,
   onRegisterAccessoryHandle,
   onViewExercise,
   listRef,
@@ -142,6 +144,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           onRemoveExercise={exerciseSetEditing.handleRemoveExercise}
           setExerciseRest={setExerciseRest}
           onReplaceExercise={onReplaceExercise}
+          onDuplicateExercise={onDuplicateExercise}
           supersetWith={supersetWith}
           ungroupExercise={ungroupExercise}
           onReorderExercises={reorderExercises}
@@ -181,6 +184,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
     addExercise,
     removeExercise,
     replaceExercise,
+    duplicateExercise,
     addSet,
     removeSet,
     updateSetField,
@@ -345,6 +349,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({ navigation, route, 
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
         onReplaceExercise={handleReplaceExercise}
+        onDuplicateExercise={duplicateExercise}
         onRegisterAccessoryHandle={onRegisterAccessoryHandle}
         onViewExercise={(exercise) =>
           navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
@@ -407,6 +412,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
     addExercise,
     removeExercise,
     replaceExercise,
+    duplicateExercise,
     addSet,
     removeSet,
     updateSetField,
@@ -575,6 +581,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({ navigation, route, para
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
         onReplaceExercise={handleReplaceExercise}
+        onDuplicateExercise={duplicateExercise}
         onRegisterAccessoryHandle={onRegisterAccessoryHandle}
         onViewExercise={(exercise) =>
           navigation.navigate('ExerciseDetail', { item: exercise, hideWorkoutActions: true })
