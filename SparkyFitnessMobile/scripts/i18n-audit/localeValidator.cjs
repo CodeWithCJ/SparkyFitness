@@ -140,10 +140,27 @@ class LocaleValidator {
     const sourceLocale = this.options.sourceLocale || 'en';
     const sourceIntlLocale = this.options.sourceIntlLocale || 'en-US';
     const sourceGroups = groupPluralKeys(Object.keys(source));
+    for (const [key, value] of Object.entries(source)) {
+      if (!isStringOrArrayOfStrings(value)) {
+        errors.push({ rule: 'invalid-source-leaf', locale: sourceLocale, key, sourceType: valueType(value), message: `Source leaf "${key}" must be a string or array of strings` });
+      }
+    }
     errors.push(...detectSingularPluralCollisions(sourceGroups, sourceLocale));
 
     const sourceRequiredForms = requiredPluralForms(sourceIntlLocale);
     for (const group of sourceGroups.filter((item) => item.isPlural)) {
+      for (const key of group.keys) {
+        const suffix = getPluralSuffix(key);
+        if (suffix !== '_zero' && !sourceRequiredForms.includes(suffix)) {
+          // Existing English catalogs may carry paired i18next compatibility
+          // forms for locales with richer CLDR categories. A lone unsupported
+          // category remains invalid and catches accidental source drift.
+          const compatibilityPair = suffix === '_few' ? `${group.base}_many` : suffix === '_many' ? `${group.base}_few` : null;
+          if (!compatibilityPair || !Object.hasOwn(source, compatibilityPair)) {
+            errors.push({ rule: 'invalid-plural-category', locale: sourceLocale, key, form: suffix, message: `Invalid source plural category "${suffix}" for ${sourceLocale}` });
+          }
+        }
+      }
       for (const form of sourceRequiredForms) {
         if (!Object.hasOwn(source, `${group.base}${form}`)) {
           errors.push({ rule: 'missing-plural-form', locale: sourceLocale, key: group.base, form, message: `Missing source plural form "${group.base}${form}" in ${sourceLocale}` });
@@ -200,7 +217,12 @@ class LocaleValidator {
         }
         for (const key of targetGroups.find((group) => group.base === sourceGroup.base)?.keys || []) {
           const suffix = getPluralSuffix(key);
-          if (suffix !== '_zero' && !targetRequiredForms.includes(suffix)) {
+          if (suffix === '_zero') {
+            const targetKey = `${sourceGroup.base}_zero`;
+            if (!samePlaceholderMultiset(placeholderNames(translated[targetKey]), canonical)) {
+              errors.push({ rule: 'placeholder-mismatch', locale: target.locale, key: targetKey, sourcePlaceholders: canonical, translatedPlaceholders: placeholderNames(translated[targetKey]), message: `Placeholder mismatch for "${targetKey}" in ${target.locale}` });
+            }
+          } else if (!targetRequiredForms.includes(suffix)) {
             errors.push({ rule: 'invalid-plural-category', locale: target.locale, key, form: suffix, message: `Invalid plural category "${suffix}" for ${target.locale}` });
           }
         }

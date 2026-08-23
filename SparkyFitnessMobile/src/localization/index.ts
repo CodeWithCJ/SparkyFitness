@@ -6,7 +6,6 @@ export {
 export {
   SUPPORTED_LANGUAGES,
   RESOURCE_MAP,
-  SHIPPED_LOCALES,
   formatLocalizedNumber,
   getAppLocale,
   useAppLocale,
@@ -17,4 +16,11 @@ export {
   type LanguagePreference,
   type SupportedLanguage,
 } from './i18n';
-export { metadataForLanguage, normalizeRegisteredLocale, nativeLanguageTags } from './localeRegistry';
+export {
+  SOURCE_LOCALE,
+  FALLBACK_LOCALE,
+  SHIPPED_LOCALES,
+  metadataForLanguage,
+  normalizeRegisteredLocale,
+  nativeLanguageTags,
+} from './localeRegistry';

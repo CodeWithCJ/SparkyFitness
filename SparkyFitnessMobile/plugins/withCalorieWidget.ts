@@ -88,7 +88,6 @@ const withCalorieWidget: ConfigPlugin = (config) => {
             .toString('utf8')
             .replace(/\{\{APPLICATION_ID\}\}/g, applicationId)
             .replace(/\{\{SUPPORTED_LOCALES\}\}/g, SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', '))
-            .replace(/\{\{SUPPORTED_LOCALE_DECLARATIONS\}\}/g, SUPPORTED_LANGUAGES.map((language) => `    private val ${language.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_LOCALE = Locale.forLanguageTag("${language}")`).join('\n'))
             .replace(/\{\{FALLBACK_LOCALE\}\}/g, FALLBACK_LOCALE);
           return {
             destName: base.slice(0, -TEMPLATE_SUFFIX.length),

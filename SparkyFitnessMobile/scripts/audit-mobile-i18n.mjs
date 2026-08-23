@@ -63,6 +63,8 @@ function printHumanReport() {
     }
   }
 
+  console.log(`source locale: ${summary.sourceLocale ?? 'en'}`);
+  console.log(`fallback locale: ${summary.fallbackLocale ?? 'en'}`);
   console.log('\n=== Summary ===');
   console.log(`locale structural errors: ${summary.localeStructuralErrors}`);
   console.log(`missing static keys: ${summary.missingStaticKeys}`);

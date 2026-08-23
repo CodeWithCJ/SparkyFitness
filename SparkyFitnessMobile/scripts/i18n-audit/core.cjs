@@ -8,7 +8,6 @@ const MOBILE_ROOT = path.resolve(__dirname, '..', '..');
 const SOURCE_LOCALE = REGISTRY_MANIFEST.sourceLocale;
 const FALLBACK_LOCALE = REGISTRY_MANIFEST.fallbackLocale;
 const EN_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', SOURCE_LOCALE, 'translation.json');
-const PL_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', 'pl', 'translation.json');
 const SOURCE_INTL_LOCALE = REGISTRY_MANIFEST.locales[SOURCE_LOCALE].intlLocale;
 
 function localeHasKey(keySet, key) {
@@ -21,12 +20,6 @@ function localeHasKey(keySet, key) {
   return false;
 }
 
-function localeHasRequiredPluralForms(keySet, key, locale) {
-  const requiredForms = locale === 'en'
-    ? ['_one', '_other']
-    : ['_one', '_few', '_many', '_other'];
-  return requiredForms.every((form) => keySet.has(`${key}${form}`));
-}
 
 function expectedFallbackKey(key, fallbackName, hasCount) {
   if (!hasCount) return key;
@@ -40,8 +33,8 @@ function expectedFallbackKey(key, fallbackName, hasCount) {
  * Blocking (exit != 0 when present):
  *   - user-facing t() without an explicit English fallback
  *   - dynamic t(variable) / unsafe template-literal translation keys
- *   - missing static locale keys
- *   - EN/PL structure mismatch (missing/extra keys, type mismatch)
+ *   - missing static source keys
+ *   - source structural errors and existing translation structural corruption
  *   - placeholder mismatch
  *   - plural mismatch / missing plural forms
  *   - duplicate/singular-plural collisions reported by the validator
@@ -49,13 +42,12 @@ function expectedFallbackKey(key, fallbackName, hasCount) {
  *     closed instead of silently reducing coverage)
  *   - invalid suppression directives
  *
- * Informational (reported in the summary, never blocking):
- *   - hardcoded UI strings (full inventory and migration live in PR5)
+ * Translation completeness and stale target keys are non-blocking coverage diagnostics.
+ * Hardcoded UI and locale-unsafe number formatting remain blocking.
  */
 function runAudit(options = {}) {
   const rootDir = options.rootDir || MOBILE_ROOT;
   const enLocalePath = options.enLocalePath || EN_LOCALE_PATH;
-  const plLocalePath = options.plLocalePath || PL_LOCALE_PATH;
   // Default source roots derive from the ACTUAL rootDir so a custom-root run
   // scans its own source tree; the production default remains mobile/src.
   const sourceRoots = options.sourceRoots || [path.join(rootDir, 'src')];
@@ -79,7 +71,7 @@ function runAudit(options = {}) {
     .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE)
     .map((entry) => ({ locale: entry.name, path: path.join(localeRoot, entry.name, 'translation.json'), intlLocale: REGISTRY_MANIFEST.locales[entry.name]?.intlLocale || entry.name }))
     .filter((entry) => fs.existsSync(entry.path));
-  const validator = new LocaleValidator(enLocalePath, plLocalePath, { localePaths, sourceLocale: SOURCE_LOCALE, fallbackLocale: FALLBACK_LOCALE, sourceIntlLocale: SOURCE_INTL_LOCALE });
+  const validator = new LocaleValidator(enLocalePath, null, { localePaths, sourceLocale: SOURCE_LOCALE, fallbackLocale: FALLBACK_LOCALE, sourceIntlLocale: SOURCE_INTL_LOCALE });
   let localeResult;
   try {
     localeResult = validator.validate();
@@ -233,6 +225,5 @@ module.exports = {
   collectFindingsForSource,
   MOBILE_ROOT,
   EN_LOCALE_PATH,
-  PL_LOCALE_PATH,
   buildSummary,
 };

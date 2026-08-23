@@ -40,8 +40,6 @@ object WidgetLocale {
 
     // Generated from the TypeScript shipped-locale registry by the Expo plugin.
     private val SUPPORTED_LOCALES = setOf({{SUPPORTED_LOCALES}})
-    // Explicit generated entries retain the existing resource contract.
-{{SUPPORTED_LOCALE_DECLARATIONS}}
     private val SUPPORTED_LOCALES_CANONICAL = SUPPORTED_LOCALES.map(::canonicalTag).toSet()
     private val FALLBACK_LOCALE = "{{FALLBACK_LOCALE}}"
     private val FALLBACK_LOCALE_CANONICAL = canonicalTag(FALLBACK_LOCALE)

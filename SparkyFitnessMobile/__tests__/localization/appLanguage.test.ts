@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 import {
   initializeAppLanguage,
+  normalizePreference,
   setAppLanguagePreference,
   syncAppLanguageFromSystem,
 } from '../../src/localization/appLanguage';
@@ -38,6 +39,14 @@ const MIGRATION_KEY = '@SparkyFitness/app-language-migration';
 async function markMigrationComplete(): Promise<void> {
   await AsyncStorage.setItem(MIGRATION_KEY, JSON.stringify({ version: 1 }));
 }
+
+describe('normalizePreference', () => {
+  it.each([
+    ['en', 'en'], ['en-US', 'en'], ['en-GB', 'en'], ['pl', 'pl'], ['pl-PL', 'pl'], ['de-DE', 'system'], [null, 'system'],
+  ])('%s normalizes to %s', (input, expected) => {
+    expect(normalizePreference(input)).toBe(expected);
+  });
+});
 
 describe('app language service', () => {
   let nativeApplication: string | null;
