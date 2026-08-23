@@ -106,7 +106,7 @@ describe('WorkoutSettingsScreen', () => {
     await initializeI18n('pl');
     const { getByText, getAllByRole } = renderScreen();
 
-    expect(getByText('Domyślny czas odpoczynku')).toBeTruthy();
+    expect(getByText('Domyślny okres odpoczynku')).toBeTruthy();
     expect(getByText('Dźwięk timera odpoczynku')).toBeTruthy();
     expect(getAllByRole('switch')[0].props.accessibilityLabel).toBe('Dźwięk timera odpoczynku');
     expect(i18n.t('workoutSettings.defaultRestAccessibility', {
