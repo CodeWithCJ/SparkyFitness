@@ -3568,7 +3568,8 @@
     "toast": {
       "shared": "Workout preset shared publicly",
       "private": "Workout preset made private",
-      "deleted": "Workout preset deleted"
+      "deleted": "Workout preset deleted",
+      "duplicated": "Workout preset duplicated"
     },
     "share": {
       "title": "Make public?",
@@ -3589,15 +3590,19 @@
       "edit": "Edit workout preset",
       "duplicate": "Duplicate workout preset"
     },
+    "duplicateName": "{{name}} (Copy)",
     "exerciseCount_other": "{{count}} exercises",
     "actions": {
       "starting": "Starting…",
       "start": "Start workout",
       "logPast": "Log past workout",
       "delete": "Delete preset",
+      "deleting": "Deleting…",
       "duplicating": "Duplicating…",
       "duplicate": "Duplicate preset"
     },
+    "exerciseCountLabel_one": "{{count}} exercise",
+    "exerciseCountLabel_other": "{{count}} exercises",
     "exerciseCount_one": "{{count}} exercise",
     "exerciseCount_few": "{{count}} exercises",
     "exerciseCount_many": "{{count}} exercises"

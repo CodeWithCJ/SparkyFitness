@@ -300,11 +300,11 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       const prompted = promptForActiveWorkoutConflict(queryClient, {
         onGoToWorkout: () => navigation.navigate('ActiveWorkout'),
         onClearAndStart: () => enterLiveWorkout(atSetId),
-      });
+      }, t);
       if (prompted) return;
       enterLiveWorkout(atSetId);
     },
-    [queryClient, navigation, enterLiveWorkout],
+    [queryClient, navigation, enterLiveWorkout, t],
   );
 
   const handleStartWorkout = () => beginWorkout();

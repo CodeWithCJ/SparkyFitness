@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import WorkoutPresetDetailScreen from '../../src/screens/WorkoutPresetDetailScreen';
@@ -14,6 +14,7 @@ import {
 } from '../../src/stores/appPreferencesStore';
 import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
 import type { RootStackScreenProps } from '../../src/types/navigation';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 type ScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
 
@@ -123,7 +124,9 @@ describe('WorkoutPresetDetailScreen', () => {
     );
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
     mockUsePreferences.mockReturnValue({
@@ -138,6 +141,39 @@ describe('WorkoutPresetDetailScreen', () => {
       createPresetAsync: jest.fn(),
       isPending: false,
     });
+  });
+
+  it('renders application-owned strings in Polish while preserving literal user content', async () => {
+    await i18n.changeLanguage('pl');
+    const preset = buildPreset({ exercises: [{ id: 'pe-1', exercise_id: 'ex-1', exercise_name: 'Bench Press', image_url: null, sets: [buildSet()] }] });
+    const screen = renderScreen(preset);
+    expect(screen.getByText('Rozpocznij trening')).toBeTruthy();
+    expect(screen.getByText('Zapisz wcześniejszy trening')).toBeTruthy();
+    expect(screen.getByText('Powiel szablon')).toBeTruthy();
+    expect(screen.getByText('1 ćwiczenie')).toBeTruthy();
+    expect(screen.getByText('Push Day')).toBeTruthy();
+    expect(screen.getByText('Bench Press')).toBeTruthy();
+  });
+
+  it('updates visible strings on an EN to PL runtime language switch without remounting', async () => {
+    const screen = renderScreen(buildPreset({ exercises: [{ id: 'pe-1', exercise_id: 'ex-1', exercise_name: 'Bench Press', image_url: null, sets: [buildSet()] }] }));
+    expect(screen.getByText('Start workout')).toBeTruthy();
+    expect(screen.getByText('Duplicate preset')).toBeTruthy();
+    await act(async () => { await i18n.changeLanguage('pl'); });
+    expect(screen.getByText('Rozpocznij trening')).toBeTruthy();
+    expect(screen.getByText('Powiel szablon')).toBeTruthy();
+    expect(screen.getByText('Push Day')).toBeTruthy();
+    expect(screen.getByText('Bench Press')).toBeTruthy();
+  });
+
+  it('uses the localized Polish copy-name contract and success presentation when duplicating', async () => {
+    const createPresetAsync = jest.fn().mockResolvedValue(buildPreset({ id: 8, name: 'Push Day (kopia)' }));
+    mockUseCreateWorkoutPreset.mockReturnValue({ createPresetAsync, isPending: false });
+    await i18n.changeLanguage('pl');
+    const screen = renderScreen(buildPreset());
+    fireEvent.press(screen.getByLabelText('Powiel szablon treningu'));
+    await waitFor(() => expect(createPresetAsync).toHaveBeenCalledWith(expect.objectContaining({ name: 'Push Day (kopia)' })));
+    expect(createPresetAsync.mock.calls[0][0].name).toContain('Push Day');
   });
 
   it('starts a live workout with the preset-built payload on Start workout', () => {

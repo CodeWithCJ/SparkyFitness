@@ -238,13 +238,13 @@
       "caloriesBurnedFor": "Spalone kalorie — „{{exerciseName}}”",
       "changeMetricColumn": "Zmień kolumnę metryki",
       "collapseFallback": "Zwiń ćwiczenie",
-      "collapse": "Zwiń {{exerciseName}}",
+      "collapse": "Zwiń: „{{exerciseName}}”",
       "editCaloriesFallback": "Edytuj kalorie spalone podczas ćwiczenia",
       "expandFallback": "Rozwiń ćwiczenie",
-      "expand": "Rozwiń {{exerciseName}}",
-      "viewDetailsFor": "Wyświetl szczegóły {{exerciseName}}",
+      "expand": "Rozwiń: „{{exerciseName}}”",
+      "viewDetailsFor": "Szczegóły: „{{exerciseName}}”",
       "viewDetailsFallback": "Wyświetl szczegóły ćwiczenia",
-      "editCaloriesFor": "Edytuj spalone kalorie dla {{exerciseName}}",
+      "editCaloriesFor": "Edytuj spalone kalorie — „{{exerciseName}}”",
       "moreOptionsFor": "Więcej opcji: „{{exerciseName}}”",
       "moreOptionsFallback": "Więcej opcji dla ćwiczenia",
       "notesFor": "Notatki — „{{exerciseName}}”",
@@ -295,14 +295,14 @@
       "seconds": "Sek."
     },
     "exercise": {
-      "expand": "Rozwiń {{name}}",
-      "viewDetails": "Wyświetl szczegóły {{name}}",
-      "collapse": "Zwiń {{name}}",
+      "expand": "Rozwiń: „{{name}}”",
+      "viewDetails": "Szczegóły: „{{name}}”",
+      "collapse": "Zwiń: „{{name}}”",
       "moreOptions": "Więcej opcji: „{{name}}”",
       "notePlaceholder": "Dodaj notatkę do tego ćwiczenia…",
       "notesFor": "Notatki — „{{name}}”",
       "caloriesFor": "Spalone kalorie: {{name}}",
-      "editCaloriesFor": "Edytuj spalone kalorie: {{name}}",
+      "editCaloriesFor": "Edytuj spalone kalorie — „{{name}}”",
       "best": "Najlepszy wynik: {{value}}",
       "changeMetric": "Zmień kolumnę metryki",
       "notesForSet": "Notatki do serii {{number}}",
@@ -2237,8 +2237,8 @@
     "dayPeriod_other": "{{count}} dni miesiączki",
     "dayCycle_one": "{{count}}-dniowy cykl",
     "dayCycle_few": "{{count}}-dniowe cykle",
-    "dayCycle_many": "{{count}}-dniowych cykli",
-    "dayCycle_other": "{{count}}-dniowego cyklu"
+    "dayCycle_many": "{{count}}-dniowy cykl",
+    "dayCycle_other": "{{count}}-dniowy cykl"
   },
   "nutrients": {
     "calories": "Kalorie",
@@ -3624,7 +3624,8 @@
     "toast": {
       "shared": "Udostępniono szablon treningu publicznie",
       "private": "Ustawiono szablon treningu jako prywatny",
-      "deleted": "Usunięto szablon treningu"
+      "deleted": "Usunięto szablon treningu",
+      "duplicated": "Powielono szablon treningu"
     },
     "share": {
       "title": "Udostępnić publicznie?",
@@ -3645,6 +3646,7 @@
       "edit": "Edytuj szablon treningu",
       "duplicate": "Powiel szablon treningu"
     },
+    "duplicateName": "{{name}} (kopia)",
     "exerciseCount_few": "{{count}} ćwiczenia",
     "exerciseCount_many": "{{count}} ćwiczeń",
     "exerciseCount_other": "{{count}} ćwiczenia",
@@ -3653,10 +3655,15 @@
       "start": "Rozpocznij trening",
       "logPast": "Zapisz wcześniejszy trening",
       "delete": "Usuń szablon treningu",
+      "deleting": "Usuwanie…",
       "duplicating": "Powielanie…",
       "duplicate": "Powiel szablon"
     },
-    "exerciseCount_one": "{{count}} ćwiczenie"
+    "exerciseCount_one": "{{count}} ćwiczenie",
+    "exerciseCountLabel_one": "{{count}} ćwiczenie",
+    "exerciseCountLabel_few": "{{count}} ćwiczenia",
+    "exerciseCountLabel_many": "{{count}} ćwiczeń",
+    "exerciseCountLabel_other": "{{count}} ćwiczeń"
   },
   "workoutPresetMutations": {
     "errors": {
@@ -4571,8 +4578,8 @@
       "day": "Dzień {{day}}",
       "dayCycle_one": "{{count}}-dniowy cykl",
       "dayCycle_few": "{{count}}-dniowe cykle",
-      "dayCycle_many": "{{count}}-dniowych cykli",
-      "dayCycle_other": "{{count}}-dniowego cyklu"
+      "dayCycle_many": "{{count}}-dniowy cykl",
+      "dayCycle_other": "{{count}}-dniowy cykl"
     }
   },
   "workoutPresetLibrary": {
