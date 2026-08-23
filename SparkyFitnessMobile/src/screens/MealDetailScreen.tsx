@@ -328,7 +328,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
                     }`}
                     numberOfLines={1}
                   >
-                    {isLinkedMeal ? food.child_meal_name || food.food_name : food.food_name || 'Food'}
+                    {isLinkedMeal ? food.child_meal_name || food.food_name : food.food_name || t('common.food', { defaultValue: 'Food' })}
                     {food.brand ? (
                       <Text className="text-text-secondary font-normal">
                         {' · '}

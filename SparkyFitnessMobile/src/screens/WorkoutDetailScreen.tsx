@@ -782,7 +782,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               disabled={isDeleting}
               className="mt-6"
             >
-              {isDeleting ? 'Deleting...' : 'Delete Workout'}
+              {isDeleting ? t('common.deleting', { defaultValue: 'Deleting...' }) : t('workoutDetail.actions.deleteWorkout', { defaultValue: 'Delete Workout' })}
             </Button>
           </FadeView>
         )}

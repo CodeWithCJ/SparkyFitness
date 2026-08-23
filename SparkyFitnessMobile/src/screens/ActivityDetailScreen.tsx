@@ -671,7 +671,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 ) : (
                   <TouchableOpacity onPress={() => setActiveField('notes')} activeOpacity={0.6}>
                     <Text className="text-sm text-text-primary">
-                      {formState.notes || 'Add notes...'}
+                      {formState.notes || t('activityDetail.placeholders.notes', { defaultValue: 'Add notes...' })}
                     </Text>
                   </TouchableOpacity>
                 )
@@ -691,7 +691,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               disabled={isDeleting}
               className="mt-4"
             >
-              {isDeleting ? 'Deleting...' : 'Delete Activity'}
+              {isDeleting ? t('common.deleting', { defaultValue: 'Deleting...' }) : t('workout.deleteActivity', { defaultValue: 'Delete Activity' })}
             </Button>
           </FadeView>
         )}

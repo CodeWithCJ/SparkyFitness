@@ -196,7 +196,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({ route, 
                       <Text className="text-base text-text-primary">
                         {dose.taken_at
                           ? new Date(dose.taken_at).toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' })
-                          : 'Logged'}
+                          : t('medications.detail.logged', { defaultValue: 'Logged' })}
                       </Text>
                       {dose.notes && (
                         <Text className="text-xs text-text-muted mt-0.5">{dose.notes}</Text>

@@ -783,7 +783,17 @@
       "adaptive": "Goal = Adaptive TDEE",
       "fixed": "Activity does not change your budget"
     },
-    "externalFormula": "formula"
+    "externalFormula": "formula",
+    "safetyFloor": {
+      "title": "Safety Floor",
+      "standard": "Standard",
+      "custom": "Custom",
+      "disabled": "Disabled",
+      "customMinimum": "Custom minimum ({{unit}})",
+      "standardDescription": "Uses the higher of your estimated RMR and the clinical minimum.",
+      "customDescription": "Replaces the standard floor with your chosen minimum. Health recommendations remain visible.",
+      "disabledDescription": "Stops automatic target clamping. Health warnings remain visible."
+    }
   },
   "dashboardSettings": {
     "updateFailed": "Failed to update setting.",
@@ -2306,7 +2316,10 @@
     "foodSaved": "Your food was saved.",
     "updateFailed": "Could not update food",
     "editTitle": "Edit Food",
-    "addFood": "Add Food"
+    "addFood": "Add Food",
+    "saved": "Saved",
+    "equivalentUnitsUpdated_one": "Saved · {{formattedCount}} equivalent unit updated",
+    "equivalentUnitsUpdated_other": "Saved · {{formattedCount}} equivalent units updated"
   },
   "exerciseHistory": {
     "noSetData": "No set data",
@@ -3046,7 +3059,8 @@
       "edit": "Edit Workout"
     },
     "actions": {
-      "startHere": "Start workout here"
+      "startHere": "Start workout here",
+      "deleteWorkout": "Delete Workout"
     }
   },
   "activityDetail": {
@@ -3917,7 +3931,8 @@
     "clearLoggedSets": "Clear logged sets",
     "removeExercise": "Remove exercise",
     "addExercise": "Add Exercise",
-    "exercise": "Exercise"
+    "exercise": "Exercise",
+    "duplicateExercise": "Duplicate exercise"
   },
   "whatsNew": {
     "seeUpdate": "See what's new in this update",

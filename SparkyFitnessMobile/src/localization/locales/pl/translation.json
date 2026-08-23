@@ -783,7 +783,17 @@
       "adaptive": "Cel = adaptacyjne TDEE",
       "fixed": "Aktywność nie zmienia budżetu"
     },
-    "externalFormula": "wzór"
+    "externalFormula": "wzór",
+    "safetyFloor": {
+      "title": "Bezpieczne minimum",
+      "standard": "Standardowe",
+      "custom": "Własne",
+      "disabled": "Wyłączone",
+      "customMinimum": "Własne minimum ({{unit}})",
+      "standardDescription": "Używa wyższej z wartości: szacowane PPM lub minimum kliniczne.",
+      "customDescription": "Zastępuje standardowe minimum wybraną przez Ciebie wartością. Zalecenia zdrowotne pozostają widoczne.",
+      "disabledDescription": "Wyłącza automatyczne ograniczanie celu. Ostrzeżenia zdrowotne pozostają widoczne."
+    }
   },
   "dashboardSettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -2344,7 +2354,12 @@
     "foodSaved": "Produkt został zapisany.",
     "updateFailed": "Nie udało się zaktualizować produktu",
     "editTitle": "Edytuj produkt",
-    "addFood": "Dodaj produkt"
+    "addFood": "Dodaj produkt",
+    "saved": "Zapisano",
+    "equivalentUnitsUpdated_one": "Zapisano · zaktualizowano {{formattedCount}} równoważną jednostkę",
+    "equivalentUnitsUpdated_few": "Zapisano · zaktualizowano {{formattedCount}} równoważne jednostki",
+    "equivalentUnitsUpdated_many": "Zapisano · zaktualizowano {{formattedCount}} równoważnych jednostek",
+    "equivalentUnitsUpdated_other": "Zapisano · zaktualizowano {{formattedCount}} równoważnej jednostki"
   },
   "exerciseHistory": {
     "noSetData": "Brak danych o seriach",
@@ -3098,7 +3113,8 @@
       "edit": "Edytuj trening"
     },
     "actions": {
-      "startHere": "Rozpocznij trening od tego miejsca"
+      "startHere": "Rozpocznij trening od tego miejsca",
+      "deleteWorkout": "Usuń trening"
     }
   },
   "activityDetail": {
@@ -4015,7 +4031,8 @@
     "clearLoggedSets": "Wyczyść zapisane serie",
     "removeExercise": "Usuń ćwiczenie",
     "addExercise": "Dodaj ćwiczenie",
-    "exercise": "Ćwiczenie"
+    "exercise": "Ćwiczenie",
+    "duplicateExercise": "Powiel ćwiczenie"
   },
   "whatsNew": {
     "seeUpdate": "Zobacz nowości w tej aktualizacji",

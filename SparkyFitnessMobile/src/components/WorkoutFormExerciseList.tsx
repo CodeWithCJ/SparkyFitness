@@ -552,7 +552,7 @@ const WorkoutFormExerciseList = forwardRef<
     if (onDuplicateExercise) {
       items.push({
         key: 'duplicate',
-        label: 'Duplicate exercise',
+        label: t('workoutForm.duplicateExercise', { defaultValue: 'Duplicate exercise' }),
         onPress: () => onDuplicateExercise(clientId),
       });
     }

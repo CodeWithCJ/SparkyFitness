@@ -30,11 +30,6 @@ import {
 
 type CalorieSettingsScreenProps = RootStackScreenProps<'CalorieSettings'>;
 
-const safetyFloorOptions = [
-  { label: 'Standard', value: 'standard' },
-  { label: 'Custom', value: 'custom' },
-  { label: 'Disabled', value: 'disabled' },
-];
 
 function normalizePreferences(prefs: UserPreferences | undefined) {
   const raw = prefs?.calorie_goal_adjustment_mode;
@@ -67,6 +62,11 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const bmrMetricName = Platform.OS === 'ios'
     ? t('calorieSettings.restingEnergy', { defaultValue: 'Resting Energy' })
     : t('calorieSettings.bmr', { defaultValue: 'BMR' });
+  const safetyFloorOptions = useMemo(() => [
+    { label: t('calorieSettings.safetyFloor.standard', { defaultValue: 'Standard' }), value: 'standard' },
+    { label: t('calorieSettings.safetyFloor.custom', { defaultValue: 'Custom' }), value: 'custom' },
+    { label: t('calorieSettings.safetyFloor.disabled', { defaultValue: 'Disabled' }), value: 'disabled' },
+  ], [t]);
   const modeOptions = [
     { label: t('calorieSettings.modes.adaptive', { defaultValue: 'Adaptive Goal' }), value: 'adaptive' },
     { label: t('calorieSettings.modes.dynamic', { defaultValue: 'Dynamic Goal' }), value: 'dynamic' },
@@ -382,20 +382,20 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
         >
           <View className="flex-row items-center justify-between">
             <Text className="text-base font-semibold text-text-primary">
-              Safety Floor
+              {t('calorieSettings.safetyFloor.title', { defaultValue: 'Safety Floor' })}
             </Text>
             <BottomSheetPicker
               value={normalized.calorieSafetyFloorMode}
               options={safetyFloorOptions}
               onSelect={handleSafetyFloorModeChange}
-              title="Safety Floor"
+              title={t('calorieSettings.safetyFloor.title', { defaultValue: 'Safety Floor' })}
               containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
             />
           </View>
           {normalized.calorieSafetyFloorMode === 'custom' && (
             <View className="mt-4">
               <Text className="text-sm font-semibold text-text-primary mb-2">
-                Custom minimum ({normalized.energyUnit})
+                {t('calorieSettings.safetyFloor.customMinimum', { defaultValue: 'Custom minimum ({{unit}})', unit: normalized.energyUnit })}
               </Text>
               <FormInput
                 value={safetyFloorText}
@@ -409,10 +409,10 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           )}
           <Text className="text-text-secondary text-sm mt-3">
             {normalized.calorieSafetyFloorMode === 'standard'
-              ? 'Uses the higher of your estimated RMR and the clinical minimum.'
+              ? t('calorieSettings.safetyFloor.standardDescription', { defaultValue: 'Uses the higher of your estimated RMR and the clinical minimum.' })
               : normalized.calorieSafetyFloorMode === 'custom'
-                ? 'Replaces the standard floor with your chosen minimum. Health recommendations remain visible.'
-                : 'Stops automatic target clamping. Health warnings remain visible.'}
+                ? t('calorieSettings.safetyFloor.customDescription', { defaultValue: 'Replaces the standard floor with your chosen minimum. Health recommendations remain visible.' })
+                : t('calorieSettings.safetyFloor.disabledDescription', { defaultValue: 'Stops automatic target clamping. Health warnings remain visible.' })}
           </Text>
         </Animated.View>
 

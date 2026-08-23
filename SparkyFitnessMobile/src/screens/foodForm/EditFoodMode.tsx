@@ -39,6 +39,7 @@ import {
   groupEquivalentVariants,
   toEquivalentUnit,
 } from '../../utils/foodDetails';
+import { formatLocalizedNumber } from '../../localization';
 import { localizeFoodUnit } from '../../utils/foodUnitLocalization';
 import { parseDecimalInput } from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
@@ -483,8 +484,14 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         type: 'success',
         text1:
           equivalentChangedCount > 0
-            ? `Saved · ${equivalentChangedCount} equivalent unit${equivalentChangedCount === 1 ? '' : 's'} updated`
-            : 'Saved',
+            ? t('foodForm.equivalentUnitsUpdated', {
+                count: equivalentChangedCount,
+                formattedCount: formatLocalizedNumber(equivalentChangedCount),
+                defaultValue: 'Saved · {{formattedCount}} equivalent units updated',
+                defaultValue_one: 'Saved · {{formattedCount}} equivalent unit updated',
+                defaultValue_other: 'Saved · {{formattedCount}} equivalent units updated',
+              })
+            : t('foodForm.saved', { defaultValue: 'Saved' }),
       });
 
       // Past diary entries keep the nutrition snapshot they were logged with.
