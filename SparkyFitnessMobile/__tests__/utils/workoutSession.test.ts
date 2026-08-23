@@ -650,7 +650,7 @@ describe('workoutSession', () => {
       });
 
       it('localizes Polish strength set counts and restores English afterwards', async () => {
-        const cases: Array<[number, string]> = [
+        const cases: [number, string][] = [
           [1, '1 seria'],
           [2, '2 serie'],
           [5, '5 serii'],
