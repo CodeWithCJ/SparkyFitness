@@ -568,6 +568,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                           reps: bestSet.reps,
                         },
                         weightUnit,
+                        t,
                         resolveSnapshotModality(exercise),
                       )}
                       sub={formatDateLabel(bestSet.entryDate, t, dateLocale)}
@@ -584,6 +585,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({ navigation,
                           reps: lastSet.reps,
                         },
                         weightUnit,
+                        t,
                         resolveSnapshotModality(exercise),
                       )}
                       sub={formatDateLabel(lastSet.entryDate, t, dateLocale)}

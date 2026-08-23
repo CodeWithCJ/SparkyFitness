@@ -645,6 +645,7 @@ export function formatVolume(volumeKg: number, weightUnit: string): string {
 export function formatRecentSessionSet(
   set: ExerciseRecentSessionSet,
   weightUnit: 'kg' | 'lbs',
+  t: TFunction,
   modality?: ExerciseModality,
   distanceUnit: 'km' | 'miles' = 'km',
 ): string {
@@ -657,18 +658,18 @@ export function formatRecentSessionSet(
     const parts: string[] = [];
     if (seconds != null) parts.push(formatDurationSeconds(seconds));
     if (isCardioModality(modality) && set.distance != null) {
-      const dist = parseFloat(distanceFromKm(set.distance, distanceUnit).toFixed(2));
+      const dist = formatLocalizedNumber(distanceFromKm(set.distance, distanceUnit), { maximumFractionDigits: 2 });
       parts.push(`${dist} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
     }
     return parts.length > 0 ? `${prefix}${parts.join(' · ')}` : '–';
   }
   const w =
     set.weight != null
-      ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
+      ? formatLocalizedNumber(weightFromKg(set.weight, weightUnit), { maximumFractionDigits: 1 })
       : null;
   if (w != null && set.reps != null) return `${prefix}${w} × ${set.reps}`;
   if (w != null) return `${prefix}${w}`; // weight-only
-  if (set.reps != null) return `${prefix}${set.reps} reps`; // reps-only set in a mixed history
+  if (set.reps != null) return `${prefix}${t('workout.repCount', { count: set.reps, formattedCount: formatLocalizedNumber(set.reps), defaultValue: '{{formattedCount}} reps', defaultValue_one: '{{formattedCount}} rep' })}`; // reps-only set in a mixed history
   if (set.duration != null) return `${prefix}${formatDurationSeconds(set.duration)}`;
   return '–';
 }
@@ -872,14 +873,15 @@ export function formatRestCountdown(remainingMs: number): string {
 export function formatSetLoad(
   set: Pick<ActiveSetDescription, 'weightKg' | 'reps'> & { durationSec?: number | null },
   weightUnit: 'kg' | 'lbs',
+  t: TFunction,
 ): string | null {
   if (set.durationSec != null) return formatDurationSeconds(set.durationSec);
   const w =
     set.weightKg != null
-      ? `${parseFloat(weightFromKg(set.weightKg, weightUnit).toFixed(1))} ${weightUnit}`
+      ? `${formatLocalizedNumber(weightFromKg(set.weightKg, weightUnit), { maximumFractionDigits: 1 })} ${weightUnit}`
       : null;
   if (w != null && set.reps != null) return `${w} × ${set.reps}`;
-  if (set.reps != null) return `${set.reps} reps`;
+  if (set.reps != null) return t('workout.repCount', { count: set.reps, formattedCount: formatLocalizedNumber(set.reps), defaultValue: '{{formattedCount}} reps', defaultValue_one: '{{formattedCount}} rep' });
   return w;
 }
 

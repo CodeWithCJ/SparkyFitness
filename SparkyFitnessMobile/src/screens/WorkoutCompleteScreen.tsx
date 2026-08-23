@@ -565,6 +565,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                     {formatSetLoad(
                       { weightKg: pr.weightKg, reps: pr.reps, durationSec: pr.durationSec },
                       weightUnit,
+                      t,
                     ) ?? ''}
                   </Text>
                 </View>
@@ -599,6 +600,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                       durationSec: row.topSet.durationSec,
                     },
                     weightUnit,
+                    t,
                   )
                 : null;
             return (

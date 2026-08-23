@@ -30,6 +30,7 @@ const SetChip: React.FC<{
   modality?: ExerciseModality;
   bestSet?: ExerciseSetStats | null;
 }> = ({ set, weightUnit, distanceUnit, modality, bestSet }) => {
+  const { t } = useTranslation();
   const isPr = set.is_pr === true;
   const isPrMatch = !isPr && matchesSetRecord(set, bestSet);
   const label = formatRecentSessionSet(
@@ -42,6 +43,7 @@ const SetChip: React.FC<{
       distance: set.distance,
     },
     weightUnit,
+    t,
     modality,
     distanceUnit,
   );

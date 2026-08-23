@@ -14,6 +14,7 @@ import ActiveWorkoutSetRow, {
 } from '../../src/components/ActiveWorkoutSetRow';
 import type { AssumedSetValues, WorkoutCardSet } from '../../src/utils/workoutSession';
 import type { ActiveWorkoutMetricColumn } from '../../src/stores/appPreferencesStore';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -1213,6 +1214,32 @@ describe('ActiveWorkoutSetRow', () => {
         previousSet: prev({ weight: null, reps: 8 }),
       });
       expect(repsOnly.getByText('8 reps')).toBeTruthy();
+    });
+
+    it('localizes previous presentation and accessibility in Polish', async () => {
+      await initializeI18n('pl');
+      await i18n.changeLanguage('pl');
+      try {
+        const { getByLabelText, getByText } = renderRow({ state: 'upcoming', previousSet: prev({ weight: null, reps: 2 }) });
+        expect(getByLabelText('Uzupełnij serię 1 danymi z poprzedniego treningu')).toBeTruthy();
+        expect(getByText('2 powtórzenia')).toBeTruthy();
+      } finally { await i18n.changeLanguage('en'); }
+    });
+
+    it('uses Polish decimal seeds and preserves numeric commit semantics', async () => {
+      await initializeI18n('pl');
+      await i18n.changeLanguage('pl');
+      try {
+        const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true, activeField: 'weight', set: { weight: 132.3, rpe: 7.5 } });
+        const weight = getByLabelText('Obciążenie');
+        const rpe = getByLabelText('RPE');
+        expect(weight.props.value).toContain(',');
+        expect(rpe.props.value).toBe('7,5');
+        fireEvent.changeText(weight, '132,3'); fireEvent(weight, 'blur');
+        fireEvent.changeText(rpe, '7,5'); fireEvent(rpe, 'blur');
+        expect(callbacks.onCommitField).not.toHaveBeenCalledWith('101', { weight: expect.anything() });
+        expect(callbacks.onCommitField).not.toHaveBeenCalledWith('101', { rpe: expect.anything() });
+      } finally { await i18n.changeLanguage('en'); }
     });
 
     it('renders a dash when this row has no previous counterpart', () => {

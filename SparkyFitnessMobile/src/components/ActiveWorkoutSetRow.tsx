@@ -50,7 +50,7 @@ export const RPE_TONE_VARS: Record<RpeTone, string> = {
 
 function formatDisplayWeight(weightKg: number | null, unit: 'kg' | 'lbs'): string {
   if (weightKg == null) return '';
-  return String(parseFloat(weightFromKg(weightKg, unit).toFixed(1)));
+  return formatLocalizedNumber(weightFromKg(weightKg, unit), { maximumFractionDigits: 1 });
 }
 
 function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
@@ -60,7 +60,7 @@ function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
 
 function formatRpe(rpe: number | null): string {
   if (rpe == null) return '–';
-  return Number.isInteger(rpe) ? String(rpe) : rpe.toFixed(1);
+  return Number.isInteger(rpe) ? String(rpe) : formatLocalizedNumber(rpe, { maximumFractionDigits: 1 });
 }
 
 /** Clamp a typed RPE to 1–10 in 0.5 steps; empty/invalid → null. */
@@ -214,6 +214,7 @@ function ActiveWorkoutSetRow({
   onAddSet,
   onRegisterAccessoryHandle,
 }: ActiveWorkoutSetRowProps) {
+  const { t } = useTranslation();
   const readOnly = mode === 'view';
   const isEdit = mode === 'edit';
   const isLive = mode === 'live';
@@ -303,8 +304,6 @@ function ActiveWorkoutSetRow({
       }
     }
   }
-
-  const { t } = useTranslation();
 
   const weightInputRef = useRef<TextInput>(null);
   const repsInputRef = useRef<TextInput>(null);
@@ -735,7 +734,7 @@ function ActiveWorkoutSetRow({
         disabled={!canFillFromPrevious}
         accessibilityRole={canFillFromPrevious ? 'button' : undefined}
         accessibilityLabel={
-          canFillFromPrevious ? `Fill set ${set.set_number} from previous` : undefined
+          canFillFromPrevious ? t('activeWorkout.setRow.fillFromPrevious', { defaultValue: 'Fill set {{setNumber}} from previous', setNumber: set.set_number }) : undefined
         }
       >
         <Text
@@ -745,7 +744,7 @@ function ActiveWorkoutSetRow({
           className="text-center text-xs text-text-secondary"
           style={{ fontVariant: ['tabular-nums'] }}
         >
-          {previousSet != null ? formatRecentSessionSet(previousSet, weightUnit, modality) : '-'}
+          {previousSet != null ? formatRecentSessionSet(previousSet, weightUnit, t, modality) : '-'}
         </Text>
       </Pressable>
     ) : null;

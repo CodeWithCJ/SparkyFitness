@@ -1100,7 +1100,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // Target load for the upcoming set, shown under the rest label so the user
   // knows what's next while resting.
   const restNextSetText =
-    activeSetDescription == null ? null : formatSetLoad(activeSetDescription, weightUnit);
+    activeSetDescription == null ? null : formatSetLoad(activeSetDescription, weightUnit, t);
 
   // Sticky accessory bar (both platforms) for the focused set cell. The
   // focused row registered its handle by render key; its set id — needed for

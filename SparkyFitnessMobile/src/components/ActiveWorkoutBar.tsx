@@ -470,7 +470,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       : {
           exerciseName: activeSetDescription.exerciseName ?? t('workout.exercise', { defaultValue: 'Exercise' }),
           setNumber: t('workout.setOf', { defaultValue: 'Set {{number}} of {{count}}', number: activeSetDescription.setNumber, count: activeSetDescription.setCount }),
-          loadText: formatSetLoad(activeSetDescription, weightUnit) ?? '',
+          loadText: formatSetLoad(activeSetDescription, weightUnit, t) ?? '',
         };
 
   useEffect(() => {

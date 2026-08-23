@@ -287,7 +287,8 @@
       "complete": "Oznacz serię {{setNumber}} jako ukończoną",
       "incomplete": "Oznacz serię {{setNumber}} jako nieukończoną",
       "weight": "Obciążenie",
-      "rpe": "RPE"
+      "rpe": "RPE",
+      "fillFromPrevious": "Uzupełnij serię {{setNumber}} danymi z poprzedniego treningu"
     },
     "columns": {
       "set": "Seria",
@@ -1548,7 +1549,11 @@
     "setOf_one": "Seria {{number}} z {{count}}",
     "setOf_few": "Seria {{number}} z {{count}}",
     "setOf_many": "Seria {{number}} z {{count}}",
-    "setOf_other": "Seria {{number}} z {{count}}"
+    "setOf_other": "Seria {{number}} z {{count}}",
+    "repCount_one": "{{formattedCount}} powtórzenie",
+    "repCount_few": "{{formattedCount}} powtórzenia",
+    "repCount_many": "{{formattedCount}} powtórzeń",
+    "repCount_other": "{{formattedCount}} powtórzeń"
   },
   "cycleCard": {
     "mode": {

@@ -287,7 +287,8 @@
       "complete": "Mark set {{setNumber}} complete",
       "incomplete": "Un-complete set {{setNumber}}",
       "weight": "Weight",
-      "rpe": "RPE"
+      "rpe": "RPE",
+      "fillFromPrevious": "Fill set {{setNumber}} from previous"
     },
     "columns": {
       "set": "Set",
@@ -1530,7 +1531,9 @@
     "unknownExercise": "Unknown exercise",
     "addNotePlaceholder": "Add a note…",
     "setOf_one": "Set {{number}} of {{count}}",
-    "setOf_other": "Set {{number}} of {{count}}"
+    "setOf_other": "Set {{number}} of {{count}}",
+    "repCount_one": "{{formattedCount}} rep",
+    "repCount_other": "{{formattedCount}} reps"
   },
   "cycleCard": {
     "mode": {
