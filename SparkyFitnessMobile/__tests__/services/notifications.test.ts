@@ -98,13 +98,13 @@ describe('notifications service', () => {
       Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
       await initNotifications();
       expect(mockSetChannel).toHaveBeenCalledWith('workout-timer', expect.objectContaining({ name: 'Workout timer' }));
-      await initializeI18n('pl');
+      await i18n.changeLanguage('pl');
       await registerLocalizedNotificationPresentation();
       expect(mockSetChannel).toHaveBeenLastCalledWith('medication-reminders', expect.objectContaining({ name: 'Przypomnienia o lekach' }));
       expect(mockSetCategory).toHaveBeenLastCalledWith('medication-reminder', expect.arrayContaining([
         expect.objectContaining({ identifier: 'medication-taken', buttonTitle: 'Oznacz jako przyjęty' }),
       ]));
-      await initializeI18n('en');
+      await i18n.changeLanguage('en');
       await registerLocalizedNotificationPresentation();
       expect(mockSetChannel).toHaveBeenLastCalledWith('medication-reminders', expect.objectContaining({ name: 'Medication reminders' }));
     });
