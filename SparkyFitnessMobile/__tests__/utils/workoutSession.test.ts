@@ -70,7 +70,7 @@ import {
   workoutPresetExerciseRequestSchema,
 } from '@workspace/shared';
 import { weightFromKg } from '../../src/utils/unitConversions';
-import i18n from '../../src/localization/i18n';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
 import type {
   WorkoutPreset,
@@ -637,6 +637,42 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 45, 200)).toBe('3 sets · 45 min · 200 kcal');
+      });
+
+      it.each([
+        [1, '1 set'],
+        [2, '2 sets'],
+      ])('localizes %s strength sets in English', (setCount, expected) => {
+        const session = makeStrengthIndividual({
+          sets: Array.from({ length: setCount }, () => ({ weight: null, reps: null })) as any,
+        });
+        expect(buildSessionSubtitle(session, 0, 0)).toBe(expected);
+      });
+
+      it('localizes Polish strength set counts and restores English afterwards', async () => {
+        const cases: Array<[number, string]> = [
+          [1, '1 seria'],
+          [2, '2 serie'],
+          [5, '5 serii'],
+          [22, '22 serie'],
+          [25, '25 serii'],
+        ];
+        const englishSetNoun = /\bsets?\b/i;
+
+        await initializeI18n('pl');
+        await i18n.changeLanguage('pl');
+        try {
+          for (const [setCount, expected] of cases) {
+            const session = makeStrengthIndividual({
+              sets: Array.from({ length: setCount }, () => ({ weight: null, reps: null })) as any,
+            });
+            const subtitle = buildSessionSubtitle(session, 0, 0);
+            expect(subtitle).toBe(expected);
+            expect(subtitle).not.toMatch(englishSetNoun);
+          }
+        } finally {
+          await i18n.changeLanguage('en');
+        }
       });
 
       it('includes volume when sets have weight and reps', () => {
