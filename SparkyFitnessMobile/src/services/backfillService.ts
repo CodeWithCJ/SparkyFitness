@@ -8,6 +8,7 @@ import {
 import { addLog } from './LogService';
 import { collectHealthData, type MetricSyncOutcome } from './shared/healthSyncEngine';
 import { createTelemetryRunContext } from './shared/telemetryBudget';
+import { commitStagedSessions } from './shared/enrichedSessionCache';
 import { isQuotaExceededError } from './shared/quotaError';
 import {
   loadHealthPreference,
@@ -371,6 +372,7 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
         let uploadSummary: HealthDataSyncSummary | undefined;
         try {
           uploadSummary = await syncHealthData(payload);
+          await commitStagedSessions();
         } catch (error) {
           return { outcome: 'upload-failed', error: getErrorMessage(error), recordsUploaded };
         }

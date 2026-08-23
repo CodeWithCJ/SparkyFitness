@@ -286,3 +286,26 @@ describe('buildBackgroundWindows clamp reporting', () => {
     expect(windows.clampedFrom).toBeUndefined();
   });
 });
+
+describe('buildBackgroundWindows invalid cursor (PR #2218 review)', () => {
+  test('an unparseable cursor reports no clamp, so callers cannot format an Invalid Date', () => {
+    const now = new Date('2026-08-21T03:00:00Z');
+
+    const windows = buildBackgroundWindows('not-a-date', now);
+
+    // clampedFrom used to be set to the Invalid Date, and the background-sync
+    // warning then threw RangeError from toISOString() before any reads ran.
+    expect(windows.clampedFrom).toBeUndefined();
+    expect(() => windows.sessionStart.toISOString()).not.toThrow();
+  });
+
+  test('a start exactly on the floor is not reported as shortened', () => {
+    const now = new Date('2026-08-21T03:00:00Z');
+    const floor = new Date(now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+    const cursorLandingOnFloor = new Date(floor.getTime() + SESSION_OVERLAP_MS);
+
+    const windows = buildBackgroundWindows(cursorLandingOnFloor.toISOString(), now);
+
+    expect(windows.clampedFrom).toBeUndefined();
+  });
+});

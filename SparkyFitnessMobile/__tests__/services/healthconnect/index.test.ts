@@ -1732,7 +1732,16 @@ describe('ensureHistoryReadPermission', () => {
 describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
   const {
     _resetEnrichedSessionCacheForTests,
+    commitStagedSessions,
   } = require('../../../src/services/shared/enrichedSessionCache');
+
+  // Enrichment only stages cache keys; the sync shell commits them after the
+  // server accepts the upload. These helpers stand in for that boundary.
+  const enrichAndUpload = async (records: unknown[], ctx: unknown) => {
+    const result = await enrichExerciseSessions(records, ctx);
+    await commitStagedSessions();
+    return result;
+  };
 
   const session = (id: string, startTime: string) => ({
     startTime,
@@ -1810,12 +1819,12 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
   test('a session collected once is not re-collected on the next run', async () => {
     const sessions = [session('s1', '2024-01-15T10:00:00.000Z')];
 
-    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+    await enrichAndUpload(sessions, createTelemetryRunContext());
     const firstRunReads = mockReadRecords.mock.calls.length;
     expect(firstRunReads).toBeGreaterThan(0);
 
     mockReadRecords.mockClear();
-    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+    await enrichAndUpload(sessions, createTelemetryRunContext());
 
     expect(mockReadRecords).not.toHaveBeenCalled();
   });
@@ -1825,12 +1834,12 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
     const fresh = session('fresh', '2024-01-15T10:00:00.000Z');
 
     // Prime the cache with the newer session only.
-    await enrichExerciseSessions([cached], createTelemetryRunContext());
+    await enrichAndUpload([cached], createTelemetryRunContext());
     mockReadRecords.mockClear();
 
     // Budget of exactly 1: without the skip, the newest-first claim would spend
     // it on the already-collected session and the fresh one would get nothing.
-    await enrichExerciseSessions(
+    await enrichAndUpload(
       [cached, fresh],
       createTelemetryRunContext({ budget: 1 }),
     );
@@ -1842,14 +1851,14 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
 
   test('a re-edited session is collected again rather than frozen', async () => {
     const original = session('s1', '2024-01-15T10:00:00.000Z');
-    await enrichExerciseSessions([original], createTelemetryRunContext());
+    await enrichAndUpload([original], createTelemetryRunContext());
     mockReadRecords.mockClear();
 
     const edited = {
       ...original,
       metadata: { ...original.metadata, lastModifiedTime: '2024-01-15T12:00:00.000Z' },
     };
-    await enrichExerciseSessions([edited], createTelemetryRunContext());
+    await enrichAndUpload([edited], createTelemetryRunContext());
 
     expect(mockReadRecords).toHaveBeenCalled();
   });
@@ -1895,7 +1904,14 @@ describe('readHealthRecordsDetailed fallback short-circuits (#2191)', () => {
 describe('enrichExerciseSessions failure and cache semantics (#2191)', () => {
   const {
     _resetEnrichedSessionCacheForTests,
+    commitStagedSessions,
   } = require('../../../src/services/shared/enrichedSessionCache');
+
+  const enrichAndUpload = async (records: unknown[], ctx: unknown) => {
+    const result = await enrichExerciseSessions(records, ctx);
+    await commitStagedSessions();
+    return result;
+  };
 
   const session = (id: string) => ({
     startTime: '2024-01-15T10:00:00.000Z',
@@ -1924,7 +1940,7 @@ describe('enrichExerciseSessions failure and cache semantics (#2191)', () => {
   test('a headless run does not cache, so the next interactive run still collects the route', async () => {
     const sessions = [session('s1')];
 
-    await enrichExerciseSessions(
+    await enrichAndUpload(
       sessions,
       createTelemetryRunContext({ budget: 3, interactive: false }),
     );
@@ -1932,7 +1948,7 @@ describe('enrichExerciseSessions failure and cache semantics (#2191)', () => {
 
     // A background run cannot answer the route-consent dialog. Caching it there
     // would strand the route forever.
-    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+    await enrichAndUpload(sessions, createTelemetryRunContext());
 
     expect(mockReadRecords).toHaveBeenCalled();
   });
@@ -2010,5 +2026,54 @@ describe('dead Health Connect client is reconnected, not abandoned (#2191)', () 
 
     expect(mockInitialize).not.toHaveBeenCalled();
     expect(getClientUnavailableCount()).toBe(0);
+  });
+});
+
+describe('telemetry cache commits only after a successful upload (PR #2218 review)', () => {
+  const {
+    _resetEnrichedSessionCacheForTests,
+    commitStagedSessions,
+    clearStagedSessions,
+  } = require('../../../src/services/shared/enrichedSessionCache');
+
+  const session = (id: string) => ({
+    startTime: '2024-01-15T10:00:00.000Z',
+    endTime: '2024-01-15T11:00:00.000Z',
+    metadata: { dataOrigin: 'com.fitbit', id, lastModifiedTime: '2024-01-15T11:00:00.000Z' },
+  });
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    _resetEnrichedSessionCacheForTests();
+    await AsyncStorage.clear();
+    mockAggregateRecord.mockResolvedValue({});
+    mockReadRecords.mockResolvedValue({ records: [] });
+  });
+
+  test('a failed upload leaves nothing cached, so the retry re-collects telemetry', async () => {
+    const sessions = [session('s1')];
+
+    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+    // Upload failed: the shell never commits, and beginRun drops the staging.
+    clearStagedSessions();
+    mockReadRecords.mockClear();
+
+    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+
+    // Without this, the retry would send a summary-only record and the route
+    // and samples would be lost until the workout changed or the entry aged out.
+    expect(mockReadRecords).toHaveBeenCalled();
+  });
+
+  test('a successful upload does cache, so the next run skips the reads', async () => {
+    const sessions = [session('s1')];
+
+    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+    await commitStagedSessions();
+    mockReadRecords.mockClear();
+
+    await enrichExerciseSessions(sessions, createTelemetryRunContext());
+
+    expect(mockReadRecords).not.toHaveBeenCalled();
   });
 });

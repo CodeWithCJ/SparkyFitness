@@ -34,7 +34,7 @@ import {
 } from '../shared/telemetryBudget';
 import {
   hasEnrichedSession,
-  markEnrichedSessions,
+  stageEnrichedSessions,
   sessionTelemetryKey,
 } from '../shared/enrichedSessionCache';
 import { createConcurrencyLimiter, runTasksInBatches } from '../../utils/concurrency';
@@ -1042,7 +1042,10 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate, tel
     result.status === 'fulfilled' ? [result.value] : [],
   );
 
-  await markEnrichedSessions(collectedKeys);
+  // Staged, not persisted: the cache is only committed once the server has
+  // accepted these records, so a failed upload re-collects rather than
+  // silently downgrading the workout to summary-only on retry.
+  stageEnrichedSessions(collectedKeys);
 
   // One summary line per run — the field-verifiable signal for #2191. See the
   // matching log in healthconnect/index.ts.

@@ -910,3 +910,35 @@ describe('LogService', () => {
     });
   });
 });
+
+describe('LogService flush failure (PR #2218 review)', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    _resetForTesting();
+    await AsyncStorage.clear();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('a failed write does not leave the mirror ahead of storage', async () => {
+    await setCaptureLevel('all');
+    const setItem = AsyncStorage.setItem as unknown as jest.Mock;
+
+    await addLog('first', 'ERROR');
+    setItem.mockRejectedValueOnce(new Error('disk full'));
+    await _flushBuffer();
+
+    // The failed flush requeues its entries. If the mirror had already been
+    // updated, the retry would merge them into a copy that already held them
+    // and persist duplicates.
+    setItem.mockClear();
+    await _flushBuffer();
+
+    const logs = await getLogs(0, 50);
+    expect(logs.filter(l => l.message === 'first')).toHaveLength(1);
+  });
+});

@@ -14,6 +14,7 @@ import {
 } from './index';
 import { aggregateSleepSessions } from './dataAggregation';
 import { transformHealthRecords } from './dataTransformation';
+import { clearStagedSessions } from '../shared/enrichedSessionCache';
 
 type CumulativeReader = (startDate: Date, endDate: Date) => Promise<ReadResult<AggregatedHealthRecord>>;
 
@@ -61,7 +62,17 @@ export const readEarliestRecord = async (
   metric: Pick<HealthMetric, 'recordType'>,
 ): Promise<ReadResult<{ startTime: string }>> => readEarliestSampleDetailed(metric.recordType);
 
+/**
+ * Clears telemetry cache keys staged by a previous run that never reached a
+ * successful upload, so that run's workouts are re-collected rather than
+ * treated as already enriched.
+ */
+export const beginRun = (): void => {
+  clearStagedSessions();
+};
+
 export const healthReadProvider: HealthReadProvider = {
+  beginRun,
   readCumulativeByDay,
   // readMinMaxAvgByDayDetailed returns null for record types without a verified
   // day-statistics spec — the engine then falls back to the raw sample path.

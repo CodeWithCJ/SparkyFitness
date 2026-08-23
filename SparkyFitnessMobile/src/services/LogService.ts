@@ -185,9 +185,12 @@ const flushBuffer = async (): Promise<void> => {
       // each flush parsing and re-serializing the full ~240 KB of logs on the
       // JS thread — hundreds of milliseconds of blocking per burst, which is
       // itself enough to make taps queue up (#2191).
+      // Written first, mirrored second: the catch below requeues entriesToFlush
+      // on failure, so a mirror updated ahead of a rejected write would already
+      // contain them and the next flush would persist them twice.
+      await AsyncStorage.setItem(LOG_KEY, JSON.stringify(merged));
       persistedLogs = merged;
       persistedNeedsRewrite = false;
-      await AsyncStorage.setItem(LOG_KEY, JSON.stringify(merged));
       consecutiveFlushFailures = 0;
     } catch (error) {
       consecutiveFlushFailures++;

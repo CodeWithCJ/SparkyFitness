@@ -10,6 +10,10 @@ import {
   seriesMean,
   type SeriesPoint,
 } from '../shared/telemetryDownsample';
+import {
+  hasEnrichedSession,
+  sessionTelemetryKey,
+} from '../shared/enrichedSessionCache';
 import type {
   WorkoutGpsPoint,
   WorkoutHrSample,
@@ -196,15 +200,38 @@ function toGpsPoints(locations: readonly HcLocation[]): WorkoutGpsPoint[] {
 const prefetchedRoutes = new Map<string, WorkoutGpsPoint[]>();
 
 /**
- * Resolves route consent for every session in the window that needs it, one
- * dialog at a time, caching the resulting points for the timed read. Failures
- * only cost routes, never the sync.
+ * Telemetry-collection cache key for one Health Connect session.
+ *
+ * lastModifiedTime moves whenever the source rewrites the record, so a session
+ * still being filled in by the watch is re-collected rather than frozen at its
+ * first reading. endTime is the fallback for sources that omit it.
+ */
+export const sessionCacheKey = (record: unknown): string | null => {
+  const metadata = (record as { metadata?: { id?: string; lastModifiedTime?: string } }).metadata;
+  const endTime = (record as { endTime?: string }).endTime;
+  return sessionTelemetryKey(metadata?.id, metadata?.lastModifiedTime ?? endTime);
+};
+
+/**
+ * Resolves route consent for sessions in the window that need it, one dialog at
+ * a time, caching the resulting points for the timed read. Failures only cost
+ * routes, never the sync.
+ *
+ * `limit` must match the telemetry budget the enrichment pass will use. This
+ * runs *before* that pass and outside its budget, so an unbounded prefetch over
+ * a year-long window would serially resolve consent for thousands of sessions
+ * that enrichment then never reaches — recreating the very foreground stall
+ * this bounding exists to prevent (#2191). Sessions are taken newest-first, the
+ * same order enrichment claims its budget in, so the prefetch warms exactly the
+ * sessions that will be enriched.
  */
 export async function prefetchSessionRoutes(
   startTime: Date,
-  endTime: Date
+  endTime: Date,
+  limit: number
 ): Promise<void> {
   prefetchedRoutes.clear();
+  if (limit <= 0) return;
 
   let sessions: Record<string, unknown>[];
   try {
@@ -238,13 +265,26 @@ export async function prefetchSessionRoutes(
     return;
   }
 
+  // Newest-first, matching enrichExerciseSessions' claim order.
+  sessions.sort((a, b) =>
+    String(b.startTime ?? '').localeCompare(String(a.startTime ?? '')),
+  );
+
+  let resolved = 0;
   for (const session of sessions) {
+    if (resolved >= limit) break;
+
     const route = session.exerciseRoute as HcExerciseRoute | undefined;
     const recordId = (session.metadata as { id?: string } | undefined)?.id;
     if (routeHasData(route) || !routeNeedsConsent(route) || !recordId) continue;
 
+    // Sessions whose telemetry is already collected are skipped by enrichment,
+    // so warming their route would be wasted consent work.
+    if (await hasEnrichedSession(sessionCacheKey(session))) continue;
+
     const remembered = await getRouteConsent(recordId);
     if (remembered === 'denied') continue;
+    resolved++;
     try {
       const result = await requestExerciseRouteSerialized(recordId);
       prefetchedRoutes.set(recordId, toGpsPoints(locationsOf(result)));

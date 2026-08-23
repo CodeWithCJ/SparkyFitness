@@ -11,6 +11,7 @@ import type {
 import * as api from '../api/healthDataApi';
 import type { HealthDataPayload } from '../api/healthDataApi';
 import { runWriteback } from '../writeback';
+import { commitStagedSessions } from './enrichedSessionCache';
 import { addLog } from '../LogService';
 import { aggregateByDay } from './dataAggregation';
 import { serverSupportsPerRecordWater } from '../api/measurementsApi';
@@ -341,6 +342,10 @@ export const runForegroundSync = async (
   if (allTransformedData.length > 0) {
     try {
       const apiResponse = await api.syncHealthData(allTransformedData);
+      // The server has the records — only now is it safe to remember which
+      // sessions had their telemetry collected. A failed upload leaves the
+      // staging uncommitted so the retry re-collects (#2191).
+      await commitStagedSessions();
       return {
         success: true,
         apiResponse,
@@ -354,5 +359,8 @@ export const runForegroundSync = async (
     }
   }
 
+  // Nothing to upload means nothing to lose: commit so a run that legitimately
+  // found no new records still records what it read.
+  await commitStagedSessions();
   return { success: true, message: opts.emptyMessage, syncErrors };
 };

@@ -1,9 +1,13 @@
 import type { HealthMetric } from '../../HealthMetrics';
 import type { AggregatedHealthRecord, MetricConfig, ReadResult, TransformedRecord } from '../../types/healthRecords';
 import type { HealthReadProvider } from '../shared/healthSyncEngine';
-import type { TelemetryRunContext } from '../shared/telemetryBudget';
+import {
+  FOREGROUND_TELEMETRY_BUDGET,
+  type TelemetryRunContext,
+} from '../shared/telemetryBudget';
 import type { SyncWindows } from '../../utils/syncUtils';
 import { prefetchSessionRoutes } from './workoutTelemetry';
+import { clearStagedSessions } from '../shared/enrichedSessionCache';
 import {
   getAggregatedStepsByDateDetailed,
   getAggregatedActiveCaloriesByDateDetailed,
@@ -80,7 +84,15 @@ export const prepareInteractiveRead = async (
   if (!metrics.some(m => m.recordType === 'ExerciseSession' || m.recordType === 'Workout')) {
     return;
   }
-  await prefetchSessionRoutes(windows.sessionStart, windows.end);
+  // Bounded by the same budget the enrichment pass will spend. Prefetch runs
+  // before that pass and outside its budget, so without this a year-long window
+  // would serially resolve consent for far more sessions than enrichment will
+  // ever reach (#2191).
+  await prefetchSessionRoutes(
+    windows.sessionStart,
+    windows.end,
+    FOREGROUND_TELEMETRY_BUDGET,
+  );
 };
 
 /** Earliest stored record for the history-import floor probe. */
@@ -89,11 +101,14 @@ export const readEarliestRecord = async (
 ): Promise<ReadResult<{ startTime: string }>> => readEarliestRecordDetailed(metric.recordType);
 
 /**
- * Clears the per-run Health Connect reconnect state, so a client that dies is
- * retried once in each sync rather than only once per app process.
+ * Clears per-run state: the Health Connect reconnect attempt (so a dead client
+ * is retried once in each sync rather than once per app process) and any
+ * telemetry cache keys staged by a previous run that never reached a
+ * successful upload.
  */
 export const beginRun = (): void => {
   resetClientUnavailableState();
+  clearStagedSessions();
 };
 
 export const healthReadProvider: HealthReadProvider = {

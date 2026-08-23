@@ -77,6 +77,41 @@ export const hasEnrichedSession = async (key: string | null): Promise<boolean> =
 };
 
 /**
+ * Sessions collected during the current run, not yet persisted.
+ *
+ * Collection alone is not enough to cache: if the upload then fails, the sync
+ * cursor holds and the window is retried — and a cache written at collection
+ * time would make that retry skip the telemetry and send a summary-only record,
+ * losing the route and samples until the workout changes or the entry is
+ * evicted. Keys are staged here and committed only once the server has accepted
+ * the records.
+ */
+let stagedKeys: string[] = [];
+
+/** Stages collected sessions. Cleared by clearStagedSessions at run start. */
+export const stageEnrichedSessions = (keys: (string | null)[]): void => {
+  for (const key of keys) {
+    if (key) stagedKeys.push(key);
+  }
+};
+
+/** Persists everything staged this run. Called after a successful upload. */
+export const commitStagedSessions = async (): Promise<void> => {
+  const keys = stagedKeys;
+  stagedKeys = [];
+  await markEnrichedSessions(keys);
+};
+
+/**
+ * Drops anything staged but not committed. Called at run start, so a run whose
+ * upload failed (or that never reached the upload) leaves nothing behind and
+ * the next run re-collects.
+ */
+export const clearStagedSessions = (): void => {
+  stagedKeys = [];
+};
+
+/**
  * Records sessions as collected, oldest-evicted-first. Batched per sync run so
  * a run costs one write rather than one per session.
  */
@@ -113,4 +148,5 @@ export const clearEnrichedSessions = async (): Promise<void> => {
 export const _resetEnrichedSessionCacheForTests = (): void => {
   cache = null;
   loadPromise = null;
+  stagedKeys = [];
 };

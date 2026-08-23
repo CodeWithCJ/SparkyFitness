@@ -141,9 +141,12 @@ export const buildBackgroundWindows = (lastSyncedTime: string | null, now: Date 
     now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
   );
   // An unparseable cursor would make every comparison false and leave an
-  // Invalid Date in the window, so fall back to the floor.
-  const withinFloor =
-    Number.isFinite(requestedStart.getTime()) && requestedStart > floor;
+  // Invalid Date in the window, so fall back to the floor. Validity is tracked
+  // separately from the floor comparison: an invalid cursor is not a "clamped"
+  // window, and reporting it as one hands the caller an Invalid Date to format.
+  const hasValidRequestedStart = Number.isFinite(requestedStart.getTime());
+  // >= so a start exactly on the floor is not reported as shortened.
+  const withinFloor = hasValidRequestedStart && requestedStart >= floor;
   const sessionStart = withinFloor ? requestedStart : floor;
   return {
     sessionStart,
@@ -152,7 +155,7 @@ export const buildBackgroundWindows = (lastSyncedTime: string | null, now: Date 
     // Set only when the clamp actually shortened the window, so the caller can
     // tell the user which span the background task will not cover. Reported as
     // data rather than logged here to keep these date helpers side-effect free.
-    ...(withinFloor ? {} : { clampedFrom: requestedStart }),
+    ...(hasValidRequestedStart && !withinFloor ? { clampedFrom: requestedStart } : {}),
   };
 };
 

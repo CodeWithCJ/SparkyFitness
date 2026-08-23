@@ -20,17 +20,17 @@ import { isClientUnavailableError, isQuotaExceededError } from '../shared/quotaE
 import { type TelemetryRunContext } from '../shared/telemetryBudget';
 import {
   hasEnrichedSession,
-  markEnrichedSessions,
-  sessionTelemetryKey,
+  stageEnrichedSessions,
 } from '../shared/enrichedSessionCache';
 import { createConcurrencyLimiter, runTasksInBatches } from '../../utils/concurrency';
 import { getErrorMessage } from '../../utils/errors';
-import { collectSessionTelemetry } from './workoutTelemetry';
+import { collectSessionTelemetry, sessionCacheKey } from './workoutTelemetry';
 import { deriveActiveCalories } from '@workspace/shared';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
 export { isQuotaExceededError };
+export { sessionCacheKey };
 
 /**
  * Enrichment runs two very different costs per session, so they get two limits.
@@ -1209,16 +1209,6 @@ export const isPlausibleSessionDistance = (meters: number, durationMs: number): 
  * ActiveCaloriesBurned, TotalCaloriesBurned, and Distance aggregated over
  * each session's time range and apply plausibility checks (see #593, #1296).
  */
-export const sessionCacheKey = (record: unknown): string | null => {
-  const metadata = (record as { metadata?: { id?: string; lastModifiedTime?: string } }).metadata;
-  const endTime = (record as { endTime?: string }).endTime;
-  // lastModifiedTime moves whenever the source rewrites the record, so a
-  // session that is still being filled in by the watch is re-collected rather
-  // than frozen at its first reading. endTime is the fallback for sources that
-  // omit it.
-  return sessionTelemetryKey(metadata?.id, metadata?.lastModifiedTime ?? endTime);
-};
-
 export const enrichExerciseSessions = async (
   records: unknown[],
   telemetry: TelemetryRunContext,
@@ -1389,7 +1379,10 @@ export const enrichExerciseSessions = async (
     throw failure.reason;
   }
 
-  await markEnrichedSessions(collectedKeys);
+  // Staged, not persisted: the cache is only committed once the server has
+  // accepted these records, so a failed upload re-collects rather than
+  // silently downgrading the workout to summary-only on retry.
+  stageEnrichedSessions(collectedKeys);
 
   // One summary line per run, so the budget and the reuse cache are visible in
   // the in-app log and in the exported diagnostic. This is the field-verifiable
