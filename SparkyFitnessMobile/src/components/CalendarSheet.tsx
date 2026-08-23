@@ -54,6 +54,19 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
     // reflects the month the user is looking at.
     const [year, month] = selectedDate.split('-').map(Number);
     const [visible, setVisible] = React.useState({ year, month: month - 1 });
+
+    useEffect(() => {
+      const nextMonth = month - 1;
+
+      setVisible((previous) => {
+        if (previous.year === year && previous.month === nextMonth) {
+          return previous;
+        }
+
+        return { year, month: nextMonth };
+      });
+    }, [selectedDate]);
+
     const caption = `${monthLabels[visible.month] ?? ''} ${visible.year}`.trim();
     const shiftVisible = useCallback((delta: number) => {
       setVisible((prev) => {
