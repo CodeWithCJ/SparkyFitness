@@ -72,3 +72,45 @@ describe('createTelemetryRunContext', () => {
     expect(ctx.interactive).toBe(true);
   });
 });
+
+describe('collected-session staging is run-scoped (PR #2218 review)', () => {
+  it('does not leak staged keys between overlapping runs', () => {
+    // Background tasks, manual syncs and the iOS observer path are not mutually
+    // exclusive. With one shared staging area, a successful upload in run B
+    // would commit keys staged by run A — marking A's sessions collected even
+    // though the server never received their telemetry.
+    const runA = createTelemetryRunContext();
+    const runB = createTelemetryRunContext();
+
+    runA.stageCollected('session-a');
+    runB.stageCollected('session-b');
+
+    expect(runB.drainCollected()).toEqual(['session-b']);
+    expect(runA.drainCollected()).toEqual(['session-a']);
+  });
+
+  it('drains once — a second drain returns nothing', () => {
+    const ctx = createTelemetryRunContext();
+    ctx.stageCollected('session-a');
+
+    expect(ctx.drainCollected()).toEqual(['session-a']);
+    expect(ctx.drainCollected()).toEqual([]);
+  });
+
+  it('ignores sessions with no stable identity', () => {
+    const ctx = createTelemetryRunContext();
+    ctx.stageCollected(null);
+
+    expect(ctx.drainCollected()).toEqual([]);
+  });
+
+  it('an abandoned run takes its staging with it', () => {
+    // A run whose upload failed is never drained; its keys die with the
+    // context rather than being committed by someone else's success.
+    const failed = createTelemetryRunContext();
+    failed.stageCollected('never-uploaded');
+
+    const next = createTelemetryRunContext();
+    expect(next.drainCollected()).toEqual([]);
+  });
+});

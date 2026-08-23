@@ -20,7 +20,6 @@ import { isClientUnavailableError, isQuotaExceededError } from '../shared/quotaE
 import { type TelemetryRunContext } from '../shared/telemetryBudget';
 import {
   hasEnrichedSession,
-  stageEnrichedSessions,
 } from '../shared/enrichedSessionCache';
 import { createConcurrencyLimiter, runTasksInBatches } from '../../utils/concurrency';
 import { getErrorMessage } from '../../utils/errors';
@@ -1258,8 +1257,6 @@ export const enrichExerciseSessions = async (
     telemetryAllowed.add(record);
   }
 
-  const collectedKeys: (string | null)[] = [];
-
   // Bounded fan-out. An unbounded Promise.all over a busy window issued well
   // over a hundred concurrent native calls, whose results are deserialized and
   // sorted on the JS thread, which starves the UI until they drain (#2191).
@@ -1352,7 +1349,7 @@ export const enrichExerciseSessions = async (
       // route-consent dialog, so collectSessionRoute returns no route for a
       // session awaiting consent — caching that would make the next foreground
       // sync skip it and the route would never be collected at all.
-      if (ctx.interactive) collectedKeys.push(sessionCacheKey(record));
+      if (ctx.interactive) ctx.stageCollected(sessionCacheKey(record));
     }
 
     return Object.keys(enrichedFields).length > 0
@@ -1378,11 +1375,6 @@ export const enrichExerciseSessions = async (
     );
     throw failure.reason;
   }
-
-  // Staged, not persisted: the cache is only committed once the server has
-  // accepted these records, so a failed upload re-collects rather than
-  // silently downgrading the workout to summary-only on retry.
-  stageEnrichedSessions(collectedKeys);
 
   // One summary line per run, so the budget and the reuse cache are visible in
   // the in-app log and in the exported diagnostic. This is the field-verifiable

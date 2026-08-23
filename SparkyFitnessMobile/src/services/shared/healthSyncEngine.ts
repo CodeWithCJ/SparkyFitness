@@ -11,7 +11,7 @@ import type {
 import * as api from '../api/healthDataApi';
 import type { HealthDataPayload } from '../api/healthDataApi';
 import { runWriteback } from '../writeback';
-import { commitStagedSessions } from './enrichedSessionCache';
+import { markEnrichedSessions } from './enrichedSessionCache';
 import { addLog } from '../LogService';
 import { aggregateByDay } from './dataAggregation';
 import { serverSupportsPerRecordWater } from '../api/measurementsApi';
@@ -292,15 +292,17 @@ export const runForegroundSync = async (
   const enabledMetricStates = healthMetricStates && typeof healthMetricStates === 'object' ? healthMetricStates : {};
   const metricsToSync = HEALTH_METRICS.filter(metric => enabledMetricStates[metric.stateKey]);
 
+  // Interactive (a user is present to answer a route-consent dialog) but still
+  // bounded: this window is the user's full configured sync range, so an
+  // unbounded budget scales the per-run cost with their whole history.
+  const telemetry = createTelemetryRunContext({
+    budget: FOREGROUND_TELEMETRY_BUDGET,
+    interactive: true,
+  });
+
   const outcomes = await collectHealthData(provider, metricsToSync, windows, {
     timeoutLabelPrefix: opts.timeoutLabelPrefix,
-    // Interactive (a user is present to answer a route-consent dialog) but
-    // still bounded: this window is the user's full configured sync range, so
-    // an unbounded budget scales the per-run cost with their whole history.
-    telemetry: createTelemetryRunContext({
-      budget: FOREGROUND_TELEMETRY_BUDGET,
-      interactive: true,
-    }),
+    telemetry,
   });
 
   const allTransformedData: HealthDataPayload = [];
@@ -343,9 +345,9 @@ export const runForegroundSync = async (
     try {
       const apiResponse = await api.syncHealthData(allTransformedData);
       // The server has the records — only now is it safe to remember which
-      // sessions had their telemetry collected. A failed upload leaves the
-      // staging uncommitted so the retry re-collects (#2191).
-      await commitStagedSessions();
+      // sessions had their telemetry collected. A failed upload leaves this
+      // run's staging undrained, so the retry re-collects (#2191).
+      await markEnrichedSessions(telemetry.drainCollected());
       return {
         success: true,
         apiResponse,
@@ -361,6 +363,6 @@ export const runForegroundSync = async (
 
   // Nothing to upload means nothing to lose: commit so a run that legitimately
   // found no new records still records what it read.
-  await commitStagedSessions();
+  await markEnrichedSessions(telemetry.drainCollected());
   return { success: true, message: opts.emptyMessage, syncErrors };
 };

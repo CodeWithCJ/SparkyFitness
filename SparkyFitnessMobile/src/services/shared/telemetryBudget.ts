@@ -48,6 +48,19 @@ export interface TelemetryRunContext {
    * Callers that skip collection do not consume budget.
    */
   claim(): boolean;
+  /**
+   * Records a session whose telemetry this run collected, pending the upload
+   * that will commit it to the reuse cache.
+   *
+   * Run-scoped for the same reason the budget is: overlapping runs would
+   * otherwise share one staging area, and a successful upload in one run would
+   * commit keys staged by another whose upload later failed — marking those
+   * sessions collected when the server never received their telemetry.
+   * Null keys (no stable record identity) are ignored.
+   */
+  stageCollected(key: string | null): void;
+  /** Drains the staged keys, for the shell to commit after a successful upload. */
+  drainCollected(): string[];
 }
 
 /**
@@ -60,12 +73,21 @@ export const createTelemetryRunContext = (options?: {
   interactive?: boolean;
 }): TelemetryRunContext => {
   let remaining = options?.budget ?? Number.POSITIVE_INFINITY;
+  let collected: string[] = [];
   return {
     interactive: options?.interactive ?? true,
     claim: (): boolean => {
       if (remaining <= 0) return false;
       remaining -= 1;
       return true;
+    },
+    stageCollected: (key: string | null): void => {
+      if (key) collected.push(key);
+    },
+    drainCollected: (): string[] => {
+      const staged = collected;
+      collected = [];
+      return staged;
     },
   };
 };

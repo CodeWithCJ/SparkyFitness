@@ -7,7 +7,6 @@ import {
 } from '../shared/telemetryBudget';
 import type { SyncWindows } from '../../utils/syncUtils';
 import { prefetchSessionRoutes } from './workoutTelemetry';
-import { clearStagedSessions } from '../shared/enrichedSessionCache';
 import {
   getAggregatedStepsByDateDetailed,
   getAggregatedActiveCaloriesByDateDetailed,
@@ -101,14 +100,11 @@ export const readEarliestRecord = async (
 ): Promise<ReadResult<{ startTime: string }>> => readEarliestRecordDetailed(metric.recordType);
 
 /**
- * Clears per-run state: the Health Connect reconnect attempt (so a dead client
- * is retried once in each sync rather than once per app process) and any
- * telemetry cache keys staged by a previous run that never reached a
- * successful upload.
+ * Clears the per-run Health Connect reconnect state, so a client that dies is
+ * retried once in each sync rather than only once per app process.
  */
 export const beginRun = (): void => {
   resetClientUnavailableState();
-  clearStagedSessions();
 };
 
 export const healthReadProvider: HealthReadProvider = {

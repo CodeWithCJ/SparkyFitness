@@ -13,7 +13,7 @@ import {
   getClientUnavailableCount,
 } from './healthConnectService';
 import { collectHealthData } from './shared/healthSyncEngine';
-import { commitStagedSessions } from './shared/enrichedSessionCache';
+import { markEnrichedSessions } from './shared/enrichedSessionCache';
 import { buildBackgroundWindows, MAX_BACKGROUND_LOOKBACK_DAYS } from '../utils/syncUtils';
 import {
   loadLastSyncedTime,
@@ -240,7 +240,7 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
     addLog(`[Background Sync] Sending ${allData.length} records to server`, 'INFO');
     await syncHealthData(allData);
     // Records accepted — safe to remember the collected telemetry now.
-    await commitStagedSessions();
+    await markEnrichedSessions(telemetry.drainCollected());
     await refreshHealthSyncCacheWhenActive();
 
     if (syncErrors > 0) {

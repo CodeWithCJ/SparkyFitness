@@ -34,7 +34,6 @@ import {
 } from '../shared/telemetryBudget';
 import {
   hasEnrichedSession,
-  stageEnrichedSessions,
   sessionTelemetryKey,
 } from '../shared/enrichedSessionCache';
 import { createConcurrencyLimiter, runTasksInBatches } from '../../utils/concurrency';
@@ -901,8 +900,6 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate, tel
     telemetryAllowed.add(w);
   }
 
-  const collectedKeys: (string | null)[] = [];
-
   // Fetch statistics (calories, distance) for each workout. Bounded fan-out:
   // each workout issues several statistics queries plus, when telemetry is
   // allowed, a route read and per-workout sample queries, and every result is
@@ -1017,7 +1014,7 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate, tel
       Object.assign(telemetry, bundle.telemetry);
       // Recorded even when the workout had nothing beyond its summary: the
       // reads that established that are exactly what must not repeat.
-      collectedKeys.push(workoutCacheKey(w));
+      ctx.stageCollected(workoutCacheKey(w));
     }
 
     if (Object.keys(telemetry).length > 0) record.telemetry = telemetry;
@@ -1041,11 +1038,6 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate, tel
   const workoutsWithStats = settled.flatMap(result =>
     result.status === 'fulfilled' ? [result.value] : [],
   );
-
-  // Staged, not persisted: the cache is only committed once the server has
-  // accepted these records, so a failed upload re-collects rather than
-  // silently downgrading the workout to summary-only on retry.
-  stageEnrichedSessions(collectedKeys);
 
   // One summary line per run — the field-verifiable signal for #2191. See the
   // matching log in healthconnect/index.ts.

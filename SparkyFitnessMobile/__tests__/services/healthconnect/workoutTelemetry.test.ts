@@ -42,7 +42,9 @@ describe('prefetchSessionRoutes is bounded', () => {
 
     await prefetchSessionRoutes(new Date('2024-01-01'), new Date('2024-02-01'), 5);
 
-    expect(mockRequestRoute.mock.calls.length).toBeLessThanOrEqual(5);
+    // Exactly, not at most: an upper bound also passes if the implementation
+    // resolved nothing, which would hide a prefetch that stopped too early.
+    expect(mockRequestRoute).toHaveBeenCalledTimes(5);
   });
 
   test('a zero limit resolves nothing at all', async () => {

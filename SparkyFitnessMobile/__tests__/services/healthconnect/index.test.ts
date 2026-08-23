@@ -35,7 +35,10 @@ import {
 
 import type { PermissionRequest, GrantedPermission } from '../../../src/types/healthRecords';
 import type { SyncDuration } from '../../../src/services/healthconnect/preferences';
-import { createTelemetryRunContext } from '../../../src/services/shared/telemetryBudget';
+import {
+  createTelemetryRunContext,
+  type TelemetryRunContext,
+} from '../../../src/services/shared/telemetryBudget';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 jest.mock('../../../src/services/LogService', () => ({
@@ -1732,14 +1735,15 @@ describe('ensureHistoryReadPermission', () => {
 describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
   const {
     _resetEnrichedSessionCacheForTests,
-    commitStagedSessions,
+    markEnrichedSessions,
   } = require('../../../src/services/shared/enrichedSessionCache');
 
-  // Enrichment only stages cache keys; the sync shell commits them after the
-  // server accepts the upload. These helpers stand in for that boundary.
-  const enrichAndUpload = async (records: unknown[], ctx: unknown) => {
+  // Enrichment only stages cache keys on the run context; the sync shell drains
+  // and persists them after the server accepts the upload. This stands in for
+  // that boundary.
+  const enrichAndUpload = async (records: unknown[], ctx: TelemetryRunContext) => {
     const result = await enrichExerciseSessions(records, ctx);
-    await commitStagedSessions();
+    await markEnrichedSessions(ctx.drainCollected());
     return result;
   };
 
@@ -1904,12 +1908,12 @@ describe('readHealthRecordsDetailed fallback short-circuits (#2191)', () => {
 describe('enrichExerciseSessions failure and cache semantics (#2191)', () => {
   const {
     _resetEnrichedSessionCacheForTests,
-    commitStagedSessions,
+    markEnrichedSessions,
   } = require('../../../src/services/shared/enrichedSessionCache');
 
-  const enrichAndUpload = async (records: unknown[], ctx: unknown) => {
+  const enrichAndUpload = async (records: unknown[], ctx: TelemetryRunContext) => {
     const result = await enrichExerciseSessions(records, ctx);
-    await commitStagedSessions();
+    await markEnrichedSessions(ctx.drainCollected());
     return result;
   };
 
@@ -2032,8 +2036,7 @@ describe('dead Health Connect client is reconnected, not abandoned (#2191)', () 
 describe('telemetry cache commits only after a successful upload (PR #2218 review)', () => {
   const {
     _resetEnrichedSessionCacheForTests,
-    commitStagedSessions,
-    clearStagedSessions,
+    markEnrichedSessions,
   } = require('../../../src/services/shared/enrichedSessionCache');
 
   const session = (id: string) => ({
@@ -2053,9 +2056,9 @@ describe('telemetry cache commits only after a successful upload (PR #2218 revie
   test('a failed upload leaves nothing cached, so the retry re-collects telemetry', async () => {
     const sessions = [session('s1')];
 
+    // Upload failed: the shell never drains this run's context, so nothing is
+    // persisted and the discarded context takes its staging with it.
     await enrichExerciseSessions(sessions, createTelemetryRunContext());
-    // Upload failed: the shell never commits, and beginRun drops the staging.
-    clearStagedSessions();
     mockReadRecords.mockClear();
 
     await enrichExerciseSessions(sessions, createTelemetryRunContext());
@@ -2068,8 +2071,9 @@ describe('telemetry cache commits only after a successful upload (PR #2218 revie
   test('a successful upload does cache, so the next run skips the reads', async () => {
     const sessions = [session('s1')];
 
-    await enrichExerciseSessions(sessions, createTelemetryRunContext());
-    await commitStagedSessions();
+    const ctx = createTelemetryRunContext();
+    await enrichExerciseSessions(sessions, ctx);
+    await markEnrichedSessions(ctx.drainCollected());
     mockReadRecords.mockClear();
 
     await enrichExerciseSessions(sessions, createTelemetryRunContext());
