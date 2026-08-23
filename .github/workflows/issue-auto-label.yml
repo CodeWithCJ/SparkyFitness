@@ -1,0 +1,134 @@
+name: Issue Auto Labeler
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+concurrency:
+  group: issue-auto-label-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    name: Auto-label Issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply labels based on issue content
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const body = issue.body || '';
+            const title = issue.title || '';
+            const currentLabels = (issue.labels || []).map(l => l.name);
+
+            const labelsToAdd = [];
+            const labelsToRemove = [];
+
+            // Helper to parse a markdown section from GitHub issue templates
+            function getSection(text, headingPattern) {
+              const regex = new RegExp(`###\\s+${headingPattern}[^\\n]*\\n([\\s\\S]*?)(?=\\n###|$)`, 'i');
+              const match = text.match(regex);
+              return match ? match[1].trim() : '';
+            }
+
+            const prSection = getSection(body, 'Are you willing to submit a PR');
+            const areaSection = getSection(body, 'Which area does this relate to') + '\n' + getSection(body, 'Which area is affected');
+
+            // 1. PR Willingness
+            const wantsToSubmitPR = prSection.includes("Yes, I'd like to submit a PR!");
+            if (wantsToSubmitPR) {
+              if (!currentLabels.includes('has-pr-volunteer')) {
+                labelsToAdd.push('has-pr-volunteer');
+              }
+            } else {
+              if (currentLabels.includes('has-pr-volunteer') && prSection.length > 0) {
+                labelsToRemove.push('has-pr-volunteer');
+              }
+            }
+
+            // 2. Mobile
+            const isMobile = areaSection.includes('Mobile app (iOS)') ||
+                             areaSection.includes('Mobile app (Android)') ||
+                             /\b(mobile|ios|android)\b/i.test(areaSection) ||
+                             /\b(mobile|ios|android|apk|testflight|expo)\b/i.test(title);
+
+            if (isMobile && !currentLabels.includes('mobile')) {
+              labelsToAdd.push('mobile');
+            }
+
+            // 3. Frontend
+            const isFrontend = areaSection.includes('Web frontend') ||
+                               /\b(web frontend|frontend)\b/i.test(areaSection) ||
+                               /\b(frontend|web app|vite|pwa)\b/i.test(title);
+
+            if (isFrontend && !currentLabels.includes('frontend')) {
+              labelsToAdd.push('frontend');
+            }
+
+            // 4. Backend / Server / DB
+            const isBackend = areaSection.includes('Server / API') ||
+                              areaSection.includes('Database / migrations') ||
+                              /\b(server|api|database|migration|backend)\b/i.test(areaSection) ||
+                              /\b(backend|server|api|database|migration|rls|postgres)\b/i.test(title);
+
+            if (isBackend && !currentLabels.includes('backend')) {
+              labelsToAdd.push('backend');
+            }
+
+            // 5. Integrations (Garmin, Fitbit, Apple Health, Health Connect, etc.)
+            const isIntegrations = areaSection.includes('Integrations (Garmin, Fitbit, etc.)') ||
+                                   /\bintegrations?\b/i.test(areaSection) ||
+                                   /\b(garmin|fitbit|oura|polar|whoop|suunto|strava|health connect|healthkit|apple health|cronometer|resmed|amazfit)\b/i.test(title);
+
+            if (isIntegrations && !currentLabels.includes('integrations')) {
+              labelsToAdd.push('integrations');
+            }
+
+            // 6. AI / SparkyAI
+            const isAI = areaSection.includes('AI / SparkyAI') ||
+                         /\bai\b/i.test(areaSection) ||
+                         /\b(sparkyai|photo estimate|gpt|llm|vision|voice)\b/i.test(title);
+
+            if (isAI && !currentLabels.includes('ai')) {
+              labelsToAdd.push('ai');
+            }
+
+            // 7. Docker / Deployment
+            const isDocker = areaSection.includes('Docker / deployment') ||
+                             /\b(docker|deployment)\b/i.test(areaSection) ||
+                             /\b(docker|docker-compose|compose|helm|k8s|kubernetes|caddy|nginx|traefik|unraid|truenas|synology)\b/i.test(title);
+
+            if (isDocker && !currentLabels.includes('docker')) {
+              labelsToAdd.push('docker');
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            if (labelsToAdd.length > 0) {
+              console.log(`Adding labels to issue #${issue.number}: ${labelsToAdd.join(', ')}`);
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: issue.number,
+                labels: labelsToAdd,
+              });
+            }
+
+            for (const label of labelsToRemove) {
+              console.log(`Removing label from issue #${issue.number}: ${label}`);
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  name: label,
+                });
+              } catch (err) {
+                if (err.status !== 404) throw err;
+              }
+            }
