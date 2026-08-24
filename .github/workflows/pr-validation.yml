@@ -129,11 +129,6 @@ jobs:
                 text: '**[MANDATORY for Frontend changes] Quality**: I have run `pnpm run validate` and it passes.',
               },
               {
-                label: '[MANDATORY for Frontend changes] Translations',
-                required: hasEnTranslationChange,
-                text: '**[MANDATORY for Frontend changes] Translations**: I have only updated the English (`en`) translation file.',
-              },
-              {
                 label: '[MANDATORY for Backend changes] Code Quality',
                 required: hasBackendChanges,
                 text: '**[MANDATORY for Backend changes] Code Quality**: I have run typecheck, lint, and tests. New files use TypeScript, new endpoints have Zod schemas, and new endpoints include tests.',
@@ -218,9 +213,6 @@ jobs:
                 `**[MANDATORY]** Only the \`en\` translation file may be modified. ` +
                 `Remove changes to: ${nonEnLocaleFiles.map(f => '`' + f + '`').join(', ')}.`
               );
-            }
-            if (hasEnTranslationChange && !checked('[MANDATORY for Frontend changes] Translations')) {
-              errors.push('**[MANDATORY for Frontend changes]** You modified `en/translation.json`. Check the "Translations" checkbox.');
             }
 
             // Backend
