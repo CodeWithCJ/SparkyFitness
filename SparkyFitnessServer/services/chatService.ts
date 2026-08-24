@@ -1177,6 +1177,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(custom\s+nutrient\w*|nutrient\s+definition\w*|micronutrient\w*)\b/i,
   },
+  {
+    category: 'water_containers',
+    keywords:
+      /\b(water\s+container\w*|water\s+bottle\w*|drink\s+container\w*)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {

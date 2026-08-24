@@ -51,6 +51,7 @@ const EXPECTED_TOOLS = [
   'sparky_manage_meal_plans',
   'sparky_manage_medications',
   'sparky_manage_profile',
+  'sparky_manage_water_containers',
   'sparky_scan_label',
   'sparky_search_exercises',
   'sparky_search_foods',

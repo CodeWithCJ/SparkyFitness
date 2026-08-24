@@ -37,6 +37,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'list, inspect, duplicate, and delete saved meal plan templates (tools: sparky_manage_meal_plans)',
   custom_nutrients:
     'list, create, update, and delete user-defined custom nutrient definitions (tools: sparky_manage_custom_nutrients)',
+  water_containers:
+    'list, create, update, delete, and set the primary reusable water container for quick water logging (tools: sparky_manage_water_containers)',
 };
 
 const EnableToolsSchema = z.object({

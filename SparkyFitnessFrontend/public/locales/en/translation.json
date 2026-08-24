@@ -23,7 +23,8 @@
       "allergens": "Allergens",
       "favorites": "Favorites",
       "meal_plans": "Meal Plans",
-      "custom_nutrients": "Custom Nutrients"
+      "custom_nutrients": "Custom Nutrients",
+      "water_containers": "Water Containers"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",

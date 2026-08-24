@@ -33,6 +33,10 @@ const CATEGORY_LABELS: Record<ChatToolCategorySlug, [string, string]> = {
     'chat.toolCategories.custom_nutrients',
     'Custom Nutrients',
   ],
+  water_containers: [
+    'chat.toolCategories.water_containers',
+    'Water Containers',
+  ],
 };
 
 /**
