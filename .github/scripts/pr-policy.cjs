@@ -11,10 +11,10 @@
 // Both workflows check out the BASE branch (never PR head), so a pull request
 // cannot change the rules that judge it.
 
-const LICENSE_LABEL = 'needs-license-agreement';
+const LICENSE_LABEL = 'integrity-license-pending';
 const LICENSE_LABEL_COLOR = 'b60205';
 const LICENSE_LABEL_DESCRIPTION =
-  'Mandatory checklist not completed; PR closes 7 days after this label was applied';
+  'Integrity & license agreement pending; PR closes 7 days after this label was applied';
 
 const LICENSE_ITEM = '[MANDATORY - ALL] Integrity & License';
 const LICENSE_ITEM_TEXT =
