@@ -330,4 +330,90 @@ describe('MealDetailScreen', () => {
     );
     expect(favItem?.accessibilityLabel).toBe('Remove from favorites');
   });
+
+  // Regression: the makes-summary must use i18next count pluralization for
+  // application-owned servings/ingredients labels instead of a manual
+  // `count === 1 ? singular : plural` ternary. PL requires one/few/many/other.
+  const renderWithMakes = async (lang: 'en' | 'pl', servings: number, foodCount: number) => {
+    const foods = Array.from({ length: foodCount }, (_, i) => ({
+      ...meal.foods[0],
+      id: `mf-${i}`,
+      food_id: `f-${i}`,
+      variant_id: `v-${i}`,
+      food_name: `Food ${i + 1}`,
+    } as any));
+    const localizedMeal = buildMeal({
+      total_servings: servings,
+      serving_size: servings,
+      foods,
+    });
+    mockUseMeal.mockReturnValue({ meal: localizedMeal, isLoading: false, isError: false, refetch: jest.fn() });
+    const screen = renderScreen();
+    await act(async () => { await i18n.changeLanguage(lang); });
+    return screen;
+  };
+
+  describe('makes-summary pluralization (real catalogs)', () => {
+    it('EN: 1 serving / 1 ingredient (singular)', async () => {
+      const screen = await renderWithMakes('en', 1, 1);
+      expect(screen.getByText('Makes 1 serving · 1 ingredient', { exact: false })).toBeTruthy();
+      screen.unmount();
+    });
+
+    it('EN: 2 servings / 2 ingredients (plural)', async () => {
+      const screen = await renderWithMakes('en', 2, 2);
+      expect(screen.getByText('Makes 2 servings · 2 ingredients', { exact: false })).toBeTruthy();
+      screen.unmount();
+    });
+
+    it('PL: 1 porcja / 1 składnik (one)', async () => {
+      const screen = await renderWithMakes('pl', 1, 1);
+      expect(screen.getByText('1 porcja', { exact: false })).toBeTruthy();
+      expect(screen.getByText('1 składnik', { exact: false })).toBeTruthy();
+      screen.unmount();
+    });
+
+    it('PL: 2 porcje / 2 składniki (few)', async () => {
+      const screen = await renderWithMakes('pl', 2, 2);
+      expect(screen.getByText('2 porcje', { exact: false })).toBeTruthy();
+      expect(screen.getByText('2 składniki', { exact: false })).toBeTruthy();
+      screen.unmount();
+    });
+
+    it('PL: 3 porcje / 3 składniki (few)', async () => {
+      const screen = await renderWithMakes('pl', 3, 3);
+      expect(screen.getByText('3 porcje', { exact: false })).toBeTruthy();
+      expect(screen.getByText('3 składniki', { exact: false })).toBeTruthy();
+      screen.unmount();
+    });
+
+    it('PL: 5 porcji / 5 składników (many)', async () => {
+      const screen = await renderWithMakes('pl', 5, 5);
+      expect(screen.getByText('5 porcji', { exact: false })).toBeTruthy();
+      expect(screen.getByText('5 składników', { exact: false })).toBeTruthy();
+      screen.unmount();
+    });
+
+    it('PL: 12 porcji / 12 składników (many)', async () => {
+      const screen = await renderWithMakes('pl', 12, 12);
+      expect(screen.getByText('12 porcji', { exact: false })).toBeTruthy();
+      expect(screen.getByText('12 składników', { exact: false })).toBeTruthy();
+      screen.unmount();
+    });
+
+    it('PL: 22 porcje / 22 składniki (few)', async () => {
+      const screen = await renderWithMakes('pl', 22, 22);
+      expect(screen.getByText('22 porcje', { exact: false })).toBeTruthy();
+      expect(screen.getByText('22 składniki', { exact: false })).toBeTruthy();
+      screen.unmount();
+    });
+
+    it('PL: 25 porcji / 25 składników (many)', async () => {
+      const screen = await renderWithMakes('pl', 25, 25);
+      expect(screen.getByText('25 porcji', { exact: false })).toBeTruthy();
+      expect(screen.getByText('25 składników', { exact: false })).toBeTruthy();
+      screen.unmount();
+      await act(async () => { await i18n.changeLanguage('en'); });
+    });
+  });
 });

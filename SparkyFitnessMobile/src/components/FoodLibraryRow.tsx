@@ -91,7 +91,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
-            {food.default_variant.calories} {t('foodSearch.labels.caloriesShort', { defaultValue: 'kcal' })}
+            {food.default_variant.calories} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
           </Text>
           <Text className="text-text-secondary text-xs">
             {food.default_variant.serving_size} {formatServingUnit(food.default_variant.serving_unit)}

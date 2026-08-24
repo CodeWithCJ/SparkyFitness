@@ -695,7 +695,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                         </View>
                         <View className="items-end">
                           <Text className="text-text-primary text-base font-semibold">
-                            {ingredientCalories} {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+                            {ingredientCalories} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
                           </Text>
                           <Text className="text-text-muted text-sm mt-1">
                             {formatServingSizeDisplay(quantity)}{' '}
@@ -728,7 +728,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                 <View className="flex-row items-center justify-between">
                   <Text className="text-text-secondary text-base font-medium">{t('mealBuilder.mealTotal', { defaultValue: 'Meal total' })}</Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                    {formatCaloriesDisplay(totals.calories)} {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+                    {formatCaloriesDisplay(totals.calories)} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
                   </Text>
                 </View>
                 <View className="flex-row items-start gap-2 mt-1">
@@ -742,7 +742,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                   <View className="flex-row items-center justify-between">
                     <Text className="text-text-secondary text-base font-medium">{t('mealBuilder.perServing', { defaultValue: 'Per serving' })}</Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                      {formatCaloriesDisplay(totals.calories / totalServingsCount)} {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+                      {formatCaloriesDisplay(totals.calories / totalServingsCount)} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
                     </Text>
                   </View>
                   <View className="flex-row items-start gap-2 mt-1">

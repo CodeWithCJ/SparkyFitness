@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -30,6 +30,8 @@ interface CalendarContentProps extends CalendarSheetProps {
   accentPrimary: string;
 }
 
+type PickerView = 'day' | 'month' | 'year';
+
 /**
  * The keyed boundary is deliberately inside BottomSheetModal. A changed
  * selectedDate starts a fresh calendar view, while the sheet itself remains
@@ -50,15 +52,21 @@ const CalendarContent = ({
   const weekdayLabels = useMemo(() => getCalendarWeekdayShortNames(appLocale), [appLocale]);
   const monthLabels = useMemo(() => getCalendarMonthNames(appLocale), [appLocale]);
   const [initialYear, initialMonth] = selectedDate.split('-').map(Number);
-  const [visible, setVisible] = React.useState({ year: initialYear, month: initialMonth - 1 });
+  const [visible, setVisible] = useState({ year: initialYear, month: initialMonth - 1 });
+  // react-native-ui-datepicker only honours `initialView` on mount, so switching
+  // the month/year quick-jump grid remounts the picker with a key carrying the
+  // active view. Selecting a month/year calls onMonthChange/onYearChange, which
+  // both update the visible month/year and reset back to the day grid.
+  const [pickerView, setPickerView] = useState<PickerView>('day');
 
-  const caption = `${monthLabels[visible.month] ?? ''} ${visible.year}`.trim();
   const shiftVisible = useCallback((delta: number) => {
     setVisible((prev) => {
-      const date = new Date(prev.year, prev.month + delta, 1);
+      // In the month grid prev/next moves by year; in the day grid by month.
+      const step = pickerView === 'month' || pickerView === 'year' ? 12 * delta : delta;
+      const date = new Date(prev.year, prev.month + step, 1);
       return { year: date.getFullYear(), month: date.getMonth() };
     });
-  }, []);
+  }, [pickerView]);
 
   const [sy, sm, sd] = selectedDate.split('-').map(Number);
   const selectedDateValue = new Date(sy, sm - 1, sd);
@@ -74,18 +82,53 @@ const CalendarContent = ({
       const date = new Date(prev.year, value, 1);
       return { year: date.getFullYear(), month: date.getMonth() };
     });
+    setPickerView('day');
   }, []);
+  const handleYearChange = useCallback((value: number) => {
+    setVisible((prev) => {
+      const date = new Date(value, prev.month, 1);
+      return { year: date.getFullYear(), month: date.getMonth() };
+    });
+    setPickerView('day');
+  }, []);
+
+  const prevLabel =
+    pickerView === 'month' || pickerView === 'year'
+      ? t('cycleCalendar.previousYear', { defaultValue: 'Previous year' })
+      : t('cycleCalendar.previousMonth', { defaultValue: 'Previous month' });
+  const nextLabel =
+    pickerView === 'month' || pickerView === 'year'
+      ? t('cycleCalendar.nextYear', { defaultValue: 'Next year' })
+      : t('cycleCalendar.nextMonth', { defaultValue: 'Next month' });
 
   return (
     <BottomSheetView className="pb-safe-or-5 px-2">
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
-        <Pressable onPress={() => shiftVisible(-1)} hitSlop={12} accessibilityLabel={t('cycleCalendar.previousMonth', { defaultValue: 'Previous month' })}>
+        <Pressable onPress={() => shiftVisible(-1)} hitSlop={12} accessibilityLabel={prevLabel}>
           <Icon name="chevron-back" size={18} color={textPrimary} />
         </Pressable>
-        <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600', textTransform: 'capitalize' }}>
-          {caption}
-        </Text>
-        <Pressable onPress={() => shiftVisible(1)} hitSlop={12} accessibilityLabel={t('cycleCalendar.nextMonth', { defaultValue: 'Next month' })}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Pressable
+            onPress={() => setPickerView((view) => (view === 'month' ? 'day' : 'month'))}
+            hitSlop={6}
+            accessibilityLabel={t('cycleCalendar.selectMonth', { defaultValue: 'Select month' })}
+          >
+            <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600', textTransform: 'capitalize' }}>
+              {monthLabels[visible.month] ?? ''}
+            </Text>
+          </Pressable>
+          <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600' }}>{' '}</Text>
+          <Pressable
+            onPress={() => setPickerView((view) => (view === 'year' ? 'day' : 'year'))}
+            hitSlop={6}
+            accessibilityLabel={t('cycleCalendar.selectYear', { defaultValue: 'Select year' })}
+          >
+            <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600' }}>
+              {visible.year}
+            </Text>
+          </Pressable>
+        </View>
+        <Pressable onPress={() => shiftVisible(1)} hitSlop={12} accessibilityLabel={nextLabel}>
           <Icon name="chevron-forward" size={18} color={textPrimary} />
         </Pressable>
       </View>
@@ -96,10 +139,12 @@ const CalendarContent = ({
         month={visible.month}
         year={visible.year}
         onMonthChange={handleMonthChange}
+        onYearChange={handleYearChange}
+        initialView={pickerView}
         hideHeader
         locale={presentation.locale}
         firstDayOfWeek={presentation.firstDayOfWeek}
-        key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}-${visible.month}-${visible.year}`}
+        key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}-${visible.month}-${visible.year}-${pickerView}`}
         components={{
           Weekday: (weekday) => (
             <View style={{ minWidth: 30 }}>

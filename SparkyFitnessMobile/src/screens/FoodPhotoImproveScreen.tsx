@@ -510,7 +510,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             exiting={FadeOut.duration(FADE_OUT_MS)}
           >
             <Text className="text-text-secondary text-sm mb-4 leading-5">
-              {t('foodPhotoImprove.descriptionHint', { defaultValue: 'Add anything the {{subject}} might not make obvious.', subject: images.length > 1 ? t('foodPhotoImprove.photos', { defaultValue: 'photos' }) : t('foodPhotoImprove.photo', { defaultValue: 'photo' }) })}
+              {t('foodPhotoImprove.descriptionHint', { defaultValue: 'Add anything the {{subject}} might not make obvious.', subject: t('foodPhotoImprove.subjectLabel', { defaultValue: 'photos', count: images.length }) })}
             </Text>
 
             <Text className="text-text-primary text-base font-semibold mb-2">

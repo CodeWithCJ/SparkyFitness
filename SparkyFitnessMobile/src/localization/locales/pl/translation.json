@@ -191,6 +191,7 @@
     },
     "bar": {
       "clearWorkout": "Wyczyść",
+      "clear": "Wyczyść",
       "clearWorkoutTitle": "Wyczyścić trening?",
       "saveFailed": "Nie udało się zapisać treningu",
       "unsavedChanges": "Niektóre zmiany nie dotarły do serwera.",
@@ -1554,6 +1555,7 @@
     "setCount_many": "{{formattedCount}} serii",
     "setCount_other": "{{formattedCount}} serii",
     "caloriesShort": "kcal",
+    "caloriesUnit": "kcal",
     "unknownExercise": "Nieznane ćwiczenie",
     "addNotePlaceholder": "Dodaj notatkę…",
     "setOf_one": "Seria {{number}} z {{count}}",
@@ -1729,6 +1731,10 @@
   "cycleCalendar": {
     "previousMonth": "Poprzedni miesiąc",
     "nextMonth": "Następny miesiąc",
+    "previousYear": "Poprzedni rok",
+    "nextYear": "Następny rok",
+    "selectMonth": "Wybierz miesiąc",
+    "selectYear": "Wybierz rok",
     "weekdays": {
       "sunday": "N",
       "monday": "P",
@@ -1801,6 +1807,7 @@
     "carbs": "węglowodany",
     "fat": "tłuszcz",
     "caloriesShort": "kcal",
+    "caloriesUnit": "kcal",
     "proteinAmount": "białka",
     "carbsAmount": "węglowodanów",
     "fatAmount": "tłuszczu",
@@ -1814,6 +1821,7 @@
   "foodSummary": {
     "tapToAddFood": "Dotknij, aby dodać produkt",
     "caloriesShort": "kcal",
+    "caloriesUnit": "kcal",
     "nutritionBreakdown": "Podsumowanie wartości odżywczych: {{label}}"
   },
   "exerciseSummary": {
@@ -1825,6 +1833,7 @@
     "unknownFood": "Nieznany produkt",
     "adjustServing": "Dostosuj porcję",
     "caloriesShort": "kcal",
+    "caloriesUnit": "kcal",
     "deleteFood": "Usuń produkt"
   },
   "exerciseRow": {
@@ -2262,6 +2271,7 @@
     "fat": "Tłuszcz",
     "fiber": "Błonnik",
     "saturatedFatShort": "Tłuszcze nasycone",
+    "saturatedFatLabel": "Tłuszcze nasycone",
     "polyunsaturatedFatShort": "Tł. wielonienasycone",
     "monounsaturatedFatShort": "Tł. jednonienasycone",
     "transFat": "Tł. trans",
@@ -2425,8 +2435,10 @@
     "removeImage": "Usuń zdjęcie {{number}}",
     "addAnotherImage": "Dodaj kolejne zdjęcie",
     "descriptionHint": "Dodaj informacje, których {{subject}} może nie pokazywać na zdjęciu.",
-    "photos": "zdjęcia",
-    "photo": "zdjęcie",
+    "subjectLabel_one": "zdjęcie",
+    "subjectLabel_few": "zdjęcia",
+    "subjectLabel_many": "zdjęć",
+    "subjectLabel_other": "zdjęć",
     "totalWeightOptional": "Łączna masa (opcjonalnie)",
     "weightPlaceholder": "np. 350",
     "descriptionOptional": "Opis (opcjonalnie)",
@@ -2822,10 +2834,14 @@
     "loadFailed": "Nie udało się wczytać posiłku",
     "perServing": "Na porcję",
     "total": "Łącznie",
-    "serving": "porcja",
-    "servings": "porcji",
-    "ingredient": "składnik",
-    "ingredients": "składniki",
+    "servingsLabel_one": "porcja",
+    "servingsLabel_few": "porcje",
+    "servingsLabel_many": "porcji",
+    "servingsLabel_other": "porcji",
+    "ingredientsLabel_one": "składnik",
+    "ingredientsLabel_few": "składniki",
+    "ingredientsLabel_many": "składników",
+    "ingredientsLabel_other": "składników",
     "foodsInMeal": "Składniki posiłku",
     "linkedMeal": "Połączony posiłek",
     "protein": "białko",
@@ -3036,6 +3052,7 @@
     },
     "labels": {
       "caloriesShort": "kcal",
+      "caloriesUnit": "kcal",
       "foods": "produkty",
       "meals": "posiłki",
       "meal": "Posiłek",
@@ -4168,11 +4185,13 @@
     "saveHint": "Zapisz domyślną godzinę"
   },
   "workoutReorder": {
-    "sets": "serii",
+    "sets_one": "{{count}} seria",
+    "sets_few": "{{count}} serie",
+    "sets_many": "{{count}} serii",
+    "sets_other": "{{count}} serii",
     "drag": "Przeciągnij, aby zmienić kolejność",
     "title": "Zmień kolejność ćwiczeń",
-    "doneHint": "Zakończono zmianę kolejności",
-    "setsPlural": "serii"
+    "doneHint": "Zakończono zmianę kolejności"
   },
   "ranges": {
     "7d": "7 dni",

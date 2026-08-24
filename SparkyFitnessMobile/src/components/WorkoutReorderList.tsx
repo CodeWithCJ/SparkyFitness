@@ -265,7 +265,7 @@ function ReorderItemRow({
             {name}
           </Text>
           <Text className="text-sm text-text-muted">
-            {setCount} {setCount === 1 ? t('workoutReorder.sets', { defaultValue: 'set' }) : t('workoutReorder.setsPlural', { defaultValue: 'sets' })}
+            {t('workoutReorder.sets', { defaultValue: '{{count}} sets', count: setCount })}
           </Text>
         </View>
       </View>

@@ -471,7 +471,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('2 exercises · 3 sets · 300 kcal');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('2 exercises · 3 sets · 300 Cal');
       });
 
       it('omits calories when zero', () => {
@@ -520,7 +520,7 @@ describe('workoutSession', () => {
           ],
         });
         // 500 + 640 = 1140 kg
-        expect(buildSessionSubtitle(session, 60, 300)).toBe(`1 exercise · 2 sets · ${fmt(1140)} kg · 300 kcal`);
+        expect(buildSessionSubtitle(session, 60, 300)).toBe(`1 exercise · 2 sets · ${fmt(1140)} kg · 300 Cal`);
       });
 
       it('converts volume to lbs when weightUnit is lbs', () => {
@@ -553,7 +553,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 2 sets · 300 kcal');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 2 sets · 300 Cal');
       });
 
       it('excludes cardio efforts from the set count and shows their distance instead', () => {
@@ -577,7 +577,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 40, 300)).toBe(
-          '2 exercises · 1 set · 500 kg · 5.2 km · 300 kcal',
+          '2 exercises · 1 set · 500 kg · 5.2 km · 300 Cal',
         );
       });
 
@@ -594,7 +594,7 @@ describe('workoutSession', () => {
         const session = makePreset({
           exercises: [cardio('ex-1', 5, 1500), cardio('ex-2', 10, 1800)],
         });
-        expect(buildSessionSubtitle(session, 55, 500)).toBe('2 exercises · 15.0 km · 500 kcal');
+        expect(buildSessionSubtitle(session, 55, 500)).toBe('2 exercises · 15.0 km · 500 Cal');
       });
 
       it('omits sets count when no sets exist', () => {
@@ -609,7 +609,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 300 kcal');
+        expect(buildSessionSubtitle(session, 60, 300)).toBe('1 exercise · 300 Cal');
       });
     });
 
@@ -636,7 +636,7 @@ describe('workoutSession', () => {
             { weight: null, reps: null },
           ] as any,
         });
-        expect(buildSessionSubtitle(session, 45, 200)).toBe('3 sets · 45 min · 200 kcal');
+        expect(buildSessionSubtitle(session, 45, 200)).toBe('3 sets · 45 min · 200 Cal');
       });
 
       it.each([
@@ -683,7 +683,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         // 1080 kg total
-        expect(buildSessionSubtitle(session, 30, 150)).toBe(`2 sets · ${fmt(1080)} kg · 30 min · 150 kcal`);
+        expect(buildSessionSubtitle(session, 30, 150)).toBe(`2 sets · ${fmt(1080)} kg · 30 min · 150 Cal`);
       });
 
       it('converts volume to lbs', () => {
@@ -695,7 +695,7 @@ describe('workoutSession', () => {
         });
         const result = buildSessionSubtitle(session, 20, 100, 'lbs');
         // 1000 kg * 2.20462 ≈ 2205 lbs
-        expect(result).toBe(`2 sets · ${fmt(2205)} lbs · 20 min · 100 kcal`);
+        expect(result).toBe(`2 sets · ${fmt(2205)} lbs · 20 min · 100 Cal`);
       });
 
       it('omits volume when weights are zero', () => {
@@ -705,7 +705,7 @@ describe('workoutSession', () => {
             { weight: 0, reps: 10 },
           ] as any,
         });
-        expect(buildSessionSubtitle(session, 30, 200)).toBe('2 sets · 30 min · 200 kcal');
+        expect(buildSessionSubtitle(session, 30, 200)).toBe('2 sets · 30 min · 200 Cal');
       });
 
       it('omits duration when zero', () => {
@@ -716,7 +716,7 @@ describe('workoutSession', () => {
           ] as any,
         });
         // 800 kg volume
-        expect(buildSessionSubtitle(session, 0, 150)).toBe('2 sets · 800 kg · 150 kcal');
+        expect(buildSessionSubtitle(session, 0, 150)).toBe('2 sets · 800 kg · 150 Cal');
       });
 
       it('omits calories when zero', () => {
@@ -744,7 +744,7 @@ describe('workoutSession', () => {
           distance: 5.2,
           sets: [{ weight: null, reps: null, duration: 1800, distance: 5.2 }] as any,
         });
-        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 5.2 km · 300 kcal');
+        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 5.2 km · 300 Cal');
       });
 
       it('routes multi-set cardio through the entry totals too', () => {
@@ -755,41 +755,41 @@ describe('workoutSession', () => {
             { weight: null, reps: null, duration: 600, distance: 2 },
           ] as any,
         });
-        expect(buildSessionSubtitle(session, 20, 200)).toBe('20 min · 4.0 km · 200 kcal');
+        expect(buildSessionSubtitle(session, 20, 200)).toBe('20 min · 4.0 km · 200 Cal');
       });
     });
 
     describe('individual activity (single or no sets)', () => {
       it('shows duration and calories', () => {
         const session = makeIndividual();
-        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 300 kcal');
+        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 300 Cal');
       });
 
       it('includes distance in km', () => {
         const session = makeIndividual({ distance: 5.5 });
-        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 5.5 km · 300 kcal');
+        expect(buildSessionSubtitle(session, 30, 300)).toBe('30 min · 5.5 km · 300 Cal');
       });
 
       it('converts distance to miles', () => {
         const session = makeIndividual({ distance: 10 }); // 10 km
         const result = buildSessionSubtitle(session, 60, 500, 'kg', 'miles');
         // 10 km * 0.621371 ≈ 6.2 mi
-        expect(result).toBe('1h · 6.2 mi · 500 kcal');
+        expect(result).toBe('1h · 6.2 mi · 500 Cal');
       });
 
       it('omits distance when null', () => {
         const session = makeIndividual({ distance: null });
-        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 kcal');
+        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
       });
 
       it('omits distance when zero', () => {
         const session = makeIndividual({ distance: 0 });
-        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 kcal');
+        expect(buildSessionSubtitle(session, 45, 250)).toBe('45 min · 250 Cal');
       });
 
       it('omits duration when zero', () => {
         const session = makeIndividual();
-        expect(buildSessionSubtitle(session, 0, 300)).toBe('300 kcal');
+        expect(buildSessionSubtitle(session, 0, 300)).toBe('300 Cal');
       });
 
       it('omits calories when zero', () => {
@@ -813,7 +813,7 @@ describe('workoutSession', () => {
           distance: 5,
         });
         // Single set still enters the sets branch — weight 100 * reps 10 = 1000 kg volume
-        expect(buildSessionSubtitle(session, 30, 200)).toBe(`1 set · ${fmt(1000)} kg · 30 min · 200 kcal`);
+        expect(buildSessionSubtitle(session, 30, 200)).toBe(`1 set · ${fmt(1000)} kg · 30 min · 200 Cal`);
       });
     });
   });

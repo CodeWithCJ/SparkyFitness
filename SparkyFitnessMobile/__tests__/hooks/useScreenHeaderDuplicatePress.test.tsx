@@ -13,7 +13,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: (key: string, defaultValue?: string) => defaultValue ?? key }),
 }));
 
 // Custom (non-native) path, so the header renders as Pressables we can press.

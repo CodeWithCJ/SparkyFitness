@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
+import { act, render, fireEvent } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { ExerciseEntryResponse } from '@workspace/shared';
 import WorkoutReorderList, {
@@ -10,6 +10,7 @@ import WorkoutReorderList, {
 } from '../../src/components/WorkoutReorderList';
 import { moveSessionExerciseItem } from '../../src/utils/workoutSession';
 import type { WorkoutCardExercise } from '../../src/utils/workoutSession';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 const insets = { top: 47, bottom: 34, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -56,6 +57,10 @@ function renderList(exercises: WorkoutCardExercise[], overrides?: Partial<Parame
 describe('WorkoutReorderList', () => {
   // A(3), B(2, g1), C(4, g1), D(1) → items [A], [B,C run], [D].
   const exercises = [makeCard('a', 3), makeCard('b', 2, 1), makeCard('c', 4, 1), makeCard('d', 1)];
+
+  beforeEach(async () => {
+    await act(async () => { await initializeI18n('en'); await i18n.changeLanguage('en'); });
+  });
 
   it('renders one row per exercise', () => {
     const { getAllByTestId } = renderList(exercises);
@@ -148,6 +153,68 @@ describe('WorkoutReorderList', () => {
       const to = computeReorderTargetIndex(strides, offsets, 2, -150);
       const moved = moveSessionExerciseItem(session, 2, to);
       expect(moved.map((e) => e.id)).toEqual(['A', 'E', 'B', 'C', 'D']);
+    });
+  });
+
+  // Regression: the per-row set count must use i18next count pluralization instead
+  // of a manual `count === 1 ? singular : plural` ternary. PL requires one/few/many/other.
+  describe('set-count pluralization (real catalogs)', () => {
+    const rowForCount = (count: number) => {
+      const card = makeCard('plural-card', count);
+      return renderList([card]);
+    };
+
+    it('EN: 1 set (singular)', () => {
+      const { getByText } = rowForCount(1);
+      expect(getByText('1 set')).toBeTruthy();
+    });
+
+    it('EN: 2 sets (plural)', () => {
+      const { getByText } = rowForCount(2);
+      expect(getByText('2 sets')).toBeTruthy();
+    });
+
+    it('PL: 1 seria (one)', async () => {
+      const { getByText } = rowForCount(1);
+      await act(async () => { await i18n.changeLanguage('pl'); });
+      expect(getByText('1 seria')).toBeTruthy();
+    });
+
+    it('PL: 2 serie (few)', async () => {
+      const { getByText } = rowForCount(2);
+      await act(async () => { await i18n.changeLanguage('pl'); });
+      expect(getByText('2 serie')).toBeTruthy();
+    });
+
+    it('PL: 3 serie (few)', async () => {
+      const { getByText } = rowForCount(3);
+      await act(async () => { await i18n.changeLanguage('pl'); });
+      expect(getByText('3 serie')).toBeTruthy();
+    });
+
+    it('PL: 5 serii (many)', async () => {
+      const { getByText } = rowForCount(5);
+      await act(async () => { await i18n.changeLanguage('pl'); });
+      expect(getByText('5 serii')).toBeTruthy();
+    });
+
+    it('PL: 12 serii (many)', async () => {
+      const { getByText } = rowForCount(12);
+      await act(async () => { await i18n.changeLanguage('pl'); });
+      expect(getByText('12 serii')).toBeTruthy();
+    });
+
+    it('PL: 22 serie (few)', async () => {
+      const { getByText } = rowForCount(22);
+      await act(async () => { await i18n.changeLanguage('pl'); });
+      expect(getByText('22 serie')).toBeTruthy();
+    });
+
+    it('PL: 25 serii (many)', async () => {
+      const { getByText } = rowForCount(25);
+      await act(async () => { await i18n.changeLanguage('pl'); });
+      expect(getByText('25 serii')).toBeTruthy();
+      await act(async () => { await i18n.changeLanguage('en'); });
     });
   });
 });

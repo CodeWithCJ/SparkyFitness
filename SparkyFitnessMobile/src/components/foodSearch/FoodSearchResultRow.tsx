@@ -102,7 +102,7 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
         ) : (
           <>
             <Text className="text-text-primary text-base font-semibold">
-              {item.calories} {t('foodSearch.labels.caloriesShort', { defaultValue: 'kcal' })}
+              {item.calories} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
             </Text>
             <Text className="text-text-secondary text-xs">
               {item.serving_description

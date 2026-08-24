@@ -191,6 +191,7 @@
     },
     "bar": {
       "clearWorkout": "Clear workout",
+      "clear": "Clear",
       "clearWorkoutTitle": "Clear workout?",
       "saveFailed": "Could not save your workout",
       "unsavedChanges": "Some changes have not reached the server.",
@@ -1538,6 +1539,7 @@
     "setCount_many": "{{formattedCount}} sets",
     "setCount_other": "{{formattedCount}} sets",
     "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
     "unknownExercise": "Unknown exercise",
     "addNotePlaceholder": "Add a note…",
     "setOf_one": "Set {{number}} of {{count}}",
@@ -1705,6 +1707,10 @@
   "cycleCalendar": {
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
+    "previousYear": "Previous year",
+    "nextYear": "Next year",
+    "selectMonth": "Select month",
+    "selectYear": "Select year",
     "weekdays": {
       "sunday": "S",
       "monday": "M",
@@ -1777,6 +1783,7 @@
     "carbs": "carbs",
     "fat": "fat",
     "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
     "proteinAmount": "protein",
     "carbsAmount": "carbs",
     "fatAmount": "fat",
@@ -1790,6 +1797,7 @@
   "foodSummary": {
     "tapToAddFood": "Tap to add food",
     "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
     "nutritionBreakdown": "{{label}} nutrition breakdown"
   },
   "exerciseSummary": {
@@ -1801,6 +1809,7 @@
     "unknownFood": "Unknown food",
     "adjustServing": "Adjust serving",
     "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
     "deleteFood": "Delete food"
   },
   "exerciseRow": {
@@ -2224,6 +2233,7 @@
     "fat": "Fat",
     "fiber": "Fiber",
     "saturatedFatShort": "Sat. Fat",
+    "saturatedFatLabel": "Saturated Fat",
     "polyunsaturatedFatShort": "Poly. Fat",
     "monounsaturatedFatShort": "Mono. Fat",
     "transFat": "Trans Fat",
@@ -2385,8 +2395,8 @@
     "removeImage": "Remove image {{number}}",
     "addAnotherImage": "Add another image",
     "descriptionHint": "Add anything the {{subject}} might not make obvious.",
-    "photos": "photos",
-    "photo": "photo",
+    "subjectLabel_one": "photo",
+    "subjectLabel_other": "photos",
     "totalWeightOptional": "Total weight (optional)",
     "weightPlaceholder": "e.g. 350",
     "descriptionOptional": "Description (optional)",
@@ -2780,10 +2790,10 @@
     "loadFailed": "Failed to load meal",
     "perServing": "Per serving",
     "total": "Total",
-    "serving": "serving",
-    "servings": "servings",
-    "ingredient": "ingredient",
-    "ingredients": "ingredients",
+    "servingsLabel_one": "serving",
+    "servingsLabel_other": "servings",
+    "ingredientsLabel_one": "ingredient",
+    "ingredientsLabel_other": "ingredients",
     "foodsInMeal": "Foods in Meal",
     "linkedMeal": "Linked meal",
     "protein": "protein",
@@ -2984,6 +2994,7 @@
     },
     "labels": {
       "caloriesShort": "kcal",
+      "caloriesUnit": "cal",
       "foods": "foods",
       "meals": "meals",
       "meal": "Meal",
@@ -4066,11 +4077,11 @@
     "saveHint": "Save default time"
   },
   "workoutReorder": {
-    "sets": "set",
+    "sets_one": "{{count}} set",
+    "sets_other": "{{count}} sets",
     "drag": "Drag to reorder",
     "title": "Reorder exercises",
-    "doneHint": "Done reordering",
-    "setsPlural": "sets"
+    "doneHint": "Done reordering"
   },
   "ranges": {
     "7d": "7d",

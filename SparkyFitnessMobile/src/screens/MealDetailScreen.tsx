@@ -289,7 +289,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({ navigation, route }
             onSelect={setViewMode}
           />
           <Text className="text-text-muted text-xs text-center">
-            {t('mealDetail.makesSummary', { defaultValue: 'Makes {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}', servings: meal.total_servings || 1, servingLabel: (meal.total_servings || 1) === 1 ? t('mealDetail.serving', { defaultValue: 'serving' }) : t('mealDetail.servings', { defaultValue: 'servings' }), count: foodCount, ingredientLabel: foodCount === 1 ? t('mealDetail.ingredient', { defaultValue: 'ingredient' }) : t('mealDetail.ingredients', { defaultValue: 'ingredients' }) })}
+            {t('mealDetail.makesSummary', { defaultValue: 'Makes {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}', servings: meal.total_servings || 1, servingLabel: t('mealDetail.servingsLabel', { defaultValue: 'servings', count: meal.total_servings || 1 }), count: foodCount, ingredientLabel: t('mealDetail.ingredientsLabel', { defaultValue: 'ingredients', count: foodCount }) })}
           </Text>
         </View>
 

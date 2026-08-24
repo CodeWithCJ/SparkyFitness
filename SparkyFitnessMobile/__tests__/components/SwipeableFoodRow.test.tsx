@@ -51,7 +51,7 @@ describe('SwipeableFoodRow', () => {
       />,
     );
 
-    fireEvent.press(screen.getByText(/120 kcal/));
+    fireEvent.press(screen.getByText(/120 Cal/));
 
     expect(onAdjustServing).toHaveBeenCalledWith(entry);
   });
@@ -101,7 +101,7 @@ describe('SwipeableFoodRow', () => {
     );
 
     // Just text — no button.
-    fireEvent.press(screen.getByText(/120 kcal/));
+    fireEvent.press(screen.getByText(/120 Cal/));
     expect(onAdjustServing).not.toHaveBeenCalled();
   });
 
