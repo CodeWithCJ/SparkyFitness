@@ -36,10 +36,17 @@ jobs:
 
             // Helper: determine if a PR is an allowed automated PR
             function isEligible(pr) {
+              // 1. Must originate from within this repository (reject all forks)
               const headRepo = pr.head?.repo?.full_name;
               const baseRepo = pr.base?.repo?.full_name;
               if (!headRepo || !baseRepo || headRepo !== baseRepo) return false;
 
+              // 2. Must be authored by a bot or repository owner
+              const isBot = pr.user?.type === 'Bot' || pr.user?.login?.endsWith('[bot]');
+              const isOwner = pr.user?.login === owner || pr.author_association === 'OWNER';
+              if (!isBot && !isOwner) return false;
+
+              // 3. Must match allowed automation branch prefixes or labels
               const headRef = pr.head?.ref || '';
               const matchesBranch = ALLOWED_BRANCH_PREFIXES.some(prefix => headRef.startsWith(prefix));
               const matchesLabel = (pr.labels || []).some(l => ALLOWED_LABELS.includes(l.name));
