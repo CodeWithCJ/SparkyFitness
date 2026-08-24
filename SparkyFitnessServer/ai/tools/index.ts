@@ -14,6 +14,7 @@ import { buildCustomNutrientTools } from './customNutrientTools.js';
 import { buildWaterContainerTools } from './waterContainerTools.js';
 import { buildCoachTools } from './coachTools.js';
 import { buildEngagementTools } from './engagementTools.js';
+import { buildExerciseStatsTools } from './exerciseStatsTools.js';
 import { buildExerciseTools } from './exerciseTools.js';
 import { buildFavoritesTools } from './favoritesTools.js';
 import { buildFoodTools } from './foodTools.js';
@@ -70,6 +71,7 @@ const CATEGORY_BUILDERS: Record<
   custom_nutrients: [(u, tz) => buildCustomNutrientTools(u, tz)],
   water_containers: [(u, tz) => buildWaterContainerTools(u, tz)],
   workout_plans: [(u, tz) => buildWorkoutPlanTools(u, tz)],
+  exercise_stats: [(u, tz) => buildExerciseStatsTools(u, tz)],
 };
 
 // Composition order: the core categories first (a strict prefix of the full
@@ -90,6 +92,7 @@ const CATEGORY_ORDER: ChatToolCategorySlug[] = [
   'custom_nutrients',
   'water_containers',
   'workout_plans',
+  'exercise_stats',
 ];
 
 // Resolves the category set to compose: an explicit (already-validated,

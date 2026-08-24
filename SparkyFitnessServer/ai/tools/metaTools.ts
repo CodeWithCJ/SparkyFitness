@@ -41,6 +41,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'list, create, update, delete, and set the primary reusable water container for quick water logging (tools: sparky_manage_water_containers)',
   workout_plans:
     'list, view, and delete saved workout plan templates and their weekly assignments (tools: sparky_manage_workout_plans)',
+  exercise_stats:
+    'read exercise analytics: interval stats summaries, advanced activity search, personal records, and matched course groupings (tools: sparky_get_exercise_stats)',
 };
 
 const EnableToolsSchema = z.object({

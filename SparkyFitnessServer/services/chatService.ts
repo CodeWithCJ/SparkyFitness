@@ -1187,6 +1187,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(workout\s+plan\w*|workout\s+template\w*|training\s+plan\w*|training\s+program\w*)\b/i,
   },
+  {
+    category: 'exercise_stats',
+    keywords:
+      /\b(personal\s+record\w*|best\s+effort\w*|exercise\s+stat\w*|workout\s+stat\w*|matched\s+course\w*|pace\s+record\w*)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {

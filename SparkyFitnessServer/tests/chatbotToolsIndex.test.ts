@@ -27,6 +27,7 @@ const EXPECTED_TOOLS = [
   'sparky_get_exercise_details',
   'sparky_get_exercise_diary',
   'sparky_get_exercise_progress',
+  'sparky_get_exercise_stats',
   'sparky_get_exercise_usage',
   'sparky_get_food_details',
   'sparky_get_food_diary',

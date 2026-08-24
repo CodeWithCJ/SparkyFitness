@@ -38,6 +38,7 @@ const CATEGORY_LABELS: Record<ChatToolCategorySlug, [string, string]> = {
     'Water Containers',
   ],
   workout_plans: ['chat.toolCategories.workout_plans', 'Workout Plans'],
+  exercise_stats: ['chat.toolCategories.exercise_stats', 'Exercise Stats'],
 };
 
 /**

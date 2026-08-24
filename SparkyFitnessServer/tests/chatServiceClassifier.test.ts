@@ -86,6 +86,7 @@ describe('getSystemPrompt dormant-domain listing', () => {
       'custom_nutrients',
       'water_containers',
       'workout_plans',
+      'exercise_stats',
     ]);
     expect(prompt).not.toContain('sparky_enable_tools');
   });
@@ -124,6 +125,7 @@ describe('buildEscalationPrepareStep', () => {
     custom_nutrients: ['sparky_manage_custom_nutrients'],
     water_containers: ['sparky_manage_water_containers'],
     workout_plans: ['sparky_manage_workout_plans'],
+    exercise_stats: ['sparky_get_exercise_stats'],
   };
   const base = ['sparky_manage_food', 'sparky_enable_tools'];
 
