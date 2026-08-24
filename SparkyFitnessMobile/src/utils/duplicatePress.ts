@@ -35,7 +35,13 @@ export const createDuplicatePressGuard = (
   return (key: string): boolean => {
     const now = Date.now();
     const previous = lastPressAt.get(key);
-    if (previous !== undefined && now - previous < windowMs) return false;
+    // `now < previous` means the wall clock moved backwards (an NTP correction,
+    // or the user changing the device time). Without the lower bound the
+    // negative elapsed time reads as "too soon" and the button stays dead until
+    // wall time catches up — potentially hours.
+    if (previous !== undefined && now >= previous && now - previous < windowMs) {
+      return false;
+    }
     lastPressAt.set(key, now);
     return true;
   };

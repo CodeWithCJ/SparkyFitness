@@ -1813,6 +1813,17 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
     expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(true);
   });
 
+  test('a generic native read failure is not cached as empty telemetry', async () => {
+    // Neither proof the series is absent nor a stable authorization result.
+    // The default has to be "retry", because caching it is permanent.
+    mockReadRecords.mockRejectedValue(new Error('Binder transaction failed'));
+    const s1 = session('s1', '2024-01-10T10:00:00.000Z');
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(false);
+  });
+
   test('an unavailable record type is a stable answer and still caches', async () => {
     // Distinct from the retryable failures above: "this type is unavailable or
     // unauthorized here" does not change between syncs, so re-reading it every

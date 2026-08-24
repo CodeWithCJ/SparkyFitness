@@ -1,4 +1,5 @@
 import { queryQuantitySamples } from '@kingstinct/react-native-healthkit';
+import { isPermanentlyUnavailableError } from '../shared/quotaError';
 import { addLog } from '../LogService';
 import {
   downsampleGpsPoints,
@@ -155,10 +156,21 @@ export async function collectWorkoutRoute(
  * and an unauthorized type throws. Any of those is a normal absence, and one
  * missing series must not cost us the rest.
  */
+export interface WorkoutSeriesResult {
+  series: Partial<Record<SeriesKey, SeriesPoint[]>>;
+  /**
+   * A series read failed for a reason that may not repeat. The caller must not
+   * record the workout as collected: a rejection is not the same answer as
+   * "no samples", and the reuse cache has no expiry.
+   */
+  incomplete: boolean;
+}
+
 export async function collectWorkoutSeries(
   workout: WorkoutProxyLike
-): Promise<Partial<Record<SeriesKey, SeriesPoint[]>>> {
+): Promise<WorkoutSeriesResult> {
   const collected: Partial<Record<SeriesKey, SeriesPoint[]>> = {};
+  let incomplete = false;
 
   for (const spec of SERIES_SPECS) {
     try {
@@ -185,8 +197,12 @@ export async function collectWorkoutSeries(
       // Running and cycling variants share an output key; whichever the
       // activity actually produced is the one that arrives.
       collected[spec.key] = (collected[spec.key] ?? []).concat(points);
-    } catch {
-      // Type unavailable on this device or not authorized.
+    } catch (error) {
+      // An explicitly unsupported or unauthorized type is a stable answer and
+      // stays absent. Anything else is a rejection, not an empty result, and
+      // HealthKit returns [] rather than throwing when there are simply no
+      // samples — so treat it as worth retrying.
+      if (!isPermanentlyUnavailableError(error)) incomplete = true;
     }
   }
 
@@ -194,7 +210,7 @@ export async function collectWorkoutSeries(
     collected[key]?.sort((a, b) => a.t.localeCompare(b.t));
   }
 
-  return collected;
+  return { series: collected, incomplete };
 }
 
 /**
@@ -311,10 +327,15 @@ export async function collectWorkoutTelemetry(
   }[]
 ): Promise<WorkoutTelemetryBundle> {
   try {
-    const [route, series] = await Promise.all([
+    const [route, seriesResult] = await Promise.all([
+      // A route failure is deliberately NOT treated as incomplete: an empty
+      // route is the expected, common result for every indoor workout, so
+      // marking those incomplete would keep them out of the reuse cache
+      // forever and churn the per-run budget on the same workouts (#2191).
       collectWorkoutRoute(workout),
       collectWorkoutSeries(workout),
     ]);
+    const series = seriesResult.series;
 
     const bundle: WorkoutTelemetryBundle = {};
 
@@ -340,6 +361,8 @@ export async function collectWorkoutTelemetry(
 
     const laps = collectWorkoutLaps(events);
     if (laps.length > 0) bundle.laps = laps;
+
+    if (seriesResult.incomplete) bundle.incomplete = true;
 
     return bundle;
   } catch (error) {

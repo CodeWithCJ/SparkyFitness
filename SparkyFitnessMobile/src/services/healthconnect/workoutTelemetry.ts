@@ -14,7 +14,11 @@ import {
   hasEnrichedSession,
   sessionTelemetryKey,
 } from '../shared/enrichedSessionCache';
-import { isClientUnavailableError, isQuotaExceededError } from '../shared/quotaError';
+import {
+  isClientUnavailableError,
+  isPermanentlyUnavailableError,
+  isQuotaExceededError,
+} from '../shared/quotaError';
 import type {
   WorkoutGpsPoint,
   WorkoutHrSample,
@@ -448,7 +452,7 @@ async function readSeriesForWindow(
     // has the series — it is the same read failing for everyone. Surface it so
     // the session is not cached as "collected, nothing there".
     if (isRetryableReadError(error)) throw new RetryableTelemetryError(error);
-    // Type unavailable or unauthorized; treat as absent.
+    // Explicitly unsupported or unauthorized: a stable answer, treat as absent.
     return [];
   }
 }
@@ -586,9 +590,11 @@ export interface SessionTelemetryBundle {
  * unavailable or unauthorized here" — which is a stable answer and correctly
  * caches as "nothing to collect".
  *
- * Quota exhaustion and a dead client are exactly the degraded-Health-Connect
- * conditions the rest of this fix handles, and they hit every session in the
- * run's budget at once.
+ * Quota exhaustion and a dead client are the named cases, but the default is
+ * retryable: only an explicitly recognised unsupported/unauthorized error is
+ * treated as stable. A generic native read failure is neither proof that the
+ * series is absent nor a stable authorization result, and treating it as one
+ * caches an empty bundle that suppresses collection for good.
  */
 class RetryableTelemetryError extends Error {
   constructor(readonly cause: unknown) {
@@ -598,7 +604,9 @@ class RetryableTelemetryError extends Error {
 }
 
 const isRetryableReadError = (error: unknown): boolean =>
-  isQuotaExceededError(error) || isClientUnavailableError(error);
+  isQuotaExceededError(error) ||
+  isClientUnavailableError(error) ||
+  !isPermanentlyUnavailableError(error);
 
 const round = (value: number | null, digits = 2): number | null =>
   value === null ? null : Number(value.toFixed(digits));
