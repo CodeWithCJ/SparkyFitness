@@ -20,7 +20,8 @@
       "vision": "Vision",
       "profile": "Profile & Habits",
       "medications": "Medications",
-      "allergens": "Allergens"
+      "allergens": "Allergens",
+      "favorites": "Favorites"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",

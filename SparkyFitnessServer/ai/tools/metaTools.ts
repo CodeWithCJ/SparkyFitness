@@ -31,6 +31,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'medication and GLP-1 tracking (tools: sparky_manage_medications)',
   allergens:
     'track food allergens and intolerances to flag in meals (tools: sparky_manage_allergens)',
+  favorites:
+    'list, add, and remove favorite foods and meals for quick logging (tools: sparky_manage_favorites)',
 };
 
 const EnableToolsSchema = z.object({
