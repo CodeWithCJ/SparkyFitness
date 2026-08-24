@@ -10,6 +10,7 @@ import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import { buildAllergenTools } from './allergenTools.js';
 import { buildAskTools } from './askTools.js';
 import { buildCheckinTools } from './checkinTools.js';
+import { buildCustomNutrientTools } from './customNutrientTools.js';
 import { buildCoachTools } from './coachTools.js';
 import { buildEngagementTools } from './engagementTools.js';
 import { buildExerciseTools } from './exerciseTools.js';
@@ -64,6 +65,7 @@ const CATEGORY_BUILDERS: Record<
   allergens: [(u, tz) => buildAllergenTools(u, tz)],
   favorites: [(u, tz) => buildFavoritesTools(u, tz)],
   meal_plans: [(u, tz) => buildMealPlanTools(u, tz)],
+  custom_nutrients: [(u, tz) => buildCustomNutrientTools(u, tz)],
 };
 
 // Composition order: the core categories first (a strict prefix of the full
@@ -81,6 +83,7 @@ const CATEGORY_ORDER: ChatToolCategorySlug[] = [
   'allergens',
   'favorites',
   'meal_plans',
+  'custom_nutrients',
 ];
 
 // Resolves the category set to compose: an explicit (already-validated,

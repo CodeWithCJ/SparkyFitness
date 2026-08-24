@@ -35,6 +35,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'list, add, and remove favorite foods and meals for quick logging (tools: sparky_manage_favorites)',
   meal_plans:
     'list, inspect, duplicate, and delete saved meal plan templates (tools: sparky_manage_meal_plans)',
+  custom_nutrients:
+    'list, create, update, and delete user-defined custom nutrient definitions (tools: sparky_manage_custom_nutrients)',
 };
 
 const EnableToolsSchema = z.object({

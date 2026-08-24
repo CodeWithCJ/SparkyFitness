@@ -29,6 +29,10 @@ const CATEGORY_LABELS: Record<ChatToolCategorySlug, [string, string]> = {
   allergens: ['chat.toolCategories.allergens', 'Allergens'],
   favorites: ['chat.toolCategories.favorites', 'Favorites'],
   meal_plans: ['chat.toolCategories.meal_plans', 'Meal Plans'],
+  custom_nutrients: [
+    'chat.toolCategories.custom_nutrients',
+    'Custom Nutrients',
+  ],
 };
 
 /**

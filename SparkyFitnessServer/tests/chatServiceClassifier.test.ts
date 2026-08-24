@@ -83,6 +83,7 @@ describe('getSystemPrompt dormant-domain listing', () => {
       'allergens',
       'favorites',
       'meal_plans',
+      'custom_nutrients',
     ]);
     expect(prompt).not.toContain('sparky_enable_tools');
   });
@@ -118,6 +119,7 @@ describe('buildEscalationPrepareStep', () => {
     allergens: ['sparky_manage_allergens'],
     favorites: ['sparky_manage_favorites'],
     meal_plans: ['sparky_manage_meal_plans'],
+    custom_nutrients: ['sparky_manage_custom_nutrients'],
   };
   const base = ['sparky_manage_food', 'sparky_enable_tools'];
 

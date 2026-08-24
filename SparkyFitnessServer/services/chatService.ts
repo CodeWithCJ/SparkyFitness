@@ -1172,6 +1172,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     category: 'meal_plans',
     keywords: /\b(meal\s*plan\w*|meal\s*template\w*)\b/i,
   },
+  {
+    category: 'custom_nutrients',
+    keywords:
+      /\b(custom\s+nutrient\w*|nutrient\s+definition\w*|micronutrient\w*)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {

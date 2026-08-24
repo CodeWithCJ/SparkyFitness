@@ -22,7 +22,8 @@
       "medications": "Medications",
       "allergens": "Allergens",
       "favorites": "Favorites",
-      "meal_plans": "Meal Plans"
+      "meal_plans": "Meal Plans",
+      "custom_nutrients": "Custom Nutrients"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",

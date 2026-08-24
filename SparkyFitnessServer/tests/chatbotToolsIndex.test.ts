@@ -42,6 +42,7 @@ const EXPECTED_TOOLS = [
   'sparky_list_foods',
   'sparky_manage_allergens',
   'sparky_manage_checkin',
+  'sparky_manage_custom_nutrients',
   'sparky_manage_exercise',
   'sparky_manage_favorites',
   'sparky_manage_food',
