@@ -37,7 +37,7 @@ jobs:
             const repo = context.repo.repo;
 
             if (isPR) {
-              const pulls = await github.paginate(github.rest.pulls.list, {
+              const allItems = await github.paginate(github.rest.issues.listForRepo, {
                 owner,
                 repo,
                 state: 'all',
@@ -45,8 +45,10 @@ jobs:
                 per_page: 10,
               });
 
+              const userPRs = allItems.filter(i => Boolean(i.pull_request));
+
               // If this is their first PR
-              if (pulls.length === 1) {
+              if (userPRs.length === 1) {
                 const commentBody = [
                   '<!-- first-pr-welcome -->',
                   `👋 Welcome @${author} and thank you for opening your first pull request in SparkyFitness! 🎉`,
@@ -63,7 +65,7 @@ jobs:
 
                 core.info(`Posted first-time PR welcome comment for ${author}.`);
               } else {
-                core.info(`${author} has ${pulls.length} PRs; not their first PR.`);
+                core.info(`${author} has ${userPRs.length} PRs; not their first PR.`);
               }
             } else {
               // Issue handling

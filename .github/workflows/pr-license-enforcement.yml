@@ -60,7 +60,6 @@ jobs:
               }
             };
 
-            // ---- Ensure the label exists ----
             try {
               await github.rest.issues.createLabel({
                 owner,
@@ -70,7 +69,21 @@ jobs:
                 description: policy.LICENSE_LABEL_DESCRIPTION,
               });
             } catch (error) {
-              if (error.status !== 422) throw error; // 422 = already exists
+              if (error.status === 422) {
+                try {
+                  await github.rest.issues.updateLabel({
+                    owner,
+                    repo,
+                    name: LICENSE_LABEL,
+                    color: policy.LICENSE_LABEL_COLOR,
+                    description: policy.LICENSE_LABEL_DESCRIPTION,
+                  });
+                } catch (updateErr) {
+                  core.debug(`Could not update label: ${updateErr.message}`);
+                }
+              } else {
+                throw error;
+              }
             }
 
             const pulls = await github.paginate(github.rest.pulls.list, {

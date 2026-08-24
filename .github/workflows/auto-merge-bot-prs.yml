@@ -36,6 +36,10 @@ jobs:
 
             // Helper: determine if a PR is an allowed automated PR
             function isEligible(pr) {
+              const headRepo = pr.head?.repo?.full_name;
+              const baseRepo = pr.base?.repo?.full_name;
+              if (!headRepo || !baseRepo || headRepo !== baseRepo) return false;
+
               const headRef = pr.head?.ref || '';
               const matchesBranch = ALLOWED_BRANCH_PREFIXES.some(prefix => headRef.startsWith(prefix));
               const matchesLabel = (pr.labels || []).some(l => ALLOWED_LABELS.includes(l.name));
@@ -182,6 +186,11 @@ jobs:
                 continue;
               }
 
+              if (checkRuns.length === 0 && combinedStatus.data.total_count === 0) {
+                core.info(`PR #${pr.number} has no check runs or statuses yet. Waiting.`);
+                continue;
+              }
+
               // 4. Merge the clean PR
               try {
                 core.info(`All checks passed and no conflicts found. Auto-merging PR #${pr.number} (${headRef})...`);
@@ -189,6 +198,7 @@ jobs:
                   owner,
                   repo,
                   pull_number: pr.number,
+                  sha: headSha,
                   merge_method: 'squash',
                   commit_title: `${pr.title} (#${pr.number})`,
                 });

@@ -73,7 +73,7 @@ jobs:
 
                 // Also parse PR body for issue links
                 const prBody = prData?.body || '';
-                const issueRegex = /(?:(?:closes|close|closed|fixes|fix|fixed|resolves|resolve|resolved|linked issue:?\s*(?:closes|fixes|resolves)?)\s*#?(\d+))/gi;
+                const issueRegex = /(?:(?:closes|close|closed|fixes|fix|fixed|resolves|resolve|resolved|linked issue:?\s*(?:closes|fixes|resolves)?):?\s*#(\d+))/gi;
                 let issueMatch;
                 while ((issueMatch = issueRegex.exec(prBody)) !== null) {
                   const num = parseInt(issueMatch[1], 10);
@@ -85,7 +85,7 @@ jobs:
             }
 
             // 3. Directly extract any issue references in release notes
-            const directIssueRegex = /(?:(?:closes|fixes|resolves)\s*#?(\d+))/gi;
+            const directIssueRegex = /(?:(?:closes|close|closed|fixes|fix|fixed|resolves|resolve|resolved):?\s*#(\d+))/gi;
             let directMatch;
             while ((directMatch = directIssueRegex.exec(body)) !== null) {
               const num = parseInt(directMatch[1], 10);

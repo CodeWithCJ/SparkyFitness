@@ -64,7 +64,7 @@ jobs:
 
             // 2. Regex fallback / supplement for issue references in PR description
             // Matches patterns like "Linked Issue: Closes #123", "Closes #123", "Fixes #123", "Resolves #123"
-            const regex = /(?:(?:closes|close|closed|fixes|fix|fixed|resolves|resolve|resolved|linked issue:?\s*(?:closes|fixes|resolves)?)\s*#?(\d+))/gi;
+            const regex = /(?:(?:closes|close|closed|fixes|fix|fixed|resolves|resolve|resolved|linked issue:?\s*(?:closes|fixes|resolves)?):?\s*#(\d+))/gi;
             let match;
             while ((match = regex.exec(body)) !== null) {
               const num = parseInt(match[1], 10);
