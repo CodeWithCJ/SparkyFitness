@@ -18,6 +18,7 @@ import { formatRelativeTime } from '../utils/dateUtils';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
+import { useTranslation } from 'react-i18next';
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -29,7 +30,7 @@ type SettingsScreenProps = CompositeScreenProps<
 >;
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
-  const { t , i18n: translationI18n } = useTranslation();
+  const { t, i18n: translationI18n } = useTranslation();
   const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
@@ -178,6 +179,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                 onPress={() => navigation.navigate('AppSettings')}
                 iconColor={catViolet}
               />
+              {isConnected && (
+                <SettingsRow
+                  icon="people"
+                  title={t('familyDiary.title', { defaultValue: 'Family Diaries' })}
+                  onPress={() => navigation.navigate('FamilyMembers')}
+                  iconColor={catTeal}
+                />
+              )}
               {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"

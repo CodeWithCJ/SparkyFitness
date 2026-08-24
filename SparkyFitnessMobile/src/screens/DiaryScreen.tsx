@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import Button from '../components/ui/Button';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
@@ -39,6 +38,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useTranslation } from 'react-i18next';
 
 type DiaryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Diary'>,
@@ -46,7 +46,7 @@ type DiaryScreenProps = CompositeScreenProps<
 >;
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
-  const { t , i18n: translationI18n } = useTranslation();
+  const { t, i18n: translationI18n } = useTranslation();
   const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
@@ -81,6 +81,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   }, [navigation, selectedDate]);
 
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
+  const openFamilyDiaries = useCallback(() => navigation.navigate('FamilyMembers'), [navigation]);
+  const familyDiariesAccessibilityLabel = t('familyDiary.openFamilyDiaries', {
+    defaultValue: 'Open family diaries',
+  });
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const usesNativeTabs = useNativeIOSTabsActive();
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
@@ -102,6 +106,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         dateLabel: `${formatDateLabel(selectedDate, t, dateLocale)} ▾`,
         t,
         locale: dateLocale,
+        leadingAction: {
+          sfSymbol: 'person.2.fill',
+          onPress: openFamilyDiaries,
+          accessibilityLabel: familyDiariesAccessibilityLabel,
+          identifier: 'family-diaries',
+        },
       },
     );
   }, [
@@ -109,8 +119,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     goToPreviousDay,
     nativeHeaderActionColor,
     navigation,
+    openFamilyDiaries,
     openCalendar,
     selectedDate,
+    familyDiariesAccessibilityLabel,
     usesNativeTabs,
     t,
     dateLocale,
@@ -402,6 +414,11 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           onToday={goToToday}
           onDatePress={openCalendar}
           showDateAlways
+          action={{
+            icon: 'people',
+            accessibilityLabel: familyDiariesAccessibilityLabel,
+            onPress: openFamilyDiaries,
+          }}
         />
       ) : !isConnectionLoading && (
         <View

@@ -339,6 +339,62 @@ describe('native header navigation contract', () => {
     }
   });
 
+  it('registers the family diary flow through safe root-stack screens', () => {
+    const familyRoutes = [
+      {
+        routeName: 'FamilyMembers',
+        component: 'SafeFamilyMembers',
+        title: 'Family Diaries',
+        backOption: "headerBackButtonDisplayMode: 'minimal'",
+      },
+      {
+        routeName: 'FamilyDiary',
+        component: 'SafeFamilyDiary',
+        title: 'Family Diary',
+        backOption: "headerBackTitle: 'Family Diaries'",
+      },
+      {
+        routeName: 'FamilyMealDetail',
+        component: 'SafeFamilyMealDetail',
+        title: 'Select Foods',
+        backOption: "headerBackTitle: 'Family Diary'",
+      },
+      {
+        routeName: 'FamilyCopyReview',
+        component: 'SafeFamilyCopyReview',
+        title: 'Review Copy',
+        backOption: "headerBackTitle: 'Select Foods'",
+      },
+    ] as const;
+    const rootStackScreenNames = extractScreenNames(appSource, 'Stack');
+    const stackComponentsByRoute = extractStackComponentsByRoute(appSource);
+
+    for (const { routeName, component, title, backOption } of familyRoutes) {
+      expect(rootStackScreenNames.filter((name) => name === routeName)).toHaveLength(1);
+      expect(stackComponentsByRoute.get(routeName)).toBe(component);
+
+      const screenBlock = getStackScreenBlock(appSource, routeName);
+      expect(screenBlock).toBeDefined();
+      expect(screenBlock).toContain(`component={${component}}`);
+      expect(screenBlock).toContain(`createStackScreenOptions('${title}', {`);
+      expect(screenBlock).toContain(backOption);
+      expect(screenBlock).not.toMatch(/\bpresentation\s*:/);
+    }
+
+    expect(safeScreensSource).toContain(
+      "withErrorBoundary(FamilyMembersScreen, 'FamilyMembers', { canGoBack: true })",
+    );
+    expect(safeScreensSource).toContain(
+      "withErrorBoundary(FamilyDiaryScreen, 'FamilyDiary', { canGoBack: true })",
+    );
+    expect(safeScreensSource).toContain(
+      "withErrorBoundary(FamilyMealDetailScreen, 'FamilyMealDetail', { canGoBack: true })",
+    );
+    expect(safeScreensSource).toContain(
+      "withErrorBoundary(FamilyCopyReviewScreen, 'FamilyCopyReview', { canGoBack: true })",
+    );
+  });
+
   it('requires every root-stack screen to have native-tabs coverage or an explicit exclusion reason', () => {
     const rootStackRoutes = extractTypeKeys(navigationSource, 'RootStackParamList');
     const appScreens = extractScreenNames(appSource, 'Stack');

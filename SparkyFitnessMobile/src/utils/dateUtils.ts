@@ -6,7 +6,10 @@ import type { TFunction } from 'i18next';
  * Delegates to the shared localDateToDay helper to ensure device-local calendar day consistency.
  */
 export const toLocalDateString = (timestamp: string | Date): string => {
-  const localDate = typeof timestamp === 'string' || typeof timestamp === 'number' ? new Date(timestamp) : timestamp;
+  const localDate =
+    typeof timestamp === 'string' || typeof timestamp === 'number'
+      ? new Date(timestamp)
+      : timestamp;
   return localDateToDay(localDate);
 };
 
@@ -34,7 +37,8 @@ export const addDays = (dateString: string, days: number): string => {
 };
 
 // Strip any time/timezone suffix from a date string, returning just YYYY-MM-DD
-export const normalizeDate = (dateString: string): string => dateString.split('T')[0];
+export const normalizeDate = (dateString: string): string =>
+  dateString.split('T')[0];
 
 // Format a YYYY-MM-DD date for display ("Mon, Jan 6")
 export const formatDate = (dateString: string, locale: string): string => {

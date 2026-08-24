@@ -13,6 +13,8 @@ import { useMeasurements } from '../../src/hooks/useMeasurements';
 import { useCustomMeasurementsByDate } from '../../src/hooks/useCustomMeasurements';
 import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
 import { getTodayDate } from '../../src/utils/dateUtils';
+import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
+import { setNativeHeaderDatePickerOptions } from '../../src/utils/nativeHeaderDatePicker';
 
 const mockNavigation = {
   setOptions: jest.fn(),
@@ -69,6 +71,12 @@ jest.mock('../../src/hooks/useHeaderActionColors', () => ({
   useHeaderActionColors: jest.fn(() => ({ defaultColor: '#000000' })),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key === 'familyDiary.openFamilyDiaries' ? 'Open family diaries' : key,
+  }),
+}));
+
 jest.mock('../../src/services/nativeTabBarPreference', () => ({
   useNativeIOSTabsActive: jest.fn(() => false),
   useNativeIOSHeadersActive: jest.fn(() => false),
@@ -101,12 +109,17 @@ jest.mock('../../src/components/ServingAdjustSheet', () => {
 });
 
 jest.mock('../../src/components/DateNavigator', () => {
-  const { Text, View } = require('react-native');
+  const { Pressable, Text, View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ title }: any) => (
+    default: ({ title, action }: any) => (
       <View testID="date-navigator">
         <Text>{title}</Text>
+        {action ? (
+          <Pressable accessibilityLabel={action.accessibilityLabel} onPress={action.onPress}>
+            <Text>{action.accessibilityLabel}</Text>
+          </Pressable>
+        ) : null}
       </View>
     ),
   };
@@ -180,6 +193,10 @@ const mockUseNutrientDisplayPreferences = useNutrientDisplayPreferences as jest.
 const mockUseMeasurements = useMeasurements as jest.MockedFunction<typeof useMeasurements>;
 const mockUseCustomMeasurementsByDate = useCustomMeasurementsByDate as jest.MockedFunction<
   typeof useCustomMeasurementsByDate
+>;
+const mockUseNativeIOSTabsActive = useNativeIOSTabsActive as jest.MockedFunction<typeof useNativeIOSTabsActive>;
+const mockSetNativeHeaderDatePickerOptions = setNativeHeaderDatePickerOptions as jest.MockedFunction<
+  typeof setNativeHeaderDatePickerOptions
 >;
 
 const baseSummary = {
@@ -393,6 +410,31 @@ describe('DiaryScreen custom queries', () => {
     expect(refetchNutrientPrefs).toHaveBeenCalled();
     // Spinner tears down after the rejected query.
     expect(UNSAFE_getByType(RefreshControl).props.refreshing).toBe(false);
+  });
+
+  test('opens family diaries from the custom date header', () => {
+    const { getByLabelText } = renderScreen();
+
+    fireEvent.press(getByLabelText('Open family diaries'));
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('FamilyMembers');
+  });
+
+  test('opens family diaries from the native leading header action', () => {
+    mockUseNativeIOSTabsActive.mockReturnValue(true);
+
+    renderScreen();
+
+    const options = mockSetNativeHeaderDatePickerOptions.mock.calls[
+      mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
+    ]?.[1];
+    expect(options?.leadingAction).toEqual(expect.objectContaining({
+      sfSymbol: 'person.2.fill',
+      accessibilityLabel: 'Open family diaries',
+    }));
+    options?.leadingAction?.onPress();
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('FamilyMembers');
   });
 
 });

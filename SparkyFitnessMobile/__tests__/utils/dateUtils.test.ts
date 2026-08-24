@@ -4,6 +4,7 @@ import {
   addDays,
   normalizeDate,
   formatDateLabel,
+  formatDate,
   formatRelativeTime,
 } from '../../src/utils/dateUtils';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
@@ -110,6 +111,26 @@ describe('with a pinned clock', () => {
       const other = formatDateLabel('2024-06-13', englishTranslator, 'en-US');
       expect(other).not.toBe('Today');
       expect(other).not.toBe('Yesterday');
+    });
+
+    test('accepts localized relative labels and date formatting', () => {
+      expect(
+        formatDateLabel('2024-06-15', {
+          locale: 'pl',
+          todayLabel: 'Dzisiaj',
+          yesterdayLabel: 'Wczoraj',
+        }),
+      ).toBe('Dzisiaj');
+      expect(
+        formatDateLabel('2024-06-14', {
+          locale: 'pl',
+          todayLabel: 'Dzisiaj',
+          yesterdayLabel: 'Wczoraj',
+        }),
+      ).toBe('Wczoraj');
+      expect(formatDate('2024-06-13', 'pl')).not.toBe(
+        formatDate('2024-06-13', 'en-US'),
+      );
     });
   });
 

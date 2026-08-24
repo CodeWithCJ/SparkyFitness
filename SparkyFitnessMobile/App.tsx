@@ -78,6 +78,10 @@ import {
   SafeWhatsNew,
   SafeDailyNutritionDetails,
   SafeNutrientTrends,
+  SafeFamilyMembers,
+  SafeFamilyDiary,
+  SafeFamilyMealDetail,
+  SafeFamilyCopyReview,
   SafeCycleSettings,
   SafeCycleOnboarding,
   SafeCycleHub,
@@ -336,6 +340,34 @@ function AppContent() {
               />
             )}
           </Stack.Screen>
+          <Stack.Screen
+            name="FamilyMembers"
+            component={SafeFamilyMembers}
+            options={createStackScreenOptions('Family Diaries', {
+              headerBackButtonDisplayMode: 'minimal',
+            })}
+          />
+          <Stack.Screen
+            name="FamilyDiary"
+            component={SafeFamilyDiary}
+            options={createStackScreenOptions('Family Diary', {
+              headerBackTitle: 'Family Diaries',
+            })}
+          />
+          <Stack.Screen
+            name="FamilyMealDetail"
+            component={SafeFamilyMealDetail}
+            options={createStackScreenOptions('Select Foods', {
+              headerBackTitle: 'Family Diary',
+            })}
+          />
+          <Stack.Screen
+            name="FamilyCopyReview"
+            component={SafeFamilyCopyReview}
+            options={createStackScreenOptions('Review Copy', {
+              headerBackTitle: 'Select Foods',
+            })}
+          />
           <Stack.Screen
             name="FoodsLibrary"
             component={SafeFoodsLibrary}
