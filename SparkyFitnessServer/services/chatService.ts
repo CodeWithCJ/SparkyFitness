@@ -1192,6 +1192,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(personal\s+record\w*|best\s+effort\w*|exercise\s+stat\w*|workout\s+stat\w*|matched\s+course\w*|pace\s+record\w*)\b/i,
   },
+  {
+    category: 'sleep_science',
+    keywords:
+      /\b(sleep\s+debt|sleep\s+need|chronotype|energy\s+curve|circadian|MCTQ|sleep\s+science|social\s+jetlag)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {

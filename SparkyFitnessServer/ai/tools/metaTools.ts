@@ -43,6 +43,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'list, view, and delete saved workout plan templates and their weekly assignments (tools: sparky_manage_workout_plans)',
   exercise_stats:
     'read exercise analytics: interval stats summaries, advanced activity search, personal records, and matched course groupings (tools: sparky_get_exercise_stats)',
+  sleep_science:
+    'read sleep science analytics: sleep debt, MCTQ chronotype stats, daily sleep need, circadian energy curve, chronotype, data sufficiency, and baseline recalculation (tools: sparky_get_sleep_science)',
 };
 
 const EnableToolsSchema = z.object({

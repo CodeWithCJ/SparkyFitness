@@ -26,7 +26,8 @@
       "custom_nutrients": "Custom Nutrients",
       "water_containers": "Water Containers",
       "workout_plans": "Workout Plans",
-      "exercise_stats": "Exercise Stats"
+      "exercise_stats": "Exercise Stats",
+      "sleep_science": "Sleep Science"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",

@@ -39,6 +39,7 @@ const EXPECTED_TOOLS = [
   'sparky_get_recent_exercise_entries',
   'sparky_get_recent_food_entries',
   'sparky_get_report',
+  'sparky_get_sleep_science',
   'sparky_list_exercises',
   'sparky_list_foods',
   'sparky_manage_allergens',
