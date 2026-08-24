@@ -93,7 +93,7 @@ const FIXTURE = {
     activitySteps: 0,
     steps: 0,
   },
-  // 5,786 steps at 80kg/180cm is 138 kcal, so logged + steps = 779 and just edges out
+  // 5,786 steps at 80kg/180cm is 183 kcal, so logged + steps = 824 and edges out
   // the 774 kcal device summary — exactly the reporter's Aug 11.
   '2026-08-11': {
     eaten: 2477,
@@ -252,15 +252,15 @@ describe('parity with the per-date Diary path', () => {
     }
   );
 
-  test('the Aug 11 row credits 779, not 1415', async () => {
+  test('the Aug 11 row credits 824, not 1415', async () => {
     const { days } = await runRange();
     const row = days.find((entry) => entry.date === '2026-08-11');
 
     // max(774, 641 + steps), never 641 + 774.
-    expect(row?.burned).toBe(779);
+    expect(row?.burned).toBe(824);
     expect(row?.burned).not.toBe(1415);
     // The identity the Reports chart uses to turn `remaining` back into a goal.
-    expect(row!.eaten + row!.remaining).toBe(GOAL + 779);
+    expect(row!.eaten + row!.remaining).toBe(GOAL + 824);
   });
 
   test('the steps-only day is credited rather than zeroed', async () => {

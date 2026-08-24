@@ -91,9 +91,10 @@ export interface StepCalorieInputs {
 /**
  * Net (above-BMR) kcal from background walking, estimated from step count.
  *
- * Stride length is approximated from height, distance from stride × steps, and energy
- * from distance × body weight. The per-kg-per-km figure is deliberately conservative
- * because these are incidental steps, not a workout.
+ * Step length is approximated from height, distance from step length × steps, and energy
+ * from distance × body weight. The per-kg-per-km figure is the measured mean net cost
+ * of level walking at a normal pace. Net cost excludes resting energy because the daily
+ * calorie balance accounts for BMR separately.
  *
  * Shared because this arithmetic has to agree in four places that each used to carry
  * their own copy: the Diary's per-date step calories, the ranged Reports path, the
@@ -108,9 +109,9 @@ export function computeStepCalories({
 }: StepCalorieInputs): number {
   if (!Number.isFinite(backgroundSteps) || backgroundSteps <= 0) return 0;
 
-  const strideLengthM =
+  const stepLengthM =
     (heightCm * CALORIE_CALCULATION_CONSTANTS.STRIDE_LENGTH_MULTIPLIER) / 100;
-  const distanceKm = (backgroundSteps * strideLengthM) / 1000;
+  const distanceKm = (backgroundSteps * stepLengthM) / 1000;
 
   return Math.round(
     distanceKm *

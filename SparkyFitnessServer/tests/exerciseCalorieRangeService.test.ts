@@ -72,9 +72,9 @@ describe('getResolvedExerciseCaloriesRange', () => {
       await getResolvedExerciseCaloriesRange(USER, '2026-08-20', '2026-08-20')
     ).get('2026-08-20');
 
-    // 5,786 background steps at 80kg/180cm is 138 kcal, so 150 + 138 beats 18.
-    expect(day?.stepCalories).toBe(138);
-    expect(day?.calories).toBe(288);
+    // 5,786 background steps at 80kg/180cm is 183 kcal, so 150 + 183 beats 18.
+    expect(day?.stepCalories).toBe(183);
+    expect(day?.calories).toBe(333);
     expect(day?.source).toBe('logged');
   });
 
