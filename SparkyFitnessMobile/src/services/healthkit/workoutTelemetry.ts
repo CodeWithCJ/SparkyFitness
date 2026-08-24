@@ -233,6 +233,13 @@ export interface WorkoutTelemetryBundle {
   hr_samples?: WorkoutHrSample[];
   laps?: WorkoutLapWindow[];
   telemetry?: WorkoutTelemetry;
+  /**
+   * Set when collection failed rather than finding nothing. Callers must not
+   * cache such a workout as collected: the reuse cache has no expiry, so a
+   * transient failure recorded there is permanent. Mirrors
+   * `SessionTelemetryBundle.incomplete` on the Health Connect side.
+   */
+  incomplete?: boolean;
 }
 
 /**
@@ -336,13 +343,15 @@ export async function collectWorkoutTelemetry(
 
     return bundle;
   } catch (error) {
-    // Telemetry is additive; a failure here must not cost us the workout.
+    // Telemetry is additive; a failure here must not cost us the workout. The
+    // workout is still returned unenriched — `incomplete` only keeps it out of
+    // the reuse cache so the next sync tries again.
     addLog(
       `[healthkit] Failed to collect workout telemetry: ${
         error instanceof Error ? error.message : String(error)
       }`,
       'WARNING'
     );
-    return {};
+    return { incomplete: true };
   }
 }

@@ -1013,8 +1013,10 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate, tel
       if (bundle.laps) record.laps = bundle.laps;
       Object.assign(telemetry, bundle.telemetry);
       // Recorded even when the workout had nothing beyond its summary: the
-      // reads that established that are exactly what must not repeat.
-      ctx.stageCollected(workoutCacheKey(w));
+      // reads that established that are exactly what must not repeat. A bundle
+      // that came back `incomplete` is a failed read, not an empty one, and is
+      // left uncached so the next sync retries it.
+      if (!bundle.incomplete) ctx.stageCollected(workoutCacheKey(w));
     }
 
     if (Object.keys(telemetry).length > 0) record.telemetry = telemetry;

@@ -2,6 +2,7 @@ import {
   collectHealthData,
   runForegroundSync,
   type HealthReadProvider,
+  sessionTelemetryOutcomesUsable,
 } from '../../../src/services/shared/healthSyncEngine';
 import { createTransformHealthRecords } from '../../../src/services/shared/dataTransformation';
 import type { HealthMetric } from '../../../src/HealthMetrics';
@@ -597,5 +598,81 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
     await runWithOneSession();
 
     expect(markSpy).not.toHaveBeenCalled();
+  });
+
+  // Staging happens per session DURING the session read, before that metric's
+  // outcome is known, and the 60s metric timeout is non-cancelling. Committing
+  // on upload success alone marks sessions collected that never reached the
+  // payload — permanently, because the cache has no expiry.
+  test('a rejected session read does not commit, even when another metric uploads cleanly', async () => {
+    api.syncHealthData.mockResolvedValue({ recordsSent: 1, recordErrors: [] });
+
+    const provider = fakeProvider({
+      readRaw: jest.fn(async (recordType: string) => {
+        if (recordType === 'ExerciseSession') throw new Error('Health Connect read failed');
+        return { records: [{ id: 'step-1' }] };
+      }),
+    });
+
+    await runForegroundSync(
+      provider,
+      '7d',
+      { isExerciseSessionSyncEnabled: true, isStepsSyncEnabled: true },
+      opts,
+    );
+
+    expect(api.syncHealthData).toHaveBeenCalled();
+    expect(markSpy).not.toHaveBeenCalled();
+  });
+
+  test('a rejected session read does not commit on the empty-payload path either', async () => {
+    const provider = fakeProvider({
+      readRaw: jest.fn().mockRejectedValue(new Error('Health Connect read failed')),
+    });
+
+    const result = await runForegroundSync(
+      provider,
+      '7d',
+      { isExerciseSessionSyncEnabled: true },
+      opts,
+    );
+
+    expect(api.syncHealthData).not.toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(markSpy).not.toHaveBeenCalled();
+  });
+
+  test('a clean run with nothing to upload still commits', async () => {
+    const provider = fakeProvider({
+      readRaw: jest.fn().mockResolvedValue({ records: [] }),
+    });
+
+    await runForegroundSync(provider, '7d', { isExerciseSessionSyncEnabled: true }, opts);
+
+    expect(api.syncHealthData).not.toHaveBeenCalled();
+    expect(markSpy).toHaveBeenCalled();
+  });
+});
+
+describe('sessionTelemetryOutcomesUsable', () => {
+  const outcome = (recordType: string, status: 'fulfilled' | 'rejected' | 'skipped') =>
+    ({ metric: { recordType }, status, data: [] }) as never;
+
+  test('fulfilled session reads are usable', () => {
+    expect(
+      sessionTelemetryOutcomesUsable([
+        outcome('ExerciseSession', 'fulfilled'),
+        outcome('Steps', 'rejected'),
+      ]),
+    ).toBe(true);
+  });
+
+  test('a rejected or skipped session read is not', () => {
+    expect(sessionTelemetryOutcomesUsable([outcome('ExerciseSession', 'rejected')])).toBe(false);
+    expect(sessionTelemetryOutcomesUsable([outcome('Workout', 'skipped')])).toBe(false);
+  });
+
+  test('a run with no session metric has nothing staged to withhold', () => {
+    expect(sessionTelemetryOutcomesUsable([outcome('Steps', 'rejected')])).toBe(true);
   });
 });

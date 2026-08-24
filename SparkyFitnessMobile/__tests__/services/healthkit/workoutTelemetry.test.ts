@@ -371,10 +371,16 @@ describe('collectWorkoutTelemetry', () => {
     ]);
   });
 
-  it('is additive, not required: an unexpected failure anywhere returns {} instead of throwing', async () => {
+  it('is additive, not required: an unexpected failure anywhere is reported, not thrown', async () => {
     // Simulates a bug in a downstream helper — proves the outer try/catch in
     // collectWorkoutTelemetry protects the whole workout sync, not just the
     // per-series/per-route reads that already guard themselves internally.
+    //
+    // It reports `incomplete` rather than an empty bundle: an empty bundle is
+    // the answer for a workout that genuinely has nothing beyond its summary,
+    // and the caller caches that so it is not re-read every sync. A failure
+    // must not be cached — the reuse cache has no expiry, so it would strand
+    // this workout's telemetry permanently.
     const spy = jest
       .spyOn(telemetryDownsample, 'downsampleGpsPoints')
       .mockImplementation(() => {
@@ -385,8 +391,20 @@ describe('collectWorkoutTelemetry', () => {
       { locations: [{ date: at(0), latitude: 1, longitude: 2 }] },
     ]);
 
-    await expect(collectWorkoutTelemetry(workout, [])).resolves.toEqual({});
+    await expect(collectWorkoutTelemetry(workout, [])).resolves.toEqual({
+      incomplete: true,
+    });
 
     spy.mockRestore();
+  });
+
+  it('a workout with genuinely nothing to collect returns an empty bundle', async () => {
+    // The distinction the reuse cache keys on: nothing found is a stable
+    // answer worth caching, a failed read is not.
+    mockQueryQuantitySamples.mockResolvedValue([]);
+
+    await expect(
+      collectWorkoutTelemetry(workoutWithRoutes([]), []),
+    ).resolves.toEqual({});
   });
 });

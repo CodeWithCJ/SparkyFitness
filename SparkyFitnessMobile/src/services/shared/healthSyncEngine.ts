@@ -266,6 +266,36 @@ export const collectHealthData = async (
   });
 };
 
+/**
+ * Record types whose reads stage telemetry keys into the run context.
+ *
+ * Kept as data rather than a provider flag because both platform providers
+ * stage from exactly one metric each, and the shells need the answer from the
+ * outcome list alone.
+ */
+const TELEMETRY_STAGING_RECORD_TYPES = new Set(['ExerciseSession', 'Workout']);
+
+/**
+ * Whether the run's staged telemetry keys are safe to commit.
+ *
+ * Sessions are staged one at a time *during* the session read, before that
+ * metric's outcome is known. METRIC_TIMEOUT_MS is non-cancelling, so a session
+ * read that times out (or that rejects, as enrichment does when a batch task
+ * fails) keeps running and keeps staging, while its records never reach
+ * `allTransformedData`. Committing on upload success alone would then mark
+ * sessions collected that the server never received — permanently, since the
+ * cache has no expiry and the next sync re-sends them summary-only.
+ *
+ * Evaluated from the settled outcome list rather than inside the read, so a
+ * late-completing timed-out task cannot confirm itself after the fact.
+ */
+export const sessionTelemetryOutcomesUsable = (
+  outcomes: MetricSyncOutcome[],
+): boolean =>
+  outcomes
+    .filter(outcome => TELEMETRY_STAGING_RECORD_TYPES.has(outcome.metric.recordType))
+    .every(outcome => outcome.status === 'fulfilled');
+
 export interface ForegroundSyncOptions {
   /** Log-message prefix, e.g. '[HealthConnectService]'. */
   logTag: string;
@@ -304,6 +334,10 @@ export const runForegroundSync = async (
     timeoutLabelPrefix: opts.timeoutLabelPrefix,
     telemetry,
   });
+
+  // Decided here, from the settled outcomes, and used for both drain sites
+  // below.
+  const telemetryUsable = sessionTelemetryOutcomesUsable(outcomes);
 
   const allTransformedData: HealthDataPayload = [];
   const syncErrors: { type: string; error: string }[] = [];
@@ -352,7 +386,7 @@ export const runForegroundSync = async (
       // rejection leaves the whole run's staging undrained and the next sync
       // re-collects. Wasteful when an unrelated record is the one rejected,
       // but the alternative silently strips telemetry from the rejected one.
-      if ((apiResponse?.recordErrors?.length ?? 0) === 0) {
+      if (telemetryUsable && (apiResponse?.recordErrors?.length ?? 0) === 0) {
         await markEnrichedSessions(telemetry.drainCollected());
       }
       return {
@@ -368,8 +402,12 @@ export const runForegroundSync = async (
     }
   }
 
-  // Nothing to upload means nothing to lose: commit so a run that legitimately
-  // found no new records still records what it read.
-  await markEnrichedSessions(telemetry.drainCollected());
+  // A run that legitimately found no new records still commits what it read.
+  // Still gated: an empty payload is also what a timed-out session read leaves
+  // behind when it was the only metric with data, and those staged keys belong
+  // to sessions the server never saw.
+  if (telemetryUsable) {
+    await markEnrichedSessions(telemetry.drainCollected());
+  }
   return { success: true, message: opts.emptyMessage, syncErrors };
 };

@@ -13,6 +13,7 @@ import {
   getAggregatedActiveCaloriesByDateDetailed,
   enrichExerciseSessions,
   alignToLocalDayStart,
+  sessionCacheKey,
 } from '../../../src/services/healthconnect/index';
 
 // Helpers — construct test dates in local time so the per-day window math
@@ -1736,6 +1737,7 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
   const {
     _resetEnrichedSessionCacheForTests,
     markEnrichedSessions,
+    hasEnrichedSession,
   } = require('../../../src/services/shared/enrichedSessionCache');
 
   // Enrichment only stages cache keys on the run context; the sync shell drains
@@ -1777,6 +1779,51 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
     Array.from({ length: 10 }, (_, i) =>
       session(`s${i}`, `2024-01-${String(10 + i).padStart(2, '0')}T10:00:00.000Z`),
     );
+
+  test('a session whose telemetry read hit the quota is not cached as collected', async () => {
+    // A quota or dead-client failure says nothing about whether this session
+    // has telemetry — it is the same read failing for everyone. Caching it
+    // would be permanent: the cache has no expiry, so the session is re-sent
+    // summary-only forever (#2191 follow-up).
+    mockReadRecords.mockRejectedValue(new Error('API call quota exceeded'));
+    const s1 = session('s1', '2024-01-10T10:00:00.000Z');
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(false);
+  });
+
+  test('a dead client is treated the same as a quota failure', async () => {
+    mockReadRecords.mockRejectedValue(new Error('client is not initialized'));
+    const s1 = session('s1', '2024-01-10T10:00:00.000Z');
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(false);
+  });
+
+  test('a session that genuinely had nothing beyond its summary IS cached', async () => {
+    // The reads that established there is nothing are exactly what must not
+    // repeat every sync — this is the case the cache exists for.
+    mockReadRecords.mockResolvedValue({ records: [] });
+    const s1 = session('s1', '2024-01-10T10:00:00.000Z');
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(true);
+  });
+
+  test('an unavailable record type is a stable answer and still caches', async () => {
+    // Distinct from the retryable failures above: "this type is unavailable or
+    // unauthorized here" does not change between syncs, so re-reading it every
+    // sync is the cost the cache exists to avoid.
+    mockReadRecords.mockRejectedValue(new Error('SecurityException: not authorized'));
+    const s1 = session('s1', '2024-01-10T10:00:00.000Z');
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(true);
+  });
 
   test('the cheap calorie/distance aggregates run at the wider limit', async () => {
     const aggregates = trackPeak(mockAggregateRecord, {});

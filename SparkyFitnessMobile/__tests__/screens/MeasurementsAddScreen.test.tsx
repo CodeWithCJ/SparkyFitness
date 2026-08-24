@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { pressAction } from './helpers/nativeHeaderTestUtils';
+import { pressAction, skipDuplicatePressWindow } from './helpers/nativeHeaderTestUtils';
 import MeasurementsAddScreen from '../../src/screens/MeasurementsAddScreen';
 import { useMeasurements } from '../../src/hooks/useMeasurements';
 import { usePreferences } from '../../src/hooks/usePreferences';
@@ -193,7 +193,15 @@ type Screen = ReturnType<typeof renderScreen>;
 const getInput = (screen: Screen, field: keyof typeof FIELD_INDEX) =>
   screen.getAllByPlaceholderText('0')[FIELD_INDEX[field]];
 
+let hasPressedSave = false;
+
 const pressSave = async (screen: Screen) => {
+  // Every save in this file is a distinct deliberate press — fixing a
+  // validation error, or retrying after a partial failure — which is seconds
+  // of real user time. The header Save guard treats two presses inside its
+  // window as one, so step past it between scripted presses.
+  if (hasPressedSave) skipDuplicatePressWindow();
+  hasPressedSave = true;
   pressAction(screen, mockNavigation, SAVE_LABEL);
   // The merged screen saves through upsertMutation.mutateAsync, so flush the
   // awaited continuation inside act before asserting or re-rendering.

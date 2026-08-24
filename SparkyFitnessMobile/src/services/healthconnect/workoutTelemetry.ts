@@ -14,6 +14,7 @@ import {
   hasEnrichedSession,
   sessionTelemetryKey,
 } from '../shared/enrichedSessionCache';
+import { isClientUnavailableError, isQuotaExceededError } from '../shared/quotaError';
 import type {
   WorkoutGpsPoint,
   WorkoutHrSample,
@@ -270,21 +271,41 @@ export async function prefetchSessionRoutes(
     String(b.startTime ?? '').localeCompare(String(a.startTime ?? '')),
   );
 
-  let resolved = 0;
+  // The limit counts enrichment CANDIDATES, not consent requests.
+  //
+  // enrichExerciseSessions spends a budget claim on every valid uncached
+  // session, whether or not it needs consent. Counting only issued requests
+  // would let the prefetch skip past the newest sessions (embedded route, or no
+  // route at all) without spending its limit, walk back to older ones, and
+  // prompt for sessions enrichment will never reach.
+  let candidates = 0;
   for (const session of sessions) {
-    if (resolved >= limit) break;
+    if (candidates >= limit) break;
+
+    // Same validity test enrichExerciseSessions applies before claiming, so
+    // the two walk the same sessions in the same order.
+    const startTime = session.startTime;
+    const endTime = session.endTime;
+    if (typeof startTime !== 'string' || typeof endTime !== 'string') continue;
+    const startMs = Date.parse(startTime);
+    const endMs = Date.parse(endTime);
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+      continue;
+    }
+
+    // Sessions whose telemetry is already collected are skipped by enrichment,
+    // so they are not candidates and warming their route would be wasted
+    // consent work.
+    if (await hasEnrichedSession(sessionCacheKey(session))) continue;
+
+    candidates++;
 
     const route = session.exerciseRoute as HcExerciseRoute | undefined;
     const recordId = (session.metadata as { id?: string } | undefined)?.id;
     if (routeHasData(route) || !routeNeedsConsent(route) || !recordId) continue;
 
-    // Sessions whose telemetry is already collected are skipped by enrichment,
-    // so warming their route would be wasted consent work.
-    if (await hasEnrichedSession(sessionCacheKey(session))) continue;
-
     const remembered = await getRouteConsent(recordId);
     if (remembered === 'denied') continue;
-    resolved++;
     try {
       const result = await requestExerciseRouteSerialized(recordId);
       prefetchedRoutes.set(recordId, toGpsPoints(locationsOf(result)));
@@ -313,7 +334,13 @@ const metersOf = (
  */
 export async function collectSessionRoute(
   session: Record<string, unknown>,
-  interactive: boolean
+  interactive: boolean,
+  /**
+   * Called when a consent request threw, which `requestExerciseRoute` does
+   * identically for a real refusal and for a transient failure. The caller uses
+   * it to leave the session out of the permanent reuse cache for one more sync.
+   */
+  onPossiblySpuriousDenial?: () => void,
 ): Promise<WorkoutGpsPoint[]> {
   const route = session.exerciseRoute as HcExerciseRoute | undefined;
   const recordId = (session.metadata as { id?: string } | undefined)?.id;
@@ -333,7 +360,14 @@ export async function collectSessionRoute(
     } catch {
       // The user declined, or the record has no route. Remember either way so
       // the 6h overlap re-sync does not prompt for the same session again.
+      //
+      // This is also the moment a transient failure becomes a persistent
+      // 'denied', which DENIAL_EXPIRY_MS exists to heal. The permanent session
+      // cache would beat that expiry, so the caller is told to skip caching
+      // this session once. A real refusal settles on the next sync, where the
+      // remembered 'denied' short-circuits above without throwing.
       await setRouteConsent(recordId, 'denied');
+      onPossiblySpuriousDenial?.();
       return [];
     }
   }
@@ -409,7 +443,11 @@ async function readSeriesForWindow(
       return [];
     }
     return points;
-  } catch {
+  } catch (error) {
+    // A quota or dead-client failure says nothing about whether this session
+    // has the series — it is the same read failing for everyone. Surface it so
+    // the session is not cached as "collected, nothing there".
+    if (isRetryableReadError(error)) throw new RetryableTelemetryError(error);
     // Type unavailable or unauthorized; treat as absent.
     return [];
   }
@@ -534,7 +572,33 @@ export interface SessionTelemetryBundle {
   hr_samples?: WorkoutHrSample[];
   laps?: WorkoutLapWindow[];
   telemetry?: WorkoutTelemetry;
+  /**
+   * Set when a read failed in a way that is worth retrying, as opposed to the
+   * session genuinely having nothing beyond its summary. Callers must not cache
+   * such a session as collected: the cache has no expiry, so a transient
+   * failure recorded there is permanent.
+   */
+  incomplete?: boolean;
 }
+
+/**
+ * Read failures worth retrying, as opposed to "this record type is
+ * unavailable or unauthorized here" — which is a stable answer and correctly
+ * caches as "nothing to collect".
+ *
+ * Quota exhaustion and a dead client are exactly the degraded-Health-Connect
+ * conditions the rest of this fix handles, and they hit every session in the
+ * run's budget at once.
+ */
+class RetryableTelemetryError extends Error {
+  constructor(readonly cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'RetryableTelemetryError';
+  }
+}
+
+const isRetryableReadError = (error: unknown): boolean =>
+  isQuotaExceededError(error) || isClientUnavailableError(error);
 
 const round = (value: number | null, digits = 2): number | null =>
   value === null ? null : Number(value.toFixed(digits));
@@ -574,10 +638,14 @@ export async function collectSessionTelemetry(
       ? readSeriesForWindow(name, window, sampleExtractors[name])
       : Promise.resolve([]);
 
+  let routeRetryable = false;
+
   try {
     const [route, hr, speed, power, stepsCadence, cyclingCadence] =
       await Promise.all([
-        collectSessionRoute(session, options.interactive),
+        collectSessionRoute(session, options.interactive, () => {
+          routeRetryable = true;
+        }),
         readSeries('HeartRate'),
         readSeries('Speed'),
         readSeries('Power'),
@@ -636,15 +704,19 @@ export async function collectSessionTelemetry(
     const laps = collectSessionLaps(session);
     if (laps.length > 0) bundle.laps = laps;
 
+    if (routeRetryable) bundle.incomplete = true;
+
     return bundle;
   } catch (error) {
-    // Telemetry is additive; never lose the session over it.
+    // Telemetry is additive; never lose the session over it. The session is
+    // still returned unenriched — `incomplete` only keeps it out of the reuse
+    // cache so the next sync tries again.
     addLog(
       `[HealthConnectService] Failed to collect session telemetry: ${
         error instanceof Error ? error.message : String(error)
       }`,
       'WARNING'
     );
-    return {};
+    return { incomplete: true };
   }
 }

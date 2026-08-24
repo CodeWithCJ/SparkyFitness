@@ -1,4 +1,5 @@
 import { act, fireEvent } from '@testing-library/react-native';
+import { DUPLICATE_PRESS_WINDOW_MS } from '../../../src/utils/duplicatePress';
 
 type HeaderMenuItem = {
   type?: string;
@@ -25,6 +26,30 @@ type HeaderItem = {
  * and interact with the action regardless of which platform Jest is currently
  * emulating (jest-expo runs both the ios and android projects).
  */
+
+/**
+ * Header `kind: 'primary'` (Save) actions carry a synchronous duplicate-press
+ * guard: two presses inside DUPLICATE_PRESS_WINDOW_MS count as one, which is
+ * what stops a burst of taps replayed off a blocked JS thread from writing the
+ * same entry several times (#2191).
+ *
+ * Tests press in immediate succession, compressing to zero what is always
+ * seconds of real user time — reading an error toast, fixing a field, then
+ * pressing Save again. Call this between two scripted presses of the same
+ * action so the guard sees them as the separate deliberate presses they stand
+ * for. The guard's own behaviour is covered directly in
+ * `__tests__/hooks/useScreenHeaderDuplicatePress.test.tsx`; do not use this to
+ * paper over a real double-fire.
+ */
+let pressClockOffsetMs = 0;
+
+export function skipDuplicatePressWindow(): void {
+  pressClockOffsetMs += DUPLICATE_PRESS_WINDOW_MS + 1;
+  if (!jest.isMockFunction(Date.now)) {
+    const realNow = Date.now.bind(Date);
+    jest.spyOn(Date, 'now').mockImplementation(() => realNow() + pressClockOffsetMs);
+  }
+}
 
 function collectHeaderItems(navigation: { setOptions?: unknown }): HeaderItem[] {
   const setOptions = navigation?.setOptions as

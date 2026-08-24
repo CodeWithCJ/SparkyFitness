@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getActiveServerConfig } from '../storage';
 
 /**
  * Remembers which workout sessions already had their telemetry collected.
@@ -17,7 +18,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * takes the identity and change marker each platform can supply.
  */
 
-const STORAGE_KEY = '@SparkyFitness/enrichedSessions';
+const STORAGE_KEY_PREFIX = '@SparkyFitness/enrichedSessions';
+
+/**
+ * The unscoped key this cache first shipped with. Never read: its entries mean
+ * "some server has this telemetry", which is exactly the ambiguity the scoping
+ * below removes. It is deleted on first load so it does not linger.
+ */
+const LEGACY_STORAGE_KEY = STORAGE_KEY_PREFIX;
+
+/**
+ * Scope used when no server is configured or the lookup fails.
+ *
+ * Falling back to a shared bucket is safe in the direction that matters: the
+ * worst case is a cache miss and one round of re-collection. Reusing another
+ * server's bucket would instead suppress collection, which loses telemetry.
+ */
+const UNSCOPED = 'none';
 
 /**
  * Entries kept before the oldest are evicted. Each key is short (an id plus a
@@ -42,30 +59,69 @@ export const sessionTelemetryKey = (
   return `${id}:${changeMarker ?? ''}`;
 };
 
-// Loaded once per process, then kept in memory. `loadPromise` collapses the
+/**
+ * Keyed per server config, mirroring `autoSyncKeyForConfig` in
+ * autoSyncCoordinator.ts.
+ *
+ * An entry means "THIS server durably holds this session's telemetry", and
+ * that claim does not carry across a server switch. Switching from A to B with
+ * one shared bucket would leave A's keys suppressing collection for B, so B
+ * received summary-only workouts and never got their GPS or sample series —
+ * and unlike the sync cursor there is no window that eventually re-covers
+ * them, because the cache has no expiry.
+ */
+const storageKeyForScope = (scope: string): string =>
+  `${STORAGE_KEY_PREFIX}:${scope}`;
+
+const activeScope = async (): Promise<string> => {
+  try {
+    const config = await getActiveServerConfig();
+    return config?.id ?? UNSCOPED;
+  } catch {
+    return UNSCOPED;
+  }
+};
+
+// Loaded once per scope, then kept in memory. `loadPromise` collapses the
 // concurrent first calls that the enrichment fan-out makes into one read.
 let cache: string[] | null = null;
+let cacheScope: string | null = null;
 let loadPromise: Promise<string[]> | null = null;
+let legacyKeyCleared = false;
+
+const readScope = async (scope: string): Promise<string[]> => {
+  try {
+    const raw = await AsyncStorage.getItem(storageKeyForScope(scope));
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((k): k is string => typeof k === 'string')
+      : [];
+  } catch {
+    // A corrupt or unreadable store only costs us a round of re-collection.
+    return [];
+  }
+};
 
 const load = async (): Promise<string[]> => {
-  if (cache) return cache;
-  if (!loadPromise) {
-    loadPromise = (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        const parsed: unknown = raw ? JSON.parse(raw) : [];
-        cache = Array.isArray(parsed)
-          ? parsed.filter((k): k is string => typeof k === 'string')
-          : [];
-      } catch {
-        // A corrupt or unreadable store only costs us a round of re-collection.
-        cache = [];
-      }
-      return cache;
-    })().finally(() => {
-      loadPromise = null;
-    });
-  }
+  const scope = await activeScope();
+  if (cache && cacheScope === scope) return cache;
+  // A scope change invalidates any in-flight read for the previous scope.
+  if (loadPromise && cacheScope === scope) return loadPromise;
+
+  cacheScope = scope;
+  loadPromise = (async () => {
+    const keys = await readScope(scope);
+    cache = keys;
+    if (!legacyKeyCleared) {
+      legacyKeyCleared = true;
+      // Best effort: nothing reads it any more, so a failure costs only the
+      // orphaned entry.
+      await AsyncStorage.removeItem(LEGACY_STORAGE_KEY).catch(() => undefined);
+    }
+    return keys;
+  })().finally(() => {
+    loadPromise = null;
+  });
   return loadPromise;
 };
 
@@ -76,6 +132,30 @@ export const hasEnrichedSession = async (key: string | null): Promise<boolean> =
   return keys.includes(key);
 };
 
+// Commits are serialised. Without this, two runs (a foreground sync overlapping
+// a background one — telemetryBudget.ts notes they are not mutually exclusive)
+// both await load(), capture the same array, and the second computes its merge
+// from a stale base, discarding the first run's keys.
+let writeChain: Promise<void> = Promise.resolve();
+
+const commit = async (fresh: string[]): Promise<void> => {
+  const existing = await load();
+  // Re-adding an existing key moves it to the newest end, so sessions that keep
+  // appearing in the sync window are not evicted by a one-off backfill burst.
+  const merged = [...existing.filter(k => !fresh.includes(k)), ...fresh];
+  const trimmed = merged.slice(-MAX_ENRICHED_SESSION_KEYS);
+  const scope = cacheScope ?? (await activeScope());
+  cache = trimmed;
+  cacheScope = scope;
+
+  try {
+    await AsyncStorage.setItem(storageKeyForScope(scope), JSON.stringify(trimmed));
+  } catch {
+    // In-memory state still holds for the rest of this process; the worst case
+    // is re-collecting after a restart. Never fail a sync over the cache.
+  }
+};
+
 /**
  * Records sessions as collected, oldest-evicted-first. Batched per sync run so
  * a run costs one write rather than one per session.
@@ -83,9 +163,12 @@ export const hasEnrichedSession = async (key: string | null): Promise<boolean> =
  * INVARIANT — an entry here means "the server durably holds this session's
  * telemetry", not "we read it". Anything weaker loses data, because a cached
  * session is never re-collected: the next sync re-sends it as a summary-only
- * record. So commit only after an upload the server accepted in full. A run
- * that threw, or that came back with per-record rejections, must leave its
- * staging undrained — per-record rejections do not hold the sync cursor, and a
+ * record. So commit only after an upload the server accepted in full, and only
+ * for sessions whose records actually entered that upload — see
+ * `sessionTelemetryOutcomesUsable` in healthSyncEngine.ts, which withholds the
+ * drain when the session read itself timed out or rejected. A run that threw,
+ * or that came back with per-record rejections, must leave its staging
+ * undrained — per-record rejections do not hold the sync cursor, and a
  * foreground window is the user's configured range rather than the cursor, so
  * the rejected workout WILL be re-sent, and it must carry its telemetry when
  * it is. Rejections are real: see PR #2136, where the server rejected
@@ -95,26 +178,19 @@ export const markEnrichedSessions = async (keys: (string | null)[]): Promise<voi
   const fresh = keys.filter((k): k is string => Boolean(k));
   if (fresh.length === 0) return;
 
-  const existing = await load();
-  // Re-adding an existing key moves it to the newest end, so sessions that keep
-  // appearing in the sync window are not evicted by a one-off backfill burst.
-  const merged = [...existing.filter(k => !fresh.includes(k)), ...fresh];
-  const trimmed = merged.slice(-MAX_ENRICHED_SESSION_KEYS);
-  cache = trimmed;
-
-  try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
-  } catch {
-    // In-memory state still holds for the rest of this process; the worst case
-    // is re-collecting after a restart. Never fail a sync over the cache.
-  }
+  const run = writeChain.then(() => commit(fresh));
+  // The chain must survive a rejected commit, or every later write is skipped.
+  writeChain = run.catch(() => undefined);
+  return run;
 };
 
 /** Test/reset seam — also used when a user clears app data from Settings. */
 export const clearEnrichedSessions = async (): Promise<void> => {
+  const scope = await activeScope();
   cache = [];
+  cacheScope = scope;
   try {
-    await AsyncStorage.removeItem(STORAGE_KEY);
+    await AsyncStorage.removeItem(storageKeyForScope(scope));
   } catch {
     // Best effort.
   }
@@ -123,5 +199,8 @@ export const clearEnrichedSessions = async (): Promise<void> => {
 /** Drops the in-memory copy so the next read comes from storage (tests). */
 export const _resetEnrichedSessionCacheForTests = (): void => {
   cache = null;
+  cacheScope = null;
   loadPromise = null;
+  legacyKeyCleared = false;
+  writeChain = Promise.resolve();
 };

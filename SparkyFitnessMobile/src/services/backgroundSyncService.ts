@@ -12,7 +12,7 @@ import {
   getDatabaseInaccessibleCount,
   getClientUnavailableCount,
 } from './healthConnectService';
-import { collectHealthData } from './shared/healthSyncEngine';
+import { collectHealthData, sessionTelemetryOutcomesUsable } from './shared/healthSyncEngine';
 import { markEnrichedSessions } from './shared/enrichedSessionCache';
 import { buildBackgroundWindows, MAX_BACKGROUND_LOOKBACK_DAYS } from '../utils/syncUtils';
 import {
@@ -171,6 +171,10 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
     telemetry,
   });
 
+  // Staged telemetry keys are only committable when the session read itself
+  // completed; see sessionTelemetryOutcomesUsable.
+  const telemetryUsable = sessionTelemetryOutcomesUsable(outcomes);
+
   for (const outcome of outcomes) {
     const metric = outcome.metric;
 
@@ -241,7 +245,7 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
     const uploadSummary = await syncHealthData(allData);
     // Only a fully accepted upload commits the telemetry reuse cache; see the
     // invariant on markEnrichedSessions.
-    if ((uploadSummary?.recordErrors?.length ?? 0) === 0) {
+    if (telemetryUsable && (uploadSummary?.recordErrors?.length ?? 0) === 0) {
       await markEnrichedSessions(telemetry.drainCollected());
     }
     await refreshHealthSyncCacheWhenActive();

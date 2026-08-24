@@ -1345,11 +1345,17 @@ export const enrichExerciseSessions = async (
       // summary: the reads that established that are exactly what we must not
       // repeat every sync. A later edit to the record changes its cache key.
       //
+      // Not recorded when the bundle came back `incomplete` — a failed read is
+      // not the same answer as an empty one, and this cache has no expiry, so
+      // caching a transient failure strands the session's telemetry for good.
+      //
       // Interactive runs only. A headless run cannot present the per-session
       // route-consent dialog, so collectSessionRoute returns no route for a
       // session awaiting consent — caching that would make the next foreground
       // sync skip it and the route would never be collected at all.
-      if (ctx.interactive) ctx.stageCollected(sessionCacheKey(record));
+      if (ctx.interactive && !bundle.incomplete) {
+        ctx.stageCollected(sessionCacheKey(record));
+      }
     }
 
     return Object.keys(enrichedFields).length > 0
