@@ -29,6 +29,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'profile details, preferences, units, timezone, habits (tools: sparky_manage_profile, sparky_manage_habits)',
   medications:
     'medication and GLP-1 tracking (tools: sparky_manage_medications)',
+  allergens:
+    'track food allergens and intolerances to flag in meals (tools: sparky_manage_allergens)',
 };
 
 const EnableToolsSchema = z.object({

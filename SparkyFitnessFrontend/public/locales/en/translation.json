@@ -19,7 +19,8 @@
       "coaching": "Coaching",
       "vision": "Vision",
       "profile": "Profile & Habits",
-      "medications": "Medications"
+      "medications": "Medications",
+      "allergens": "Allergens"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",

@@ -7,6 +7,7 @@ import {
   type ChatToolCategorySlug,
 } from '@workspace/shared';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { buildAllergenTools } from './allergenTools.js';
 import { buildAskTools } from './askTools.js';
 import { buildCheckinTools } from './checkinTools.js';
 import { buildCoachTools } from './coachTools.js';
@@ -58,6 +59,7 @@ const CATEGORY_BUILDERS: Record<
   profile: [(u) => buildProfileTools(u), (u, tz) => buildHabitTools(u, tz)],
   reports: [(u, tz) => buildReportTools(u, tz)],
   medications: [(u, tz) => buildMedicationTools(u, tz)],
+  allergens: [(u, tz) => buildAllergenTools(u, tz)],
 };
 
 // Composition order: the core categories first (a strict prefix of the full
@@ -72,6 +74,7 @@ const CATEGORY_ORDER: ChatToolCategorySlug[] = [
   'profile',
   'reports',
   'medications',
+  'allergens',
 ];
 
 // Resolves the category set to compose: an explicit (already-validated,

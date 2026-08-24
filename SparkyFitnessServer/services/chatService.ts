@@ -1160,6 +1160,10 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(profile|habit|habits|preference|preferences|settings|timezone|unit|units)\b/i,
   },
+  {
+    category: 'allergens',
+    keywords: /\b(allerg\w*|intoleran\w*)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {
